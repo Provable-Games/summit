@@ -1,0 +1,21 @@
+kind = "DojoModel"
+class_hash = "0x343526a03d4e52ceddfff7252aa1dcdc3fddf67a7051ff2ffa37e693490eb18"
+original_class_hash = "0x343526a03d4e52ceddfff7252aa1dcdc3fddf67a7051ff2ffa37e693490eb18"
+abi = "manifests/dev/base/abis/models/savage_summit-Beast-2a5259df.json"
+tag = "savage_summit-Beast"
+manifest_name = "savage_summit-Beast-2a5259df"
+
+[[members]]
+name = "id"
+type = "u32"
+key = true
+
+[[members]]
+name = "health"
+type = "u16"
+key = false
+
+[[members]]
+name = "dead_at"
+type = "u64"
+key = false

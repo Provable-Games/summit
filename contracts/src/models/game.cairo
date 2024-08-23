@@ -1,5 +1,3 @@
-use loot_survivor::combat::constants::CombatEnums::{Tier, Type, Slot}
-
 #[derive(Copy, Drop, Serde)]
 #[dojo::model]
 pub struct Summit {
@@ -33,7 +31,7 @@ pub struct Consumable {
     pub amount: u8,
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, Serde, Introspect)]
 #[dojo::model]
 pub struct ConsumableDetails {
     #[key]
@@ -42,6 +40,9 @@ pub struct ConsumableDetails {
     pub _type: ConsumableType
 }
 
+#[derive(Copy, Drop, Serde, Introspect)]
+#[dojo::model]
+#[dojo::event]
 pub struct BeastDetails {
     #[key]
     pub id: u32,
@@ -51,9 +52,30 @@ pub struct BeastDetails {
     pub starting_health: u16
 }
 
+#[derive(Copy, Drop, Serde, Introspect)]
 pub enum ConsumableType {
     Health: u16,
     Attack: u16,
     Armor: u16,
     Revive: u32
+}
+
+#[derive(Copy, Drop, Serde, Introspect)]
+pub enum Type {
+    None,
+    Magic_or_Cloth,
+    Blade_or_Hide,
+    Bludgeon_or_Metal,
+    Necklace,
+    Ring,
+}
+
+#[derive(Copy, Drop, Serde, Introspect)]
+pub enum Tier {
+    None,
+    T1,
+    T2,
+    T3,
+    T4,
+    T5,
 }

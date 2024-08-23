@@ -15,8 +15,94 @@ version = "1.0.0-alpha.4"
 source = "git+https://github.com/dojoengine/dojo?rev=f15def33#f15def330c0d099e79351d11c197f63e8cc1ff36"
 
 [[package]]
+name = "openzeppelin"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+dependencies = [
+ "openzeppelin_access",
+ "openzeppelin_account",
+ "openzeppelin_governance",
+ "openzeppelin_introspection",
+ "openzeppelin_presets",
+ "openzeppelin_security",
+ "openzeppelin_token",
+ "openzeppelin_upgrades",
+ "openzeppelin_utils",
+]
+
+[[package]]
+name = "openzeppelin_access"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+dependencies = [
+ "openzeppelin_introspection",
+ "openzeppelin_utils",
+]
+
+[[package]]
+name = "openzeppelin_account"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+dependencies = [
+ "openzeppelin_introspection",
+ "openzeppelin_utils",
+]
+
+[[package]]
+name = "openzeppelin_governance"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+dependencies = [
+ "openzeppelin_access",
+ "openzeppelin_introspection",
+]
+
+[[package]]
+name = "openzeppelin_introspection"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+
+[[package]]
+name = "openzeppelin_presets"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+dependencies = [
+ "openzeppelin_access",
+ "openzeppelin_account",
+ "openzeppelin_introspection",
+ "openzeppelin_token",
+ "openzeppelin_upgrades",
+]
+
+[[package]]
+name = "openzeppelin_security"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+
+[[package]]
+name = "openzeppelin_token"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+dependencies = [
+ "openzeppelin_account",
+ "openzeppelin_governance",
+ "openzeppelin_introspection",
+]
+
+[[package]]
+name = "openzeppelin_upgrades"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+
+[[package]]
+name = "openzeppelin_utils"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+
+[[package]]
 name = "savage_summit"
 version = "0.1.0"
 dependencies = [
  "dojo",
+ "openzeppelin",
 ]
