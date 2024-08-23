@@ -1,6 +1,6 @@
 kind = "DojoModel"
-class_hash = "0x343526a03d4e52ceddfff7252aa1dcdc3fddf67a7051ff2ffa37e693490eb18"
-original_class_hash = "0x343526a03d4e52ceddfff7252aa1dcdc3fddf67a7051ff2ffa37e693490eb18"
+class_hash = "0x102b3e2faf9fb1bf7ca06a5d670b863a4f98d56f49e19dca709cf2ff2ac4047"
+original_class_hash = "0x102b3e2faf9fb1bf7ca06a5d670b863a4f98d56f49e19dca709cf2ff2ac4047"
 abi = "manifests/dev/base/abis/models/savage_summit-Beast-2a5259df.json"
 tag = "savage_summit-Beast"
 manifest_name = "savage_summit-Beast-2a5259df"
@@ -18,4 +18,9 @@ key = false
 [[members]]
 name = "dead_at"
 type = "u64"
+key = false
+
+[[members]]
+name = "consumables"
+type = "Array<Consumable>"
 key = false

@@ -363,26 +363,34 @@
   },
   {
     "type": "impl",
-    "name": "consumableImpl",
-    "interface_name": "savage_summit::models::game::Iconsumable"
+    "name": "summit_historyImpl",
+    "interface_name": "savage_summit::models::game::Isummit_history"
   },
   {
     "type": "struct",
-    "name": "savage_summit::models::game::Consumable",
+    "name": "savage_summit::models::game::SummitHistory",
     "members": [
       {
         "name": "id",
-        "type": "core::integer::u8"
+        "type": "core::integer::u32"
       },
       {
-        "name": "amount",
-        "type": "core::integer::u8"
+        "name": "taken_at",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "lost_at",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "rewards",
+        "type": "core::integer::u64"
       }
     ]
   },
   {
     "type": "interface",
-    "name": "savage_summit::models::game::Iconsumable",
+    "name": "savage_summit::models::game::Isummit_history",
     "items": [
       {
         "type": "function",
@@ -390,7 +398,7 @@
         "inputs": [
           {
             "name": "model",
-            "type": "savage_summit::models::game::Consumable"
+            "type": "savage_summit::models::game::SummitHistory"
           }
         ],
         "outputs": [],
@@ -400,7 +408,7 @@
   },
   {
     "type": "event",
-    "name": "savage_summit::models::game::consumable::Event",
+    "name": "savage_summit::models::game::summit_history::Event",
     "kind": "enum",
     "variants": []
   }

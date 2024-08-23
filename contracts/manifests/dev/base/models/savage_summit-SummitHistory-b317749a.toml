@@ -1,0 +1,26 @@
+kind = "DojoModel"
+class_hash = "0x786d7edeadce782d4332bf6f32da3fe72ec2c0da28124bcff853800641cbdb5"
+original_class_hash = "0x786d7edeadce782d4332bf6f32da3fe72ec2c0da28124bcff853800641cbdb5"
+abi = "manifests/dev/base/abis/models/savage_summit-SummitHistory-b317749a.json"
+tag = "savage_summit-SummitHistory"
+manifest_name = "savage_summit-SummitHistory-b317749a"
+
+[[members]]
+name = "id"
+type = "u32"
+key = true
+
+[[members]]
+name = "taken_at"
+type = "u64"
+key = true
+
+[[members]]
+name = "lost_at"
+type = "u64"
+key = false
+
+[[members]]
+name = "rewards"
+type = "u64"
+key = false

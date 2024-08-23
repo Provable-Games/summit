@@ -368,6 +368,20 @@
   },
   {
     "type": "struct",
+    "name": "savage_summit::models::game::Consumable",
+    "members": [
+      {
+        "name": "id",
+        "type": "core::integer::u8"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u8"
+      }
+    ]
+  },
+  {
+    "type": "struct",
     "name": "savage_summit::models::game::Beast",
     "members": [
       {
@@ -381,6 +395,10 @@
       {
         "name": "dead_at",
         "type": "core::integer::u64"
+      },
+      {
+        "name": "consumables",
+        "type": "core::array::Array::<savage_summit::models::game::Consumable>"
       }
     ]
   },

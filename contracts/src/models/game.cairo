@@ -6,25 +6,28 @@ pub struct Summit {
     pub beast_id: u32,
 }
 
+#[derive(Copy, Drop, Serde)]
+#[dojo::model]
 pub struct SummitHistory {
     #[key]
     pub id: u32,
     #[key]
     pub taken_at: u64,
     pub lost_at: u64,
+    pub rewards: u64
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Drop, Serde, Introspect)]
 #[dojo::model]
 pub struct Beast {
     #[key]
     pub id: u32,
     pub health: u16,
-    pub dead_at: u64
+    pub dead_at: u64,
+    pub consumables: Array<Consumable>
 }
 
-#[derive(Copy, Drop, Serde)]
-#[dojo::model]
+#[derive(Drop, Serde, Introspect)]
 pub struct Consumable {
     #[key]
     pub id: u8,
