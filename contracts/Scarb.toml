@@ -1,0 +1,14 @@
+[package]
+cairo-version = "=2.7.0"
+name = "savage_summit"
+version = "0.1.0"
+
+[cairo]
+sierra-replace-ids = true
+
+[dependencies]
+dojo = { git = "https://github.com/dojoengine/dojo", tag = "v1.0.0-alpha.6" }
+loot_survivor = { git = "https://github.com/Provable-Games/loot-survivor" }
+openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v0.10.0" }
+
+[[target.dojo]]

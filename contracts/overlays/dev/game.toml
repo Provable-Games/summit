@@ -1,0 +1,5 @@
+tag = "savage_summit-game_systems"
+writes = [
+    "savage_summit-King",
+    "savage_summit-DeadBeast",
+]

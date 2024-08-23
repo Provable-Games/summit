@@ -1,0 +1,14 @@
+[world]
+seed = "savage_summit"
+name = "Savage Summit"
+description = "Crown the Beast"
+website = "https://github.com/provablegames"
+
+[world.socials]
+x = "https://x.com/provablegames"
+github = "https://github.com/provablegames"
+
+[namespace]
+default = "savage_summit"
+
+[env]
