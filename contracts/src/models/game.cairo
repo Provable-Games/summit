@@ -6,20 +6,27 @@ pub struct Summit {
     pub beast_id: u32,
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, Serde, Introspect)]
 #[dojo::model]
 pub struct SummitHistory {
     #[key]
     pub id: u32,
     #[key]
-    pub taken_at: u64,
     pub lost_at: u64,
+    pub taken_at: u64,
     pub rewards: u64
+}
+
+#[derive(Copy, Drop, Serde)]
+pub struct Beast {
+    pub id: u32,
+    pub details: BeastDetails,
+    pub stats: BeastStats
 }
 
 #[derive(Drop, Serde, Introspect)]
 #[dojo::model]
-pub struct Beast {
+pub struct BeastStats {
     #[key]
     pub id: u32,
     pub health: u16,
@@ -27,7 +34,20 @@ pub struct Beast {
     pub consumables: Array<Consumable>
 }
 
-#[derive(Drop, Serde, Introspect)]
+#[derive(Copy, Drop, Serde, Introspect)]
+#[dojo::model]
+#[dojo::event]
+pub struct BeastDetails {
+    #[key]
+    pub id: u32,
+    pub _type: Type,
+    pub tier: Tier,
+    pub level: u16,
+    pub starting_health: u16
+}
+
+#[derive(Copy, Drop, Serde, Introspect)]
+#[dojo::model]
 pub struct Consumable {
     #[key]
     pub id: u8,
@@ -41,18 +61,6 @@ pub struct ConsumableDetails {
     pub id: u8,
     pub name: felt252,
     pub _type: ConsumableType
-}
-
-#[derive(Copy, Drop, Serde, Introspect)]
-#[dojo::model]
-#[dojo::event]
-pub struct BeastDetails {
-    #[key]
-    pub id: u32,
-    pub _type: Type,
-    pub tier: Tier,
-    pub level: u16,
-    pub starting_health: u16
 }
 
 #[derive(Copy, Drop, Serde, Introspect)]
