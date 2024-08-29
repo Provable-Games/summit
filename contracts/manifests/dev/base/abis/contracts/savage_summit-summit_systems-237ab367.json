@@ -1,0 +1,460 @@
+[
+  {
+    "type": "impl",
+    "name": "ContractImpl",
+    "interface_name": "dojo::contract::contract::IContract"
+  },
+  {
+    "type": "struct",
+    "name": "core::byte_array::ByteArray",
+    "members": [
+      {
+        "name": "data",
+        "type": "core::array::Array::<core::bytes_31::bytes31>"
+      },
+      {
+        "name": "pending_word",
+        "type": "core::felt252"
+      },
+      {
+        "name": "pending_word_len",
+        "type": "core::integer::u32"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "dojo::contract::contract::IContract",
+    "items": [
+      {
+        "type": "function",
+        "name": "contract_name",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::byte_array::ByteArray"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "namespace",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::byte_array::ByteArray"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "tag",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::byte_array::ByteArray"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "name_hash",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::felt252"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "namespace_hash",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::felt252"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "selector",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "core::felt252"
+          }
+        ],
+        "state_mutability": "view"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "WorldProviderImpl",
+    "interface_name": "dojo::world::world_contract::IWorldProvider"
+  },
+  {
+    "type": "struct",
+    "name": "dojo::world::world_contract::IWorldDispatcher",
+    "members": [
+      {
+        "name": "contract_address",
+        "type": "core::starknet::contract_address::ContractAddress"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "dojo::world::world_contract::IWorldProvider",
+    "items": [
+      {
+        "type": "function",
+        "name": "world",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "dojo::world::world_contract::IWorldDispatcher"
+          }
+        ],
+        "state_mutability": "view"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "SummitSystemImpl",
+    "interface_name": "savage_summit::systems::summit::ISummitSystem"
+  },
+  {
+    "type": "struct",
+    "name": "savage_summit::models::summit::SummitHistory",
+    "members": [
+      {
+        "name": "id",
+        "type": "core::integer::u32"
+      },
+      {
+        "name": "lost_at",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "taken_at",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "rewards",
+        "type": "core::integer::u64"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "savage_summit::models::beast::Type",
+    "variants": [
+      {
+        "name": "None",
+        "type": "()"
+      },
+      {
+        "name": "Magic_or_Cloth",
+        "type": "()"
+      },
+      {
+        "name": "Blade_or_Hide",
+        "type": "()"
+      },
+      {
+        "name": "Bludgeon_or_Metal",
+        "type": "()"
+      },
+      {
+        "name": "Necklace",
+        "type": "()"
+      },
+      {
+        "name": "Ring",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "enum",
+    "name": "savage_summit::models::beast::Tier",
+    "variants": [
+      {
+        "name": "None",
+        "type": "()"
+      },
+      {
+        "name": "T1",
+        "type": "()"
+      },
+      {
+        "name": "T2",
+        "type": "()"
+      },
+      {
+        "name": "T3",
+        "type": "()"
+      },
+      {
+        "name": "T4",
+        "type": "()"
+      },
+      {
+        "name": "T5",
+        "type": "()"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "savage_summit::models::beast::BeastDetails",
+    "members": [
+      {
+        "name": "id",
+        "type": "core::integer::u32"
+      },
+      {
+        "name": "_type",
+        "type": "savage_summit::models::beast::Type"
+      },
+      {
+        "name": "tier",
+        "type": "savage_summit::models::beast::Tier"
+      },
+      {
+        "name": "level",
+        "type": "core::integer::u16"
+      },
+      {
+        "name": "starting_health",
+        "type": "core::integer::u16"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "savage_summit::models::beast::BeastStats",
+    "members": [
+      {
+        "name": "id",
+        "type": "core::integer::u32"
+      },
+      {
+        "name": "health",
+        "type": "core::integer::u16"
+      },
+      {
+        "name": "dead_at",
+        "type": "core::integer::u64"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "savage_summit::models::beast::Beast",
+    "members": [
+      {
+        "name": "id",
+        "type": "core::integer::u32"
+      },
+      {
+        "name": "details",
+        "type": "savage_summit::models::beast::BeastDetails"
+      },
+      {
+        "name": "stats",
+        "type": "savage_summit::models::beast::BeastStats"
+      }
+    ]
+  },
+  {
+    "type": "interface",
+    "name": "savage_summit::systems::summit::ISummitSystem",
+    "items": [
+      {
+        "type": "function",
+        "name": "attack",
+        "inputs": [
+          {
+            "name": "summit_beast_id",
+            "type": "core::integer::u32"
+          },
+          {
+            "name": "attacking_beast_id",
+            "type": "core::integer::u32"
+          },
+          {
+            "name": "consumables",
+            "type": "core::array::Array::<core::integer::u8>"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      },
+      {
+        "type": "function",
+        "name": "get_summit_history",
+        "inputs": [
+          {
+            "name": "beast_id",
+            "type": "core::integer::u32"
+          },
+          {
+            "name": "lost_at",
+            "type": "core::integer::u64"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "savage_summit::models::summit::SummitHistory"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_summit_beast",
+        "inputs": [],
+        "outputs": [
+          {
+            "type": "savage_summit::models::beast::Beast"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_beast",
+        "inputs": [
+          {
+            "name": "id",
+            "type": "core::integer::u32"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "savage_summit::models::beast::Beast"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_beast_details",
+        "inputs": [
+          {
+            "name": "id",
+            "type": "core::integer::u32"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "savage_summit::models::beast::BeastDetails"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_beast_stats",
+        "inputs": [
+          {
+            "name": "id",
+            "type": "core::integer::u32"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "savage_summit::models::beast::BeastStats"
+          }
+        ],
+        "state_mutability": "view"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "IDojoInitImpl",
+    "interface_name": "savage_summit::systems::summit::summit_systems::IDojoInit"
+  },
+  {
+    "type": "interface",
+    "name": "savage_summit::systems::summit::summit_systems::IDojoInit",
+    "items": [
+      {
+        "type": "function",
+        "name": "dojo_init",
+        "inputs": [],
+        "outputs": [],
+        "state_mutability": "view"
+      }
+    ]
+  },
+  {
+    "type": "impl",
+    "name": "UpgradableImpl",
+    "interface_name": "dojo::contract::upgradeable::IUpgradeable"
+  },
+  {
+    "type": "interface",
+    "name": "dojo::contract::upgradeable::IUpgradeable",
+    "items": [
+      {
+        "type": "function",
+        "name": "upgrade",
+        "inputs": [
+          {
+            "name": "new_class_hash",
+            "type": "core::starknet::class_hash::ClassHash"
+          }
+        ],
+        "outputs": [],
+        "state_mutability": "external"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "dojo::contract::upgradeable::upgradeable::Upgraded",
+    "kind": "struct",
+    "members": [
+      {
+        "name": "class_hash",
+        "type": "core::starknet::class_hash::ClassHash",
+        "kind": "data"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "dojo::contract::upgradeable::upgradeable::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "Upgraded",
+        "type": "dojo::contract::upgradeable::upgradeable::Upgraded",
+        "kind": "nested"
+      }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "savage_summit::systems::summit::summit_systems::Event",
+    "kind": "enum",
+    "variants": [
+      {
+        "name": "UpgradeableEvent",
+        "type": "dojo::contract::upgradeable::upgradeable::Event",
+        "kind": "nested"
+      }
+    ]
+  }
+]

@@ -363,26 +363,12 @@
   },
   {
     "type": "impl",
-    "name": "beastImpl",
-    "interface_name": "savage_summit::models::game::Ibeast"
+    "name": "beast_statsImpl",
+    "interface_name": "savage_summit::models::beast::Ibeast_stats"
   },
   {
     "type": "struct",
-    "name": "savage_summit::models::game::Consumable",
-    "members": [
-      {
-        "name": "id",
-        "type": "core::integer::u8"
-      },
-      {
-        "name": "amount",
-        "type": "core::integer::u8"
-      }
-    ]
-  },
-  {
-    "type": "struct",
-    "name": "savage_summit::models::game::Beast",
+    "name": "savage_summit::models::beast::BeastStats",
     "members": [
       {
         "name": "id",
@@ -395,16 +381,12 @@
       {
         "name": "dead_at",
         "type": "core::integer::u64"
-      },
-      {
-        "name": "consumables",
-        "type": "core::array::Array::<savage_summit::models::game::Consumable>"
       }
     ]
   },
   {
     "type": "interface",
-    "name": "savage_summit::models::game::Ibeast",
+    "name": "savage_summit::models::beast::Ibeast_stats",
     "items": [
       {
         "type": "function",
@@ -412,7 +394,7 @@
         "inputs": [
           {
             "name": "model",
-            "type": "savage_summit::models::game::Beast"
+            "type": "savage_summit::models::beast::BeastStats"
           }
         ],
         "outputs": [],
@@ -422,7 +404,7 @@
   },
   {
     "type": "event",
-    "name": "savage_summit::models::game::beast::Event",
+    "name": "savage_summit::models::beast::beast_stats::Event",
     "kind": "enum",
     "variants": []
   }

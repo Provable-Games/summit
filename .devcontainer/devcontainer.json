@@ -8,6 +8,7 @@
 		"--security-opt",
 		"seccomp=unconfined"
 	],
+	"remoteUser": "root",
 	// Configure tool-specific properties.
 	"customizations": {
 		// Configure properties specific to VS Code.

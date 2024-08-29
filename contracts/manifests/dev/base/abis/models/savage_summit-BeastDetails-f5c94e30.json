@@ -364,11 +364,11 @@
   {
     "type": "impl",
     "name": "beast_detailsImpl",
-    "interface_name": "savage_summit::models::game::Ibeast_details"
+    "interface_name": "savage_summit::models::beast::Ibeast_details"
   },
   {
     "type": "enum",
-    "name": "savage_summit::models::game::Type",
+    "name": "savage_summit::models::beast::Type",
     "variants": [
       {
         "name": "None",
@@ -398,7 +398,7 @@
   },
   {
     "type": "enum",
-    "name": "savage_summit::models::game::Tier",
+    "name": "savage_summit::models::beast::Tier",
     "variants": [
       {
         "name": "None",
@@ -428,7 +428,7 @@
   },
   {
     "type": "struct",
-    "name": "savage_summit::models::game::BeastDetails",
+    "name": "savage_summit::models::beast::BeastDetails",
     "members": [
       {
         "name": "id",
@@ -436,11 +436,11 @@
       },
       {
         "name": "_type",
-        "type": "savage_summit::models::game::Type"
+        "type": "savage_summit::models::beast::Type"
       },
       {
         "name": "tier",
-        "type": "savage_summit::models::game::Tier"
+        "type": "savage_summit::models::beast::Tier"
       },
       {
         "name": "level",
@@ -454,7 +454,7 @@
   },
   {
     "type": "interface",
-    "name": "savage_summit::models::game::Ibeast_details",
+    "name": "savage_summit::models::beast::Ibeast_details",
     "items": [
       {
         "type": "function",
@@ -462,7 +462,7 @@
         "inputs": [
           {
             "name": "model",
-            "type": "savage_summit::models::game::BeastDetails"
+            "type": "savage_summit::models::beast::BeastDetails"
           }
         ],
         "outputs": [],
@@ -472,7 +472,7 @@
   },
   {
     "type": "event",
-    "name": "savage_summit::models::game::beast_details::Event",
+    "name": "savage_summit::models::beast::beast_details::Event",
     "kind": "enum",
     "variants": []
   }

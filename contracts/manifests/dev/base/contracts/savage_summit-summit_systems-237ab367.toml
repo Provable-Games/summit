@@ -1,0 +1,11 @@
+kind = "DojoContract"
+class_hash = "0x70f21878203286ad17846fea6dcf1719241e90cf1e94cbb734a7e881db0e848"
+original_class_hash = "0x70f21878203286ad17846fea6dcf1719241e90cf1e94cbb734a7e881db0e848"
+base_class_hash = "0x0"
+abi = "manifests/dev/base/abis/contracts/savage_summit-summit_systems-237ab367.json"
+reads = []
+writes = []
+init_calldata = []
+tag = "savage_summit-summit_systems"
+systems = ["attack"]
+manifest_name = "savage_summit-summit_systems-237ab367"

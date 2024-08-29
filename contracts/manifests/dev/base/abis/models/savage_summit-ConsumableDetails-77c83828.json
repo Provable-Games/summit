@@ -364,51 +364,55 @@
   {
     "type": "impl",
     "name": "consumable_detailsImpl",
-    "interface_name": "savage_summit::models::game::Iconsumable_details"
+    "interface_name": "savage_summit::models::consumable::Iconsumable_details"
   },
   {
     "type": "enum",
-    "name": "savage_summit::models::game::ConsumableType",
+    "name": "savage_summit::models::consumable::ConsumableType",
     "variants": [
       {
         "name": "Health",
-        "type": "core::integer::u16"
+        "type": "()"
       },
       {
         "name": "Attack",
-        "type": "core::integer::u16"
+        "type": "()"
       },
       {
         "name": "Armor",
-        "type": "core::integer::u16"
+        "type": "()"
       },
       {
         "name": "Revive",
-        "type": "core::integer::u32"
+        "type": "()"
       }
     ]
   },
   {
     "type": "struct",
-    "name": "savage_summit::models::game::ConsumableDetails",
+    "name": "savage_summit::models::consumable::ConsumableDetails",
     "members": [
       {
         "name": "id",
-        "type": "core::integer::u8"
+        "type": "core::integer::u32"
       },
       {
         "name": "name",
         "type": "core::felt252"
       },
       {
-        "name": "_type",
-        "type": "savage_summit::models::game::ConsumableType"
+        "name": "effect",
+        "type": "savage_summit::models::consumable::ConsumableType"
+      },
+      {
+        "name": "amount",
+        "type": "core::integer::u16"
       }
     ]
   },
   {
     "type": "interface",
-    "name": "savage_summit::models::game::Iconsumable_details",
+    "name": "savage_summit::models::consumable::Iconsumable_details",
     "items": [
       {
         "type": "function",
@@ -416,7 +420,7 @@
         "inputs": [
           {
             "name": "model",
-            "type": "savage_summit::models::game::ConsumableDetails"
+            "type": "savage_summit::models::consumable::ConsumableDetails"
           }
         ],
         "outputs": [],
@@ -426,7 +430,7 @@
   },
   {
     "type": "event",
-    "name": "savage_summit::models::game::consumable_details::Event",
+    "name": "savage_summit::models::consumable::consumable_details::Event",
     "kind": "enum",
     "variants": []
   }
