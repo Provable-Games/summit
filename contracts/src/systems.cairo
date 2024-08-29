@@ -1,3 +1,1 @@
-mod game {
-    mod summit;
-}
+mod summit;

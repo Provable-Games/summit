@@ -1,6 +1,6 @@
 kind = "DojoContract"
-class_hash = "0x539c21c91ffe01ba3429d6f39f46a5f889e8f0a8f85766d281647acb9fc4bd3"
-original_class_hash = "0x539c21c91ffe01ba3429d6f39f46a5f889e8f0a8f85766d281647acb9fc4bd3"
+class_hash = "0x70f21878203286ad17846fea6dcf1719241e90cf1e94cbb734a7e881db0e848"
+original_class_hash = "0x70f21878203286ad17846fea6dcf1719241e90cf1e94cbb734a7e881db0e848"
 base_class_hash = "0x0"
 abi = "manifests/dev/base/abis/contracts/savage_summit-summit_systems-237ab367.json"
 reads = []

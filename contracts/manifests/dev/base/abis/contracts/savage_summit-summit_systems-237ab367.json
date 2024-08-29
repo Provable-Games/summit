@@ -129,7 +129,7 @@
   {
     "type": "impl",
     "name": "SummitSystemImpl",
-    "interface_name": "savage_summit::systems::game::summit::ISummitSystem"
+    "interface_name": "savage_summit::systems::summit::ISummitSystem"
   },
   {
     "type": "struct",
@@ -277,7 +277,7 @@
   },
   {
     "type": "interface",
-    "name": "savage_summit::systems::game::summit::ISummitSystem",
+    "name": "savage_summit::systems::summit::ISummitSystem",
     "items": [
       {
         "type": "function",
@@ -288,7 +288,7 @@
             "type": "core::integer::u32"
           },
           {
-            "name": "challenger_beast_id",
+            "name": "attacking_beast_id",
             "type": "core::integer::u32"
           },
           {
@@ -309,7 +309,7 @@
           },
           {
             "name": "lost_at",
-            "type": "core::integer::u32"
+            "type": "core::integer::u64"
           }
         ],
         "outputs": [
@@ -383,11 +383,11 @@
   {
     "type": "impl",
     "name": "IDojoInitImpl",
-    "interface_name": "savage_summit::systems::game::summit::summit_systems::IDojoInit"
+    "interface_name": "savage_summit::systems::summit::summit_systems::IDojoInit"
   },
   {
     "type": "interface",
-    "name": "savage_summit::systems::game::summit::summit_systems::IDojoInit",
+    "name": "savage_summit::systems::summit::summit_systems::IDojoInit",
     "items": [
       {
         "type": "function",
@@ -447,7 +447,7 @@
   },
   {
     "type": "event",
-    "name": "savage_summit::systems::game::summit::summit_systems::Event",
+    "name": "savage_summit::systems::summit::summit_systems::Event",
     "kind": "enum",
     "variants": [
       {

@@ -241,7 +241,7 @@ mod tests {
     }
 
     #[test]
-    fn test_summit() {
+    fn test_take_summit() {
         let starting_time = 1724927366;
         starknet::testing::set_block_timestamp(starting_time);
 
