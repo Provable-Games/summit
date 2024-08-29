@@ -1,0 +1,123 @@
+body {
+  overflow: hidden;
+  margin: 0;
+  -webkit-user-select: none;
+  /* Safari */
+  -moz-user-select: none;
+  /* Old versions of Firefox */
+  -ms-user-select: none;
+  /* Internet Explorer/Edge */
+  user-select: none;
+}
+
+a {
+  text-decoration: none !important;
+  color: #FFE97F;
+}
+
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+strong,
+b {
+  font-weight: 400;
+  font-size: 15px;
+}
+
+.bgImage {
+  /* background-image: url("./assets/images/background.png");
+  background-repeat: no-repeat;
+  background-size: cover; */
+}
+
+.main {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: #fbf7da;
+}
+
+input:autofill {
+  background-color: inherit;
+}
+
+input:-webkit-autofill {
+  background-color: inherit;
+}
+
+.loadingDots {
+  clip-path: inset(0 1ch 0 0);
+  animation: l 1s steps(4) infinite;
+}
+
+@keyframes l {
+  to {
+    clip-path: inset(0 -1ch 0 0)
+  }
+}
+
+@media only screen and (max-width: 850px) {
+  .MuiPaper-root.MuiDialog-paper {
+    margin: 0;
+    width: 100%;
+  }
+}
+
+#notistack-snackbar {
+  font-family: 'New Amsterdam';
+  font-size: 16px;
+  color: rgb(40, 39, 41);
+}
+
+.notistack-MuiContent-warning,
+.notistack-MuiContent-info {
+  background-color: #FFE97F;
+}
+
+.notistack-MuiContent-error #notistack-snackbar {
+  color: white;
+}
+
+.dotLoader {
+  width: 16px;
+  aspect-ratio: 4;
+  background: radial-gradient(circle closest-side, #000 90%, #0000) 0/calc(100%/3) 100% space;
+  clip-path: inset(0 100% 0 0);
+  animation: l1 1s steps(4) infinite;
+}
+
+.loadingDots {
+  clip-path: inset(0 1ch 0 0);
+  animation: l 1s steps(4) infinite;
+}
+
+@keyframes l {
+  to {
+    clip-path: inset(0 -1ch 0 0)
+  }
+}
+
+.imageHover {
+  margin-top: 5px;
+  transition: margin 0.5s ease-out;
+  -webkit-transition: margin 0.5s ease-out;
+  -moz-transition: margin 0.5s ease-out;
+  -o-transition: margin 0.5s ease-out;
+}
+
+.imageHover:hover {
+  cursor: pointer;
+  margin-top: 0px;
+}
+
+@keyframes l1 {
+  to {
+    clip-path: inset(0 -34% 0 0)
+  }
+}

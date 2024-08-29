@@ -1,0 +1,64 @@
+import { Button } from '@mui/material';
+import LinearProgress, { linearProgressClasses } from '@mui/material/LinearProgress';
+import { styled } from '@mui/material/styles';
+
+export const HealthBar = styled(LinearProgress)(({ theme }) => ({
+  height: 16,
+  borderRadius: 10,
+  width: '100%',
+  [`&.${linearProgressClasses.colorPrimary}`]: {
+    backgroundColor: theme.palette.grey[800],
+    border: '2px solid black',
+    boxSizing: 'border-box',
+  },
+  [`& .${linearProgressClasses.bar}`]: {
+    borderRadius: 5,
+    backgroundColor: '#ff6f3a',
+  },
+}));
+
+export const AttackButton = styled(Button)(({ theme }) => ({
+  color: 'white',
+  backgroundColor: '#fc5c1d',
+  borderRadius: '20px',
+  height: '40px',
+  width: '200px',
+  fontSize: '1.4rem',
+  lineHeight: 0,
+  border: '1px solid black',
+  boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.8), 0px 1px 3px rgba(0, 0, 0, 0.08)',
+  '&:hover': {
+    backgroundColor: '#fc5c1d',
+  },
+}));
+
+export const BuyConsumablesButton = styled(Button)(({ theme }) => ({
+  color: 'white',
+  backgroundColor: '#1f8c9b',
+  borderRadius: '20px',
+  height: '40px',
+  width: '200px',
+  fontSize: '1.3rem',
+  lineHeight: 0,
+  border: '1px solid black',
+  boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.8), 0px 1px 3px rgba(0, 0, 0, 0.08)',
+  '&:hover': {
+    backgroundColor: '#1f8c9b',
+  },
+}));
+
+export const ConsumableButton = styled(Button)(({ theme }) => ({
+  color: 'white',
+  backgroundColor: '#fc5c1d',
+  borderRadius: '100%',
+  height: '40px',
+  width: '40px',
+  minWidth: '40px',
+  fontSize: '1.3rem',
+  lineHeight: 0,
+  border: '1px solid black',
+  boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.8), 0px 1px 3px rgba(0, 0, 0, 0.08)',
+  '&:hover': {
+    backgroundColor: '#fc5c1d',
+  },
+}));
