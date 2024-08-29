@@ -1,0 +1,27 @@
+kind = "DojoModel"
+class_hash = "0x380169be87bdc5671d74dc722ceee5746f8b6b4cc4f18897063c4fa0df90d43"
+original_class_hash = "0x380169be87bdc5671d74dc722ceee5746f8b6b4cc4f18897063c4fa0df90d43"
+abi = "manifests/dev/base/abis/models/savage_summit-ConsumableDetails-77c83828.json"
+tag = "savage_summit-ConsumableDetails"
+qualified_path = "savage_summit::models::consumable::consumable_details"
+manifest_name = "savage_summit-ConsumableDetails-77c83828"
+
+[[members]]
+name = "id"
+type = "u32"
+key = true
+
+[[members]]
+name = "name"
+type = "felt252"
+key = false
+
+[[members]]
+name = "effect"
+type = "ConsumableType"
+key = false
+
+[[members]]
+name = "amount"
+type = "u16"
+key = false

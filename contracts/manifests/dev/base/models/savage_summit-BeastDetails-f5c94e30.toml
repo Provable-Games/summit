@@ -1,0 +1,32 @@
+kind = "DojoModel"
+class_hash = "0x1935f70af649fbee1201ca982bc2ea7e09c3b0cbdb497cb9b664154a5bb8c1"
+original_class_hash = "0x1935f70af649fbee1201ca982bc2ea7e09c3b0cbdb497cb9b664154a5bb8c1"
+abi = "manifests/dev/base/abis/models/savage_summit-BeastDetails-f5c94e30.json"
+tag = "savage_summit-BeastDetails"
+qualified_path = "savage_summit::models::beast::beast_details"
+manifest_name = "savage_summit-BeastDetails-f5c94e30"
+
+[[members]]
+name = "id"
+type = "u32"
+key = true
+
+[[members]]
+name = "_type"
+type = "Type"
+key = false
+
+[[members]]
+name = "tier"
+type = "Tier"
+key = false
+
+[[members]]
+name = "level"
+type = "u16"
+key = false
+
+[[members]]
+name = "starting_health"
+type = "u16"
+key = false
