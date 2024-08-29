@@ -81,3 +81,5 @@ RUN if [ "$BUILD_TYPE" = "release" ]; then \
 
 RUN chown -R root:root /usr/local/cargo
 RUN chmod -R 700 /usr/local/cargo
+RUN curl https://get.starkli.sh | bash
+RUN /root/.starkli/bin/starkliup
