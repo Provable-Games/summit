@@ -364,11 +364,11 @@
   {
     "type": "impl",
     "name": "summitImpl",
-    "interface_name": "savage_summit::models::game::Isummit"
+    "interface_name": "savage_summit::models::summit::Isummit"
   },
   {
     "type": "struct",
-    "name": "savage_summit::models::game::Summit",
+    "name": "savage_summit::models::summit::Summit",
     "members": [
       {
         "name": "id",
@@ -382,7 +382,7 @@
   },
   {
     "type": "interface",
-    "name": "savage_summit::models::game::Isummit",
+    "name": "savage_summit::models::summit::Isummit",
     "items": [
       {
         "type": "function",
@@ -390,7 +390,7 @@
         "inputs": [
           {
             "name": "model",
-            "type": "savage_summit::models::game::Summit"
+            "type": "savage_summit::models::summit::Summit"
           }
         ],
         "outputs": [],
@@ -400,7 +400,7 @@
   },
   {
     "type": "event",
-    "name": "savage_summit::models::game::summit::Event",
+    "name": "savage_summit::models::summit::summit::Event",
     "kind": "enum",
     "variants": []
   }

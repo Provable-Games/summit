@@ -7,7 +7,12 @@ version = "0.1.0"
 sierra-replace-ids = true
 
 [dependencies]
-dojo = { git = "https://github.com/dojoengine/dojo", tag = "v1.0.0-alpha.6" }
-openzeppelin = { git = "https://github.com/OpenZeppelin/cairo-contracts" }
+dojo = { git = "https://github.com/dojoengine/dojo", tag = "v1.0.0-alpha.8" }
+openzeppelin_token = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v0.15.1" }
+combat = { git = "https://github.com/Provable-Games/loot-survivor.git", branch = "main" }
+
+[dev-dependencies]
+openzeppelin_test_common = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v0.15.1" }
+openzeppelin_testing = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v0.15.1" }
 
 [[target.dojo]]

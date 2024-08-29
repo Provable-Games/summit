@@ -1,0 +1,22 @@
+kind = "DojoModel"
+class_hash = "0x62d4ef56ffe2117d7bafa138c36d04045556df8d7987c517d9d662b633d0981"
+original_class_hash = "0x62d4ef56ffe2117d7bafa138c36d04045556df8d7987c517d9d662b633d0981"
+abi = "manifests/dev/base/abis/models/savage_summit-BeastStats-14896f8c.json"
+tag = "savage_summit-BeastStats"
+qualified_path = "savage_summit::models::beast::beast_stats"
+manifest_name = "savage_summit-BeastStats-14896f8c"
+
+[[members]]
+name = "id"
+type = "u32"
+key = true
+
+[[members]]
+name = "health"
+type = "u16"
+key = false
+
+[[members]]
+name = "dead_at"
+type = "u64"
+key = false

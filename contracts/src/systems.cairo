@@ -1,3 +1,3 @@
 mod game {
-    mod contracts;
+    mod summit;
 }

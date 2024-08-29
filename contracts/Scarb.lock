@@ -2,9 +2,14 @@
 version = 1
 
 [[package]]
+name = "combat"
+version = "0.1.0"
+source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=main#cb96bec75a7d302c2e14d4af6dae356335a57f55"
+
+[[package]]
 name = "dojo"
 version = "1.0.0-alpha.4"
-source = "git+https://github.com/dojoengine/dojo?tag=v1.0.0-alpha.6#ede7930735c708572af8a87f81bb76354a401b3a"
+source = "git+https://github.com/dojoengine/dojo?tag=v1.0.0-alpha.8#d31f81e6aeae01c6bbe7bd5879a5d33551082bcb"
 dependencies = [
  "dojo_plugin",
 ]
@@ -15,25 +20,9 @@ version = "1.0.0-alpha.4"
 source = "git+https://github.com/dojoengine/dojo?rev=f15def33#f15def330c0d099e79351d11c197f63e8cc1ff36"
 
 [[package]]
-name = "openzeppelin"
-version = "0.15.1"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
-dependencies = [
- "openzeppelin_access",
- "openzeppelin_account",
- "openzeppelin_governance",
- "openzeppelin_introspection",
- "openzeppelin_presets",
- "openzeppelin_security",
- "openzeppelin_token",
- "openzeppelin_upgrades",
- "openzeppelin_utils",
-]
-
-[[package]]
 name = "openzeppelin_access"
 version = "0.15.1"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
 dependencies = [
  "openzeppelin_introspection",
  "openzeppelin_utils",
@@ -42,7 +31,7 @@ dependencies = [
 [[package]]
 name = "openzeppelin_account"
 version = "0.15.1"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
 dependencies = [
  "openzeppelin_introspection",
  "openzeppelin_utils",
@@ -51,7 +40,7 @@ dependencies = [
 [[package]]
 name = "openzeppelin_governance"
 version = "0.15.1"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
 dependencies = [
  "openzeppelin_access",
  "openzeppelin_introspection",
@@ -60,29 +49,34 @@ dependencies = [
 [[package]]
 name = "openzeppelin_introspection"
 version = "0.15.1"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
 
 [[package]]
-name = "openzeppelin_presets"
+name = "openzeppelin_test_common"
 version = "0.15.1"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
 dependencies = [
  "openzeppelin_access",
  "openzeppelin_account",
- "openzeppelin_introspection",
+ "openzeppelin_testing",
  "openzeppelin_token",
  "openzeppelin_upgrades",
+ "openzeppelin_utils",
+ "snforge_std",
 ]
 
 [[package]]
-name = "openzeppelin_security"
+name = "openzeppelin_testing"
 version = "0.15.1"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
+dependencies = [
+ "snforge_std",
+]
 
 [[package]]
 name = "openzeppelin_token"
 version = "0.15.1"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
 dependencies = [
  "openzeppelin_account",
  "openzeppelin_governance",
@@ -92,17 +86,25 @@ dependencies = [
 [[package]]
 name = "openzeppelin_upgrades"
 version = "0.15.1"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
 
 [[package]]
 name = "openzeppelin_utils"
 version = "0.15.1"
-source = "git+https://github.com/OpenZeppelin/cairo-contracts#7ce10ff044e5b9cbbb9a766a6a221e5d2ba2e61e"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
 
 [[package]]
 name = "savage_summit"
 version = "0.1.0"
 dependencies = [
+ "combat",
  "dojo",
- "openzeppelin",
+ "openzeppelin_test_common",
+ "openzeppelin_testing",
+ "openzeppelin_token",
 ]
+
+[[package]]
+name = "snforge_std"
+version = "0.26.0"
+source = "git+https://github.com/foundry-rs/starknet-foundry.git?tag=v0.26.0#50eb589db65e113efe4f09241feb59b574228c7e"
