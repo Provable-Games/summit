@@ -1,6 +1,0 @@
-{
-	"dependencies": {
-		"@cartridge/connector": "^0.3.41",
-		"react-window": "^1.8.10"
-	}
-}

@@ -27,7 +27,7 @@ function WalletConnect(props) {
           ? <Button onClick={handleClick} size='large'>
             <SportsEsportsIcon htmlColor='black' sx={{ fontSize: '18px', mr: '4px' }} />
 
-            <Typography color='black' sx={{ fontSize: '13px' }}>
+            <Typography color='black' sx={{ fontSize: '14px' }}>
               {ellipseAddress(address, 4, 4)}
             </Typography>
           </Button>

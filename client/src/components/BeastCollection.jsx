@@ -1,11 +1,11 @@
 import { Box, Typography } from "@mui/material";
+import { useAccount } from "@starknet-react/core";
 import React, { useContext } from 'react';
 import health from '../assets/images/health.png';
 import sword from '../assets/images/sword.png';
 import { GameContext } from '../contexts/gameContext';
-import { calculateBattleResult, fetchBeastImage, normaliseHealth } from "../helpers/beasts";
+import { fetchBeastImage, normaliseHealth } from "../helpers/beasts";
 import { HealthBar } from '../helpers/styles';
-import { useAccount } from "@starknet-react/core";
 
 function BeastCollection() {
   const game = useContext(GameContext)
@@ -33,6 +33,21 @@ function BeastCollection() {
         </Box>
 
         <img src={fetchBeastImage('tarrasque')} alt='' height={'150px'} />
+
+      </Box>}
+
+      {address && !game.loadingCollection && game.collection.length < 1 && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
+
+        <Box textAlign={'center'}>
+          <Typography variant="h2" letterSpacing={'0.5px'}>
+            You don't own any beast nfts
+          </Typography>
+          <Typography variant="h2" letterSpacing={'0.5px'}>
+            Collect them in <a style={{ color: '#30a019' }} href="https://sepolia.lootsurvivor.io" target="_blank">loot survivor 1.5</a>
+          </Typography>
+        </Box>
+
+        <img src={fetchBeastImage('golem')} alt='' height={'150px'} />
 
       </Box>}
 
@@ -98,7 +113,6 @@ function BeastCollection() {
                 </>
 
                 : <>
-
                   <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkred'}>
                     Defeat
                   </Typography>

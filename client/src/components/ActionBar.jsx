@@ -46,10 +46,6 @@ function ActionBar(props) {
 
     <Box sx={{ display: 'flex', gap: 2 }}>
       <BuyConsumablesButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
-        Mint Beasts
-      </BuyConsumablesButton>
-
-      <BuyConsumablesButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
         Buy Consumables
       </BuyConsumablesButton>
 

@@ -3,18 +3,23 @@ import React, { createContext, useCallback, useEffect, useState } from "react";
 import { useAccount } from "@starknet-react/core";
 import { getBeasts } from "../api/starknet";
 import { dojoConfig } from "../../dojoConfig";
-import { calculateBattleResult } from "../helpers/beasts";
+import { addBeastStats, calculateBattleResult } from "../helpers/beasts";
+import { useContext } from "react";
+import { Dojo } from "./dojoContext";
 
 export const GameContext = createContext()
 
 export const GameProvider = ({ children }) => {
+  const dojo = useContext(Dojo)
+
   const [toriiClient, setToriiClient] = useState(null);
   const [summit, setSummit] = useState({ name: 'Kraken', fullName: "Reckless Apocalypse Kraken", level: 92, health: 402, maxHealth: 511, tier: 1, type: "Brute" })
 
-  const [collection, setCollection] = useState([
-
-  ])
+  const [collection, setCollection] = useState([])
   const [loadingCollection, setLoadingCollection] = useState(false)
+
+  const [allBeastStats, setAllBeastStats] = useState([])
+
   const [selected, setSelected] = useState([])
   const [totalDamage, setTotalDamage] = useState(0)
 
@@ -34,11 +39,12 @@ export const GameProvider = ({ children }) => {
     setToriiClient(client);
   };
 
-  const fetchBeasts = async () => {
-    setLoadingCollection(true)
-
-    let data = await getBeasts(address);
-    let beasts = data.map(beast => ({ ...beast, ...calculateBattleResult(beast, summit) }))
+  const setBeastCollection = (data) => {
+    let beasts = data.map(beast => ({
+      ...beast,
+      ...calculateBattleResult(beast, summit),
+      ...addBeastStats(allBeastStats.find(stats => stats.id === beast.id))
+    }))
 
     setCollection(
       beasts.sort((a, b) => {
@@ -53,7 +59,14 @@ export const GameProvider = ({ children }) => {
         }
       })
     )
+  }
 
+  const fetchBeasts = async () => {
+    setLoadingCollection(true)
+
+    let data = await getBeasts(address);
+
+    setBeastCollection(data)
     setLoadingCollection(false)
   }
 
@@ -75,14 +88,19 @@ export const GameProvider = ({ children }) => {
   }, [address])
 
   useEffect(() => {
+    setBeastCollection(collection)
+  }, [allBeastStats, summit])
+
+  useEffect(() => {
     // setupToriiClient();
   }, []);
 
   const setupSync = useCallback(async () => {
     try {
       return await toriiClient?.onEntityUpdated(
-        [], // Empty array to listen for all entity updates
+        ['savage_summit-Summit', 'savage_summit-BeastStats'], // Empty array to listen for all entity updates
         (fetchedEntities, data) => {
+
         }
       );
     } catch (error) {
@@ -90,16 +108,18 @@ export const GameProvider = ({ children }) => {
     }
   }, [toriiClient]);
 
-  const fetchEntities = useCallback(async () => {
-    let cursor = 0;
+  const fetchData = useCallback(async () => {
+    let summit = await toriiClient?.getEntities({ clause: ['savage_summit-Summit'], limit: 1 });
+    let beasts = await toriiClient?.getEntities({ clause: ['savage_summit-BeastStats'], limit: 0 });
 
-    let entities = await toriiClient?.getAllEntities(100, cursor);
+    console.log(summit)
+    console.log(beasts)
   }, [toriiClient]);
 
   // useEffect(() => {
   //   let unsubscribe = undefined;
 
-  //   fetchEntities();
+  //   fetchData();
 
   //   setupSync()
   //     .then((sync) => {
@@ -116,6 +136,10 @@ export const GameProvider = ({ children }) => {
   //     }
   //   };
   // }, [setupSync]);
+
+  const attackSummit = async () => {
+    const res = await dojo.executeTx("summit_systems", "attack", [game.selected])
+  }
 
   return (
     <GameContext.Provider

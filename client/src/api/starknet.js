@@ -1,4 +1,20 @@
+import { gql, request } from 'graphql-request';
+import { dojoConfig } from '../../dojoConfig';
+import { beastDetails } from '../helpers/beasts';
+
 export const getBeasts = async (owner) => {
+  let env = import.meta.env.VITE_PUBLIC_STARKNET_ENV
+
+  if (env === 'mainnet') {
+    return getBeastsMainnet(owner)
+  }
+
+  if (env === 'sepolia') {
+    return getBeastsSepolia(owner)
+  }
+}
+
+export const getBeastsMainnet = async (owner) => {
   const blastUrl = import.meta.env.VITE_PUBLIC_BLAST_API;
   const beastAddress = import.meta.env.VITE_PUBLIC_BEAST_ADDRESS;
 
@@ -47,3 +63,60 @@ export const getBeasts = async (owner) => {
     }
   })
 };
+
+const lookupSepoliaBeast = async (tokenId) => {
+  const beastAddress = import.meta.env.VITE_PUBLIC_BEAST_ADDRESS;
+
+  const response = await fetch(dojoConfig.rpcUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "starknet_call",
+      params: [
+        {
+          contract_address: beastAddress,
+          entry_point_selector:
+            "0x03c33074b453a90f8316fd3ae69336ca824f1bd05a50220c1681c79465b227a9",
+          calldata: ["0x" + tokenId.toString(16), "0x0"],
+        },
+        "pending",
+      ],
+      id: 0,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (data.result) {
+    return {
+      id: tokenId,
+      ...beastDetails(parseInt(data.result[0], 16), parseInt(data.result[1], 16), parseInt(data.result[2], 16)),
+      level: parseInt(data.result[3], 16),
+      health: parseInt(data.result[4], 16)
+    }
+  }
+  return data;
+};
+
+export const getBeastsSepolia = async (owner) => {
+  const indexerUrl = import.meta.env.VITE_PUBLIC_LS_INDEXER;
+
+  const document = gql`
+  {
+    beastTokens(where: {ownerAddress: {eq: "${owner}"}}) {
+      tokenId
+    }
+  }`
+
+  const res = await request(indexerUrl, document)
+
+  let beasts = await Promise.all(
+    res.beastTokens.map(async token => await lookupSepoliaBeast(token.tokenId))
+  )
+
+  console.log(beasts)
+  return beasts
+}

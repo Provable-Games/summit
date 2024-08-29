@@ -3,7 +3,7 @@ import { useSnackbar } from "notistack";
 import React, { createContext, useMemo, useState } from "react";
 import { RpcProvider } from 'starknet';
 import { dojoConfig } from "../../dojoConfig";
-import { Account } from "starknet";
+import { useAccount } from "@starknet-react/core";
 
 export const DojoContext = createContext()
 
@@ -13,10 +13,11 @@ export const Dojo = ({ children }) => {
   const dojoProvider = new DojoProvider(dojoConfig.manifest, dojoConfig.rpcUrl);
   const rpcProvider = useMemo(() => new RpcProvider({ nodeUrl: dojoConfig.rpcUrl, }), []);
 
-  const [account, setAccount] = useState();
+  const { account } = useAccount()
 
   const executeTx = async (contractName, entrypoint, calldata) => {
     if (!account) {
+      enqueueSnackbar('No Wallet Connected', { variant: 'warning', anchorOrigin: { vertical: 'bottom', horizontal: 'right' } })
       return
     }
 
@@ -25,7 +26,7 @@ export const Dojo = ({ children }) => {
         contractName,
         entrypoint,
         calldata
-      }, 'savage_summit', { maxFee: 0 });
+      }, 'savage_summit');
 
       const receipt = await account.waitForTransaction(tx.transaction_hash, { retryInterval: 100 })
 

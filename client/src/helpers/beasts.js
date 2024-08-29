@@ -1,3 +1,6 @@
+import { differenceInSeconds } from 'date-fns';
+import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES } from './BeastData';
+
 export const fetchBeastImage = (name) => {
   try {
     return new URL(`../assets/monsters/${name.toLowerCase()}.png`, import.meta.url).href
@@ -55,3 +58,23 @@ export const calculateBattleResult = (beast, summit) => {
 
   }
 }
+
+export const addBeastStats = (stats) => {
+  let data = { isAlive: true }
+
+  if (stats) {
+    data.isAlive = differenceInSeconds(new Date(), new Date(stats.dead_at)) > 23 * 3600;
+  }
+
+  return data
+}
+
+export const beastDetails = (id, prefix, suffix) => {
+  return {
+    name: BEAST_NAMES[id],
+    fullName: `${ITEM_NAME_PREFIXES[prefix]} ${ITEM_NAME_PREFIXES[suffix]} ${BEAST_NAMES[id]}`,
+    tier: BEAST_TIERS[id],
+    type: BEAST_TYPES[id]
+  }
+}
+
