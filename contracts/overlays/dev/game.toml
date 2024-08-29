@@ -1,5 +1,8 @@
 tag = "savage_summit-game_systems"
 writes = [
-    "savage_summit-King",
-    "savage_summit-DeadBeast",
+    "savage_summit-BeastStats",
+    "savage_summit-BeastDetails",
+    "savage_summit-ConsumableDetails",
+    "savage_summit-Summit",
+    "savage_summit-SummitHistory",
 ]
