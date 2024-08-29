@@ -1,8 +1,8 @@
 {
   "world": {
     "kind": "WorldContract",
-    "class_hash": "0x458d0ce5b14a4844092bdb62050f462d53362304a13febbac6d973691d61be2",
-    "original_class_hash": "0x458d0ce5b14a4844092bdb62050f462d53362304a13febbac6d973691d61be2",
+    "class_hash": "0xa349b743d361ce4567361475a89b84a386bb383448c6926954e5fe0b525597",
+    "original_class_hash": "0xa349b743d361ce4567361475a89b84a386bb383448c6926954e5fe0b525597",
     "abi": [
       {
         "type": "impl",
@@ -1229,10 +1229,10 @@
         ]
       }
     ],
-    "address": "0x403b5f047b8c4797139e30801e310473d99ca6877d19e0f27506f353f8f70f7",
-    "transaction_hash": "0x12df6c5a6c89d2c128c96026395f1f8917c36a7864aca26f0c7b9e2ea152bca",
-    "block_number": 3,
-    "seed": "dojo_starter",
+    "address": "0x3427c16d64ba658428c7e42c08334b0a41a2bdef15a6d4840e3359d1410a48d",
+    "transaction_hash": null,
+    "block_number": null,
+    "seed": "savage_summit",
     "metadata": {
       "profile_name": "dev",
       "rpc_url": "http://localhost:5050/"
@@ -1250,10 +1250,10 @@
   "contracts": [
     {
       "kind": "DojoContract",
-      "address": "0x36e4506b35e6dfb301d437c95f74b3e1f4f82da5d8841bec894bb8de29ec13",
-      "class_hash": "0x4f10da1ba615523c1a4b9e2ad40df134edbcf2d971a1074efbd9772c86c2173",
-      "original_class_hash": "0x4f10da1ba615523c1a4b9e2ad40df134edbcf2d971a1074efbd9772c86c2173",
-      "base_class_hash": "0x2427dd10a58850ac9a5ca6ce04b7771b05330fd18f2e481831ad903b969e6b2",
+      "address": null,
+      "class_hash": "0x70f21878203286ad17846fea6dcf1719241e90cf1e94cbb734a7e881db0e848",
+      "original_class_hash": "0x70f21878203286ad17846fea6dcf1719241e90cf1e94cbb734a7e881db0e848",
+      "base_class_hash": "0x0",
       "abi": [
         {
           "type": "impl",
@@ -1384,68 +1384,266 @@
         },
         {
           "type": "impl",
-          "name": "ActionsImpl",
-          "interface_name": "dojo_starter::systems::actions::IActions"
+          "name": "SummitSystemImpl",
+          "interface_name": "savage_summit::systems::summit::ISummitSystem"
+        },
+        {
+          "type": "struct",
+          "name": "savage_summit::models::summit::SummitHistory",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "lost_at",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "taken_at",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "rewards",
+              "type": "core::integer::u64"
+            }
+          ]
         },
         {
           "type": "enum",
-          "name": "dojo_starter::models::Direction",
+          "name": "savage_summit::models::beast::Type",
           "variants": [
             {
               "name": "None",
               "type": "()"
             },
             {
-              "name": "Left",
+              "name": "Magic_or_Cloth",
               "type": "()"
             },
             {
-              "name": "Right",
+              "name": "Blade_or_Hide",
               "type": "()"
             },
             {
-              "name": "Up",
+              "name": "Bludgeon_or_Metal",
               "type": "()"
             },
             {
-              "name": "Down",
+              "name": "Necklace",
+              "type": "()"
+            },
+            {
+              "name": "Ring",
               "type": "()"
             }
           ]
         },
         {
+          "type": "enum",
+          "name": "savage_summit::models::beast::Tier",
+          "variants": [
+            {
+              "name": "None",
+              "type": "()"
+            },
+            {
+              "name": "T1",
+              "type": "()"
+            },
+            {
+              "name": "T2",
+              "type": "()"
+            },
+            {
+              "name": "T3",
+              "type": "()"
+            },
+            {
+              "name": "T4",
+              "type": "()"
+            },
+            {
+              "name": "T5",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "savage_summit::models::beast::BeastDetails",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "_type",
+              "type": "savage_summit::models::beast::Type"
+            },
+            {
+              "name": "tier",
+              "type": "savage_summit::models::beast::Tier"
+            },
+            {
+              "name": "level",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "starting_health",
+              "type": "core::integer::u16"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "savage_summit::models::beast::BeastStats",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "health",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "dead_at",
+              "type": "core::integer::u64"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "savage_summit::models::beast::Beast",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "details",
+              "type": "savage_summit::models::beast::BeastDetails"
+            },
+            {
+              "name": "stats",
+              "type": "savage_summit::models::beast::BeastStats"
+            }
+          ]
+        },
+        {
           "type": "interface",
-          "name": "dojo_starter::systems::actions::IActions",
+          "name": "savage_summit::systems::summit::ISummitSystem",
           "items": [
             {
               "type": "function",
-              "name": "spawn",
-              "inputs": [],
+              "name": "attack",
+              "inputs": [
+                {
+                  "name": "summit_beast_id",
+                  "type": "core::integer::u32"
+                },
+                {
+                  "name": "attacking_beast_id",
+                  "type": "core::integer::u32"
+                },
+                {
+                  "name": "consumables",
+                  "type": "core::array::Array::<core::integer::u8>"
+                }
+              ],
               "outputs": [],
               "state_mutability": "external"
             },
             {
               "type": "function",
-              "name": "move",
+              "name": "get_summit_history",
               "inputs": [
                 {
-                  "name": "direction",
-                  "type": "dojo_starter::models::Direction"
+                  "name": "beast_id",
+                  "type": "core::integer::u32"
+                },
+                {
+                  "name": "lost_at",
+                  "type": "core::integer::u64"
                 }
               ],
-              "outputs": [],
-              "state_mutability": "external"
+              "outputs": [
+                {
+                  "type": "savage_summit::models::summit::SummitHistory"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "get_summit_beast",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "savage_summit::models::beast::Beast"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "get_beast",
+              "inputs": [
+                {
+                  "name": "id",
+                  "type": "core::integer::u32"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "savage_summit::models::beast::Beast"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "get_beast_details",
+              "inputs": [
+                {
+                  "name": "id",
+                  "type": "core::integer::u32"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "savage_summit::models::beast::BeastDetails"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "get_beast_stats",
+              "inputs": [
+                {
+                  "name": "id",
+                  "type": "core::integer::u32"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "savage_summit::models::beast::BeastStats"
+                }
+              ],
+              "state_mutability": "view"
             }
           ]
         },
         {
           "type": "impl",
           "name": "IDojoInitImpl",
-          "interface_name": "dojo_starter::systems::actions::actions::IDojoInit"
+          "interface_name": "savage_summit::systems::summit::summit_systems::IDojoInit"
         },
         {
           "type": "interface",
-          "name": "dojo_starter::systems::actions::actions::IDojoInit",
+          "name": "savage_summit::systems::summit::summit_systems::IDojoInit",
           "items": [
             {
               "type": "function",
@@ -1505,7 +1703,7 @@
         },
         {
           "type": "event",
-          "name": "dojo_starter::systems::actions::actions::Event",
+          "name": "savage_summit::systems::summit::summit_systems::Event",
           "kind": "enum",
           "variants": [
             {
@@ -1518,17 +1716,18 @@
       ],
       "reads": [],
       "writes": [
-        "dojo_starter-Moves",
-        "dojo_starter-Position",
-        "dojo_starter-DirectionsAvailable"
+        "savage_summit-BeastStats",
+        "savage_summit-BeastDetails",
+        "savage_summit-ConsumableDetails",
+        "savage_summit-Summit",
+        "savage_summit-SummitHistory"
       ],
       "init_calldata": [],
-      "tag": "dojo_starter-actions",
+      "tag": "savage_summit-summit_systems",
       "systems": [
-        "spawn",
-        "move"
+        "attack"
       ],
-      "manifest_name": "dojo_starter-actions-7a1c7102"
+      "manifest_name": "savage_summit-summit_systems-237ab367"
     }
   ],
   "models": [
@@ -1536,18 +1735,33 @@
       "kind": "DojoModel",
       "members": [
         {
-          "name": "player",
-          "type": "ContractAddress",
+          "name": "id",
+          "type": "u32",
           "key": true
         },
         {
-          "name": "directions",
-          "type": "Array<Direction>",
+          "name": "_type",
+          "type": "Type",
+          "key": false
+        },
+        {
+          "name": "tier",
+          "type": "Tier",
+          "key": false
+        },
+        {
+          "name": "level",
+          "type": "u16",
+          "key": false
+        },
+        {
+          "name": "starting_health",
+          "type": "u16",
           "key": false
         }
       ],
-      "class_hash": "0x72c6666cfeebc41544f502cfe9c32ad7b91fce12881709420335794dfcb324a",
-      "original_class_hash": "0x72c6666cfeebc41544f502cfe9c32ad7b91fce12881709420335794dfcb324a",
+      "class_hash": "0x1935f70af649fbee1201ca982bc2ea7e09c3b0cbdb497cb9b664154a5bb8c1",
+      "original_class_hash": "0x1935f70af649fbee1201ca982bc2ea7e09c3b0cbdb497cb9b664154a5bb8c1",
       "abi": [
         {
           "type": "impl",
@@ -1913,52 +2127,98 @@
         },
         {
           "type": "impl",
-          "name": "directions_availableImpl",
-          "interface_name": "dojo_starter::models::Idirections_available"
+          "name": "beast_detailsImpl",
+          "interface_name": "savage_summit::models::beast::Ibeast_details"
         },
         {
           "type": "enum",
-          "name": "dojo_starter::models::Direction",
+          "name": "savage_summit::models::beast::Type",
           "variants": [
             {
               "name": "None",
               "type": "()"
             },
             {
-              "name": "Left",
+              "name": "Magic_or_Cloth",
               "type": "()"
             },
             {
-              "name": "Right",
+              "name": "Blade_or_Hide",
               "type": "()"
             },
             {
-              "name": "Up",
+              "name": "Bludgeon_or_Metal",
               "type": "()"
             },
             {
-              "name": "Down",
+              "name": "Necklace",
+              "type": "()"
+            },
+            {
+              "name": "Ring",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "savage_summit::models::beast::Tier",
+          "variants": [
+            {
+              "name": "None",
+              "type": "()"
+            },
+            {
+              "name": "T1",
+              "type": "()"
+            },
+            {
+              "name": "T2",
+              "type": "()"
+            },
+            {
+              "name": "T3",
+              "type": "()"
+            },
+            {
+              "name": "T4",
+              "type": "()"
+            },
+            {
+              "name": "T5",
               "type": "()"
             }
           ]
         },
         {
           "type": "struct",
-          "name": "dojo_starter::models::DirectionsAvailable",
+          "name": "savage_summit::models::beast::BeastDetails",
           "members": [
             {
-              "name": "player",
-              "type": "core::starknet::contract_address::ContractAddress"
+              "name": "id",
+              "type": "core::integer::u32"
             },
             {
-              "name": "directions",
-              "type": "core::array::Array::<dojo_starter::models::Direction>"
+              "name": "_type",
+              "type": "savage_summit::models::beast::Type"
+            },
+            {
+              "name": "tier",
+              "type": "savage_summit::models::beast::Tier"
+            },
+            {
+              "name": "level",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "starting_health",
+              "type": "core::integer::u16"
             }
           ]
         },
         {
           "type": "interface",
-          "name": "dojo_starter::models::Idirections_available",
+          "name": "savage_summit::models::beast::Ibeast_details",
           "items": [
             {
               "type": "function",
@@ -1966,7 +2226,7 @@
               "inputs": [
                 {
                   "name": "model",
-                  "type": "dojo_starter::models::DirectionsAvailable"
+                  "type": "savage_summit::models::beast::BeastDetails"
                 }
               ],
               "outputs": [],
@@ -1976,30 +2236,36 @@
         },
         {
           "type": "event",
-          "name": "dojo_starter::models::directions_available::Event",
+          "name": "savage_summit::models::beast::beast_details::Event",
           "kind": "enum",
           "variants": []
         }
       ],
-      "tag": "dojo_starter-DirectionsAvailable",
-      "manifest_name": "dojo_starter-DirectionsAvailable-77844f1f"
+      "tag": "savage_summit-BeastDetails",
+      "qualified_path": "savage_summit::models::beast::beast_details",
+      "manifest_name": "savage_summit-BeastDetails-f5c94e30"
     },
     {
       "kind": "DojoModel",
       "members": [
         {
-          "name": "player",
-          "type": "ContractAddress",
+          "name": "id",
+          "type": "u32",
           "key": true
         },
         {
-          "name": "direction",
-          "type": "Direction",
+          "name": "health",
+          "type": "u16",
+          "key": false
+        },
+        {
+          "name": "dead_at",
+          "type": "u64",
           "key": false
         }
       ],
-      "class_hash": "0x2e06be7cf406eb3161fedf460a47faca68855eb9dad7d505c1b1f1875192ccd",
-      "original_class_hash": "0x2e06be7cf406eb3161fedf460a47faca68855eb9dad7d505c1b1f1875192ccd",
+      "class_hash": "0x62d4ef56ffe2117d7bafa138c36d04045556df8d7987c517d9d662b633d0981",
+      "original_class_hash": "0x62d4ef56ffe2117d7bafa138c36d04045556df8d7987c517d9d662b633d0981",
       "abi": [
         {
           "type": "impl",
@@ -2365,52 +2631,30 @@
         },
         {
           "type": "impl",
-          "name": "movedImpl",
-          "interface_name": "dojo_starter::systems::actions::actions::Imoved"
-        },
-        {
-          "type": "enum",
-          "name": "dojo_starter::models::Direction",
-          "variants": [
-            {
-              "name": "None",
-              "type": "()"
-            },
-            {
-              "name": "Left",
-              "type": "()"
-            },
-            {
-              "name": "Right",
-              "type": "()"
-            },
-            {
-              "name": "Up",
-              "type": "()"
-            },
-            {
-              "name": "Down",
-              "type": "()"
-            }
-          ]
+          "name": "beast_statsImpl",
+          "interface_name": "savage_summit::models::beast::Ibeast_stats"
         },
         {
           "type": "struct",
-          "name": "dojo_starter::systems::actions::actions::Moved",
+          "name": "savage_summit::models::beast::BeastStats",
           "members": [
             {
-              "name": "player",
-              "type": "core::starknet::contract_address::ContractAddress"
+              "name": "id",
+              "type": "core::integer::u32"
             },
             {
-              "name": "direction",
-              "type": "dojo_starter::models::Direction"
+              "name": "health",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "dead_at",
+              "type": "core::integer::u64"
             }
           ]
         },
         {
           "type": "interface",
-          "name": "dojo_starter::systems::actions::actions::Imoved",
+          "name": "savage_summit::models::beast::Ibeast_stats",
           "items": [
             {
               "type": "function",
@@ -2418,7 +2662,7 @@
               "inputs": [
                 {
                   "name": "model",
-                  "type": "dojo_starter::systems::actions::actions::Moved"
+                  "type": "savage_summit::models::beast::BeastStats"
                 }
               ],
               "outputs": [],
@@ -2428,40 +2672,498 @@
         },
         {
           "type": "event",
-          "name": "dojo_starter::systems::actions::actions::moved::Event",
+          "name": "savage_summit::models::beast::beast_stats::Event",
           "kind": "enum",
           "variants": []
         }
       ],
-      "tag": "dojo_starter-Moved",
-      "manifest_name": "dojo_starter-Moved-504403e5"
+      "tag": "savage_summit-BeastStats",
+      "qualified_path": "savage_summit::models::beast::beast_stats",
+      "manifest_name": "savage_summit-BeastStats-14896f8c"
     },
     {
       "kind": "DojoModel",
       "members": [
         {
-          "name": "player",
-          "type": "ContractAddress",
+          "name": "id",
+          "type": "u32",
           "key": true
         },
         {
-          "name": "remaining",
+          "name": "name",
+          "type": "felt252",
+          "key": false
+        },
+        {
+          "name": "effect",
+          "type": "ConsumableType",
+          "key": false
+        },
+        {
+          "name": "amount",
+          "type": "u16",
+          "key": false
+        }
+      ],
+      "class_hash": "0x380169be87bdc5671d74dc722ceee5746f8b6b4cc4f18897063c4fa0df90d43",
+      "original_class_hash": "0x380169be87bdc5671d74dc722ceee5746f8b6b4cc4f18897063c4fa0df90d43",
+      "abi": [
+        {
+          "type": "impl",
+          "name": "DojoModelImpl",
+          "interface_name": "dojo::model::model::IModel"
+        },
+        {
+          "type": "struct",
+          "name": "core::byte_array::ByteArray",
+          "members": [
+            {
+              "name": "data",
+              "type": "core::array::Array::<core::bytes_31::bytes31>"
+            },
+            {
+              "name": "pending_word",
+              "type": "core::felt252"
+            },
+            {
+              "name": "pending_word_len",
+              "type": "core::integer::u32"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::option::Option::<core::integer::u32>",
+          "variants": [
+            {
+              "name": "Some",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "None",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<core::integer::u8>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<core::integer::u8>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "dojo::model::layout::FieldLayout",
+          "members": [
+            {
+              "name": "selector",
+              "type": "core::felt252"
+            },
+            {
+              "name": "layout",
+              "type": "dojo::model::layout::Layout"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<dojo::model::layout::FieldLayout>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<dojo::model::layout::FieldLayout>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<dojo::model::layout::Layout>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<dojo::model::layout::Layout>"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "dojo::model::layout::Layout",
+          "variants": [
+            {
+              "name": "Fixed",
+              "type": "core::array::Span::<core::integer::u8>"
+            },
+            {
+              "name": "Struct",
+              "type": "core::array::Span::<dojo::model::layout::FieldLayout>"
+            },
+            {
+              "name": "Tuple",
+              "type": "core::array::Span::<dojo::model::layout::Layout>"
+            },
+            {
+              "name": "Array",
+              "type": "core::array::Span::<dojo::model::layout::Layout>"
+            },
+            {
+              "name": "ByteArray",
+              "type": "()"
+            },
+            {
+              "name": "Enum",
+              "type": "core::array::Span::<dojo::model::layout::FieldLayout>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<core::felt252>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<core::felt252>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "dojo::model::introspect::Member",
+          "members": [
+            {
+              "name": "name",
+              "type": "core::felt252"
+            },
+            {
+              "name": "attrs",
+              "type": "core::array::Span::<core::felt252>"
+            },
+            {
+              "name": "ty",
+              "type": "dojo::model::introspect::Ty"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<dojo::model::introspect::Member>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<dojo::model::introspect::Member>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "dojo::model::introspect::Struct",
+          "members": [
+            {
+              "name": "name",
+              "type": "core::felt252"
+            },
+            {
+              "name": "attrs",
+              "type": "core::array::Span::<core::felt252>"
+            },
+            {
+              "name": "children",
+              "type": "core::array::Span::<dojo::model::introspect::Member>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<(core::felt252, dojo::model::introspect::Ty)>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<(core::felt252, dojo::model::introspect::Ty)>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "dojo::model::introspect::Enum",
+          "members": [
+            {
+              "name": "name",
+              "type": "core::felt252"
+            },
+            {
+              "name": "attrs",
+              "type": "core::array::Span::<core::felt252>"
+            },
+            {
+              "name": "children",
+              "type": "core::array::Span::<(core::felt252, dojo::model::introspect::Ty)>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<dojo::model::introspect::Ty>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<dojo::model::introspect::Ty>"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "dojo::model::introspect::Ty",
+          "variants": [
+            {
+              "name": "Primitive",
+              "type": "core::felt252"
+            },
+            {
+              "name": "Struct",
+              "type": "dojo::model::introspect::Struct"
+            },
+            {
+              "name": "Enum",
+              "type": "dojo::model::introspect::Enum"
+            },
+            {
+              "name": "Tuple",
+              "type": "core::array::Span::<dojo::model::introspect::Ty>"
+            },
+            {
+              "name": "Array",
+              "type": "core::array::Span::<dojo::model::introspect::Ty>"
+            },
+            {
+              "name": "ByteArray",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "interface",
+          "name": "dojo::model::model::IModel",
+          "items": [
+            {
+              "type": "function",
+              "name": "name",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::byte_array::ByteArray"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "namespace",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::byte_array::ByteArray"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "tag",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::byte_array::ByteArray"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "version",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::integer::u8"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "selector",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::felt252"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "name_hash",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::felt252"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "namespace_hash",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::felt252"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "unpacked_size",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::option::Option::<core::integer::u32>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "packed_size",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::option::Option::<core::integer::u32>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "layout",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "dojo::model::layout::Layout"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "schema",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "dojo::model::introspect::Ty"
+                }
+              ],
+              "state_mutability": "view"
+            }
+          ]
+        },
+        {
+          "type": "impl",
+          "name": "consumable_detailsImpl",
+          "interface_name": "savage_summit::models::consumable::Iconsumable_details"
+        },
+        {
+          "type": "enum",
+          "name": "savage_summit::models::consumable::ConsumableType",
+          "variants": [
+            {
+              "name": "Health",
+              "type": "()"
+            },
+            {
+              "name": "Attack",
+              "type": "()"
+            },
+            {
+              "name": "Armor",
+              "type": "()"
+            },
+            {
+              "name": "Revive",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "savage_summit::models::consumable::ConsumableDetails",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "name",
+              "type": "core::felt252"
+            },
+            {
+              "name": "effect",
+              "type": "savage_summit::models::consumable::ConsumableType"
+            },
+            {
+              "name": "amount",
+              "type": "core::integer::u16"
+            }
+          ]
+        },
+        {
+          "type": "interface",
+          "name": "savage_summit::models::consumable::Iconsumable_details",
+          "items": [
+            {
+              "type": "function",
+              "name": "ensure_abi",
+              "inputs": [
+                {
+                  "name": "model",
+                  "type": "savage_summit::models::consumable::ConsumableDetails"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "view"
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "name": "savage_summit::models::consumable::consumable_details::Event",
+          "kind": "enum",
+          "variants": []
+        }
+      ],
+      "tag": "savage_summit-ConsumableDetails",
+      "qualified_path": "savage_summit::models::consumable::consumable_details",
+      "manifest_name": "savage_summit-ConsumableDetails-77c83828"
+    },
+    {
+      "kind": "DojoModel",
+      "members": [
+        {
+          "name": "id",
           "type": "u8",
-          "key": false
+          "key": true
         },
         {
-          "name": "last_direction",
-          "type": "Direction",
-          "key": false
-        },
-        {
-          "name": "can_move",
-          "type": "bool",
+          "name": "beast_id",
+          "type": "u32",
           "key": false
         }
       ],
-      "class_hash": "0x4eac0db062821cc05485ba088b0bb748de83e901116216da171744dfc5ec6fa",
-      "original_class_hash": "0x4eac0db062821cc05485ba088b0bb748de83e901116216da171744dfc5ec6fa",
+      "class_hash": "0x4218a61f3eebf6eba0091627c52d95f1e9ab7c4535d0a42b6f5ca58cc1afa1f",
+      "original_class_hash": "0x4218a61f3eebf6eba0091627c52d95f1e9ab7c4535d0a42b6f5ca58cc1afa1f",
       "abi": [
         {
           "type": "impl",
@@ -2827,74 +3529,26 @@
         },
         {
           "type": "impl",
-          "name": "movesImpl",
-          "interface_name": "dojo_starter::models::Imoves"
-        },
-        {
-          "type": "enum",
-          "name": "dojo_starter::models::Direction",
-          "variants": [
-            {
-              "name": "None",
-              "type": "()"
-            },
-            {
-              "name": "Left",
-              "type": "()"
-            },
-            {
-              "name": "Right",
-              "type": "()"
-            },
-            {
-              "name": "Up",
-              "type": "()"
-            },
-            {
-              "name": "Down",
-              "type": "()"
-            }
-          ]
-        },
-        {
-          "type": "enum",
-          "name": "core::bool",
-          "variants": [
-            {
-              "name": "False",
-              "type": "()"
-            },
-            {
-              "name": "True",
-              "type": "()"
-            }
-          ]
+          "name": "summitImpl",
+          "interface_name": "savage_summit::models::summit::Isummit"
         },
         {
           "type": "struct",
-          "name": "dojo_starter::models::Moves",
+          "name": "savage_summit::models::summit::Summit",
           "members": [
             {
-              "name": "player",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "remaining",
+              "name": "id",
               "type": "core::integer::u8"
             },
             {
-              "name": "last_direction",
-              "type": "dojo_starter::models::Direction"
-            },
-            {
-              "name": "can_move",
-              "type": "core::bool"
+              "name": "beast_id",
+              "type": "core::integer::u32"
             }
           ]
         },
         {
           "type": "interface",
-          "name": "dojo_starter::models::Imoves",
+          "name": "savage_summit::models::summit::Isummit",
           "items": [
             {
               "type": "function",
@@ -2902,7 +3556,7 @@
               "inputs": [
                 {
                   "name": "model",
-                  "type": "dojo_starter::models::Moves"
+                  "type": "savage_summit::models::summit::Summit"
                 }
               ],
               "outputs": [],
@@ -2912,30 +3566,41 @@
         },
         {
           "type": "event",
-          "name": "dojo_starter::models::moves::Event",
+          "name": "savage_summit::models::summit::summit::Event",
           "kind": "enum",
           "variants": []
         }
       ],
-      "tag": "dojo_starter-Moves",
-      "manifest_name": "dojo_starter-Moves-2a29373f"
+      "tag": "savage_summit-Summit",
+      "qualified_path": "savage_summit::models::summit::summit",
+      "manifest_name": "savage_summit-Summit-184adf2d"
     },
     {
       "kind": "DojoModel",
       "members": [
         {
-          "name": "player",
-          "type": "ContractAddress",
+          "name": "id",
+          "type": "u32",
           "key": true
         },
         {
-          "name": "vec",
-          "type": "Vec2",
+          "name": "lost_at",
+          "type": "u64",
+          "key": true
+        },
+        {
+          "name": "taken_at",
+          "type": "u64",
+          "key": false
+        },
+        {
+          "name": "rewards",
+          "type": "u64",
           "key": false
         }
       ],
-      "class_hash": "0x6531637b0bbd741f8823b127d8958ed10a483dd1f2d7654975c1d7d7cbdab65",
-      "original_class_hash": "0x6531637b0bbd741f8823b127d8958ed10a483dd1f2d7654975c1d7d7cbdab65",
+      "class_hash": "0x3100b8dc3d3e3bb53ebd75eacc0dbc2cd640a4d3747ef829df5009af8f5259b",
+      "original_class_hash": "0x3100b8dc3d3e3bb53ebd75eacc0dbc2cd640a4d3747ef829df5009af8f5259b",
       "abi": [
         {
           "type": "impl",
@@ -3301,40 +3966,34 @@
         },
         {
           "type": "impl",
-          "name": "positionImpl",
-          "interface_name": "dojo_starter::models::Iposition"
+          "name": "summit_historyImpl",
+          "interface_name": "savage_summit::models::summit::Isummit_history"
         },
         {
           "type": "struct",
-          "name": "dojo_starter::models::Vec2",
+          "name": "savage_summit::models::summit::SummitHistory",
           "members": [
             {
-              "name": "x",
+              "name": "id",
               "type": "core::integer::u32"
             },
             {
-              "name": "y",
-              "type": "core::integer::u32"
-            }
-          ]
-        },
-        {
-          "type": "struct",
-          "name": "dojo_starter::models::Position",
-          "members": [
-            {
-              "name": "player",
-              "type": "core::starknet::contract_address::ContractAddress"
+              "name": "lost_at",
+              "type": "core::integer::u64"
             },
             {
-              "name": "vec",
-              "type": "dojo_starter::models::Vec2"
+              "name": "taken_at",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "rewards",
+              "type": "core::integer::u64"
             }
           ]
         },
         {
           "type": "interface",
-          "name": "dojo_starter::models::Iposition",
+          "name": "savage_summit::models::summit::Isummit_history",
           "items": [
             {
               "type": "function",
@@ -3342,7 +4001,7 @@
               "inputs": [
                 {
                   "name": "model",
-                  "type": "dojo_starter::models::Position"
+                  "type": "savage_summit::models::summit::SummitHistory"
                 }
               ],
               "outputs": [],
@@ -3352,13 +4011,14 @@
         },
         {
           "type": "event",
-          "name": "dojo_starter::models::position::Event",
+          "name": "savage_summit::models::summit::summit_history::Event",
           "kind": "enum",
           "variants": []
         }
       ],
-      "tag": "dojo_starter-Position",
-      "manifest_name": "dojo_starter-Position-2ac8b4c1"
+      "tag": "savage_summit-SummitHistory",
+      "qualified_path": "savage_summit::models::summit::summit_history",
+      "manifest_name": "savage_summit-SummitHistory-b317749a"
     }
   ]
 }
