@@ -9,6 +9,8 @@ trait ISummitSystem {
         consumables: Array<u8>
     );
 
+    fn add_beast_details(ref world: IWorldDispatcher, details: BeastDetails);
+    fn add_beast_stats(ref world: IWorldDispatcher, stats: BeastStats);
     fn get_summit_history(world: @IWorldDispatcher, beast_id: u32, lost_at: u64) -> SummitHistory;
     fn get_summit_beast(world: @IWorldDispatcher) -> Beast;
     fn get_beast(world: @IWorldDispatcher, id: u32) -> Beast;
@@ -93,6 +95,14 @@ pub mod summit_systems {
 
             // update the attacker and summit beasts
             set!(world, (summit_beast.stats, attacking_beast.stats));
+        }
+
+        fn add_beast_details(ref world: IWorldDispatcher, details: BeastDetails) {
+            set!(world, (details));
+        }
+
+        fn add_beast_stats(ref world: IWorldDispatcher, stats: BeastStats) {
+            set!(world, (stats));
         }
 
         fn get_summit_beast(world: @IWorldDispatcher) -> Beast {
@@ -196,6 +206,13 @@ pub mod summit_systems {
                 assert(owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
             }
         }
+
+        // TODO: Get beast details from beast contract
+        // fn _get_beast_details(self: @ContractState, beast_id: u32) -> BeastDetails {
+        //     let contract_address = utils::get_beast_address(get_tx_info().unbox().chain_id);
+        //     let beast_dispatcher = IBeastDispatcher { contract_address };
+        //     beast_dispatcher.get_beast(token_id.into())
+        // }
 
         /// @title assert_beast_is_revived
         /// @notice this function is used to assert that a beast is revived

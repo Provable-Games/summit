@@ -4,12 +4,13 @@ class_hash = "0xa349b743d361ce4567361475a89b84a386bb383448c6926954e5fe0b525597"
 original_class_hash = "0xa349b743d361ce4567361475a89b84a386bb383448c6926954e5fe0b525597"
 abi = "manifests/dev/deployment/abis/dojo-world.json"
 address = "0x3427c16d64ba658428c7e42c08334b0a41a2bdef15a6d4840e3359d1410a48d"
+transaction_hash = "0x1a757059fe7629a7bd37d189538624b91203a3ab650038c1d2fc5fff073add1"
 seed = "savage_summit"
 manifest_name = "dojo-world"
 
 [world.metadata]
 profile_name = "dev"
-rpc_url = "http://localhost:5050/"
+rpc_url = "https://starknet-sepolia.public.blastapi.io/rpc/v0_7"
 
 [base]
 kind = "Class"
@@ -21,9 +22,10 @@ manifest_name = "dojo-base"
 
 [[contracts]]
 kind = "DojoContract"
-class_hash = "0x70f21878203286ad17846fea6dcf1719241e90cf1e94cbb734a7e881db0e848"
-original_class_hash = "0x70f21878203286ad17846fea6dcf1719241e90cf1e94cbb734a7e881db0e848"
-base_class_hash = "0x0"
+address = "0x3fe08dfab1efb39f2cd7314482d8a3ab740c3b5617fdce8650e522584c87e09"
+class_hash = "0x3e63e8d663a4406c7c8c7f069b5c1cb778b500135a5823ef615f304f1f903c6"
+original_class_hash = "0x3e63e8d663a4406c7c8c7f069b5c1cb778b500135a5823ef615f304f1f903c6"
+base_class_hash = "0x2427dd10a58850ac9a5ca6ce04b7771b05330fd18f2e481831ad903b969e6b2"
 abi = "manifests/dev/deployment/abis/contracts/savage_summit-summit_systems-237ab367.json"
 reads = []
 writes = [
@@ -35,7 +37,11 @@ writes = [
 ]
 init_calldata = []
 tag = "savage_summit-summit_systems"
-systems = ["attack"]
+systems = [
+    "attack",
+    "add_beast_details",
+    "add_beast_stats",
+]
 manifest_name = "savage_summit-summit_systems-237ab367"
 
 [[models]]
