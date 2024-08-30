@@ -45,7 +45,6 @@ export const Dojo = ({ children }) => {
   return (
     <DojoContext.Provider
       value={{
-        address: account?.address,
         executeTx,
       }}
     >

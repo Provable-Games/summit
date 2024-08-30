@@ -117,6 +117,5 @@ export const getBeastsSepolia = async (owner) => {
     res.beastTokens.map(async token => await lookupSepoliaBeast(token.tokenId))
   )
 
-  console.log(beasts)
   return beasts
 }

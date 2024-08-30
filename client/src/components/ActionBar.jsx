@@ -20,7 +20,7 @@ function ActionBar(props) {
     <Box sx={{ display: 'flex', gap: 2 }}>
       <AttackButton disabled={game.selected.length < 1}>
         {game.totalDamage < game.summit.health
-          ? <Box sx={{ display: 'flex', gap: 1.5 }}>
+          ? <Box sx={{ display: 'flex', gap: 1.5 }} onClick={() => game.attackSummit()}>
             <Typography color={game.selected.length < 1 ? 'rgba(0, 0, 0, 0.26)' : 'white'} variant='h4'>
               Attack
             </Typography>

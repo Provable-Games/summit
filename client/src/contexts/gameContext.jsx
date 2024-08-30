@@ -1,16 +1,15 @@
 import * as torii from "@dojoengine/torii-client";
-import React, { createContext, useCallback, useEffect, useState } from "react";
 import { useAccount } from "@starknet-react/core";
-import { getBeasts } from "../api/starknet";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { dojoConfig } from "../../dojoConfig";
+import { getBeasts } from "../api/starknet";
 import { addBeastStats, calculateBattleResult } from "../helpers/beasts";
-import { useContext } from "react";
-import { Dojo } from "./dojoContext";
+import { DojoContext } from "./dojoContext";
 
 export const GameContext = createContext()
 
 export const GameProvider = ({ children }) => {
-  const dojo = useContext(Dojo)
+  const dojo = useContext(DojoContext)
 
   const [toriiClient, setToriiClient] = useState(null);
   const [summit, setSummit] = useState({ name: 'Kraken', fullName: "Reckless Apocalypse Kraken", level: 92, health: 402, maxHealth: 511, tier: 1, type: "Brute" })
@@ -138,7 +137,8 @@ export const GameProvider = ({ children }) => {
   // }, [setupSync]);
 
   const attackSummit = async () => {
-    const res = await dojo.executeTx("summit_systems", "attack", [game.selected])
+    const res = await dojo.executeTx("summit_systems", "attack", [0, selected[0], []])
+    console.log(res)
   }
 
   return (
@@ -162,7 +162,8 @@ export const GameProvider = ({ children }) => {
         loadingCollection,
         setLoadingCollection,
 
-        totalDamage
+        totalDamage,
+        attackSummit
       }}
     >
       {children}
