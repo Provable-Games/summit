@@ -132,6 +132,28 @@
     "interface_name": "savage_summit::systems::summit::ISummitSystem"
   },
   {
+    "type": "struct",
+    "name": "savage_summit::models::summit::SummitHistory",
+    "members": [
+      {
+        "name": "id",
+        "type": "core::integer::u32"
+      },
+      {
+        "name": "lost_at",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "taken_at",
+        "type": "core::integer::u64"
+      },
+      {
+        "name": "rewards",
+        "type": "core::integer::u64"
+      }
+    ]
+  },
+  {
     "type": "enum",
     "name": "savage_summit::models::beast::Type",
     "variants": [
@@ -237,28 +259,6 @@
   },
   {
     "type": "struct",
-    "name": "savage_summit::models::summit::SummitHistory",
-    "members": [
-      {
-        "name": "id",
-        "type": "core::integer::u32"
-      },
-      {
-        "name": "lost_at",
-        "type": "core::integer::u64"
-      },
-      {
-        "name": "taken_at",
-        "type": "core::integer::u64"
-      },
-      {
-        "name": "rewards",
-        "type": "core::integer::u64"
-      }
-    ]
-  },
-  {
-    "type": "struct",
     "name": "savage_summit::models::beast::Beast",
     "members": [
       {
@@ -284,11 +284,11 @@
         "name": "attack",
         "inputs": [
           {
-            "name": "summit_beast_id",
+            "name": "defender_id",
             "type": "core::integer::u32"
           },
           {
-            "name": "attacking_beast_id",
+            "name": "attacker_id",
             "type": "core::integer::u32"
           },
           {
@@ -304,8 +304,24 @@
         "name": "add_beast_details",
         "inputs": [
           {
-            "name": "details",
-            "type": "savage_summit::models::beast::BeastDetails"
+            "name": "id",
+            "type": "core::integer::u32"
+          },
+          {
+            "name": "u8_type",
+            "type": "core::integer::u8"
+          },
+          {
+            "name": "u8_tier",
+            "type": "core::integer::u8"
+          },
+          {
+            "name": "level",
+            "type": "core::integer::u16"
+          },
+          {
+            "name": "starting_health",
+            "type": "core::integer::u16"
           }
         ],
         "outputs": [],
@@ -316,8 +332,12 @@
         "name": "add_beast_stats",
         "inputs": [
           {
-            "name": "stats",
-            "type": "savage_summit::models::beast::BeastStats"
+            "name": "id",
+            "type": "core::integer::u32"
+          },
+          {
+            "name": "health",
+            "type": "core::integer::u16"
           }
         ],
         "outputs": [],
