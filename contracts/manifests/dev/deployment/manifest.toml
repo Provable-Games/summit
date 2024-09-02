@@ -23,8 +23,8 @@ manifest_name = "dojo-base"
 [[contracts]]
 kind = "DojoContract"
 address = "0x3fe08dfab1efb39f2cd7314482d8a3ab740c3b5617fdce8650e522584c87e09"
-class_hash = "0x3e63e8d663a4406c7c8c7f069b5c1cb778b500135a5823ef615f304f1f903c6"
-original_class_hash = "0x3e63e8d663a4406c7c8c7f069b5c1cb778b500135a5823ef615f304f1f903c6"
+class_hash = "0x7d130c05957581ccfa86eb1b268c7aee2f38f509c170244c45c93aeef47fc01"
+original_class_hash = "0x7d130c05957581ccfa86eb1b268c7aee2f38f509c170244c45c93aeef47fc01"
 base_class_hash = "0x2427dd10a58850ac9a5ca6ce04b7771b05330fd18f2e481831ad903b969e6b2"
 abi = "manifests/dev/deployment/abis/contracts/savage_summit-summit_systems-237ab367.json"
 reads = []

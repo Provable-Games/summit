@@ -3,14 +3,17 @@ use savage_summit::models::summit::{SummitHistory};
 #[dojo::interface]
 trait ISummitSystem {
     fn attack(
-        ref world: IWorldDispatcher,
-        summit_beast_id: u32,
-        attacking_beast_id: u32,
-        consumables: Array<u8>
+        ref world: IWorldDispatcher, defender_id: u32, attacker_id: u32, consumables: Array<u8>
     );
-
-    fn add_beast_details(ref world: IWorldDispatcher, details: BeastDetails);
-    fn add_beast_stats(ref world: IWorldDispatcher, stats: BeastStats);
+    fn add_beast_details(
+        ref world: IWorldDispatcher,
+        id: u32,
+        u8_type: u8,
+        u8_tier: u8,
+        level: u16,
+        starting_health: u16
+    );
+    fn add_beast_stats(ref world: IWorldDispatcher, id: u32, health: u16);
     fn get_summit_history(world: @IWorldDispatcher, beast_id: u32, lost_at: u64) -> SummitHistory;
     fn get_summit_beast(world: @IWorldDispatcher) -> Beast;
     fn get_beast(world: @IWorldDispatcher, id: u32) -> Beast;
@@ -25,7 +28,7 @@ pub mod summit_systems {
     use openzeppelin_token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
     use savage_summit::constants::errors;
     use savage_summit::models::beast::{
-        Beast, BeastDetails, BeastDetailsStore, BeastStats, BeastStatsStore
+        Beast, BeastDetails, BeastDetailsStore, BeastStats, BeastStatsStore, Tier, Type
     };
     use savage_summit::models::consumable::{Consumable, ConsumableDetails, ConsumableDetailsStore};
     use savage_summit::models::summit::{Summit, SummitStore, SummitHistory, SummitHistoryStore};
@@ -34,34 +37,65 @@ pub mod summit_systems {
     #[abi(embed_v0)]
     impl SummitSystemImpl of super::ISummitSystem<ContractState> {
         fn attack(
-            ref world: IWorldDispatcher,
-            summit_beast_id: u32,
-            attacking_beast_id: u32,
-            consumables: Array<u8>
+            ref world: IWorldDispatcher, defender_id: u32, attacker_id: u32, consumables: Array<u8>
         ) {
             // assert the caller owns the beast they attacking with
-            self._assert_beast_ownership(attacking_beast_id);
+            self._assert_beast_ownership(attacker_id);
 
             // assert the provided summit beast is the summit beast
-            let summit_beast_id = get!(world, 1, Summit).beast_id;
-            assert(summit_beast_id == summit_beast_id, errors::SUMMIT_BEAST_CHANGED);
+            let mut summit_beast_id = get!(world, 1, Summit).beast_id;
+            if summit_beast_id == 0 {
+                summit_beast_id = 1;
+            } else {
+                assert(defender_id == summit_beast_id, errors::SUMMIT_BEAST_CHANGED);
+            }
 
-            // get the beast on the summit
-            let mut summit_beast = Beast {
-                id: summit_beast_id,
-                details: get!(world, summit_beast_id, BeastDetails),
-                stats: get!(world, summit_beast_id, BeastStats)
-            };
-
-            // get the beast that is attacking
-            let mut attacking_beast = Beast {
-                id: attacking_beast_id,
-                details: get!(world, attacking_beast_id, BeastDetails),
-                stats: get!(world, attacking_beast_id, BeastStats)
-            };
+            // get stats for the beast that is attacking
+            let mut attacker_stats = get!(world, attacker_id, BeastStats);
 
             // assert the attacking beast is revived
-            self._assert_beast_is_revived(attacking_beast);
+            self._assert_beast_is_revived(attacker_stats);
+
+            // get details for the beast that is attacking
+            let mut attacker_details = get!(world, attacker_id, BeastDetails);
+
+            // reset health to starting health
+            // @dev beasts attack till death so we don't need any additional logic
+            attacker_stats.health = attacker_details.starting_health;
+
+            // TODO: This is temporary code until we can do a details lookup on the beast contract
+            if attacker_details.starting_health == 0 {
+                attacker_details.starting_health = 100;
+                attacker_details.level = 5;
+                attacker_details.tier = Tier::T1;
+                attacker_details._type = Type::Magic_or_Cloth;
+            }
+
+            // wrap the beast id, details, and stats in a single Beast entity
+            let mut attacking_beast = Beast {
+                id: attacker_id, details: attacker_details, stats: attacker_stats
+            };
+
+            let mut summit_beast_details = get!(world, defender_id, BeastDetails);
+
+            // TODO: This is temporary code until we can do a details lookup on the beast contract
+            if summit_beast_details.starting_health == 0 {
+                summit_beast_details.starting_health = 100;
+                summit_beast_details.level = 10;
+                summit_beast_details.tier = Tier::T1;
+                summit_beast_details._type = Type::Magic_or_Cloth;
+            }
+
+            // TODO: This is temporary code until we can do a details lookup on the beast contract
+            let mut summit_beast_stats = get!(world, defender_id, BeastStats);
+            if summit_beast_stats.health == 0 {
+                summit_beast_stats.health = 100;
+            }
+
+            // wrap the summit beast id, details, and stats in a single Beast entity
+            let mut summit_beast = Beast {
+                id: defender_id, details: summit_beast_details, stats: summit_beast_stats
+            };
 
             // loop until the attacking beast is dead or the summit beast is dead
             loop {
@@ -97,12 +131,22 @@ pub mod summit_systems {
             set!(world, (summit_beast.stats, attacking_beast.stats));
         }
 
-        fn add_beast_details(ref world: IWorldDispatcher, details: BeastDetails) {
-            set!(world, (details));
+        fn add_beast_details(
+            ref world: IWorldDispatcher,
+            id: u32,
+            u8_type: u8,
+            u8_tier: u8,
+            level: u16,
+            starting_health: u16
+        ) {
+            // convert the provided type, tier, and level to their respective enum values
+            let _type: Type = u8_type.try_into().unwrap();
+            let tier: Tier = u8_tier.try_into().unwrap();
+            set!(world, (BeastDetails { id, _type, tier, level, starting_health }));
         }
 
-        fn add_beast_stats(ref world: IWorldDispatcher, stats: BeastStats) {
-            set!(world, (stats));
+        fn add_beast_stats(ref world: IWorldDispatcher, id: u32, health: u16) {
+            set!(world, (BeastStats { id, health, dead_at: 0 }));
         }
 
         fn get_summit_beast(world: @IWorldDispatcher) -> Beast {
@@ -216,13 +260,12 @@ pub mod summit_systems {
 
         /// @title assert_beast_is_revived
         /// @notice this function is used to assert that a beast is revived
-        /// @param beast the beast to check
-        fn _assert_beast_is_revived(self: @ContractState, beast: Beast) {
-            let dead_at = beast.stats.dead_at;
+        /// @param beast_stats the stats of the beast to check
+        fn _assert_beast_is_revived(self: @ContractState, beast_stats: BeastStats) {
+            let dead_at = beast_stats.dead_at;
             let current_time = get_block_timestamp();
             let time_since_death = current_time - dead_at;
             assert(time_since_death >= 23 * 60 * 60, errors::BEAST_NOT_YET_REVIVED);
-
         }
     }
 }
@@ -269,20 +312,20 @@ mod tests {
             id: 1, lost_at: 0, taken_at: starting_time, rewards: 0
         };
 
-        let summit_beast_id = 1;
-        let summit_beast_stats = BeastStats { id: summit_beast_id, health: 100, dead_at: 0, };
+        let defender_id = 1;
+        let summit_beast_stats = BeastStats { id: defender_id, health: 100, dead_at: 0, };
         let summit_beast_details = BeastDetails {
-            id: summit_beast_id,
+            id: defender_id,
             _type: Type::Magic_or_Cloth,
             tier: Tier::T1,
             level: 5,
             starting_health: 100
         };
 
-        let attacking_beast_id = 2;
-        let attacking_beast_stats = BeastStats { id: attacking_beast_id, health: 100, dead_at: 0, };
+        let attacker_id = 2;
+        let attacking_beast_stats = BeastStats { id: attacker_id, health: 100, dead_at: 0, };
         let attacking_beast_details = BeastDetails {
-            id: attacking_beast_id,
+            id: attacker_id,
             _type: Type::Blade_or_Hide,
             tier: Tier::T2,
             level: 10,
@@ -307,30 +350,30 @@ mod tests {
         world.grant_writer(Model::<BeastStats>::selector(), summit_system.contract_address);
 
         // attack the summit with a beast that is stronger than the summit beast
-        summit_system.attack(summit_beast_id, attacking_beast_id, array![]);
+        summit_system.attack(defender_id, attacker_id, array![]);
 
         // verify the finalized summit history for the previous summit beast
-        let prev_summit_history = summit_system.get_summit_history(summit_beast_id, summit_change_time);
-        assert(prev_summit_history.id == summit_beast_id, 'prev summit id is wrong');
+        let prev_summit_history = summit_system.get_summit_history(defender_id, summit_change_time);
+        assert(prev_summit_history.id == defender_id, 'prev summit id is wrong');
         assert(prev_summit_history.lost_at == summit_change_time, 'prev summit lost_at is wrong');
         assert(prev_summit_history.taken_at == starting_time, 'prev summit taken_at is wrong');
         assert(prev_summit_history.rewards == 100, 'prev summit rewards is wrong');
 
         // verify the beast prevly on the summit is dead
-        let prev_summit_beast = summit_system.get_beast(summit_beast_id);
+        let prev_summit_beast = summit_system.get_beast(defender_id);
         assert(prev_summit_beast.stats.health == 0, 'prev summit beast health');
         assert(prev_summit_beast.stats.dead_at == summit_change_time, 'prev summit beast dead_at');
 
         // attacker should now be on the summit
         let summit_beast = summit_system.get_summit_beast();
-        assert(summit_beast.id == attacking_beast_id, 'attacker be on summit');
+        assert(summit_beast.id == attacker_id, 'attacker be on summit');
 
         // attacker should have lost health as part of the attack
         assert(summit_beast.stats.health < 100, 'attacker should take dmg');
 
         // verify we have a new submit history for the new summit beast
         let new_summit_history = summit_system.get_summit_history(summit_beast.id, 0);
-        assert(new_summit_history.id == attacking_beast_id, 'new summit id is wrong');
+        assert(new_summit_history.id == attacker_id, 'new summit id is wrong');
         assert(new_summit_history.lost_at == 0, 'new summit lost_at is wrong');
         assert(new_summit_history.taken_at == summit_change_time, 'new summit taken_at is wrong');
         assert(new_summit_history.rewards == 0, 'new summit rewards is wrong');

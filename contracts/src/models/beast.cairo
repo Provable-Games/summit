@@ -72,3 +72,38 @@ impl TierIntoFelt252 of Into<Tier, felt252> {
         }
     }
 }
+
+impl U8IntoTier of Into<u8, Tier> {
+    fn into(self: u8) -> Tier {
+        if self == 0 {
+            Tier::None
+        } else if self == 1 {
+            Tier::T1
+        } else if self == 2 {
+            Tier::T2
+        } else if self == 3 {
+            Tier::T3
+        } else if self == 4 {
+            Tier::T4
+        } else if self == 5 {
+            Tier::T5
+        } else {
+            panic_with_felt252('Invalid tier')
+        }
+    }
+}
+impl U8IntoType of Into<u8, Type> {
+    fn into(self: u8) -> Type {
+        if self == 0 {
+            Type::None
+        } else if self == 1 {
+            Type::Magic_or_Cloth
+        } else if self == 2 {
+            Type::Blade_or_Hide
+        } else if self == 3 {
+            Type::Bludgeon_or_Metal
+        } else {
+            panic_with_felt252('Invalid type')
+        }
+    }
+}

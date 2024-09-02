@@ -1251,8 +1251,8 @@
     {
       "kind": "DojoContract",
       "address": "0x3fe08dfab1efb39f2cd7314482d8a3ab740c3b5617fdce8650e522584c87e09",
-      "class_hash": "0x3e63e8d663a4406c7c8c7f069b5c1cb778b500135a5823ef615f304f1f903c6",
-      "original_class_hash": "0x3e63e8d663a4406c7c8c7f069b5c1cb778b500135a5823ef615f304f1f903c6",
+      "class_hash": "0x7d130c05957581ccfa86eb1b268c7aee2f38f509c170244c45c93aeef47fc01",
+      "original_class_hash": "0x7d130c05957581ccfa86eb1b268c7aee2f38f509c170244c45c93aeef47fc01",
       "base_class_hash": "0x2427dd10a58850ac9a5ca6ce04b7771b05330fd18f2e481831ad903b969e6b2",
       "abi": [
         {
@@ -1388,6 +1388,28 @@
           "interface_name": "savage_summit::systems::summit::ISummitSystem"
         },
         {
+          "type": "struct",
+          "name": "savage_summit::models::summit::SummitHistory",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "lost_at",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "taken_at",
+              "type": "core::integer::u64"
+            },
+            {
+              "name": "rewards",
+              "type": "core::integer::u64"
+            }
+          ]
+        },
+        {
           "type": "enum",
           "name": "savage_summit::models::beast::Type",
           "variants": [
@@ -1493,28 +1515,6 @@
         },
         {
           "type": "struct",
-          "name": "savage_summit::models::summit::SummitHistory",
-          "members": [
-            {
-              "name": "id",
-              "type": "core::integer::u32"
-            },
-            {
-              "name": "lost_at",
-              "type": "core::integer::u64"
-            },
-            {
-              "name": "taken_at",
-              "type": "core::integer::u64"
-            },
-            {
-              "name": "rewards",
-              "type": "core::integer::u64"
-            }
-          ]
-        },
-        {
-          "type": "struct",
           "name": "savage_summit::models::beast::Beast",
           "members": [
             {
@@ -1540,11 +1540,11 @@
               "name": "attack",
               "inputs": [
                 {
-                  "name": "summit_beast_id",
+                  "name": "defender_id",
                   "type": "core::integer::u32"
                 },
                 {
-                  "name": "attacking_beast_id",
+                  "name": "attacker_id",
                   "type": "core::integer::u32"
                 },
                 {
@@ -1560,8 +1560,24 @@
               "name": "add_beast_details",
               "inputs": [
                 {
-                  "name": "details",
-                  "type": "savage_summit::models::beast::BeastDetails"
+                  "name": "id",
+                  "type": "core::integer::u32"
+                },
+                {
+                  "name": "u8_type",
+                  "type": "core::integer::u8"
+                },
+                {
+                  "name": "u8_tier",
+                  "type": "core::integer::u8"
+                },
+                {
+                  "name": "level",
+                  "type": "core::integer::u16"
+                },
+                {
+                  "name": "starting_health",
+                  "type": "core::integer::u16"
                 }
               ],
               "outputs": [],
@@ -1572,8 +1588,12 @@
               "name": "add_beast_stats",
               "inputs": [
                 {
-                  "name": "stats",
-                  "type": "savage_summit::models::beast::BeastStats"
+                  "name": "id",
+                  "type": "core::integer::u32"
+                },
+                {
+                  "name": "health",
+                  "type": "core::integer::u16"
                 }
               ],
               "outputs": [],
