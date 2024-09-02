@@ -10,8 +10,11 @@ import { GameContext } from '../../contexts/gameContext';
 import { Typography } from '@mui/material';
 
 function AttackAnimation(props) {
+  const { attackingBeast, onEnd } = props
+
   const game = useContext(GameContext)
-  const { attack, onEnd } = props
+  const { summit } = game.getState
+
   const controls = useAnimationControls()
   const textControls = useAnimationControls()
 
@@ -22,6 +25,8 @@ function AttackAnimation(props) {
 
   let yOffSet = 310 + Math.abs(randomOffSet) / 5
   let strOffSet = randomOffSet < 0 ? `calc(50% - ${randomOffSet * -1}px)` : `calc(50% + ${randomOffSet}px)`
+
+  const [damage] = useState(attackingBeast.capture ? summit.healthLeft : attackingBeast.damage)
 
   useEffect(() => {
     attackAnimation()
@@ -41,7 +46,7 @@ function AttackAnimation(props) {
     ref.current.style.opacity = 1
     textRef.current.style.opacity = 1
 
-    game.setSummit(prev => ({ ...prev, health: Math.max(0, prev.health - attack.damage) }))
+    game.setState.summit(prev => ({ ...prev, healthLeft: Math.max(0, prev.healthLeft - damage) }))
 
     controls.start({
       opacity: 0
@@ -59,13 +64,17 @@ function AttackAnimation(props) {
       transition: { duration: 0.8 }
     })
 
-    onEnd(attack.id)
+    if (attackingBeast.capture) {
+      game.setState.summitAnimations([{ ...attackingBeast }])
+    }
+
+    onEnd(attackingBeast.id)
   }
 
   return <>
     <motion.div style={{ ...styles.damageText }} ref={textRef} animate={textControls}>
       <Typography variant='h1'>
-        -{attack.damage}
+        -{damage}
       </Typography>
     </motion.div>
 
@@ -78,11 +87,11 @@ function AttackAnimation(props) {
 
     <motion.div
       style={{ ...styles.container, left: strOffSet, bottom: `${yOffSet}px` }}
-      key={attack.id}
+      key={attackingBeast.id}
       animate={controls}
     >
 
-      <img alt='' src={fetchBeastImage(attack.beast)} height={'80px'} />
+      <img alt='' src={fetchBeastImage(attackingBeast.name)} height={'80px'} />
 
     </motion.div>
   </>

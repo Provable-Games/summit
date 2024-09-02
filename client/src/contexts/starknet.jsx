@@ -27,6 +27,7 @@ export function StarknetProvider({ children }) {
       provider={jsonRpcProvider({ rpc: () => ({ nodeUrl: import.meta.env.VITE_PUBLIC_NODE_URL }) })}
       connectors={[...connectors, cartridge]}
       explorer={voyager}
+      autoConnect
     >
       {children}
     </StarknetConfig>

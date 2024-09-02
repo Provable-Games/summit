@@ -1,12 +1,19 @@
-import { Box, Button, Typography } from '@mui/material';
+import { Box, Button, ListItemIcon, ListItemText, Menu, MenuItem, Typography } from '@mui/material';
 import { useAccount } from "@starknet-react/core";
 import React, { useEffect, useState } from 'react';
 import { ellipseAddress } from '../helpers/utilities';
 import ConnectWallet from './dialogs/ConnectWallet';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
+import LogoutIcon from '@mui/icons-material/Logout';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
+import { useDisconnect, useConnect } from "@starknet-react/core";
+import { useContext } from 'react';
+import { GameContext } from '../contexts/gameContext';
 
 function WalletConnect(props) {
+  const game = useContext(GameContext)
   const { address } = useAccount()
+  const { disconnect } = useDisconnect()
   const [accountDialog, openAccountDialog] = useState(false)
 
   const [anchorEl, setAnchorEl] = useState(null);
@@ -24,13 +31,38 @@ function WalletConnect(props) {
 
       <Box sx={styles.container}>
         {address
-          ? <Button onClick={handleClick} size='large'>
-            <SportsEsportsIcon htmlColor='black' sx={{ fontSize: '18px', mr: '4px' }} />
+          ? <>
+            <Button onClick={handleClick} size='large'>
+              <SportsEsportsIcon htmlColor='black' sx={{ fontSize: '18px', mr: '4px' }} />
 
-            <Typography color='black' sx={{ fontSize: '14px' }}>
-              {ellipseAddress(address, 4, 4)}
-            </Typography>
-          </Button>
+              <Typography color='black' sx={{ fontSize: '14px' }}>
+                {ellipseAddress(address, 4, 4)}
+              </Typography>
+            </Button>
+            <Menu
+              anchorEl={anchorEl}
+              open={Boolean(anchorEl)}
+              onClose={handleClose}
+            >
+              <MenuItem onClick={async () => await navigator.clipboard.writeText(address)}>
+                <ListItemIcon>
+                  <ContentPasteIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText sx={{ letterSpacing: '1px' }}>
+                  Copy Address
+                </ListItemText>
+              </MenuItem>
+
+              <MenuItem onClick={() => { disconnect(); game.actions.resetState(); handleClose(); }}>
+                <ListItemIcon>
+                  <LogoutIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText sx={{ letterSpacing: '1px' }}>
+                  Disconnect
+                </ListItemText>
+              </MenuItem>
+            </Menu>
+          </>
 
           : <Button variant='contained' onClick={() => openAccountDialog(true)} sx={{ borderRadius: '20px' }}>
             <Typography color='white' variant='h5'>
@@ -54,6 +86,5 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'flex-end',
     gap: 2,
-    p: 1
   }
 }

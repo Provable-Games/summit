@@ -1,53 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material'
+import { GameContext } from '../contexts/gameContext';
+import { useContext } from 'react';
 
 const leaderboardExample = [
   {
     rank: 1,
-    name: "'Pandemonium Instrument' nemeanlion",
+    name: "'Wrath Bane' Warlock",
     hours: '29',
     minutes: '12',
     seconds: '44'
   },
   {
     rank: 2,
-    name: "'Dragon Shout' Kraken",
-    hours: '29',
-    minutes: '12',
-    seconds: '44'
+    name: "'Ghoul Root' Typhon",
+    hours: '16',
+    minutes: '24',
+    seconds: '00'
   },
   {
     rank: 3,
-    name: "'Dragon Shout' Kraken",
-    hours: '29',
+    name: "'Phoenix Form' Goblin",
+    hours: '14',
     minutes: '12',
-    seconds: '44'
+    seconds: '50'
   },
   {
     rank: 4,
-    name: "'Dragon Shout' Kraken",
-    hours: '29',
-    minutes: '12',
-    seconds: '44'
+    name: "'Spirit Song' Sprite",
+    hours: '13',
+    minutes: '11',
+    seconds: '25'
   },
   {
     rank: 5,
-    name: "'Dragon Shout' Kraken",
-    hours: '29',
-    minutes: '12',
-    seconds: '44'
+    name: "'Honour Bender' Gorgon",
+    hours: '09',
+    minutes: '05',
+    seconds: '23'
   },
 ]
 
 function Leaderboard(props) {
+  const game = useContext(GameContext)
+  const { totalReward } = game.getState
+
   return <Box sx={styles.container}>
     <Box sx={styles.innerContainer}>
 
       <Box sx={styles.content}>
 
-        <Typography sx={{ fontSize: '25px', letterSpacing: '1px' }}>
-          Savage Summit
-        </Typography>
+        <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography sx={{ fontSize: '25px', letterSpacing: '1px' }}>
+            Savage Summit
+          </Typography>
+
+          <Typography sx={{ letterSpacing: '0.5px' }} variant='h5'>
+            ${totalReward}
+          </Typography>
+        </Box>
 
         <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1.5, mb: 1 }}>
           <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
@@ -109,10 +120,17 @@ function Leaderboard(props) {
             Beasts alive
           </Typography>
           <Typography sx={{ letterSpacing: '0.5px' }}>
-            3023/3023
+            2072/3023
           </Typography>
         </Box>
-
+        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
+          <Typography sx={{ letterSpacing: '0.5px' }}>
+            Potions Bought
+          </Typography>
+          <Typography sx={{ letterSpacing: '0.5px' }}>
+            1304
+          </Typography>
+        </Box>
       </Box>
 
     </Box>
@@ -124,7 +142,7 @@ export default Leaderboard;
 const styles = {
   container: {
     width: '295px',
-    height: '240px',
+    height: '260px',
     border: '4px solid #1f8c9b',
     borderRadius: '16px',
     boxShadow: 'rgba(0, 0, 0, 0.16) 0px 1px 4px, rgb(51, 51, 51) 0px 0px 0px 2px'

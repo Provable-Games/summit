@@ -116,6 +116,15 @@ input:-webkit-autofill {
   margin-top: 0px;
 }
 
+.fade-in {
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.fade-in.active {
+  opacity: 1;
+}
+
 @keyframes l1 {
   to {
     clip-path: inset(0 -34% 0 0)

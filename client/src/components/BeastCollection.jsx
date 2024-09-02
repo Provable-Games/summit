@@ -9,19 +9,21 @@ import { HealthBar } from '../helpers/styles';
 
 function BeastCollection() {
   const game = useContext(GameContext)
+  const { loadingCollection, collection, selectedBeasts } = game.getState
+
   const { address } = useAccount()
 
   const selectBeast = (id) => {
-    if (game.selected.includes(id)) {
-      game.setSelected(prev => prev.filter(prevId => prevId !== id))
+    if (selectedBeasts.includes(id)) {
+      game.setState.selectedBeasts(prev => prev.filter(prevId => prevId !== id))
     } else {
-      game.setSelected(prev => [...prev, id])
+      game.setState.selectedBeasts(prev => [...prev, id])
     }
   }
 
   return (
     <Box sx={styles.container}>
-      {!address && !game.loadingCollection && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
+      {!address && !loadingCollection && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
 
         <Box textAlign={'center'}>
           <Typography variant="h2" letterSpacing={'0.5px'}>
@@ -36,7 +38,7 @@ function BeastCollection() {
 
       </Box>}
 
-      {address && !game.loadingCollection && game.collection.length < 1 && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
+      {address && !loadingCollection && collection.length < 1 && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
 
         <Box textAlign={'center'}>
           <Typography variant="h2" letterSpacing={'0.5px'}>
@@ -45,13 +47,16 @@ function BeastCollection() {
           <Typography variant="h2" letterSpacing={'0.5px'}>
             Collect them in <a style={{ color: '#30a019' }} href="https://sepolia.lootsurvivor.io" target="_blank">loot survivor 1.5</a>
           </Typography>
+          <Typography variant="h2" letterSpacing={'0.5px'}>
+            Or buy in <a style={{ color: '#ff92b6' }} href="https://realms.world/collection/beasts" target="_blank">Realms world</a>
+          </Typography>
         </Box>
 
         <img src={fetchBeastImage('golem')} alt='' height={'150px'} />
 
       </Box>}
 
-      {game.loadingCollection && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
+      {loadingCollection && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
 
         <Box textAlign={'center'}>
           <Box display={'flex'} alignItems={'baseline'}>
@@ -64,15 +69,15 @@ function BeastCollection() {
 
       {
         React.Children.toArray(
-          game.collection.map(beast => {
-            const isSelected = game.selected.includes(beast.id)
+          collection.map(beast => {
+            const isSelected = selectedBeasts.includes(beast.id)
             return <Box
-              sx={[styles.itemContainer, isSelected && styles.selectedItem, (game.selected.length > 0 && !isSelected) && { opacity: 0.5, borderColor: 'transparent' }]}
+              sx={[styles.itemContainer, isSelected && styles.selectedItem, (selectedBeasts.length > 0 && !isSelected) && { opacity: 0.5, borderColor: 'transparent' }]}
               onClick={() => selectBeast(beast.id)}>
 
-              {isSelected && <Box sx={styles.order}>
+              {isSelected && selectedBeasts.length > 1 && <Box sx={styles.order}>
                 <Typography variant="h6" lineHeight={'19px'}>
-                  {game.selected.findIndex(x => x === beast.id) + 1}
+                  {selectedBeasts.findIndex(x => x === beast.id) + 1}
                 </Typography>
               </Box>}
 
@@ -107,7 +112,7 @@ function BeastCollection() {
                     <img src={health} alt='' height={'13px'} />
 
                     <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkgreen'}>
-                      {beast.healthLeft} hp
+                      {beast.healthLeft} hp left
                     </Typography>
                   </Box>
                 </>

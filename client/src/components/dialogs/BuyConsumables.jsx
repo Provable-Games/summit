@@ -3,10 +3,13 @@ import { BuyConsumablesButton } from '../../helpers/styles';
 import potion from '../../assets/images/potion.png';
 import AddIcon from '@mui/icons-material/Add';
 import { useState } from 'react';
+import { useContext } from 'react';
+import { GameContext } from '../../contexts/gameContext';
 
 function BuyConsumables(props) {
   const { open, close } = props
   const [amount, setAmount] = useState(0)
+  const game = useContext(GameContext)
 
   return (
     <Dialog
@@ -38,8 +41,12 @@ function BuyConsumables(props) {
               </Typography>
             </Box>
 
-            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <BuyConsumablesButton onClick={() => { }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+              <Typography variant='h4' letterSpacing={'1px'}>
+                ${amount * 0.25}
+              </Typography>
+
+              <BuyConsumablesButton onClick={() => { game.setState.totalReward(prev => prev + (amount * 0.25)), close(false); }}>
                 Buy Potions
               </BuyConsumablesButton>
             </Box>
@@ -78,6 +85,6 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 2,
+    gap: 1,
   }
 }
