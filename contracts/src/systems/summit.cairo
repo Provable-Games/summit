@@ -104,7 +104,13 @@ pub mod summit_systems {
                     } else {
                         // if the attacking beast did not take the summit, the defending beast will
                         // attack back
-                        self._attack(defending_beast, ref attacking_beast);
+                        let (_, attacking_beast_died) = self._attack(defending_beast, ref attacking_beast);
+
+                        // if the defending beast took the summit, break
+                        if attacking_beast_died {
+                            // set death timestamp for prev summit beast
+                            attacking_beast.stats.live.last_death_timestamp = get_block_timestamp();
+                        }
                     }
                 };
 

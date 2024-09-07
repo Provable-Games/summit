@@ -1251,8 +1251,8 @@
     {
       "kind": "DojoContract",
       "address": "0x3fe08dfab1efb39f2cd7314482d8a3ab740c3b5617fdce8650e522584c87e09",
-      "class_hash": "0x3d9e3e36306f2de50bc396973acc3b554c2880a55a22f0024132c05e470c3bf",
-      "original_class_hash": "0x3d9e3e36306f2de50bc396973acc3b554c2880a55a22f0024132c05e470c3bf",
+      "class_hash": "0x4c11f9a6903ca07de2189b6d8a83cc884a5e27f096676870cf24ee46788d575",
+      "original_class_hash": "0x4c11f9a6903ca07de2189b6d8a83cc884a5e27f096676870cf24ee46788d575",
       "base_class_hash": "0x2427dd10a58850ac9a5ca6ce04b7771b05330fd18f2e481831ad903b969e6b2",
       "abi": [
         {
@@ -1767,7 +1767,12 @@
         }
       ],
       "reads": [],
-      "writes": [],
+      "writes": [
+        "savage_summit-LiveBeastStats",
+        "savage_summit-ConsumableDetails",
+        "savage_summit-Summit",
+        "savage_summit-SummitHistory"
+      ],
       "init_calldata": [],
       "tag": "savage_summit-summit_systems",
       "systems": [
