@@ -1,7 +1,0 @@
-tag = "savage_summit-summit_systems"
-writes = [
-    "savage_summit-LiveBeastStats",
-    "savage_summit-ConsumableDetails",
-    "savage_summit-Summit",
-    "savage_summit-SummitHistory",
-]
