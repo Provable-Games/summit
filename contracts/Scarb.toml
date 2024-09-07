@@ -17,3 +17,4 @@ openzeppelin_test_common = { git = "https://github.com/OpenZeppelin/cairo-contra
 openzeppelin_testing = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v0.15.1" }
 
 [[target.dojo]]
+[profile.prod]
