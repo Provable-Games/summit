@@ -1,15 +1,11 @@
 kind = "DojoContract"
-class_hash = "0x7d130c05957581ccfa86eb1b268c7aee2f38f509c170244c45c93aeef47fc01"
-original_class_hash = "0x7d130c05957581ccfa86eb1b268c7aee2f38f509c170244c45c93aeef47fc01"
+class_hash = "0x3d9e3e36306f2de50bc396973acc3b554c2880a55a22f0024132c05e470c3bf"
+original_class_hash = "0x3d9e3e36306f2de50bc396973acc3b554c2880a55a22f0024132c05e470c3bf"
 base_class_hash = "0x0"
 abi = "manifests/dev/base/abis/contracts/savage_summit-summit_systems-237ab367.json"
 reads = []
 writes = []
 init_calldata = []
 tag = "savage_summit-summit_systems"
-systems = [
-    "attack",
-    "add_beast_details",
-    "add_beast_stats",
-]
+systems = ["attack"]
 manifest_name = "savage_summit-summit_systems-237ab367"

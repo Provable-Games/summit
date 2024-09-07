@@ -3,7 +3,7 @@
 pub struct Summit {
     #[key]
     pub id: u8,
-    pub beast_id: u32,
+    pub beast_token_id: u32,
 }
 
 #[derive(Copy, Drop, Serde)]

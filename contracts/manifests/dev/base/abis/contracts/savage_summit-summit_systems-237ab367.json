@@ -155,7 +155,7 @@
   },
   {
     "type": "enum",
-    "name": "savage_summit::models::beast::Type",
+    "name": "combat::constants::CombatEnums::Type",
     "variants": [
       {
         "name": "None",
@@ -185,7 +185,7 @@
   },
   {
     "type": "enum",
-    "name": "savage_summit::models::beast::Tier",
+    "name": "combat::constants::CombatEnums::Tier",
     "variants": [
       {
         "name": "None",
@@ -215,19 +215,29 @@
   },
   {
     "type": "struct",
-    "name": "savage_summit::models::beast::BeastDetails",
+    "name": "savage_summit::models::beast_details::BeastDetails",
     "members": [
       {
-        "name": "id",
-        "type": "core::integer::u32"
+        "name": "name",
+        "type": "core::felt252"
       },
       {
-        "name": "_type",
-        "type": "savage_summit::models::beast::Type"
+        "name": "elemental",
+        "type": "combat::constants::CombatEnums::Type"
       },
       {
         "name": "tier",
-        "type": "savage_summit::models::beast::Tier"
+        "type": "combat::constants::CombatEnums::Tier"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "savage_summit::models::beast_stats::FixedBeastStats",
+    "members": [
+      {
+        "name": "beast_id",
+        "type": "core::integer::u8"
       },
       {
         "name": "level",
@@ -236,24 +246,54 @@
       {
         "name": "starting_health",
         "type": "core::integer::u16"
+      },
+      {
+        "name": "special_1",
+        "type": "core::integer::u8"
+      },
+      {
+        "name": "special_2",
+        "type": "core::integer::u8"
       }
     ]
   },
   {
     "type": "struct",
-    "name": "savage_summit::models::beast::BeastStats",
+    "name": "savage_summit::models::beast_stats::LiveBeastStats",
     "members": [
       {
-        "name": "id",
+        "name": "token_id",
         "type": "core::integer::u32"
       },
       {
-        "name": "health",
+        "name": "current_health",
         "type": "core::integer::u16"
       },
       {
-        "name": "dead_at",
+        "name": "bonus_health",
+        "type": "core::integer::u16"
+      },
+      {
+        "name": "last_death_timestamp",
         "type": "core::integer::u64"
+      },
+      {
+        "name": "num_deaths",
+        "type": "core::integer::u16"
+      }
+    ]
+  },
+  {
+    "type": "struct",
+    "name": "savage_summit::models::beast_stats::BeastStats",
+    "members": [
+      {
+        "name": "fixed",
+        "type": "savage_summit::models::beast_stats::FixedBeastStats"
+      },
+      {
+        "name": "live",
+        "type": "savage_summit::models::beast_stats::LiveBeastStats"
       }
     ]
   },
@@ -262,16 +302,12 @@
     "name": "savage_summit::models::beast::Beast",
     "members": [
       {
-        "name": "id",
-        "type": "core::integer::u32"
-      },
-      {
         "name": "details",
-        "type": "savage_summit::models::beast::BeastDetails"
+        "type": "savage_summit::models::beast_details::BeastDetails"
       },
       {
         "name": "stats",
-        "type": "savage_summit::models::beast::BeastStats"
+        "type": "savage_summit::models::beast_stats::BeastStats"
       }
     ]
   },
@@ -284,60 +320,16 @@
         "name": "attack",
         "inputs": [
           {
-            "name": "defender_id",
+            "name": "defender_token_id",
             "type": "core::integer::u32"
           },
           {
-            "name": "attacker_id",
+            "name": "attacker_token_id",
             "type": "core::integer::u32"
           },
           {
             "name": "consumables",
             "type": "core::array::Array::<core::integer::u8>"
-          }
-        ],
-        "outputs": [],
-        "state_mutability": "external"
-      },
-      {
-        "type": "function",
-        "name": "add_beast_details",
-        "inputs": [
-          {
-            "name": "id",
-            "type": "core::integer::u32"
-          },
-          {
-            "name": "u8_type",
-            "type": "core::integer::u8"
-          },
-          {
-            "name": "u8_tier",
-            "type": "core::integer::u8"
-          },
-          {
-            "name": "level",
-            "type": "core::integer::u16"
-          },
-          {
-            "name": "starting_health",
-            "type": "core::integer::u16"
-          }
-        ],
-        "outputs": [],
-        "state_mutability": "external"
-      },
-      {
-        "type": "function",
-        "name": "add_beast_stats",
-        "inputs": [
-          {
-            "name": "id",
-            "type": "core::integer::u32"
-          },
-          {
-            "name": "health",
-            "type": "core::integer::u16"
           }
         ],
         "outputs": [],
@@ -392,22 +384,6 @@
       },
       {
         "type": "function",
-        "name": "get_beast_details",
-        "inputs": [
-          {
-            "name": "id",
-            "type": "core::integer::u32"
-          }
-        ],
-        "outputs": [
-          {
-            "type": "savage_summit::models::beast::BeastDetails"
-          }
-        ],
-        "state_mutability": "view"
-      },
-      {
-        "type": "function",
         "name": "get_beast_stats",
         "inputs": [
           {
@@ -417,7 +393,39 @@
         ],
         "outputs": [
           {
-            "type": "savage_summit::models::beast::BeastStats"
+            "type": "savage_summit::models::beast_stats::BeastStats"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_beast_stats_live",
+        "inputs": [
+          {
+            "name": "id",
+            "type": "core::integer::u32"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "savage_summit::models::beast_stats::LiveBeastStats"
+          }
+        ],
+        "state_mutability": "view"
+      },
+      {
+        "type": "function",
+        "name": "get_beast_stats_fixed",
+        "inputs": [
+          {
+            "name": "id",
+            "type": "core::integer::u32"
+          }
+        ],
+        "outputs": [
+          {
+            "type": "savage_summit::models::beast_stats::FixedBeastStats"
           }
         ],
         "state_mutability": "view"

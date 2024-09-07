@@ -1,6 +1,6 @@
 kind = "DojoModel"
-class_hash = "0x4218a61f3eebf6eba0091627c52d95f1e9ab7c4535d0a42b6f5ca58cc1afa1f"
-original_class_hash = "0x4218a61f3eebf6eba0091627c52d95f1e9ab7c4535d0a42b6f5ca58cc1afa1f"
+class_hash = "0x45ad76cfa55104c70916c49018de02b7ca2464a6dcd03530792e5f473031af2"
+original_class_hash = "0x45ad76cfa55104c70916c49018de02b7ca2464a6dcd03530792e5f473031af2"
 abi = "manifests/dev/base/abis/models/savage_summit-Summit-184adf2d.json"
 tag = "savage_summit-Summit"
 qualified_path = "savage_summit::models::summit::summit"
@@ -12,6 +12,6 @@ type = "u8"
 key = true
 
 [[members]]
-name = "beast_id"
+name = "beast_token_id"
 type = "u32"
 key = false

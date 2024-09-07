@@ -2,6 +2,15 @@
 version = 1
 
 [[package]]
+name = "beasts"
+version = "0.1.0"
+source = "git+https://github.com/leetship/beasts.git?branch=main#4b4ce296265d8f830f51a88f34850ed28c809e89"
+dependencies = [
+ "openzeppelin_introspection",
+ "openzeppelin_token",
+]
+
+[[package]]
 name = "combat"
 version = "0.1.0"
 source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=main#cb96bec75a7d302c2e14d4af6dae356335a57f55"
@@ -9,7 +18,7 @@ source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=main#cb
 [[package]]
 name = "dojo"
 version = "1.0.0-alpha.4"
-source = "git+https://github.com/dojoengine/dojo?tag=v1.0.0-alpha.8#d31f81e6aeae01c6bbe7bd5879a5d33551082bcb"
+source = "git+https://github.com/dojoengine/dojo?tag=v1.0.0-alpha.9#e42ce0c220a59d75c5b08e87a81de12cfdc27a55"
 dependencies = [
  "dojo_plugin",
 ]
@@ -97,6 +106,7 @@ source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93
 name = "savage_summit"
 version = "0.1.0"
 dependencies = [
+ "beasts",
  "combat",
  "dojo",
  "openzeppelin_test_common",
