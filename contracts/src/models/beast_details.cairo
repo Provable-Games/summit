@@ -1,7 +1,7 @@
 use combat::constants::CombatEnums::{Type, Tier};
 use combat::combat::ImplCombat;
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, Introspect, Serde)]
 pub struct BeastDetails {
     pub name: felt252,
     pub elemental: Type,

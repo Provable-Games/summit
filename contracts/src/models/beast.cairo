@@ -2,8 +2,12 @@ use savage_summit::models::beast_stats::BeastStats;
 use savage_summit::models::beast_details::BeastDetails;
 use combat::combat::{CombatSpec, SpecialPowers};
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, Introspect, Serde)]
+#[dojo::event]
+#[dojo::model]
 pub struct Beast {
+    #[key]
+    pub token_id: u32,
     pub details: BeastDetails,
     pub stats: BeastStats,
 }

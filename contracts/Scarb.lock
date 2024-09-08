@@ -13,7 +13,7 @@ dependencies = [
 [[package]]
 name = "combat"
 version = "0.1.0"
-source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=main#cb96bec75a7d302c2e14d4af6dae356335a57f55"
+source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=feat%2Fsavage-summit-support#85bf276a7502805041cfb6f036b7fac5cbe729be"
 
 [[package]]
 name = "dojo"

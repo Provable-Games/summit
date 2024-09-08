@@ -38,7 +38,6 @@ pub mod summit_systems {
     use savage_summit::utils::{BEAST_ADDRESS_MAINNET};
     use starknet::{ContractAddress, get_caller_address, get_tx_info, get_block_timestamp};
 
-
     #[abi(embed_v0)]
     impl SummitSystemImpl of super::ISummitSystem<ContractState> {
         fn attack(
@@ -74,6 +73,9 @@ pub mod summit_systems {
 
                 // update the live stats of the defending and attacking beasts
                 set!(world, (attacking_beast.stats.live));
+
+                // emit the new summit beast
+                emit!(world, (attacking_beast));
             } else {
                 let mut defending_beast = self._get_beast(summit_beast_token_id);
 
@@ -101,6 +103,7 @@ pub mod summit_systems {
 
                         // set the new summit beast
                         self._set_summit_beast(attacking_beast_token_id);
+
                     } else {
                         // if the attacking beast did not take the summit, the defending beast will
                         // attack back
@@ -119,6 +122,9 @@ pub mod summit_systems {
 
                 // update the live stats of the defending and attacking beasts
                 set!(world, (defending_beast.stats.live, attacking_beast.stats.live));
+
+                // emit the new summit beast
+                emit!(world, (attacking_beast, defending_beast));
             }
         }
 
@@ -162,7 +168,7 @@ pub mod summit_systems {
         fn _get_beast(self: @ContractState, token_id: u32) -> Beast {
             let stats = self._get_beast_stats(token_id);
             let details = ImplBeastDetails::get_beast_details(stats.fixed.beast_id);
-            Beast { details, stats }
+            Beast { token_id, details, stats }
         }
 
         /// @title get_beast_stats

@@ -1,10 +1,10 @@
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, Introspect, Serde)]
 pub struct BeastStats {
     pub fixed: FixedBeastStats,
     pub live: LiveBeastStats,
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, Introspect, Serde)]
 pub struct FixedBeastStats {
     pub beast_id: u8,
     pub level: u16,
@@ -13,7 +13,7 @@ pub struct FixedBeastStats {
     pub special_2: u8,
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Copy, Drop, Introspect, Serde)]
 #[dojo::model]
 pub struct LiveBeastStats {
     #[key]
