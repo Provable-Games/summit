@@ -6,8 +6,6 @@ fn get_beast_address(chain_id: felt252) -> ContractAddress {
         BEAST_ADDRESS_SEPOLIA()
     } else if chain_id == MAINNET_CHAIN_ID {
         BEAST_ADDRESS_MAINNET()
-    } else if chain_id == TESTING_CHAIN_ID {
-        contract_address_const::<0>()
     } else {
         panic_with_felt252('Chain not supported')
     }

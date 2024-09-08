@@ -1251,8 +1251,8 @@
     {
       "kind": "DojoContract",
       "address": "0x3fe08dfab1efb39f2cd7314482d8a3ab740c3b5617fdce8650e522584c87e09",
-      "class_hash": "0x4c11f9a6903ca07de2189b6d8a83cc884a5e27f096676870cf24ee46788d575",
-      "original_class_hash": "0x4c11f9a6903ca07de2189b6d8a83cc884a5e27f096676870cf24ee46788d575",
+      "class_hash": "0x40ba7f9655e7c6b913eaaf7d76f9d605156f0e8846697fdc2c5e8ccdca3dd72",
+      "original_class_hash": "0x40ba7f9655e7c6b913eaaf7d76f9d605156f0e8846697fdc2c5e8ccdca3dd72",
       "base_class_hash": "0x2427dd10a58850ac9a5ca6ce04b7771b05330fd18f2e481831ad903b969e6b2",
       "abi": [
         {
@@ -1536,6 +1536,10 @@
             {
               "name": "num_deaths",
               "type": "core::integer::u16"
+            },
+            {
+              "name": "last_killed_by",
+              "type": "core::integer::u32"
             }
           ]
         },
@@ -1576,11 +1580,11 @@
               "name": "attack",
               "inputs": [
                 {
-                  "name": "defender_token_id",
+                  "name": "summit_beast_token_id",
                   "type": "core::integer::u32"
                 },
                 {
-                  "name": "attacker_token_id",
+                  "name": "attacking_beast_token_id",
                   "type": "core::integer::u32"
                 },
                 {
@@ -2276,10 +2280,15 @@
           "name": "num_deaths",
           "type": "u16",
           "key": false
+        },
+        {
+          "name": "last_killed_by",
+          "type": "u32",
+          "key": false
         }
       ],
-      "class_hash": "0x170448dc6cdc0730c269fbfc17df18fa311c9e19bfd847006098b4a2ea0e4ee",
-      "original_class_hash": "0x170448dc6cdc0730c269fbfc17df18fa311c9e19bfd847006098b4a2ea0e4ee",
+      "class_hash": "0x11cdbcfda09d4b100e1ed671fd5bddfccb92b70e1c3c7f91cc08708011ab307",
+      "original_class_hash": "0x11cdbcfda09d4b100e1ed671fd5bddfccb92b70e1c3c7f91cc08708011ab307",
       "abi": [
         {
           "type": "impl",
@@ -2671,6 +2680,10 @@
             {
               "name": "num_deaths",
               "type": "core::integer::u16"
+            },
+            {
+              "name": "last_killed_by",
+              "type": "core::integer::u32"
             }
           ]
         },

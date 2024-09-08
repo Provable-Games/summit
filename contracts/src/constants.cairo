@@ -11,4 +11,6 @@ mod errors {
     const BEAST_NOT_YET_REVIVED: felt252 = 'beast not yet revived';
     const NOT_TOKEN_OWNER: felt252 = 'Not token owner';
     const SUMMIT_BEAST_CHANGED: felt252 = 'can only attack beast on summit';
+    const BEAST_ADDRESS_NOT_SET: felt252 = 'beast address not set';
+    const BEAST_ATTACKING_OWN_BEAST: felt252 = 'attacking own beast';
 }

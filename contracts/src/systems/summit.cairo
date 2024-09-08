@@ -6,8 +6,8 @@ use savage_summit::models::summit::SummitHistory;
 trait ISummitSystem {
     fn attack(
         ref world: IWorldDispatcher,
-        defender_token_id: u32,
-        attacker_token_id: u32,
+        summit_beast_token_id: u32,
+        attacking_beast_token_id: u32,
         consumables: Array<u8>
     );
     fn get_summit_history(world: @IWorldDispatcher, beast_id: u32, lost_at: u64) -> SummitHistory;
@@ -43,19 +43,19 @@ pub mod summit_systems {
     impl SummitSystemImpl of super::ISummitSystem<ContractState> {
         fn attack(
             ref world: IWorldDispatcher,
-            defender_token_id: u32,
-            attacker_token_id: u32,
+            summit_beast_token_id: u32,
+            attacking_beast_token_id: u32,
             consumables: Array<u8>
         ) {
             // assert the caller owns the beast they attacking with
-            self._assert_beast_ownership(attacker_token_id);
+            self._assert_beast_ownership(attacking_beast_token_id);
 
             // assert the provided summit beast is the summit beast
             let summit_beast_token_id = get!(world, 1, Summit).beast_token_id;
-            assert(defender_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
+            assert(summit_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
 
             // get stats for the beast that is attacking
-            let mut attacking_beast = self._get_beast(attacker_token_id);
+            let mut attacking_beast = self._get_beast(attacking_beast_token_id);
 
             // assert the attacking beast is revived
             self._assert_beast_can_attack(attacking_beast.stats.live);
@@ -67,15 +67,15 @@ pub mod summit_systems {
 
             if summit_beast_token_id == 0 {
                 // initialize summit history for the new beast
-                self._init_summit_history(attacker_token_id);
+                self._init_summit_history(attacking_beast_token_id);
 
                 // set the new summit beast
-                self._set_summit_beast(attacker_token_id);
+                self._set_summit_beast(attacking_beast_token_id);
 
                 // update the live stats of the defending and attacking beasts
                 set!(world, (attacking_beast.stats.live));
             } else {
-                let mut defending_beast = self._get_beast(defender_token_id);
+                let mut defending_beast = self._get_beast(summit_beast_token_id);
 
                 // loop until the attacking beast is dead or the summit beast is dead
                 loop {
@@ -91,25 +91,28 @@ pub mod summit_systems {
                     // if the attacking beast took the summit
                     if defender_died {
                         // finalize the summit history for prev summit beast
-                        self._finalize_summit_history(defender_token_id);
+                        self._finalize_summit_history(summit_beast_token_id);
 
                         // set death timestamp for prev summit beast
                         defending_beast.stats.live.last_death_timestamp = get_block_timestamp();
 
                         // initialize summit history for the new beast
-                        self._init_summit_history(attacker_token_id);
+                        self._init_summit_history(attacking_beast_token_id);
 
                         // set the new summit beast
-                        self._set_summit_beast(attacker_token_id);
+                        self._set_summit_beast(attacking_beast_token_id);
                     } else {
                         // if the attacking beast did not take the summit, the defending beast will
                         // attack back
-                        let (_, attacking_beast_died) = self._attack(defending_beast, ref attacking_beast);
+                        let (_, attacking_beast_died) = self
+                            ._attack(defending_beast, ref attacking_beast);
 
                         // if the defending beast took the summit, break
                         if attacking_beast_died {
                             // set death timestamp for prev summit beast
                             attacking_beast.stats.live.last_death_timestamp = get_block_timestamp();
+                            attacking_beast.stats.live.num_deaths += 1;
+                            attacking_beast.stats.live.last_killed_by = summit_beast_token_id;
                         }
                     }
                 };
@@ -272,18 +275,32 @@ pub mod summit_systems {
             (combat_result, defender_died)
         }
 
-        /// @title assert_ownership
-        /// @notice this function is used to assert that the caller owns a beast
+        /// @title assert_beast_ownership
+        /// @notice this function is used to assert that the caller is the owner of a beast
         /// @param token_id the id of the beast
         fn _assert_beast_ownership(self: @ContractState, token_id: u32) {
-            let contract_address = utils::get_beast_address(get_tx_info().unbox().chain_id);
+            let owner = self._get_owner_of_beast(token_id);
+            assert(owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
+        }
 
-            // testnet will return zero for contract address
-            if contract_address.is_non_zero() {
-                let erc721_dispatcher = IERC721Dispatcher { contract_address };
-                let owner = erc721_dispatcher.owner_of(token_id.into());
-                assert(owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
-            }
+        /// @title get_owner_of_beast
+        /// @notice this function is used to get the owner of a beast
+        /// @param token_id the id of the beast
+        /// @return ContractAddress the owner of the beast
+        fn _get_owner_of_beast(self: @ContractState, token_id: u32) -> ContractAddress {
+            let contract_address = utils::get_beast_address(get_tx_info().unbox().chain_id);
+            let erc721_dispatcher = IERC721Dispatcher { contract_address };
+            erc721_dispatcher.owner_of(token_id.into())
+        }
+
+        /// @title assert_not_attacking_own_beast
+        /// @notice this function is used to assert that a beast is not attacking its own beast
+        /// @param attacking_beast_token_id the id of the beast that is attacking
+        fn _assert_not_attacking_own_beast(self: @ContractState, attacking_beast_token_id: u32) {
+            let summit_beast_token_id = get!(self.world(), 1, Summit).beast_token_id;
+            let summit_owner = self._get_owner_of_beast(summit_beast_token_id);
+            let attacking_owner = self._get_owner_of_beast(attacking_beast_token_id);
+            assert(attacking_owner != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
         }
 
         /// @title assert_beast_is_revived
