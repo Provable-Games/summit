@@ -2,7 +2,10 @@ use combat::constants::CombatEnums::{Type, Tier};
 use combat::combat::ImplCombat;
 
 #[derive(Copy, Drop, Introspect, Serde)]
+#[dojo::event]
+#[dojo::model]
 pub struct BeastDetails {
+    #[key]
     pub name: felt252,
     pub elemental: Type,
     pub tier: Tier,
