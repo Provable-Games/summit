@@ -90,6 +90,7 @@ const styles = {
     background: '#f6e6bc',
     border: '2px solid rgba(0, 0, 0, 0.8)',
     position: 'relative',
+    mt: 1
   },
   messageContainer: {
     p: 1,

@@ -6,9 +6,8 @@ use savage_summit::models::summit::SummitHistory;
 trait ISummitSystem {
     fn attack(
         ref world: IWorldDispatcher,
-        summit_beast_token_id: u32,
-        attacking_beast_token_id: u32,
-        consumables: Array<u8>
+        defending_beast_token_id: u32,
+        attacking_beast_token_ids: Span<u32>
     );
     fn get_summit_history(world: @IWorldDispatcher, beast_id: u32, lost_at: u64) -> SummitHistory;
     fn get_summit_beast(world: @IWorldDispatcher) -> Beast;
@@ -38,93 +37,104 @@ pub mod summit_systems {
     use savage_summit::utils::{BEAST_ADDRESS_MAINNET};
     use starknet::{ContractAddress, get_caller_address, get_tx_info, get_block_timestamp};
 
+    // TODO: Add endpoint for feeding beast dead adventurer
     #[abi(embed_v0)]
     impl SummitSystemImpl of super::ISummitSystem<ContractState> {
         fn attack(
             ref world: IWorldDispatcher,
-            summit_beast_token_id: u32,
-            attacking_beast_token_id: u32,
-            consumables: Array<u8>
+            defending_beast_token_id: u32,
+            attacking_beast_token_ids: Span<u32>
         ) {
-            // assert the caller owns the beast they attacking with
-            self._assert_beast_ownership(attacking_beast_token_id);
-
-            // assert the provided summit beast is the summit beast
+            // assert the provided defending beast is the summit beast
             let summit_beast_token_id = get!(world, 1, Summit).beast_token_id;
-            assert(summit_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
+            assert(defending_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
 
-            // get stats for the beast that is attacking
-            let mut attacking_beast = self._get_beast(attacking_beast_token_id);
+            let mut i = 0;
+            
+            while (i < attacking_beast_token_ids.len()) {
 
-            // assert the attacking beast is revived
-            self._assert_beast_can_attack(attacking_beast.stats.live);
+                let attacking_beast_token_id = *attacking_beast_token_ids.at(i);
 
-            // reset health to starting health plus any bonus health they have accrued
-            // @dev beasts attack till death so we don't need any additional logic
-            attacking_beast.stats.live.current_health = attacking_beast.stats.fixed.starting_health
-                + attacking_beast.stats.live.bonus_health;
+                // assert the caller owns the beast they attacking with
+                self._assert_beast_ownership(attacking_beast_token_id);
 
-            if summit_beast_token_id == 0 {
-                // initialize summit history for the new beast
-                self._init_summit_history(attacking_beast_token_id);
+                // get stats for the beast that is attacking
+                let mut attacking_beast = self._get_beast(attacking_beast_token_id);
 
-                // set the new summit beast
-                self._set_summit_beast(attacking_beast_token_id);
+                // assert the attacking beast is revived
+                self._assert_beast_can_attack(attacking_beast.stats.live);
 
-                // update the live stats of the defending and attacking beasts
-                set!(world, (attacking_beast.stats.live));
+                // reset health to starting health plus any bonus health they have accrued
+                // @dev beasts attack till death so we don't need any additional logic
+                attacking_beast.stats.live.current_health = attacking_beast.stats.fixed.starting_health
+                    + attacking_beast.stats.live.bonus_health;
 
-                // emit the new summit beast
-                emit!(world, (attacking_beast));
-            } else {
-                let mut defending_beast = self._get_beast(summit_beast_token_id);
+                if summit_beast_token_id == 0 {
+                    // initialize summit history for the new beast
+                    self._init_summit_history(attacking_beast_token_id);
 
-                // loop until the attacking beast is dead or the summit beast is dead
-                loop {
-                    // if the attacking beast is dead, break
-                    if attacking_beast.stats.live.current_health == 0
-                        || defending_beast.stats.live.current_health == 0 {
+                    // set the new summit beast
+                    self._set_summit_beast(attacking_beast_token_id);
+
+                    // update the live stats of the defending and attacking beasts
+                    set!(world, (attacking_beast.stats.live));
+
+                    break;
+                } else {
+                    let mut defending_beast = self._get_beast(summit_beast_token_id);
+
+                    // loop until the attacking beast is dead or the summit beast is dead
+                    loop {
+                        // if the attacking beast is dead, break
+                        if attacking_beast.stats.live.current_health == 0
+                            || defending_beast.stats.live.current_health == 0 {
+                            break;
+                        }
+
+                        // attack the summit beast
+                        let (_, defender_died) = self._attack(attacking_beast, ref defending_beast);
+
+                        // if the attacking beast took the summit
+                        if defender_died {
+                            // finalize the summit history for prev summit beast
+                            self._finalize_summit_history(summit_beast_token_id);
+
+                            // set death timestamp for prev summit beast
+                            defending_beast.stats.live.last_death_timestamp = get_block_timestamp();
+
+                            // initialize summit history for the new beast
+                            self._init_summit_history(attacking_beast_token_id);
+
+                            // set the new summit beast
+                            self._set_summit_beast(attacking_beast_token_id);
+
+                        } else {
+                            // if the attacking beast did not take the summit, the defending beast will
+                            // attack back
+                            let (_, attacking_beast_died) = self
+                                ._attack(defending_beast, ref attacking_beast);
+
+                            // if the defending beast took the summit, break
+                            if attacking_beast_died {
+                                // set death timestamp for prev summit beast
+                                attacking_beast.stats.live.last_death_timestamp = get_block_timestamp();
+                                attacking_beast.stats.live.num_deaths += 1;
+                                attacking_beast.stats.live.last_killed_by = summit_beast_token_id;
+                            }
+                        }
+                    };
+
+                    if attacking_beast.stats.live.current_health == 0 {
+                        // update the live stats of the attacking beast
+                        set!(world, (defending_beast.stats.live, attacking_beast.stats.live));
+                    } else if defending_beast.stats.live.current_health == 0 {
+                        // update the live stats of the defending beast
+                        set!(world, (defending_beast.stats.live));
                         break;
                     }
+                }
 
-                    // attack the summit beast
-                    let (_, defender_died) = self._attack(attacking_beast, ref defending_beast);
-
-                    // if the attacking beast took the summit
-                    if defender_died {
-                        // finalize the summit history for prev summit beast
-                        self._finalize_summit_history(summit_beast_token_id);
-
-                        // set death timestamp for prev summit beast
-                        defending_beast.stats.live.last_death_timestamp = get_block_timestamp();
-
-                        // initialize summit history for the new beast
-                        self._init_summit_history(attacking_beast_token_id);
-
-                        // set the new summit beast
-                        self._set_summit_beast(attacking_beast_token_id);
-
-                    } else {
-                        // if the attacking beast did not take the summit, the defending beast will
-                        // attack back
-                        let (_, attacking_beast_died) = self
-                            ._attack(defending_beast, ref attacking_beast);
-
-                        // if the defending beast took the summit, break
-                        if attacking_beast_died {
-                            // set death timestamp for prev summit beast
-                            attacking_beast.stats.live.last_death_timestamp = get_block_timestamp();
-                            attacking_beast.stats.live.num_deaths += 1;
-                            attacking_beast.stats.live.last_killed_by = summit_beast_token_id;
-                        }
-                    }
-                };
-
-                // update the live stats of the defending and attacking beasts
-                set!(world, (defending_beast.stats.live, attacking_beast.stats.live));
-
-                // emit the new summit beast
-                emit!(world, (attacking_beast, defending_beast));
+                i += 1;
             }
         }
 
