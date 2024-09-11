@@ -49,8 +49,9 @@ pub mod summit_systems {
             let summit_beast_token_id = get!(world, 1, Summit).beast_token_id;
             assert(defending_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
 
-            let mut i = 0;
+            let mut defending_beast = self._get_beast(summit_beast_token_id);
             
+            let mut i = 0;
             while (i < attacking_beast_token_ids.len()) {
 
                 let attacking_beast_token_id = *attacking_beast_token_ids.at(i);
@@ -81,8 +82,6 @@ pub mod summit_systems {
 
                     break;
                 } else {
-                    let mut defending_beast = self._get_beast(summit_beast_token_id);
-
                     // loop until the attacking beast is dead or the summit beast is dead
                     loop {
                         // if the attacking beast is dead, break
@@ -126,16 +125,17 @@ pub mod summit_systems {
 
                     if attacking_beast.stats.live.current_health == 0 {
                         // update the live stats of the attacking beast
-                        set!(world, (defending_beast.stats.live, attacking_beast.stats.live));
+                        set!(world, (attacking_beast.stats.live));
                     } else if defending_beast.stats.live.current_health == 0 {
-                        // update the live stats of the defending beast
-                        set!(world, (defending_beast.stats.live));
                         break;
                     }
                 }
 
                 i += 1;
-            }
+            };
+
+            // update the live stats of the defending beast after all attacks
+            set!(world, (defending_beast.stats.live));
         }
 
 
