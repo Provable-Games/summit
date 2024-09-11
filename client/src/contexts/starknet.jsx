@@ -9,8 +9,21 @@ import {
   voyager
 } from "@starknet-react/core";
 import CartridgeConnector from "@cartridge/connector";
+import { dojoConfig } from "../../dojoConfig";
+import { getContractByName } from "@dojoengine/core";
 
-const cartridge = new CartridgeConnector()
+const summit_systems = getContractByName(dojoConfig.manifest, "savage_summit", "summit_systems")?.address
+
+const cartridge = new CartridgeConnector({
+  policies: [
+    {
+      target: summit_systems,
+      method: "attack",
+    },
+  ],
+  rpc: dojoConfig.rpcUrl,
+  theme: "savage-summit",
+})
 
 export function StarknetProvider({ children }) {
   const { connectors } = useInjectedConnectors({

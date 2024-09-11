@@ -6,10 +6,14 @@ import sword from '../assets/images/sword.png';
 import { GameContext } from '../contexts/gameContext';
 import { fetchBeastImage, normaliseHealth } from "../helpers/beasts";
 import { HealthBar } from '../helpers/styles';
+import { Scrollbars } from 'react-custom-scrollbars';
+
+import Lottie from "lottie-react";
+import SwordAnimation from '../assets/animations/swords.json';
 
 function BeastCollection() {
   const game = useContext(GameContext)
-  const { loadingCollection, collection, selectedBeasts } = game.getState
+  const { loadingCollection, collection, selectedBeasts, attackInProgress, summit } = game.getState
 
   const { address } = useAccount()
 
@@ -22,58 +26,64 @@ function BeastCollection() {
   }
 
   return (
-    <Box sx={styles.container}>
-      {!address && !loadingCollection && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
+    <Scrollbars style={{ width: '100%', height: '100%' }}>
+      <Box sx={styles.container}>
+        {!address && !loadingCollection && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
 
-        <Box textAlign={'center'}>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            Connect Your Wallet
-          </Typography>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            Take the summit
-          </Typography>
-        </Box>
-
-        <img src={fetchBeastImage('tarrasque')} alt='' height={'150px'} />
-
-      </Box>}
-
-      {address && !loadingCollection && collection.length < 1 && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
-
-        <Box textAlign={'center'}>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            You don't own any beast nfts
-          </Typography>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            Collect them in <a style={{ color: '#30a019' }} href="https://sepolia.lootsurvivor.io" target="_blank">loot survivor 1.5</a>
-          </Typography>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            Or buy in <a style={{ color: '#ff92b6' }} href="https://realms.world/collection/beasts" target="_blank">Realms world</a>
-          </Typography>
-        </Box>
-
-        <img src={fetchBeastImage('golem')} alt='' height={'150px'} />
-
-      </Box>}
-
-      {loadingCollection && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
-
-        <Box textAlign={'center'}>
-          <Box display={'flex'} alignItems={'baseline'}>
-            <Typography variant="h2" letterSpacing={'0.5px'}>Fetching beasts</Typography>
-            <div className='dotLoader' />
+          <Box textAlign={'center'}>
+            <Typography variant="h2" letterSpacing={'0.5px'}>
+              Connect Your Wallet
+            </Typography>
+            <Typography variant="h2" letterSpacing={'0.5px'}>
+              Take the summit
+            </Typography>
           </Box>
-        </Box>
 
-      </Box>}
+          <img src={fetchBeastImage('tarrasque')} alt='' height={'150px'} />
 
-      {
-        React.Children.toArray(
+        </Box>}
+
+        {address && !loadingCollection && collection.length < 1 && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
+
+          <Box textAlign={'center'}>
+            <Typography variant="h2" letterSpacing={'0.5px'}>
+              You don't own any beast nfts
+            </Typography>
+            <Typography variant="h2" letterSpacing={'0.5px'}>
+              Collect them in <a style={{ color: '#30a019' }} href="https://sepolia.lootsurvivor.io" target="_blank">loot survivor 1.5</a>
+            </Typography>
+            <Typography variant="h2" letterSpacing={'0.5px'}>
+              Or buy in <a style={{ color: '#ff92b6' }} href="https://realms.world/collection/beasts" target="_blank">Realms world</a>
+            </Typography>
+          </Box>
+
+          <img src={fetchBeastImage('golem')} alt='' height={'150px'} />
+
+        </Box>}
+
+        {loadingCollection && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
+
+          <Box textAlign={'center'}>
+            <Box display={'flex'} alignItems={'baseline'}>
+              <Typography variant="h2" letterSpacing={'0.5px'}>Fetching beasts</Typography>
+              <div className='dotLoader' />
+            </Box>
+          </Box>
+
+        </Box>}
+
+        {React.Children.toArray(
           collection.map(beast => {
             const isSelected = selectedBeasts.includes(beast.id)
+            const isSavage = summit.id === beast.id
+
             return <Box
               sx={[styles.itemContainer, isSelected && styles.selectedItem, (selectedBeasts.length > 0 && !isSelected) && { opacity: 0.5, borderColor: 'transparent' }]}
               onClick={() => selectBeast(beast.id)}>
+
+              {isSelected && attackInProgress && <Box sx={{ position: 'absolute', bottom: '45px' }}>
+                <Lottie animationData={SwordAnimation} loop={true} style={{ height: '90px' }} />
+              </Box>}
 
               {isSelected && selectedBeasts.length > 1 && <Box sx={styles.order}>
                 <Typography variant="h6" lineHeight={'19px'}>
@@ -93,51 +103,55 @@ function BeastCollection() {
               <img alt='' src={fetchBeastImage(beast.name)} height={'80px'} />
 
               <Box position={'relative'} width={'100%'}>
-                <HealthBar variant="determinate" value={normaliseHealth(beast.health, beast.maxHealth)} />
+                <HealthBar variant="determinate" value={normaliseHealth(beast.currentHealth, beast.health)} />
 
                 <Box sx={styles.healthText}>
                   <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
-                    {beast.health}
+                    {beast.currentHealth}
                   </Typography>
                 </Box>
               </Box>
 
-              {beast.capture
+              {isSavage
                 ? <>
-                  <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkgreen'}>
-                    Success
+                  <Typography variant="h4" letterSpacing={'2px'} className="glitch-effect">
+                    SAVAGE
                   </Typography>
-
-                  <Box display={'flex'} alignItems={'center'} gap={'2px'}>
-                    <img src={health} alt='' height={'13px'} />
-
-                    <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkgreen'}>
-                      {beast.healthLeft} hp left
-                    </Typography>
-                  </Box>
                 </>
-
-                : <>
-                  <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkred'}>
-                    Defeat
-                  </Typography>
-
-                  <Box display={'flex'} gap={'3px'} alignItems={'center'}>
-                    <img src={sword} alt='' height={'10px'} />
-
-                    <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkred'}>
-                      {beast.damage} dmg
+                : beast.capture
+                  ? <>
+                    <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkgreen'}>
+                      Success
                     </Typography>
-                  </Box>
-                </>
+
+                    <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+                      <img src={health} alt='' height={'13px'} />
+
+                      <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkgreen'}>
+                        {beast.healthLeft} hp left
+                      </Typography>
+                    </Box>
+                  </>
+
+                  : <>
+                    <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkred'}>
+                      Defeat
+                    </Typography>
+
+                    <Box display={'flex'} gap={'3px'} alignItems={'center'}>
+                      <img src={sword} alt='' height={'10px'} />
+
+                      <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkred'}>
+                        {beast.damage} dmg
+                      </Typography>
+                    </Box>
+                  </>
               }
-
             </Box>
           })
-        )
-      }
-
-    </Box >
+        )}
+      </Box >
+    </Scrollbars>
   );
 }
 
@@ -154,9 +168,10 @@ const styles = {
   },
   itemContainer: {
     position: 'relative',
-    height: '100%',
+    height: '180px',
+    boxSizing: 'border-box',
     width: '100px',
-    minWidth: '100px',
+    minWidth: '120px',
     padding: 1,
     display: 'flex',
     flexDirection: 'column',
@@ -183,5 +198,5 @@ const styles = {
     position: 'absolute',
     top: 0,
     left: 5
-  }
+  },
 }

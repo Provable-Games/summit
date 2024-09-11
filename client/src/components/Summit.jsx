@@ -11,7 +11,7 @@ import AttackAnimation from './animations/AttackAnimation'
 
 function Summit() {
   const game = useContext(GameContext)
-  const { summitAnimations, summit, attackAnimations } = game.getState
+  const { summitAnimations, summit, attackAnimations, ownedBeasts } = game.getState
 
   const controls = useAnimationControls()
 
@@ -44,7 +44,6 @@ function Summit() {
 
   return (
     <Box sx={styles.beastSummit}>
-
       <motion.div
         style={styles.mainContainer}
         variants={fadeVariant}
@@ -53,11 +52,11 @@ function Summit() {
         exit="exit"
       >
         <Box position={'relative'} width={'100%'} mb={2}>
-          <HealthBar variant="determinate" value={normaliseHealth(summit.healthLeft, summit.health)} />
+          <HealthBar variant="determinate" value={normaliseHealth(summit.currentHealth, summit.health)} />
 
           <Box sx={styles.healthText}>
             <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white' }}>
-              {summit.healthLeft}
+              {summit.currentHealth}
             </Typography>
           </Box>
         </Box>
@@ -101,6 +100,7 @@ const styles = {
     borderRadius: '4px',
     display: 'flex',
     flexDirection: 'column',
+    justifyContent: 'center',
     alignItems: 'center',
     pt: 2,
     overflow: 'hidden',

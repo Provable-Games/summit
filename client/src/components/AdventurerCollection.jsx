@@ -12,12 +12,10 @@ import { HealthBar } from '../helpers/styles';
 
 function AdventurerCollection() {
   const game = useContext(GameContext)
-  const { showFeedingGround, adventurerCollection, selectedAdventurers, isThrowing } = game.getState
-
-  const { address } = useAccount()
+  const { adventurerCollection, selectedAdventurers, isThrowing } = game.getState
 
   const selectAdventurer = (id) => {
-    if (showFeedingGround.includes(id)) {
+    if (selectedAdventurers.includes(id)) {
       game.setState.selectedAdventurers(prev => prev.filter(prevId => prevId !== id))
     } else {
       game.setState.selectedAdventurers(prev => [...prev, id])

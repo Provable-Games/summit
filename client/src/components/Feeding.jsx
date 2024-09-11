@@ -7,15 +7,20 @@ import { GameContext } from '../contexts/gameContext'
 import { fetchBeastImage, normaliseHealth } from '../helpers/beasts'
 import { HealthBar } from '../helpers/styles'
 import { fadeVariant } from '../helpers/variants'
+import FeedAdventurerAnimation from './animations/FeedAdventurerAnimation'
 
 function Feeding() {
   const game = useContext(GameContext)
-  const { selectedBeasts, collection } = game.getState
+  const { selectedBeasts, collection, feedAnimations } = game.getState
   const beast = collection.find(beast => beast.id === selectedBeasts[0])
   const controls = useAnimationControls()
 
+  const removeFeedAnimation = (id) => {
+    game.setState.feedAnimations((prevAnimations) => prevAnimations.filter((anim) => anim.id !== id));
+  };
+
   return (
-    <Box sx={styles.beastSummit}>
+    <Box sx={styles.feedingGround}>
 
       <motion.div
         style={styles.mainContainer}
@@ -40,18 +45,22 @@ function Feeding() {
           />
         </motion.div>
 
-        <img src={feedingImage} alt='' width={'100%'} style={{ position: 'absolute', bottom: '30px', zIndex: 0 }} />
-        <img src={frontfence} alt='' width={'100%'} style={{ position: 'absolute', bottom: '115px', zIndex: 2 }} />
+        <img src={feedingImage} alt='' width={'100%'} style={{ position: 'absolute', bottom: '25px', zIndex: 0 }} />
+        <img src={frontfence} alt='' width={'100%'} style={{ position: 'absolute', bottom: '110px', zIndex: 4 }} />
 
         <Box position={'relative'} width={'80%'}>
-          <HealthBar variant="determinate" value={normaliseHealth(beast.health, beast.health)} />
+          <HealthBar variant="determinate" value={normaliseHealth(beast.currentHealth, beast.health)} />
 
           <Box sx={styles.healthText}>
             <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white' }}>
-              {beast.health}
+              {beast.currentHealth}
             </Typography>
           </Box>
         </Box>
+
+        {feedAnimations.map((adventurer, i) => (
+          <FeedAdventurerAnimation key={adventurer.id} adventurer={adventurer} onEnd={removeFeedAnimation} delay={i} />
+        ))}
       </motion.div>
 
     </Box >
@@ -61,7 +70,7 @@ function Feeding() {
 export default Feeding;
 
 const styles = {
-  beastSummit: {
+  feedingGround: {
     height: 'calc(100% - 270px)',
     width: '350px',
     boxSizing: 'border-box',

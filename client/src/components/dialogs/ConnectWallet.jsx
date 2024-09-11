@@ -8,8 +8,8 @@ function ChooseWallet(props) {
   const { connect, connectors } = useConnect();
   const { address } = useAccount()
 
-  let cartridgeConnector = connectors.find(conn => conn.id === 'cartridge')
-
+  let cartridgeConnector = connectors.find(conn => conn.id === "controller")
+  
   useEffect(() => {
     if (address) {
       close(false);

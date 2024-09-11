@@ -1,14 +1,12 @@
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
+import LogoutIcon from '@mui/icons-material/Logout';
+import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import { Box, Button, ListItemIcon, ListItemText, Menu, MenuItem, Typography } from '@mui/material';
-import { useAccount } from "@starknet-react/core";
-import React, { useEffect, useState } from 'react';
+import { useAccount, useDisconnect } from "@starknet-react/core";
+import React, { useContext, useState } from 'react';
+import { GameContext } from '../contexts/gameContext';
 import { ellipseAddress } from '../helpers/utilities';
 import ConnectWallet from './dialogs/ConnectWallet';
-import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
-import LogoutIcon from '@mui/icons-material/Logout';
-import ContentPasteIcon from '@mui/icons-material/ContentPaste';
-import { useDisconnect, useConnect } from "@starknet-react/core";
-import { useContext } from 'react';
-import { GameContext } from '../contexts/gameContext';
 
 function WalletConnect(props) {
   const game = useContext(GameContext)

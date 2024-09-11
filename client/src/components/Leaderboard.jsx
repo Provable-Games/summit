@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Box, Typography } from '@mui/material'
+import { Box, Typography } from '@mui/material';
+import React, { useContext } from 'react';
 import { GameContext } from '../contexts/gameContext';
-import { useContext } from 'react';
 
 const leaderboardExample = [
   {
@@ -43,7 +42,7 @@ const leaderboardExample = [
 
 function Leaderboard(props) {
   const game = useContext(GameContext)
-  const { totalReward } = game.getState
+  const { totalReward, totalSupply, deadBeastCount } = game.getState
 
   return <Box sx={styles.container}>
     <Box sx={styles.innerContainer}>
@@ -120,17 +119,17 @@ function Leaderboard(props) {
             Beasts alive
           </Typography>
           <Typography sx={{ letterSpacing: '0.5px' }}>
-            2072/3023
+            {totalSupply - deadBeastCount}/{totalSupply}
           </Typography>
         </Box>
-        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
+        {/* <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
           <Typography sx={{ letterSpacing: '0.5px' }}>
             Potions Bought
           </Typography>
           <Typography sx={{ letterSpacing: '0.5px' }}>
             1304
           </Typography>
-        </Box>
+        </Box> */}
       </Box>
 
     </Box>
@@ -142,7 +141,7 @@ export default Leaderboard;
 const styles = {
   container: {
     width: '295px',
-    height: '260px',
+    height: '250px',
     border: '4px solid #1f8c9b',
     borderRadius: '16px',
     boxShadow: 'rgba(0, 0, 0, 0.16) 0px 1px 4px, rgb(51, 51, 51) 0px 0px 0px 2px'

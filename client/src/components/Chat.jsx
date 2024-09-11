@@ -2,30 +2,22 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, IconButton, Input, InputAdornment, Typography } from "@mui/material";
 import SendIcon from '@mui/icons-material/Send';
 import { useRef } from 'react';
+import { useContext } from 'react';
+import { GameContext } from '../contexts/gameContext';
 
-const EXAMPLE = [
-  { type: 'chat', text: 'test', beast: 'Warlock', level: 151 },
-  { type: 'chat', text: 'This is a super long message for no reason other than me thinking i have important stuff to say.', beast: 'Oni', level: 72 },
-  { type: 'chat', text: 'test', beast: 'Warlock', level: 151 },
-  { type: 'chat', text: 'test', beast: 'Warlock', level: 151 },
-  { type: 'chat', text: 'test', beast: 'Warlock', level: 151 },
-  { type: 'capture', text: 'test', beast: "'Dark Moon' Minotaur", level: 83 },
-  { type: 'damage', text: 'test', beast: "'Blood Shout' Weretiger", level: 51, damage: 281 },
-  { type: 'damage', text: 'test', beast: "'Blood Shout' Weretiger", level: 51, damage: 281 },
-  { type: 'damage', text: 'test', beast: "'Blood Shout' Weretiger", level: 51, damage: 281 },
-  { type: 'damage', text: 'test', beast: "'Blood Shout' Weretiger", level: 51, damage: 281 },
-  { type: 'damage', text: 'test', beast: "'Blood Shout' Weretiger", level: 51, damage: 281 },
-]
 
 function Chat() {
+  const game = useContext(GameContext)
+  const { eventLog } = game.getState
+
   const [chat, setChat] = useState('')
-  const [messages, setMessages] = useState(EXAMPLE);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
   const chatContainerRef = useRef(null);
 
-  const addMessage = (message) => {
-    setMessages(prev => [...prev, ({ type: 'chat', text: chat, beast: 'Warlock', level: 151 })])
-    setChat('')
+  const addMessage = () => {
+    // game.actions.publishChatMessage(chat);
+    // setMessages(prev => [...prev, ({ type: 'chat', text: chat, beast: 'Warlock', level: 151 })]);
+    setChat('');
   };
 
   // Scroll to bottom when new messages are added (if user is not manually scrolling)
@@ -33,7 +25,7 @@ function Chat() {
     if (!isUserScrolling) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
-  }, [messages, isUserScrolling]);
+  }, [eventLog, isUserScrolling]);
 
   // Detect user scrolling
   const handleScroll = () => {
@@ -51,7 +43,7 @@ function Chat() {
 
     <Box sx={styles.messageContainer} ref={chatContainerRef} onScroll={handleScroll}>
       {React.Children.toArray(
-        messages.map(message => <Box display={'flex'}>
+        eventLog.map(message => <Box display={'flex'}>
           {message.type === 'chat' && <Typography letterSpacing={'0.5px'} lineHeight={'14px'}>
             {`[ ${message.beast}, ${message.level} ]: `}{message.text}
           </Typography>}
@@ -75,7 +67,7 @@ function Chat() {
         endAdornment={
           <InputAdornment position="end">
             <IconButton
-              onClick={() => { }}
+              onClick={addMessage}
               edge="end"
             >
               <SendIcon fontSize='small' htmlColor='black' />
@@ -107,7 +99,6 @@ const styles = {
     flexDirection: 'column',
     height: '100%',
     overflowY: 'scroll',
-    boxSizing: 'border-box',
     pb: '40px'
   },
   chat: {

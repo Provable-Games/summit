@@ -3,7 +3,7 @@ import { dojoConfig } from '../../dojoConfig';
 import { beastDetails } from '../helpers/beasts';
 
 export const getBeasts = async (owner) => {
-  let env = import.meta.env.VITE_PUBLIC_STARKNET_ENV
+  let env = import.meta.env.VITE_PUBLIC_CHAIN
 
   if (env === 'mainnet') {
     return getBeastsMainnet(owner)
@@ -12,6 +12,23 @@ export const getBeasts = async (owner) => {
   if (env === 'sepolia') {
     return getBeastsSepolia(owner)
   }
+}
+
+export const getTotalBeasts = async () => {
+  const blastUrl = import.meta.env.VITE_PUBLIC_BLAST_API;
+  const beastAddress = import.meta.env.VITE_PUBLIC_BEAST_ADDRESS;
+
+  let url = `${blastUrl}/builder/getNFTCollection?contractAddress=${beastAddress}`
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await response.json();
+  return data.totalSupply
 }
 
 export const getBeastsMainnet = async (owner) => {
@@ -53,16 +70,45 @@ export const getBeastsMainnet = async (owner) => {
     const attributesObject = JSON.parse(`{${attributesString}}`).attributes;
 
     const attributesMap = attributesObject.reduce((acc, attr) => {
-      acc[attr.trait_type] = attr.value;
+      acc[attr.trait_type] = isNaN(attr.value) ? attr.value : Number(attr.value);
       return acc;
     }, {});
 
     return {
-      id: beast.tokenId,
+      id: Number(beast.tokenId),
       ...attributesMap
     }
   })
 };
+
+export const getBeastDetails = async (tokenId) => {
+  const blastUrl = import.meta.env.VITE_PUBLIC_BLAST_API;
+  const beastAddress = import.meta.env.VITE_PUBLIC_BEAST_ADDRESS;
+
+  let url = `${blastUrl}/builder/getNFT?contractAddress=${beastAddress}&tokenId=${tokenId}`
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await response.json();
+
+  const attributesString = data.tokenUri.match(/"attributes":\[(.*?)\]/)[0];
+  const attributesObject = JSON.parse(`{${attributesString}}`).attributes;
+
+  const attributesMap = attributesObject.reduce((acc, attr) => {
+    acc[attr.trait_type] = isNaN(attr.value) ? attr.value : Number(attr.value);
+    return acc;
+  }, {});
+
+  return {
+    id: Number(tokenId),
+    ...attributesMap
+  }
+}
 
 const lookupSepoliaBeast = async (tokenId) => {
   const beastAddress = import.meta.env.VITE_PUBLIC_BEAST_ADDRESS;
@@ -103,7 +149,7 @@ const lookupSepoliaBeast = async (tokenId) => {
 
 export const getBeastsSepolia = async (owner) => {
   const indexerUrl = import.meta.env.VITE_PUBLIC_LS_INDEXER;
-
+  return []
   const document = gql`
   {
     beastTokens(where: {ownerAddress: {eq: "${owner}"}}) {

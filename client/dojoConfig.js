@@ -1,4 +1,5 @@
-import manifest from "../contracts/manifests/dev/deployment/manifest.json";
+import devManifest from "../contracts/manifests/dev/deployment/manifest.json";
+import prodManifest from "../contracts/manifests/prod/deployment/manifest.json";
 import { createDojoConfig } from "@dojoengine/core";
 
 const {
@@ -11,7 +12,7 @@ const {
 } = import.meta.env;
 
 export const dojoConfig = createDojoConfig({
-  manifest,
+  manifest: VITE_PUBLIC_STARKNET_ENV === 'mainnet' ? prodManifest : devManifest,
   rpcUrl: VITE_PUBLIC_NODE_URL,
   toriiUrl: VITE_PUBLIC_TORII,
   masterAddress: VITE_PUBLIC_MASTER_ADDRESS,

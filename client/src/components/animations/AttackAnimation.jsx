@@ -26,7 +26,7 @@ function AttackAnimation(props) {
   let yOffSet = 310 + Math.abs(randomOffSet) / 5
   let strOffSet = randomOffSet < 0 ? `calc(50% - ${randomOffSet * -1}px)` : `calc(50% + ${randomOffSet}px)`
 
-  const [damage] = useState(attackingBeast.capture ? summit.healthLeft : attackingBeast.damage)
+  const [damage] = useState(attackingBeast.capture ? summit.currentHealth : attackingBeast.damage)
 
   useEffect(() => {
     attackAnimation()
@@ -38,15 +38,15 @@ function AttackAnimation(props) {
     })
 
     await controls.start({
-      x: randomOffSet * -1,
-      y: -200 + Math.abs(randomOffSet) / 5,
+      x: (randomOffSet + 20) * -1,
+      y: -((window.innerHeight - 270) * 0.30) + Math.abs(randomOffSet) / 5,
       transition: { type: 'just' }
     })
 
     ref.current.style.opacity = 1
     textRef.current.style.opacity = 1
 
-    game.setState.summit(prev => ({ ...prev, healthLeft: Math.max(0, prev.healthLeft - damage) }))
+    game.setState.summit(prev => ({ ...prev, currentHealth: Math.max(0, prev.currentHealth - damage) }))
 
     controls.start({
       opacity: 0
@@ -80,7 +80,7 @@ function AttackAnimation(props) {
 
     <motion.div
       ref={ref}
-      style={{ ...styles.explosion }}
+      style={{ ...styles.explosion, top: (window.innerHeight - 270) * 0.38 }}
     >
       <img alt='' src={explosion} />
     </motion.div>
@@ -110,8 +110,7 @@ const styles = {
     width: '100px',
     position: 'fixed',
     left: '50%',
-    transform: 'translate(-50%)',
-    bottom: '520px',
+    transform: 'translate(-60%)',
     zIndex: 98
   },
   damageText: {

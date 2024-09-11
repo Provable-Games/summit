@@ -28,11 +28,20 @@ function elementalDamage(attacker, defender) {
 }
 
 export const calculateBattleResult = (beast, summit) => {
-  let beastDamage = Math.max(2, Math.floor(((6 - beast.tier) * beast.level) * elementalDamage(beast, summit)) - ((6 - summit.tier) * summit.level))
-  let summitDamage = Math.max(2, Math.floor(((6 - summit.tier) * summit.level) * elementalDamage(summit, beast)) - ((6 - beast.tier) * beast.level))
+  const MINIMUM_DAMAGE = 4
 
-  let summitHealth = summit.health
-  let beastHealth = beast.health
+  if (beast.currentHealth < 1) {
+    return {
+      capture: false,
+      damage: 0
+    }
+  }
+
+  let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor(((6 - beast.tier) * beast.level) * elementalDamage(beast, summit)) - ((6 - summit.tier) * summit.level))
+  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(((6 - summit.tier) * summit.level) * elementalDamage(summit, beast)) - ((6 - beast.tier) * beast.level))
+
+  let summitHealth = summit.currentHealth
+  let beastHealth = beast.currentHealth
 
   while (true) {
 
@@ -52,21 +61,16 @@ export const calculateBattleResult = (beast, summit) => {
     if (beastHealth <= 0) {
       return {
         capture: false,
-        damage: summit.health - summitHealth
+        damage: summit.currentHealth - summitHealth
       }
     }
 
   }
 }
 
-export const addBeastStats = (stats) => {
-  let data = { isAlive: true }
+export const formatBeastName = (beast) => {
 
-  if (stats) {
-    data.isAlive = differenceInSeconds(new Date(), new Date(stats.dead_at)) > 23 * 3600;
-  }
-
-  return data
+  return `'${beast.prefix} ${beast.suffix}' ${beast.name}`
 }
 
 export const beastDetails = (id, prefix, suffix) => {
@@ -77,4 +81,3 @@ export const beastDetails = (id, prefix, suffix) => {
     type: BEAST_TYPES[id]
   }
 }
-

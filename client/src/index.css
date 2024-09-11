@@ -125,8 +125,26 @@ input:-webkit-autofill {
   opacity: 1;
 }
 
+.glitch-effect {
+  animation: neon 1s ease infinite;
+}
+
 @keyframes l1 {
   to {
     clip-path: inset(0 -34% 0 0)
+  }
+}
+
+@keyframes neon {
+
+  0%,
+  100% {
+    text-shadow: 0 0 5px #fc5c1da8, 0 0 15px #fc5c1da8, 0 0 15px #fc5c1da8, 0 0 15px #fc5c1da8, 0 0 2px #fed128, 2px 2px 2px #806914;
+    color: #f5efcb;
+  }
+
+  50% {
+    text-shadow: 0 0 2px #800e0b, 0 0 5px #800e0b, 0 0 5px #800e0b, 0 0 5px #800e0b, 0 0 2px #800e0b, 4px 4px 2px #40340a;
+    color: #fc5c1d;
   }
 }

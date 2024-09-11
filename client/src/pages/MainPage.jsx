@@ -10,10 +10,11 @@ import Leaderboard from '../components/Leaderboard'
 import Summit from '../components/Summit'
 import WalletConnect from '../components/WalletConnect'
 import { GameContext } from '../contexts/gameContext'
+import EmptySummit from '../components/EmptySummit'
 
 function MainPage() {
   const game = useContext(GameContext)
-  const { showFeedingGround } = game.getState
+  const { showFeedingGround, summit } = game.getState
 
   return <Box sx={styles.container}>
     {showFeedingGround ? <>
@@ -45,7 +46,7 @@ function MainPage() {
           <Chat />
         </Box>
 
-        <Summit />
+        {summit.id ? <Summit /> : <EmptySummit />}
 
         <Box sx={styles.sideContainer}>
           <WalletConnect />
