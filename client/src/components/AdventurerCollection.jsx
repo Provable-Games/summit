@@ -1,18 +1,21 @@
 import { Box, Typography } from "@mui/material";
-import { useAccount } from "@starknet-react/core";
 import React, { useContext } from 'react';
-import skull from '../assets/images/skull.png';
-import sword from '../assets/images/sword.png';
-import book from '../assets/images/book.png';
-import club from '../assets/images/club.png';
-import shortsword from '../assets/images/shortsword.png';
+import skull from '../assets/images/skull.svg';
+import hero from '../assets/images/profile.svg';
 import { GameContext } from '../contexts/gameContext';
 import { normaliseHealth } from "../helpers/beasts";
 import { HealthBar } from '../helpers/styles';
+import StarIcon from '@mui/icons-material/Star';
+
+const STAR_COLORS = {
+  1: "#ff6f3a",
+  2: "#C0C0C0",
+  3: "#CD7F32"
+}
 
 function AdventurerCollection() {
   const game = useContext(GameContext)
-  const { adventurerCollection, selectedAdventurers, isThrowing } = game.getState
+  const { adventurerCollection, selectedAdventurers, loadingAdventurers } = game.getState
 
   const selectAdventurer = (id) => {
     if (selectedAdventurers.includes(id)) {
@@ -24,66 +27,54 @@ function AdventurerCollection() {
 
   return (
     <Box sx={styles.container}>
+      {loadingAdventurers && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
+
+        <Box textAlign={'center'}>
+          <Box display={'flex'} alignItems={'baseline'}>
+            <Typography variant="h2" letterSpacing={'0.5px'}>Fetching adventurers</Typography>
+            <div className='dotLoader' />
+          </Box>
+        </Box>
+
+      </Box>}
 
       {React.Children.toArray(
         adventurerCollection.map(adventurer => {
           const isSelected = selectedAdventurers.includes(adventurer.id)
+          const isRanked = adventurer.rank > 0
 
-          return <Box onClick={() => selectAdventurer(adventurer.id)}
-            sx={[styles.itemContainer, isSelected && styles.selectedItem, ((selectedAdventurers.length > 0) && !isSelected) && { opacity: 0.5, borderColor: 'transparent' }]}
+          return <Box onClick={() => { if (!isRanked) selectAdventurer(adventurer.id); }}
+            sx={[styles.itemContainer, isRanked && styles.rankedItem, isSelected && styles.selectedItem, ((selectedAdventurers.length > 0) && !isSelected) && { opacity: 0.5, borderColor: 'transparent' }]}
           >
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
-              <Typography variant='h6' sx={{ lineHeight: '10px', letterSpacing: '0.5px' }}>
-                {adventurer.name}
-              </Typography>
-              <Typography sx={{ letterSpacing: '0.5px' }}>
-                lvl {adventurer.level}
-              </Typography>
+            {isRanked && <StarIcon htmlColor={STAR_COLORS[adventurer.rank]} sx={{ position: 'absolute', top: '0', left: '0', fontSize: '20px' }} />}
+
+            <Typography variant="h5" sx={{ lineHeight: '15px', letterSpacing: '1px', textAlign: 'center' }}>
+              Adventurer #{adventurer.id}
+            </Typography>
+
+            <Box mt={1.5} mb={1.5}>
+              {adventurer.health > 0 ? <img alt='' src={hero} height={'50px'} /> : <img alt='' src={skull} height={'50px'} />}
             </Box>
 
-            {isThrowing
-              ? <Box my={1}>
-                <img alt='' src={adventurer.weapon === 'book' ? book : adventurer.weapon === 'club' ? club : shortsword} height={'60px'} />
+            <Typography sx={{ letterSpacing: '1px', lineHeight: '14px' }}>
+              LEVEL {adventurer.level}
+            </Typography>
+
+            <Box position={'relative'} width={'100%'}>
+              <HealthBar variant="determinate" value={normaliseHealth(adventurer.health, Math.max(90, adventurer.health))} />
+
+              <Box sx={styles.healthText}>
+                <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
+                  {adventurer.health}
+                </Typography>
               </Box>
-              : <Box my={2}>
-                <img alt='' src={skull} height={'40px'} />
-              </Box>
-            }
-
-            {isThrowing
-              ? <Box position={'relative'} width={'100%'}>
-                <HealthBar variant="determinate" value={normaliseHealth(adventurer.healthLeft, adventurer.health)} />
-
-                <Box sx={styles.healthText}>
-                  <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
-                    {adventurer.healthLeft}
-                  </Typography>
-                </Box>
-              </Box>
-              : <Box position={'relative'} width={'100%'}>
-                <HealthBar variant="determinate" value={normaliseHealth(0, adventurer.health)} />
-
-                <Box sx={styles.healthText}>
-                  <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
-                    0
-                  </Typography>
-                </Box>
-              </Box>}
-
-            <Box display={'flex'} gap={'3px'} alignItems={'center'} my={'5px'}>
-              <img src={sword} alt='' height={'13px'} />
-
-              <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkred'}>
-                {adventurer.damage} dmg
-              </Typography>
             </Box>
-
           </Box>
         })
 
       )}
-    </Box>
+    </Box >
   );
 }
 
@@ -100,9 +91,10 @@ const styles = {
   },
   itemContainer: {
     position: 'relative',
-    height: '100%',
-    width: '100px',
-    minWidth: '100px',
+    height: '180px',
+    boxSizing: 'border-box',
+    width: '120px',
+    minWidth: '120px',
     padding: 1,
     display: 'flex',
     flexDirection: 'column',
@@ -112,11 +104,14 @@ const styles = {
     borderRadius: '5px',
     border: '2px solid rgba(0, 0, 0, 0.5)',
     background: '#f6e6bc',
-    transition: 'border-color 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease'
+    transition: 'border-color 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease',
   },
   selectedItem: {
     boxShadow: 'rgba(0, 0, 0, 0.35) 0px 5px 15px;',
     border: '2px solid rgba(0, 0, 0, 0.8)',
+  },
+  rankedItem: {
+    boxShadow: '0 0 5px 3px rgba(255, 165, 0, 1)'
   },
   healthText: {
     position: 'absolute',
@@ -129,5 +124,10 @@ const styles = {
     position: 'absolute',
     top: 0,
     left: 5
+  },
+  rank: {
+    position: 'absolute',
+    left: '5px',
+    top: '40%'
   }
 }

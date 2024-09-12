@@ -42,7 +42,7 @@ const leaderboardExample = [
 
 function Leaderboard(props) {
   const game = useContext(GameContext)
-  const { totalReward, totalSupply, deadBeastCount } = game.getState
+  const { totalSupply, deadBeastCount } = game.getState
 
   return <Box sx={styles.container}>
     <Box sx={styles.innerContainer}>
@@ -54,9 +54,9 @@ function Leaderboard(props) {
             Savage Summit
           </Typography>
 
-          <Typography sx={{ letterSpacing: '0.5px' }} variant='h5'>
+          {/* <Typography sx={{ letterSpacing: '0.5px' }} variant='h5'>
             ${totalReward}
-          </Typography>
+          </Typography> */}
         </Box>
 
         <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1.5, mb: 1 }}>

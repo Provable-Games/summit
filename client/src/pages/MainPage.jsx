@@ -11,42 +11,43 @@ import Summit from '../components/Summit'
 import WalletConnect from '../components/WalletConnect'
 import { GameContext } from '../contexts/gameContext'
 import EmptySummit from '../components/EmptySummit'
+import { BEAST_NAMES } from '../helpers/BeastData'
+import { LazyLoadImage } from 'react-lazy-load-image-component'
+import { fetchBeastImage } from '../helpers/beasts'
 
 function MainPage() {
   const game = useContext(GameContext)
   const { showFeedingGround, summit } = game.getState
 
-  return <Box sx={styles.container}>
-    {showFeedingGround ? <>
-      <Box sx={styles.sideContainer}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton size='large' onClick={() => game.setState.showFeedingGround(false)}>
-            <ArrowBackIcon fontSize='large' htmlColor='black' />
-          </IconButton>
-          <Typography variant='h2'>
-            Feeding Ground
-          </Typography>
-        </Box>
-      </Box>
-
-      <Feeding />
-
-      <Box sx={styles.sideContainer}>
-        <WalletConnect />
-      </Box>
-
-      <Box sx={styles.bottomContainer}>
-        <ActionBar />
-        <AdventurerCollection />
-      </Box>
+  function PreloadBeastImages() {
+    return <>
+      {React.Children.toArray(
+        Object.values(BEAST_NAMES).map(name =>
+          <LazyLoadImage
+            alt={""}
+            height={0}
+            src={fetchBeastImage(name)}
+            width={0}
+          />
+        ))}
     </>
-      : <>
+  }
+
+  return <>
+    <Box sx={styles.container}>
+      {showFeedingGround ? <>
         <Box sx={styles.sideContainer}>
-          <Leaderboard />
-          <Chat />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <IconButton size='large' onClick={() => { game.setState.showFeedingGround(false); game.setState.selectedBeasts([]); }}>
+              <ArrowBackIcon fontSize='large' htmlColor='black' />
+            </IconButton>
+            <Typography variant='h2'>
+              Feeding Ground
+            </Typography>
+          </Box>
         </Box>
 
-        {summit.id ? <Summit /> : <EmptySummit />}
+        <Feeding />
 
         <Box sx={styles.sideContainer}>
           <WalletConnect />
@@ -54,11 +55,31 @@ function MainPage() {
 
         <Box sx={styles.bottomContainer}>
           <ActionBar />
-          <BeastCollection />
+          <AdventurerCollection />
         </Box>
       </>
-    }
-  </Box >
+        : <>
+          <Box sx={styles.sideContainer}>
+            <Leaderboard />
+            <Chat />
+          </Box>
+
+          {summit.id ? <Summit /> : <EmptySummit />}
+
+          <Box sx={styles.sideContainer}>
+            <WalletConnect />
+          </Box>
+
+          <Box sx={styles.bottomContainer}>
+            <ActionBar />
+            <BeastCollection />
+          </Box>
+        </>
+      }
+    </Box >
+
+    {PreloadBeastImages()}
+  </>
 }
 
 export default MainPage

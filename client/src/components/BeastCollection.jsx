@@ -181,7 +181,7 @@ const styles = {
     borderRadius: '5px',
     border: '2px solid rgba(0, 0, 0, 0.5)',
     background: '#f6e6bc',
-    transition: 'border-color 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease'
+    transition: 'border-color 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease',
   },
   selectedItem: {
     boxShadow: 'rgba(0, 0, 0, 0.35) 0px 5px 15px;',

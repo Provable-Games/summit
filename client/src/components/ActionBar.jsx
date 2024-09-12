@@ -11,7 +11,7 @@ import { useAccount } from '@starknet-react/core';
 
 function ActionBar(props) {
   const game = useContext(GameContext)
-  const { selectedBeasts, summit, showFeedingGround, isThrowing, totalDamage,
+  const { selectedBeasts, summit, showFeedingGround, totalDamage,
     selectedAdventurers, potions, attackInProgress, ownedBeasts } = game.getState
 
   const { address } = useAccount()
@@ -26,10 +26,6 @@ function ActionBar(props) {
         <AttackButton disabled={selectedAdventurers.length < 1} onClick={() => game.actions.feed()}>
           Feed
         </AttackButton>
-
-        <ConsumableButton onClick={() => game.setState.potions(prev => prev + 1)}>
-          <img src={potion} alt='' height={'35px'} />
-        </ConsumableButton>
       </Box>
     </Box>
   }
@@ -43,7 +39,7 @@ function ActionBar(props) {
         </AttackButton>
         : showFeedingGround
           ? <AttackButton disabled={selectedAdventurers.length < 1}>
-            {isThrowing ? 'Throw' : 'Feed'}
+            Feed
           </AttackButton>
 
           : <AttackButton disabled={attackInProgress || selectedBeasts.length < 1} onClick={() => game.actions.attack()}>
@@ -67,15 +63,15 @@ function ActionBar(props) {
             }
           </AttackButton>}
 
-      <Tooltip title={<Typography variant='h4'>Coming soon</Typography>} placement={'top-end'}>
+      {/* <Tooltip title={<Typography variant='h4'>Coming soon</Typography>} placement={'top-end'}>
         <Box>
           <AttackButton disabled={!address} sx={{ mr: 2, opacity: 0.6 }} onClick={() => { }}>
             Throw Weapon
           </AttackButton>
         </Box>
-      </Tooltip>
+      </Tooltip> */}
 
-      <ConsumableButton onClick={() => game.setState.potions(prev => prev + 1)} sx={{ position: 'relative' }}>
+      {/* <ConsumableButton onClick={() => game.setState.potions(prev => prev + 1)} sx={{ position: 'relative' }}>
         <img src={potion} alt='' height={'35px'} />
 
         <Box sx={styles.count}>
@@ -83,25 +79,23 @@ function ActionBar(props) {
             {potions}
           </Typography>
         </Box>
-      </ConsumableButton>
+      </ConsumableButton> */}
     </Box>
 
     <Box sx={{ display: 'flex', gap: 2 }}>
-      <Tooltip title={<Typography variant='h4'>Coming soon</Typography>} placement={'top-end'}>
-        <Box>
-          <BuyConsumablesButton sx={{ opacity: 0.6 }} disabled={selectedBeasts.length < 1} onClick={() => {
-            game.setState.showFeedingGround(prev => !prev)
-          }}>
-            Feeding Ground
-          </BuyConsumablesButton>
-        </Box>
-      </Tooltip>
+      <Box>
+        <BuyConsumablesButton disabled={selectedBeasts.length < 1} onClick={() => {
+          game.setState.showFeedingGround(prev => !prev)
+        }}>
+          Feeding Ground
+        </BuyConsumablesButton>
+      </Box>
 
-      <BuyConsumablesButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
+      {/* <BuyConsumablesButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
         Buy Consumables
       </BuyConsumablesButton>
 
-      <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} />
+      <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} /> */}
     </Box>
   </Box>
 }

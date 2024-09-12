@@ -2,8 +2,15 @@ import { Typography } from '@mui/material';
 import { motion, useAnimationControls } from 'framer-motion';
 import React, { useEffect, useRef, useState } from 'react';
 import adventurerImage from '../../assets/images/adventurer.png';
+import { useContext } from 'react';
+import { GameContext } from '../../contexts/gameContext';
+
 function FeedAdventurerAnimation(props) {
   const { adventurer, onEnd, delay } = props
+
+  const game = useContext(GameContext)
+  const { selectedBeasts, collection } = game.getState
+  const beast = collection.find(beast => beast.id === selectedBeasts[0])
 
   const controls = useAnimationControls()
   const textControls = useAnimationControls()
@@ -31,6 +38,17 @@ function FeedAdventurerAnimation(props) {
     ref.current.style.opacity = 1
     textRef.current.style.opacity = 1
 
+    game.setState.beastStats(prev => {
+      if (prev.find(stat => stat.id === beast.id)) {
+        return prev.map(stats => ({
+          ...stats,
+          bonus_health: stats.id === beast.id ? stats.bonus_health + 1 : stats.bonus_health,
+          current_health: (stats.id === beast.id && stats.current_health > 0) ? stats.current_health + 1 : stats.current_health
+        }))
+      } else {
+        return [{ id: beast.id, current_health: beast.health + 1, bonus_health: 1, isDead: false }, ...(prev ?? [])]
+      }
+    })
 
     await textControls.start({
       y: -30,

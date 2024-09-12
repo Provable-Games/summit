@@ -59,7 +59,7 @@ function Chat() {
       )}
     </Box>
 
-    <Box sx={styles.chat}>
+    {/* <Box sx={styles.chat}>
       <Input disableUnderline={true} placeholder='send message' sx={{ width: '100%', px: 1, color: 'black' }}
         value={chat}
         onChange={e => setChat(e.target.value)}
@@ -75,7 +75,7 @@ function Chat() {
           </InputAdornment>
         }
       />
-    </Box>
+    </Box> */}
   </Box>;
 }
 

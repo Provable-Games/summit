@@ -3,10 +3,9 @@ import { useAccount } from "@starknet-react/core";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { dojoConfig } from "../../dojoConfig";
 import { fetchBeastLiveData, fetchDeadBeastCount, fetchSummitData } from "../api/indexer";
-import { getBeastDetails, getBeasts, getTotalBeasts } from "../api/starknet";
+import { getAdventurers, getBeastDetails, getBeasts, getTotalBeasts } from "../api/starknet";
 import { calculateBattleResult, formatBeastName } from "../helpers/beasts";
 import { DojoContext } from "./dojoContext";
-import { generateMessageTypedData } from "../helpers/chat";
 
 export const GameContext = createContext()
 
@@ -22,16 +21,9 @@ export const GameProvider = ({ children }) => {
   const [attackInProgress, setAttackInProgress] = useState(false)
 
   const [showFeedingGround, setShowFeedingGround] = useState(false)
-  const [throws, setThrows] = useState(false)
 
-  const [adventurerCollection, setAdventurerCollection] = useState([
-    { id: 1, name: 'Test', level: 23, health: 190, healthLeft: 180, damage: 102, weapon: 'book' },
-    { id: 2, name: 'Test', level: 12, health: 150, healthLeft: 100, damage: 24, weapon: 'club' },
-    { id: 3, name: 'Test', level: 11, health: 130, healthLeft: 10, damage: 22, weapon: 'club' },
-    { id: 4, name: 'Test', level: 9, health: 120, healthLeft: 120, damage: 18 },
-    { id: 5, name: 'Test', level: 8, health: 110, healthLeft: 110, damage: 12 },
-    { id: 6, name: 'Test', level: 5, health: 100, healthLeft: 100, damage: 8 }
-  ])
+  const [adventurerCollection, setAdventurerCollection] = useState([])
+  const [loadingAdventurers, setLoadingAdventurers] = useState(false)
 
   const [deadBeastCount, setDeadBeastCount] = useState()
   const [totalSupply, setTotalSupply] = useState()
@@ -125,6 +117,18 @@ export const GameProvider = ({ children }) => {
     setCollection(beasts)
   }
 
+  const fetchAdventurers = async () => {
+    setLoadingAdventurers(true)
+
+    let adventurers = await getAdventurers(address);
+
+    setAdventurerCollection(adventurers.sort((a, b) => {
+      return a.health - b.health
+    }))
+
+    setLoadingAdventurers(false)
+  }
+
   const fetchBeasts = async () => {
     setLoadingCollection(true)
 
@@ -149,8 +153,13 @@ export const GameProvider = ({ children }) => {
   }, [selected])
 
   useEffect(() => {
+    async function fetchWalletNfts() {
+      await fetchBeasts()
+      fetchAdventurers()
+    }
+
     if (address) {
-      fetchBeasts()
+      fetchWalletNfts()
     }
   }, [address])
 
@@ -299,8 +308,8 @@ export const GameProvider = ({ children }) => {
           beastReward: setBeastReward,
           totalReward: setTotalReward,
           showFeedingGround: setShowFeedingGround,
-          isThrowing: setThrows,
-          attackAnimations: setAttackAnimations
+          attackAnimations: setAttackAnimations,
+          beastStats: setLiveBeastStats
         },
 
         getState: {
@@ -320,8 +329,8 @@ export const GameProvider = ({ children }) => {
           beastReward,
           totalReward,
           adventurerCollection,
+          loadingAdventurers,
           showFeedingGround,
-          isThrowing: throws,
           attackInProgress,
           ownedBeasts,
           eventLog

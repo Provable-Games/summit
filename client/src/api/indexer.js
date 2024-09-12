@@ -63,6 +63,7 @@ export async function fetchBeastLiveData(tokenIds) {
       ...stat,
       id: stat.token_id,
       isDead: hoursSinceDeath < 23,
+      bonus_health: stat.bonus_health ?? 0
     }
   })
 
