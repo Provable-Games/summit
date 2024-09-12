@@ -10,13 +10,10 @@ trait ISummitSystem {
         attacking_beast_token_ids: Span<u32>
     );
 
-    fn feed(
-        ref world: IWorldDispatcher,
-        beast_token_id: u32,
-        adventurer_ids: Span<u32>
-    );
+    fn feed(ref world: IWorldDispatcher, beast_token_id: u32, adventurer_ids: Span<u64>);
 
     fn get_summit_history(world: @IWorldDispatcher, beast_id: u32, lost_at: u64) -> SummitHistory;
+    fn get_summit_beast_token_id(world: @IWorldDispatcher) -> u32;
     fn get_summit_beast(world: @IWorldDispatcher) -> Beast;
     fn get_beast(world: @IWorldDispatcher, id: u32) -> Beast;
     fn get_beast_stats(world: @IWorldDispatcher, id: u32) -> BeastStats;
@@ -32,7 +29,7 @@ pub mod summit_systems {
     use combat::combat::{ImplCombat, CombatSpec, CombatResult, SpecialPowers};
     use core::num::traits::{OverflowingAdd, OverflowingSub};
     use openzeppelin_token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
-    use savage_summit::constants::{errors, BASE_REVIVAL_TIME_SECONDS, MINIMUM_DAMAGE};
+    use savage_summit::constants::{errors, BASE_REVIVAL_TIME_SECONDS, MINIMUM_DAMAGE, MAX_U32};
     use savage_summit::models::adventurer::Adventurer;
     use savage_summit::models::beast::{Beast, ImplBeast};
     use savage_summit::models::beast_details::{BeastDetails, ImplBeastDetails};
@@ -54,18 +51,20 @@ pub mod summit_systems {
             attacking_beast_token_ids: Span<u32>
         ) {
             // assert the provided defending beast is the summit beast
-            let summit_beast_token_id = get!(world, 1, Summit).beast_token_id;
+            let summit_beast_token_id = self._get_summit_beast_token_id();
             assert(defending_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
 
             let mut defending_beast = self._get_beast(summit_beast_token_id);
-            
+
             let mut i = 0;
             while (i < attacking_beast_token_ids.len()) {
-
                 let attacking_beast_token_id = *attacking_beast_token_ids.at(i);
 
                 // assert the caller owns the beast they attacking with
                 self._assert_beast_ownership(attacking_beast_token_id);
+
+                // assert not attacking own beast
+                self._assert_not_attacking_own_beast(attacking_beast_token_id);
 
                 // get stats for the beast that is attacking
                 let mut attacking_beast = self._get_beast(attacking_beast_token_id);
@@ -75,7 +74,16 @@ pub mod summit_systems {
 
                 // reset health to starting health plus any bonus health they have accrued
                 // @dev beasts attack till death so we don't need any additional logic
-                attacking_beast.stats.live.current_health = attacking_beast.stats.fixed.starting_health
+
+                // TODO check overflow
+                attacking_beast
+                    .stats
+                    .live
+                    .current_health = attacking_beast
+                    .stats
+                    .fixed
+                    .starting_health
+                    .into()
                     + attacking_beast.stats.live.bonus_health;
 
                 if summit_beast_token_id == 0 {
@@ -101,40 +109,32 @@ pub mod summit_systems {
                         // attack the summit beast
                         let (_, defender_died) = self._attack(attacking_beast, ref defending_beast);
 
-                        // if the attacking beast took the summit
-                        if defender_died {
-                            // finalize the summit history for prev summit beast
-                            self._finalize_summit_history(summit_beast_token_id);
-
-                            // set death timestamp for prev summit beast
-                            defending_beast.stats.live.last_death_timestamp = get_block_timestamp();
-
-                            // initialize summit history for the new beast
-                            self._init_summit_history(attacking_beast_token_id);
-
-                            // set the new summit beast
-                            self._set_summit_beast(attacking_beast_token_id);
-
-                        } else {
-                            // if the attacking beast did not take the summit, the defending beast will
-                            // attack back
-                            let (_, attacking_beast_died) = self
-                                ._attack(defending_beast, ref attacking_beast);
-
-                            // if the defending beast took the summit, break
-                            if attacking_beast_died {
-                                // set death timestamp for prev summit beast
-                                attacking_beast.stats.live.last_death_timestamp = get_block_timestamp();
-                                attacking_beast.stats.live.num_deaths += 1;
-                                attacking_beast.stats.live.last_killed_by = summit_beast_token_id;
-                            }
+                        // if the defending beast is still alive
+                        if !defender_died {
+                            // it counter attacks
+                            self._attack(defending_beast, ref attacking_beast);
                         }
                     };
 
                     if attacking_beast.stats.live.current_health == 0 {
+                        // set death timestamp for prev summit beast
+                        attacking_beast.stats.live.last_death_timestamp = get_block_timestamp();
+                        attacking_beast.stats.live.num_deaths += 1;
+                        attacking_beast.stats.live.last_killed_by = summit_beast_token_id;
                         // update the live stats of the attacking beast
                         set!(world, (attacking_beast.stats.live));
                     } else if defending_beast.stats.live.current_health == 0 {
+                        // finalize the summit history for prev summit beast
+                        self._finalize_summit_history(summit_beast_token_id);
+
+                        // set death timestamp for prev summit beast
+                        defending_beast.stats.live.last_death_timestamp = get_block_timestamp();
+
+                        // initialize summit history for the new beast
+                        self._init_summit_history(attacking_beast_token_id);
+
+                        // set the new summit beast
+                        self._set_summit_beast(attacking_beast_token_id);
                         break;
                     }
                 }
@@ -146,11 +146,7 @@ pub mod summit_systems {
             set!(world, (defending_beast.stats.live));
         }
 
-        fn feed(
-            ref world: IWorldDispatcher,
-            beast_token_id: u32,
-            adventurer_ids: Span<u32>
-        ) {
+        fn feed(ref world: IWorldDispatcher, beast_token_id: u32, adventurer_ids: Span<u64>) {
             // assert the caller owns the beast they are feeding
             self._assert_beast_ownership(beast_token_id);
 
@@ -161,20 +157,38 @@ pub mod summit_systems {
                 let adventurer_id = *adventurer_ids.at(i);
 
                 self._assert_adventurer_ownership(adventurer_id);
-                assert(get!(world, (adventurer_id), Adventurer).token_id == 0, 'Adventurer already used');
+                assert(
+                    get!(world, (adventurer_id), Adventurer).token_id == 0,
+                    'Adventurer already consumed'
+                );
 
-                beast.stats.live.bonus_health += 1;
+                //TODO: get adventurer details
+                //TODO: verify adventurer is dead and maybe not ranked
+
                 set!(world, (Adventurer { token_id: adventurer_id, beast_token_id }));
 
                 i += 1;
             };
 
+            let summit_beast_token_id = self._get_summit_beast_token_id();
+            let total_bonus_health = adventurer_ids.len();
+
+            //TODO: Check overflow on health
+            if beast_token_id == summit_beast_token_id {
+                beast.stats.live.current_health += total_bonus_health;
+            }
+
+            beast.stats.live.bonus_health += total_bonus_health;
+
             set!(world, (beast.stats.live));
         }
 
+        fn get_summit_beast_token_id(world: @IWorldDispatcher) -> u32 {
+            self._get_summit_beast_token_id()
+        }
+
         fn get_summit_beast(world: @IWorldDispatcher) -> Beast {
-            let summit = get!(world, 1, Summit);
-            let token_id = summit.beast_token_id;
+            let token_id = self._get_summit_beast_token_id();
             self._get_beast(token_id)
         }
 
@@ -204,6 +218,10 @@ pub mod summit_systems {
 
     #[generate_trait]
     impl InternalImpl of InternalUtils {
+        fn _get_summit_beast_token_id(self: @ContractState) -> u32 {
+            get!(self.world(), 1, Summit).beast_token_id
+        }
+
         /// @title get_beast
         /// @notice this function is used to get a beast from the contract
         /// @param token_id the id of the beast
@@ -311,7 +329,7 @@ pub mod summit_systems {
                 .stats
                 .live
                 .current_health
-                .overflowing_sub(combat_result.total_damage);
+                .overflowing_sub(combat_result.total_damage.into());
 
             defender.stats.live.current_health = if underflow {
                 0
@@ -327,7 +345,7 @@ pub mod summit_systems {
         /// @title assert_adventurer_ownership
         /// @notice this function is used to assert that the caller is the owner of an adventurer
         /// @param token_id the id of the adventurer
-        fn _assert_adventurer_ownership(self: @ContractState, token_id: u32) {
+        fn _assert_adventurer_ownership(self: @ContractState, token_id: u64) {
             let owner = self._get_owner_of_adventurer(token_id);
             assert(owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
         }
@@ -336,7 +354,7 @@ pub mod summit_systems {
         /// @notice this function is used to get the owner of am adventurer
         /// @param token_id the id of the adventurer
         /// @return ContractAddress the owner of the adventurer
-        fn _get_owner_of_adventurer(self: @ContractState, token_id: u32) -> ContractAddress {
+        fn _get_owner_of_adventurer(self: @ContractState, token_id: u64) -> ContractAddress {
             let contract_address = utils::get_adventurer_address();
             let erc721_dispatcher = IERC721Dispatcher { contract_address };
             erc721_dispatcher.owner_of(token_id.into())

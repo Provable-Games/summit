@@ -5,6 +5,7 @@ const SEPOLIA_CHAIN_ID: felt252 = 0x534e5f5345504f4c4941;
 const KATANA_CHAIN_ID: felt252 = 0x4b4154414e41;
 const TESTING_CHAIN_ID: felt252 = 0x73617661676573756d6d6974;
 const BASE_REVIVAL_TIME_SECONDS: u64 = 23 * 60 * 60;
+const MAX_U32: u32 = 0xffffffff;
 const MINIMUM_DAMAGE: u8 = 4;
 
 mod errors {

@@ -2,6 +2,6 @@
 #[dojo::model]
 pub struct Adventurer {
     #[key]
-    pub token_id: u32,
+    pub token_id: u64,
     pub beast_token_id: u32,
 }
