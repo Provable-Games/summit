@@ -9,6 +9,13 @@ trait ISummitSystem {
         defending_beast_token_id: u32,
         attacking_beast_token_ids: Span<u32>
     );
+
+    fn feed(
+        ref world: IWorldDispatcher,
+        beast_token_id: u32,
+        adventurer_ids: Span<u32>
+    );
+
     fn get_summit_history(world: @IWorldDispatcher, beast_id: u32, lost_at: u64) -> SummitHistory;
     fn get_summit_beast(world: @IWorldDispatcher) -> Beast;
     fn get_beast(world: @IWorldDispatcher, id: u32) -> Beast;
@@ -26,6 +33,7 @@ pub mod summit_systems {
     use core::num::traits::{OverflowingAdd, OverflowingSub};
     use openzeppelin_token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
     use savage_summit::constants::{errors, BASE_REVIVAL_TIME_SECONDS, MINIMUM_DAMAGE};
+    use savage_summit::models::adventurer::Adventurer;
     use savage_summit::models::beast::{Beast, ImplBeast};
     use savage_summit::models::beast_details::{BeastDetails, ImplBeastDetails};
     use savage_summit::models::beast_stats::{
@@ -138,6 +146,31 @@ pub mod summit_systems {
             set!(world, (defending_beast.stats.live));
         }
 
+        fn feed(
+            ref world: IWorldDispatcher,
+            beast_token_id: u32,
+            adventurer_ids: Span<u32>
+        ) {
+            // assert the caller owns the beast they are feeding
+            self._assert_beast_ownership(beast_token_id);
+
+            let mut beast = self._get_beast(beast_token_id);
+
+            let mut i = 0;
+            while (i < adventurer_ids.len()) {
+                let adventurer_id = *adventurer_ids.at(i);
+
+                self._assert_adventurer_ownership(adventurer_id);
+                assert(get!(world, (adventurer_id), Adventurer).token_id == 0, 'Adventurer already used');
+
+                beast.stats.live.bonus_health += 1;
+                set!(world, (Adventurer { token_id: adventurer_id, beast_token_id }));
+
+                i += 1;
+            };
+
+            set!(world, (beast.stats.live));
+        }
 
         fn get_summit_beast(world: @IWorldDispatcher) -> Beast {
             let summit = get!(world, 1, Summit);
@@ -289,6 +322,24 @@ pub mod summit_systems {
             let defender_died = defender.stats.live.current_health == 0;
 
             (combat_result, defender_died)
+        }
+
+        /// @title assert_adventurer_ownership
+        /// @notice this function is used to assert that the caller is the owner of an adventurer
+        /// @param token_id the id of the adventurer
+        fn _assert_adventurer_ownership(self: @ContractState, token_id: u32) {
+            let owner = self._get_owner_of_adventurer(token_id);
+            assert(owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
+        }
+
+        /// @title get_owner_of_adventurer
+        /// @notice this function is used to get the owner of am adventurer
+        /// @param token_id the id of the adventurer
+        /// @return ContractAddress the owner of the adventurer
+        fn _get_owner_of_adventurer(self: @ContractState, token_id: u32) -> ContractAddress {
+            let contract_address = utils::get_adventurer_address();
+            let erc721_dispatcher = IERC721Dispatcher { contract_address };
+            erc721_dispatcher.owner_of(token_id.into())
         }
 
         /// @title assert_beast_ownership

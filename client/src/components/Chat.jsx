@@ -55,6 +55,10 @@ function Chat() {
           {message.type === 'damage' && <Typography letterSpacing={'0.5px'} lineHeight={'14px'} color={'darkred'}>
             {`${message.beast} dealt ${message.damage} dmg.`}
           </Typography>}
+
+          {message.type === 'feed' && <Typography letterSpacing={'0.5px'} lineHeight={'14px'} color={'#fc5c1d'}>
+            {`${message.beast} consumed ${message.adventurers} ${message.adventurers > 1 ? 'souls' : 'soul'}.`}
+          </Typography>}
         </Box>)
       )}
     </Box>

@@ -4,3 +4,4 @@ mod beast_stats;
 mod consumable;
 mod summit;
 mod message;
+mod adventurer;

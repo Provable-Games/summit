@@ -204,7 +204,13 @@ export const GameProvider = ({ children }) => {
             let current_health = data["savage_summit-LiveBeastStats"]["current_health"].value
             let bonus_health = data["savage_summit-LiveBeastStats"]["bonus_health"].value
 
-            if (beastId !== summit.id) {
+            let prev_stats = liveBeastStats.find(prev => prev.find(stats => stats.id === beastId));
+
+            if (prev_stats?.bonus_health < bonus_health || (!prev_stats && bonus_health > 0)) {
+              logFeeding(beastId, bonus_health - prev_stats?.bonus_health ?? 0)
+            }
+
+            else if (beastId !== summit.id) {
               showAttackingBeast(beastId, current_health)
             }
 
@@ -249,6 +255,12 @@ export const GameProvider = ({ children }) => {
     };
   }, [setupMessageSync]);
 
+  const logFeeding = async (tokenId, adventurers) => {
+    let beast = await getBeastDetails(tokenId)
+
+    setEventLog(prev => [...prev, { type: 'feed', beast: formatBeastName(beast), adventurers }])
+  }
+
   const showAttackingBeast = async (tokenId, currentHealth) => {
     let beast = await getBeastDetails(tokenId)
     beast.currentHealth = beast.health
@@ -265,7 +277,7 @@ export const GameProvider = ({ children }) => {
 
   const attackSummit = async () => {
     setAttackInProgress(true)
-    await dojo.executeTx("summit_systems", "attack", [0, selected[0], []])
+    await dojo.executeTx("summit_systems", "attack", [summit.id, selected])
     setAttackInProgress(false)
 
     // let attackingBeast = collection.find(beast => beast.id === selected[0])
@@ -275,7 +287,8 @@ export const GameProvider = ({ children }) => {
 
   const feedBeast = async () => {
     setFeedAnimations(adventurersSelected)
-    // const res = await dojo.executeTx("summit_systems", "attack", [0, selected[0], []])
+
+    await dojo.executeTx("summit_systems", "feed", [selected[0], adventurersSelected])
   }
 
   const publishChatMessage = async (message) => {
