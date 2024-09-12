@@ -207,7 +207,7 @@ export const GameProvider = ({ children }) => {
             let prev_stats = liveBeastStats.find(prev => prev.find(stats => stats.id === beastId));
 
             if (prev_stats?.bonus_health < bonus_health || (!prev_stats && bonus_health > 0)) {
-              logFeeding(beastId, bonus_health - prev_stats?.bonus_health ?? 0)
+              logFeeding(beastId, bonus_health - prev_stats?.bonus_health || 0)
             }
 
             else if (beastId !== summit.id) {
@@ -276,6 +276,7 @@ export const GameProvider = ({ children }) => {
   }
 
   const attackSummit = async () => {
+    console.log(summit.id, selected)
     setAttackInProgress(true)
     await dojo.executeTx("summit_systems", "attack", [summit.id, selected])
     setAttackInProgress(false)

@@ -13,8 +13,12 @@ export async function fetchDeadBeastCount() {
     }
   }`
 
-  const res = await request(GRAPH_URL, document)
-  return res?.savageSummitLiveBeastStatsModels?.totalCount ?? 0
+  try {
+    const res = await request(GRAPH_URL, document)
+    return res?.savageSummitLiveBeastStatsModels?.totalCount ?? 0
+  } catch (ex) {
+    return 0
+  }
 }
 
 export async function fetchSummitData() {
@@ -30,8 +34,12 @@ export async function fetchSummitData() {
     }
   }`
 
-  const res = await request(GRAPH_URL, document)
-  return res?.savageSummitLiveBeastStatsModels?.edges[0]?.node
+  try {
+    const res = await request(GRAPH_URL, document)
+    return res?.savageSummitLiveBeastStatsModels?.edges[0]?.node
+  } catch (ex) {
+
+  }
 }
 
 export async function fetchBeastLiveData(tokenIds) {
@@ -52,20 +60,24 @@ export async function fetchBeastLiveData(tokenIds) {
     }
   }`
 
-  const res = await request(GRAPH_URL, document)
-  let stats = res?.savageSummitLiveBeastStatsModels?.edges.map(edge => edge.node) ?? []
+  try {
+    const res = await request(GRAPH_URL, document)
+    let stats = res?.savageSummitLiveBeastStatsModels?.edges.map(edge => edge.node) ?? []
 
-  stats = stats.map(stat => {
-    const lastDeathTimestamp = parseInt(stat.last_death_timestamp, 16) * 1000; // convert to milliseconds
-    const currentTime = Date.now();
-    const hoursSinceDeath = (currentTime - lastDeathTimestamp) / (1000 * 60 * 60);
-    return {
-      ...stat,
-      id: stat.token_id,
-      isDead: hoursSinceDeath < 23,
-      bonus_health: stat.bonus_health ?? 0
-    }
-  })
+    stats = stats.map(stat => {
+      const lastDeathTimestamp = parseInt(stat.last_death_timestamp, 16) * 1000; // convert to milliseconds
+      const currentTime = Date.now();
+      const hoursSinceDeath = (currentTime - lastDeathTimestamp) / (1000 * 60 * 60);
+      return {
+        ...stat,
+        id: stat.token_id,
+        isDead: hoursSinceDeath < 23,
+        bonus_health: stat.bonus_health ?? 0
+      }
+    })
 
-  return stats
+    return stats
+  } catch (ex) {
+    return []
+  }
 }
