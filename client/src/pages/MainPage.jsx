@@ -100,7 +100,8 @@ const styles = {
   },
   bottomContainer: {
     width: '100%',
-    height: '260px',
+    height: '100vh',
+    maxHeight: '260px',
     position: 'absolute',
     background: '#fbf7da',
     bottom: 0,

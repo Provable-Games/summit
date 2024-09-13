@@ -8,6 +8,7 @@ import sword from '../assets/images/sword.png';
 import BuyConsumables from './dialogs/BuyConsumables';
 import { useState } from 'react';
 import { useAccount } from '@starknet-react/core';
+import { isMobile } from 'react-device-detect';
 
 function ActionBar(props) {
   const game = useContext(GameContext)
@@ -35,7 +36,7 @@ function ActionBar(props) {
     <Box sx={{ display: 'flex', gap: 1 }}>
       {isSavage
         ? <AttackButton sx={{ fontSize: '20px' }}>
-          YOU'RE THE SAVAGE
+          {isMobile ? "YOU'RE THE SAVAGE" : "SAVAGE"}
         </AttackButton>
         : showFeedingGround
           ? <AttackButton disabled={selectedAdventurers.length < 1}>
