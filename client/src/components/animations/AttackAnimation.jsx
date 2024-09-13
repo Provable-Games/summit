@@ -21,9 +21,8 @@ function AttackAnimation(props) {
   const ref = useRef()
   const textRef = useRef()
 
-  const [randomOffSet] = useState(Math.floor(Math.random() * 301) - 100)
+  const [randomOffSet] = useState(Math.floor(Math.random() * 201) - 100)
 
-  let yOffSet = 310 + Math.abs(randomOffSet) / 5
   let strOffSet = randomOffSet < 0 ? `calc(50% - ${randomOffSet * -1}px)` : `calc(50% + ${randomOffSet}px)`
 
   const [damage] = useState(attackingBeast.capture ? summit.currentHealth : attackingBeast.damage)
@@ -39,7 +38,7 @@ function AttackAnimation(props) {
 
     await controls.start({
       x: (randomOffSet + 20) * -1,
-      y: -((window.innerHeight - 270) * 0.30) + Math.abs(randomOffSet) / 5,
+      y: -((window.innerHeight - 260) * 0.5 - 90),
       transition: { type: 'just' }
     })
 
@@ -80,18 +79,18 @@ function AttackAnimation(props) {
 
     <motion.div
       ref={ref}
-      style={{ ...styles.explosion, top: (window.innerHeight - 270) * 0.38 }}
+      style={{ ...styles.explosion, top: ((window.innerHeight - 260) * 0.5 - 90) }}
     >
       <img alt='' src={explosion} />
     </motion.div>
 
     <motion.div
-      style={{ ...styles.container, left: strOffSet, bottom: `${yOffSet}px` }}
+      style={{ ...styles.container, left: strOffSet, bottom: `290px` }}
       key={attackingBeast.id}
       animate={controls}
     >
 
-      <img alt='' src={fetchBeastImage(attackingBeast.name)} height={'80px'} />
+      <img alt='' src={fetchBeastImage(attackingBeast.name)} height={'100px'} />
 
     </motion.div>
   </>

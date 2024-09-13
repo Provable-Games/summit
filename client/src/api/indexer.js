@@ -21,14 +21,13 @@ export async function fetchDeadBeastCount() {
   }
 }
 
-export async function fetchSummitData() {
+export async function fetchSummitBeastTokenId() {
   const document = gql`
   {
-    savageSummitLiveBeastStatsModels(limit:1, where:{current_healthGT:0}) {
+    savageSummitSummitModels (limit:1) {
       edges {
         node {
-          token_id,
-          current_health
+          beast_token_id
         }
       }
     }
@@ -36,7 +35,7 @@ export async function fetchSummitData() {
 
   try {
     const res = await request(GRAPH_URL, document)
-    return res?.savageSummitLiveBeastStatsModels?.edges[0]?.node
+    return res?.savageSummitSummitModels?.edges[0]?.node?.beast_token_id
   } catch (ex) {
 
   }
@@ -79,5 +78,27 @@ export async function fetchBeastLiveData(tokenIds) {
     return stats
   } catch (ex) {
     return []
+  }
+}
+
+export async function fetchAdventurerData(adventurerIds) {
+  const document = gql`
+  {
+    savageSummitAdventurerModels (where:{
+      token_idIN:[${adventurerIds}]}
+    ){
+      edges {
+        node {
+          token_id
+          beast_token_id
+        }
+      }
+    }
+  }`
+
+  try {
+    const res = await request(GRAPH_URL, document)
+    return res?.savageSummitAdventurerModels?.edges.map(edge => edge.node) ?? []
+  } catch (ex) {
   }
 }

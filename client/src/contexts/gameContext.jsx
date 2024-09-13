@@ -2,7 +2,7 @@ import * as torii from "@dojoengine/torii-client";
 import { useAccount } from "@starknet-react/core";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { dojoConfig } from "../../dojoConfig";
-import { fetchBeastLiveData, fetchDeadBeastCount, fetchSummitData } from "../api/indexer";
+import { fetchBeastLiveData, fetchDeadBeastCount, fetchSummitBeastTokenId } from "../api/indexer";
 import { getAdventurers, getBeastDetails, getBeasts, getTotalBeasts } from "../api/starknet";
 import { calculateBattleResult, formatBeastName } from "../helpers/beasts";
 import { DojoContext } from "./dojoContext";
@@ -62,15 +62,17 @@ export const GameProvider = ({ children }) => {
     setTotalSupply(await getTotalBeasts() ?? 0)
     setDeadBeastCount(await fetchDeadBeastCount() ?? 0)
 
-    let summitData = await fetchSummitData()
+    let summitBeastId = await fetchSummitBeastTokenId()
 
-    if (!summitData?.token_id) {
+    if (!summitBeastId) {
       setSummit({ ...EMPTY_SUMMIT })
       return
     }
 
-    let summitBeastDetails = await getBeastDetails(summitData.token_id)
-    setSummit({ ...summitBeastDetails, currentHealth: summitData.current_health })
+    let summitBeastDetails = await getBeastDetails(summitBeastId)
+    let summitLiveStats = (await fetchBeastLiveData([summitBeastId]))[0]
+
+    setSummit({ ...summitBeastDetails, currentHealth: summitLiveStats?.current_health || summitBeastDetails.health })
   }
 
   const setupToriiClient = async () => {
@@ -122,7 +124,7 @@ export const GameProvider = ({ children }) => {
 
     let adventurers = await getAdventurers(address);
 
-    setAdventurerCollection(adventurers.sort((a, b) => {
+    setAdventurerCollection(adventurers.filter(a => a.health < 1).sort((a, b) => {
       return a.health - b.health
     }))
 
@@ -276,7 +278,6 @@ export const GameProvider = ({ children }) => {
   }
 
   const attackSummit = async () => {
-    console.log(summit.id, selected)
     setAttackInProgress(true)
     await dojo.executeTx("summit_systems", "attack", [summit.id, selected])
     setAttackInProgress(false)

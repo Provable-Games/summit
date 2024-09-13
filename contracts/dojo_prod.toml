@@ -1,5 +1,5 @@
 [world]
-seed = "savage_summit_2"
+seed = "savage_summit"
 name = "Savage Summit"
 description = "Crown the Beast"
 website = "https://github.com/provablegames"
@@ -12,4 +12,4 @@ github = "https://github.com/provablegames"
 default = "savage_summit"
 
 [env]
-world_address = "0xa8bb3cf5561f561d58b9b4a0de2bb8b626f90ec7f4fe08bda4e8150d0bbd0e"
+# world_address = "0x44867e43b95404da40659c67ddfcab106f86417e49ed2e264b7e44646e46962"

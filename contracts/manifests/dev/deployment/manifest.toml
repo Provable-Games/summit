@@ -4,13 +4,14 @@ class_hash = "0xa349b743d361ce4567361475a89b84a386bb383448c6926954e5fe0b525597"
 original_class_hash = "0xa349b743d361ce4567361475a89b84a386bb383448c6926954e5fe0b525597"
 abi = "manifests/dev/deployment/abis/dojo-world.json"
 address = "0x3427c16d64ba658428c7e42c08334b0a41a2bdef15a6d4840e3359d1410a48d"
-transaction_hash = "0x1a757059fe7629a7bd37d189538624b91203a3ab650038c1d2fc5fff073add1"
+transaction_hash = "0x5862f659d077a5a6c3d73347e553ae0a1d62d9c8e66e29e4abf24f4b263d3bc"
+block_number = 63
 seed = "savage_summit"
 manifest_name = "dojo-world"
 
 [world.metadata]
 profile_name = "dev"
-rpc_url = "https://starknet-sepolia.public.blastapi.io/rpc/v0_7"
+rpc_url = "http://localhost:5050/"
 
 [base]
 kind = "Class"
@@ -23,22 +24,92 @@ manifest_name = "dojo-base"
 [[contracts]]
 kind = "DojoContract"
 address = "0x3fe08dfab1efb39f2cd7314482d8a3ab740c3b5617fdce8650e522584c87e09"
-class_hash = "0x3d9e3e36306f2de50bc396973acc3b554c2880a55a22f0024132c05e470c3bf"
-original_class_hash = "0x3d9e3e36306f2de50bc396973acc3b554c2880a55a22f0024132c05e470c3bf"
+class_hash = "0x246f94cc604f34b04c12f0308435d6545793f59381c2d376ccc070cb0e4f593"
+original_class_hash = "0x246f94cc604f34b04c12f0308435d6545793f59381c2d376ccc070cb0e4f593"
 base_class_hash = "0x2427dd10a58850ac9a5ca6ce04b7771b05330fd18f2e481831ad903b969e6b2"
 abi = "manifests/dev/deployment/abis/contracts/savage_summit-summit_systems-237ab367.json"
 reads = []
 writes = [
-    "savage_summit-BeastStats",
-    "savage_summit-BeastDetails",
+    "savage_summit-LiveBeastStats",
     "savage_summit-ConsumableDetails",
     "savage_summit-Summit",
     "savage_summit-SummitHistory",
+    "savage_summit-Adventurer",
 ]
 init_calldata = []
 tag = "savage_summit-summit_systems"
-systems = ["attack"]
+systems = [
+    "attack",
+    "feed",
+]
 manifest_name = "savage_summit-summit_systems-237ab367"
+
+[[models]]
+kind = "DojoModel"
+class_hash = "0x14cdb1dfd679f07b4fa38be44a6b0b99c796e2f494fead21d237f2d32891207"
+original_class_hash = "0x14cdb1dfd679f07b4fa38be44a6b0b99c796e2f494fead21d237f2d32891207"
+abi = "manifests/dev/deployment/abis/models/savage_summit-Adventurer-71c9f3b2.json"
+tag = "savage_summit-Adventurer"
+qualified_path = "savage_summit::models::adventurer::adventurer"
+manifest_name = "savage_summit-Adventurer-71c9f3b2"
+
+[[models.members]]
+name = "token_id"
+type = "u64"
+key = true
+
+[[models.members]]
+name = "beast_token_id"
+type = "u32"
+key = false
+
+[[models]]
+kind = "DojoModel"
+class_hash = "0x1a0477c8c5f474a3475f1260946d8d1ba60953461cda4b302def96faddf1499"
+original_class_hash = "0x1a0477c8c5f474a3475f1260946d8d1ba60953461cda4b302def96faddf1499"
+abi = "manifests/dev/deployment/abis/models/savage_summit-Beast-2a5259df.json"
+tag = "savage_summit-Beast"
+qualified_path = "savage_summit::models::beast::beast"
+manifest_name = "savage_summit-Beast-2a5259df"
+
+[[models.members]]
+name = "token_id"
+type = "u32"
+key = true
+
+[[models.members]]
+name = "details"
+type = "BeastDetails"
+key = false
+
+[[models.members]]
+name = "stats"
+type = "BeastStats"
+key = false
+
+[[models]]
+kind = "DojoModel"
+class_hash = "0x42b0423453e85590b140cfcf1210a2a03b4f913127f3e093577cd414bb1955a"
+original_class_hash = "0x42b0423453e85590b140cfcf1210a2a03b4f913127f3e093577cd414bb1955a"
+abi = "manifests/dev/deployment/abis/models/savage_summit-BeastDetails-f5c94e30.json"
+tag = "savage_summit-BeastDetails"
+qualified_path = "savage_summit::models::beast_details::beast_details"
+manifest_name = "savage_summit-BeastDetails-f5c94e30"
+
+[[models.members]]
+name = "name"
+type = "felt252"
+key = true
+
+[[models.members]]
+name = "elemental"
+type = "Type"
+key = false
+
+[[models.members]]
+name = "tier"
+type = "Tier"
+key = false
 
 [[models]]
 kind = "DojoModel"
@@ -71,8 +142,8 @@ key = false
 
 [[models]]
 kind = "DojoModel"
-class_hash = "0x170448dc6cdc0730c269fbfc17df18fa311c9e19bfd847006098b4a2ea0e4ee"
-original_class_hash = "0x170448dc6cdc0730c269fbfc17df18fa311c9e19bfd847006098b4a2ea0e4ee"
+class_hash = "0x6fb768148f65cfc5d4b94601863c709b3427cbd067ad286cdc1a03025a455ed"
+original_class_hash = "0x6fb768148f65cfc5d4b94601863c709b3427cbd067ad286cdc1a03025a455ed"
 abi = "manifests/dev/deployment/abis/models/savage_summit-LiveBeastStats-735ba9ce.json"
 tag = "savage_summit-LiveBeastStats"
 qualified_path = "savage_summit::models::beast_stats::live_beast_stats"
@@ -85,12 +156,12 @@ key = true
 
 [[models.members]]
 name = "current_health"
-type = "u16"
+type = "u32"
 key = false
 
 [[models.members]]
 name = "bonus_health"
-type = "u16"
+type = "u32"
 key = false
 
 [[models.members]]
@@ -102,6 +173,35 @@ key = false
 name = "num_deaths"
 type = "u16"
 key = false
+
+[[models.members]]
+name = "last_killed_by"
+type = "u32"
+key = false
+
+[[models]]
+kind = "DojoModel"
+class_hash = "0x556e74749f5998fbcc46ba03faaedc4e8d96c1b93ebdd603c9855251fe2834a"
+original_class_hash = "0x556e74749f5998fbcc46ba03faaedc4e8d96c1b93ebdd603c9855251fe2834a"
+abi = "manifests/dev/deployment/abis/models/savage_summit-Message-65a31c02.json"
+tag = "savage_summit-Message"
+qualified_path = "savage_summit::models::message::message"
+manifest_name = "savage_summit-Message-65a31c02"
+
+[[models.members]]
+name = "identity"
+type = "ContractAddress"
+key = true
+
+[[models.members]]
+name = "content"
+type = "ByteArray"
+key = false
+
+[[models.members]]
+name = "timestamp"
+type = "u64"
+key = true
 
 [[models]]
 kind = "DojoModel"

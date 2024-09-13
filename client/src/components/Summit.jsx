@@ -11,7 +11,7 @@ import AttackAnimation from './animations/AttackAnimation'
 
 function Summit() {
   const game = useContext(GameContext)
-  const { summitAnimations, summit, attackAnimations, ownedBeasts } = game.getState
+  const { summitAnimations, summit, attackAnimations } = game.getState
 
   const controls = useAnimationControls()
 

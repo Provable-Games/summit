@@ -1,8 +1,8 @@
 {
   "world": {
     "kind": "WorldContract",
-    "class_hash": "0xa349b743d361ce4567361475a89b84a386bb383448c6926954e5fe0b525597",
-    "original_class_hash": "0xa349b743d361ce4567361475a89b84a386bb383448c6926954e5fe0b525597",
+    "class_hash": "0x6f4515274ee23404789c3351a77107d0ec07508530119822046600ca6948d6e",
+    "original_class_hash": "0x6f4515274ee23404789c3351a77107d0ec07508530119822046600ca6948d6e",
     "abi": [
       {
         "type": "impl",
@@ -945,6 +945,11 @@
             "kind": "data"
           },
           {
+            "name": "entity_id",
+            "type": "core::felt252",
+            "kind": "data"
+          },
+          {
             "name": "keys",
             "type": "core::array::Span::<core::felt252>",
             "kind": "data"
@@ -1229,10 +1234,10 @@
         ]
       }
     ],
-    "address": "0xa8bb3cf5561f561d58b9b4a0de2bb8b626f90ec7f4fe08bda4e8150d0bbd0e",
-    "transaction_hash": "0x7afa9745826c1efc13c38fe088b5fa4f289dd49706bd9b9b56ab8a25b2b5c88",
+    "address": "0x44867e43b95404da40659c67ddfcab106f86417e49ed2e264b7e44646e46962",
+    "transaction_hash": "0x1da3d99760b653d8f58795a189efeda2b65269a7436e256542e5511c3854840",
     "block_number": null,
-    "seed": "savage_summit_2",
+    "seed": "savage_summit",
     "metadata": {
       "profile_name": "prod",
       "rpc_url": "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_7/nY2Exo6EOH2Pvtylz1dAgzJ9UxWx7MLn"
@@ -1250,9 +1255,9 @@
   "contracts": [
     {
       "kind": "DojoContract",
-      "address": "0x351108980f48a1c21384047dbf72b684625982bea2697304c0fbd4ea2d52fdb",
-      "class_hash": "0xe2689bed044fb3e9c0a490a23694d9ba5ef1d3e5a20baf56e7ce9f9253de5f",
-      "original_class_hash": "0xe2689bed044fb3e9c0a490a23694d9ba5ef1d3e5a20baf56e7ce9f9253de5f",
+      "address": "0x15195bff2d6b881193663db2a716363496da8cdc0bd313ace39c61b8a98bc0a",
+      "class_hash": "0x246f94cc604f34b04c12f0308435d6545793f59381c2d376ccc070cb0e4f593",
+      "original_class_hash": "0x246f94cc604f34b04c12f0308435d6545793f59381c2d376ccc070cb0e4f593",
       "base_class_hash": "0x2427dd10a58850ac9a5ca6ce04b7771b05330fd18f2e481831ad903b969e6b2",
       "abi": [
         {

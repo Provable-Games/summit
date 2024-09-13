@@ -156,7 +156,7 @@ pub mod summit_systems {
 
                 self._assert_adventurer_ownership(adventurer_id);
                 assert(
-                    get!(world, (adventurer_id), Adventurer).token_id == 0,
+                    get!(world, (adventurer_id), Adventurer).beast_token_id == 0,
                     'Adventurer already consumed'
                 );
 
@@ -276,7 +276,7 @@ pub mod summit_systems {
 
         /// @title new_summit_history
         /// @notice this function is used to create a new summit history for a beast
-        /// @param token_id the id of the beast that is taking the summit
+        /// @param token_id the id of the beast that is taking the summits
         fn _init_summit_history(self: @ContractState, token_id: u32) {
             set!(
                 self.world(),

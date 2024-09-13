@@ -14,6 +14,7 @@ import EmptySummit from '../components/EmptySummit'
 import { BEAST_NAMES } from '../helpers/BeastData'
 import { LazyLoadImage } from 'react-lazy-load-image-component'
 import { fetchBeastImage } from '../helpers/beasts'
+import { isBrowser, isMobile } from 'react-device-detect';
 
 function MainPage() {
   const game = useContext(GameContext)
@@ -24,19 +25,20 @@ function MainPage() {
       {React.Children.toArray(
         Object.values(BEAST_NAMES).map(name =>
           <LazyLoadImage
+            style={{ position: 'fixed', top: '-5px', left: '-5px' }}
             alt={""}
-            height={0}
+            height={1}
             src={fetchBeastImage(name)}
-            width={0}
+            width={1}
           />
         ))}
     </>
   }
 
   return <>
-    <Box sx={styles.container}>
+    <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
       {showFeedingGround ? <>
-        <Box sx={styles.sideContainer}>
+        {isBrowser && <Box sx={styles.sideContainer}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <IconButton size='large' onClick={() => { game.setState.showFeedingGround(false); game.setState.selectedBeasts([]); }}>
               <ArrowBackIcon fontSize='large' htmlColor='black' />
@@ -45,13 +47,13 @@ function MainPage() {
               Feeding Ground
             </Typography>
           </Box>
-        </Box>
+        </Box>}
 
         <Feeding />
 
-        <Box sx={styles.sideContainer}>
+        {isBrowser && <Box sx={styles.sideContainer}>
           <WalletConnect />
-        </Box>
+        </Box>}
 
         <Box sx={styles.bottomContainer}>
           <ActionBar />
@@ -59,22 +61,27 @@ function MainPage() {
         </Box>
       </>
         : <>
-          <Box sx={styles.sideContainer}>
+          {isBrowser && <Box sx={styles.sideContainer}>
             <Leaderboard />
             <Chat />
-          </Box>
+          </Box>}
 
           {summit.id ? <Summit /> : <EmptySummit />}
 
-          <Box sx={styles.sideContainer}>
+          {isBrowser && <Box sx={styles.sideContainer}>
             <WalletConnect />
-          </Box>
+          </Box>}
 
           <Box sx={styles.bottomContainer}>
             <ActionBar />
             <BeastCollection />
           </Box>
         </>
+      }
+
+      {isMobile && <Box sx={{ position: 'absolute', top: '10px' }}>
+        <WalletConnect />
+      </Box>
       }
     </Box >
 
@@ -89,7 +96,6 @@ const styles = {
     width: '100%',
     height: '100%',
     display: 'flex',
-    justifyContent: 'space-between',
     position: 'relative'
   },
   bottomContainer: {

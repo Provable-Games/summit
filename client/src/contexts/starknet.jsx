@@ -20,6 +20,10 @@ const cartridge = new CartridgeConnector({
       target: summit_systems,
       method: "attack",
     },
+    {
+      target: summit_systems,
+      method: "feed",
+    }
   ],
   rpc: dojoConfig.rpcUrl,
   theme: "savage-summit",
