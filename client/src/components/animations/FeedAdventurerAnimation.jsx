@@ -9,8 +9,7 @@ function FeedAdventurerAnimation(props) {
   const { adventurer, onEnd, delay } = props
 
   const game = useContext(GameContext)
-  const { selectedBeasts, collection } = game.getState
-  const beast = collection.find(beast => beast.id === selectedBeasts[0])
+  const { selectedBeasts } = game.getState
 
   const controls = useAnimationControls()
   const textControls = useAnimationControls()
@@ -22,6 +21,7 @@ function FeedAdventurerAnimation(props) {
 
   useEffect(() => {
     feedAnimation()
+    game.setState.feedInProgress(false)
   }, [])
 
   const feedAnimation = async () => {
@@ -40,7 +40,7 @@ function FeedAdventurerAnimation(props) {
 
     game.setState.beasts(prev => prev.map(beast => ({
       ...beast,
-      currentHealth: beast.id === selected[0] ? beast.currentHealth + adventurersSelected.length : beast.currentHealth
+      currentHealth: beast.id === selectedBeasts[0] ? beast.currentHealth + 1 : beast.currentHealth
     })))
 
     await textControls.start({

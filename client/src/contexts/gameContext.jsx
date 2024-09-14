@@ -32,12 +32,14 @@ export const GameProvider = ({ children }) => {
   const [ownedBeasts, setOwnedBeasts] = useState([])
   const [liveBeastStats, setLiveBeastStats] = useState(null)
 
+  const [pendingLiveStatsUpdates, setPendingLiveStatsUpdates] = useState([])
+
   const [collection, setCollection] = useState([])
   const [loadingCollection, setLoadingCollection] = useState(false)
 
   const [adventurersSelected, setAdventurersSelected] = useState([])
   const [selected, setSelected] = useState([])
-  const [potions, setPotions] = useState(99)
+  const [potions, setPotions] = useState(0)
 
   const [totalDamage, setTotalDamage] = useState(0)
 
@@ -51,10 +53,12 @@ export const GameProvider = ({ children }) => {
   const { address } = useAccount()
 
   const resetState = () => {
+    setShowFeedingGround(false)
     setOwnedBeasts([])
-    setLiveBeastStats(null)
     setCollection([])
+    setLiveBeastStats(null)
     setSelected([])
+    setAdventurersSelected([])
     setTotalDamage(0)
     setAdventurerCollection([])
   }
@@ -80,7 +84,7 @@ export const GameProvider = ({ children }) => {
     }
 
     if (animate) {
-      setSummitAnimations(prev => [...prev, summitBeast])
+      setSummitAnimations(prev => [...prev, { type: 'capture', beast: summitBeast }])
     } else {
       setSummit(summitBeast)
     }
@@ -150,12 +154,18 @@ export const GameProvider = ({ children }) => {
     setLoadingCollection(true)
 
     let beastData = await getBeasts(address);
-    let liveData = await fetchBeastLiveData(beastData.map(beast => beast.id));
+
+    await fetchLiveStats(beastData)
 
     setOwnedBeasts(beastData);
-    setLiveBeastStats(liveData);
 
     setLoadingCollection(false)
+  }
+
+  const fetchLiveStats = async (beastData) => {
+    let liveData = await fetchBeastLiveData((beastData || ownedBeasts).map(beast => beast.id));
+
+    setLiveBeastStats(liveData);
   }
 
   useEffect(() => {
@@ -187,6 +197,18 @@ export const GameProvider = ({ children }) => {
   }, [summit, liveBeastStats, ownedBeasts])
 
   useEffect(() => {
+    if (attackAnimations.length > 0 || summitAnimations.length > 0 || feedAnimations.length > 0 || attackInProgress || feedingInProgress) {
+      return;
+    }
+
+    if (pendingLiveStatsUpdates) {
+      setPendingLiveStatsUpdates(false)
+      fetchLiveStats()
+    }
+
+  }, [pendingLiveStatsUpdates, attackAnimations, summitAnimations, feedAnimations, attackInProgress, feedingInProgress])
+
+  useEffect(() => {
     setInterval(() => {
       setBeastReward(prev => Number((prev + 0.01).toFixed(2)))
       setTotalReward(prev => Number((prev - 0.01).toFixed(2)))
@@ -216,10 +238,23 @@ export const GameProvider = ({ children }) => {
       return await toriiClient?.onEntityUpdated(
         [],
         (_, data) => {
-          if (data["savage_summit-Summit"]) {
+          if (Boolean(data["savage_summit-Summit"])) {
             let beastId = data["savage_summit-Summit"]["beast_token_id"].value
-            if (!beastId !== summit.id) {
+            if (beastId !== summit.id) {
               updateSummit(beastId, true);
+            }
+          }
+
+          else if (Boolean(data["savage_summit-LiveBeastStats"])) {
+            let beastId = data["savage_summit-LiveBeastStats"]["token_id"].value
+            let current_health = data["savage_summit-LiveBeastStats"]["current_health"].value
+
+            if (beastId === summit.id && current_health > 0) {
+              setSummitAnimations(prev => [...prev, { type: 'update', current_health }])
+            }
+
+            if (ownedBeasts.find(beast => beast.id === beastId)) {
+              setPendingLiveStatsUpdates(true)
             }
           }
         }
@@ -266,7 +301,6 @@ export const GameProvider = ({ children }) => {
     setAttackInProgress(true)
     try {
       const success = await dojo.executeTx("summit_systems", "attack", [summit.id, selected])
-      setAttackInProgress(false)
 
       if (success) {
         let attackingBeasts = collection.filter(beast => selected.includes(beast.id))
@@ -282,7 +316,6 @@ export const GameProvider = ({ children }) => {
     setFeedingInProgress(true)
     try {
       const success = await dojo.executeTx("summit_systems", "feed", [selected[0], adventurersSelected])
-      setFeedingInProgress(false)
 
       if (success) {
         setFeedAnimations(adventurersSelected)
@@ -327,6 +360,8 @@ export const GameProvider = ({ children }) => {
           showFeedingGround: setShowFeedingGround,
           attackAnimations: setAttackAnimations,
           beastStats: setLiveBeastStats,
+          attackInProgress: setAttackInProgress,
+          feedInProgress: setFeedingInProgress
         },
 
         getState: {

@@ -11,7 +11,7 @@ import AttackAnimation from './animations/AttackAnimation'
 
 function Summit() {
   const game = useContext(GameContext)
-  const { summitAnimations, summit, attackAnimations } = game.getState
+  const { summitAnimations, summit, attackAnimations, attackInProgress } = game.getState
 
   const controls = useAnimationControls()
 
@@ -36,11 +36,22 @@ function Summit() {
   }
 
   useEffect(() => {
-    if (summitAnimations.length > 0 && attackAnimations.length === 0) {
-      newSavageAnimation(summitAnimations[0])
+    if (attackAnimations.length > 0 || attackInProgress) {
+      return;
+    }
+
+    if (summitAnimations.length > 0) {
+      let animation = summitAnimations[0]
+
+      if (animation.type === 'capture') {
+        newSavageAnimation(animation.beast)
+      } else if (animation.type === 'update') {
+        game.setState.summit(prev => ({ ...prev, currentHealth: animation.current_health }))
+      }
+
       game.setState.summitAnimations(prev => prev.slice(1))
     }
-  }, [summitAnimations, attackAnimations])
+  }, [summitAnimations, attackAnimations, attackInProgress])
 
   return (
     <Box sx={styles.beastSummit}>
@@ -97,6 +108,7 @@ const styles = {
   beastSummit: {
     height: 'calc(100% - 270px)',
     width: '350px',
+    maxWidth: '95vw',
     boxSizing: 'border-box',
     borderRadius: '4px',
     display: 'flex',

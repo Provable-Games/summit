@@ -10,6 +10,7 @@ import { Scrollbars } from 'react-custom-scrollbars';
 
 import Lottie from "lottie-react";
 import SwordAnimation from '../assets/animations/swords.json';
+import { isBrowser } from "react-device-detect";
 
 function BeastCollection() {
   const game = useContext(GameContext)
@@ -50,14 +51,14 @@ function BeastCollection() {
               You don't own any beast nfts
             </Typography>
             <Typography variant="h2" letterSpacing={'0.5px'}>
-              Collect them in <a style={{ color: '#30a019' }} href="https://sepolia.lootsurvivor.io" target="_blank">loot survivor 1.5</a>
+              Collect them in <a style={{ color: '#30a019' }} href="https://lootsurvivor.io" target="_blank">loot survivor 1.5</a>
             </Typography>
             <Typography variant="h2" letterSpacing={'0.5px'}>
               Or buy in <a style={{ color: '#ff92b6' }} href="https://realms.world/collection/beasts" target="_blank">Realms world</a>
             </Typography>
           </Box>
 
-          <img src={fetchBeastImage('golem')} alt='' height={'150px'} />
+          {isBrowser && <img src={fetchBeastImage('golem')} alt='' height={'150px'} />}
 
         </Box>}
 
@@ -72,84 +73,83 @@ function BeastCollection() {
 
         </Box>}
 
-        {React.Children.toArray(
-          collection.map(beast => {
-            const isSelected = selectedBeasts.includes(beast.id)
-            const isSavage = summit.id === beast.id
+        {collection.map(beast => {
+          const isSelected = selectedBeasts.includes(beast.id)
+          const isSavage = summit.id === beast.id
 
-            return <Box
-              sx={[styles.itemContainer, isSelected && styles.selectedItem, (selectedBeasts.length > 0 && !isSelected) && { opacity: 0.5, borderColor: 'transparent' }]}
-              onClick={() => selectBeast(beast.id)}>
+          return <Box
+            key={beast.id}
+            sx={[styles.itemContainer, isSelected && styles.selectedItem, (selectedBeasts.length > 0 && !isSelected) && { opacity: 0.5, borderColor: 'transparent' }]}
+            onClick={() => selectBeast(beast.id)}>
 
-              {isSelected && attackInProgress && <Box sx={{ position: 'absolute', bottom: '45px' }}>
-                <Lottie animationData={SwordAnimation} loop={true} style={{ height: '90px' }} />
-              </Box>}
+            {isSelected && attackInProgress && <Box sx={{ position: 'absolute', bottom: '45px' }}>
+              <Lottie animationData={SwordAnimation} loop={true} style={{ height: '90px' }} />
+            </Box>}
 
-              {isSelected && selectedBeasts.length > 1 && <Box sx={styles.order}>
-                <Typography variant="h6" lineHeight={'19px'}>
-                  {selectedBeasts.findIndex(x => x === beast.id) + 1}
-                </Typography>
-              </Box>}
+            {isSelected && selectedBeasts.length > 1 && <Box sx={styles.order}>
+              <Typography variant="h6" lineHeight={'19px'}>
+                {selectedBeasts.findIndex(x => x === beast.id) + 1}
+              </Typography>
+            </Box>}
 
-              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
-                <Typography variant='h6' sx={{ lineHeight: '10px', letterSpacing: '0.5px' }}>
-                  {beast.name}
-                </Typography>
-                <Typography sx={{ letterSpacing: '0.5px' }}>
-                  lvl {beast.level}
-                </Typography>
-              </Box>
-
-              <img alt='' src={fetchBeastImage(beast.name)} height={'80px'} />
-
-              <Box position={'relative'} width={'100%'}>
-                <HealthBar variant="determinate" value={normaliseHealth(beast.currentHealth, beast.health)} />
-
-                <Box sx={styles.healthText}>
-                  <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
-                    {beast.currentHealth}
-                  </Typography>
-                </Box>
-              </Box>
-
-              {isSavage
-                ? <>
-                  <Typography variant="h4" letterSpacing={'2px'} className="glitch-effect">
-                    SAVAGE
-                  </Typography>
-                </>
-                : beast.capture
-                  ? <>
-                    <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkgreen'}>
-                      Success
-                    </Typography>
-
-                    <Box display={'flex'} alignItems={'center'} gap={'2px'}>
-                      <img src={health} alt='' height={'13px'} />
-
-                      <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkgreen'}>
-                        {beast.healthLeft} hp left
-                      </Typography>
-                    </Box>
-                  </>
-
-                  : <>
-                    <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkred'}>
-                      Defeat
-                    </Typography>
-
-                    <Box display={'flex'} gap={'3px'} alignItems={'center'}>
-                      <img src={sword} alt='' height={'10px'} />
-
-                      <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkred'}>
-                        {beast.damage} dmg
-                      </Typography>
-                    </Box>
-                  </>
-              }
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
+              <Typography variant='h6' sx={{ lineHeight: '10px', letterSpacing: '0.5px' }}>
+                {beast.name}
+              </Typography>
+              <Typography sx={{ letterSpacing: '0.5px' }}>
+                lvl {beast.level}
+              </Typography>
             </Box>
-          })
-        )}
+
+            <img alt='' src={fetchBeastImage(beast.name)} height={'80px'} />
+
+            <Box position={'relative'} width={'100%'}>
+              <HealthBar variant="determinate" value={normaliseHealth(beast.currentHealth, beast.health)} />
+
+              <Box sx={styles.healthText}>
+                <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
+                  {beast.currentHealth}
+                </Typography>
+              </Box>
+            </Box>
+
+            {isSavage
+              ? <>
+                <Typography variant="h4" letterSpacing={'2px'} className="glitch-effect">
+                  SAVAGE
+                </Typography>
+              </>
+              : beast.capture
+                ? <>
+                  <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkgreen'}>
+                    Success
+                  </Typography>
+
+                  <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+                    <img src={health} alt='' height={'13px'} />
+
+                    <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkgreen'}>
+                      {beast.healthLeft} hp left
+                    </Typography>
+                  </Box>
+                </>
+
+                : <>
+                  <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkred'}>
+                    Defeat
+                  </Typography>
+
+                  <Box display={'flex'} gap={'3px'} alignItems={'center'}>
+                    <img src={sword} alt='' height={'10px'} />
+
+                    <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkred'}>
+                      {beast.damage} dmg
+                    </Typography>
+                  </Box>
+                </>
+            }
+          </Box>
+        })}
       </Box >
     </Scrollbars>
   );
@@ -162,7 +162,7 @@ const styles = {
     width: '100%',
     display: 'flex',
     gap: 1,
-    overflowX: 'scroll',
+    overflowX: 'auto',
     boxSizing: 'border-box',
     p: '5px'
   },

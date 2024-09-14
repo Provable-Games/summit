@@ -79,8 +79,21 @@ function MainPage() {
         </>
       }
 
-      {isMobile && <Box sx={{ position: 'absolute', top: '10px' }}>
-        <WalletConnect />
+      {isMobile && <Box sx={{ position: 'absolute', top: '10px', width: '100%', boxSizing: 'border-box', px: 1, display: 'flex', justifyContent: 'center' }}>
+        {showFeedingGround
+          ? <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <IconButton size='large' onClick={() => { game.setState.showFeedingGround(false); game.setState.selectedBeasts([]); }}>
+              <ArrowBackIcon fontSize='large' htmlColor='black' />
+            </IconButton>
+
+            <Typography variant='h2'>
+              Feeding Ground
+            </Typography>
+
+            <Box width={'60px'} />
+          </Box>
+          : <WalletConnect />
+        }
       </Box>
       }
     </Box >
@@ -100,8 +113,8 @@ const styles = {
   },
   bottomContainer: {
     width: '100%',
-    height: '100vh',
-    maxHeight: '260px',
+    height: '260px',
+    minHeight: '260px',
     position: 'absolute',
     background: '#fbf7da',
     bottom: 0,

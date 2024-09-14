@@ -22,7 +22,7 @@ function ChooseWallet(props) {
       onClose={() => close(false)}
       maxWidth={'lg'}
       PaperProps={{
-        sx: { background: '#feffda', border: '3px solid rgba(0, 0, 0, 0.35)', borderRadius: '10px' }
+        sx: { background: '#feffda', border: '3px solid rgba(0, 0, 0, 0.35)', borderRadius: '10px', maxWidth: '95%' }
       }}
     >
 
@@ -71,11 +71,13 @@ const styles = {
     alignItems: 'center',
     padding: '26px 10px',
     width: '400px',
+    maxWidth: '100%',
+    boxSizing: 'border-box',
   },
   container: {
     boxSizing: 'border-box',
     width: '100%',
-    px: 4,
+    px: 2,
     py: 1,
     display: 'flex',
     justifyContent: 'space-between',

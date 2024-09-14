@@ -29,6 +29,7 @@ function AttackAnimation(props) {
 
   useEffect(() => {
     attackAnimation()
+    game.setState.attackInProgress(false)
   }, [])
 
   const attackAnimation = async () => {
@@ -63,6 +64,8 @@ function AttackAnimation(props) {
       opacity: 0,
       transition: { duration: 0.8 }
     })
+
+    game.setState.beastStats(prev => [{}, ...prev])
 
     onEnd(attackingBeast.id)
   }
