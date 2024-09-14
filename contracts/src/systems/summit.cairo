@@ -134,6 +134,9 @@ pub mod summit_systems {
 
                     // set the new summit beast
                     self._set_summit_beast(attacking_beast_token_id);
+
+                    // update the live stats of the attacking beast
+                    set!(world, (attacking_beast.stats.live));
                     break;
                 }
 
