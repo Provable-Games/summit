@@ -65,7 +65,12 @@ function AttackAnimation(props) {
       transition: { duration: 0.8 }
     })
 
-    game.setState.beastStats(prev => [{}, ...prev])
+    if (!attackingBeast.capture && summit.currentHealth > 0) {
+      game.setState.beasts(prev => prev.map(beast => ({
+        ...beast,
+        currentHealth: beast.id === attackingBeast.id ? 0 : beast.currentHealth
+      })))
+    }
 
     onEnd(attackingBeast.id)
   }

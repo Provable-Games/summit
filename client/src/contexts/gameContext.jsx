@@ -32,8 +32,6 @@ export const GameProvider = ({ children }) => {
   const [ownedBeasts, setOwnedBeasts] = useState([])
   const [liveBeastStats, setLiveBeastStats] = useState(null)
 
-  const [pendingLiveStatsUpdates, setPendingLiveStatsUpdates] = useState([])
-
   const [collection, setCollection] = useState([])
   const [loadingCollection, setLoadingCollection] = useState(false)
 
@@ -102,7 +100,7 @@ export const GameProvider = ({ children }) => {
   };
 
   const setBeastCollection = () => {
-    let beasts = ownedBeasts.map((beast) => {
+    let beasts = [...ownedBeasts].map((beast) => {
       let liveStat = liveBeastStats?.find(s => s.id === beast.id) ?? {}
       beast.health += liveStat?.bonus_health ?? 0
 
@@ -154,18 +152,12 @@ export const GameProvider = ({ children }) => {
     setLoadingCollection(true)
 
     let beastData = await getBeasts(address);
-
-    await fetchLiveStats(beastData)
+    let liveData = await fetchBeastLiveData(beastData.map(beast => beast.id));
 
     setOwnedBeasts(beastData);
+    setLiveBeastStats(liveData);
 
     setLoadingCollection(false)
-  }
-
-  const fetchLiveStats = async (beastData) => {
-    let liveData = await fetchBeastLiveData((beastData || ownedBeasts).map(beast => beast.id));
-
-    setLiveBeastStats(liveData);
   }
 
   useEffect(() => {
@@ -194,19 +186,7 @@ export const GameProvider = ({ children }) => {
     if (ownedBeasts.length > 0 && liveBeastStats !== null) {
       setBeastCollection()
     }
-  }, [summit, liveBeastStats, ownedBeasts])
-
-  useEffect(() => {
-    if (attackAnimations.length > 0 || summitAnimations.length > 0 || feedAnimations.length > 0 || attackInProgress || feedingInProgress) {
-      return;
-    }
-
-    if (pendingLiveStatsUpdates) {
-      setPendingLiveStatsUpdates(false)
-      fetchLiveStats()
-    }
-
-  }, [pendingLiveStatsUpdates, attackAnimations, summitAnimations, feedAnimations, attackInProgress, feedingInProgress])
+  }, [summit.id, liveBeastStats, ownedBeasts])
 
   useEffect(() => {
     setInterval(() => {
@@ -249,12 +229,17 @@ export const GameProvider = ({ children }) => {
             let beastId = data["savage_summit-LiveBeastStats"]["token_id"].value
             let current_health = data["savage_summit-LiveBeastStats"]["current_health"].value
 
-            if (beastId === summit.id && current_health > 0) {
-              setSummitAnimations(prev => [...prev, { type: 'update', current_health }])
-            }
+            if (beastId === summit.id) {
+              if (current_health > 0) {
+                setSummitAnimations(prev => [...prev, { type: 'update', current_health }])
+              }
 
-            if (ownedBeasts.find(beast => beast.id === beastId)) {
-              setPendingLiveStatsUpdates(true)
+              if (ownedBeasts.find(beast => beast.id === beastId)) {
+                setCollection(prev => prev.map(beast => ({
+                  ...beast,
+                  currentHealth: beast.id === beastId ? current_health : beast.currentHealth
+                })))
+              }
             }
           }
         }
