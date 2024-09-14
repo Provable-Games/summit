@@ -36,11 +36,11 @@ function Summit() {
   }
 
   useEffect(() => {
-    if (summitAnimations.length > 0) {
+    if (summitAnimations.length > 0 && attackAnimations.length === 0) {
       newSavageAnimation(summitAnimations[0])
       game.setState.summitAnimations(prev => prev.slice(1))
     }
-  }, [summitAnimations])
+  }, [summitAnimations, attackAnimations])
 
   return (
     <Box sx={styles.beastSummit}>
@@ -81,9 +81,10 @@ function Summit() {
 
         <SummitReward />
 
-        {attackAnimations.map(attackingBeast => (
-          <AttackAnimation key={attackingBeast.id} attackingBeast={attackingBeast} onEnd={removeAttackAnimation} />
+        {attackAnimations.map((attackingBeast, i) => (
+          <AttackAnimation key={attackingBeast.id} attackingBeast={attackingBeast} onEnd={removeAttackAnimation} delay={i} />
         ))}
+
       </motion.div>
 
     </Box>

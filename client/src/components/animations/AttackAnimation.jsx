@@ -10,7 +10,7 @@ import { GameContext } from '../../contexts/gameContext';
 import { Typography } from '@mui/material';
 
 function AttackAnimation(props) {
-  const { attackingBeast, onEnd } = props
+  const { attackingBeast, onEnd, delay } = props
 
   const game = useContext(GameContext)
   const { summit } = game.getState
@@ -33,7 +33,8 @@ function AttackAnimation(props) {
 
   const attackAnimation = async () => {
     await controls.start({
-      opacity: 1
+      opacity: 1,
+      transition: { delay: delay * 0.25 }
     })
 
     await controls.start({
@@ -62,10 +63,6 @@ function AttackAnimation(props) {
       opacity: 0,
       transition: { duration: 0.8 }
     })
-
-    if (attackingBeast.capture) {
-      game.setState.summitAnimations([{ ...attackingBeast }])
-    }
 
     onEnd(attackingBeast.id)
   }

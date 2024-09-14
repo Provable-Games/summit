@@ -8,12 +8,12 @@ import sword from '../assets/images/sword.png';
 import BuyConsumables from './dialogs/BuyConsumables';
 import { useState } from 'react';
 import { useAccount } from '@starknet-react/core';
-import { isMobile } from 'react-device-detect';
+import { isBrowser, isMobile } from 'react-device-detect';
 
 function ActionBar(props) {
   const game = useContext(GameContext)
   const { selectedBeasts, summit, showFeedingGround, totalDamage,
-    selectedAdventurers, potions, attackInProgress, ownedBeasts } = game.getState
+    selectedAdventurers, potions, attackInProgress, ownedBeasts, feedingInProgress } = game.getState
 
   const { address } = useAccount()
   const [buyPotionsDialog, openBuyPotionsDialog] = useState(false)
@@ -24,8 +24,16 @@ function ActionBar(props) {
     return <Box sx={styles.container}>
 
       <Box sx={{ display: 'flex', gap: 1 }}>
-        <AttackButton disabled={selectedAdventurers.length < 1} onClick={() => game.actions.feed()}>
-          Feed
+        <AttackButton disabled={feedingInProgress || selectedAdventurers.length < 1} onClick={() => game.actions.feed()}>
+          {feedingInProgress ?
+            <Box display={'flex'} alignItems={'baseline'}>
+              <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>Feeding</Typography>
+              <div className='dotLoader white' />
+            </Box>
+            : <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>
+              Feed
+            </Typography>
+          }
         </AttackButton>
       </Box>
     </Box>
@@ -36,15 +44,16 @@ function ActionBar(props) {
     <Box sx={{ display: 'flex', gap: 1 }}>
       {isSavage
         ? <AttackButton sx={{ fontSize: '20px' }}>
-          {isMobile ? "YOU'RE THE SAVAGE" : "SAVAGE"}
+          YOU'RE THE SAVAGE
         </AttackButton>
-        : showFeedingGround
-          ? <AttackButton disabled={selectedAdventurers.length < 1}>
-            Feed
-          </AttackButton>
+        : <AttackButton disabled={attackInProgress || selectedBeasts.length < 1} onClick={() => game.actions.attack()}>
+          {attackInProgress
+            ? <Box display={'flex'} alignItems={'baseline'}>
+              <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>Attacking</Typography>
+              <div className='dotLoader white' />
+            </Box>
 
-          : <AttackButton disabled={attackInProgress || selectedBeasts.length < 1} onClick={() => game.actions.attack()}>
-            {totalDamage < summit.currentHealth
+            : totalDamage < summit.currentHealth
               ? <Box sx={{ display: 'flex', gap: 1.5 }}>
                 <Typography color={selectedBeasts.length < 1 ? 'rgba(0, 0, 0, 0.26)' : 'white'} variant='h4'>
                   Attack
@@ -61,8 +70,8 @@ function ActionBar(props) {
               : <Typography color={'white'} variant='h4'>
                 Take Summit
               </Typography>
-            }
-          </AttackButton>}
+          }
+        </AttackButton>}
 
       {/* <Tooltip title={<Typography variant='h4'>Coming soon</Typography>} placement={'top-end'}>
         <Box>

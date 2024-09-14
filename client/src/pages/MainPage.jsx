@@ -63,7 +63,7 @@ function MainPage() {
         : <>
           {isBrowser && <Box sx={styles.sideContainer}>
             <Leaderboard />
-            <Chat />
+            {/* <Chat /> */}
           </Box>}
 
           {summit.id ? <Summit /> : <EmptySummit />}

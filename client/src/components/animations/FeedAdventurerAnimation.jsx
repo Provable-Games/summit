@@ -38,17 +38,10 @@ function FeedAdventurerAnimation(props) {
     ref.current.style.opacity = 1
     textRef.current.style.opacity = 1
 
-    game.setState.beastStats(prev => {
-      if (prev.find(stat => stat.id === beast.id)) {
-        return prev.map(stats => ({
-          ...stats,
-          bonus_health: stats.id === beast.id ? stats.bonus_health + 1 : stats.bonus_health,
-          current_health: (stats.id === beast.id && stats.current_health > 0) ? stats.current_health + 1 : stats.current_health
-        }))
-      } else {
-        return [{ id: beast.id, current_health: beast.health + 1, bonus_health: 1, isDead: false }, ...(prev ?? [])]
-      }
-    })
+    game.setState.beasts(prev => prev.map(beast => ({
+      ...beast,
+      currentHealth: beast.id === selected[0] ? beast.currentHealth + adventurersSelected.length : beast.currentHealth
+    })))
 
     await textControls.start({
       y: -30,

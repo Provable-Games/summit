@@ -44,7 +44,7 @@ export async function fetchSummitBeastTokenId() {
 export async function fetchBeastLiveData(tokenIds) {
   const document = gql`
   {
-    savageSummitLiveBeastStatsModels (where:{
+    savageSummitLiveBeastStatsModels (limit:10000, where:{
       token_idIN:[${tokenIds}]})
     {
       edges {
@@ -81,10 +81,12 @@ export async function fetchBeastLiveData(tokenIds) {
   }
 }
 
-export async function fetchAdventurerData(adventurerIds) {
+export async function fetchAdventurerData(adventurers) {
+  let adventurerIds = adventurers.map(adventurer => `"${adventurer.id.toString()}"`);
+
   const document = gql`
   {
-    savageSummitAdventurerModels (where:{
+    savageSummitAdventurerModels (limit:10000, where:{
       token_idIN:[${adventurerIds}]}
     ){
       edges {
@@ -98,7 +100,14 @@ export async function fetchAdventurerData(adventurerIds) {
 
   try {
     const res = await request(GRAPH_URL, document)
-    return res?.savageSummitAdventurerModels?.edges.map(edge => edge.node) ?? []
+    let nodeData = res?.savageSummitAdventurerModels?.edges.map(edge => edge.node) ?? []
+
+    nodeData = nodeData.map(adventurer => {
+      return parseInt(adventurer.token_id, 16)
+    })
+
+    return nodeData
   } catch (ex) {
+    return []
   }
 }
