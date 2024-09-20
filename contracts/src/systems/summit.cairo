@@ -27,6 +27,7 @@ pub mod summit_systems {
     use beasts::pack::PackableBeast;
     use combat::constants::CombatEnums::{Type, Tier};
     use combat::combat::{ImplCombat, CombatSpec, CombatResult, SpecialPowers};
+    use game::game::interfaces::{IGame, IGameDispatcher, IGameDispatcherTrait};
     use core::num::traits::{OverflowingAdd, OverflowingSub};
     use openzeppelin_token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
     use savage_summit::constants::{errors, BASE_REVIVAL_TIME_SECONDS, MINIMUM_DAMAGE, MAX_U32};
@@ -152,34 +153,25 @@ pub mod summit_systems {
             self._assert_beast_ownership(beast_token_id);
 
             let mut beast = self._get_beast(beast_token_id);
+            let mut bonus_health = 0;
+
+            let summit_beast_token_id = self._get_summit_beast_token_id();
 
             let mut i = 0;
             while (i < adventurer_ids.len()) {
                 let adventurer_id = *adventurer_ids.at(i);
+                let adventurer = self._get_adventurer(adventurer_id);
 
                 self._assert_adventurer_ownership(adventurer_id);
-                assert(
-                    get!(world, (adventurer_id), Adventurer).beast_token_id == 0,
-                    'Adventurer already consumed'
-                );
+                self._assert_beast_can_consume(beast, adventurer);
 
-                //TODO: get adventurer details
-                //TODO: verify adventurer is dead and maybe not ranked
-
-                set!(world, (Adventurer { token_id: adventurer_id, beast_token_id }));
+                beast.stats.live.bonus_health += adventurer.level;
+                if beast_token_id == summit_beast_token_id {
+                    beast.stats.live.current_health += adventurer.level;
+                }
 
                 i += 1;
             };
-
-            let summit_beast_token_id = self._get_summit_beast_token_id();
-            let total_bonus_health = adventurer_ids.len();
-
-            //TODO: Check overflow on health
-            if beast_token_id == summit_beast_token_id {
-                beast.stats.live.current_health += total_bonus_health;
-            }
-
-            beast.stats.live.bonus_health += total_bonus_health;
 
             set!(world, (beast.stats.live));
         }
@@ -257,6 +249,21 @@ pub mod summit_systems {
                 special_2: beast.suffix,
                 level: beast.level,
                 starting_health: beast.health,
+            }
+        }
+
+        fn _get_adventurer(self: @ContractState, token_id: u64) -> Adventurer {
+            let adventurer_address = utils::get_adventurer_address(get_tx_info().unbox().chain_id);
+            let game_dispatcher = IGameDispatcher { contract_address: adventurer_address };
+
+            let adventurer = game_dispatcher.get_adventurer(token_id.into());
+            let adventurer_meta = game_dispatcher.get_adventurer_meta(token_id.into());
+
+            Adventurer {
+                level: self._get_level_from_xp(adventurer.xp),
+                health: adventurer.health,
+                birth_date: adventurer_meta.birth_date,
+                rank_at_death: adventurer_meta.rank_at_death,
             }
         }
 
@@ -389,7 +396,7 @@ pub mod summit_systems {
             assert(attacking_owner != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
         }
 
-        /// @title assert_beast_is_revived
+        /// @title assert_beast_can_attack
         /// @notice this function is used to assert that a beast is revived
         /// @param live_beast_stats the stats of the beast to check
         fn _assert_beast_can_attack(self: @ContractState, live_beast_stats: LiveBeastStats) {
@@ -397,6 +404,29 @@ pub mod summit_systems {
             let current_time = get_block_timestamp();
             let time_since_death = current_time - last_death_timestamp;
             assert(time_since_death >= BASE_REVIVAL_TIME_SECONDS, errors::BEAST_NOT_YET_REVIVED);
+        }
+
+        /// @title assert_beast_can_consume
+        /// @notice this function is used to assert that a beast can consume an adventurer
+        /// @param beast the beast to check
+        /// @param adventurer the adventurer to check
+        fn _assert_beast_can_consume(self: @ContractState, beast: Beast, adventurer: Adventurer) {
+            let total_health = beast.stats.live.bonus_health + beast.stats.fixed.starting_health.into();
+            assert(total_health <= 2046, errors::BEAST_MAX_HEALTH);
+            assert(adventurer.health == 0, errors::ADVENTURER_ALIVE);
+            assert(adventurer.rank_at_death == 0, errors::ADVENTURER_RANKED);
+        }
+
+        /// @notice: gets level from xp
+        /// @param xp: the xp to get the level for
+        /// @return u8: the level for the given xp
+        #[inline(always)]
+        fn _get_level_from_xp(xp: u16) -> u8 {
+            if (xp == 0) {
+                1
+            } else {
+                u16_sqrt(xp)
+            }
         }
     }
 }

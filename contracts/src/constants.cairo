@@ -14,4 +14,7 @@ mod errors {
     const SUMMIT_BEAST_CHANGED: felt252 = 'can only attack beast on summit';
     const BEAST_ADDRESS_NOT_SET: felt252 = 'beast address not set';
     const BEAST_ATTACKING_OWN_BEAST: felt252 = 'attacking own beast';
+    const BEAST_MAX_HEALTH: felt252 = 'beast has max health';
+    const ADVENTURER_ALIVE: felt252 = 'adventurer is alive';
+    const ADVENTURER_RANKED: felt252 = 'adventurer is ranked';
 }
