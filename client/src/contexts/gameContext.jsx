@@ -315,11 +315,12 @@ export const GameProvider = ({ children }) => {
   const feedBeast = async () => {
     setFeedingInProgress(true)
     try {
-      const success = await dojo.executeTx("summit_systems", "feed", [selected[0], adventurersSelected])
+      const success = await dojo.executeTx("summit_systems", "feed", [selected[0], adventurersSelected.map(adventurer => adventurer.id)])
 
       if (success) {
         setFeedAnimations(adventurersSelected)
-        setAdventurerCollection(prev => prev.filter(adventurer => !adventurersSelected.includes(adventurer.id)))
+
+        setAdventurerCollection(prev => prev.filter(adventurer => !adventurersSelected.some(selected => selected.id === adventurer.id)))
         setAdventurersSelected([])
       }
     } catch (ex) {

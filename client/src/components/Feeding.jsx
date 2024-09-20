@@ -59,7 +59,7 @@ function Feeding() {
         </Box>
 
         {feedAnimations.map((adventurer, i) => (
-          <FeedAdventurerAnimation key={adventurer} adventurer={adventurer} onEnd={removeFeedAnimation} delay={i} />
+          <FeedAdventurerAnimation key={adventurer.id} adventurer={adventurer} onEnd={removeFeedAnimation} delay={i} />
         ))}
       </motion.div>
 

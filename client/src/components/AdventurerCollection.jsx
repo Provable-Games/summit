@@ -18,11 +18,11 @@ function AdventurerCollection() {
   const game = useContext(GameContext)
   const { adventurerCollection, selectedAdventurers, loadingAdventurers } = game.getState
 
-  const selectAdventurer = (id) => {
-    if (selectedAdventurers.includes(id)) {
-      game.setState.selectedAdventurers(prev => prev.filter(prevId => prevId !== id))
+  const selectAdventurer = (adventurer) => {
+    if (selectedAdventurers.find(selected => selected.id === adventurer.id)) {
+      game.setState.selectedAdventurers(prev => prev.filter(prev => prev.id !== adventurer.id))
     } else {
-      game.setState.selectedAdventurers(prev => [...prev, id])
+      game.setState.selectedAdventurers(prev => [...prev, adventurer])
     }
   }
 
@@ -42,10 +42,10 @@ function AdventurerCollection() {
 
         {React.Children.toArray(
           adventurerCollection.map(adventurer => {
-            const isSelected = selectedAdventurers.includes(adventurer.id)
+            const isSelected = selectedAdventurers.some(selected => selected.id === adventurer.id)
             const isRanked = adventurer.rank > 0
 
-            return <Box onClick={() => { if (!isRanked) selectAdventurer(adventurer.id); }}
+            return <Box onClick={() => { if (!isRanked) selectAdventurer(adventurer); }}
               sx={[styles.itemContainer, isRanked && styles.rankedItem, isSelected && styles.selectedItem, ((selectedAdventurers.length > 0) && !isSelected) && { opacity: 0.5, borderColor: 'transparent' }]}
             >
 

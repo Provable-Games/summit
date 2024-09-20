@@ -9,6 +9,7 @@ import { GameContext } from '../contexts/gameContext';
 import { AttackButton, BuyConsumablesButton, RoundBlueButton, RoundOrangeButton } from '../helpers/styles';
 import BuyConsumables from './dialogs/BuyConsumables';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 
 function ActionBar(props) {
   const game = useContext(GameContext)
@@ -25,14 +26,24 @@ function ActionBar(props) {
 
       <Box sx={{ display: 'flex', gap: 1 }}>
         <AttackButton disabled={feedingInProgress || selectedAdventurers.length < 1} onClick={() => game.actions.feed()}>
-          {feedingInProgress ?
-            <Box display={'flex'} alignItems={'baseline'}>
+          {feedingInProgress
+            ? <Box display={'flex'} alignItems={'baseline'}>
               <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>Feeding</Typography>
               <div className='dotLoader white' />
             </Box>
-            : <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>
-              Feed
-            </Typography>
+            : <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>
+                Feed
+              </Typography>
+
+              {selectedAdventurers.length > 0 && <Box display={'flex'} gap={'3px'} alignItems={'center'}>
+                <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'white'} variant='h4'>
+                  +{selectedAdventurers.reduce((sum, adventurer) => sum + adventurer.level, 0)}
+                </Typography>
+
+                <FavoriteIcon fontSize='small' htmlColor='white' />
+              </Box>}
+            </Box>
           }
         </AttackButton>
       </Box>

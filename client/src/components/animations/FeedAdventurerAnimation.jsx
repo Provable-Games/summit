@@ -17,7 +17,7 @@ function FeedAdventurerAnimation(props) {
   const ref = useRef()
   const textRef = useRef()
 
-  const [health] = useState(1)
+  const [health] = useState(adventurer.health)
 
   useEffect(() => {
     feedAnimation()
