@@ -23,6 +23,7 @@ trait ISummitSystem {
 
 #[dojo::contract]
 pub mod summit_systems {
+    use integer::{u16_sqrt};
     use beasts::interfaces::{IBeasts, IBeastsDispatcher, IBeastsDispatcherTrait};
     use beasts::pack::PackableBeast;
     use combat::constants::CombatEnums::{Type, Tier};
@@ -30,7 +31,7 @@ pub mod summit_systems {
     use game::game::interfaces::{IGame, IGameDispatcher, IGameDispatcherTrait};
     use core::num::traits::{OverflowingAdd, OverflowingSub};
     use openzeppelin_token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
-    use savage_summit::constants::{errors, BASE_REVIVAL_TIME_SECONDS, MINIMUM_DAMAGE, MAX_U32};
+    use savage_summit::constants::{errors, BASE_REVIVAL_TIME_SECONDS, MINIMUM_DAMAGE, MAX_U32, BEAST_MAX_HEALTH, TEN_DAYS_SECONDS};
     use savage_summit::models::adventurer::Adventurer;
     use savage_summit::models::beast::{Beast, ImplBeast};
     use savage_summit::models::beast_details::{BeastDetails, ImplBeastDetails};
@@ -412,15 +413,14 @@ pub mod summit_systems {
         /// @param adventurer the adventurer to check
         fn _assert_beast_can_consume(self: @ContractState, beast: Beast, adventurer: Adventurer) {
             let total_health = beast.stats.live.bonus_health + beast.stats.fixed.starting_health.into();
-            assert(total_health <= 2046, errors::BEAST_MAX_HEALTH);
-            assert(adventurer.health == 0, errors::ADVENTURER_ALIVE);
+            assert(total_health <= BEAST_MAX_HEALTH, errors::BEAST_MAX_HEALTH);
+            assert(adventurer.health == 0 || get_block_timestamp() - adventurer.birth_date > TEN_DAYS_SECONDS, errors::ADVENTURER_ALIVE);
             assert(adventurer.rank_at_death == 0, errors::ADVENTURER_RANKED);
         }
 
         /// @notice: gets level from xp
         /// @param xp: the xp to get the level for
         /// @return u8: the level for the given xp
-        #[inline(always)]
         fn _get_level_from_xp(xp: u16) -> u8 {
             if (xp == 0) {
                 1

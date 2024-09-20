@@ -107,6 +107,45 @@ function Leaderboard(props) {
 
           <Box sx={{ width: '50%', height: '18px', border: '2px solid #07323d', textAlign: 'center', borderRadius: '10px', background: '#ddcdaa' }}>
             <Typography letterSpacing={'1px'} fontWeight={'bold'}>
+              Potion cost
+            </Typography>
+          </Box>
+
+          <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
+        </Box>
+
+        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
+          <Typography sx={{ letterSpacing: '0.5px' }}>
+            Revive potion
+          </Typography>
+          <Typography sx={{ letterSpacing: '0.5px' }}>
+            ~$0.25
+          </Typography>
+        </Box>
+
+        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
+          <Typography sx={{ letterSpacing: '0.5px' }}>
+            Attack potion
+          </Typography>
+          <Typography sx={{ letterSpacing: '0.5px' }}>
+            ~$0.25
+          </Typography>
+        </Box>
+
+        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
+          <Typography sx={{ letterSpacing: '0.5px' }}>
+            Extra life potion
+          </Typography>
+          <Typography sx={{ letterSpacing: '0.5px' }}>
+            ~$0.25
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
+          <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
+
+          <Box sx={{ width: '50%', height: '18px', border: '2px solid #07323d', textAlign: 'center', borderRadius: '10px', background: '#ddcdaa' }}>
+            <Typography letterSpacing={'1px'} fontWeight={'bold'}>
               Stats
             </Typography>
           </Box>
@@ -122,14 +161,14 @@ function Leaderboard(props) {
             {totalSupply - deadBeastCount}/{totalSupply}
           </Typography>
         </Box>
-        {/* <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
+        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
           <Typography sx={{ letterSpacing: '0.5px' }}>
             Potions Bought
           </Typography>
           <Typography sx={{ letterSpacing: '0.5px' }}>
             1304
           </Typography>
-        </Box> */}
+        </Box>
       </Box>
 
     </Box>
@@ -141,7 +180,6 @@ export default Leaderboard;
 const styles = {
   container: {
     width: '295px',
-    height: '250px',
     border: '4px solid #1f8c9b',
     borderRadius: '16px',
     boxShadow: 'rgba(0, 0, 0, 0.16) 0px 1px 4px, rgb(51, 51, 51) 0px 0px 0px 2px'

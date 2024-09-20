@@ -4,7 +4,7 @@ version = 1
 [[package]]
 name = "beasts"
 version = "0.1.0"
-source = "git+https://github.com/leetship/beasts.git?branch=main#4b4ce296265d8f830f51a88f34850ed28c809e89"
+source = "git+https://github.com/leetship/beasts.git?rev=4b4ce296265d8f830f51a88f34850ed28c809e89#4b4ce296265d8f830f51a88f34850ed28c809e89"
 dependencies = [
  "openzeppelin_introspection",
  "openzeppelin_token",

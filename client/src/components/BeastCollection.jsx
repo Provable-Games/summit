@@ -215,6 +215,6 @@ const styles = {
   order: {
     position: 'absolute',
     top: 0,
-    left: 5
+    right: 5
   },
 }
