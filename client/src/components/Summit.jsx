@@ -8,6 +8,7 @@ import { HealthBar } from '../helpers/styles'
 import { fadeVariant } from '../helpers/variants'
 import SummitReward from './SummitReward'
 import AttackAnimation from './animations/AttackAnimation'
+import { ClubIcon, SwordIcon, WandIcon } from './Icons'
 
 function Summit() {
   const game = useContext(GameContext)
@@ -73,12 +74,22 @@ function Summit() {
         </Box>
 
         <motion.div animate={controls} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '8px' }}>
-          <Typography variant='h3' sx={{ lineHeight: '14px', textAlign: 'center' }}>
-            {summit.prefix} {summit.suffix} {summit.name}
+          <Typography variant='h3' sx={{ lineHeight: '16px', textAlign: 'center' }}>
+            "{summit.prefix} {summit.suffix}" {summit.name}
           </Typography>
-          <Typography variant='h4'>
-            lvl {summit.level}
-          </Typography>
+
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', gap: 1, alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', gap: '2px' }}>
+              <Typography variant='h5' sx={{ letterSpacing: '0.5px', color: 'rgba(0, 0, 0, 0.6)' }}>
+                Pwr
+              </Typography>
+
+              <Typography variant='h5' sx={{ letterSpacing: '0.5px', color: 'rgba(0, 0, 0, 0.6)' }}>
+                {(6 - summit.tier) * summit.level}
+              </Typography>
+            </Box>
+
+          </Box>
         </motion.div>
 
         <motion.img

@@ -1,9 +1,8 @@
-import { differenceInSeconds } from 'date-fns';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES } from './BeastData';
 
 export const fetchBeastImage = (name) => {
   try {
-    return new URL(`../assets/monsters/${name.toLowerCase()}.png`, import.meta.url).href
+    return new URL(`../assets/beasts/${name.toLowerCase()}.png`, import.meta.url).href
   } catch (ex) {
     return ""
   }
@@ -37,8 +36,13 @@ export const calculateBattleResult = (beast, summit) => {
     }
   }
 
-  let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor(((6 - beast.tier) * beast.level) * elementalDamage(beast, summit)) - ((6 - summit.tier) * summit.level))
-  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(((6 - summit.tier) * summit.level) * elementalDamage(summit, beast)) - ((6 - beast.tier) * beast.level))
+  let elemental = elementalDamage(beast, summit);
+
+  let beastPower = (6 - beast.tier) * beast.level
+  let summitPower = (6 - summit.tier) * summit.level
+
+  let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((beastPower * elemental) - summitPower))
+  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor((summitPower) * elementalDamage(summit, beast)) - beastPower)
 
   let summitHealth = summit.currentHealth
   let beastHealth = beast.currentHealth
@@ -52,7 +56,9 @@ export const calculateBattleResult = (beast, summit) => {
         capture: true,
         healthLeft: beastHealth,
         beastDamage,
-        summitDamage
+        summitDamage,
+        elemental,
+        power: beastPower
       }
     }
 
@@ -61,10 +67,11 @@ export const calculateBattleResult = (beast, summit) => {
     if (beastHealth <= 0) {
       return {
         capture: false,
-        damage: summit.currentHealth - summitHealth
+        damage: summit.currentHealth - summitHealth,
+        elemental,
+        power: beastPower
       }
     }
-
   }
 }
 
@@ -79,5 +86,16 @@ export const beastDetails = (id, prefix, suffix) => {
     fullName: `${ITEM_NAME_PREFIXES[prefix]} ${ITEM_NAME_PREFIXES[suffix]} ${BEAST_NAMES[id]}`,
     tier: BEAST_TIERS[id],
     type: BEAST_TYPES[id]
+  }
+}
+
+export const beastElementalColor = (beast) => {
+  switch (beast.elemental) {
+    case 0.5:
+      return 'red'
+    case 1:
+      return 'gray'
+    case 1.5:
+      return 'green'
   }
 }

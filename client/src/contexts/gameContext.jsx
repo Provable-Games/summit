@@ -81,6 +81,13 @@ export const GameProvider = ({ children }) => {
       summitBeast = { ...summitBeastDetails, currentHealth: summitLiveStats?.current_health || summitBeastDetails.health }
     }
 
+    if (ownedBeasts.some(beast => beast.id === summit.id)) {
+      setCollection(prev => prev.map(beast => ({
+        ...beast,
+        currentHealth: beast.id === summit.id ? 0 : beast.currentHealth
+      })))
+    }
+
     if (animate) {
       setSummitAnimations(prev => [...prev, { type: 'capture', beast: summitBeast }])
     } else {
@@ -116,16 +123,24 @@ export const GameProvider = ({ children }) => {
         ...liveStat
       }
     }).sort((a, b) => {
-      if (a.capture && !b.capture) {
+      if (a.id === summit.id) {
+        return -1
+      } else if (b.id === summit.id) {
+        return 1
+      } else if (a.capture && !b.capture) {
         return -1;
       } else if (b.capture && !a.capture) {
         return 1;
       } else if (a.capture && b.capture) {
-        return b.healthLeft - a.healthLeft
+        if (a.healthLeft !== b.healthLeft) {
+          return b.healthLeft - a.healthLeft
+        } else {
+          return b.power - a.power
+        }
       } else if (a.damage !== b.damage) {
         return b.damage - a.damage
       } else {
-        return ((6 - b.tier) * b.level) - ((6 - a.tier) * a.level)
+        return b.power - a.power
       }
     })
 

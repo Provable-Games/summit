@@ -59,7 +59,7 @@ function BuyConsumables(props) {
                           Cost
                         </Typography>
                         <Typography sx={{ letterSpacing: '0.5px', fontSize: '13px', opacity: 0.8 }}>
-                          ${potion.cost}
+                          ~${potion.cost}
                         </Typography>
                       </Box>
                     </Box>
@@ -119,7 +119,8 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     boxSizing: 'border-box',
-    minWidth: '500px',
+    width: '500px',
+    maxWidth: '98vw',
     p: 3
   },
   container: {

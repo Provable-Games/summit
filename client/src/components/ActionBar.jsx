@@ -1,14 +1,14 @@
-import { Box, Tooltip, Typography } from '@mui/material';
-import React from 'react';
-import potion from '../assets/images/potion.png';
-import { AttackButton, BuyConsumablesButton, ConsumableButton } from '../helpers/styles';
-import { useContext } from 'react';
-import { GameContext } from '../contexts/gameContext';
-import sword from '../assets/images/sword.png';
-import BuyConsumables from './dialogs/BuyConsumables';
-import { useState } from 'react';
+import { Box, Typography } from '@mui/material';
 import { useAccount } from '@starknet-react/core';
-import { isBrowser, isMobile } from 'react-device-detect';
+import React, { useContext, useState } from 'react';
+import { isMobile } from 'react-device-detect';
+import potion from '../assets/images/potion.png';
+import sword from '../assets/images/sword.png';
+import teeth from '../assets/images/teeth.png';
+import { GameContext } from '../contexts/gameContext';
+import { AttackButton, BuyConsumablesButton, RoundBlueButton, RoundOrangeButton } from '../helpers/styles';
+import BuyConsumables from './dialogs/BuyConsumables';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 
 function ActionBar(props) {
   const game = useContext(GameContext)
@@ -36,6 +36,37 @@ function ActionBar(props) {
           }
         </AttackButton>
       </Box>
+    </Box>
+  }
+
+  if (isMobile) {
+    return <Box sx={styles.container}>
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <RoundOrangeButton onClick={() => game.actions.attack()}>
+          <img src={sword} alt='' height={'20px'} />
+        </RoundOrangeButton>
+        <RoundOrangeButton onClick={() => game.setState.potions(prev => prev + 1)} sx={{ position: 'relative' }}>
+          <img src={potion} alt='' height={'30px'} />
+
+          <Box sx={styles.count}>
+            <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '13px', lineHeight: '12px' }}>
+              {potions}
+            </Typography>
+          </Box>
+        </RoundOrangeButton>
+      </Box>
+
+      <Box sx={{ display: 'flex', gap: 1 }}>
+        <RoundBlueButton disabled={selectedBeasts.length < 1} onClick={() => game.setState.showFeedingGround(prev => !prev)}>
+          <img src={teeth} alt='' height={'28px'} />
+        </RoundBlueButton>
+
+        <RoundBlueButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
+          <ShoppingCartIcon fontSize='small' htmlColor='black' />
+        </RoundBlueButton>
+      </Box>
+
+      <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} />
     </Box>
   }
 
@@ -73,23 +104,15 @@ function ActionBar(props) {
           }
         </AttackButton>}
 
-      {/* <Tooltip title={<Typography variant='h4'>Coming soon</Typography>} placement={'top-end'}>
-        <Box>
-          <AttackButton disabled={!address} sx={{ mr: 2, opacity: 0.6 }} onClick={() => { }}>
-            Throw Weapon
-          </AttackButton>
-        </Box>
-      </Tooltip> */}
-
-      {/* <ConsumableButton onClick={() => game.setState.potions(prev => prev + 1)} sx={{ position: 'relative' }}>
-        <img src={potion} alt='' height={'35px'} />
+      <RoundOrangeButton onClick={() => game.setState.potions(prev => prev + 1)} sx={{ position: 'relative' }}>
+        <img src={potion} alt='' height={'30px'} />
 
         <Box sx={styles.count}>
           <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '13px', lineHeight: '12px' }}>
             {potions}
           </Typography>
         </Box>
-      </ConsumableButton> */}
+      </RoundOrangeButton>
     </Box>
 
     <Box sx={{ display: 'flex', gap: 2 }}>
@@ -101,11 +124,11 @@ function ActionBar(props) {
         </BuyConsumablesButton>
       </Box>
 
-      {/* <BuyConsumablesButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
+      <BuyConsumablesButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
         Buy Consumables
       </BuyConsumablesButton>
 
-      <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} /> */}
+      <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} />
     </Box>
   </Box>
 }

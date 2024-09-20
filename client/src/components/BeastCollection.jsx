@@ -4,13 +4,14 @@ import React, { useContext } from 'react';
 import health from '../assets/images/health.png';
 import sword from '../assets/images/sword.png';
 import { GameContext } from '../contexts/gameContext';
-import { fetchBeastImage, normaliseHealth } from "../helpers/beasts";
+import { beastElementalColor, fetchBeastImage, normaliseHealth } from "../helpers/beasts";
 import { HealthBar } from '../helpers/styles';
 import { Scrollbars } from 'react-custom-scrollbars';
 
 import Lottie from "lottie-react";
 import SwordAnimation from '../assets/animations/swords.json';
 import { isBrowser } from "react-device-detect";
+import { ClubIcon, SwordIcon, WandIcon } from "./Icons";
 
 function BeastCollection() {
   const game = useContext(GameContext)
@@ -76,11 +77,17 @@ function BeastCollection() {
         {collection.map(beast => {
           const isSelected = selectedBeasts.includes(beast.id)
           const isSavage = summit.id === beast.id
+          const elementalColor = beastElementalColor(beast)
+          const currentHealth = isSavage ? summit.currentHealth : beast.currentHealth
 
           return <Box
             key={beast.id}
             sx={[styles.itemContainer, isSelected && styles.selectedItem, (selectedBeasts.length > 0 && !isSelected) && { opacity: 0.5, borderColor: 'transparent' }]}
             onClick={() => selectBeast(beast.id)}>
+
+            <Box sx={{ position: 'absolute', top: '3px', left: '4px' }} >
+              {beast.type === 'Brute' ? <ClubIcon color={elementalColor} /> : beast.type === 'Magical' ? <WandIcon color={elementalColor} /> : <SwordIcon color={elementalColor} />}
+            </Box>
 
             {isSelected && attackInProgress && <Box sx={{ position: 'absolute', bottom: '45px' }}>
               <Lottie animationData={SwordAnimation} loop={true} style={{ height: '90px' }} />
@@ -92,23 +99,34 @@ function BeastCollection() {
               </Typography>
             </Box>}
 
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}>
-              <Typography variant='h6' sx={{ lineHeight: '10px', letterSpacing: '0.5px' }}>
-                {beast.name}
-              </Typography>
-              <Typography sx={{ letterSpacing: '0.5px' }}>
-                lvl {beast.level}
-              </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, width: '100%' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: '4x' }}>
+                <Typography variant='h6' sx={{ lineHeight: '12px', letterSpacing: '0.5px' }}>
+                  {beast.name}
+                </Typography>
+              </Box>
+
+              <Box sx={{ display: 'flex', justifyContent: 'space-evenly', width: '100%', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', gap: '2px' }}>
+                  <Typography sx={{ letterSpacing: '0.5px', color: 'rgba(0, 0, 0, 0.6)' }}>
+                    Pwr
+                  </Typography>
+                  <Typography sx={{ letterSpacing: '0.5px', color: 'rgba(0, 0, 0, 0.6)' }}>
+                    {beast.power}
+                  </Typography>
+                </Box>
+
+              </Box>
             </Box>
 
             <img alt='' src={fetchBeastImage(beast.name)} height={'80px'} />
 
             <Box position={'relative'} width={'100%'}>
-              <HealthBar variant="determinate" value={normaliseHealth(beast.currentHealth, beast.health)} />
+              <HealthBar variant="determinate" value={normaliseHealth(currentHealth, beast.health)} />
 
               <Box sx={styles.healthText}>
                 <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
-                  {beast.currentHealth}
+                  {currentHealth}
                 </Typography>
               </Box>
             </Box>

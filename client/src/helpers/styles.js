@@ -49,7 +49,7 @@ export const BuyConsumablesButton = styled(Button)(({ theme }) => ({
   },
 }));
 
-export const ConsumableButton = styled(Button)(({ theme }) => ({
+export const RoundOrangeButton = styled(Button)(({ theme }) => ({
   color: 'white',
   backgroundColor: '#fc5c1d',
   borderRadius: '100%',
@@ -63,5 +63,22 @@ export const ConsumableButton = styled(Button)(({ theme }) => ({
   boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.8), 0px 1px 3px rgba(0, 0, 0, 0.08)',
   '&:hover': {
     backgroundColor: '#fc5c1d',
+  },
+}));
+
+export const RoundBlueButton = styled(Button)(({ theme }) => ({
+  color: 'white',
+  backgroundColor: '#1f8c9b',
+  borderRadius: '100%',
+  height: '40px',
+  width: '40px',
+  minWidth: '40px',
+  maxWidth: '40vw',
+  fontSize: '1.3rem',
+  lineHeight: 0,
+  border: '1px solid black',
+  boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.8), 0px 1px 3px rgba(0, 0, 0, 0.08)',
+  '&:hover': {
+    backgroundColor: '#1f8c9b',
   },
 }));
