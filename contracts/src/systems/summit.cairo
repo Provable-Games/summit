@@ -413,7 +413,7 @@ pub mod summit_systems {
         fn _assert_beast_can_consume(self: @ContractState, beast: Beast, adventurer: Adventurer) {
             let total_health = beast.stats.live.bonus_health + beast.stats.fixed.starting_health.into();
             assert(total_health <= BEAST_MAX_HEALTH, errors::BEAST_MAX_HEALTH);
-            assert(adventurer.health == 0 || get_block_timestamp() - adventurer.birth_date > TEN_DAYS_SECONDS, errors::ADVENTURER_ALIVE);
+            assert(adventurer.health == 0, errors::ADVENTURER_ALIVE);
             assert(adventurer.rank_at_death == 0, errors::ADVENTURER_RANKED);
         }
 
