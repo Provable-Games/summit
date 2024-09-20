@@ -2,18 +2,78 @@
 version = 1
 
 [[package]]
+name = "adventurer"
+version = "0.1.0"
+source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=feat%2Fsavage-summit-support#e2e8f5409ac687457f49a8371ff954a51c98dc8c"
+dependencies = [
+ "beasts",
+ "combat",
+ "loot",
+ "market",
+ "obstacles",
+]
+
+[[package]]
+name = "alexandria_bytes"
+version = "0.1.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=7c19379ab6cf0f8b48be3c5b118ffddd7e26a4d2#7c19379ab6cf0f8b48be3c5b118ffddd7e26a4d2"
+dependencies = [
+ "alexandria_data_structures",
+ "alexandria_math",
+]
+
+[[package]]
+name = "alexandria_data_structures"
+version = "0.2.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=7c19379ab6cf0f8b48be3c5b118ffddd7e26a4d2#7c19379ab6cf0f8b48be3c5b118ffddd7e26a4d2"
+dependencies = [
+ "alexandria_encoding",
+]
+
+[[package]]
+name = "alexandria_encoding"
+version = "0.1.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=7c19379ab6cf0f8b48be3c5b118ffddd7e26a4d2#7c19379ab6cf0f8b48be3c5b118ffddd7e26a4d2"
+dependencies = [
+ "alexandria_bytes",
+ "alexandria_math",
+ "alexandria_numeric",
+]
+
+[[package]]
+name = "alexandria_math"
+version = "0.2.1"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=7c19379ab6cf0f8b48be3c5b118ffddd7e26a4d2#7c19379ab6cf0f8b48be3c5b118ffddd7e26a4d2"
+
+[[package]]
+name = "alexandria_numeric"
+version = "0.1.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=7c19379ab6cf0f8b48be3c5b118ffddd7e26a4d2#7c19379ab6cf0f8b48be3c5b118ffddd7e26a4d2"
+dependencies = [
+ "alexandria_math",
+ "alexandria_searching",
+]
+
+[[package]]
+name = "alexandria_searching"
+version = "0.1.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=7c19379ab6cf0f8b48be3c5b118ffddd7e26a4d2#7c19379ab6cf0f8b48be3c5b118ffddd7e26a4d2"
+dependencies = [
+ "alexandria_data_structures",
+]
+
+[[package]]
 name = "beasts"
 version = "0.1.0"
-source = "git+https://github.com/leetship/beasts.git?rev=4b4ce296265d8f830f51a88f34850ed28c809e89#4b4ce296265d8f830f51a88f34850ed28c809e89"
+source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=feat%2Fsavage-summit-support#e2e8f5409ac687457f49a8371ff954a51c98dc8c"
 dependencies = [
- "openzeppelin_introspection",
- "openzeppelin_token",
+ "combat",
 ]
 
 [[package]]
 name = "combat"
 version = "0.1.0"
-source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=feat%2Fsavage-summit-support#85bf276a7502805041cfb6f036b7fac5cbe729be"
+source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=feat%2Fsavage-summit-support#e2e8f5409ac687457f49a8371ff954a51c98dc8c"
 
 [[package]]
 name = "dojo"
@@ -27,6 +87,67 @@ dependencies = [
 name = "dojo_plugin"
 version = "1.0.0-alpha.4"
 source = "git+https://github.com/dojoengine/dojo?rev=f15def33#f15def330c0d099e79351d11c197f63e8cc1ff36"
+
+[[package]]
+name = "game"
+version = "0.1.0"
+source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=feat%2Fsavage-summit-support#e2e8f5409ac687457f49a8371ff954a51c98dc8c"
+dependencies = [
+ "adventurer",
+ "alexandria_encoding",
+ "graffiti",
+ "loot",
+ "market",
+ "obstacles",
+ "openzeppelin",
+ "pragma_lib",
+]
+
+[[package]]
+name = "graffiti"
+version = "0.1.0"
+source = "git+https://github.com/ponderingdemocritus/graffiti?rev=bc569531791dbc71c6cd8d9bc154c34eedad31fe#bc569531791dbc71c6cd8d9bc154c34eedad31fe"
+
+[[package]]
+name = "loot"
+version = "0.1.0"
+source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=feat%2Fsavage-summit-support#e2e8f5409ac687457f49a8371ff954a51c98dc8c"
+dependencies = [
+ "combat",
+]
+
+[[package]]
+name = "market"
+version = "0.1.0"
+source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=feat%2Fsavage-summit-support#e2e8f5409ac687457f49a8371ff954a51c98dc8c"
+dependencies = [
+ "combat",
+ "loot",
+]
+
+[[package]]
+name = "obstacles"
+version = "0.1.0"
+source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=feat%2Fsavage-summit-support#e2e8f5409ac687457f49a8371ff954a51c98dc8c"
+dependencies = [
+ "combat",
+]
+
+[[package]]
+name = "openzeppelin"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
+dependencies = [
+ "openzeppelin_access",
+ "openzeppelin_account",
+ "openzeppelin_governance",
+ "openzeppelin_introspection",
+ "openzeppelin_presets",
+ "openzeppelin_security",
+ "openzeppelin_token",
+ "openzeppelin_upgrades",
+ "openzeppelin_utils",
+]
 
 [[package]]
 name = "openzeppelin_access"
@@ -57,6 +178,23 @@ dependencies = [
 
 [[package]]
 name = "openzeppelin_introspection"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
+
+[[package]]
+name = "openzeppelin_presets"
+version = "0.15.1"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
+dependencies = [
+ "openzeppelin_access",
+ "openzeppelin_account",
+ "openzeppelin_introspection",
+ "openzeppelin_token",
+ "openzeppelin_upgrades",
+]
+
+[[package]]
+name = "openzeppelin_security"
 version = "0.15.1"
 source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
 
@@ -103,15 +241,30 @@ version = "0.15.1"
 source = "git+https://github.com/OpenZeppelin/cairo-contracts?tag=v0.15.1#2f8a93d762858714095a1d391afffa9e21df6983"
 
 [[package]]
+name = "pixel_beasts"
+version = "0.1.0"
+source = "git+https://github.com/leetship/beasts.git#9a89e3310251e1dba0e0c846c1984e1cd329fef5"
+dependencies = [
+ "openzeppelin_introspection",
+ "openzeppelin_token",
+]
+
+[[package]]
+name = "pragma_lib"
+version = "1.0.0"
+source = "git+https://github.com/Provable-Games/pragma-lib.git?branch=2.7#a6ea9f638724e02bfb863683f97a62f7c872ee1a"
+
+[[package]]
 name = "savage_summit"
 version = "0.1.0"
 dependencies = [
- "beasts",
  "combat",
  "dojo",
+ "game",
  "openzeppelin_test_common",
  "openzeppelin_testing",
  "openzeppelin_token",
+ "pixel_beasts",
 ]
 
 [[package]]

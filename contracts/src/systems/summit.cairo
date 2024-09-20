@@ -23,9 +23,9 @@ trait ISummitSystem {
 
 #[dojo::contract]
 pub mod summit_systems {
-    use integer::{u16_sqrt};
-    use beasts::interfaces::{IBeasts, IBeastsDispatcher, IBeastsDispatcherTrait};
-    use beasts::pack::PackableBeast;
+    use core::num::traits::Sqrt;
+    use pixel_beasts::interfaces::{IBeasts, IBeastsDispatcher, IBeastsDispatcherTrait};
+    use pixel_beasts::pack::PackableBeast;
     use combat::constants::CombatEnums::{Type, Tier};
     use combat::combat::{ImplCombat, CombatSpec, CombatResult, SpecialPowers};
     use game::game::interfaces::{IGame, IGameDispatcher, IGameDispatcherTrait};
@@ -154,7 +154,6 @@ pub mod summit_systems {
             self._assert_beast_ownership(beast_token_id);
 
             let mut beast = self._get_beast(beast_token_id);
-            let mut bonus_health = 0;
 
             let summit_beast_token_id = self._get_summit_beast_token_id();
 
@@ -166,9 +165,9 @@ pub mod summit_systems {
                 self._assert_adventurer_ownership(adventurer_id);
                 self._assert_beast_can_consume(beast, adventurer);
 
-                beast.stats.live.bonus_health += adventurer.level;
+                beast.stats.live.bonus_health += adventurer.level.into();
                 if beast_token_id == summit_beast_token_id {
-                    beast.stats.live.current_health += adventurer.level;
+                    beast.stats.live.current_health += adventurer.level.into();
                 }
 
                 i += 1;
@@ -254,14 +253,14 @@ pub mod summit_systems {
         }
 
         fn _get_adventurer(self: @ContractState, token_id: u64) -> Adventurer {
-            let adventurer_address = utils::get_adventurer_address(get_tx_info().unbox().chain_id);
+            let adventurer_address = utils::ADVENTURER_ADDRESS_MAINNET();
             let game_dispatcher = IGameDispatcher { contract_address: adventurer_address };
 
             let adventurer = game_dispatcher.get_adventurer(token_id.into());
             let adventurer_meta = game_dispatcher.get_adventurer_meta(token_id.into());
 
             Adventurer {
-                level: self._get_level_from_xp(adventurer.xp),
+                level: Self::_get_level_from_xp(adventurer.xp),
                 health: adventurer.health,
                 birth_date: adventurer_meta.birth_date,
                 rank_at_death: adventurer_meta.rank_at_death,
@@ -364,7 +363,7 @@ pub mod summit_systems {
         /// @param token_id the id of the adventurer
         /// @return ContractAddress the owner of the adventurer
         fn _get_owner_of_adventurer(self: @ContractState, token_id: u64) -> ContractAddress {
-            let contract_address = utils::get_adventurer_address();
+            let contract_address = utils::ADVENTURER_ADDRESS_MAINNET();
             let erc721_dispatcher = IERC721Dispatcher { contract_address };
             erc721_dispatcher.owner_of(token_id.into())
         }
@@ -425,7 +424,7 @@ pub mod summit_systems {
             if (xp == 0) {
                 1
             } else {
-                u16_sqrt(xp)
+                xp.sqrt()
             }
         }
     }

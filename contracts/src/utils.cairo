@@ -11,10 +11,6 @@ fn get_beast_address(chain_id: felt252) -> ContractAddress {
     }
 }
 
-fn get_adventurer_address() -> ContractAddress {
-    ADVENTURER_ADDRESS_MAINNET()
-}
-
 fn ADVENTURER_ADDRESS_MAINNET() -> ContractAddress {
     contract_address_const::<0x018108b32cea514a78ef1b0e4a0753e855cdf620bc0565202c02456f618c4dc4>()
 }

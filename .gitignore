@@ -11,3 +11,4 @@ contracts/manifests/*
 !contracts/manifests/prod/deployment/manifest.toml
 .env
 contracts/deploy/mainnet.sh
+contracts/savage-summit.code-workspace
