@@ -1,23 +1,26 @@
-import { Box, Typography } from "@mui/material";
+import InfoIcon from '@mui/icons-material/Info';
+import { Box, Tooltip, Typography } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
-import React, { useContext } from 'react';
+import React, { useContext, useState } from 'react';
 import health from '../assets/images/health.png';
 import sword from '../assets/images/sword.png';
 import { GameContext } from '../contexts/gameContext';
 import { beastElementalColor, fetchBeastImage, normaliseHealth } from "../helpers/beasts";
-import { HealthBar } from '../helpers/styles';
+import { ExperienceBar, HealthBar } from '../helpers/styles';
 import { Scrollbars } from 'react-custom-scrollbars';
 
 import Lottie from "lottie-react";
 import SwordAnimation from '../assets/animations/swords.json';
 import { isBrowser } from "react-device-detect";
 import { ClubIcon, SwordIcon, WandIcon } from "./Icons";
+import BeastProfile from './BeastProfile';
 
 function BeastCollection() {
   const game = useContext(GameContext)
   const { loadingCollection, collection, selectedBeasts, attackInProgress, summit } = game.getState
 
   const { address } = useAccount()
+  const [beastProfile, setBeastProfile] = useState(1)
 
   const selectBeast = (id) => {
     if (selectedBeasts.includes(id)) {
@@ -29,6 +32,7 @@ function BeastCollection() {
 
   return (
     <Scrollbars style={{ width: '100%', height: '100%' }}>
+
       <Box sx={styles.container}>
         {!address && !loadingCollection && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
 
@@ -99,6 +103,14 @@ function BeastCollection() {
               </Typography>
             </Box>}
 
+            {selectedBeasts.length <= 1 &&
+              <Tooltip title={<BeastProfile beast={beast} />} placement='top'>
+                <Box sx={[styles.order, { cursor: 'pointer', right: 2 }]}>
+                  <InfoIcon fontSize='small' color='primary' />
+                </Box>
+              </Tooltip>
+            }
+
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, width: '100%' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: '4x' }}>
                 <Typography variant='h6' sx={{ lineHeight: '12px', letterSpacing: '0.5px' }}>
@@ -121,14 +133,26 @@ function BeastCollection() {
 
             <img alt='' src={fetchBeastImage(beast.name)} height={'80px'} />
 
-            <Box position={'relative'} width={'100%'}>
-              <HealthBar variant="determinate" value={normaliseHealth(currentHealth, beast.health)} />
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '100%' }}>
+              <Box position={'relative'} width={'100%'}>
+                <HealthBar variant="determinate" value={normaliseHealth(currentHealth, beast.health)} />
 
-              <Box sx={styles.healthText}>
-                <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
-                  {currentHealth}
-                </Typography>
+                <Box sx={styles.healthText}>
+                  <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
+                    {currentHealth}
+                  </Typography>
+                </Box>
               </Box>
+              {/* 
+              <Box position={'relative'} width={'100%'}>
+                <ExperienceBar variant="determinate" value={normaliseHealth(currentHealth, beast.health)} />
+
+                <Box sx={styles.healthText}>
+                  <Typography sx={{ fontSize: '11px', lineHeight: '9px', color: 'white', letterSpacing: '0.5px' }}>
+                    XP
+                  </Typography>
+                </Box>
+              </Box> */}
             </Box>
 
             {isSavage

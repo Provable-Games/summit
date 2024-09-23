@@ -88,7 +88,7 @@ pub mod summit_systems {
                 // reset health to starting health plus any bonus health they have accrued
                 // @dev beasts attack till death so we don't need any additional logic
 
-                // TODO check overflow
+                // Add the bonus health to the beast
                 attacking_beast
                     .stats
                     .live
@@ -98,6 +98,9 @@ pub mod summit_systems {
                     .starting_health
                     .into()
                     + attacking_beast.stats.live.bonus_health;
+
+                // Add the xp points to the beast
+                attacking_beast.stats.fixed.level += attacking_beast.stats.live.xp_points / 10;
 
                 // loop until the attacking beast is dead or the summit beast is dead
                 loop {
@@ -116,6 +119,22 @@ pub mod summit_systems {
                         self._attack(defending_beast, ref attacking_beast);
                     }
                 };
+
+                // Give xp to the attacking beast
+                if live_beast_stats.bonus_xp < BEAST_MAX_BONUS_XP {
+                    if live_beast_stats.last_attack_timestamp + BASE_REVIVAL_TIME_SECONDS * 2 < get_block_timestamp() {
+                        live_beast_stats.attack_streak = 0;
+                    }
+
+                    attacking_beast.stats.live.attack_streak += 1;
+
+                    if attacking_beast.stats.live.attack_streak == 7 {
+                        attacking_beast.stats.live.xp_points += 2;
+                        attacking_beast.stats.live.attack_streak = 0;
+                    } else {
+                        attacking_beast.stats.live.xp_points += 1;
+                    }
+                }
 
                 if attacking_beast.stats.live.current_health == 0 {
                     // set death timestamp for prev summit beast
@@ -164,12 +183,17 @@ pub mod summit_systems {
 
                 self._assert_adventurer_ownership(adventurer_id);
                 self._assert_beast_can_consume(beast, adventurer);
+                assert(
+                    get!(world, (adventurer_id), AdventurerConsumed).beast_token_id == 0,
+                    'Adventurer already consumed'
+                );
 
                 beast.stats.live.bonus_health += adventurer.level.into();
                 if beast_token_id == summit_beast_token_id {
                     beast.stats.live.current_health += adventurer.level.into();
                 }
 
+                set!(world, (AdventurerConsumed { token_id: adventurer_id, beast_token_id }));
                 i += 1;
             };
 
@@ -262,7 +286,6 @@ pub mod summit_systems {
             Adventurer {
                 level: Self::_get_level_from_xp(adventurer.xp),
                 health: adventurer.health,
-                birth_date: adventurer_meta.birth_date,
                 rank_at_death: adventurer_meta.rank_at_death,
             }
         }
@@ -405,6 +428,13 @@ pub mod summit_systems {
             let time_since_death = current_time - last_death_timestamp;
             assert(time_since_death >= BASE_REVIVAL_TIME_SECONDS, errors::BEAST_NOT_YET_REVIVED);
         }
+
+        fn _beast_can_get_xp(self: @ContractState, live_beast_stats: LiveBeastStats) {
+            let last_attack_timestamp = live_beast_stats.last_attack_timestamp;
+            let current_time = get_block_timestamp();
+            let time_since_attack = current_time - last_attack_timestamp;
+            time_since_attack >= BASE_REVIVAL_TIME_SECONDS && live_beast_stats.xp_points < BEAST_MAX_BONUS_XP
+        } 
 
         /// @title assert_beast_can_consume
         /// @notice this function is used to assert that a beast can consume an adventurer

@@ -37,10 +37,10 @@ export const mainTheme = createTheme({
       color: 'rgba(255, 255, 255, 0.7)'
     },
     subtitle2: {
-      color: 'rgba(255, 255, 255, 0.5)',
+      color: 'rgba(0, 0, 0, 0.5)',
       fontStyle: 'italic',
       fontSize: '12px',
-      fontFamily: 'cursive'
+      letterSpacing: '0.5px'
     }
   },
   palette: {

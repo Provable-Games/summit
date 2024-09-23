@@ -5,10 +5,11 @@ const SEPOLIA_CHAIN_ID: felt252 = 0x534e5f5345504f4c4941;
 const KATANA_CHAIN_ID: felt252 = 0x4b4154414e41;
 const TESTING_CHAIN_ID: felt252 = 0x73617661676573756d6d6974;
 const BASE_REVIVAL_TIME_SECONDS: u64 = 23 * 60 * 60;
+const DAY_SECONDS: u64 = 24 * 60 * 60;
 const MAX_U32: u32 = 0xffffffff;
 const MINIMUM_DAMAGE: u8 = 4;
 const BEAST_MAX_HEALTH: u16 = 2046;
-const TEN_DAYS_SECONDS: u64 = 10 * 24 * 60 * 60;
+const BEAST_MAX_BONUS_XP: u16 = 400;
 
 mod errors {
     const BEAST_NOT_YET_REVIVED: felt252 = 'beast not yet revived';

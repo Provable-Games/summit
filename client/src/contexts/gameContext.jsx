@@ -299,6 +299,7 @@ export const GameProvider = ({ children }) => {
 
   const attackSummit = async () => {
     setAttackInProgress(true)
+
     try {
       const success = await dojo.executeTx("summit_systems", "attack", [summit.id, selected])
 
