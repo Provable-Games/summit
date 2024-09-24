@@ -28,17 +28,18 @@ function elementalDamage(attacker, defender) {
 
 export const calculateBattleResult = (beast, summit) => {
   const MINIMUM_DAMAGE = 4
+  let beastPower = (6 - beast.tier) * beast.level
 
   if (beast.currentHealth < 1) {
     return {
       capture: false,
-      damage: 0
+      damage: 0,
+      power: beastPower
     }
   }
 
   let elemental = elementalDamage(beast, summit);
 
-  let beastPower = (6 - beast.tier) * beast.level
   let summitPower = (6 - summit.tier) * summit.level
 
   let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((beastPower * elemental) - summitPower))

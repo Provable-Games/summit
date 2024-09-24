@@ -42,6 +42,7 @@
     "react-lazy-load-image-component": "^1.6.2",
     "react-router-dom": "^6.26.2",
     "starknet": "^6.11.0",
+    "starknetid.js": "^4.0.1",
     "vite-plugin-mkcert": "^1.17.6",
     "vite-plugin-top-level-await": "^1.4.4",
     "vite-plugin-wasm": "^3.3.0"

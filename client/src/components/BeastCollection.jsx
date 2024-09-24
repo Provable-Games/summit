@@ -30,6 +30,47 @@ function BeastCollection() {
     }
   }
 
+  const RenderBottomText = (beast) => {
+    if (summit.id === beast.id) {
+      return <Typography variant="h5" letterSpacing={'2px'} className="glitch-effect" lineHeight={'14px'}>
+        SAVÁGE
+      </Typography>
+    }
+
+    if (beast.currentHealth === 0) {
+      return <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'rgba(0, 0, 0, 0.6)'}>
+        {(() => {
+          const timeLeft = (beast.deadAt + 23 * 3600 * 1000 - Date.now()) / 1000;
+          const hours = Math.floor(timeLeft / 3600);
+
+          if (hours > 0) {
+            return `Revives in ${hours}h`;
+          } else {
+            return `Revives in ${Math.floor((timeLeft % 3600) / 60)}m`;
+          }
+        })()}
+      </Typography>
+    }
+
+    if (beast.capture) {
+      return <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+        <img src={health} alt='' height={'13px'} />
+
+        <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkgreen'}>
+          {beast.healthLeft} hp left
+        </Typography>
+      </Box>
+    }
+
+    return <Box display={'flex'} gap={'3px'} alignItems={'center'}>
+      <img src={sword} alt='' height={'10px'} />
+
+      <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkred'}>
+        {beast.damage} dmg
+      </Typography>
+    </Box>
+  }
+
   return (
     <Scrollbars style={{ width: '100%', height: '100%' }}>
 
@@ -131,7 +172,7 @@ function BeastCollection() {
               </Box>
             </Box>
 
-            <img alt='' src={fetchBeastImage(beast.name)} height={'80px'} />
+            <img alt='' src={fetchBeastImage(beast.name)} height={'85px'} style={{ marginTop: '-3px' }} />
 
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '100%' }}>
               <Box position={'relative'} width={'100%'}>
@@ -157,41 +198,7 @@ function BeastCollection() {
               </Box>
             </Box>
 
-            {isSavage
-              ? <>
-                <Typography variant="h5" letterSpacing={'2px'} className="glitch-effect" lineHeight={'14px'}>
-                  SAVÁGE
-                </Typography>
-              </>
-              : beast.capture
-                ? <>
-                  {/* <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkgreen'}>
-                    Success
-                  </Typography> */}
-
-                  <Box display={'flex'} alignItems={'center'} gap={'2px'}>
-                    <img src={health} alt='' height={'13px'} />
-
-                    <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkgreen'}>
-                      {beast.healthLeft} hp left
-                    </Typography>
-                  </Box>
-                </>
-
-                : <>
-                  {/* <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkred'}>
-                    Defeat
-                  </Typography> */}
-
-                  <Box display={'flex'} gap={'3px'} alignItems={'center'}>
-                    <img src={sword} alt='' height={'10px'} />
-
-                    <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkred'}>
-                      {beast.damage} dmg
-                    </Typography>
-                  </Box>
-                </>
-            }
+            {RenderBottomText(beast)}
           </Box>
         })}
       </Box >

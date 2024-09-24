@@ -104,6 +104,9 @@ importers:
       starknet:
         specifier: ^6.11.0
         version: 6.11.0(encoding@0.1.13)
+      starknetid.js:
+        specifier: ^4.0.1
+        version: 4.0.1(@babel/core@7.25.2)(starknet@6.11.0(encoding@0.1.13))
       vite-plugin-mkcert:
         specifier: ^1.17.6
         version: 1.17.6(vite@5.4.7)
@@ -2396,6 +2399,13 @@ packages:
 
   starknet@6.11.0:
     resolution: {integrity: sha512-u50KrGDi9fbu1Ogu7ynwF/tSeFlp3mzOg1/Y5x50tYFICImo3OfY4lOz9OtYDk404HK4eUujKkhov9tG7GAKlg==}
+
+  starknetid.js@4.0.1:
+    resolution: {integrity: sha512-0Zy+MOAc5v8VMJYdvBpQVse0jbImh9KZqFLG6ekRWlOVykwN/khk99iR0WVdzdN5IUVYV1CNQizjWY5utkpO3w==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      '@babel/core': ^7.0.0-0
+      starknet: ^6.9.0
 
   strict-uri-encode@2.0.0:
     resolution: {integrity: sha512-QwiXZgpRcKkhTj2Scnn++4PKtWsH0kpzZ62L2R6c/LUVYv7hVnZqcg2+sMuT6R7Jusu1vviK/MFsu6kNJfWlEQ==}
@@ -5218,6 +5228,11 @@ snapshots:
       url-join: 4.0.1
     transitivePeerDependencies:
       - encoding
+
+  starknetid.js@4.0.1(@babel/core@7.25.2)(starknet@6.11.0(encoding@0.1.13)):
+    dependencies:
+      '@babel/core': 7.25.2
+      starknet: 6.11.0(encoding@0.1.13)
 
   strict-uri-encode@2.0.0: {}
 

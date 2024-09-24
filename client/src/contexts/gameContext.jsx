@@ -2,7 +2,7 @@ import * as torii from "@dojoengine/torii-client";
 import { useAccount } from "@starknet-react/core";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { dojoConfig } from "../../dojoConfig";
-import { fetchAdventurerData, fetchBeastLiveData, fetchDeadBeastCount, fetchSummitBeastTokenId } from "../api/indexer";
+import { fetchAdventurerData, fetchBeastLiveData, fetchControllerId, fetchDeadBeastCount, fetchSummitBeastTokenId } from "../api/indexer";
 import { getAdventurers, getBeastDetails, getBeasts, getTotalBeasts } from "../api/starknet";
 import { calculateBattleResult } from "../helpers/beasts";
 import { DojoContext } from "./dojoContext";
@@ -70,6 +70,20 @@ export const GameProvider = ({ children }) => {
     updateSummit(summitBeastId);
   }
 
+  const getOwnerName = async (address) => {
+    let ownerName = "Unknown"
+
+    // ownerName = await fetchControllerId(address);
+
+    try {
+      ownerName = await dojo.starknetIdNavigator.getStarkName(address)
+    } catch (ex) {
+      console.log(ex)
+    }
+
+    return ownerName
+  }
+
   const updateSummit = async (summitBeastId, animate) => {
     let summitBeast = null
 
@@ -79,6 +93,8 @@ export const GameProvider = ({ children }) => {
       let summitBeastDetails = await getBeastDetails(summitBeastId)
       let summitLiveStats = (await fetchBeastLiveData([summitBeastId]))[0]
       summitBeast = { ...summitBeastDetails, currentHealth: summitLiveStats?.current_health || summitBeastDetails.health }
+
+      summitBeast.ownerName = await getOwnerName(summitBeast.owner)
     }
 
     if (ownedBeasts.some(beast => beast.id === summit.id)) {
@@ -318,7 +334,8 @@ export const GameProvider = ({ children }) => {
         attack_streak: selected.includes(beast.id) ? (beast.attack_streak || 0) + 1 : beast.attack_streak
       })))
 
-      const success = await dojo.executeTx("summit_systems", "attack", [summit.id, selected])
+      // const success = await dojo.executeTx("summit_systems", "attack", [summit.id, selected])
+      const success = true;
 
       if (success) {
         let attackingBeasts = collection.filter(beast => selected.includes(beast.id))

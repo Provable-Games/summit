@@ -32,6 +32,21 @@ export const ExperienceBar = styled(LinearProgress)(({ theme }) => ({
   },
 }));
 
+export const BeastsCollectedBar = styled(LinearProgress)(({ theme }) => ({
+  height: 16,
+  borderRadius: 10,
+  width: '100%',
+  [`&.${linearProgressClasses.colorPrimary}`]: {
+    backgroundColor: theme.palette.grey[800],
+    border: '2px solid black',
+    boxSizing: 'border-box',
+  },
+  [`& .${linearProgressClasses.bar}`]: {
+    borderRadius: 10,
+    backgroundColor: '#4CAF50',
+  },
+}));
+
 export const AttackButton = styled(Button)(({ theme }) => ({
   color: 'white',
   backgroundColor: '#fc5c1d',

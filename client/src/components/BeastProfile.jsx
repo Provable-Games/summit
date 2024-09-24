@@ -4,7 +4,6 @@ import { ExperienceBar, HealthBar } from "../helpers/styles";
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 
 const MAX_HEALTH = 2046;
-const MAX_BONUS_LEVELS = 40;
 
 export default function BeastProfile({ beast }) {
   const currentExperience = Math.pow(beast.level, 2);
@@ -63,7 +62,7 @@ export default function BeastProfile({ beast }) {
             Attack Streak
           </Typography>
 
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: '-5px', alignItems: 'center' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: '-5px' }}>
             <Typography variant='h4' sx={{ letterSpacing: '0.5px' }}>
               {beast.attack_streak ?? 0}
             </Typography>

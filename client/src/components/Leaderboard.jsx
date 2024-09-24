@@ -1,6 +1,8 @@
 import { Box, Typography } from '@mui/material';
 import React, { useContext } from 'react';
 import { GameContext } from '../contexts/gameContext';
+import { normaliseHealth } from '../helpers/beasts';
+import { BeastsCollectedBar } from '../helpers/styles';
 
 const leaderboardExample = [
   {
@@ -139,6 +141,11 @@ function Leaderboard(props) {
             {totalSupply - deadBeastCount}/{totalSupply}
           </Typography>
         </Box>
+
+        <Typography letterSpacing={'0.5px'} mt={1} color={'#006400'}>
+          Beasts collected
+        </Typography>
+        <BeastsCollectedBar variant="determinate" value={normaliseHealth(totalSupply, 93500)} />
 
       </Box>
 

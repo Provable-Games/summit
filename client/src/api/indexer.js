@@ -69,11 +69,13 @@ export async function fetchBeastLiveData(tokenIds) {
       const lastDeathTimestamp = parseInt(stat.last_death_timestamp, 16) * 1000; // convert to milliseconds
       const currentTime = Date.now();
       const hoursSinceDeath = (currentTime - lastDeathTimestamp) / (1000 * 60 * 60);
+
       return {
         ...stat,
         id: stat.token_id,
         isDead: hoursSinceDeath < 23,
         bonus_health: stat.bonus_health ?? 0,
+        deadAt: lastDeathTimestamp
       }
     })
 
@@ -111,5 +113,26 @@ export async function fetchAdventurerData(adventurers) {
     return nodeData
   } catch (ex) {
     return []
+  }
+}
+
+export async function fetchControllerId(address) {
+  const document = gql`
+  query Accounts {
+    accounts(where: {contractAddress: "${address}"}) {
+      edges {
+        node {
+          id
+        }
+      }
+    }
+  }`
+
+  try {
+    const res = await request('https://api.cartridge.gg/query', document)
+    console.log(res)
+    return res
+  } catch (ex) {
+    return null
   }
 }

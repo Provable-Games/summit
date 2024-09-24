@@ -4,6 +4,8 @@ import React, { createContext, useMemo, useState } from "react";
 import { RpcProvider } from 'starknet';
 import { dojoConfig } from "../../dojoConfig";
 import { useAccount } from "@starknet-react/core";
+import { Provider, constants } from "starknet";
+import { StarknetIdNavigator } from "starknetid.js";
 
 export const DojoContext = createContext()
 
@@ -12,6 +14,13 @@ export const Dojo = ({ children }) => {
 
   const dojoProvider = new DojoProvider(dojoConfig.manifest, dojoConfig.rpcUrl);
   const rpcProvider = useMemo(() => new RpcProvider({ nodeUrl: dojoConfig.rpcUrl, }), []);
+
+  const starknetIdNavigator = useMemo(() => {
+    return new StarknetIdNavigator(
+      rpcProvider,
+      constants.StarknetChainId.SN_MAIN
+    );
+  }, []);
 
   const { account } = useAccount()
 
@@ -46,6 +55,7 @@ export const Dojo = ({ children }) => {
     <DojoContext.Provider
       value={{
         executeTx,
+        starknetIdNavigator
       }}
     >
       {children}

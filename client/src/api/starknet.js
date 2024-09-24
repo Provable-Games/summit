@@ -90,7 +90,7 @@ export const getBeastDetails = async (tokenId) => {
   });
 
   const data = await response.json();
-
+  
   const attributesString = data.tokenUri.match(/"attributes":\[(.*?)\]/)[0];
   const attributesObject = JSON.parse(`{${attributesString}}`).attributes;
 
@@ -101,6 +101,7 @@ export const getBeastDetails = async (tokenId) => {
 
   return {
     id: Number(tokenId),
+    owner: data.ownerAddress,
     ...attributesMap
   }
 }
