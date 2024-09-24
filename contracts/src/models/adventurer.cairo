@@ -7,8 +7,9 @@ pub struct Adventurer {
 
 
 #[derive(Copy, Drop, Introspect, Serde)]
-#[model]
+#[dojo::model]
 pub struct AdventurerConsumed {
-    pub token_id: u32,
+    #[key]
+    pub token_id: u64,
     pub beast_token_id: u32,
 }

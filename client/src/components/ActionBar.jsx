@@ -115,7 +115,7 @@ function ActionBar(props) {
           }
         </AttackButton>}
 
-      <RoundOrangeButton onClick={() => game.setState.potions(prev => prev + 1)} sx={{ position: 'relative' }}>
+      {/* <RoundOrangeButton onClick={() => game.setState.potions(prev => prev + 1)} sx={{ position: 'relative' }}>
         <img src={potion} alt='' height={'30px'} />
 
         <Box sx={styles.count}>
@@ -123,7 +123,7 @@ function ActionBar(props) {
             {potions}
           </Typography>
         </Box>
-      </RoundOrangeButton>
+      </RoundOrangeButton> */}
     </Box>
 
     <Box sx={{ display: 'flex', gap: 2 }}>
@@ -135,11 +135,11 @@ function ActionBar(props) {
         </BuyConsumablesButton>
       </Box>
 
-      <BuyConsumablesButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
+      {/* <BuyConsumablesButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
         Buy Consumables
       </BuyConsumablesButton>
 
-      <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} />
+      <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} /> */}
     </Box>
   </Box>
 }

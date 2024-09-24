@@ -23,7 +23,7 @@ trait ISummitSystem {
 
 #[dojo::contract]
 pub mod summit_systems {
-    use core::num::traits::Sqrt;
+    use core::num::traits::{Sqrt};
     use pixel_beasts::interfaces::{IBeasts, IBeastsDispatcher, IBeastsDispatcherTrait};
     use pixel_beasts::pack::PackableBeast;
     use combat::constants::CombatEnums::{Type, Tier};
@@ -31,8 +31,11 @@ pub mod summit_systems {
     use game::game::interfaces::{IGame, IGameDispatcher, IGameDispatcherTrait};
     use core::num::traits::{OverflowingAdd, OverflowingSub};
     use openzeppelin_token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
-    use savage_summit::constants::{errors, BASE_REVIVAL_TIME_SECONDS, MINIMUM_DAMAGE, MAX_U32, BEAST_MAX_HEALTH, TEN_DAYS_SECONDS};
-    use savage_summit::models::adventurer::Adventurer;
+    use savage_summit::constants::{
+        errors, BASE_REVIVAL_TIME_SECONDS, MINIMUM_DAMAGE, MAX_U32, BEAST_MAX_HEALTH,
+        BEAST_MAX_BONUS_LVLS
+    };
+    use savage_summit::models::adventurer::{Adventurer, AdventurerConsumed};
     use savage_summit::models::beast::{Beast, ImplBeast};
     use savage_summit::models::beast_details::{BeastDetails, ImplBeastDetails};
     use savage_summit::models::beast_stats::{
@@ -44,7 +47,6 @@ pub mod summit_systems {
     use savage_summit::utils::{BEAST_ADDRESS_MAINNET};
     use starknet::{ContractAddress, get_caller_address, get_tx_info, get_block_timestamp};
 
-    // TODO: Add endpoint for feeding beast dead adventurer
     #[abi(embed_v0)]
     impl SummitSystemImpl of super::ISummitSystem<ContractState> {
         fn attack(
@@ -99,8 +101,10 @@ pub mod summit_systems {
                     .into()
                     + attacking_beast.stats.live.bonus_health;
 
-                // Add the xp points to the beast
-                attacking_beast.stats.fixed.level += attacking_beast.stats.live.xp_points / 10;
+                // Add bonus xp to the beast
+                let total_xp = attacking_beast.stats.fixed.level * attacking_beast.stats.fixed.level
+                    + attacking_beast.stats.live.bonus_xp;
+                attacking_beast.stats.fixed.level = total_xp.sqrt().into();
 
                 // loop until the attacking beast is dead or the summit beast is dead
                 loop {
@@ -120,20 +124,21 @@ pub mod summit_systems {
                     }
                 };
 
-                // Give xp to the attacking beast
-                if live_beast_stats.bonus_xp < BEAST_MAX_BONUS_XP {
-                    if live_beast_stats.last_attack_timestamp + BASE_REVIVAL_TIME_SECONDS * 2 < get_block_timestamp() {
-                        live_beast_stats.attack_streak = 0;
-                    }
+                // reset attack streak if 2x base revival time has passed since last death
+                if attacking_beast.stats.live.last_death_timestamp
+                    + BASE_REVIVAL_TIME_SECONDS * 2 < get_block_timestamp() {
+                    attacking_beast.stats.live.attack_streak = 0;
+                }
 
+                // check if max xp is reached
+                if self._beast_can_get_xp(attacking_beast) {
+                    attacking_beast.stats.live.bonus_xp += 10
+                        + attacking_beast.stats.live.attack_streak.into();
+                }
+
+                // increase attack streak if less than 10
+                if attacking_beast.stats.live.attack_streak < 10 {
                     attacking_beast.stats.live.attack_streak += 1;
-
-                    if attacking_beast.stats.live.attack_streak == 7 {
-                        attacking_beast.stats.live.xp_points += 2;
-                        attacking_beast.stats.live.attack_streak = 0;
-                    } else {
-                        attacking_beast.stats.live.xp_points += 1;
-                    }
                 }
 
                 if attacking_beast.stats.live.current_health == 0 {
@@ -429,19 +434,25 @@ pub mod summit_systems {
             assert(time_since_death >= BASE_REVIVAL_TIME_SECONDS, errors::BEAST_NOT_YET_REVIVED);
         }
 
-        fn _beast_can_get_xp(self: @ContractState, live_beast_stats: LiveBeastStats) {
-            let last_attack_timestamp = live_beast_stats.last_attack_timestamp;
-            let current_time = get_block_timestamp();
-            let time_since_attack = current_time - last_attack_timestamp;
-            time_since_attack >= BASE_REVIVAL_TIME_SECONDS && live_beast_stats.xp_points < BEAST_MAX_BONUS_XP
-        } 
+        /// @title beast_can_get_xp
+        /// @notice this function is used to check if a beast can get xp
+        /// @param beast the beast to check
+        /// @return bool true if the beast can get xp, false otherwise
+        fn _beast_can_get_xp(self: @ContractState, beast: Beast) -> bool {
+            let base_xp = beast.stats.fixed.level * beast.stats.fixed.level;
+            let max_xp = (beast.stats.fixed.level + BEAST_MAX_BONUS_LVLS)
+                * (beast.stats.fixed.level + BEAST_MAX_BONUS_LVLS);
+
+            beast.stats.live.bonus_xp < max_xp - base_xp
+        }
 
         /// @title assert_beast_can_consume
         /// @notice this function is used to assert that a beast can consume an adventurer
         /// @param beast the beast to check
         /// @param adventurer the adventurer to check
         fn _assert_beast_can_consume(self: @ContractState, beast: Beast, adventurer: Adventurer) {
-            let total_health = beast.stats.live.bonus_health + beast.stats.fixed.starting_health.into();
+            let total_health = beast.stats.live.bonus_health
+                + beast.stats.fixed.starting_health.into();
             assert(total_health <= BEAST_MAX_HEALTH, errors::BEAST_MAX_HEALTH);
             assert(adventurer.health == 0, errors::ADVENTURER_ALIVE);
             assert(adventurer.rank_at_death == 0, errors::ADVENTURER_RANKED);

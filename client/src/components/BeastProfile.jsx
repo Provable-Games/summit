@@ -7,6 +7,9 @@ const MAX_HEALTH = 2046;
 const MAX_BONUS_LEVELS = 40;
 
 export default function BeastProfile({ beast }) {
+  const currentExperience = Math.pow(beast.level, 2);
+  const maxExperience = Math.pow(beast.level + 40, 2);
+
   return (
     <Box sx={styles.container}>
       <Typography variant='h4' sx={{ lineHeight: '16px', textAlign: 'center' }}>
@@ -48,7 +51,7 @@ export default function BeastProfile({ beast }) {
               Deaths
             </Typography>
             <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              23
+              {beast.num_deaths ?? 0}
             </Typography>
           </Box>
         </Box>
@@ -62,20 +65,20 @@ export default function BeastProfile({ beast }) {
 
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: '-5px', alignItems: 'center' }}>
             <Typography variant='h4' sx={{ letterSpacing: '0.5px' }}>
-              12
+              {beast.attack_streak ?? 0}
             </Typography>
 
-            <LocalFireDepartmentIcon htmlColor='red' sx={{ fontSize: '18px', pt: '2px' }} />
+            {beast.attack_streak > 0 && <LocalFireDepartmentIcon htmlColor='red' sx={{ fontSize: '18px', pt: '2px' }} />}
           </Box>
         </Box>
 
         <Box sx={{ width: '50%', display: 'flex', flexDirection: 'column', textAlign: 'center', border: '1px solid rgba(0, 0, 0, 0.6)', borderRadius: '4px' }}>
           <Typography sx={{ fontSize: '12px', letterSpacing: '0.5px', color: 'rgba(0, 0, 0, 0.6)' }}>
-            $Savage Earned
+            Saváge Earned
           </Typography>
 
           <Typography variant='h4' sx={{ letterSpacing: '0.5px', mt: '-5px' }}>
-            120
+            0
           </Typography>
         </Box>
       </Box>
@@ -109,20 +112,20 @@ export default function BeastProfile({ beast }) {
       <Box sx={{ width: '100%' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', height: '16px' }}>
           <Typography letterSpacing={'0.5px'}>
-            Bonus Levels
+            Total Experience
           </Typography>
 
           <Typography letterSpacing={'0.5px'}>
-            {MAX_BONUS_LEVELS}
+            {maxExperience}
           </Typography>
         </Box>
 
         <Box position={'relative'} width={'100%'}>
-          <ExperienceBar sx={{ height: '12px', border: '2px solid black' }} variant="determinate" value={normaliseHealth(4, MAX_BONUS_LEVELS)} />
+          <ExperienceBar sx={{ height: '12px', border: '2px solid black' }} variant="determinate" value={normaliseHealth(currentExperience, maxExperience)} />
 
           <Box sx={styles.healthText}>
             <Typography sx={{ fontSize: '11px', lineHeight: '9px', color: 'white', letterSpacing: '0.5px' }}>
-              4
+              {currentExperience}
             </Typography>
           </Box>
         </Box>

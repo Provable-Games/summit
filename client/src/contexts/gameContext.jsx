@@ -117,6 +117,10 @@ export const GameProvider = ({ children }) => {
         beast.currentHealth = liveStat?.current_health > 0 ? liveStat?.current_health : beast.health
       }
 
+      let totalXp = Math.pow(beast.level, 2) + (liveStat?.bonus_xp || 0)
+      beast.level = Math.floor(Math.sqrt(totalXp))
+      beast.totalXp = totalXp
+
       return {
         ...beast,
         ...calculateBattleResult(beast, summit),
@@ -157,7 +161,7 @@ export const GameProvider = ({ children }) => {
     adventurers = adventurers.filter(a => a.health < 1)
 
     setAdventurerCollection(adventurers.sort((a, b) => {
-      return a.health - b.health
+      return b.level - a.level
     }))
 
     setLoadingAdventurers(false)
@@ -167,12 +171,15 @@ export const GameProvider = ({ children }) => {
     setLoadingCollection(true)
 
     let beastData = await getBeasts(address);
-    let liveData = await fetchBeastLiveData(beastData.map(beast => beast.id));
+    await fetchLiveStats(beastData);
 
     setOwnedBeasts(beastData);
-    setLiveBeastStats(liveData);
-
     setLoadingCollection(false)
+  }
+
+  const fetchLiveStats = async (beastData) => {
+    let liveStats = await fetchBeastLiveData((beastData || ownedBeasts).map(beast => beast.id))
+    setLiveBeastStats(liveStats)
   }
 
   useEffect(() => {
@@ -201,7 +208,11 @@ export const GameProvider = ({ children }) => {
     if (ownedBeasts.length > 0 && liveBeastStats !== null) {
       setBeastCollection()
     }
-  }, [summit.id, liveBeastStats, ownedBeasts])
+  }, [liveBeastStats, ownedBeasts])
+
+  useEffect(() => {
+    fetchLiveStats()
+  }, [summit.id])
 
   useEffect(() => {
     setInterval(() => {
@@ -301,6 +312,12 @@ export const GameProvider = ({ children }) => {
     setAttackInProgress(true)
 
     try {
+      setCollection(prev => prev.map(beast => ({
+        ...beast,
+        totalXp: selected.includes(beast.id) ? beast.totalXp + 10 + (beast.attack_streak || 0) : beast.totalXp,
+        attack_streak: selected.includes(beast.id) ? (beast.attack_streak || 0) + 1 : beast.attack_streak
+      })))
+
       const success = await dojo.executeTx("summit_systems", "attack", [summit.id, selected])
 
       if (success) {
@@ -309,6 +326,8 @@ export const GameProvider = ({ children }) => {
         setSelected([])
       }
     } catch (ex) {
+      console.log(ex)
+    } finally {
       setAttackInProgress(false)
     }
   }

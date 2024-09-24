@@ -17,7 +17,7 @@ function FeedAdventurerAnimation(props) {
   const ref = useRef()
   const textRef = useRef()
 
-  const [health] = useState(adventurer.health)
+  const [health] = useState(adventurer.level)
 
   useEffect(() => {
     feedAnimation()
@@ -40,7 +40,7 @@ function FeedAdventurerAnimation(props) {
 
     game.setState.beasts(prev => prev.map(beast => ({
       ...beast,
-      currentHealth: beast.id === selectedBeasts[0] ? beast.currentHealth + 1 : beast.currentHealth
+      currentHealth: beast.id === selectedBeasts[0] ? beast.currentHealth + health : beast.currentHealth
     })))
 
     await textControls.start({

@@ -53,7 +53,9 @@ export async function fetchBeastLiveData(tokenIds) {
           current_health
           last_death_timestamp
           bonus_health
+          bonus_xp
           num_deaths
+          attack_streak
         }
       }
     }
@@ -71,7 +73,7 @@ export async function fetchBeastLiveData(tokenIds) {
         ...stat,
         id: stat.token_id,
         isDead: hoursSinceDeath < 23,
-        bonus_health: stat.bonus_health ?? 0
+        bonus_health: stat.bonus_health ?? 0,
       }
     })
 
@@ -86,7 +88,7 @@ export async function fetchAdventurerData(adventurers) {
 
   const document = gql`
   {
-    savageSummitAdventurerModels (limit:10000, where:{
+    savageSummitAdventurerConsumedModels (limit:10000, where:{
       token_idIN:[${adventurerIds}]}
     ){
       edges {
@@ -100,7 +102,7 @@ export async function fetchAdventurerData(adventurers) {
 
   try {
     const res = await request(GRAPH_URL, document)
-    let nodeData = res?.savageSummitAdventurerModels?.edges.map(edge => edge.node) ?? []
+    let nodeData = res?.savageSummitAdventurerConsumedModels?.edges.map(edge => edge.node) ?? []
 
     nodeData = nodeData.map(adventurer => {
       return parseInt(adventurer.token_id, 16)

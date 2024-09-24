@@ -143,29 +143,31 @@ function BeastCollection() {
                   </Typography>
                 </Box>
               </Box>
-              {/* 
+
               <Box position={'relative'} width={'100%'}>
-                <ExperienceBar variant="determinate" value={normaliseHealth(currentHealth, beast.health)} />
+                <ExperienceBar variant="determinate"
+                  value={normaliseHealth(beast.totalXp - Math.pow(beast.level, 2), Math.pow(beast.level + 1, 2) - Math.pow(beast.level, 2))}
+                  sx={{ height: '10px', border: '2px solid black' }} />
 
                 <Box sx={styles.healthText}>
-                  <Typography sx={{ fontSize: '11px', lineHeight: '9px', color: 'white', letterSpacing: '0.5px' }}>
-                    XP
+                  <Typography sx={{ fontSize: '10px', lineHeight: '9px', color: 'white', letterSpacing: '0.5px' }}>
+                    {isSelected && attackInProgress ? `+${10 + beast.attack_streak || 0} XP` : 'XP'}
                   </Typography>
                 </Box>
-              </Box> */}
+              </Box>
             </Box>
 
             {isSavage
               ? <>
-                <Typography variant="h4" letterSpacing={'2px'} className="glitch-effect">
-                  SAVAGE
+                <Typography variant="h5" letterSpacing={'2px'} className="glitch-effect" lineHeight={'14px'}>
+                  SAVÁGE
                 </Typography>
               </>
               : beast.capture
                 ? <>
-                  <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkgreen'}>
+                  {/* <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkgreen'}>
                     Success
-                  </Typography>
+                  </Typography> */}
 
                   <Box display={'flex'} alignItems={'center'} gap={'2px'}>
                     <img src={health} alt='' height={'13px'} />
@@ -177,9 +179,9 @@ function BeastCollection() {
                 </>
 
                 : <>
-                  <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkred'}>
+                  {/* <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'darkred'}>
                     Defeat
-                  </Typography>
+                  </Typography> */}
 
                   <Box display={'flex'} gap={'3px'} alignItems={'center'}>
                     <img src={sword} alt='' height={'10px'} />

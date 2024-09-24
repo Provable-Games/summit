@@ -1234,10 +1234,10 @@
         ]
       }
     ],
-    "address": "0x44867e43b95404da40659c67ddfcab106f86417e49ed2e264b7e44646e46962",
-    "transaction_hash": "0x1da3d99760b653d8f58795a189efeda2b65269a7436e256542e5511c3854840",
+    "address": "0x7d27b3fb263c94dd5c8fc142a9a1a574b77799946cea9521a8e98cc0ba2a076",
+    "transaction_hash": "0x64c0bb5c4f41ec46bc831f2836a2dcbe820d29502f3cac2b08860076b557a4b",
     "block_number": null,
-    "seed": "savage_summit",
+    "seed": "summit",
     "metadata": {
       "profile_name": "prod",
       "rpc_url": "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_7/nY2Exo6EOH2Pvtylz1dAgzJ9UxWx7MLn"
@@ -1255,9 +1255,9 @@
   "contracts": [
     {
       "kind": "DojoContract",
-      "address": "0x15195bff2d6b881193663db2a716363496da8cdc0bd313ace39c61b8a98bc0a",
-      "class_hash": "0x18e728243bc791b9614bcafa8606a6257e0873e963884f34287ab8d841bd801",
-      "original_class_hash": "0x18e728243bc791b9614bcafa8606a6257e0873e963884f34287ab8d841bd801",
+      "address": "0x254994078cfb2c8fb87fa1de583f20cc4aefa405bb13dec08f4655f7c220753",
+      "class_hash": "0x177a725ab132d9edea6dba5270efbc40de91088f0e0f2b397cfecf0bab1c08",
+      "original_class_hash": "0x177a725ab132d9edea6dba5270efbc40de91088f0e0f2b397cfecf0bab1c08",
       "base_class_hash": "0x2427dd10a58850ac9a5ca6ce04b7771b05330fd18f2e481831ad903b969e6b2",
       "abi": [
         {
@@ -1548,11 +1548,19 @@
             },
             {
               "name": "current_health",
-              "type": "core::integer::u32"
+              "type": "core::integer::u16"
             },
             {
               "name": "bonus_health",
-              "type": "core::integer::u32"
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "bonus_xp",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "attack_streak",
+              "type": "core::integer::u8"
             },
             {
               "name": "last_death_timestamp",
@@ -1828,7 +1836,7 @@
         "savage_summit-ConsumableDetails",
         "savage_summit-Summit",
         "savage_summit-SummitHistory",
-        "savage_summit-Adventurer"
+        "savage_summit-AdventurerConsumed"
       ],
       "init_calldata": [],
       "tag": "savage_summit-summit_systems",
@@ -1854,8 +1862,8 @@
           "key": false
         }
       ],
-      "class_hash": "0x14cdb1dfd679f07b4fa38be44a6b0b99c796e2f494fead21d237f2d32891207",
-      "original_class_hash": "0x14cdb1dfd679f07b4fa38be44a6b0b99c796e2f494fead21d237f2d32891207",
+      "class_hash": "0x1d58e9ddcaf90b09a184003876c14b231e2cfea79399a6044844311cdcdd1db",
+      "original_class_hash": "0x1d58e9ddcaf90b09a184003876c14b231e2cfea79399a6044844311cdcdd1db",
       "abi": [
         {
           "type": "impl",
@@ -2221,12 +2229,12 @@
         },
         {
           "type": "impl",
-          "name": "adventurerImpl",
-          "interface_name": "savage_summit::models::adventurer::Iadventurer"
+          "name": "adventurer_consumedImpl",
+          "interface_name": "savage_summit::models::adventurer::Iadventurer_consumed"
         },
         {
           "type": "struct",
-          "name": "savage_summit::models::adventurer::Adventurer",
+          "name": "savage_summit::models::adventurer::AdventurerConsumed",
           "members": [
             {
               "name": "token_id",
@@ -2240,7 +2248,7 @@
         },
         {
           "type": "interface",
-          "name": "savage_summit::models::adventurer::Iadventurer",
+          "name": "savage_summit::models::adventurer::Iadventurer_consumed",
           "items": [
             {
               "type": "function",
@@ -2248,7 +2256,7 @@
               "inputs": [
                 {
                   "name": "model",
-                  "type": "savage_summit::models::adventurer::Adventurer"
+                  "type": "savage_summit::models::adventurer::AdventurerConsumed"
                 }
               ],
               "outputs": [],
@@ -2258,14 +2266,14 @@
         },
         {
           "type": "event",
-          "name": "savage_summit::models::adventurer::adventurer::Event",
+          "name": "savage_summit::models::adventurer::adventurer_consumed::Event",
           "kind": "enum",
           "variants": []
         }
       ],
-      "tag": "savage_summit-Adventurer",
-      "qualified_path": "savage_summit::models::adventurer::adventurer",
-      "manifest_name": "savage_summit-Adventurer-71c9f3b2"
+      "tag": "savage_summit-AdventurerConsumed",
+      "qualified_path": "savage_summit::models::adventurer::adventurer_consumed",
+      "manifest_name": "savage_summit-AdventurerConsumed-a158cdc6"
     },
     {
       "kind": "DojoModel",
@@ -2286,8 +2294,8 @@
           "key": false
         }
       ],
-      "class_hash": "0x1a0477c8c5f474a3475f1260946d8d1ba60953461cda4b302def96faddf1499",
-      "original_class_hash": "0x1a0477c8c5f474a3475f1260946d8d1ba60953461cda4b302def96faddf1499",
+      "class_hash": "0xd33ee7b2d798f8d07b9e609aa6294dd537d149044345c57f88b9b4b5ea146",
+      "original_class_hash": "0xd33ee7b2d798f8d07b9e609aa6294dd537d149044345c57f88b9b4b5ea146",
       "abi": [
         {
           "type": "impl",
@@ -2770,11 +2778,19 @@
             },
             {
               "name": "current_health",
-              "type": "core::integer::u32"
+              "type": "core::integer::u16"
             },
             {
               "name": "bonus_health",
-              "type": "core::integer::u32"
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "bonus_xp",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "attack_streak",
+              "type": "core::integer::u8"
             },
             {
               "name": "last_death_timestamp",
@@ -3824,12 +3840,22 @@
         },
         {
           "name": "current_health",
-          "type": "u32",
+          "type": "u16",
           "key": false
         },
         {
           "name": "bonus_health",
-          "type": "u32",
+          "type": "u16",
+          "key": false
+        },
+        {
+          "name": "bonus_xp",
+          "type": "u16",
+          "key": false
+        },
+        {
+          "name": "attack_streak",
+          "type": "u8",
           "key": false
         },
         {
@@ -3848,8 +3874,8 @@
           "key": false
         }
       ],
-      "class_hash": "0x6fb768148f65cfc5d4b94601863c709b3427cbd067ad286cdc1a03025a455ed",
-      "original_class_hash": "0x6fb768148f65cfc5d4b94601863c709b3427cbd067ad286cdc1a03025a455ed",
+      "class_hash": "0x73027a3348ed323d585ba274be7fe444d5f310eebf44cb29aebc918b7a4b073",
+      "original_class_hash": "0x73027a3348ed323d585ba274be7fe444d5f310eebf44cb29aebc918b7a4b073",
       "abi": [
         {
           "type": "impl",
@@ -4228,11 +4254,19 @@
             },
             {
               "name": "current_health",
-              "type": "core::integer::u32"
+              "type": "core::integer::u16"
             },
             {
               "name": "bonus_health",
-              "type": "core::integer::u32"
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "bonus_xp",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "attack_streak",
+              "type": "core::integer::u8"
             },
             {
               "name": "last_death_timestamp",

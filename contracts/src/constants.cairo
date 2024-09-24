@@ -9,7 +9,7 @@ const DAY_SECONDS: u64 = 24 * 60 * 60;
 const MAX_U32: u32 = 0xffffffff;
 const MINIMUM_DAMAGE: u8 = 4;
 const BEAST_MAX_HEALTH: u16 = 2046;
-const BEAST_MAX_BONUS_XP: u16 = 400;
+const BEAST_MAX_BONUS_LVLS: u16 = 40;
 
 mod errors {
     const BEAST_NOT_YET_REVIVED: felt252 = 'beast not yet revived';

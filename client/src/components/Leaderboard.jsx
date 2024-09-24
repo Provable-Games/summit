@@ -6,37 +6,27 @@ const leaderboardExample = [
   {
     rank: 1,
     name: "'Wrath Bane' Warlock",
-    hours: '29',
-    minutes: '12',
-    seconds: '44'
+    savage: 500,
   },
   {
     rank: 2,
     name: "'Ghoul Root' Typhon",
-    hours: '16',
-    minutes: '24',
-    seconds: '00'
+    savage: 482,
   },
   {
     rank: 3,
     name: "'Phoenix Form' Goblin",
-    hours: '14',
-    minutes: '12',
-    seconds: '50'
+    savage: 485,
   },
   {
     rank: 4,
     name: "'Spirit Song' Sprite",
-    hours: '13',
-    minutes: '11',
-    seconds: '25'
+    savage: 392,
   },
   {
     rank: 5,
     name: "'Honour Bender' Gorgon",
-    hours: '09',
-    minutes: '05',
-    seconds: '23'
+    savage: 360,
   },
 ]
 
@@ -50,8 +40,8 @@ function Leaderboard(props) {
       <Box sx={styles.content}>
 
         <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography sx={{ fontSize: '25px', letterSpacing: '1px' }}>
-            Savage Summit
+          <Typography sx={{ fontSize: '28px', letterSpacing: '1px', textAlign: 'center', width: '100%' }}>
+            Summit
           </Typography>
 
           {/* <Typography sx={{ letterSpacing: '0.5px' }} variant='h5'>
@@ -84,25 +74,13 @@ function Leaderboard(props) {
 
             <Box display={'flex'} alignItems={'center'} gap={'2px'}>
               <Typography>
-                {score.hours}
-              </Typography>
-              <Typography fontWeight={'bold'} fontSize={'10px'}>
-                :
-              </Typography>
-              <Typography>
-                {score.minutes}
-              </Typography>
-              <Typography fontWeight={'bold'} fontSize={'10px'}>
-                :
-              </Typography>
-              <Typography>
-                {score.seconds}
+                {score.savage}
               </Typography>
             </Box>
           </Box>
           ))}
 
-        <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
+        {/* <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
           <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
 
           <Box sx={{ width: '50%', height: '18px', border: '2px solid #07323d', textAlign: 'center', borderRadius: '10px', background: '#ddcdaa' }}>
@@ -119,7 +97,7 @@ function Leaderboard(props) {
             Revive potion
           </Typography>
           <Typography sx={{ letterSpacing: '0.5px' }}>
-            ~$0.25
+            $0.25
           </Typography>
         </Box>
 
@@ -128,7 +106,7 @@ function Leaderboard(props) {
             Attack potion
           </Typography>
           <Typography sx={{ letterSpacing: '0.5px' }}>
-            ~$0.25
+            $0.75
           </Typography>
         </Box>
 
@@ -137,9 +115,9 @@ function Leaderboard(props) {
             Extra life potion
           </Typography>
           <Typography sx={{ letterSpacing: '0.5px' }}>
-            ~$0.25
+            $2.10
           </Typography>
-        </Box>
+        </Box> */}
 
         <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
           <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
@@ -161,14 +139,7 @@ function Leaderboard(props) {
             {totalSupply - deadBeastCount}/{totalSupply}
           </Typography>
         </Box>
-        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            Potions Bought
-          </Typography>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            1304
-          </Typography>
-        </Box>
+
       </Box>
 
     </Box>
