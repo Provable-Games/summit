@@ -125,6 +125,8 @@ export const GameProvider = ({ children }) => {
   const setBeastCollection = () => {
     let beasts = [...ownedBeasts].map((beast) => {
       let liveStat = liveBeastStats?.find(s => s.id === beast.id) ?? {}
+
+      beast.originalHealth = beast.health
       beast.health += liveStat?.bonus_health ?? 0
 
       if (liveStat.isDead) {
@@ -132,6 +134,8 @@ export const GameProvider = ({ children }) => {
       } else {
         beast.currentHealth = liveStat?.current_health > 0 ? liveStat?.current_health : beast.health
       }
+
+      beast.originalLevel = beast.level
 
       let totalXp = Math.pow(beast.level, 2) + (liveStat?.bonus_xp || 0)
       beast.level = Math.floor(Math.sqrt(totalXp))

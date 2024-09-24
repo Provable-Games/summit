@@ -2,10 +2,12 @@ import { Box, Typography } from "@mui/material";
 import { fetchBeastImage, normaliseHealth } from "../helpers/beasts";
 import { ExperienceBar, HealthBar } from "../helpers/styles";
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import WhatshotIcon from '@mui/icons-material/Whatshot';
 
 const MAX_HEALTH = 2046;
 
 export default function BeastProfile({ beast }) {
+  const originalExperience = Math.pow(beast.originalLevel, 2);
   const currentExperience = Math.pow(beast.level, 2);
   const maxExperience = Math.pow(beast.level + 40, 2);
 
@@ -20,7 +22,7 @@ export default function BeastProfile({ beast }) {
           <img src={fetchBeastImage(beast.name)} alt='' height={'100px'} />
         </Box>
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '50%' }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '50%' }}>
           <Box sx={styles.infoSection}>
             <Typography sx={{ fontSize: '18px', lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
               {beast.name}
@@ -32,7 +34,7 @@ export default function BeastProfile({ beast }) {
               Level
             </Typography>
             <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              {beast.level}
+              {beast.level}{beast.level !== beast.originalLevel ? `(${beast.originalLevel})` : ''}
             </Typography>
           </Box>
 
@@ -47,7 +49,7 @@ export default function BeastProfile({ beast }) {
 
           <Box sx={styles.infoSection}>
             <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              Deaths
+              Saváge
             </Typography>
             <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
               {beast.num_deaths ?? 0}
@@ -57,32 +59,28 @@ export default function BeastProfile({ beast }) {
       </Box>
 
       <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', mb: 1, gap: 1 }}>
-        <Box sx={{ width: '50%', display: 'flex', flexDirection: 'column', textAlign: 'center', border: '1px solid rgba(0, 0, 0, 0.6)', borderRadius: '4px' }}>
-          <Typography sx={{ fontSize: '12px', letterSpacing: '0.5px', color: 'rgba(0, 0, 0, 0.6)' }}>
+        <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', textAlign: 'center', border: '1px solid rgba(0, 0, 0, 0.6)', borderRadius: '4px' }}>
+          <Typography sx={{ fontSize: '12px', letterSpacing: '0.5px' }}>
             Attack Streak
           </Typography>
 
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: '-5px' }}>
-            <Typography variant='h4' sx={{ letterSpacing: '0.5px' }}>
-              {beast.attack_streak ?? 0}
-            </Typography>
-
-            {beast.attack_streak > 0 && <LocalFireDepartmentIcon htmlColor='red' sx={{ fontSize: '18px', pt: '2px' }} />}
+            {[...Array(10)].map((_, index) => (
+              <WhatshotIcon
+                key={index}
+                htmlColor={index < beast.attack_streak ? 'red' : 'gray'}
+                sx={{ fontSize: '18px', pt: '4px' }}
+              />
+            ))}
           </Box>
-        </Box>
 
-        <Box sx={{ width: '50%', display: 'flex', flexDirection: 'column', textAlign: 'center', border: '1px solid rgba(0, 0, 0, 0.6)', borderRadius: '4px' }}>
           <Typography sx={{ fontSize: '12px', letterSpacing: '0.5px', color: 'rgba(0, 0, 0, 0.6)' }}>
-            Saváge Earned
-          </Typography>
-
-          <Typography variant='h4' sx={{ letterSpacing: '0.5px', mt: '-5px' }}>
-            0
+            +{(beast.attack_streak ?? 0) * 10}% Bonus XP Next Attack
           </Typography>
         </Box>
       </Box>
 
-      <Box sx={{ width: '100%', mb: 1 }}>
+      <Box sx={{ width: '100%', mb: 2 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', height: '16px' }}>
           <Typography letterSpacing={'0.5px'}>
             Total Health
@@ -101,11 +99,9 @@ export default function BeastProfile({ beast }) {
               {beast.health}
             </Typography>
           </Box>
-        </Box>
 
-        {/* <Typography variant='subtitle2'>
-          Feed beast adventurers to increase health.
-        </Typography> */}
+          <Box sx={{ position: 'absolute', top: '13px', left: `${(beast.originalHealth / MAX_HEALTH) * 100}%`, transform: 'translateX(-50%)', width: '7px', height: '7px', backgroundColor: '#ff6f3a', clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }} />
+        </Box>
       </Box>
 
       <Box sx={{ width: '100%' }}>
@@ -115,7 +111,7 @@ export default function BeastProfile({ beast }) {
           </Typography>
 
           <Typography letterSpacing={'0.5px'}>
-            {maxExperience}
+            lvl {Math.sqrt(maxExperience)}
           </Typography>
         </Box>
 
@@ -127,12 +123,11 @@ export default function BeastProfile({ beast }) {
               {currentExperience}
             </Typography>
           </Box>
-        </Box>
 
-        {/* <Typography variant='subtitle2'>
-          Attack the summit to gain bonus levels.
-        </Typography> */}
+          <Box sx={{ position: 'absolute', top: '13px', left: `${(originalExperience / maxExperience) * 100}%`, transform: 'translateX(-50%)', width: '7px', height: '7px', backgroundColor: '#9C27B0', clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }} />
+        </Box>
       </Box>
+
     </Box>
   );
 }
@@ -159,7 +154,7 @@ const styles = {
   healthText: {
     position: 'absolute',
     top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
+    left: '3px',
+    transform: 'translate(3px, -50%)',
   }
 }
