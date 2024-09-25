@@ -338,8 +338,7 @@ export const GameProvider = ({ children }) => {
         attack_streak: selected.includes(beast.id) ? (beast.attack_streak || 0) + 1 : beast.attack_streak
       })))
 
-      // const success = await dojo.executeTx("summit_systems", "attack", [summit.id, selected])
-      const success = true;
+      const success = await dojo.executeTx("summit_systems", "attack", [summit.id, selected])
 
       if (success) {
         let attackingBeasts = collection.filter(beast => selected.includes(beast.id))
