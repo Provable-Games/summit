@@ -68,7 +68,8 @@ function AttackAnimation(props) {
     if (!attackingBeast.capture && summit.currentHealth > 0) {
       game.setState.beasts(prev => prev.map(beast => ({
         ...beast,
-        currentHealth: beast.id === attackingBeast.id ? 0 : beast.currentHealth
+        currentHealth: beast.id === attackingBeast.id ? 0 : beast.currentHealth,
+        deadAt: Date.now()
       })))
     }
 

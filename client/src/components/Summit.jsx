@@ -8,7 +8,6 @@ import { HealthBar } from '../helpers/styles'
 import { fadeVariant } from '../helpers/variants'
 import SummitReward from './SummitReward'
 import AttackAnimation from './animations/AttackAnimation'
-import { ClubIcon, SwordIcon, WandIcon } from './Icons'
 
 function Summit() {
   const game = useContext(GameContext)
