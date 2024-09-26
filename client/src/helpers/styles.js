@@ -112,3 +112,33 @@ export const RoundBlueButton = styled(Button)(({ theme }) => ({
     backgroundColor: '#1f8c9b',
   },
 }));
+
+export const BonusHealthBar = styled(LinearProgress)(({ theme }) => ({
+  height: 12,
+  borderRadius: 10,
+  width: '100%',
+  [`&.${linearProgressClasses.colorPrimary}`]: {
+    backgroundColor: theme.palette.grey[800],
+    border: '2px solid black',
+    boxSizing: 'border-box',
+  },
+  [`& .${linearProgressClasses.bar}`]: {
+    borderRadius: 5,
+    backgroundColor: '#4caf50',
+  },
+}));
+
+export const OriginalHealthBar = styled(LinearProgress)(({ theme }) => ({
+  height: 12,
+  borderRadius: 10,
+  width: '100%',
+  [`&.${linearProgressClasses.colorPrimary}`]: {
+    backgroundColor: 'transparent',
+    border: '2px solid black',
+    boxSizing: 'border-box',
+  },
+  [`& .${linearProgressClasses.bar}`]: {
+    borderRadius: 5,
+    backgroundColor: '#ff6f3a',
+  },
+}));

@@ -1,15 +1,14 @@
+import WhatshotIcon from '@mui/icons-material/Whatshot';
 import { Box, Typography } from "@mui/material";
 import { fetchBeastImage, normaliseHealth } from "../helpers/beasts";
-import { ExperienceBar, HealthBar } from "../helpers/styles";
-import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
-import WhatshotIcon from '@mui/icons-material/Whatshot';
+import { BonusHealthBar, ExperienceBar, OriginalHealthBar } from "../helpers/styles";
 
 const MAX_HEALTH = 2046;
 
 export default function BeastProfile({ beast }) {
   const originalExperience = Math.pow(beast.originalLevel, 2);
-  const currentExperience = Math.pow(beast.level, 2);
-  const maxExperience = Math.pow(beast.level + 40, 2);
+  const currentExperience = beast.totalXp;
+  const nextLevelExperience = Math.pow(beast.level + 1, 2);
 
   return (
     <Box sx={styles.container}>
@@ -80,7 +79,7 @@ export default function BeastProfile({ beast }) {
         </Box>
       </Box>
 
-      <Box sx={{ width: '100%', mb: 2 }}>
+      <Box sx={{ width: '100%', mb: 1 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', height: '16px' }}>
           <Typography letterSpacing={'0.5px'}>
             Total Health
@@ -92,7 +91,7 @@ export default function BeastProfile({ beast }) {
         </Box>
 
         <Box position={'relative'} width={'100%'}>
-          <HealthBar sx={{ height: '12px' }} variant="determinate" value={normaliseHealth(beast.health, MAX_HEALTH)} />
+          <BonusHealthBar variant="determinate" value={normaliseHealth(beast.health, MAX_HEALTH)} />
 
           <Box sx={styles.healthText}>
             <Typography sx={{ fontSize: '11px', lineHeight: '9px', color: 'white', letterSpacing: '0.5px' }}>
@@ -100,31 +99,37 @@ export default function BeastProfile({ beast }) {
             </Typography>
           </Box>
 
-          <Box sx={{ position: 'absolute', top: '13px', left: `${(beast.originalHealth / MAX_HEALTH) * 100}%`, transform: 'translateX(-50%)', width: '7px', height: '7px', backgroundColor: '#ff6f3a', clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }} />
+          <Box sx={{ position: 'absolute', left: 0, top: 0, width: '100%' }}>
+            <OriginalHealthBar variant="determinate" value={normaliseHealth(beast.originalHealth, MAX_HEALTH)} />
+          </Box>
         </Box>
       </Box>
 
       <Box sx={{ width: '100%' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', height: '16px' }}>
           <Typography letterSpacing={'0.5px'}>
-            Total Experience
+            Experience
           </Typography>
 
           <Typography letterSpacing={'0.5px'}>
-            lvl {Math.sqrt(maxExperience)}
+            lvl {beast.level + 1}
           </Typography>
         </Box>
 
         <Box position={'relative'} width={'100%'}>
-          <ExperienceBar sx={{ height: '12px', border: '2px solid black' }} variant="determinate" value={normaliseHealth(currentExperience, maxExperience)} />
+          <ExperienceBar sx={{ height: '12px', border: '2px solid black' }} variant="determinate" value={normaliseHealth(currentExperience - originalExperience, nextLevelExperience - originalExperience)} />
 
           <Box sx={styles.healthText}>
             <Typography sx={{ fontSize: '11px', lineHeight: '9px', color: 'white', letterSpacing: '0.5px' }}>
-              {currentExperience}
+              {currentExperience - originalExperience}
             </Typography>
           </Box>
 
-          <Box sx={{ position: 'absolute', top: '13px', left: `${(originalExperience / maxExperience) * 100}%`, transform: 'translateX(-50%)', width: '7px', height: '7px', backgroundColor: '#9C27B0', clipPath: 'polygon(50% 0%, 0% 100%, 100% 100%)' }} />
+        </Box>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mr: '2px' }}>
+          <Typography variant='subtitle2'>
+            {nextLevelExperience - currentExperience} xp to next lvl
+          </Typography>
         </Box>
       </Box>
 
@@ -141,8 +146,8 @@ const styles = {
     backgroundColor: '#f6e6bc',
     border: '3px solid rgba(0, 0, 0, 0.5)',
     borderRadius: '10px',
-    padding: '12px',
-    pb: 2,
+    padding: '10px 12px',
+    pb: 1,
   },
   infoSection: {
     display: 'flex',
@@ -156,5 +161,6 @@ const styles = {
     top: '50%',
     left: '3px',
     transform: 'translate(3px, -50%)',
+    zIndex: 1000
   }
 }

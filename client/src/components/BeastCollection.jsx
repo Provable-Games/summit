@@ -1,9 +1,10 @@
 import InfoIcon from '@mui/icons-material/Info';
-import { Box, Tooltip, Typography } from "@mui/material";
+import { Box, Button, Tooltip, Typography } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
 import React, { useContext, useState } from 'react';
 import health from '../assets/images/health.png';
 import sword from '../assets/images/sword.png';
+import selectAll from '../assets/images/selectall.png';
 import { GameContext } from '../contexts/gameContext';
 import { beastElementalColor, fetchBeastImage, normaliseHealth } from "../helpers/beasts";
 import { ExperienceBar, HealthBar } from '../helpers/styles';
@@ -27,6 +28,14 @@ function BeastCollection() {
       game.setState.selectedBeasts(prev => prev.filter(prevId => prevId !== id))
     } else {
       game.setState.selectedBeasts(prev => [...prev, id])
+    }
+  }
+
+  const selectAllBeasts = () => {
+    if (collection.length === selectedBeasts.length) {
+      game.setState.selectedBeasts([])
+    } else {
+      game.setState.selectedBeasts(collection.map(x => x.id))
     }
   }
 
@@ -119,6 +128,12 @@ function BeastCollection() {
 
         </Box>}
 
+        {collection.length > 5 && (
+          <Box sx={[styles.utilityButton, selectedBeasts.length === collection.length && styles.selectedItem]} onClick={() => selectAllBeasts()}>
+            <img src={selectAll} alt='' height={'100%'} />
+          </Box>
+        )}
+
         {collection.map(beast => {
           const isSelected = selectedBeasts.includes(beast.id)
           const isSavage = summit.id === beast.id
@@ -191,8 +206,8 @@ function BeastCollection() {
                   sx={{ height: '10px', border: '2px solid black' }} />
 
                 <Box sx={styles.healthText}>
-                  <Typography sx={{ fontSize: '10px', lineHeight: '9px', color: 'white', letterSpacing: '0.5px' }}>
-                    {isSelected && attackInProgress ? `+${10 + beast.attack_streak || 0} XP` : 'XP'}
+                  <Typography sx={{ fontSize: '10px', lineHeight: '10px', color: 'white', letterSpacing: '0.5px' }}>
+                    {beast.totalXp >= Math.pow(beast.level + 1, 2) ? 'Level up' : (isSelected && attackInProgress ? `+${10 + beast.attack_streak || 0} XP` : 'XP')}
                   </Typography>
                 </Box>
               </Box>
@@ -250,4 +265,19 @@ const styles = {
     top: 0,
     right: 5
   },
+  utilityButton: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '30px',
+    width: '30px',
+    border: '2px solid rgba(0, 0, 0, 0.4)',
+    background: '#f6e6bc',
+    borderRadius: '5px',
+    cursor: 'pointer',
+    padding: '3px',
+    boxSizing: 'border-box',
+    transition: 'border-color 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease',
+    marginRight: '-3px'
+  }
 }
