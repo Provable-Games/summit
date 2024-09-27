@@ -32,10 +32,10 @@ function BeastCollection() {
   }
 
   const selectAllBeasts = () => {
-    if (collection.length === selectedBeasts.length) {
+    if (collection.filter(x => x.currentHealth > 0).length === selectedBeasts.length) {
       game.setState.selectedBeasts([])
     } else {
-      game.setState.selectedBeasts(collection.map(x => x.id))
+      game.setState.selectedBeasts(collection.filter(x => x.currentHealth > 0).map(x => x.id))
     }
   }
 
@@ -129,7 +129,7 @@ function BeastCollection() {
         </Box>}
 
         {collection.length > 5 && (
-          <Box sx={[styles.utilityButton, selectedBeasts.length === collection.length && styles.selectedItem]} onClick={() => selectAllBeasts()}>
+          <Box sx={[styles.utilityButton, selectedBeasts.length === collection.filter(x => x.currentHealth > 0).length && styles.selectedItem]} onClick={() => selectAllBeasts()}>
             <img src={selectAll} alt='' height={'100%'} />
           </Box>
         )}
