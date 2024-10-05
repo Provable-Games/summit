@@ -2,7 +2,7 @@ import { Box, Typography } from '@mui/material';
 import { useAccount } from '@starknet-react/core';
 import React, { useContext, useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import potion from '../assets/images/potion.png';
+import potion from '../assets/images/potions.png';
 import sword from '../assets/images/sword.png';
 import teeth from '../assets/images/teeth.png';
 import { GameContext } from '../contexts/gameContext';
@@ -10,11 +10,13 @@ import { AttackButton, BuyConsumablesButton, RoundBlueButton, RoundOrangeButton 
 import BuyConsumables from './dialogs/BuyConsumables';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import Potions from './Potions';
 
 function ActionBar(props) {
   const game = useContext(GameContext)
   const { selectedBeasts, summit, showFeedingGround, totalDamage,
-    selectedAdventurers, potions, attackInProgress, ownedBeasts, feedingInProgress } = game.getState
+    selectedAdventurers, potions, attackInProgress, ownedBeasts,
+    feedingInProgress, selectedItem } = game.getState
 
   const { address } = useAccount()
   const [buyPotionsDialog, openBuyPotionsDialog] = useState(false)
@@ -115,15 +117,7 @@ function ActionBar(props) {
           }
         </AttackButton>}
 
-      {/* <RoundOrangeButton onClick={() => game.setState.potions(prev => prev + 1)} sx={{ position: 'relative' }}>
-        <img src={potion} alt='' height={'30px'} />
-
-        <Box sx={styles.count}>
-          <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '13px', lineHeight: '12px' }}>
-            {potions}
-          </Typography>
-        </Box>
-      </RoundOrangeButton> */}
+      <Potions />
     </Box>
 
     <Box sx={{ display: 'flex', gap: 2 }}>
@@ -135,11 +129,11 @@ function ActionBar(props) {
         </BuyConsumablesButton>
       </Box>
 
-      {/* <BuyConsumablesButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
+      <BuyConsumablesButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
         Buy Consumables
       </BuyConsumablesButton>
 
-      <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} /> */}
+      <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} />
     </Box>
   </Box>
 }

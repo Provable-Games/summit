@@ -6,15 +6,16 @@ import health from '../assets/images/health.png';
 import sword from '../assets/images/sword.png';
 import selectAll from '../assets/images/selectall.png';
 import { GameContext } from '../contexts/gameContext';
-import { beastElementalColor, fetchBeastImage, normaliseHealth } from "../helpers/beasts";
+import { beastElementalColor, fetchBeastImage, fetchBeastTypeImage, normaliseHealth } from "../helpers/beasts";
 import { ExperienceBar, HealthBar } from '../helpers/styles';
 import { Scrollbars } from 'react-custom-scrollbars';
 
 import Lottie from "lottie-react";
 import SwordAnimation from '../assets/animations/swords.json';
 import { isBrowser } from "react-device-detect";
-import { ClubIcon, SwordIcon, WandIcon } from "./Icons";
+import { BruteIcon, HunterIcon, MagicalIcon } from "./Icons";
 import BeastProfile from './BeastProfile';
+import heart from '../assets/images/heart.png';
 
 function BeastCollection() {
   const game = useContext(GameContext)
@@ -139,15 +140,20 @@ function BeastCollection() {
           const isSavage = summit.id === beast.id
           const elementalColor = beastElementalColor(beast)
           const currentHealth = isSavage ? summit.currentHealth : beast.currentHealth
+          let extraLife = 0
 
           return <Box
             key={beast.id}
             sx={[styles.itemContainer, isSelected && styles.selectedItem, (selectedBeasts.length > 0 && !isSelected) && { opacity: 0.5, borderColor: 'transparent' }]}
             onClick={() => selectBeast(beast.id)}>
 
-            <Box sx={{ position: 'absolute', top: '3px', left: '4px' }} >
-              {beast.type === 'Brute' ? <ClubIcon color={elementalColor} /> : beast.type === 'Magical' ? <WandIcon color={elementalColor} /> : <SwordIcon color={elementalColor} />}
-            </Box>
+            <Tooltip title={<Box sx={{ background: '#616161', padding: '4px 8px', borderRadius: '4px' }}>{beast.type}</Box>}>
+              <Box sx={{ position: 'absolute', top: '3px', left: '4px' }} >
+                {beast.type === 'Hunter' && <HunterIcon color={elementalColor} />}
+                {beast.type === 'Magical' && <MagicalIcon color={elementalColor} />}
+                {beast.type === 'Brute' && <BruteIcon color={elementalColor} />}
+              </Box>
+            </Tooltip>
 
             {isSelected && attackInProgress && <Box sx={{ position: 'absolute', bottom: '45px' }}>
               <Lottie animationData={SwordAnimation} loop={true} style={{ height: '90px' }} />
@@ -183,7 +189,6 @@ function BeastCollection() {
                     {beast.power}
                   </Typography>
                 </Box>
-
               </Box>
             </Box>
 
@@ -193,11 +198,19 @@ function BeastCollection() {
               <Box position={'relative'} width={'100%'}>
                 <HealthBar variant="determinate" value={normaliseHealth(currentHealth, beast.health)} />
 
-                <Box sx={styles.healthText}>
+                <Box sx={[styles.healthText, extraLife > 0 && { left: '7px', transform: 'none' }]}>
                   <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
                     {currentHealth}
                   </Typography>
                 </Box>
+
+                {extraLife > 0 && <Box sx={styles.extraLife}>
+                  {extraLife > 1 && <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px', textShadow: '0 0 5px #39FF14' }}>
+                    {extraLife}
+                  </Typography>}
+
+                  <img src={heart} alt='' height={'12px'} />
+                </Box>}
               </Box>
 
               <Box position={'relative'} width={'100%'}>
@@ -259,6 +272,15 @@ const styles = {
     left: '50%',
     transform: 'translate(-50%)',
     textAlign: 'center'
+  },
+  extraLife: {
+    position: 'absolute',
+    top: 0,
+    right: '6px',
+    height: '16px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px'
   },
   order: {
     position: 'absolute',

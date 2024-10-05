@@ -1,19 +1,21 @@
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import { Box, Typography } from "@mui/material";
-import { fetchBeastImage, normaliseHealth } from "../helpers/beasts";
-import { BonusHealthBar, ExperienceBar, OriginalHealthBar } from "../helpers/styles";
 import { useContext } from 'react';
 import { GameContext } from '../contexts/gameContext';
+import { fetchBeastImage, fetchBeastTypeImage, normaliseHealth } from "../helpers/beasts";
+import { ExperienceBar, HealthBar } from "../helpers/styles";
 
-const MAX_HEALTH = 2046;
+const MAX_HEALTH = 1023;
+const MAX_LEVELS = 40;
 
 export default function BeastProfile({ beast }) {
   const game = useContext(GameContext)
   const { summit } = game.getState
 
-  const originalExperience = Math.pow(beast.originalLevel, 2);
+  const originalExperience = Math.pow(beast.level, 2);
   const currentExperience = beast.totalXp;
   const nextLevelExperience = Math.pow(beast.level + 1, 2);
+  const bonusLevels = beast.level - beast.originalLevel;
 
   const diff = beast.last_death_timestamp * 1000 + 46 * 60 * 60 * 1000 - Date.now();
   const timeLeft = diff > 3600000 ? `${Math.floor(diff / 3600000)}h` : `${Math.floor((diff % 3600000) / 60000)}m`;
@@ -36,6 +38,8 @@ export default function BeastProfile({ beast }) {
             <Typography sx={{ fontSize: '18px', lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
               {beast.name}
             </Typography>
+
+            <img src={fetchBeastTypeImage(beast.type)} alt='' height={'16px'} />
           </Box>
 
           <Box sx={styles.infoSection}>
@@ -58,10 +62,10 @@ export default function BeastProfile({ beast }) {
 
           <Box sx={styles.infoSection}>
             <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              Saváge
+              Health
             </Typography>
             <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              {beast.num_deaths ?? 0}
+              {beast.originalHealth}
             </Typography>
           </Box>
         </Box>
@@ -97,25 +101,71 @@ export default function BeastProfile({ beast }) {
       <Box sx={{ width: '100%', mb: 1 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', height: '16px' }}>
           <Typography letterSpacing={'0.5px'}>
-            Total Health
+            Bonus Levels
           </Typography>
 
+          {bonusLevels === MAX_LEVELS ? (
+            <Typography letterSpacing={'1px'} className="special-text" fontSize={'12px'}>
+              MAXED
+            </Typography>
+          ) : (
+            <Typography letterSpacing={'0.5px'}>
+              {MAX_LEVELS}
+            </Typography>
+          )}
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {[...Array(MAX_LEVELS)].map((_, index) => {
+            let color;
+            if (index < bonusLevels) {
+              const ratio = index / MAX_LEVELS;
+              const red = Math.floor(255 * (1 - ratio));
+              const green = Math.floor(255 * ratio);
+              color = `rgb(${red}, ${green}, 0)`;
+            } else {
+              color = 'gray';
+            }
+            return (
+              <Box
+                key={index}
+                sx={{
+                  width: '5px',
+                  height: '10px',
+                  backgroundColor: color,
+                  borderRadius: '2px',
+                  mr: '1px'
+                }}
+              />
+            );
+          })}
+        </Box>
+      </Box>
+
+      <Box sx={{ width: '100%', mb: 1 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', height: '16px' }}>
           <Typography letterSpacing={'0.5px'}>
-            {MAX_HEALTH}
+            Bonus Health
           </Typography>
+
+          {beast.bonus_health === MAX_HEALTH ? (
+            <Typography letterSpacing={'1px'} className="special-text" fontSize={'12px'}>
+              MAXED
+            </Typography>
+          ) : (
+            <Typography letterSpacing={'0.5px'}>
+              {MAX_HEALTH}
+            </Typography>
+          )}
         </Box>
 
         <Box position={'relative'} width={'100%'}>
-          <BonusHealthBar variant="determinate" value={normaliseHealth(beast.health, MAX_HEALTH)} />
+          <HealthBar sx={{ height: '12px', border: '2px solid black' }} variant="determinate" value={normaliseHealth(beast.bonus_health ?? 0, MAX_HEALTH)} />
 
           <Box sx={styles.healthText}>
             <Typography sx={{ fontSize: '11px', lineHeight: '9px', color: 'white', letterSpacing: '0.5px' }}>
-              {beast.health}
+              {beast.bonus_health ?? 0}
             </Typography>
-          </Box>
-
-          <Box sx={{ position: 'absolute', left: 0, top: 0, width: '100%' }}>
-            <OriginalHealthBar variant="determinate" value={normaliseHealth(beast.originalHealth, MAX_HEALTH)} />
           </Box>
         </Box>
       </Box>
@@ -147,7 +197,6 @@ export default function BeastProfile({ beast }) {
           </Typography>
         </Box>
       </Box>
-
     </Box>
   );
 }

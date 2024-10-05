@@ -133,6 +133,11 @@ input:-webkit-autofill {
   animation: neon 1s ease infinite;
 }
 
+.special-text {
+  text-shadow: 0 0 1px #800e0b, 0 0 3px #800e0b, 0 0 3px #800e0b, 0 0 3px #800e0b, 0 0 1px #800e0b, 2px 2px 1px #40340a;
+  color: #fc5c1d;
+}
+
 @keyframes l1 {
   to {
     clip-path: inset(0 -34% 0 0)

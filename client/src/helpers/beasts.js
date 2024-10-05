@@ -1,5 +1,13 @@
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES } from './BeastData';
 
+export const fetchBeastTypeImage = (type) => {
+  try {
+    return new URL(`../assets/types/${type.toLowerCase()}.svg`, import.meta.url).href
+  } catch (ex) {
+    return ""
+  }
+}
+
 export const fetchBeastImage = (name) => {
   try {
     return new URL(`../assets/beasts/${name.toLowerCase()}.png`, import.meta.url).href

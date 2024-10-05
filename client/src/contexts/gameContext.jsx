@@ -3,7 +3,7 @@ import { useAccount } from "@starknet-react/core";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { dojoConfig } from "../../dojoConfig";
 import { fetchAdventurerData, fetchBeastLiveData, fetchControllerId, fetchDeadBeastCount, fetchSummitBeastTokenId } from "../api/indexer";
-import { getAdventurers, getBeastDetails, getBeasts, getTotalBeasts } from "../api/starknet";
+import { getAdventurers, getBeastDetails, getBeastHolders, getBeasts, getTotalBeasts } from "../api/starknet";
 import { calculateBattleResult } from "../helpers/beasts";
 import { DojoContext } from "./dojoContext";
 
@@ -26,18 +26,21 @@ export const GameProvider = ({ children }) => {
   const [loadingAdventurers, setLoadingAdventurers] = useState(false)
   const [feedingInProgress, setFeedingInProgress] = useState(false)
 
-  const [deadBeastCount, setDeadBeastCount] = useState()
-  const [totalSupply, setTotalSupply] = useState()
+  const [deadBeastCount, setDeadBeastCount] = useState(0)
+  const [totalSupply, setTotalSupply] = useState(0)
 
   const [ownedBeasts, setOwnedBeasts] = useState([])
   const [liveBeastStats, setLiveBeastStats] = useState(null)
+  const [userRanks, setUserRanks] = useState({ beastRank: undefined, adventurerRank: undefined })
 
   const [collection, setCollection] = useState([])
   const [loadingCollection, setLoadingCollection] = useState(false)
 
-  const [adventurersSelected, setAdventurersSelected] = useState([])
   const [selected, setSelected] = useState([])
+  const [adventurersSelected, setAdventurersSelected] = useState([])
+
   const [potions, setPotions] = useState(0)
+  const [selectedItem, setSelectedItem] = useState()
 
   const [totalDamage, setTotalDamage] = useState(0)
 
@@ -48,7 +51,7 @@ export const GameProvider = ({ children }) => {
   const [totalReward, setTotalReward] = useState(100)
   const [beastReward, setBeastReward] = useState(0)
 
-  const { address } = useAccount()
+  const { account, address } = useAccount()
 
   const resetState = () => {
     setShowFeedingGround(false)
@@ -72,7 +75,6 @@ export const GameProvider = ({ children }) => {
 
   const getOwnerName = async (address) => {
     let ownerName = "Unknown"
-
     // ownerName = await fetchControllerId(address);
 
     try {
@@ -92,6 +94,7 @@ export const GameProvider = ({ children }) => {
     } else {
       let summitBeastDetails = await getBeastDetails(summitBeastId)
       let summitLiveStats = (await fetchBeastLiveData([summitBeastId]))[0]
+
       summitBeast = { ...summitBeastDetails, currentHealth: summitLiveStats?.current_health || summitBeastDetails.health }
 
       summitBeast.ownerName = await getOwnerName(summitBeast.owner)
@@ -171,6 +174,14 @@ export const GameProvider = ({ children }) => {
     setCollection(beasts)
   }
 
+
+  const fetchRankings = async () => {
+    let holders = await getBeastHolders()
+    let userRank = holders.findIndex(holder => holder.walletAddress === address || holder.walletAddress === address.replace('0x', '0x0'))
+
+    setUserRanks(prev => ({ ...prev, beastRank: userRank })) 
+  }
+
   const fetchAdventurers = async () => {
     setLoadingAdventurers(true)
 
@@ -214,13 +225,14 @@ export const GameProvider = ({ children }) => {
   }, [selected])
 
   useEffect(() => {
-    async function fetchWalletNfts() {
+    async function fetchWalletData() {
       await fetchBeasts()
       fetchAdventurers()
+      fetchRankings()
     }
 
     if (address) {
-      fetchWalletNfts()
+      fetchWalletData()
     }
   }, [address])
 
@@ -402,7 +414,8 @@ export const GameProvider = ({ children }) => {
           attackAnimations: setAttackAnimations,
           beastStats: setLiveBeastStats,
           attackInProgress: setAttackInProgress,
-          feedInProgress: setFeedingInProgress
+          feedInProgress: setFeedingInProgress,
+          selectedItem: setSelectedItem
         },
 
         getState: {
@@ -427,7 +440,9 @@ export const GameProvider = ({ children }) => {
           attackInProgress,
           ownedBeasts,
           eventLog,
-          feedingInProgress
+          feedingInProgress,
+          userRanks,
+          selectedItem
         }
       }}
     >

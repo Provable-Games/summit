@@ -18,6 +18,20 @@ export const getBeasts = async (owner) => {
   }
 }
 
+export const getBeastHolders = async () => {
+  let url = `${BLAST_URL}/builder/getNFTCollectionHolders?contractAddress=${BEAST_ADDRESS}&pageSize=100`
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await response.json();
+  return data.holders
+}
+
 export const getTotalBeasts = async () => {
   let url = `${BLAST_URL}/builder/getNFTCollection?contractAddress=${BEAST_ADDRESS}`
 
@@ -90,7 +104,7 @@ export const getBeastDetails = async (tokenId) => {
   });
 
   const data = await response.json();
-  
+
   const attributesString = data.tokenUri.match(/"attributes":\[(.*?)\]/)[0];
   const attributesObject = JSON.parse(`{${attributesString}}`).attributes;
 

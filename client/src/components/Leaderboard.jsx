@@ -145,7 +145,7 @@ function Leaderboard(props) {
         <Typography letterSpacing={'0.5px'} mt={1} color={'#006400'}>
           Beasts collected
         </Typography>
-        <BeastsCollectedBar variant="determinate" value={normaliseHealth(totalSupply, 93500)} />
+        <BeastsCollectedBar variant="determinate" value={normaliseHealth(totalSupply, 93150)} />
 
       </Box>
 

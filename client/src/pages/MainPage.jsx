@@ -1,24 +1,27 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Box, IconButton, Typography } from '@mui/material'
 import React, { useContext } from 'react'
+import { isBrowser, isMobile } from 'react-device-detect'
+import { LazyLoadImage } from 'react-lazy-load-image-component'
 import ActionBar from '../components/ActionBar'
 import AdventurerCollection from '../components/AdventurerCollection'
 import BeastCollection from '../components/BeastCollection'
-import Chat from '../components/Chat'
+import EmptySummit from '../components/EmptySummit'
 import Feeding from '../components/Feeding'
 import Leaderboard from '../components/Leaderboard'
+import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import WalletConnect from '../components/WalletConnect'
+import ApplyAttackPotion from '../components/dialogs/ApplyAttackPotion'
+import ApplyExtraLifePotion from '../components/dialogs/ApplyExtraLifePotion'
+import ApplyRevivePotion from '../components/dialogs/ApplyRevivePotion'
 import { GameContext } from '../contexts/gameContext'
-import EmptySummit from '../components/EmptySummit'
 import { BEAST_NAMES } from '../helpers/BeastData'
-import { LazyLoadImage } from 'react-lazy-load-image-component'
 import { fetchBeastImage } from '../helpers/beasts'
-import { isBrowser, isMobile } from 'react-device-detect';
 
 function MainPage() {
   const game = useContext(GameContext)
-  const { showFeedingGround, summit } = game.getState
+  const { showFeedingGround, summit, selectedBeasts, selectedItem } = game.getState
 
   function PreloadBeastImages() {
     return <>
@@ -51,8 +54,8 @@ function MainPage() {
 
         <Feeding />
 
-        {isBrowser && <Box sx={styles.sideContainer}>
-          <WalletConnect />
+        {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
+          <ProfileCard />
         </Box>}
 
         <Box sx={styles.bottomContainer}>
@@ -63,13 +66,12 @@ function MainPage() {
         : <>
           {isBrowser && <Box sx={styles.sideContainer}>
             <Leaderboard />
-            {/* <Chat /> */}
           </Box>}
 
           {summit.id ? <Summit /> : <EmptySummit />}
 
-          {isBrowser && <Box sx={styles.sideContainer}>
-            <WalletConnect />
+          {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
+            <ProfileCard />
           </Box>}
 
           <Box sx={styles.bottomContainer}>
@@ -99,6 +101,9 @@ function MainPage() {
     </Box >
 
     {PreloadBeastImages()}
+    {selectedBeasts.length > 0 && selectedItem === 'revivePotion' && <ApplyRevivePotion open={true} close={() => game.setState.selectedBeasts([])} />}
+    {selectedBeasts.length > 0 && selectedItem === 'attackPotion' && <ApplyAttackPotion open={true} close={() => game.setState.selectedBeasts([])} />}
+    {selectedBeasts.length > 0 && selectedItem === 'extraLifePotion' && <ApplyExtraLifePotion open={true} close={() => game.setState.selectedBeasts([])} />}
   </>
 }
 

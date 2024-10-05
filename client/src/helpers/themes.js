@@ -74,10 +74,21 @@ export const mainTheme = createTheme({
         }
       }
     },
+    MuiMenu: {
+      styleOverrides: {
+        paper: {
+          backgroundColor: '#f6e6bc',
+          border: '3px solid rgba(0, 0, 0, 0.5)',
+          borderRadius: '10px',
+          padding: '0 12px'
+        }
+      }
+    },
     MuiTooltip: {
       styleOverrides: {
         tooltip: {
-          fontSize: '16px',
+          fontSize: '14px',
+          letterSpacing: '0.5px',
           background: 'transparent'
         }
       }
