@@ -11,6 +11,25 @@ fn get_beast_address(chain_id: felt252) -> ContractAddress {
     }
 }
 
+// TODO: set correct consumable addresses
+fn get_consumable_address(consumable_id: u8) -> ContractAddress {
+    if consumable_id == 1 {
+        contract_address_const::<
+            0x018108b32cea514a78ef1b0e4a0753e855cdf620bc0565202c02456f618c4dc4
+        >()
+    } else if consumable_id == 2 {
+        contract_address_const::<
+            0x018108b32cea514a78ef1b0e4a0753e855cdf620bc0565202c02456f618c4dc4
+        >()
+    } else if consumable_id == 3 {
+        contract_address_const::<
+            0x018108b32cea514a78ef1b0e4a0753e855cdf620bc0565202c02456f618c4dc4
+        >()
+    } else {
+        panic_with_felt252('Chain not supported')
+    }
+}
+
 fn ADVENTURER_ADDRESS_MAINNET() -> ContractAddress {
     contract_address_const::<0x018108b32cea514a78ef1b0e4a0753e855cdf620bc0565202c02456f618c4dc4>()
 }
@@ -21,4 +40,8 @@ fn BEAST_ADDRESS_MAINNET() -> ContractAddress {
 
 fn BEAST_ADDRESS_SEPOLIA() -> ContractAddress {
     contract_address_const::<0x041b6ffc02ce30c6e941f1b34244ef8af0b3e8a70f5528476a7a68765afd6b39>()
+}
+
+fn pow2_const(n: u8) -> u16 {
+    *array![1, 2, 4, 8, 16, 32, 64, 128, 256, 512].span().at(n.into())
 }
