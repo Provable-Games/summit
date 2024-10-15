@@ -11,8 +11,8 @@ const MAX_U16: u16 = 0xffff;
 const MINIMUM_DAMAGE: u8 = 4;
 const BEAST_MAX_BONUS_HEALTH: u16 = 1023;
 const BEAST_MAX_BONUS_LVLS: u16 = 40;
-const BEAST_MAX_EXTRA_LIVES: u8 = 127;
-const MAX_REVIVAL_COUNT: u8 = 14;
+const MAX_REVIVAL_COUNT: u8 = 15;
+const SEVEN_BITS_MAX: u8 = 127;
 
 mod errors {
     const BEAST_NOT_YET_REVIVED: felt252 = 'beast not yet revived';
@@ -22,12 +22,13 @@ mod errors {
     const BEAST_ATTACKING_OWN_BEAST: felt252 = 'attacking own beast';
     const BEAST_MAX_BONUS_HEALTH: felt252 = 'beast has max bonus health';
     const BEAST_ALIVE: felt252 = 'beast is alive';
-    const BEAST_MAX_EXTRA_LIVES: felt252 = 'beast has max extra lives';
-    const MAX_ATTACK_POTION: felt252 = 'max attack potion is 9';
+    const BEAST_MAX_EXTRA_LIVES: felt252 = 'Max 127 extra lives';
+    const MAX_ATTACK_POTION: felt252 = 'Max 127 attack potions';
 
     const ADVENTURER_ALIVE: felt252 = 'adventurer is alive';
     const ADVENTURER_RANKED: felt252 = 'adventurer is ranked';
     const ADVENTURER_ALREADY_CONSUMED: felt252 = 'adventurer already consumed';
 
     const NOT_ENOUGH_CONSUMABLES: felt252 = 'not enough consumables';
+    const POTION_NOT_ALLOWED_ON_SUMMIT: felt252 = 'Potion not allowed on summit';
 }

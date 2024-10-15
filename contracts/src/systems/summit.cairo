@@ -37,17 +37,17 @@ pub mod summit_systems {
     use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
     use savage_summit::constants::{
-        errors, BASE_REVIVAL_TIME_SECONDS, MINIMUM_DAMAGE, MAX_U32, BEAST_MAX_BONUS_HEALTH,
-        BEAST_MAX_BONUS_LVLS, MAX_REVIVAL_COUNT, BEAST_MAX_EXTRA_LIVES, MAX_U16
+        errors, BASE_REVIVAL_TIME_SECONDS, MINIMUM_DAMAGE, BEAST_MAX_BONUS_HEALTH,
+        BEAST_MAX_BONUS_LVLS, MAX_REVIVAL_COUNT, SEVEN_BITS_MAX
     };
     use savage_summit::models::adventurer::{Adventurer, AdventurerConsumed};
     use savage_summit::models::beast::{Beast, ImplBeast};
     use savage_summit::models::beast_details::{BeastDetails, ImplBeastDetails};
     use savage_summit::models::beast_stats::{
-        BeastStats, FixedBeastStats, LiveBeastStats, LiveBeastStatsStore
+        BeastStats, FixedBeastStats, LiveBeastStats
     };
-    use savage_summit::models::consumable::{Consumable, ConsumableDetails, ConsumableDetailsStore};
-    use savage_summit::models::summit::{Summit, SummitStore, SummitHistory, SummitHistoryStore};
+    use savage_summit::models::consumable::{ConsumableType};
+    use savage_summit::models::summit::{Summit, SummitHistory};
     use savage_summit::utils;
     use starknet::{ContractAddress, get_caller_address, get_tx_info, get_block_timestamp};
 
@@ -81,6 +81,9 @@ pub mod summit_systems {
                     .starting_health
                     .into()
                     + attacking_beast.stats.live.bonus_health;
+
+                // Remove attack potions
+                attacking_beast.stats.live.attack_potions = 0;
                 set!(world, (attacking_beast.stats.live));
 
                 return;
@@ -135,13 +138,12 @@ pub mod summit_systems {
                     }
 
                     // attack the summit beast
-                    let (_, defender_died) = self
-                        ._attack(attacking_beast, ref defending_beast, true);
+                    let (_, defender_died) = self._attack(attacking_beast, ref defending_beast);
 
                     // if the defending beast is still alive
                     if !defender_died {
                         // it counter attacks
-                        self._attack(defending_beast, ref attacking_beast, false);
+                        self._attack(defending_beast, ref attacking_beast);
                     }
                 };
 
@@ -163,7 +165,7 @@ pub mod summit_systems {
                 }
 
                 // Remove attack potions
-                attacking_beast.stats.live.attack_multiplier = 0;
+                attacking_beast.stats.live.attack_potions = 0;
 
                 if attacking_beast.stats.live.current_health == 0 {
                     // set death timestamp for prev summit beast
@@ -232,12 +234,13 @@ pub mod summit_systems {
         fn apply_consumable(
             ref world: IWorldDispatcher, beast_token_id: u32, consumable_id: u8, amount: u8
         ) {
+            assert(amount > 0, 'amount must be greater than 0');
             self._assert_beast_ownership(beast_token_id);
 
             let mut beast = self._get_beast(beast_token_id);
 
             // Revive potion
-            if consumable_id == 1 {
+            if consumable_id == ConsumableType::Revive.into() {
                 self._assert_beast_can_be_revived(beast, amount);
                 if beast.stats.live.revival_count < MAX_REVIVAL_COUNT {
                     beast.stats.live.revival_count += 1;
@@ -245,18 +248,21 @@ pub mod summit_systems {
 
                 beast.stats.live.current_health = beast.stats.fixed.starting_health.into()
                     + beast.stats.live.bonus_health;
-            } // Attack potion - max 9 because 9 would minimum deal 2048 damage, one shotting any
-            // beast
-            else if consumable_id == 2 {
+            } // Attack potion
+            else if consumable_id == ConsumableType::Attack.into() {
                 assert(
-                    beast.stats.live.attack_multiplier + amount.into() <= 9,
+                    beast.stats.live.attack_potions + amount <= SEVEN_BITS_MAX,
                     errors::MAX_ATTACK_POTION
                 );
-                beast.stats.live.attack_multiplier += amount;
-            } // Extra life potion
-            else if consumable_id == 3 {
                 assert(
-                    beast.stats.live.extra_lives + amount <= BEAST_MAX_EXTRA_LIVES,
+                    beast_token_id != self._get_summit_beast_token_id(),
+                    errors::POTION_NOT_ALLOWED_ON_SUMMIT
+                );
+                beast.stats.live.attack_potions += amount;
+            } // Extra life potion
+            else if consumable_id == ConsumableType::ExtraLife.into() {
+                assert(
+                    beast.stats.live.extra_lives + amount <= SEVEN_BITS_MAX,
                     errors::BEAST_MAX_EXTRA_LIVES
                 );
                 beast.stats.live.extra_lives += amount;
@@ -265,10 +271,10 @@ pub mod summit_systems {
             // Burn consumables
             let consumable_address = utils::get_consumable_address(consumable_id);
             let amount_with_decimals: u256 = amount.into() * 1000000000000000000;
-            IERC20Dispatcher { contract_address: consumable_address }
-                .transfer_from(get_caller_address(), Zero::zero(), amount_with_decimals);
+            // TODO: burn consumables
+            // IConsumableDispatcher { contract_address: consumable_address }.burn(get_caller_address(), amount_with_decimals);
 
-            // Update beast stats
+            // Save potions on beast
             set!(world, (beast.stats.live));
         }
 
@@ -405,14 +411,14 @@ pub mod summit_systems {
         /// @return a tuple containing the combat result and a bool indicating if the defender died
         /// @dev this function only mutates the defender
         fn _attack(
-            self: @ContractState, attacker: Beast, ref defender: Beast, apply_multiplier: bool
+            self: @ContractState, attacker: Beast, ref defender: Beast
         ) -> (CombatResult, bool) {
             let attacker_combat_spec = attacker.get_combat_spec();
             let defender_combat_spec = defender.get_combat_spec();
             let minimum_damage = MINIMUM_DAMAGE;
 
             // TODO: incorporate strength
-            let attacker_strength = 0;
+            let attacker_strength = attacker.stats.live.attack_potions;
             let defender_strength = 0;
 
             // TODO: incorporate critical hit
@@ -429,23 +435,11 @@ pub mod summit_systems {
                 critical_hit_rnd
             );
 
-            let mut total_damage = combat_result.total_damage;
-
-            if apply_multiplier && attacker.stats.live.attack_multiplier > 0 {
-                let multiplied_damage: u256 = total_damage.into() * utils::pow2_const(attacker.stats.live.attack_multiplier).into();
-
-                if multiplied_damage > MAX_U16.into() {
-                    total_damage = MAX_U16;
-                } else {
-                    total_damage = multiplied_damage.try_into().unwrap();
-                }
-            }
-
             let (result, underflow) = defender
                 .stats
                 .live
                 .current_health
-                .overflowing_sub(total_damage);
+                .overflowing_sub(combat_result.total_damage.into());
 
             defender.stats.live.current_health = if underflow {
                 0
@@ -551,7 +545,7 @@ pub mod summit_systems {
 
         fn _assert_beast_can_be_revived(self: @ContractState, beast: Beast, potion_count: u8) {
             assert(beast.stats.live.current_health == 0, errors::BEAST_ALIVE);
-            assert(potion_count > beast.stats.live.revival_count, errors::NOT_ENOUGH_CONSUMABLES);
+            assert(potion_count >= beast.stats.live.revival_count, errors::NOT_ENOUGH_CONSUMABLES);
         }
 
         /// @notice: gets level from xp

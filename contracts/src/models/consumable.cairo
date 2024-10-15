@@ -17,19 +17,17 @@ pub struct ConsumableDetails {
 
 #[derive(Serde, Copy, Drop, Introspect, PartialEq, Debug)]
 pub enum ConsumableType {
-    Health,
+    Revive,
     Attack,
-    Armor,
-    Revive
+    ExtraLife,
 }
 
-impl ConsumableTypeIntoFelt252 of Into<ConsumableType, felt252> {
-    fn into(self: ConsumableType) -> felt252 {
+pub impl ConsumableTypeIntoU8 of Into<ConsumableType, u8> {
+    fn into(self: ConsumableType) -> u8 {
         match self {
-            ConsumableType::Health => 0,
-            ConsumableType::Attack => 1,
-            ConsumableType::Armor => 2,
-            ConsumableType::Revive => 3,
+            ConsumableType::Revive => 1,
+            ConsumableType::Attack => 2,
+            ConsumableType::ExtraLife => 3,
         }
     }
 }

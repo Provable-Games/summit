@@ -25,7 +25,7 @@ pub struct LiveBeastStats {
     pub last_death_timestamp: u64,
     pub num_deaths: u16,
     pub last_killed_by: u32,
-    pub attack_multiplier: u8,
-    pub revival_count: u8,
-    pub extra_lives: u8,
+    pub attack_potions: u8, // 7 bits storage
+    pub revival_count: u8, // 7 bits storage
+    pub extra_lives: u8, // 7 bits storage
 }
