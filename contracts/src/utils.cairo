@@ -41,7 +41,3 @@ fn BEAST_ADDRESS_MAINNET() -> ContractAddress {
 fn BEAST_ADDRESS_SEPOLIA() -> ContractAddress {
     contract_address_const::<0x041b6ffc02ce30c6e941f1b34244ef8af0b3e8a70f5528476a7a68765afd6b39>()
 }
-
-fn pow2_const(n: u8) -> u16 {
-    *array![1, 2, 4, 8, 16, 32, 64, 128, 256, 512].span().at(n.into())
-}

@@ -1,6 +1,7 @@
 use savage_summit::models::beast::Beast;
 use savage_summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats};
 use savage_summit::models::summit::SummitHistory;
+use savage_summit::models::consumable::{ConsumableType};
 
 #[dojo::interface]
 trait ISummitSystem {
@@ -12,7 +13,7 @@ trait ISummitSystem {
 
     fn feed(ref world: IWorldDispatcher, beast_token_id: u32, adventurer_ids: Span<u64>);
     fn apply_consumable(
-        ref world: IWorldDispatcher, beast_token_id: u32, consumable_id: u8, amount: u8
+        ref world: IWorldDispatcher, beast_token_id: u32, consumable: ConsumableType, amount: u8
     );
 
     fn get_summit_history(world: @IWorldDispatcher, beast_id: u32, lost_at: u64) -> SummitHistory;
@@ -43,13 +44,18 @@ pub mod summit_systems {
     use savage_summit::models::adventurer::{Adventurer, AdventurerConsumed};
     use savage_summit::models::beast::{Beast, ImplBeast};
     use savage_summit::models::beast_details::{BeastDetails, ImplBeastDetails};
-    use savage_summit::models::beast_stats::{
-        BeastStats, FixedBeastStats, LiveBeastStats
-    };
+    use savage_summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats};
     use savage_summit::models::consumable::{ConsumableType};
     use savage_summit::models::summit::{Summit, SummitHistory};
     use savage_summit::utils;
     use starknet::{ContractAddress, get_caller_address, get_tx_info, get_block_timestamp};
+
+    #[storage]
+    struct Storage {
+        revive_potion_address: ContractAddress,
+        attack_potion_address: ContractAddress,
+        extra_life_potion_address: ContractAddress,
+    }
 
     #[abi(embed_v0)]
     impl SummitSystemImpl of super::ISummitSystem<ContractState> {
@@ -232,47 +238,58 @@ pub mod summit_systems {
         }
 
         fn apply_consumable(
-            ref world: IWorldDispatcher, beast_token_id: u32, consumable_id: u8, amount: u8
+            ref world: IWorldDispatcher, beast_token_id: u32, consumable: ConsumableType, amount: u8
         ) {
             assert(amount > 0, 'amount must be greater than 0');
             self._assert_beast_ownership(beast_token_id);
 
             let mut beast = self._get_beast(beast_token_id);
+            let mut consumable_address = Zero::zero();
 
-            // Revive potion
-            if consumable_id == ConsumableType::Revive.into() {
-                self._assert_beast_can_be_revived(beast, amount);
-                if beast.stats.live.revival_count < MAX_REVIVAL_COUNT {
-                    beast.stats.live.revival_count += 1;
+            match consumable {
+                // Revive potion
+                ConsumableType::Revive => {
+                    self._assert_beast_can_be_revived(beast, amount);
+                    if beast.stats.live.revival_count < MAX_REVIVAL_COUNT {
+                        beast.stats.live.revival_count += 1;
+                    }
+
+                    consumable_address = self.revive_potion_address.read();
+                    beast.stats.live.current_health = beast.stats.fixed.starting_health.into()
+                        + beast.stats.live.bonus_health;
+                },
+                // Attack potion
+                ConsumableType::Attack => {
+                    assert(
+                        beast.stats.live.attack_potions + amount <= SEVEN_BITS_MAX,
+                        errors::MAX_ATTACK_POTION
+                    );
+                    assert(
+                        beast_token_id != self._get_summit_beast_token_id(),
+                        errors::POTION_NOT_ALLOWED_ON_SUMMIT
+                    );
+                    consumable_address = self.attack_potion_address.read();
+                    beast.stats.live.attack_potions += amount;
+                },
+                // Extra life potion
+                ConsumableType::ExtraLife => {
+                    assert(
+                        beast.stats.live.extra_lives + amount <= SEVEN_BITS_MAX,
+                        errors::BEAST_MAX_EXTRA_LIVES
+                    );
+                    consumable_address = self.extra_life_potion_address.read();
+                    beast.stats.live.extra_lives += amount;
+                },
+                _ => {
+                    assert(false, 'Invalid consumable');
                 }
-
-                beast.stats.live.current_health = beast.stats.fixed.starting_health.into()
-                    + beast.stats.live.bonus_health;
-            } // Attack potion
-            else if consumable_id == ConsumableType::Attack.into() {
-                assert(
-                    beast.stats.live.attack_potions + amount <= SEVEN_BITS_MAX,
-                    errors::MAX_ATTACK_POTION
-                );
-                assert(
-                    beast_token_id != self._get_summit_beast_token_id(),
-                    errors::POTION_NOT_ALLOWED_ON_SUMMIT
-                );
-                beast.stats.live.attack_potions += amount;
-            } // Extra life potion
-            else if consumable_id == ConsumableType::ExtraLife.into() {
-                assert(
-                    beast.stats.live.extra_lives + amount <= SEVEN_BITS_MAX,
-                    errors::BEAST_MAX_EXTRA_LIVES
-                );
-                beast.stats.live.extra_lives += amount;
             }
 
             // Burn consumables
-            let consumable_address = utils::get_consumable_address(consumable_id);
             let amount_with_decimals: u256 = amount.into() * 1000000000000000000;
             // TODO: burn consumables
-            // IConsumableDispatcher { contract_address: consumable_address }.burn(get_caller_address(), amount_with_decimals);
+            // IConsumableDispatcher { contract_address: consumable_address
+            // }.burn(get_caller_address(), amount_with_decimals);
 
             // Save potions on beast
             set!(world, (beast.stats.live));
@@ -417,7 +434,6 @@ pub mod summit_systems {
             let defender_combat_spec = defender.get_combat_spec();
             let minimum_damage = MINIMUM_DAMAGE;
 
-            // TODO: incorporate strength
             let attacker_strength = attacker.stats.live.attack_potions;
             let defender_strength = 0;
 
@@ -545,7 +561,9 @@ pub mod summit_systems {
 
         fn _assert_beast_can_be_revived(self: @ContractState, beast: Beast, potion_count: u8) {
             assert(beast.stats.live.current_health == 0, errors::BEAST_ALIVE);
-            assert(potion_count >= beast.stats.live.revival_count, errors::NOT_ENOUGH_CONSUMABLES);
+            assert(
+                potion_count == beast.stats.live.revival_count + 1, errors::NOT_ENOUGH_CONSUMABLES
+            );
         }
 
         /// @notice: gets level from xp

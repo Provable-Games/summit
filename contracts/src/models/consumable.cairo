@@ -21,13 +21,3 @@ pub enum ConsumableType {
     Attack,
     ExtraLife,
 }
-
-pub impl ConsumableTypeIntoU8 of Into<ConsumableType, u8> {
-    fn into(self: ConsumableType) -> u8 {
-        match self {
-            ConsumableType::Revive => 1,
-            ConsumableType::Attack => 2,
-            ConsumableType::ExtraLife => 3,
-        }
-    }
-}
