@@ -1,7 +1,8 @@
 use savage_summit::models::beast::Beast;
 use savage_summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats};
-use savage_summit::models::summit::SummitHistory;
-use savage_summit::models::consumable::{ConsumableType};
+use savage_summit::models::summit::{SummitHistory};
+use savage_summit::models::consumable::{Consumable, ConsumableType};
+use starknet::ContractAddress;
 
 #[dojo::interface]
 trait ISummitSystem {
@@ -16,6 +17,8 @@ trait ISummitSystem {
         ref world: IWorldDispatcher, beast_token_id: u32, consumable: ConsumableType, amount: u8
     );
 
+    fn set_consumable_address(ref world: IWorldDispatcher, consumable: ConsumableType, address: ContractAddress);
+
     fn get_summit_history(world: @IWorldDispatcher, beast_id: u32, lost_at: u64) -> SummitHistory;
     fn get_summit_beast_token_id(world: @IWorldDispatcher) -> u32;
     fn get_summit_beast(world: @IWorldDispatcher) -> Beast;
@@ -23,6 +26,7 @@ trait ISummitSystem {
     fn get_beast_stats(world: @IWorldDispatcher, id: u32) -> BeastStats;
     fn get_beast_stats_live(world: @IWorldDispatcher, id: u32) -> LiveBeastStats;
     fn get_beast_stats_fixed(world: @IWorldDispatcher, id: u32) -> FixedBeastStats;
+    fn get_consumable_address(world: @IWorldDispatcher, consumable: ConsumableType) -> ContractAddress;
 }
 
 #[dojo::contract]
@@ -45,17 +49,10 @@ pub mod summit_systems {
     use savage_summit::models::beast::{Beast, ImplBeast};
     use savage_summit::models::beast_details::{BeastDetails, ImplBeastDetails};
     use savage_summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats};
-    use savage_summit::models::consumable::{ConsumableType};
+    use savage_summit::models::consumable::{Consumable, ConsumableType};
     use savage_summit::models::summit::{Summit, SummitHistory};
     use savage_summit::utils;
-    use starknet::{ContractAddress, get_caller_address, get_tx_info, get_block_timestamp};
-
-    #[storage]
-    struct Storage {
-        revive_potion_address: ContractAddress,
-        attack_potion_address: ContractAddress,
-        extra_life_potion_address: ContractAddress,
-    }
+    use starknet::{ContractAddress, get_caller_address, get_tx_info, get_block_timestamp, get_contract_address, contract_address_const};
 
     #[abi(embed_v0)]
     impl SummitSystemImpl of super::ISummitSystem<ContractState> {
@@ -244,7 +241,6 @@ pub mod summit_systems {
             self._assert_beast_ownership(beast_token_id);
 
             let mut beast = self._get_beast(beast_token_id);
-            let mut consumable_address = Zero::zero();
 
             match consumable {
                 // Revive potion
@@ -253,8 +249,6 @@ pub mod summit_systems {
                     if beast.stats.live.revival_count < MAX_REVIVAL_COUNT {
                         beast.stats.live.revival_count += 1;
                     }
-
-                    consumable_address = self.revive_potion_address.read();
                     beast.stats.live.current_health = beast.stats.fixed.starting_health.into()
                         + beast.stats.live.bonus_health;
                 },
@@ -268,7 +262,6 @@ pub mod summit_systems {
                         beast_token_id != self._get_summit_beast_token_id(),
                         errors::POTION_NOT_ALLOWED_ON_SUMMIT
                     );
-                    consumable_address = self.attack_potion_address.read();
                     beast.stats.live.attack_potions += amount;
                 },
                 // Extra life potion
@@ -277,7 +270,6 @@ pub mod summit_systems {
                         beast.stats.live.extra_lives + amount <= SEVEN_BITS_MAX,
                         errors::BEAST_MAX_EXTRA_LIVES
                     );
-                    consumable_address = self.extra_life_potion_address.read();
                     beast.stats.live.extra_lives += amount;
                 },
                 _ => {
@@ -288,11 +280,17 @@ pub mod summit_systems {
             // Burn consumables
             let amount_with_decimals: u256 = amount.into() * 1000000000000000000;
             // TODO: burn consumables
-            // IConsumableDispatcher { contract_address: consumable_address
+            // IConsumableDispatcher { contract_address: self._get_consumable_address(consumable)
             // }.burn(get_caller_address(), amount_with_decimals);
 
             // Save potions on beast
             set!(world, (beast.stats.live));
+        }
+
+        fn set_consumable_address(ref world: IWorldDispatcher, consumable: ConsumableType, address: ContractAddress) {
+            assert(world.is_owner(self.selector().into(), get_caller_address()), 'Not Owner');
+            assert(get!(world, consumable, Consumable).address == contract_address_const::<0x0>(), 'Address already set');
+            set!(world, (Consumable { consumable, address }));
         }
 
         fn get_summit_beast_token_id(world: @IWorldDispatcher) -> u32 {
@@ -324,6 +322,10 @@ pub mod summit_systems {
 
         fn get_beast_stats_fixed(world: @IWorldDispatcher, id: u32) -> FixedBeastStats {
             self._get_beast_fixed_stats(id)
+        }
+
+        fn get_consumable_address(world: @IWorldDispatcher, consumable: ConsumableType) -> ContractAddress {
+            self._get_consumable_address(consumable)
         }
     }
 
@@ -583,6 +585,10 @@ pub mod summit_systems {
                 beast.stats.live.current_health = beast.stats.fixed.starting_health.into()
                     + beast.stats.live.bonus_health;
             }
+        }
+
+        fn _get_consumable_address(self: @ContractState, consumable: ConsumableType) -> ContractAddress {
+            get!(self.world(), consumable, Consumable).address
         }
     }
 }

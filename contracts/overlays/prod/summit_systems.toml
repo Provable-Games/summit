@@ -5,4 +5,5 @@ writes = [
     "savage_summit-Summit",
     "savage_summit-SummitHistory",
     "savage_summit-AdventurerConsumed",
+    "savage_summit-Consumable",
 ]

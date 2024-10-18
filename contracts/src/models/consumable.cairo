@@ -1,18 +1,11 @@
-#[derive(Copy, Drop, Serde, Introspect)]
-pub struct Consumable {
-    #[key]
-    pub id: u8,
-    pub amount: u8,
-}
+use starknet::ContractAddress;
 
 #[derive(Copy, Drop, Serde)]
 #[dojo::model]
-pub struct ConsumableDetails {
+pub struct Consumable {
     #[key]
-    pub id: u32,
-    pub name: felt252,
-    pub effect: ConsumableType,
-    pub amount: u16
+    pub consumable: ConsumableType,
+    pub address: ContractAddress,
 }
 
 #[derive(Serde, Copy, Drop, Introspect, PartialEq, Debug)]
