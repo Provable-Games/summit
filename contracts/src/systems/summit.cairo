@@ -52,6 +52,7 @@ pub mod summit_systems {
     use savage_summit::models::consumable::{Consumable, ConsumableType};
     use savage_summit::models::summit::{Summit, SummitHistory};
     use savage_summit::utils;
+    use savage_summit::erc::mint_burn::{MintBurnDispatcher, MintBurnDispatcherTrait};
     use starknet::{ContractAddress, get_caller_address, get_tx_info, get_block_timestamp, get_contract_address, contract_address_const};
 
     #[abi(embed_v0)]
@@ -279,9 +280,8 @@ pub mod summit_systems {
 
             // Burn consumables
             let amount_with_decimals: u256 = amount.into() * 1000000000000000000;
-            // TODO: burn consumables
-            // IConsumableDispatcher { contract_address: self._get_consumable_address(consumable)
-            // }.burn(get_caller_address(), amount_with_decimals);
+            MintBurnDispatcher { contract_address: self._get_consumable_address(consumable)
+            }.burn(get_caller_address(), amount_with_decimals);
 
             // Save potions on beast
             set!(world, (beast.stats.live));
