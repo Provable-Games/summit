@@ -3,9 +3,10 @@ import { useAccount } from "@starknet-react/core";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { dojoConfig } from "../../dojoConfig";
 import { fetchAdventurerData, fetchBeastLiveData, fetchControllerId, fetchDeadBeastCount, fetchSummitBeastTokenId } from "../api/indexer";
-import { getAdventurers, getBeastDetails, getBeastHolders, getBeasts, getTotalBeasts } from "../api/starknet";
+import { getAdventurers, getBeastDetails, getBeastHolders, getBeasts, getERC20Balances, getTotalBeasts } from "../api/starknet";
 import { calculateBattleResult } from "../helpers/beasts";
 import { DojoContext } from "./dojoContext";
+import { getSwapQuote } from "../api/ekubo";
 
 export const GameContext = createContext()
 
@@ -16,7 +17,6 @@ export const GameProvider = ({ children }) => {
 
   const [toriiClient, setToriiClient] = useState(null);
   const [summit, setSummit] = useState({ ...EMPTY_SUMMIT, loading: true })
-  const [eventLog, setEventLog] = useState([])
 
   const [attackInProgress, setAttackInProgress] = useState(false)
 
@@ -51,7 +51,20 @@ export const GameProvider = ({ children }) => {
   const [totalReward, setTotalReward] = useState(100)
   const [beastReward, setBeastReward] = useState(0)
 
-  const { account, address } = useAccount()
+  const [walletBalances, setWalletBalances] = useState({
+    revivePotions: 0,
+    attackPotions: 0,
+    extraLifePotions: 0,
+    savage: 0
+  })
+
+  const [potionPrices, setPotionPrices] = useState({
+    revive: 0,
+    attack: 0,
+    extraLife: 0
+  })
+
+  const { address } = useAccount()
 
   const resetState = () => {
     setShowFeedingGround(false)
@@ -65,25 +78,13 @@ export const GameProvider = ({ children }) => {
   }
 
   const syncGameData = async () => {
+    fetchPotionPrices()
     setTotalSupply(await getTotalBeasts() ?? 0)
     setDeadBeastCount(await fetchDeadBeastCount() ?? 0)
 
     let summitBeastId = await fetchSummitBeastTokenId()
 
     updateSummit(summitBeastId);
-  }
-
-  const getOwnerName = async (address) => {
-    let ownerName = "Unknown"
-    // ownerName = await fetchControllerId(address);
-
-    try {
-      ownerName = await dojo.starknetIdNavigator.getStarkName(address)
-    } catch (ex) {
-      console.log(ex)
-    }
-
-    return ownerName
   }
 
   const updateSummit = async (summitBeastId, animate) => {
@@ -96,8 +97,6 @@ export const GameProvider = ({ children }) => {
       let summitLiveStats = (await fetchBeastLiveData([summitBeastId]))[0]
 
       summitBeast = { ...summitBeastDetails, currentHealth: summitLiveStats?.current_health || summitBeastDetails.health }
-
-      summitBeast.ownerName = await getOwnerName(summitBeast.owner)
     }
 
     if (ownedBeasts.some(beast => beast.id === summit.id)) {
@@ -174,12 +173,30 @@ export const GameProvider = ({ children }) => {
     setCollection(beasts)
   }
 
+  const fetchPotionPrices = async () => {
+    const prices = await Promise.all([
+      await getSwapQuote(-1e18, 'STRK', 'USDC'),
+      await getSwapQuote(-1e18, 'UNI', 'USDC'),
+      await getSwapQuote(-1e18, 'LORDS', 'USDC'),
+    ])
+
+    setPotionPrices({
+      revive: (prices[0].total * -1 / 1e6).toFixed(2),
+      attack: (prices[1].total * -1 / 1e6).toFixed(2),
+      extraLife: (prices[2].total * -1 / 1e6).toFixed(2)
+    })
+  }
+
+  const fetchERC20Balances = async () => {
+    let balances = await getERC20Balances(address)
+    setWalletBalances(balances)
+  }
 
   const fetchRankings = async () => {
     let holders = await getBeastHolders()
     let userRank = holders.findIndex(holder => holder.walletAddress === address || holder.walletAddress === address.replace('0x', '0x0'))
 
-    setUserRanks(prev => ({ ...prev, beastRank: userRank })) 
+    setUserRanks(prev => ({ ...prev, beastRank: userRank + 1 }))
   }
 
   const fetchAdventurers = async () => {
@@ -189,7 +206,7 @@ export const GameProvider = ({ children }) => {
     let adventurerDetails = await fetchAdventurerData(adventurers)
 
     adventurers = adventurers.filter(adventurer => !adventurerDetails.includes(adventurer.id))
-    adventurers = adventurers.filter(a => a.health < 1)
+    adventurers = adventurers.filter(a => a.health < 1 && a.rank === 0)
 
     setAdventurerCollection(adventurers.sort((a, b) => {
       return b.level - a.level
@@ -225,14 +242,11 @@ export const GameProvider = ({ children }) => {
   }, [selected])
 
   useEffect(() => {
-    async function fetchWalletData() {
-      await fetchBeasts()
+    if (address) {
+      fetchBeasts()
       fetchAdventurers()
       fetchRankings()
-    }
-
-    if (address) {
-      fetchWalletData()
+      fetchERC20Balances()
     }
   }, [address])
 
@@ -246,6 +260,14 @@ export const GameProvider = ({ children }) => {
     fetchLiveStats()
   }, [summit.id])
 
+
+  useEffect(() => {
+    if (selectedItem === 'deadAdventurer' && selected.length > 0) {
+      setShowFeedingGround(true)
+      setSelectedItem(null)
+    }
+  }, [selectedItem, selected])
+
   useEffect(() => {
     setInterval(() => {
       setBeastReward(prev => Number((prev + 0.01).toFixed(2)))
@@ -257,19 +279,6 @@ export const GameProvider = ({ children }) => {
     setupToriiClient();
     syncGameData();
   }, []);
-
-  const setupMessageSync = useCallback(async () => {
-    try {
-      return await toriiClient?.onEventMessageUpdated(
-        [],
-        (fetchedEvents, data) => {
-          console.log("New event message", fetchedEvents, data)
-        }
-      );
-    } catch (error) {
-      throw error;
-    }
-  }, [toriiClient]);
 
   const setupEntitySync = useCallback(async () => {
     try {
@@ -324,22 +333,6 @@ export const GameProvider = ({ children }) => {
     };
   }, [setupEntitySync]);
 
-  useEffect(() => {
-    let unsubscribe = undefined;
-
-    setupMessageSync().then((sync) => {
-      unsubscribe = sync;
-    }).catch((error) => {
-      console.error("Error setting up message sync:", error);
-    });
-
-    return () => {
-      if (unsubscribe) {
-        unsubscribe.cancel();
-      }
-    };
-  }, [setupMessageSync]);
-
   const attackSummit = async () => {
     setAttackInProgress(true)
 
@@ -350,7 +343,13 @@ export const GameProvider = ({ children }) => {
         attack_streak: selected.includes(beast.id) ? (beast.attack_streak || 0) + 1 : beast.attack_streak
       })))
 
-      const success = await dojo.executeTx("summit_systems", "attack", [summit.id, selected])
+      const success = await dojo.executeTx([
+        {
+          contractName: "summit_systems",
+          entrypoint: "attack",
+          calldata: [summit.id, selected]
+        }
+      ])
 
       if (success) {
         let attackingBeasts = collection.filter(beast => selected.includes(beast.id))
@@ -366,8 +365,15 @@ export const GameProvider = ({ children }) => {
 
   const feedBeast = async () => {
     setFeedingInProgress(true)
+
     try {
-      const success = await dojo.executeTx("summit_systems", "feed", [selected[0], adventurersSelected.map(adventurer => adventurer.id)])
+      const success = await dojo.executeTx([
+        {
+          contractName: "summit_systems",
+          entrypoint: "feed",
+          calldata: [selected[0], adventurersSelected.map(adventurer => adventurer.id)]
+        }
+      ])
 
       if (success) {
         setFeedAnimations(adventurersSelected)
@@ -380,24 +386,18 @@ export const GameProvider = ({ children }) => {
     }
   }
 
-  const publishChatMessage = async (message) => {
-    // const data = generateMessageTypedData(address, message, new Date().valueOf());
-    // const signature = await account.signMessage(data);
-
-    // toriiClient.publishMessage(JSON.stringify(data), [
-    //   `0x${signature.r.toString(16)}`,
-    //   `0x${signature.s.toString(16)}`,
-    // ])
-  }
-
   return (
     <GameContext.Provider
       value={{
         actions: {
           attack: attackSummit,
           feed: feedBeast,
-          publishChatMessage,
           resetState,
+        },
+
+        update: {
+          ERC20Balances: fetchERC20Balances,
+          potionPrices: fetchPotionPrices
         },
 
         setState: {
@@ -415,11 +415,13 @@ export const GameProvider = ({ children }) => {
           beastStats: setLiveBeastStats,
           attackInProgress: setAttackInProgress,
           feedInProgress: setFeedingInProgress,
-          selectedItem: setSelectedItem
+          selectedItem: setSelectedItem,
         },
 
         getState: {
           toriiClient,
+          walletBalances,
+          potionPrices,
           totalSupply,
           deadBeastCount,
           collection,
@@ -439,7 +441,6 @@ export const GameProvider = ({ children }) => {
           showFeedingGround,
           attackInProgress,
           ownedBeasts,
-          eventLog,
           feedingInProgress,
           userRanks,
           selectedItem

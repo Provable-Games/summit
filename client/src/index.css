@@ -138,6 +138,10 @@ input:-webkit-autofill {
   color: #fc5c1d;
 }
 
+.button-glow {
+  animation: button-glow 1s ease infinite;
+}
+
 @keyframes l1 {
   to {
     clip-path: inset(0 -34% 0 0)
@@ -155,5 +159,16 @@ input:-webkit-autofill {
   50% {
     text-shadow: 0 0 2px #800e0b, 0 0 5px #800e0b, 0 0 5px #800e0b, 0 0 5px #800e0b, 0 0 2px #800e0b, 4px 4px 2px #40340a;
     color: #fc5c1d;
+  }
+}
+
+@keyframes button-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 5px #fc5c1d;
+  }
+
+  50% {
+    box-shadow: 0 0 10px #fc5c1d;
   }
 }

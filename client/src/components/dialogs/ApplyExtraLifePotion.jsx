@@ -14,7 +14,7 @@ function ApplyExtraLifePotion(props) {
 
   const { open, close } = props
 
-  const potions = 50
+  const potions = 127
   const [amount, setAmount] = useState(1)
 
   return (
@@ -53,7 +53,7 @@ function ApplyExtraLifePotion(props) {
                 step={1}
                 marks
                 min={1}
-                max={potions}
+                max={Math.min(potions, 127)}
                 onChange={(e) => setAmount(e.target.value)}
                 size='small'
               />

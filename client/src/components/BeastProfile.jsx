@@ -189,11 +189,11 @@ export default function BeastProfile({ beast }) {
               {currentExperience - originalExperience}
             </Typography>
           </Box>
-
         </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mr: '2px' }}>
-          <Typography variant='subtitle2'>
-            {nextLevelExperience - currentExperience} xp to next lvl
+
+        <Box sx={{ display: 'flex', justifyContent: 'center' }} mt={'3px'}>
+          <Typography color='rgba(0,0,0,0.7)' fontStyle={'normal'} fontSize={'13px'}>
+            Revival Count: 23
           </Typography>
         </Box>
       </Box>
@@ -206,12 +206,12 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    width: '200px',
+    width: '210px',
     backgroundColor: '#f6e6bc',
     border: '3px solid rgba(0, 0, 0, 0.5)',
     borderRadius: '10px',
     padding: '10px 12px',
-    pb: 1,
+    pb: 0.5,
   },
   infoSection: {
     display: 'flex',

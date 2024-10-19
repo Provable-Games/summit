@@ -4,18 +4,42 @@ import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material'
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import ChooseWallet from './dialogs/ConnectWallet'
 import { ellipseAddress } from '../helpers/utilities'
-import { useAccount, useDisconnect } from '@starknet-react/core'
+import { useAccount, useConnect, useDisconnect } from '@starknet-react/core'
 import { useContext } from 'react'
 import { GameContext } from '../contexts/gameContext'
+import { useStarkProfile } from '@starknet-react/core'
 import { useState } from 'react';
+import { useEffect } from 'react';
 
 const ProfileCard = () => {
   const game = useContext(GameContext)
-  const { collection, userRanks } = game.getState
+  const { collection, userRanks, walletBalances } = game.getState
 
   const { address } = useAccount()
   const { disconnect } = useDisconnect()
+  const { connector } = useConnect()
+  const { data: profile } = useStarkProfile({ address });
+
   const [accountDialog, openAccountDialog] = useState(false)
+  const [walletName, setWalletName] = useState('')
+
+  useEffect(() => {
+    async function controllerName() {
+      try {
+        const name = await connector?.username()
+        if (name) {
+          setWalletName(name)
+        }
+      } catch (error) {
+      }
+    }
+
+    if (profile?.name) {
+      setWalletName(profile?.name?.replace('.stark', ''))
+    } else {
+      controllerName()
+    }
+  }, [connector, profile])
 
   if (!address) {
     return <>
@@ -37,7 +61,7 @@ const ProfileCard = () => {
             <SportsEsportsIcon htmlColor='black' sx={{ fontSize: '18px', mr: '4px' }} />
 
             <Typography color='black' sx={{ fontSize: '15px' }} letterSpacing={'0.5px'}>
-              {ellipseAddress(address, 5, 4)}
+              {walletName || ellipseAddress(address, 5, 4)}
             </Typography>
           </Button>
         </Tooltip>
@@ -56,7 +80,9 @@ const ProfileCard = () => {
           <Typography sx={{ fontSize: '13px', letterSpacing: '0.5px' }}>tlords</Typography>
 
           <Box display={'flex'} alignItems={'start'} gap={'2px'} mt={'-3px'}>
-            <Typography variant='h2' mb={'2px'}>0</Typography>
+            <Typography variant='h2' mb={'2px'}>
+              {walletBalances.savage.toLocaleString()}
+            </Typography>
           </Box>
 
           <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: 0 }} size='small'>
@@ -69,7 +95,7 @@ const ProfileCard = () => {
 
           <Box display={'flex'} alignItems={'start'} gap={'2px'} mt={'-3px'}>
             <Typography variant='h2' mb={'2px'}>{collection.length}</Typography>
-            {userRanks.beastRank && <Typography fontSize={'13px'} mb={'2px'} color={'rgba(0,0,0,0.5)'}>#{userRanks.beastRank}</Typography>}
+            {userRanks.beastRank > 0 && <Typography fontSize={'13px'} mb={'2px'} color={'rgba(0,0,0,0.5)'}>#{userRanks.beastRank}</Typography>}
           </Box>
 
           <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: 0 }} size='small' component='a'
@@ -77,6 +103,18 @@ const ProfileCard = () => {
             Buy
           </Button>
         </Box>
+      </Box>
+
+      <Box sx={{ width: '100%', borderTop: '1px solid rgba(0, 0, 0, 1)', pt: 1, textAlign: 'center' }}>
+        <Typography letterSpacing={'0.5px'}>
+          Beast Starter Pack
+        </Typography>
+        <Typography color='rgba(0,0,0,0.5)' fontSize={'13px'} mt={'-4px'} letterSpacing={'0.5px'}>
+          393 available
+        </Typography>
+        <Button variant='contained' sx={{ borderRadius: '4px', width: '100px', height: '26px', my: '4px' }} className='button-glow'>
+          <Typography color='white' letterSpacing={'0.5px'} variant='h6'>Claim</Typography>
+        </Button>
       </Box>
     </Box>
   )

@@ -34,7 +34,7 @@ const leaderboardExample = [
 
 function Leaderboard(props) {
   const game = useContext(GameContext)
-  const { totalSupply, deadBeastCount } = game.getState
+  const { totalSupply, deadBeastCount, potionPrices } = game.getState
 
   return <Box sx={styles.container}>
     <Box sx={styles.innerContainer}>
@@ -82,7 +82,7 @@ function Leaderboard(props) {
           </Box>
           ))}
 
-        {/* <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
+        <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
           <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
 
           <Box sx={{ width: '50%', height: '18px', border: '2px solid #07323d', textAlign: 'center', borderRadius: '10px', background: '#ddcdaa' }}>
@@ -99,7 +99,7 @@ function Leaderboard(props) {
             Revive potion
           </Typography>
           <Typography sx={{ letterSpacing: '0.5px' }}>
-            $0.25
+            ${potionPrices.revive}
           </Typography>
         </Box>
 
@@ -108,7 +108,7 @@ function Leaderboard(props) {
             Attack potion
           </Typography>
           <Typography sx={{ letterSpacing: '0.5px' }}>
-            $0.75
+            ${potionPrices.attack}
           </Typography>
         </Box>
 
@@ -117,9 +117,9 @@ function Leaderboard(props) {
             Extra life potion
           </Typography>
           <Typography sx={{ letterSpacing: '0.5px' }}>
-            $2.10
+            ${potionPrices.extraLife}
           </Typography>
-        </Box> */}
+        </Box>
 
         <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
           <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />

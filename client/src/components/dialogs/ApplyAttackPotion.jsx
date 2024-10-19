@@ -4,20 +4,28 @@ import { useContext } from 'react';
 import { AttackButton, HealthBar } from '../../helpers/styles';
 import ForwardIcon from '@mui/icons-material/Forward';
 import potionsIcon from '../../assets/images/attack-potion.png';
-import { fetchBeastImage } from '../../helpers/beasts';
+import { calculateBattleResult, fetchBeastImage } from '../../helpers/beasts';
 import { useState } from 'react';
 import ArrowRightAltIcon from '@mui/icons-material/ArrowRightAlt';
 import sword from '../../assets/images/sword.png';
+import { useEffect } from 'react';
 
 function ApplyAttackPotion(props) {
   const game = useContext(GameContext)
-  const { selectedBeasts, collection } = game.getState
+  const { selectedBeasts, collection, summit } = game.getState
   const beast = collection.find(beast => beast.id === selectedBeasts[0])
 
   const { open, close } = props
 
-  const potions = 50
+  const potions = 127
   const [amount, setAmount] = useState(1)
+
+  const [newBattleResult, setNewBattleResult] = useState(beast)
+
+  useEffect(() => {
+    const newBattleResult = calculateBattleResult(beast, summit, amount)
+    setNewBattleResult(newBattleResult)
+  }, [amount])
 
   return (
     <Dialog
@@ -59,7 +67,7 @@ function ApplyAttackPotion(props) {
                 step={1}
                 marks
                 min={1}
-                max={Math.min(potions, 9)}
+                max={Math.min(potions, 127)}
                 onChange={(e) => setAmount(e.target.value)}
                 size='small'
               />
@@ -72,15 +80,23 @@ function ApplyAttackPotion(props) {
 
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
 
-                <Typography variant='h6' sx={{ letterSpacing: '0.5px', color: 'darkred' }}>
+                {beast.damage && <Typography variant='h6' sx={{ letterSpacing: '0.5px', color: 'darkred' }}>
                   {beast.damage} dmg
-                </Typography>
+                </Typography>}
+
+                {beast.healthLeft && <Typography variant='h6' sx={{ letterSpacing: '0.5px', color: 'darkgreen' }}>
+                  {beast.healthLeft} hp
+                </Typography>}
 
                 <ArrowRightAltIcon htmlColor='darkred' sx={{ fontSize: '25px' }} />
 
-                <Typography variant='h6' sx={{ letterSpacing: '0.5px', color: 'darkred' }}>
-                  {beast.damage * Math.pow(2, amount)} dmg
-                </Typography>
+                {newBattleResult.damage && <Typography variant='h6' sx={{ letterSpacing: '0.5px', color: 'darkred' }}>
+                  {newBattleResult.damage} dmg
+                </Typography>}
+
+                {newBattleResult.healthLeft && <Typography variant='h6' sx={{ letterSpacing: '0.5px', color: 'darkgreen' }}>
+                  {newBattleResult.healthLeft} hp
+                </Typography>}
 
               </Box>
             </Box>
@@ -88,7 +104,7 @@ function ApplyAttackPotion(props) {
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
             <Typography variant='h6' sx={{ letterSpacing: '0.5px', color: 'black' }}>
-              Potions will be consumed once you attack
+              You are about to burn {amount} attack potions
             </Typography>
 
             <AttackButton disabled={amount === 0}>

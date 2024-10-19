@@ -3,10 +3,11 @@ import React, { useContext } from 'react';
 import skull from '../assets/images/skull.svg';
 import hero from '../assets/images/profile.svg';
 import { GameContext } from '../contexts/gameContext';
-import { normaliseHealth } from "../helpers/beasts";
+import { fetchBeastImage, normaliseHealth } from "../helpers/beasts";
 import { HealthBar } from '../helpers/styles';
 import StarIcon from '@mui/icons-material/Star';
 import Scrollbars from "react-custom-scrollbars";
+import { isBrowser } from "react-device-detect";
 
 const STAR_COLORS = {
   1: "#ff6f3a",
@@ -76,6 +77,24 @@ function AdventurerCollection() {
           })
 
         )}
+
+        {adventurerCollection.length < 1 && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
+
+          <Box textAlign={'center'}>
+            <Typography variant="h2" letterSpacing={'0.5px'}>
+              You don't own any dead adventurers
+            </Typography>
+            <Typography variant="h2" letterSpacing={'0.5px'}>
+              Collect them in <a style={{ color: '#30a019' }} href="https://lootsurvivor.io" target="_blank">loot survivor 1.5</a>
+            </Typography>
+            <Typography variant="h2" letterSpacing={'0.5px'}>
+              Or buy in <a style={{ color: '#ff92b6' }} href="https://market.realms.world/collection/0x018108b32cea514a78ef1b0e4a0753e855cdf620bc0565202c02456f618c4dc4" target="_blank">Market</a>
+            </Typography>
+          </Box>
+
+          {isBrowser && <img src={fetchBeastImage('ettin')} alt='' height={'150px'} />}
+
+        </Box>}
       </Box >
     </Scrollbars>
   );

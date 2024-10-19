@@ -8,12 +8,14 @@ import { HealthBar } from '../helpers/styles'
 import { fadeVariant } from '../helpers/variants'
 import SummitReward from './SummitReward'
 import AttackAnimation from './animations/AttackAnimation'
+import { useStarkProfile } from '@starknet-react/core'
 
 function Summit() {
   const game = useContext(GameContext)
   const { summitAnimations, summit, attackAnimations, attackInProgress } = game.getState
 
   const controls = useAnimationControls()
+  const { data: profile } = useStarkProfile({ address: summit.owner });
 
   const removeAttackAnimation = (id) => {
     game.setState.attackAnimations((prevAnimations) => prevAnimations.filter((anim) => anim.id !== id));
@@ -78,7 +80,7 @@ function Summit() {
           </Typography>
           
           <Typography variant='h6' sx={{ textAlign: 'center', letterSpacing: '0.5px' }}>
-            Owned by {summit.ownerName}
+            Owned by {profile?.name?.replace('.stark', '') || 'Unknown'}
           </Typography>
 
           <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', gap: 1, alignItems: 'center' }}>
