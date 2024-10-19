@@ -17,7 +17,9 @@ trait ISummitSystem {
         ref world: IWorldDispatcher, beast_token_id: u32, consumable: ConsumableType, amount: u8
     );
 
-    fn set_consumable_address(ref world: IWorldDispatcher, consumable: ConsumableType, address: ContractAddress);
+    fn set_consumable_address(
+        ref world: IWorldDispatcher, consumable: ConsumableType, address: ContractAddress
+    );
 
     fn get_summit_history(world: @IWorldDispatcher, beast_id: u32, lost_at: u64) -> SummitHistory;
     fn get_summit_beast_token_id(world: @IWorldDispatcher) -> u32;
@@ -26,7 +28,9 @@ trait ISummitSystem {
     fn get_beast_stats(world: @IWorldDispatcher, id: u32) -> BeastStats;
     fn get_beast_stats_live(world: @IWorldDispatcher, id: u32) -> LiveBeastStats;
     fn get_beast_stats_fixed(world: @IWorldDispatcher, id: u32) -> FixedBeastStats;
-    fn get_consumable_address(world: @IWorldDispatcher, consumable: ConsumableType) -> ContractAddress;
+    fn get_consumable_address(
+        world: @IWorldDispatcher, consumable: ConsumableType
+    ) -> ContractAddress;
 }
 
 #[dojo::contract]
@@ -53,7 +57,10 @@ pub mod summit_systems {
     use savage_summit::models::summit::{Summit, SummitHistory};
     use savage_summit::utils;
     use savage_summit::erc::mint_burn::{MintBurnDispatcher, MintBurnDispatcherTrait};
-    use starknet::{ContractAddress, get_caller_address, get_tx_info, get_block_timestamp, get_contract_address, contract_address_const};
+    use starknet::{
+        ContractAddress, get_caller_address, get_tx_info, get_block_timestamp, get_contract_address,
+        contract_address_const
+    };
 
     #[abi(embed_v0)]
     impl SummitSystemImpl of super::ISummitSystem<ContractState> {
@@ -273,23 +280,26 @@ pub mod summit_systems {
                     );
                     beast.stats.live.extra_lives += amount;
                 },
-                _ => {
-                    assert(false, 'Invalid consumable');
-                }
+                _ => { assert(false, 'Invalid consumable'); }
             }
 
             // Burn consumables
             let amount_with_decimals: u256 = amount.into() * 1000000000000000000;
-            MintBurnDispatcher { contract_address: self._get_consumable_address(consumable)
-            }.burn(get_caller_address(), amount_with_decimals);
+            MintBurnDispatcher { contract_address: self._get_consumable_address(consumable) }
+                .burn(get_caller_address(), amount_with_decimals);
 
             // Save potions on beast
             set!(world, (beast.stats.live));
         }
 
-        fn set_consumable_address(ref world: IWorldDispatcher, consumable: ConsumableType, address: ContractAddress) {
+        fn set_consumable_address(
+            ref world: IWorldDispatcher, consumable: ConsumableType, address: ContractAddress
+        ) {
             assert(world.is_owner(self.selector().into(), get_caller_address()), 'Not Owner');
-            assert(get!(world, consumable, Consumable).address == contract_address_const::<0x0>(), 'Address already set');
+            assert(
+                get!(world, consumable, Consumable).address == contract_address_const::<0x0>(),
+                'Address already set'
+            );
             set!(world, (Consumable { consumable, address }));
         }
 
@@ -324,7 +334,9 @@ pub mod summit_systems {
             self._get_beast_fixed_stats(id)
         }
 
-        fn get_consumable_address(world: @IWorldDispatcher, consumable: ConsumableType) -> ContractAddress {
+        fn get_consumable_address(
+            world: @IWorldDispatcher, consumable: ConsumableType
+        ) -> ContractAddress {
             self._get_consumable_address(consumable)
         }
     }
@@ -402,6 +414,15 @@ pub mod summit_systems {
             summit_history.lost_at = current_time;
             summit_history.rewards = time_on_summit;
             set!(world, (summit_history));
+
+            // Mint rewards
+            if (time_on_summit > 0) {
+                MintBurnDispatcher { contract_address: utils::SAVAGE_ADDRESS_MAINNET() }
+                    .mint(
+                        self._get_owner_of_beast(token_id),
+                        time_on_summit.into() * 1000000000000000000
+                    );
+            }
         }
 
         /// @title new_summit_history
@@ -587,7 +608,9 @@ pub mod summit_systems {
             }
         }
 
-        fn _get_consumable_address(self: @ContractState, consumable: ConsumableType) -> ContractAddress {
+        fn _get_consumable_address(
+            self: @ContractState, consumable: ConsumableType
+        ) -> ContractAddress {
             get!(self.world(), consumable, Consumable).address
         }
     }

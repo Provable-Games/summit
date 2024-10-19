@@ -7,7 +7,7 @@ version = "0.2.0"
 sierra-replace-ids = true
 
 [dependencies]
-dojo = { git = "https://github.com/dojoengine/dojo", tag = "v1.0.0-alpha.13" }
+dojo = { git = "https://github.com/dojoengine/dojo", tag = "v1.0.0-alpha.17" }
 openzeppelin_token = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v0.15.1" }
 combat = { git = "https://github.com/Provable-Games/loot-survivor.git", branch = "feat/savage-summit-support" }
 game = { git = "https://github.com/Provable-Games/loot-survivor.git", branch = "feat/savage-summit-support" }

@@ -78,7 +78,7 @@ source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=feat%2F
 [[package]]
 name = "dojo"
 version = "1.0.0-alpha.4"
-source = "git+https://github.com/dojoengine/dojo?tag=v1.0.0-alpha.13#9f95a68a957d45190a1e1c42877a4b828ab7a96d"
+source = "git+https://github.com/dojoengine/dojo?tag=v1.0.0-alpha.17#e6bab2d0066c3cf1acfc5ee41a27294b5b23697d"
 
 [[package]]
 name = "game"
