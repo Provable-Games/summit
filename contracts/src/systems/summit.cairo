@@ -417,7 +417,7 @@ pub mod summit_systems {
 
             // Mint rewards
             if (time_on_summit > 0) {
-                MintBurnDispatcher { contract_address: utils::SAVAGE_ADDRESS_MAINNET() }
+                MintBurnDispatcher { contract_address: utils::REWARD_TOKEN_ADDRESS_MAINNET() }
                     .mint(
                         self._get_owner_of_beast(token_id),
                         time_on_summit.into() * 1000000000000000000
