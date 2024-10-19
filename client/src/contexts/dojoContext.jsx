@@ -1,11 +1,11 @@
 import { DojoProvider } from "@dojoengine/core";
-import { useSnackbar } from "notistack";
-import React, { createContext, useMemo, useState } from "react";
-import { RpcProvider } from 'starknet';
-import { dojoConfig } from "../../dojoConfig";
 import { useAccount } from "@starknet-react/core";
-import { Provider, constants } from "starknet";
+import { useSnackbar } from "notistack";
+import React, { createContext, useMemo } from "react";
+import { Contract, RpcProvider, constants } from 'starknet';
 import { StarknetIdNavigator } from "starknetid.js";
+import { dojoConfig } from "../../dojoConfig";
+import ROUTER_ABI from "../abi/router-abi.json";
 
 export const DojoContext = createContext()
 
@@ -22,20 +22,22 @@ export const Dojo = ({ children }) => {
     );
   }, []);
 
+  const routerContract = new Contract(
+    ROUTER_ABI,
+    import.meta.env.VITE_PUBLIC_EKUBO_ROUTER_ADDRESS,
+    rpcProvider
+  );
+
   const { account } = useAccount()
 
-  const executeTx = async (contractName, entrypoint, calldata) => {
+  const executeTx = async (calls) => {
     if (!account) {
       enqueueSnackbar('No Wallet Connected', { variant: 'warning', anchorOrigin: { vertical: 'bottom', horizontal: 'right' } })
       return
     }
 
     try {
-      const tx = await dojoProvider.execute(account, {
-        contractName,
-        entrypoint,
-        calldata
-      }, 'savage_summit');
+      const tx = await dojoProvider.execute(account, calls, 'savage_summit');
 
       const receipt = await account.waitForTransaction(tx.transaction_hash, { retryInterval: 100 })
 
@@ -55,7 +57,8 @@ export const Dojo = ({ children }) => {
     <DojoContext.Provider
       value={{
         executeTx,
-        starknetIdNavigator
+        starknetIdNavigator,
+        routerContract
       }}
     >
       {children}

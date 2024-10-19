@@ -101,9 +101,9 @@ function MainPage() {
     </Box >
 
     {PreloadBeastImages()}
-    {selectedBeasts.length > 0 && selectedItem === 'revivePotion' && <ApplyRevivePotion open={true} close={() => game.setState.selectedBeasts([])} />}
-    {selectedBeasts.length > 0 && selectedItem === 'attackPotion' && <ApplyAttackPotion open={true} close={() => game.setState.selectedBeasts([])} />}
-    {selectedBeasts.length > 0 && selectedItem === 'extraLifePotion' && <ApplyExtraLifePotion open={true} close={() => game.setState.selectedBeasts([])} />}
+    {selectedBeasts.length > 0 && selectedItem === 'revivePotion' && <ApplyRevivePotion open={true} close={() => game.setState.selectedItem(null)} />}
+    {selectedBeasts.length > 0 && selectedItem === 'attackPotion' && <ApplyAttackPotion open={true} close={() => game.setState.selectedItem(null)} />}
+    {selectedBeasts.length > 0 && selectedItem === 'extraLifePotion' && <ApplyExtraLifePotion open={true} close={() => game.setState.selectedItem(null)} />}
   </>
 }
 

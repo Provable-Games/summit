@@ -34,7 +34,7 @@ function elementalDamage(attacker, defender) {
   return multiplier
 }
 
-export const calculateBattleResult = (beast, summit) => {
+export const calculateBattleResult = (beast, summit, potions = 0) => {
   const MINIMUM_DAMAGE = 4
   let beastPower = (6 - beast.tier) * beast.level
 
@@ -50,7 +50,7 @@ export const calculateBattleResult = (beast, summit) => {
 
   let summitPower = (6 - summit.tier) * summit.level
 
-  let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((beastPower * elemental) - summitPower))
+  let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((beastPower * elemental * (1 + 0.1 * potions)) - summitPower))
   let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor((summitPower) * elementalDamage(summit, beast)) - beastPower)
 
   let summitHealth = summit.currentHealth

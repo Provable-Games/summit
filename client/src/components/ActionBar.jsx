@@ -1,27 +1,31 @@
-import { Box, Typography } from '@mui/material';
-import { useAccount } from '@starknet-react/core';
-import React, { useContext, useState } from 'react';
-import { isMobile } from 'react-device-detect';
-import potion from '../assets/images/potions.png';
-import sword from '../assets/images/sword.png';
-import teeth from '../assets/images/teeth.png';
-import { GameContext } from '../contexts/gameContext';
-import { AttackButton, BuyConsumablesButton, RoundBlueButton, RoundOrangeButton } from '../helpers/styles';
-import BuyConsumables from './dialogs/BuyConsumables';
-import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import Potions from './Potions';
+import { Box, Button, Tooltip, Typography } from '@mui/material';
+import React, { useContext } from 'react';
+import attackPotionIcon from '../assets/images/attack-potion.png';
+import cauldronIcon from '../assets/images/cauldron.png';
+import lifePotionIcon from '../assets/images/life-potion.png';
+import revivePotionIcon from '../assets/images/revive-potion.png';
+import sword from '../assets/images/sword.png';
+import { GameContext } from '../contexts/gameContext';
+import { AttackButton, RoundBlueButton } from '../helpers/styles';
+import BuyConsumables from './dialogs/BuyConsumables';
+import { useState } from 'react';
 
 function ActionBar(props) {
   const game = useContext(GameContext)
   const { selectedBeasts, summit, showFeedingGround, totalDamage,
-    selectedAdventurers, potions, attackInProgress, ownedBeasts,
-    feedingInProgress, selectedItem } = game.getState
+    selectedAdventurers, attackInProgress, ownedBeasts,
+    feedingInProgress, adventurerCollection, collection, walletBalances } = game.getState
 
-  const { address } = useAccount()
   const [buyPotionsDialog, openBuyPotionsDialog] = useState(false)
 
   const isSavage = Boolean(ownedBeasts.find(beast => beast.id === summit.id))
+  const beast = collection.find(beast => beast.id === selectedBeasts[0])
+
+  const enableRevivePotion = selectedBeasts.length === 1 && walletBalances.revivePotions > 0 && beast?.currentHealth === 0
+  const enableAttackPotion = selectedBeasts.length === 1 && walletBalances.attackPotions > 0 && !isSavage && beast?.currentHealth > 0
+  const enableExtraLifePotion = selectedBeasts.length === 1 && walletBalances.extraLifePotions > 0 && beast?.currentHealth > 0
+  const enableFeedingGround = selectedBeasts.length === 1 && adventurerCollection.length > 0
 
   if (showFeedingGround) {
     return <Box sx={styles.container}>
@@ -52,43 +56,12 @@ function ActionBar(props) {
     </Box>
   }
 
-  if (isMobile) {
-    return <Box sx={styles.container}>
-      <Box sx={{ display: 'flex', gap: 1 }}>
-        <RoundOrangeButton onClick={() => game.actions.attack()}>
-          <img src={sword} alt='' height={'20px'} />
-        </RoundOrangeButton>
-        <RoundOrangeButton onClick={() => game.setState.potions(prev => prev + 1)} sx={{ position: 'relative' }}>
-          <img src={potion} alt='' height={'30px'} />
-
-          <Box sx={styles.count}>
-            <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '13px', lineHeight: '12px' }}>
-              {potions}
-            </Typography>
-          </Box>
-        </RoundOrangeButton>
-      </Box>
-
-      <Box sx={{ display: 'flex', gap: 1 }}>
-        <RoundBlueButton disabled={selectedBeasts.length < 1} onClick={() => game.setState.showFeedingGround(prev => !prev)}>
-          <img src={teeth} alt='' height={'28px'} />
-        </RoundBlueButton>
-
-        <RoundBlueButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
-          <ShoppingCartIcon fontSize='small' htmlColor='black' />
-        </RoundBlueButton>
-      </Box>
-
-      <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} />
-    </Box>
-  }
-
   return <Box sx={styles.container}>
 
     <Box sx={{ display: 'flex', gap: 1 }}>
       {isSavage
-        ? <AttackButton sx={{ fontSize: '20px' }}>
-          YOU'RE THE SAVAGE
+        ? <AttackButton sx={{ fontSize: '18px' }}>
+          YOU'RE THE SAVÁGE
         </AttackButton>
         : <AttackButton disabled={attackInProgress || selectedBeasts.length < 1} onClick={() => game.actions.attack()}>
           {attackInProgress
@@ -112,29 +85,107 @@ function ActionBar(props) {
                 </Box>}
               </Box>
               : <Typography color={'white'} variant='h4'>
-                Take Summit
+                TAKE SUMMIT
               </Typography>
           }
         </AttackButton>}
 
-      <Potions />
+      <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.potionTooltip}>
+        <Typography variant='h6' letterSpacing={'0.5px'}>Revive Potion</Typography>
+        <Typography sx={{ opacity: 0.8, mb: 0.5 }}>Revives a dead beast to full health</Typography>
+        <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: '0px 12px', height: '20px' }} size='small' onClick={() => openBuyPotionsDialog(true)}>
+          Buy Potions
+        </Button>
+      </Box>}>
+        <RoundBlueButton
+          sx={enableRevivePotion ? styles.highlightButton : styles.fadeButton}
+          onClick={() => {
+            if (!enableRevivePotion) return;
+            game.setState.selectedItem('revivePotion');
+          }}
+        >
+          <img src={revivePotionIcon} alt='' height={'32px'} />
+
+          <Box sx={styles.count}>
+            <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '13px', lineHeight: '12px' }}>
+              {walletBalances.revivePotions}
+            </Typography>
+          </Box>
+        </RoundBlueButton>
+      </Tooltip>
+
+      <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.potionTooltip}>
+        <Typography variant='h6' letterSpacing={'0.5px'}>Attack Potion</Typography>
+        <Typography sx={{ opacity: 0.8, mb: 0.5 }}>Adds 10% damage to a beast's next attack</Typography>
+        <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: '0px 12px', height: '20px' }} size='small' onClick={() => openBuyPotionsDialog(true)}>
+          Buy Potions
+        </Button>
+      </Box>}>
+        <RoundBlueButton
+          sx={enableAttackPotion ? styles.highlightButton : styles.fadeButton}
+          onClick={() => {
+            if (!enableAttackPotion) return;
+            game.setState.selectedItem('attackPotion');
+          }}
+        >
+          <img src={attackPotionIcon} alt='' height={'32px'} />
+
+          <Box sx={styles.count}>
+            <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '12px', lineHeight: '12px' }}>
+              {walletBalances.attackPotions}
+            </Typography>
+          </Box>
+        </RoundBlueButton>
+      </Tooltip>
+
+      <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.potionTooltip}>
+        <Typography variant='h6' letterSpacing={'0.5px'}>Extra Life Potion</Typography>
+        <Typography sx={{ opacity: 0.8, mb: 0.5 }}>Beast revives to full health instead of dying</Typography>
+        <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: '0px 12px', height: '20px' }} size='small' onClick={() => openBuyPotionsDialog(true)}>
+          Buy Potions
+        </Button>
+      </Box>}>
+        <RoundBlueButton
+          sx={enableExtraLifePotion ? styles.highlightButton : styles.fadeButton}
+          onClick={() => {
+            if (!enableExtraLifePotion) return;
+            game.setState.selectedItem('extraLifePotion');
+          }}
+        >
+          <img src={lifePotionIcon} alt='' height={'32px'} />
+
+          <Box sx={styles.count}>
+            <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '12px', lineHeight: '12px' }}>
+              {/* {walletBalances.extraLifePotions} */}
+              100
+            </Typography>
+          </Box>
+        </RoundBlueButton>
+      </Tooltip>
+
+      <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.potionTooltip}>
+        <Typography variant='h6' letterSpacing={'0.5px'}>Dead adventurers</Typography>
+        <Typography sx={{ opacity: 0.8, mb: 0.5 }}>Feed dead adventurers from Loot Survivor to increase your beasts max health</Typography>
+      </Box>}>
+        <RoundBlueButton
+          sx={enableFeedingGround ? styles.highlightButton : styles.fadeButton}
+          onClick={() => {
+            if (!enableFeedingGround) return;
+            game.setState.showFeedingGround(true);
+          }}
+        >
+          <img src={cauldronIcon} alt='' height={'32px'} style={{ marginTop: '-4px' }} />
+
+          <Box sx={styles.count}>
+            <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '12px', lineHeight: '12px' }}>
+              {adventurerCollection.length}
+            </Typography>
+          </Box>
+        </RoundBlueButton>
+      </Tooltip>
     </Box>
 
-    <Box sx={{ display: 'flex', gap: 2 }}>
-      <Box>
-        <BuyConsumablesButton disabled={selectedBeasts.length < 1} onClick={() => {
-          game.setState.showFeedingGround(prev => !prev)
-        }}>
-          Feeding Ground
-        </BuyConsumablesButton>
-      </Box>
-
-      <BuyConsumablesButton onClick={() => openBuyPotionsDialog(true)} disabled={!address}>
-        Buy Consumables
-      </BuyConsumablesButton>
-
-      <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} />
-    </Box>
+    <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} />
   </Box>
 }
 
@@ -144,6 +195,7 @@ const styles = {
   container: {
     height: '60px',
     width: '100%',
+    maxWidth: '100vw',
     background: '#07323d',
     display: 'flex',
     alignItems: 'center',
@@ -154,14 +206,35 @@ const styles = {
   },
   count: {
     position: 'absolute',
-    bottom: '-2px',
-    borderRadius: '100%',
+    bottom: '-5px',
+    borderRadius: '10px',
     right: '-2px',
     background: '#f6e6bc',
     color: 'white',
     border: '1px solid rgba(0, 0, 0, 1)',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    minWidth: '15px'
+  },
+  highlightButton: {
+    opacity: 1,
+    boxShadow: '0 0 8px white'
+  },
+  fadeButton: {
+    opacity: 0.6,
+  },
+  potionTooltip: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    backgroundColor: '#f6e6bc',
+    border: '3px solid rgba(0, 0, 0, 0.5)',
+    borderRadius: '10px',
+    px: 2,
+    pt: 0.5,
+    pb: 1
   }
 }

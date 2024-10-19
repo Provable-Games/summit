@@ -1,83 +1,132 @@
-import InfoIcon from '@mui/icons-material/Info';
 import AddIcon from '@mui/icons-material/Add';
+import InfoIcon from '@mui/icons-material/Info';
 import RemoveIcon from '@mui/icons-material/Remove';
-import { Box, Dialog, Icon, IconButton, Input, InputAdornment, Tooltip, Typography } from '@mui/material';
-import React, { useContext, useState } from 'react';
-import revivePotionIcon from '../../assets/images/revive-potion.png';
+import { Box, Dialog, IconButton, Input, InputAdornment, Tooltip, Typography, Skeleton } from '@mui/material';
+import React, { useContext, useEffect, useState } from 'react';
+import { useDebounce } from "use-debounce";
+import { generateSwapCalls, getSwapQuote } from '../../api/ekubo';
 import attackPotionIcon from '../../assets/images/attack-potion.png';
 import lifePotionIcon from '../../assets/images/life-potion.png';
+import revivePotionIcon from '../../assets/images/revive-potion.png';
+import { DojoContext } from '../../contexts/dojoContext';
 import { GameContext } from '../../contexts/gameContext';
 import { BuyConsumablesButton } from '../../helpers/styles';
-import { useEffect } from 'react';
-import { debounce } from '../../helpers/utilities';
-import { getTokenPrice } from '../../api/ekubo';
 
 const POTIONS = [
   {
     id: 1,
     name: 'revive potion',
     icon: revivePotionIcon,
-    description: 'Revives a dead beast. Amount required varies on tier.',
-    cost: 0.25,
-    token: 'USDC'
+    description: 'Revives a dead beast. Amount required increases with each revival.',
+    costName: 'revive',
+    token: 'STRK',
+    address: import.meta.env.VITE_PUBLIC_REVIVE_ERC20_ADDRESS
   },
   {
     id: 2,
     name: 'attack potion',
     icon: attackPotionIcon,
-    description: 'Doubles the damage of a beast\'s next attack.',
-    cost: 0.25,
-    token: 'STARK'
+    description: 'Adds 10% damage to a beast\'s next attack.',
+    costName: 'attack',
+    token: 'UNI',
+    address: import.meta.env.VITE_PUBLIC_ATTACK_ERC20_ADDRESS
   },
   {
     id: 3,
     name: 'Extra life potion',
     icon: lifePotionIcon,
     description: 'Beast revives to full health instead of dying.',
-    cost: 0.25,
-    token: 'LORDS'
+    costName: 'extraLife',
+    token: 'LORDS',
+    address: import.meta.env.VITE_PUBLIC_EXTRA_LIFE_ERC20_ADDRESS
   },
 ]
 
-const revivePotionsRequired = {
-  1: 5,
-  2: 4,
-  3: 3,
-  4: 2,
-  5: 1
-}
-
 function BuyConsumables(props) {
   const { open, close } = props
-  const game = useContext(GameContext)
 
-  const [amount, setAmount] = useState({
-    1: 0,
-    2: 0,
-    3: 0
-  })
-  const [prices, setPrices] = useState({
-    1: 0,
-    2: 0,
-    3: 0
-  })
+  const dojo = useContext(DojoContext)
+  const game = useContext(GameContext)
+  const { potionPrices } = game.getState
+
+  const [reviveAmount, setReviveAmount] = useState(0)
+  const [attackAmount, setAttackAmount] = useState(0)
+  const [extraLifeAmount, setExtraLifeAmount] = useState(0)
+
+  const [debouncedReviveAmount] = useDebounce(reviveAmount, 500)
+  const [debouncedAttackAmount] = useDebounce(attackAmount, 500)
+  const [debouncedExtraLifeAmount] = useDebounce(extraLifeAmount, 500)
+
+  const [quotes, setQuotes] = useState({ 1: null, 2: null, 3: null })
+  const [prices, setPrices] = useState({ 1: 0, 2: 0, 3: 0 })
   const [totalCost, setTotalCost] = useState(0)
 
+  const [fetchingPrice, setFetchingPrice] = useState(true)
+  const [buyInProgress, setBuyInProgress] = useState(false)
+
   const updateTotalCost = async (potion, newAmount) => {
-    const cost = newAmount > 0 ? await getTokenPrice(potion.token, newAmount * 10 ** 6) : 0
-    setPrices(prev => ({ ...prev, [potion.id]: Number(cost) }))
+    if (newAmount === 0) {
+      setQuotes(prev => ({ ...prev, [potion.id]: null }))
+      setPrices(prev => ({ ...prev, [potion.id]: 0 }))
+      return
+    }
+
+    setFetchingPrice(true)
+    const quote = await getSwapQuote(-1 * newAmount * 10 ** 18, potion.token, 'USDC')
+    const cost = (quote.total * -1) / (10 ** 6)
+
+    setPrices(prev => ({ ...prev, [potion.id]: cost }))
+    setQuotes(prev => ({ ...prev, [potion.id]: quote }))
+    setFetchingPrice(false)
   }
 
-  const debouncedUpdateTotalCost = debounce((potion, newAmount) => {
-    if (newAmount === amount[potion.id]) {
-      updateTotalCost(potion, newAmount)
+  const handleAmountChange = (potion, newAmount) => {
+    if (potion.id === 1) {
+      setReviveAmount(newAmount)
+    } else if (potion.id === 2) {
+      setAttackAmount(newAmount)
+    } else if (potion.id === 3) {
+      setExtraLifeAmount(newAmount)
     }
-  }, 500)
+  }
+
+  useEffect(() => {
+    updateTotalCost(POTIONS[0], debouncedReviveAmount)
+  }, [debouncedReviveAmount])
+
+  useEffect(() => {
+    updateTotalCost(POTIONS[1], debouncedAttackAmount)
+  }, [debouncedAttackAmount])
+
+  useEffect(() => {
+    updateTotalCost(POTIONS[2], debouncedExtraLifeAmount)
+  }, [debouncedExtraLifeAmount])
 
   useEffect(() => {
     const total = Object.values(prices).reduce((acc, price) => acc + price, 0)
     setTotalCost(total)
   }, [prices])
+
+  const buyConsumables = async () => {
+    let potionQuotes = POTIONS.map(potion => ({
+      tokenAddress: potion.address,
+      minimumAmount: potion.id === 1 ? reviveAmount : potion.id === 2 ? attackAmount : extraLifeAmount,
+      quote: quotes[potion.id]
+    }))
+
+    setBuyInProgress(true)
+    const calls = generateSwapCalls(dojo.routerContract, import.meta.env.VITE_PUBLIC_PURCHASE_TOKEN, potionQuotes)
+    console.log(calls)
+    const success = await dojo.executeTx(calls)
+
+    if (success) {
+      game.update.ERC20Balances()
+      game.update.potionPrices()
+      close(false);
+    }
+
+    setBuyInProgress(false)
+  }
 
   return (
     <Dialog
@@ -92,7 +141,7 @@ function BuyConsumables(props) {
       <Box sx={styles.dialogContainer}>
         <Box sx={styles.container}>
 
-          <Box sx={{ textAlign: 'center'}}>
+          <Box sx={{ textAlign: 'center' }}>
             <Typography fontSize={'35px'} letterSpacing={'1px'} mb={2}>
               Potions
             </Typography>
@@ -124,19 +173,8 @@ function BuyConsumables(props) {
 
                           {potion.name === 'revive potion' && <Tooltip title={<Box sx={{ background: '#616161', padding: '8px 12px', borderRadius: '4px' }}>
                             <Typography color='white'>
-                              Potions required
+                              Potions required to revive a beast depends on how many times you have revived it. Max 16 potions.
                             </Typography>
-
-                            {Object.entries(revivePotionsRequired).map(([tier, potions]) => (
-                              <Box display={'flex'} justifyContent={'space-between'}>
-                                <Typography color='white'>
-                                  Tier {tier}:
-                                </Typography>
-                                <Typography color='white'>
-                                  {potions} potions
-                                </Typography>
-                              </Box>
-                            ))}
                           </Box>}>
                             <InfoIcon htmlColor='black' sx={{ fontSize: '13px', ml: '2px', mb: '-2px' }} />
                           </Tooltip>}
@@ -149,7 +187,7 @@ function BuyConsumables(props) {
                           Cost
                         </Typography>
                         <Typography sx={{ letterSpacing: '0.5px', fontSize: '13px', opacity: 0.8 }}>
-                          ${potion.cost}
+                          ${potionPrices[potion.costName]}
                         </Typography>
                       </Box>
                     </Box>
@@ -158,17 +196,15 @@ function BuyConsumables(props) {
                   <Box sx={{ my: 1, display: 'flex', width: '100%', justifyContent: 'space-between', px: 1, boxSizing: 'border-box' }}>
                     <Box sx={{ display: 'flex' }}>
                       <IconButton onClick={() => {
-                        const newAmount = Math.max(0, amount[potion.id] - 1)
-                        setAmount(prev => ({ ...prev, [potion.id]: newAmount }))
-                        debouncedUpdateTotalCost(potion, newAmount)
+                        const newAmount = Math.max(0, potion.id === 1 ? reviveAmount - 1 : potion.id === 2 ? attackAmount - 1 : extraLifeAmount - 1)
+                        handleAmountChange(potion, newAmount)
                       }}>
                         <RemoveIcon fontSize='small' />
                       </IconButton>
 
                       <IconButton onClick={() => {
-                        const newAmount = amount[potion.id] + 1
-                        setAmount(prev => ({ ...prev, [potion.id]: newAmount }))
-                        debouncedUpdateTotalCost(potion, newAmount)
+                        const newAmount = potion.id === 1 ? reviveAmount + 1 : potion.id === 2 ? attackAmount + 1 : extraLifeAmount + 1
+                        handleAmountChange(potion, newAmount)
                       }}>
                         <AddIcon fontSize='small' />
                       </IconButton>
@@ -176,11 +212,10 @@ function BuyConsumables(props) {
 
                     <Input disableUnderline={true} sx={{ color: 'black', width: '80px', fontSize: '18px', textAlign: 'right' }}
                       inputProps={{ style: { textAlign: 'right', border: '1px solid #c87d3b', padding: '0 3px', fontSize: '15px' } }}
-                      value={amount[potion.id]}
+                      value={potion.id === 1 ? reviveAmount : potion.id === 2 ? attackAmount : extraLifeAmount}
                       onChange={e => {
                         const newAmount = isNaN(Number(e.target.value)) ? 0 : Number(e.target.value)
-                        setAmount(prev => ({ ...prev, [potion.id]: newAmount }))
-                        debouncedUpdateTotalCost(potion, newAmount)
+                        handleAmountChange(potion, newAmount)
                       }}
                       endAdornment={
                         <InputAdornment position="end">
@@ -198,10 +233,10 @@ function BuyConsumables(props) {
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
             <Typography variant='h4' letterSpacing={'1px'}>
-              Total ${totalCost}
+              Total ${totalCost.toFixed(2)}
             </Typography>
 
-            <BuyConsumablesButton disabled={totalCost < 1} onClick={() => { game.setState.totalReward(prev => prev + totalCost), close(false); }}>
+            <BuyConsumablesButton disabled={totalCost === 0} onClick={buyConsumables}>
               Buy Potions
             </BuyConsumablesButton>
           </Box>
@@ -274,7 +309,7 @@ const styles = {
     border: '1px solid #c87d3b',
     borderRadius: '4px',
     width: '90px',
-    minHeight: '55px'
+    minHeight: '70px'
   },
   cost: {
     p: 1,

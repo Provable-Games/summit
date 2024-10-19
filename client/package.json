@@ -43,6 +43,7 @@
     "react-router-dom": "^6.26.2",
     "starknet": "^5.29.0",
     "starknetid.js": "^4.0.1",
+    "use-debounce": "^10.0.4",
     "vite-plugin-mkcert": "^1.17.6",
     "vite-plugin-top-level-await": "^1.4.4",
     "vite-plugin-wasm": "^3.3.0"
