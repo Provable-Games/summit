@@ -20,6 +20,7 @@ trait ISummitSystem {
     fn set_consumable_address(
         ref world: IWorldDispatcher, consumable: ConsumableType, address: ContractAddress
     );
+    fn claim_starter_kit(ref world: IWorldDispatcher, beast_token_ids: Span<u32>);
 
     fn get_summit_history(world: @IWorldDispatcher, beast_id: u32, lost_at: u64) -> SummitHistory;
     fn get_summit_beast_token_id(world: @IWorldDispatcher) -> u32;
@@ -56,7 +57,7 @@ pub mod summit_systems {
     use savage_summit::models::consumable::{Consumable, ConsumableType};
     use savage_summit::models::summit::{Summit, SummitHistory};
     use savage_summit::utils;
-    use savage_summit::erc::mint_burn::{MintBurnDispatcher, MintBurnDispatcherTrait};
+    use savage_summit::erc::summit::{SummitERC20Dispatcher, SummitERC20DispatcherTrait};
     use starknet::{
         ContractAddress, get_caller_address, get_tx_info, get_block_timestamp, get_contract_address,
         contract_address_const
@@ -285,7 +286,7 @@ pub mod summit_systems {
 
             // Burn consumables
             let amount_with_decimals: u256 = amount.into() * 1000000000000000000;
-            MintBurnDispatcher { contract_address: self._get_consumable_address(consumable) }
+            SummitERC20Dispatcher { contract_address: self._get_consumable_address(consumable) }
                 .burn(get_caller_address(), amount_with_decimals);
 
             // Save potions on beast
@@ -301,6 +302,30 @@ pub mod summit_systems {
                 'Address already set'
             );
             set!(world, (Consumable { consumable, address }));
+        }
+
+        fn claim_starter_kit(ref world: IWorldDispatcher, beast_token_ids: Span<u32>) {
+            let mut i = 0;
+            while (i < beast_token_ids.len()) {
+                let beast_token_id = *beast_token_ids.at(i);
+                let mut beast_live_stats = get!(world, beast_token_id, LiveBeastStats);
+
+                if !beast_live_stats.has_claimed_starter_kit {
+                    SummitERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::Revive) }
+                        .claim_starter_kit(beast_token_id);
+
+                    SummitERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::Attack) }
+                        .claim_starter_kit(beast_token_id);
+
+                    SummitERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::ExtraLife) }
+                        .claim_starter_kit(beast_token_id);
+
+                    beast_live_stats.has_claimed_starter_kit = true;
+                    set!(world, (beast_live_stats));
+                }
+
+                i += 1;
+            }
         }
 
         fn get_summit_beast_token_id(world: @IWorldDispatcher) -> u32 {
@@ -417,7 +442,7 @@ pub mod summit_systems {
 
             // Mint rewards
             if (time_on_summit > 0) {
-                MintBurnDispatcher { contract_address: utils::REWARD_TOKEN_ADDRESS_MAINNET() }
+                SummitERC20Dispatcher { contract_address: utils::REWARD_TOKEN_ADDRESS_MAINNET() }
                     .mint(
                         self._get_owner_of_beast(token_id),
                         time_on_summit.into() * 1000000000000000000

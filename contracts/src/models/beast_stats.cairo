@@ -28,4 +28,5 @@ pub struct LiveBeastStats {
     pub attack_potions: u8, // 7 bits storage
     pub revival_count: u8, // 4 bits storage
     pub extra_lives: u8, // 7 bits storage
+    pub has_claimed_starter_kit: bool,
 }
