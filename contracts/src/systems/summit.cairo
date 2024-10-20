@@ -188,7 +188,7 @@ pub mod summit_systems {
                     set!(world, (attacking_beast.stats.live));
                 } else if defending_beast.stats.live.current_health == 0 {
                     // finalize the summit history for prev summit beast
-                    self._finalize_summit_history(summit_beast_token_id);
+                    self._finalize_summit_history(ref defending_beast);
 
                     // set death timestamp for prev summit beast
                     defending_beast.stats.live.last_death_timestamp = get_block_timestamp();
@@ -431,22 +431,23 @@ pub mod summit_systems {
         ///     we then set the lost_at to the current timestamp to mark the end of the current
         ///     beast's summit if the beast takes the hill again, it'll have a different key pair
         /// @param token_id the id of the beast
-        fn _finalize_summit_history(self: @ContractState, token_id: u32) {
+        fn _finalize_summit_history(self: @ContractState, ref beast: Beast) {
             let world = self.world();
-            let mut summit_history = get!(world, (token_id, 0), SummitHistory);
+            let mut summit_history = get!(world, (beast.token_id, 0), SummitHistory);
             let current_time = get_block_timestamp();
             let time_on_summit = current_time - summit_history.taken_at;
             summit_history.lost_at = current_time;
             summit_history.rewards = time_on_summit;
             set!(world, (summit_history));
 
-            // Mint rewards
+            // Mint reward
             if (time_on_summit > 0) {
                 SummitERC20Dispatcher { contract_address: utils::REWARD_TOKEN_ADDRESS_MAINNET() }
                     .mint(
-                        self._get_owner_of_beast(token_id),
+                        self._get_owner_of_beast(beast.token_id),
                         time_on_summit.into() * 1000000000000000000
                     );
+                beast.stats.live.rewards_earned += time_on_summit;
             }
         }
 

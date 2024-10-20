@@ -21,6 +21,7 @@ pub struct LiveBeastStats {
     pub current_health: u16,
     pub bonus_health: u16,
     pub bonus_xp: u16,
+    pub rewards_earned: u64,
     pub attack_streak: u8,
     pub last_death_timestamp: u64,
     pub num_deaths: u16,
