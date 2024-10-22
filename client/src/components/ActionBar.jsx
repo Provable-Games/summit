@@ -22,9 +22,10 @@ function ActionBar(props) {
   const isSavage = Boolean(ownedBeasts.find(beast => beast.id === summit.id))
   const beast = collection.find(beast => beast.id === selectedBeasts[0])
 
-  const enableRevivePotion = selectedBeasts.length === 1 && walletBalances.revivePotions > 0 && beast?.currentHealth === 0
-  const enableAttackPotion = selectedBeasts.length === 1 && walletBalances.attackPotions > 0 && !isSavage && beast?.currentHealth > 0
-  const enableExtraLifePotion = selectedBeasts.length === 1 && walletBalances.extraLifePotions > 0 && beast?.currentHealth > 0
+  const enableAttack = !attackInProgress && selectedBeasts.length > 0 && beast?.current_health > 0
+  const enableRevivePotion = selectedBeasts.length === 1 && walletBalances.revivePotions > 0 && beast?.current_health === 0
+  const enableAttackPotion = selectedBeasts.length === 1 && walletBalances.attackPotions > 0 && !isSavage && beast?.current_health > 0
+  const enableExtraLifePotion = selectedBeasts.length === 1 && walletBalances.extraLifePotions > 0 && beast?.current_health > 0
   const enableFeedingGround = selectedBeasts.length === 1 && adventurerCollection.length > 0
 
   if (showFeedingGround) {
@@ -63,16 +64,16 @@ function ActionBar(props) {
         ? <AttackButton sx={{ fontSize: '18px' }}>
           YOU'RE THE SAVÁGE
         </AttackButton>
-        : <AttackButton disabled={attackInProgress || selectedBeasts.length < 1} onClick={() => game.actions.attack()}>
+        : <AttackButton disabled={!enableAttack} onClick={() => game.actions.attack()}>
           {attackInProgress
             ? <Box display={'flex'} alignItems={'baseline'}>
               <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>Attacking</Typography>
               <div className='dotLoader white' />
             </Box>
 
-            : totalDamage < summit.currentHealth
+            : totalDamage < summit.current_health
               ? <Box sx={{ display: 'flex', gap: 1.5 }}>
-                <Typography color={selectedBeasts.length < 1 ? 'rgba(0, 0, 0, 0.26)' : 'white'} variant='h4'>
+                <Typography color={!enableAttack ? 'rgba(0, 0, 0, 0.26)' : 'white'} variant='h4'>
                   Attack
                 </Typography>
 
@@ -84,7 +85,7 @@ function ActionBar(props) {
                   </Typography>
                 </Box>}
               </Box>
-              : <Typography color={'white'} variant='h4'>
+              : <Typography color={!enableAttack ? 'rgba(0, 0, 0, 0.26)' : 'white'} variant='h4'>
                 TAKE SUMMIT
               </Typography>
           }
@@ -156,8 +157,7 @@ function ActionBar(props) {
 
           <Box sx={styles.count}>
             <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '12px', lineHeight: '12px' }}>
-              {/* {walletBalances.extraLifePotions} */}
-              100
+              {walletBalances.extraLifePotions}
             </Typography>
           </Box>
         </RoundBlueButton>
@@ -185,7 +185,7 @@ function ActionBar(props) {
       </Tooltip>
     </Box>
 
-    <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} />
+    {buyPotionsDialog && <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} />}
   </Box>
 }
 

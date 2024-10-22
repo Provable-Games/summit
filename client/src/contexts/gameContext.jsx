@@ -2,25 +2,25 @@ import * as torii from "@dojoengine/torii-client";
 import { useAccount } from "@starknet-react/core";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { dojoConfig } from "../../dojoConfig";
-import { fetchAdventurerData, fetchBeastLiveData, fetchControllerId, fetchDeadBeastCount, fetchSummitBeastTokenId } from "../api/indexer";
+import { getSwapQuote } from "../api/ekubo";
+import { fetchAdventurerData, fetchBeastLiveData, fetchDeadBeastCount, fetchSummitBeastTokenId } from "../api/indexer";
 import { getAdventurers, getBeastDetails, getBeastHolders, getBeasts, getERC20Balances, getTotalBeasts } from "../api/starknet";
 import { calculateBattleResult } from "../helpers/beasts";
 import { DojoContext } from "./dojoContext";
-import { getSwapQuote } from "../api/ekubo";
 
 export const GameContext = createContext()
 
-const EMPTY_SUMMIT = { id: 0, level: 1, currentHealth: 0, health: 0, tier: 1 }
+const EMPTY_SUMMIT = { id: 0, level: 1, current_health: 0, health: 0, tier: 1 }
 
 export const GameProvider = ({ children }) => {
   const dojo = useContext(DojoContext)
 
   const [toriiClient, setToriiClient] = useState(null);
   const [summit, setSummit] = useState({ ...EMPTY_SUMMIT, loading: true })
+  const [showFeedingGround, setShowFeedingGround] = useState(false)
 
   const [attackInProgress, setAttackInProgress] = useState(false)
-
-  const [showFeedingGround, setShowFeedingGround] = useState(false)
+  const [applyingConsumable, setApplyingConsumable] = useState(false)
 
   const [adventurerCollection, setAdventurerCollection] = useState([])
   const [loadingAdventurers, setLoadingAdventurers] = useState(false)
@@ -39,7 +39,6 @@ export const GameProvider = ({ children }) => {
   const [selected, setSelected] = useState([])
   const [adventurersSelected, setAdventurersSelected] = useState([])
 
-  const [potions, setPotions] = useState(0)
   const [selectedItem, setSelectedItem] = useState()
 
   const [totalDamage, setTotalDamage] = useState(0)
@@ -96,13 +95,14 @@ export const GameProvider = ({ children }) => {
       let summitBeastDetails = await getBeastDetails(summitBeastId)
       let summitLiveStats = (await fetchBeastLiveData([summitBeastId]))[0]
 
-      summitBeast = { ...summitBeastDetails, currentHealth: summitLiveStats?.current_health || summitBeastDetails.health }
+      summitBeast = { ...summitBeastDetails, ...summitLiveStats, current_health: summitLiveStats?.current_health || summitBeastDetails.health }
     }
 
     if (ownedBeasts.some(beast => beast.id === summit.id)) {
       setCollection(prev => prev.map(beast => ({
         ...beast,
-        currentHealth: beast.id === summit.id ? 0 : beast.currentHealth
+        current_health: beast.id === summit.id ? 0 : beast.current_health,
+        extra_lives: beast.id === summit.id ? 0 : beast.extra_lives
       })))
     }
 
@@ -132,12 +132,13 @@ export const GameProvider = ({ children }) => {
       beast.health += liveStat?.bonus_health ?? 0
 
       if (liveStat.isDead) {
-        beast.currentHealth = 0
+        liveStat.current_health = 0
       } else {
-        beast.currentHealth = liveStat?.current_health > 0 ? liveStat?.current_health : beast.health
+        liveStat.current_health = liveStat?.current_health > 0 ? liveStat?.current_health : beast.health
       }
 
       beast.originalLevel = beast.level
+      beast.current_health = liveStat.current_health
 
       let totalXp = Math.pow(beast.level, 2) + (liveStat?.bonus_xp || 0)
       beast.level = Math.floor(Math.sqrt(totalXp))
@@ -145,7 +146,7 @@ export const GameProvider = ({ children }) => {
 
       return {
         ...beast,
-        ...calculateBattleResult(beast, summit),
+        ...calculateBattleResult(beast, summit, liveStat?.attack_potions || 0),
         ...liveStat
       }
     }).sort((a, b) => {
@@ -175,9 +176,9 @@ export const GameProvider = ({ children }) => {
 
   const fetchPotionPrices = async () => {
     const prices = await Promise.all([
-      await getSwapQuote(-1e18, 'STRK', 'USDC'),
-      await getSwapQuote(-1e18, 'UNI', 'USDC'),
-      await getSwapQuote(-1e18, 'LORDS', 'USDC'),
+      await getSwapQuote(-1e18, import.meta.env.VITE_PUBLIC_REVIVE_ERC20_ADDRESS, 'USDC'),
+      await getSwapQuote(-1e18, import.meta.env.VITE_PUBLIC_ATTACK_ERC20_ADDRESS, 'USDC'),
+      await getSwapQuote(-1e18, import.meta.env.VITE_PUBLIC_EXTRA_LIFE_ERC20_ADDRESS, 'USDC'),
     ])
 
     setPotionPrices({
@@ -235,11 +236,11 @@ export const GameProvider = ({ children }) => {
 
     selected.map(id => {
       let beast = collection.find(beast => beast.id === id);
-      totalDamage += beast.capture ? summit.currentHealth : beast.damage
+      totalDamage += beast.capture ? summit.current_health : beast.damage
     })
 
     setTotalDamage(totalDamage)
-  }, [selected])
+  }, [selected, collection, summit])
 
   useEffect(() => {
     if (address) {
@@ -295,16 +296,18 @@ export const GameProvider = ({ children }) => {
           else if (Boolean(data["savage_summit-LiveBeastStats"])) {
             let beastId = data["savage_summit-LiveBeastStats"]["token_id"].value
             let current_health = data["savage_summit-LiveBeastStats"]["current_health"].value
+            let extra_lives = data["savage_summit-LiveBeastStats"]["extra_lives"].value
 
             if (beastId === summit.id) {
               if (current_health > 0) {
-                setSummitAnimations(prev => [...prev, { type: 'update', current_health }])
+                setSummitAnimations(prev => [...prev, { type: 'update', updates: { current_health: current_health, extra_lives } }])
               }
 
               if (ownedBeasts.find(beast => beast.id === beastId)) {
                 setCollection(prev => prev.map(beast => ({
                   ...beast,
-                  currentHealth: beast.id === beastId ? current_health : beast.currentHealth
+                  current_health: beast.id === beastId ? current_health : beast.current_health,
+                  extra_lives: beast.id === beastId ? extra_lives : beast.extra_lives
                 })))
               }
             }
@@ -386,18 +389,82 @@ export const GameProvider = ({ children }) => {
     }
   }
 
+  const reviveBeast = async () => {
+    const selectedBeast = collection.find(beast => beast.id === selected[0])
+    const potions = (selectedBeast.revival_count || 0) + 1
+
+    setApplyingConsumable(true)
+
+    try {
+      const success = true
+      // const success = await dojo.executeTx([
+      //   {
+      //     contractName: "summit_systems",
+      //     entrypoint: "apply_consumable",
+      //     calldata: [selectedBeast.id, 0, potions]
+      //   }
+      // ])
+
+      if (success) {
+        setCollection(prev => prev.map(beast => ({
+          ...beast,
+          current_health: beast.id === selectedBeast.id ? beast.health : beast.current_health
+        })))
+
+        setWalletBalances(prev => ({
+          ...prev,
+          revivePotions: prev.revivePotions - potions
+        }))
+      }
+    } catch (ex) {
+      console.log(ex)
+    } finally {
+      setApplyingConsumable(false)
+    }
+  }
+
+  const applyExtraLife = async (amount) => {
+    const selectedBeast = collection.find(beast => beast.id === selected[0])
+
+    setApplyingConsumable(true)
+
+    try {
+      const success = true
+      // const success = await dojo.executeTx([
+      //   {
+      //     contractName: "summit_systems",
+      //     entrypoint: "apply_consumable",
+      //     calldata: [selectedBeast.id, 2, amount]
+      //   }
+      // ])
+
+      if (success) {
+        setCollection(prev => prev.map(beast => ({
+          ...beast,
+          extra_lives: beast.id === selectedBeast.id ? (beast.extra_lives || 0) + amount : beast.extra_lives
+        })))
+
+        setWalletBalances(prev => ({
+          ...prev,
+          extraLifePotions: prev.extraLifePotions - amount
+        }))
+      }
+    } catch (ex) {
+      console.log(ex)
+    } finally {
+      setApplyingConsumable(false)
+    }
+  }
+
   return (
     <GameContext.Provider
       value={{
         actions: {
           attack: attackSummit,
           feed: feedBeast,
+          reviveBeast,
+          applyExtraLife,
           resetState,
-        },
-
-        update: {
-          ERC20Balances: fetchERC20Balances,
-          potionPrices: fetchPotionPrices
         },
 
         setState: {
@@ -407,7 +474,6 @@ export const GameProvider = ({ children }) => {
           selectedAdventurers: setAdventurersSelected,
           summitAnimations: setSummitAnimations,
           feedAnimations: setFeedAnimations,
-          potions: setPotions,
           beastReward: setBeastReward,
           totalReward: setTotalReward,
           showFeedingGround: setShowFeedingGround,
@@ -416,6 +482,7 @@ export const GameProvider = ({ children }) => {
           attackInProgress: setAttackInProgress,
           feedInProgress: setFeedingInProgress,
           selectedItem: setSelectedItem,
+          walletBalances: setWalletBalances
         },
 
         getState: {
@@ -433,7 +500,6 @@ export const GameProvider = ({ children }) => {
           feedAnimations,
           loadingCollection,
           totalDamage,
-          potions,
           beastReward,
           totalReward,
           adventurerCollection,
@@ -443,7 +509,8 @@ export const GameProvider = ({ children }) => {
           ownedBeasts,
           feedingInProgress,
           userRanks,
-          selectedItem
+          selectedItem,
+          applyingConsumable
         }
       }}
     >

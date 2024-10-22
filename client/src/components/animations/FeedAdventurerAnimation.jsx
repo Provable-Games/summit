@@ -40,7 +40,7 @@ function FeedAdventurerAnimation(props) {
 
     game.setState.beasts(prev => prev.map(beast => ({
       ...beast,
-      currentHealth: beast.id === selectedBeasts[0] ? beast.currentHealth + health : beast.currentHealth
+      current_health: beast.id === selectedBeasts[0] ? beast.current_health + health : beast.current_health
     })))
 
     await textControls.start({

@@ -9,6 +9,7 @@ import { fadeVariant } from '../helpers/variants'
 import SummitReward from './SummitReward'
 import AttackAnimation from './animations/AttackAnimation'
 import { useStarkProfile } from '@starknet-react/core'
+import heart from '../assets/images/heart.png';
 
 function Summit() {
   const game = useContext(GameContext)
@@ -16,6 +17,7 @@ function Summit() {
 
   const controls = useAnimationControls()
   const { data: profile } = useStarkProfile({ address: summit.owner });
+  const extraLives = summit.extra_lives ?? 0
 
   const removeAttackAnimation = (id) => {
     game.setState.attackAnimations((prevAnimations) => prevAnimations.filter((anim) => anim.id !== id));
@@ -48,7 +50,7 @@ function Summit() {
       if (animation.type === 'capture') {
         newSavageAnimation(animation.beast)
       } else if (animation.type === 'update') {
-        game.setState.summit(prev => ({ ...prev, currentHealth: animation.current_health }))
+        game.setState.summit(prev => ({ ...prev, ...animation.updates }))
       }
 
       game.setState.summitAnimations(prev => prev.slice(1))
@@ -65,20 +67,28 @@ function Summit() {
         exit="exit"
       >
         <Box position={'relative'} width={'100%'} mb={2}>
-          <HealthBar variant="determinate" value={normaliseHealth(summit.currentHealth, summit.health)} />
+          <HealthBar variant="determinate" value={normaliseHealth(summit.current_health, summit.health + (summit.bonus_health || 0))} />
 
           <Box sx={styles.healthText}>
             <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white' }}>
-              {summit.currentHealth}
+              {summit.current_health}
             </Typography>
           </Box>
+
+          {extraLives > 0 && <Box sx={styles.extraLife}>
+            {extraLives > 1 && <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px', textShadow: '0 0 3px #FFD700' }}>
+              {extraLives}
+            </Typography>}
+
+            <img src={heart} alt='' height={'12px'} />
+          </Box>}
         </Box>
 
         <motion.div animate={controls} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '8px' }}>
           <Typography variant='h3' sx={{ lineHeight: '12px', textAlign: 'center' }}>
             "{summit.prefix} {summit.suffix}" {summit.name}
           </Typography>
-          
+
           <Typography variant='h6' sx={{ textAlign: 'center', letterSpacing: '0.5px' }}>
             Owned by {profile?.name?.replace('.stark', '') || 'Unknown'}
           </Typography>
@@ -158,5 +168,14 @@ const styles = {
     transform: 'translate(-50%)',
     textAlign: 'center',
     letterSpacing: '0.5px'
-  }
+  },
+  extraLife: {
+    position: 'absolute',
+    top: 0,
+    right: '6px',
+    height: '16px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px'
+  },
 }

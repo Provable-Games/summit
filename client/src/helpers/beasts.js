@@ -38,7 +38,7 @@ export const calculateBattleResult = (beast, summit, potions = 0) => {
   const MINIMUM_DAMAGE = 4
   let beastPower = (6 - beast.tier) * beast.level
 
-  if (beast.currentHealth < 1) {
+  if (beast.current_health < 1) {
     return {
       capture: false,
       damage: 0,
@@ -53,8 +53,8 @@ export const calculateBattleResult = (beast, summit, potions = 0) => {
   let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((beastPower * elemental * (1 + 0.1 * potions)) - summitPower))
   let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor((summitPower) * elementalDamage(summit, beast)) - beastPower)
 
-  let summitHealth = summit.currentHealth
-  let beastHealth = beast.currentHealth
+  let summitHealth = summit.current_health
+  let beastHealth = beast.current_health
 
   while (true) {
 
@@ -76,7 +76,7 @@ export const calculateBattleResult = (beast, summit, potions = 0) => {
     if (beastHealth <= 0) {
       return {
         capture: false,
-        damage: summit.currentHealth - summitHealth,
+        damage: summit.current_health - summitHealth,
         elemental,
         power: beastPower
       }

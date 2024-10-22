@@ -12,12 +12,11 @@ import { useEffect } from 'react';
 
 function ApplyAttackPotion(props) {
   const game = useContext(GameContext)
-  const { selectedBeasts, collection, summit } = game.getState
+  const { selectedBeasts, collection, summit, walletBalances } = game.getState
   const beast = collection.find(beast => beast.id === selectedBeasts[0])
 
   const { open, close } = props
 
-  const potions = 127
   const [amount, setAmount] = useState(1)
 
   const [newBattleResult, setNewBattleResult] = useState(beast)
@@ -26,6 +25,16 @@ function ApplyAttackPotion(props) {
     const newBattleResult = calculateBattleResult(beast, summit, amount)
     setNewBattleResult(newBattleResult)
   }, [amount])
+
+  const applyAttackPotion = () => {
+    game.setState.beasts(prev => prev.map(_beast => ({
+      ..._beast,
+      ...(_beast.id === beast.id ? newBattleResult : {}),
+      appliedAttackPotions: _beast.id === beast.id ? amount : 0
+    })))
+
+    close(false)
+  }
 
   return (
     <Dialog
@@ -67,7 +76,7 @@ function ApplyAttackPotion(props) {
                 step={1}
                 marks
                 min={1}
-                max={Math.min(potions, 127)}
+                max={Math.min(walletBalances.attackPotions, 127)}
                 onChange={(e) => setAmount(e.target.value)}
                 size='small'
               />
@@ -104,10 +113,10 @@ function ApplyAttackPotion(props) {
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
             <Typography variant='h6' sx={{ letterSpacing: '0.5px', color: 'black' }}>
-              You are about to burn {amount} attack potions
+              Potions will be used once you attack
             </Typography>
 
-            <AttackButton disabled={amount === 0}>
+            <AttackButton disabled={amount === 0} onClick={applyAttackPotion}>
               Apply
             </AttackButton>
           </Box>

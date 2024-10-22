@@ -9,13 +9,17 @@ import { AttackButton } from '../../helpers/styles';
 
 function ApplyExtraLifePotion(props) {
   const game = useContext(GameContext)
-  const { selectedBeasts, collection } = game.getState
+  const { selectedBeasts, collection, walletBalances, applyingConsumable } = game.getState
   const beast = collection.find(beast => beast.id === selectedBeasts[0])
 
   const { open, close } = props
-
-  const potions = 127
+  
   const [amount, setAmount] = useState(1)
+
+  const applyExtraLife = () => {
+    game.actions.applyExtraLife(amount)
+    close(false)
+  }
 
   return (
     <Dialog
@@ -53,7 +57,7 @@ function ApplyExtraLifePotion(props) {
                 step={1}
                 marks
                 min={1}
-                max={Math.min(potions, 127)}
+                max={Math.min(walletBalances.extraLifePotions, 127)}
                 onChange={(e) => setAmount(e.target.value)}
                 size='small'
               />
@@ -89,8 +93,14 @@ function ApplyExtraLifePotion(props) {
               You are about to burn {amount} extra life potions
             </Typography>
 
-            <AttackButton disabled={amount === 0}>
-              Consume
+            <AttackButton disabled={amount === 0 || applyingConsumable} onClick={applyExtraLife}>
+              {applyingConsumable
+                ? <Box display={'flex'} alignItems={'baseline'}>
+                  <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>Applying</Typography>
+                  <div className='dotLoader white' />
+                </Box>
+                : 'Apply'
+              }
             </AttackButton>
           </Box>
         </Box>

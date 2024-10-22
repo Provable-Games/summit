@@ -19,25 +19,22 @@ const POTIONS = [
     icon: revivePotionIcon,
     description: 'Revives a dead beast. Amount required increases with each revival.',
     costName: 'revive',
-    token: 'STRK',
     address: import.meta.env.VITE_PUBLIC_REVIVE_ERC20_ADDRESS
   },
   {
     id: 2,
     name: 'attack potion',
     icon: attackPotionIcon,
-    description: 'Adds 10% damage to a beast\'s next attack.',
+    description: 'Adds 10% damage to a beast\'s next attack. Can be stacked.',
     costName: 'attack',
-    token: 'UNI',
     address: import.meta.env.VITE_PUBLIC_ATTACK_ERC20_ADDRESS
   },
   {
     id: 3,
     name: 'Extra life potion',
     icon: lifePotionIcon,
-    description: 'Beast revives to full health instead of dying.',
+    description: 'Beast revives to full health instead of dying. Max 127 extra lives.',
     costName: 'extraLife',
-    token: 'LORDS',
     address: import.meta.env.VITE_PUBLIC_EXTRA_LIFE_ERC20_ADDRESS
   },
 ]
@@ -61,7 +58,7 @@ function BuyConsumables(props) {
   const [prices, setPrices] = useState({ 1: 0, 2: 0, 3: 0 })
   const [totalCost, setTotalCost] = useState(0)
 
-  const [fetchingPrice, setFetchingPrice] = useState(true)
+  const [fetchingPrice, setFetchingPrice] = useState(false)
   const [buyInProgress, setBuyInProgress] = useState(false)
 
   const updateTotalCost = async (potion, newAmount) => {
@@ -71,16 +68,16 @@ function BuyConsumables(props) {
       return
     }
 
-    setFetchingPrice(true)
-    const quote = await getSwapQuote(-1 * newAmount * 10 ** 18, potion.token, 'USDC')
-    const cost = (quote.total * -1) / (10 ** 6)
+    const quote = await getSwapQuote(-1 * newAmount * 1e18, potion.address, import.meta.env.VITE_PUBLIC_PURCHASE_TOKEN)
+    const cost = (quote.total * -1) / (1e18)
 
     setPrices(prev => ({ ...prev, [potion.id]: cost }))
     setQuotes(prev => ({ ...prev, [potion.id]: quote }))
-    setFetchingPrice(false)
   }
 
   const handleAmountChange = (potion, newAmount) => {
+    setFetchingPrice(true)
+
     if (potion.id === 1) {
       setReviveAmount(newAmount)
     } else if (potion.id === 2) {
@@ -105,6 +102,7 @@ function BuyConsumables(props) {
   useEffect(() => {
     const total = Object.values(prices).reduce((acc, price) => acc + price, 0)
     setTotalCost(total)
+    setFetchingPrice(false)
   }, [prices])
 
   const buyConsumables = async () => {
@@ -116,12 +114,17 @@ function BuyConsumables(props) {
 
     setBuyInProgress(true)
     const calls = generateSwapCalls(dojo.routerContract, import.meta.env.VITE_PUBLIC_PURCHASE_TOKEN, potionQuotes)
-    console.log(calls)
+
     const success = await dojo.executeTx(calls)
 
     if (success) {
-      game.update.ERC20Balances()
-      game.update.potionPrices()
+      game.setState.walletBalances(prev => ({
+        ...prev,
+        attackPotions: prev.attackPotions + attackAmount,
+        revivePotions: prev.revivePotions + reviveAmount,
+        extraLifePotions: prev.extraLifePotions + extraLifeAmount
+      }))
+
       close(false);
     }
 
@@ -196,8 +199,12 @@ function BuyConsumables(props) {
                   <Box sx={{ my: 1, display: 'flex', width: '100%', justifyContent: 'space-between', px: 1, boxSizing: 'border-box' }}>
                     <Box sx={{ display: 'flex' }}>
                       <IconButton onClick={() => {
-                        const newAmount = Math.max(0, potion.id === 1 ? reviveAmount - 1 : potion.id === 2 ? attackAmount - 1 : extraLifeAmount - 1)
-                        handleAmountChange(potion, newAmount)
+                        const amount = potion.id === 1 ? reviveAmount : potion.id === 2 ? attackAmount : extraLifeAmount
+
+                        if (amount > 0) {
+                          const newAmount = amount - 1
+                          handleAmountChange(potion, newAmount)
+                        }
                       }}>
                         <RemoveIcon fontSize='small' />
                       </IconButton>
@@ -232,12 +239,24 @@ function BuyConsumables(props) {
           </Box>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-            <Typography variant='h4' letterSpacing={'1px'}>
-              Total ${totalCost.toFixed(2)}
-            </Typography>
+            <Box display={'flex'} gap={0.5}>
+              <Typography variant='h4' letterSpacing={'1px'}>
+                {!fetchingPrice && totalCost.toFixed(2)}
+              </Typography>
+              {fetchingPrice && <Skeleton variant='text' width={'30px'} sx={{ fontSize: '20px', bgcolor: 'grey.600' }} />}
+              <Typography variant='h4' letterSpacing={'1px'}>
+                LORDS
+              </Typography>
+            </Box>
 
-            <BuyConsumablesButton disabled={totalCost === 0} onClick={buyConsumables}>
-              Buy Potions
+            <BuyConsumablesButton disabled={fetchingPrice || totalCost === 0 || buyInProgress} onClick={buyConsumables} loading={buyInProgress}>
+              {buyInProgress
+                ? <Box display={'flex'} alignItems={'baseline'}>
+                  <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>Buying Potions</Typography>
+                  <div className='dotLoader white' />
+                </Box>
+                : 'Buy Potions'
+              }
             </BuyConsumablesButton>
           </Box>
         </Box>
