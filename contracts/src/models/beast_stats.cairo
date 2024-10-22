@@ -21,7 +21,6 @@ pub struct LiveBeastStats {
     pub current_health: u16,
     pub bonus_health: u16,
     pub bonus_xp: u16,
-    pub rewards_earned: u64,
     pub attack_streak: u8,
     pub last_death_timestamp: u64,
     pub num_deaths: u16,
@@ -30,4 +29,12 @@ pub struct LiveBeastStats {
     pub revival_count: u8, // 4 bits storage
     pub extra_lives: u8, // 7 bits storage
     pub has_claimed_starter_kit: bool,
+}
+
+#[derive(Copy, Drop, Introspect, Serde)]
+#[dojo::model]
+pub struct BeastRewards {
+    #[key]
+    pub beast_token_id: u32,
+    pub rewards_earned: u64,
 }

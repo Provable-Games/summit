@@ -44,7 +44,6 @@ pub mod summit_systems {
     use game::game::interfaces::{IGame, IGameDispatcher, IGameDispatcherTrait};
     use core::num::traits::{OverflowingAdd, OverflowingSub};
     use openzeppelin_token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
-    use openzeppelin::token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
 
     use savage_summit::constants::{
         errors, BASE_REVIVAL_TIME_SECONDS, MINIMUM_DAMAGE, BEAST_MAX_BONUS_HEALTH,
@@ -53,11 +52,11 @@ pub mod summit_systems {
     use savage_summit::models::adventurer::{Adventurer, AdventurerConsumed};
     use savage_summit::models::beast::{Beast, ImplBeast};
     use savage_summit::models::beast_details::{BeastDetails, ImplBeastDetails};
-    use savage_summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats};
+    use savage_summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats, BeastRewards};
     use savage_summit::models::consumable::{Consumable, ConsumableType};
     use savage_summit::models::summit::{Summit, SummitHistory};
     use savage_summit::utils;
-    use savage_summit::erc::summit::{SummitERC20Dispatcher, SummitERC20DispatcherTrait};
+    use savage_summit::erc20::interface::{ConsumableERC20Dispatcher, ConsumableERC20DispatcherTrait, RewardERC20Dispatcher, RewardERC20DispatcherTrait};
     use starknet::{
         ContractAddress, get_caller_address, get_tx_info, get_block_timestamp, get_contract_address,
         contract_address_const
@@ -286,7 +285,7 @@ pub mod summit_systems {
 
             // Burn consumables
             let amount_with_decimals: u256 = amount.into() * 1000000000000000000;
-            SummitERC20Dispatcher { contract_address: self._get_consumable_address(consumable) }
+            ConsumableERC20Dispatcher { contract_address: self._get_consumable_address(consumable) }
                 .burn(get_caller_address(), amount_with_decimals);
 
             // Save potions on beast
@@ -311,13 +310,13 @@ pub mod summit_systems {
                 let mut beast_live_stats = get!(world, beast_token_id, LiveBeastStats);
 
                 if !beast_live_stats.has_claimed_starter_kit {
-                    SummitERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::Revive) }
+                    ConsumableERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::Revive) }
                         .claim_starter_kit(beast_token_id);
 
-                    SummitERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::Attack) }
+                    ConsumableERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::Attack) }
                         .claim_starter_kit(beast_token_id);
 
-                    SummitERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::ExtraLife) }
+                    ConsumableERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::ExtraLife) }
                         .claim_starter_kit(beast_token_id);
 
                     beast_live_stats.has_claimed_starter_kit = true;
@@ -442,12 +441,14 @@ pub mod summit_systems {
 
             // Mint reward
             if (time_on_summit > 0) {
-                SummitERC20Dispatcher { contract_address: utils::REWARD_TOKEN_ADDRESS_MAINNET() }
+                RewardERC20Dispatcher { contract_address: utils::REWARD_TOKEN_ADDRESS_MAINNET() }
                     .mint(
                         self._get_owner_of_beast(beast.token_id),
                         time_on_summit.into() * 1000000000000000000
                     );
-                beast.stats.live.rewards_earned += time_on_summit;
+                let mut beast_rewards = get!(world, (beast.token_id), BeastRewards);
+                beast_rewards.rewards_earned += time_on_summit;
+                set!(world, (beast_rewards));
             }
         }
 
