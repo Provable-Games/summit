@@ -255,9 +255,9 @@ export const getERC20Balances = async (address) => {
   const data = await response.json();
 
   return {
-    revivePotions: Math.floor((data.tokenBalances.find(balance => balance.contractAddress === revivePotions)?.balance || 0) / (10 ** 18)),
-    attackPotions: Math.floor((data.tokenBalances.find(balance => balance.contractAddress === attackPotions)?.balance || 0) / (10 ** 18)),
-    extraLifePotions: Math.floor((data.tokenBalances.find(balance => balance.contractAddress === extraLifePotions)?.balance || 0) / (10 ** 6)),
-    savage: Math.floor((data.tokenBalances.find(balance => balance.contractAddress === savage)?.balance || 0) / (10 ** 18)),
+    revivePotions: Math.floor((data.tokenBalances.find(balance => balance.contractAddress === revivePotions)?.balance || 0) / 1e18),
+    attackPotions: Math.floor((data.tokenBalances.find(balance => balance.contractAddress === attackPotions)?.balance || 0) / 1e18),
+    extraLifePotions: Math.floor((data.tokenBalances.find(balance => balance.contractAddress === extraLifePotions)?.balance || 0) / 1e18),
+    savage: Math.floor((data.tokenBalances.find(balance => balance.contractAddress === savage)?.balance || 0) / 1e18),
   }
 }

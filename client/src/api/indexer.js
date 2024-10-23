@@ -61,6 +61,12 @@ export async function fetchBeastLiveData(tokenIds) {
     }
   }`
 
+  // rewards_earned
+  // attack_potions
+  // revival_count
+  // extra_lives
+  // has_claimed_starter_kit
+
   try {
     const res = await request(GRAPH_URL, document)
     let stats = res?.savageSummitLiveBeastStatsModels?.edges.map(edge => edge.node) ?? []
@@ -74,7 +80,6 @@ export async function fetchBeastLiveData(tokenIds) {
         ...stat,
         id: stat.token_id,
         isDead: hoursSinceDeath < 23,
-        bonus_health: stat.bonus_health ?? 0,
         deadAt: lastDeathTimestamp
       }
     })

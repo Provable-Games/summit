@@ -10,6 +10,7 @@ import { GameContext } from '../contexts/gameContext'
 import { useStarkProfile } from '@starknet-react/core'
 import { useState } from 'react';
 import { useEffect } from 'react';
+import ClaimStarterPack from './dialogs/ClaimStarterPack';
 
 const ProfileCard = () => {
   const game = useContext(GameContext)
@@ -22,6 +23,7 @@ const ProfileCard = () => {
 
   const [accountDialog, openAccountDialog] = useState(false)
   const [walletName, setWalletName] = useState('')
+  const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false)
 
   useEffect(() => {
     async function controllerName() {
@@ -109,13 +111,19 @@ const ProfileCard = () => {
         <Typography letterSpacing={'0.5px'}>
           Beast Starter Pack
         </Typography>
+
         <Typography color='rgba(0,0,0,0.5)' fontSize={'13px'} mt={'-4px'} letterSpacing={'0.5px'}>
           393 available
         </Typography>
-        <Button variant='contained' sx={{ borderRadius: '4px', width: '100px', height: '26px', my: '4px' }} className='button-glow'>
-          <Typography color='white' letterSpacing={'0.5px'} variant='h6'>Claim</Typography>
+
+        <Button variant='contained' sx={{ borderRadius: '4px', width: '100px', height: '26px', my: '4px' }} className='button-glow' onClick={() => setClaimStarterPackDialog(true)}>
+          <Typography color='white' letterSpacing={'0.5px'} variant='h6'>
+            Claim
+          </Typography>
         </Button>
       </Box>
+
+      <ClaimStarterPack open={claimStarterPackDialog} close={() => setClaimStarterPackDialog(false)} />
     </Box>
   )
 }

@@ -12,33 +12,43 @@ export const getSwapQuote = async (amount, token, otherToken) => {
 }
 
 export const generateSwapCalls = (ROUTER_CONTRACT, purchaseToken, potionQuotes) => {
-  let calls = potionQuotes.map(potionQuote => {
+  let totalQuoteSum = potionQuotes.reduce((sum, potionQuote) => {
+    if (potionQuote.quote && potionQuote.quote.splits.length > 0) {
+      const total = BigInt(potionQuote.quote.total);
+      return sum + (total < 0n ? -total : total);
+    }
+
+    return sum;
+  }, 0n);
+
+  const doubledTotal = totalQuoteSum * 2n;
+  totalQuoteSum = doubledTotal < (totalQuoteSum + BigInt(1e19)) ? doubledTotal : (totalQuoteSum + BigInt(1e19));
+
+  const transferCall = {
+    contractAddress: purchaseToken,
+    entrypoint: "transfer",
+    calldata: [ROUTER_CONTRACT.address, num.toHex(totalQuoteSum), "0x0"],
+  };
+
+  const clearCall = {
+    contractAddress: ROUTER_CONTRACT.address,
+    entrypoint: "clear",
+    calldata: [purchaseToken],
+  };
+
+  let swapCalls = potionQuotes.map(potionQuote => {
     let { tokenAddress, minimumAmount, quote } = potionQuote;
 
     if (!quote || quote.splits.length === 0) {
       return []
     }
 
-    let { splits, total } = quote;
-
-    let amount = (BigInt(total) < 0n ? -BigInt(total) : BigInt(total)) + 1000000n
-
-    const transferCall = {
-      contractAddress: purchaseToken,
-      entrypoint: "transfer",
-      calldata: [ROUTER_CONTRACT.address, num.toHex(amount), "0x0"],
-    };
+    let { splits } = quote;
 
     const clearProfitsCall = ROUTER_CONTRACT.populate("clear_minimum", [
       { contract_address: tokenAddress },
       minimumAmount * 1e18,
     ]);
-
-    const clearCall = {
-      contractAddress: ROUTER_CONTRACT.address,
-      entrypoint: "clear",
-      calldata: [purchaseToken],
-    };
 
     if (splits.length === 1) {
       const split = splits[0];
@@ -48,7 +58,6 @@ export const generateSwapCalls = (ROUTER_CONTRACT, purchaseToken, potionQuotes) 
       }
 
       return [
-        transferCall,
         {
           contractAddress: ROUTER_CONTRACT.address,
           entrypoint: "multihop_swap",
@@ -80,12 +89,10 @@ export const generateSwapCalls = (ROUTER_CONTRACT, purchaseToken, potionQuotes) 
           ],
         },
         clearProfitsCall,
-        clearCall
       ]
     }
 
     return [
-      transferCall,
       {
         contractAddress: ROUTER_CONTRACT.address,
         entrypoint: "multi_multihop_swap",
@@ -123,10 +130,13 @@ export const generateSwapCalls = (ROUTER_CONTRACT, purchaseToken, potionQuotes) 
           }, []),
         ],
       },
-      clearProfitsCall,
-      clearCall
+      clearProfitsCall
     ]
   })
 
-  return calls.flat()
+  return [
+    transferCall,
+    ...swapCalls.flat(),
+    clearCall
+  ]
 }

@@ -16,8 +16,7 @@ export default function BeastProfile({ beast }) {
   const currentExperience = beast.totalXp;
   const nextLevelExperience = Math.pow(beast.level + 1, 2);
   const bonusLevels = beast.level - beast.originalLevel;
-
-  const diff = beast.last_death_timestamp * 1000 + 46 * 60 * 60 * 1000 - Date.now();
+  const diff = (beast.deadAt + 46 * 60 * 60 * 1000) - Date.now();
   const timeLeft = diff > 3600000 ? `${Math.floor(diff / 3600000)}h` : `${Math.floor((diff % 3600000) / 60000)}m`;
   const streakEnded = diff <= 0;
   const attackStreak = streakEnded ? 0 : beast.attack_streak ?? 0;
@@ -193,7 +192,7 @@ export default function BeastProfile({ beast }) {
 
         <Box sx={{ display: 'flex', justifyContent: 'center' }} mt={'3px'}>
           <Typography color='rgba(0,0,0,0.7)' fontStyle={'normal'} fontSize={'13px'}>
-            Revival Count: 23
+            Revival Cost: {(beast.revival_count || 0) + 1} {(beast.revival_count || 0) + 1 > 1 ? 'Potions' : 'Potion'}
           </Typography>
         </Box>
       </Box>

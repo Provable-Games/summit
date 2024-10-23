@@ -25,7 +25,7 @@ function AttackAnimation(props) {
 
   let strOffSet = randomOffSet < 0 ? `calc(50% - ${randomOffSet * -1}px)` : `calc(50% + ${randomOffSet}px)`
 
-  const [damage] = useState(attackingBeast.capture ? summit.currentHealth : attackingBeast.damage)
+  const [damage] = useState(attackingBeast.capture ? summit.current_health : attackingBeast.damage)
 
   useEffect(() => {
     attackAnimation()
@@ -47,7 +47,7 @@ function AttackAnimation(props) {
     ref.current.style.opacity = 1
     textRef.current.style.opacity = 1
 
-    game.setState.summit(prev => ({ ...prev, currentHealth: Math.max(0, prev.currentHealth - damage) }))
+    game.setState.summit(prev => ({ ...prev, current_health: Math.max(0, prev.current_health - damage) }))
 
     controls.start({
       opacity: 0
@@ -65,10 +65,10 @@ function AttackAnimation(props) {
       transition: { duration: 0.8 }
     })
 
-    if (!attackingBeast.capture && summit.currentHealth > 0) {
+    if (!attackingBeast.capture && summit.current_health > 0) {
       game.setState.beasts(prev => prev.map(beast => ({
         ...beast,
-        currentHealth: beast.id === attackingBeast.id ? 0 : beast.currentHealth,
+        current_health: beast.id === attackingBeast.id ? 0 : beast.current_health,
         deadAt: Date.now()
       })))
     }

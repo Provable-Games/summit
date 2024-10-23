@@ -4,18 +4,56 @@ import { useContext, useState } from 'react';
 import heart from '../../assets/images/heart.png';
 import potionsIcon from '../../assets/images/life-potion.png';
 import { GameContext } from '../../contexts/gameContext';
-import { fetchBeastImage } from '../../helpers/beasts';
+import { calculateBattleResult, fetchBeastImage } from '../../helpers/beasts';
 import { AttackButton } from '../../helpers/styles';
+import { DojoContext } from '../../contexts/dojoContext';
 
 function ApplyExtraLifePotion(props) {
+  const dojo = useContext(DojoContext)
   const game = useContext(GameContext)
-  const { selectedBeasts, collection } = game.getState
+
+  const { selectedBeasts, collection, walletBalances, summit } = game.getState
   const beast = collection.find(beast => beast.id === selectedBeasts[0])
 
   const { open, close } = props
 
-  const potions = 127
   const [amount, setAmount] = useState(1)
+  const [applyingConsumable, setApplyingConsumable] = useState(false)
+
+  const applyExtraLife = async () => {
+    setApplyingConsumable(true)
+
+    try {
+      const success = true
+      // const success = await dojo.executeTx([
+      //   {
+      //     contractName: "summit_systems",
+      //     entrypoint: "apply_consumable",
+      //     calldata: [beast.id, 2, amount]
+      //   }
+      // ])
+
+      if (success) {
+        let newBeast = { ...beast, extra_lives: (beast.extra_lives || 0) + amount }
+        const newBattleResult = calculateBattleResult(newBeast, summit, newBeast.attack_potions)
+
+        game.setState.beasts(prev => prev.map(_beast => ({
+          ...(_beast.id === newBeast.id ? newBeast : _beast),
+          ...(_beast.id === beast.id ? newBattleResult : {}),
+        })))
+
+        game.setState.walletBalances(prev => ({
+          ...prev,
+          extraLifePotions: prev.extraLifePotions - amount
+        }))
+      }
+    } catch (ex) {
+      console.log(ex)
+    } finally {
+      setApplyingConsumable(false)
+      close(false)
+    }
+  }
 
   return (
     <Dialog
@@ -53,7 +91,7 @@ function ApplyExtraLifePotion(props) {
                 step={1}
                 marks
                 min={1}
-                max={Math.min(potions, 127)}
+                max={Math.min(walletBalances.extraLifePotions, 127)}
                 onChange={(e) => setAmount(e.target.value)}
                 size='small'
               />
@@ -89,8 +127,14 @@ function ApplyExtraLifePotion(props) {
               You are about to burn {amount} extra life potions
             </Typography>
 
-            <AttackButton disabled={amount === 0}>
-              Consume
+            <AttackButton disabled={amount === 0 || applyingConsumable} onClick={applyExtraLife}>
+              {applyingConsumable
+                ? <Box display={'flex'} alignItems={'baseline'}>
+                  <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>Applying</Typography>
+                  <div className='dotLoader white' />
+                </Box>
+                : 'Apply'
+              }
             </AttackButton>
           </Box>
         </Box>

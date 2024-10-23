@@ -49,11 +49,11 @@ function Feeding() {
         <img src={frontfence} alt='' width={'100%'} style={{ position: 'absolute', bottom: '110px', zIndex: 4 }} />
 
         <Box position={'relative'} width={'80%'}>
-          <HealthBar variant="determinate" value={normaliseHealth(beast.currentHealth, beast.health)} />
+          <HealthBar variant="determinate" value={normaliseHealth(beast.current_health, beast.health)} />
 
           <Box sx={styles.healthText}>
             <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white' }}>
-              {beast.currentHealth}
+              {beast.current_health}
             </Typography>
           </Box>
         </Box>
