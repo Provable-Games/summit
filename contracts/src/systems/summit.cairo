@@ -20,6 +20,7 @@ trait ISummitSystem {
     fn set_consumable_address(
         ref world: IWorldDispatcher, consumable: ConsumableType, address: ContractAddress
     );
+    fn set_reward_address(ref world: IWorldDispatcher, address: ContractAddress);
     fn claim_starter_kit(ref world: IWorldDispatcher, beast_token_ids: Span<u32>);
 
     fn get_summit_history(world: @IWorldDispatcher, beast_id: u32, lost_at: u64) -> SummitHistory;
@@ -32,6 +33,7 @@ trait ISummitSystem {
     fn get_consumable_address(
         world: @IWorldDispatcher, consumable: ConsumableType
     ) -> ContractAddress;
+    fn get_reward_address(world: @IWorldDispatcher) -> ContractAddress;
 }
 
 #[dojo::contract]
@@ -54,7 +56,7 @@ pub mod summit_systems {
     use savage_summit::models::beast_details::{BeastDetails, ImplBeastDetails};
     use savage_summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats, BeastRewards};
     use savage_summit::models::consumable::{Consumable, ConsumableType};
-    use savage_summit::models::summit::{Summit, SummitHistory};
+    use savage_summit::models::summit::{Summit, SummitHistory, SummitReward};
     use savage_summit::utils;
     use savage_summit::erc20::interface::{ConsumableERC20Dispatcher, ConsumableERC20DispatcherTrait, RewardERC20Dispatcher, RewardERC20DispatcherTrait};
     use starknet::{
@@ -303,27 +305,62 @@ pub mod summit_systems {
             set!(world, (Consumable { consumable, address }));
         }
 
+        fn set_reward_address(ref world: IWorldDispatcher, address: ContractAddress) {
+            assert(world.is_owner(self.selector().into(), get_caller_address()), 'Not Owner');
+
+            let mut summit_reward = get!(world, 1, SummitReward);
+            assert(
+                summit_reward.address == contract_address_const::<0x0>(),
+                'Address already set'
+            );
+            summit_reward.address = address;
+            set!(world, (summit_reward));
+        }
+
         fn claim_starter_kit(ref world: IWorldDispatcher, beast_token_ids: Span<u32>) {
+            let mut unclaimed_revive_potions = array![];
+            let mut unclaimed_attack_potions = array![];
+            let mut unclaimed_extra_life_potions = array![];
+
+            let revive_dispatcher = ConsumableERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::Revive) };
+            let attack_dispatcher = ConsumableERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::Attack) };
+            let extra_life_dispatcher = ConsumableERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::ExtraLife) };
+
             let mut i = 0;
             while (i < beast_token_ids.len()) {
                 let beast_token_id = *beast_token_ids.at(i);
                 let mut beast_live_stats = get!(world, beast_token_id, LiveBeastStats);
 
                 if !beast_live_stats.has_claimed_starter_kit {
-                    ConsumableERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::Revive) }
-                        .claim_starter_kit(beast_token_id);
+                    if !revive_dispatcher.claimed_starter_kit(beast_token_id) {
+                        unclaimed_revive_potions.append(beast_token_id);
+                    }
 
-                    ConsumableERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::Attack) }
-                        .claim_starter_kit(beast_token_id);
+                    if !attack_dispatcher.claimed_starter_kit(beast_token_id) {
+                        unclaimed_attack_potions.append(beast_token_id);
+                    }
 
-                    ConsumableERC20Dispatcher { contract_address: self._get_consumable_address(ConsumableType::ExtraLife) }
-                        .claim_starter_kit(beast_token_id);
+                    if !extra_life_dispatcher.claimed_starter_kit(beast_token_id) {
+                        unclaimed_extra_life_potions.append(beast_token_id);
+                    }
 
                     beast_live_stats.has_claimed_starter_kit = true;
                     set!(world, (beast_live_stats));
                 }
 
                 i += 1;
+            };
+
+            if unclaimed_revive_potions.len() > 0 {
+                revive_dispatcher.claim_starter_kits_for_owner(get_caller_address(), unclaimed_revive_potions);
+            }
+
+            if unclaimed_attack_potions.len() > 0 {
+                attack_dispatcher.claim_starter_kits_for_owner(get_caller_address(), unclaimed_attack_potions);
+            }
+
+            if unclaimed_extra_life_potions.len() > 0 {
+                extra_life_dispatcher.claim_starter_kits_for_owner(get_caller_address(), unclaimed_extra_life_potions);
             }
         }
 
@@ -362,6 +399,10 @@ pub mod summit_systems {
             world: @IWorldDispatcher, consumable: ConsumableType
         ) -> ContractAddress {
             self._get_consumable_address(consumable)
+        }
+
+        fn get_reward_address(world: @IWorldDispatcher) -> ContractAddress {
+            self._get_reward_address()
         }
     }
 
@@ -441,7 +482,7 @@ pub mod summit_systems {
 
             // Mint reward
             if (time_on_summit > 0) {
-                RewardERC20Dispatcher { contract_address: utils::REWARD_TOKEN_ADDRESS_MAINNET() }
+                RewardERC20Dispatcher { contract_address: self._get_reward_address() }
                     .mint(
                         self._get_owner_of_beast(beast.token_id),
                         time_on_summit.into() * 1000000000000000000
@@ -639,6 +680,10 @@ pub mod summit_systems {
             self: @ContractState, consumable: ConsumableType
         ) -> ContractAddress {
             get!(self.world(), consumable, Consumable).address
+        }
+
+        fn _get_reward_address(self: @ContractState) -> ContractAddress {
+            get!(self.world(), 1, SummitReward).address
         }
     }
 }

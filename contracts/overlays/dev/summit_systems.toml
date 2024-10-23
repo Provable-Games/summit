@@ -1,9 +1,11 @@
 tag = "savage_summit-summit_systems"
 writes = [
     "savage_summit-LiveBeastStats",
+    "savage_summit-BeastReward",
     "savage_summit-ConsumableDetails",
     "savage_summit-Summit",
     "savage_summit-SummitHistory",
+    "savage_summit-SummitReward",
     "savage_summit-AdventurerConsumed",
     "savage_summit-Consumable",
 ]
