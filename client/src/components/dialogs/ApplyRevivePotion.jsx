@@ -1,25 +1,59 @@
-import { Box, Dialog, Typography, Button } from '@mui/material';
-import { GameContext } from '../../contexts/gameContext';
-import { useContext } from 'react';
-import { AttackButton, HealthBar } from '../../helpers/styles';
 import ForwardIcon from '@mui/icons-material/Forward';
+import { Box, Dialog, Typography } from '@mui/material';
+import { useContext, useState } from 'react';
 import potionsIcon from '../../assets/images/revive-potion.png';
+import { DojoContext } from '../../contexts/dojoContext';
+import { GameContext } from '../../contexts/gameContext';
 import { fetchBeastImage } from '../../helpers/beasts';
+import { AttackButton, HealthBar } from '../../helpers/styles';
 
 function ApplyRevivePotion(props) {
   const { open, close } = props
 
+  const dojo = useContext(DojoContext)
   const game = useContext(GameContext)
-  const { selectedBeasts, collection, walletBalances, applyingConsumable } = game.getState
+  const { selectedBeasts, collection, walletBalances } = game.getState
   const beast = collection.find(beast => beast.id === selectedBeasts[0])
+
+  const [applyingConsumable, setApplyingConsumable] = useState(false)
 
   const potionsRequired = (beast.revival_count || 0) + 1
   const notEnoughPotions = potionsRequired > walletBalances.revivePotions
 
-  const reviveBeast = () => {
-    game.actions.reviveBeast()
-    close(false)
+  const reviveBeast = async () => {
+    const potions = (beast.revival_count || 0) + 1
+
+    setApplyingConsumable(true)
+
+    try {
+      const success = true
+      // const success = await dojo.executeTx([
+      //   {
+      //     contractName: "summit_systems",
+      //     entrypoint: "apply_consumable",
+      //     calldata: [beast.id, 0, potions]
+      //   }
+      // ])
+
+      if (success) {
+        game.setState.beasts(prev => prev.map(_beast => ({
+          ..._beast,
+          current_health: _beast.id === beast.id ? beast.health : _beast.current_health
+        })))
+
+        game.setState.walletBalances(prev => ({
+          ...prev,
+          revivePotions: prev.revivePotions - potions
+        }))
+      }
+    } catch (ex) {
+      console.log(ex)
+    } finally {
+      setApplyingConsumable(false)
+      close(false)
+    }
   }
+
 
   return (
     <Dialog

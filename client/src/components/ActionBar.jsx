@@ -24,7 +24,7 @@ function ActionBar(props) {
 
   const enableAttack = !attackInProgress && selectedBeasts.length > 0 && beast?.current_health > 0
   const enableRevivePotion = selectedBeasts.length === 1 && walletBalances.revivePotions > 0 && beast?.current_health === 0
-  const enableAttackPotion = selectedBeasts.length === 1 && walletBalances.attackPotions > 0 && !isSavage && beast?.current_health > 0
+  const enableAttackPotion = selectedBeasts.length === 1 && walletBalances.attackPotions > 0 && beast?.current_health > 0 // && !isSavage
   const enableExtraLifePotion = selectedBeasts.length === 1 && walletBalances.extraLifePotions > 0 && beast?.current_health > 0
   const enableFeedingGround = selectedBeasts.length === 1 && adventurerCollection.length > 0
 

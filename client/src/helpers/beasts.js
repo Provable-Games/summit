@@ -56,29 +56,42 @@ export const calculateBattleResult = (beast, summit, potions = 0) => {
   let summitHealth = summit.current_health
   let beastHealth = beast.current_health
 
+  let summitExtraLives = summit.extra_lives
+  let beastExtraLives = beast.extra_lives
+
   while (true) {
 
     summitHealth -= beastDamage;
 
     if (summitHealth <= 0) {
-      return {
-        capture: true,
-        healthLeft: beastHealth,
-        beastDamage,
-        summitDamage,
-        elemental,
-        power: beastPower
+      if (summitExtraLives > 0) {
+        summitExtraLives -= 1
+        summitHealth = summit.health + (summit.bonus_health || 0)
+      } else {
+        return {
+          capture: true,
+          healthLeft: beastHealth,
+          beastDamage,
+          summitDamage,
+          elemental,
+          power: beastPower
+        }
       }
     }
 
     beastHealth -= summitDamage
 
     if (beastHealth <= 0) {
-      return {
-        capture: false,
-        damage: summit.current_health - summitHealth,
-        elemental,
-        power: beastPower
+      if (beastExtraLives > 0) {
+        beastExtraLives -= 1
+        beastHealth = beast.health + (beast.bonus_health || 0)
+      } else {
+        return {
+          capture: false,
+          damage: summit.current_health - summitHealth,
+          elemental,
+          power: beastPower
+        }
       }
     }
   }

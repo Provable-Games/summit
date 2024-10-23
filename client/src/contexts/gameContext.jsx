@@ -20,7 +20,6 @@ export const GameProvider = ({ children }) => {
   const [showFeedingGround, setShowFeedingGround] = useState(false)
 
   const [attackInProgress, setAttackInProgress] = useState(false)
-  const [applyingConsumable, setApplyingConsumable] = useState(false)
 
   const [adventurerCollection, setAdventurerCollection] = useState([])
   const [loadingAdventurers, setLoadingAdventurers] = useState(false)
@@ -389,81 +388,12 @@ export const GameProvider = ({ children }) => {
     }
   }
 
-  const reviveBeast = async () => {
-    const selectedBeast = collection.find(beast => beast.id === selected[0])
-    const potions = (selectedBeast.revival_count || 0) + 1
-
-    setApplyingConsumable(true)
-
-    try {
-      const success = true
-      // const success = await dojo.executeTx([
-      //   {
-      //     contractName: "summit_systems",
-      //     entrypoint: "apply_consumable",
-      //     calldata: [selectedBeast.id, 0, potions]
-      //   }
-      // ])
-
-      if (success) {
-        setCollection(prev => prev.map(beast => ({
-          ...beast,
-          current_health: beast.id === selectedBeast.id ? beast.health : beast.current_health
-        })))
-
-        setWalletBalances(prev => ({
-          ...prev,
-          revivePotions: prev.revivePotions - potions
-        }))
-      }
-    } catch (ex) {
-      console.log(ex)
-    } finally {
-      setApplyingConsumable(false)
-    }
-  }
-
-  const applyExtraLife = async (amount) => {
-    const selectedBeast = collection.find(beast => beast.id === selected[0])
-
-    setApplyingConsumable(true)
-
-    try {
-      const success = true
-      // const success = await dojo.executeTx([
-      //   {
-      //     contractName: "summit_systems",
-      //     entrypoint: "apply_consumable",
-      //     calldata: [selectedBeast.id, 2, amount]
-      //   }
-      // ])
-
-      if (success) {
-        setCollection(prev => prev.map(beast => ({
-          ...beast,
-          extra_lives: beast.id === selectedBeast.id ? (beast.extra_lives || 0) + amount : beast.extra_lives
-        })))
-
-        setWalletBalances(prev => ({
-          ...prev,
-          extraLifePotions: prev.extraLifePotions - amount
-        }))
-      }
-    } catch (ex) {
-      console.log(ex)
-    } finally {
-      setApplyingConsumable(false)
-    }
-  }
-
   return (
     <GameContext.Provider
       value={{
         actions: {
           attack: attackSummit,
           feed: feedBeast,
-          reviveBeast,
-          applyExtraLife,
           resetState,
         },
 
@@ -510,7 +440,6 @@ export const GameProvider = ({ children }) => {
           feedingInProgress,
           userRanks,
           selectedItem,
-          applyingConsumable
         }
       }}
     >

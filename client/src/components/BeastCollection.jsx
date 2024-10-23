@@ -9,7 +9,7 @@ import sword from '../assets/images/sword.png';
 import { GameContext } from '../contexts/gameContext';
 import { beastElementalColor, fetchBeastImage, normaliseHealth } from "../helpers/beasts";
 import { ExperienceBar, HealthBar } from '../helpers/styles';
-
+import attackPotionIcon from '../assets/images/attack-potion.png';
 import Lottie from "lottie-react";
 import { isBrowser } from "react-device-detect";
 import SwordAnimation from '../assets/animations/swords.json';
@@ -154,6 +154,13 @@ function BeastCollection() {
                 {beast.type === 'Brute' && <BruteIcon color={elementalColor} />}
               </Box>
             </Tooltip>
+
+            {beast.attack_potions > 0 && <Box sx={{ position: 'absolute', top: '23px', left: '6px', display: 'flex', alignItems: 'center' }}>
+              <Typography sx={{ fontSize: '14px', lineHeight: '10px', marginRight: '-2px' }}>
+                {beast.attack_potions}
+              </Typography>
+              <img src={attackPotionIcon} alt='' height={'16px'} />
+            </Box>}
 
             {isSelected && attackInProgress && <Box sx={{ position: 'absolute', bottom: '45px' }}>
               <Lottie animationData={SwordAnimation} loop={true} style={{ height: '90px' }} />
