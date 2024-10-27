@@ -1,14 +1,25 @@
 import { Box, Typography } from "@mui/material";
 import { useContext } from "react";
 import { GameContext } from "../contexts/gameContext";
+import { useState, useEffect } from "react";
 
 function SummitReward() {
   const game = useContext(GameContext)
-  const { beastReward } = game.getState
+  const { summit } = game.getState
 
-  return <Box display={'flex'} alignItems={'center'} mt={0.5} gap={'2px'} sx={{ opacity: 0 }}>
+  const [amount, setAmount] = useState(summit.takenAt ? Math.floor(Date.now() / 1000 - summit.takenAt) : 0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAmount(prev => prev + 1)
+    }, 1000)
+
+    return () => clearInterval(interval)
+  }, [summit])
+
+  return <Box display={'flex'} alignItems={'center'} mt={0.5} gap={'2px'}>
     <Typography variant='h4' letterSpacing={'1px'}>
-      ${beastReward}
+      {amount}
     </Typography>
   </Box>;
 }

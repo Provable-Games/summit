@@ -23,6 +23,14 @@ const cartridge = new CartridgeConnector({
     {
       target: summit_systems,
       method: "feed",
+    },
+    {
+      target: summit_systems,
+      method: "apply_consumable"
+    },
+    {
+      target: summit_systems,
+      method: "claim_starter_kit"
     }
   ],
   rpc: dojoConfig.rpcUrl,

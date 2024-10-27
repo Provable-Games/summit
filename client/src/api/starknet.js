@@ -88,6 +88,11 @@ export const getBeastsMainnet = async (owner) => {
 };
 
 export const getBeastDetails = async (tokenId) => {
+  let storedDetails = JSON.parse(localStorage.getItem('beastDetails') ?? '{}')
+  if (storedDetails[tokenId]) {
+    return storedDetails[tokenId]
+  }
+
   let url = `${BLAST_URL}/builder/getNFT?contractAddress=${BEAST_ADDRESS}&tokenId=${tokenId}`
 
   const response = await fetch(url, {
@@ -106,12 +111,17 @@ export const getBeastDetails = async (tokenId) => {
     acc[attr.trait_type] = isNaN(attr.value) ? attr.value : Number(attr.value);
     return acc;
   }, {});
-
-  return {
+ 
+  let beastDetails = {
     id: Number(tokenId),
     owner: data.ownerAddress,
     ...attributesMap
   }
+  
+  storedDetails[tokenId] = beastDetails
+  localStorage.setItem('beastDetails', JSON.stringify(storedDetails))
+ 
+  return beastDetails
 }
 
 export const getAdventurers = async (owner) => {
