@@ -3,7 +3,7 @@ import { useAccount } from "@starknet-react/core";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { dojoConfig } from "../../dojoConfig";
 import { getSwapQuote } from "../api/ekubo";
-import { fetchAdventurerData, fetchBeastLiveData, fetchDeadBeastCount, fetchSummitBeastTokenId } from "../api/indexer";
+import { fetchAdventurerData, fetchBeastLiveData, fetchDeadBeastCount, fetchSummitBeastTokenId, fetchSummitHistory, queryLeaderboard } from "../api/indexer";
 import { getAdventurers, getBeastDetails, getBeastHolders, getBeasts, getERC20Balances, getTotalBeasts } from "../api/starknet";
 import { calculateBattleResult } from "../helpers/beasts";
 import { DojoContext } from "./dojoContext";
@@ -17,6 +17,7 @@ export const GameProvider = ({ children }) => {
 
   const [toriiClient, setToriiClient] = useState(null);
   const [summit, setSummit] = useState({ ...EMPTY_SUMMIT, loading: true })
+  const [leaderboard, setLeaderboard] = useState([])
   const [showFeedingGround, setShowFeedingGround] = useState(false)
 
   const [attackInProgress, setAttackInProgress] = useState(false)
@@ -47,7 +48,6 @@ export const GameProvider = ({ children }) => {
   const [feedAnimations, setFeedAnimations] = useState([])
 
   const [totalReward, setTotalReward] = useState(100)
-  const [beastReward, setBeastReward] = useState(0)
 
   const [walletBalances, setWalletBalances] = useState({
     revivePotions: 0,
@@ -76,7 +76,8 @@ export const GameProvider = ({ children }) => {
   }
 
   const syncGameData = async () => {
-    fetchPotionPrices()
+    fetchLeaderboard()
+    // fetchPotionPrices()
     setTotalSupply(await getTotalBeasts() ?? 0)
     setDeadBeastCount(await fetchDeadBeastCount() ?? 0)
 
@@ -93,8 +94,10 @@ export const GameProvider = ({ children }) => {
     } else {
       let summitBeastDetails = await getBeastDetails(summitBeastId)
       let summitLiveStats = (await fetchBeastLiveData([summitBeastId]))[0]
+      let summitHistory = await fetchSummitHistory(summitBeastId)
 
-      summitBeast = { ...summitBeastDetails, ...summitLiveStats, current_health: summitLiveStats?.current_health || summitBeastDetails.health }
+      let takenAt = parseInt((summitHistory?.taken_at || 0), 16);
+      summitBeast = { ...summitBeastDetails, ...summitLiveStats, current_health: summitLiveStats?.current_health || summitBeastDetails.health, takenAt }
     }
 
     if (ownedBeasts.some(beast => beast.id === summit.id)) {
@@ -171,6 +174,19 @@ export const GameProvider = ({ children }) => {
     })
 
     setCollection(beasts)
+  }
+
+  const fetchLeaderboard = async () => {
+    let beasts = await queryLeaderboard();
+
+    beasts = await Promise.all(
+      beasts.map(async beast => ({
+        ...beast,
+        ...await getBeastDetails(beast.beast_token_id)
+      }))
+    )
+
+    setLeaderboard(beasts)
   }
 
   const fetchPotionPrices = async () => {
@@ -258,6 +274,7 @@ export const GameProvider = ({ children }) => {
 
   useEffect(() => {
     fetchLiveStats()
+    fetchLeaderboard()
   }, [summit.id])
 
 
@@ -267,13 +284,6 @@ export const GameProvider = ({ children }) => {
       setSelectedItem(null)
     }
   }, [selectedItem, selected])
-
-  useEffect(() => {
-    setInterval(() => {
-      setBeastReward(prev => Number((prev + 0.01).toFixed(2)))
-      setTotalReward(prev => Number((prev - 0.01).toFixed(2)))
-    }, 1000)
-  }, [])
 
   useEffect(() => {
     setupToriiClient();
@@ -404,7 +414,6 @@ export const GameProvider = ({ children }) => {
           selectedAdventurers: setAdventurersSelected,
           summitAnimations: setSummitAnimations,
           feedAnimations: setFeedAnimations,
-          beastReward: setBeastReward,
           totalReward: setTotalReward,
           showFeedingGround: setShowFeedingGround,
           attackAnimations: setAttackAnimations,
@@ -430,7 +439,6 @@ export const GameProvider = ({ children }) => {
           feedAnimations,
           loadingCollection,
           totalDamage,
-          beastReward,
           totalReward,
           adventurerCollection,
           loadingAdventurers,
@@ -440,6 +448,7 @@ export const GameProvider = ({ children }) => {
           feedingInProgress,
           userRanks,
           selectedItem,
+          leaderboard
         }
       }}
     >

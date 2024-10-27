@@ -30,7 +30,6 @@ function Summit() {
     })
 
     game.setState.summit({ ...beast })
-    game.setState.beastReward(0)
 
     await controls.start({
       opacity: 1,

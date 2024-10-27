@@ -2,6 +2,25 @@ import { gql, request } from 'graphql-request';
 
 const GRAPH_URL = import.meta.env.VITE_PUBLIC_TORII_GRAPHQL
 
+export async function queryLeaderboard() {
+  const document = gql`
+  {
+    savageSummitBeastRewardsModels(where:{order:{field:REWARDS_EARNED, direction:DESC}, limit:5) {
+      edges {
+        node {
+          beast_token_id
+          rewards_earned
+        }
+      }
+    }
+  }
+  `
+
+  const res = await request(dojoConfig.toriiUrl, document);
+
+  return res?.savageSummitBeastRewardsModels?.edges.map(edge => edge.node) || [];
+}
+
 export async function fetchDeadBeastCount() {
   const nowInSeconds = Math.floor(Date.now() / 1000);
   const twentyThreeHoursAgoInSeconds = nowInSeconds - 23 * 60 * 60;
@@ -36,6 +55,27 @@ export async function fetchSummitBeastTokenId() {
   try {
     const res = await request(GRAPH_URL, document)
     return res?.savageSummitSummitModels?.edges[0]?.node?.beast_token_id
+  } catch (ex) {
+
+  }
+}
+
+export async function fetchSummitHistory(beastTokenId) {
+  const document = gql`
+  {
+    savageSummitSummitHistoryModels (where:{idEQ: ${beastTokenId}, lost_atEQ: "0"}) {
+      edges {
+        node {
+          id
+          taken_at
+        }
+      }
+    }
+  }`
+
+  try {
+    const res = await request(GRAPH_URL, document)
+    return res?.savageSummitSummitHistoryModels?.edges[0]?.node
   } catch (ex) {
 
   }

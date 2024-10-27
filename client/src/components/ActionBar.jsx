@@ -94,9 +94,9 @@ function ActionBar(props) {
       <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.potionTooltip}>
         <Typography variant='h6' letterSpacing={'0.5px'}>Revive Potion</Typography>
         <Typography sx={{ opacity: 0.8, mb: 0.5 }}>Revives a dead beast to full health</Typography>
-        <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: '0px 12px', height: '20px' }} size='small' onClick={() => openBuyPotionsDialog(true)}>
+        {/* <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: '0px 12px', height: '20px' }} size='small' onClick={() => openBuyPotionsDialog(true)}>
           Buy Potions
-        </Button>
+        </Button> */}
       </Box>}>
         <RoundBlueButton
           sx={enableRevivePotion ? styles.highlightButton : styles.fadeButton}
@@ -118,9 +118,9 @@ function ActionBar(props) {
       <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.potionTooltip}>
         <Typography variant='h6' letterSpacing={'0.5px'}>Attack Potion</Typography>
         <Typography sx={{ opacity: 0.8, mb: 0.5 }}>Adds 10% damage to a beast's next attack</Typography>
-        <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: '0px 12px', height: '20px' }} size='small' onClick={() => openBuyPotionsDialog(true)}>
+        {/* <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: '0px 12px', height: '20px' }} size='small' onClick={() => openBuyPotionsDialog(true)}>
           Buy Potions
-        </Button>
+        </Button> */}
       </Box>}>
         <RoundBlueButton
           sx={enableAttackPotion ? styles.highlightButton : styles.fadeButton}
@@ -142,9 +142,9 @@ function ActionBar(props) {
       <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.potionTooltip}>
         <Typography variant='h6' letterSpacing={'0.5px'}>Extra Life Potion</Typography>
         <Typography sx={{ opacity: 0.8, mb: 0.5 }}>Beast revives to full health instead of dying</Typography>
-        <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: '0px 12px', height: '20px' }} size='small' onClick={() => openBuyPotionsDialog(true)}>
+        {/* <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: '0px 12px', height: '20px' }} size='small' onClick={() => openBuyPotionsDialog(true)}>
           Buy Potions
-        </Button>
+        </Button> */}
       </Box>}>
         <RoundBlueButton
           sx={enableExtraLifePotion ? styles.highlightButton : styles.fadeButton}

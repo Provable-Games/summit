@@ -34,7 +34,7 @@ const leaderboardExample = [
 
 function Leaderboard(props) {
   const game = useContext(GameContext)
-  const { totalSupply, deadBeastCount, potionPrices } = game.getState
+  const { totalSupply, deadBeastCount, potionPrices, leaderboard } = game.getState
 
   return <Box sx={styles.container}>
     <Box sx={styles.innerContainer}>
@@ -64,25 +64,25 @@ function Leaderboard(props) {
         </Box>
 
         {React.Children.toArray(
-          leaderboardExample.map(score => <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
+          leaderboard.map((beast, rank) => <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', gap: '2px' }}>
               <Typography sx={{ width: '8px' }}>
-                {score.rank}.
+                {rank + 1}.
               </Typography>
               <Typography sx={{ letterSpacing: '0.5px' }}>
-                {score.name}
+                "{beast.prefix} {beast.suffix}" {beast.name}
               </Typography>
             </Box>
 
             <Box display={'flex'} alignItems={'center'} gap={'2px'}>
               <Typography>
-                {score.savage}
+                {beast.rewards_earned}
               </Typography>
             </Box>
           </Box>
           ))}
 
-        <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
+        {/* <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
           <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
 
           <Box sx={{ width: '50%', height: '18px', border: '2px solid #07323d', textAlign: 'center', borderRadius: '10px', background: '#ddcdaa' }}>
@@ -119,7 +119,7 @@ function Leaderboard(props) {
           <Typography sx={{ letterSpacing: '0.5px' }}>
             ${potionPrices.extraLife}
           </Typography>
-        </Box>
+        </Box> */}
 
         <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
           <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
