@@ -76,7 +76,7 @@ function Leaderboard(props) {
 
             <Box display={'flex'} alignItems={'center'} gap={'2px'}>
               <Typography>
-                {beast.rewards_earned}
+                {parseInt(beast.rewards_earned, 16).toLocaleString()}
               </Typography>
             </Box>
           </Box>

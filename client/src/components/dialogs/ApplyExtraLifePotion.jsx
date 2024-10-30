@@ -7,6 +7,8 @@ import { GameContext } from '../../contexts/gameContext';
 import { calculateBattleResult, fetchBeastImage } from '../../helpers/beasts';
 import { AttackButton } from '../../helpers/styles';
 import { DojoContext } from '../../contexts/dojoContext';
+import { getContractByName } from '@dojoengine/core';
+import { dojoConfig } from '../../../dojoConfig';
 
 function ApplyExtraLifePotion(props) {
   const dojo = useContext(DojoContext)
@@ -24,28 +26,32 @@ function ApplyExtraLifePotion(props) {
     setApplyingConsumable(true)
 
     try {
-      const success = true
-      // const success = await dojo.executeTx([
-      //   {
-      //     contractName: "summit_systems",
-      //     entrypoint: "apply_consumable",
-      //     calldata: [beast.id, 2, amount]
-      //   }
-      // ])
+      const success = await dojo.executeTx([
+        {
+          contractAddress: import.meta.env.VITE_PUBLIC_EXTRA_LIFE_ERC20_ADDRESS,
+          entrypoint: "approve",
+          calldata: [getContractByName(dojoConfig.manifest, "savage_summit", "summit_systems")?.address, amount * 1e18, "0"]
+        },
+        {
+          contractName: "summit_systems",
+          entrypoint: "apply_consumable",
+          calldata: [beast.id, "0x2", amount]
+        }
+      ])
 
       if (success) {
         let newBeast = { ...beast, extra_lives: (beast.extra_lives || 0) + amount }
         const newBattleResult = calculateBattleResult(newBeast, summit, newBeast.attack_potions)
 
-        game.setState.beasts(prev => prev.map(_beast => ({
-          ...(_beast.id === newBeast.id ? newBeast : _beast),
-          ...(_beast.id === beast.id ? newBattleResult : {}),
-        })))
-
         game.setState.walletBalances(prev => ({
           ...prev,
           extraLifePotions: prev.extraLifePotions - amount
         }))
+
+        game.setState.beasts(prev => prev.map(_beast => ({
+          ...(_beast.id === newBeast.id ? newBeast : _beast),
+          ...(_beast.id === newBeast.id ? newBattleResult : {}),
+        })))
       }
     } catch (ex) {
       console.log(ex)

@@ -286,9 +286,12 @@ pub mod summit_systems {
             }
 
             // Burn consumables
+            let consumable_address = self._get_consumable_address(consumable);
             let amount_with_decimals: u256 = amount.into() * 1000000000000000000;
-            ConsumableERC20Dispatcher { contract_address: self._get_consumable_address(consumable) }
-                .burn(get_caller_address(), amount_with_decimals);
+
+            let dispatcher = ConsumableERC20Dispatcher { contract_address: consumable_address };
+            dispatcher.transfer_from(get_caller_address(), get_contract_address(), amount_with_decimals);
+            dispatcher.burn(amount_with_decimals);
 
             // Save potions on beast
             set!(world, (beast.stats.live));

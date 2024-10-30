@@ -4,15 +4,17 @@ import { useContext, useState } from 'react';
 import potionsIcon from '../../assets/images/revive-potion.png';
 import { DojoContext } from '../../contexts/dojoContext';
 import { GameContext } from '../../contexts/gameContext';
-import { fetchBeastImage } from '../../helpers/beasts';
+import { calculateBattleResult, fetchBeastImage } from '../../helpers/beasts';
 import { AttackButton, HealthBar } from '../../helpers/styles';
+import { getContractByName } from '@dojoengine/core';
+import { dojoConfig } from '../../../dojoConfig';
 
 function ApplyRevivePotion(props) {
   const { open, close } = props
 
   const dojo = useContext(DojoContext)
   const game = useContext(GameContext)
-  const { selectedBeasts, collection, walletBalances } = game.getState
+  const { selectedBeasts, collection, walletBalances, summit } = game.getState
   const beast = collection.find(beast => beast.id === selectedBeasts[0])
 
   const [applyingConsumable, setApplyingConsumable] = useState(false)
@@ -26,19 +28,26 @@ function ApplyRevivePotion(props) {
     setApplyingConsumable(true)
 
     try {
-      const success = true
-      // const success = await dojo.executeTx([
-      //   {
-      //     contractName: "summit_systems",
-      //     entrypoint: "apply_consumable",
-      //     calldata: [beast.id, 0, potions]
-      //   }
-      // ])
+      const success = await dojo.executeTx([
+        {
+          contractAddress: import.meta.env.VITE_PUBLIC_REVIVE_ERC20_ADDRESS,
+          entrypoint: "approve",
+          calldata: [getContractByName(dojoConfig.manifest, "savage_summit", "summit_systems")?.address, potions * 1e18, "0"]
+        },
+        {
+          contractName: "summit_systems",
+          entrypoint: "apply_consumable",
+          calldata: [beast.id, "0x0", potions]
+        }
+      ])
 
       if (success) {
+        let newBeast = { ...beast, revival_count: Math.min(beast.revival_count + 1, 16), current_health: beast.health }
+        const newBattleResult = calculateBattleResult(newBeast, summit, 0)
+
         game.setState.beasts(prev => prev.map(_beast => ({
-          ..._beast,
-          current_health: _beast.id === beast.id ? beast.health : _beast.current_health
+          ...(_beast.id === newBeast.id ? newBeast : _beast),
+          ...(_beast.id === newBeast.id ? newBattleResult : {}),
         })))
 
         game.setState.walletBalances(prev => ({
@@ -74,7 +83,7 @@ function ApplyRevivePotion(props) {
             </Typography>
 
             <Typography fontSize={'14px'} letterSpacing={'0.5px'} sx={{ color: 'rgba(0,0,0,0.7)' }}>
-              The cost of reviving a beast increases with each revival. Max 16 potions.
+              The cost of reviving a beast increases with each revival. Up to 16 potions.
             </Typography>
           </Box>
 

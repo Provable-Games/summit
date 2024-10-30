@@ -59,9 +59,11 @@ export const calculateBattleResult = (beast, summit, potions = 0) => {
   let summitExtraLives = summit.extra_lives
   let beastExtraLives = beast.extra_lives
 
-  while (true) {
+  let totalBeastDamage = 0
 
+  while (true) {
     summitHealth -= beastDamage;
+    totalBeastDamage += beastDamage
 
     if (summitHealth <= 0) {
       if (summitExtraLives > 0) {
@@ -88,7 +90,7 @@ export const calculateBattleResult = (beast, summit, potions = 0) => {
       } else {
         return {
           capture: false,
-          damage: summit.current_health - summitHealth,
+          damage: totalBeastDamage,
           elemental,
           power: beastPower
         }

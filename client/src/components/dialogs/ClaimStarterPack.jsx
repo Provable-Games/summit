@@ -7,6 +7,7 @@ import revivePotionIcon from '../../assets/images/revive-potion.png';
 import { GameContext } from '../../contexts/gameContext';
 import { BuyConsumablesButton } from '../../helpers/styles';
 import { useState } from 'react';
+import { DojoContext } from '../../contexts/dojoContext';
 
 const POTIONS = [
   {
@@ -14,7 +15,7 @@ const POTIONS = [
     name: 'revive potion',
     icon: revivePotionIcon,
     description: 'Revives a dead beast. Amount required increases with each revival.',
-    packAmount: 3
+    packAmount: 5
   },
   {
     id: 2,
@@ -34,15 +35,45 @@ const POTIONS = [
 
 function ClaimStarterPack(props) {
   const { open, close } = props
+  const dojo = useContext(DojoContext)
   const game = useContext(GameContext)
   const { collection } = game.getState
 
-  const packsAvailable = collection.length
+  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit).map(beast => beast.id)
 
   const [claimInProgress, setClaimInProgress] = useState(false)
 
-  const claimAll = () => {
+  const claimAll = async () => {
     setClaimInProgress(true)
+
+    try {
+      const success = await dojo.executeTx([
+        {
+          contractName: "summit_systems",
+          entrypoint: "claim_starter_kit",
+          calldata: [unclaimedBeasts.slice(0, 150)]
+        }
+      ])
+
+      if (success) {
+        game.setState.walletBalances(prev => ({
+          ...prev,
+          attackPotions: prev.attackPotions + Math.min(unclaimedBeasts.length, 150) * 10,
+          revivePotions: prev.revivePotions + Math.min(unclaimedBeasts.length, 150) * 5,
+          extraLifePotions: prev.extraLifePotions + Math.min(unclaimedBeasts.length, 150),
+        }))
+
+        game.setState.beasts(prev => prev.map(beast => ({
+          ...beast,
+          has_claimed_starter_kit: unclaimedBeasts.slice(0, 150).includes(beast.id) ? true : beast.has_claimed_starter_kit
+        })))
+      }
+    } catch (ex) {
+      console.log(ex)
+    } finally {
+      setClaimInProgress(false)
+      close(false)
+    }
   }
 
   return (
@@ -64,7 +95,7 @@ function ClaimStarterPack(props) {
             </Typography>
 
             <Typography fontSize={'16px'} color={'rgba(0,0,0,0.7)'} letterSpacing={'0.5px'}>
-              You have {packsAvailable} unclaimed starter packs.
+              You have {unclaimedBeasts.length} unclaimed starter packs.
             </Typography>
           </Box>
 
@@ -90,7 +121,7 @@ function ClaimStarterPack(props) {
 
                           {potion.name === 'revive potion' && <Tooltip title={<Box sx={{ background: '#616161', padding: '8px 12px', borderRadius: '4px' }}>
                             <Typography color='white'>
-                              Potions required to revive a beast depends on how many times you have revived it. Max 16 potions.
+                              Potions required to revive a beast depends on how many times you have revived it. Up to 16 potions.
                             </Typography>
                           </Box>}>
                             <InfoIcon htmlColor='black' sx={{ fontSize: '13px', ml: '2px', mb: '-2px' }} />
@@ -106,7 +137,7 @@ function ClaimStarterPack(props) {
                       x
                     </Typography>
                     <Typography variant='h2' letterSpacing={'1px'}>
-                      {packsAvailable * potion.packAmount}
+                      {unclaimedBeasts.length * potion.packAmount}
                     </Typography>
                   </Box>
                 </Box>
@@ -115,7 +146,7 @@ function ClaimStarterPack(props) {
           </Box>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-            <BuyConsumablesButton disabled={claimInProgress || packsAvailable === 0} onClick={claimAll}>
+            <BuyConsumablesButton disabled={claimInProgress || unclaimedBeasts.length === 0} onClick={claimAll}>
               {claimInProgress
                 ? <Box display={'flex'} alignItems={'baseline'}>
                   <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>
@@ -123,7 +154,7 @@ function ClaimStarterPack(props) {
                   </Typography>
                   <div className='dotLoader white' />
                 </Box>
-                : 'Claim All'
+                : unclaimedBeasts.length > 150 ? 'Claim 150' : 'Claim All'
               }
             </BuyConsumablesButton>
           </Box>

@@ -404,6 +404,7 @@ export const GameProvider = ({ children }) => {
         actions: {
           attack: attackSummit,
           feed: feedBeast,
+          fetchLiveStats,
           resetState,
         },
 
@@ -448,7 +449,7 @@ export const GameProvider = ({ children }) => {
           feedingInProgress,
           userRanks,
           selectedItem,
-          leaderboard
+          leaderboard,
         }
       }}
     >
