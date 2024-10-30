@@ -1,16 +1,12 @@
-import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import LogoutIcon from '@mui/icons-material/Logout';
-import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material'
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
-import ChooseWallet from './dialogs/ConnectWallet'
-import { ellipseAddress } from '../helpers/utilities'
-import { useAccount, useConnect, useDisconnect } from '@starknet-react/core'
-import { useContext } from 'react'
-import { GameContext } from '../contexts/gameContext'
-import { useStarkProfile } from '@starknet-react/core'
-import { useState } from 'react';
-import { useEffect } from 'react';
+import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
+import { useAccount, useConnect, useDisconnect, useStarkProfile } from '@starknet-react/core';
+import { useContext, useEffect, useState } from 'react';
+import { GameContext } from '../contexts/gameContext';
+import { ellipseAddress } from '../helpers/utilities';
 import ClaimStarterPack from './dialogs/ClaimStarterPack';
+import ChooseWallet from './dialogs/ConnectWallet';
 
 const ProfileCard = () => {
   const game = useContext(GameContext)
@@ -24,6 +20,8 @@ const ProfileCard = () => {
   const [accountDialog, openAccountDialog] = useState(false)
   const [walletName, setWalletName] = useState('')
   const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false)
+
+  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit)
 
   useEffect(() => {
     async function controllerName() {
@@ -107,13 +105,13 @@ const ProfileCard = () => {
         </Box>
       </Box>
 
-      <Box sx={{ width: '100%', borderTop: '1px solid rgba(0, 0, 0, 1)', pt: 1, textAlign: 'center' }}>
+      {unclaimedBeasts.length > 0 && <Box sx={{ width: '100%', borderTop: '1px solid rgba(0, 0, 0, 1)', pt: 1, textAlign: 'center' }}>
         <Typography letterSpacing={'0.5px'}>
           Beast Starter Pack
         </Typography>
 
         <Typography color='rgba(0,0,0,0.5)' fontSize={'13px'} mt={'-4px'} letterSpacing={'0.5px'}>
-          393 available
+          {unclaimedBeasts.length} available
         </Typography>
 
         <Button variant='contained' sx={{ borderRadius: '4px', width: '100px', height: '26px', my: '4px' }} className='button-glow' onClick={() => setClaimStarterPackDialog(true)}>
@@ -121,7 +119,7 @@ const ProfileCard = () => {
             Claim
           </Typography>
         </Button>
-      </Box>
+      </Box>}
 
       <ClaimStarterPack open={claimStarterPackDialog} close={() => setClaimStarterPackDialog(false)} />
     </Box>

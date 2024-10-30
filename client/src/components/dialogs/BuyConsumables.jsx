@@ -176,7 +176,7 @@ function BuyConsumables(props) {
 
                           {potion.name === 'revive potion' && <Tooltip title={<Box sx={{ background: '#616161', padding: '8px 12px', borderRadius: '4px' }}>
                             <Typography color='white'>
-                              Potions required to revive a beast depends on how many times you have revived it. Max 16 potions.
+                              Potions required to revive a beast depends on how many times you have revived it. Up to 16 potions.
                             </Typography>
                           </Box>}>
                             <InfoIcon htmlColor='black' sx={{ fontSize: '13px', ml: '2px', mb: '-2px' }} />

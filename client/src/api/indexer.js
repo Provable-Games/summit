@@ -5,7 +5,7 @@ const GRAPH_URL = import.meta.env.VITE_PUBLIC_TORII_GRAPHQL
 export async function queryLeaderboard() {
   const document = gql`
   {
-    savageSummitBeastRewardsModels(where:{order:{field:REWARDS_EARNED, direction:DESC}, limit:5) {
+    savageSummitBeastRewardsModels(order:{field:REWARDS_EARNED, direction:DESC}, limit:5) {
       edges {
         node {
           beast_token_id
@@ -16,7 +16,7 @@ export async function queryLeaderboard() {
   }
   `
 
-  const res = await request(dojoConfig.toriiUrl, document);
+  const res = await request(GRAPH_URL, document);
 
   return res?.savageSummitBeastRewardsModels?.edges.map(edge => edge.node) || [];
 }
@@ -96,16 +96,14 @@ export async function fetchBeastLiveData(tokenIds) {
           bonus_xp
           num_deaths
           attack_streak
+          attack_potions
+          revival_count
+          extra_lives
+          has_claimed_starter_kit
         }
       }
     }
   }`
-
-  // rewards_earned
-  // attack_potions
-  // revival_count
-  // extra_lives
-  // has_claimed_starter_kit
 
   try {
     const res = await request(GRAPH_URL, document)
@@ -119,7 +117,7 @@ export async function fetchBeastLiveData(tokenIds) {
       return {
         ...stat,
         id: stat.token_id,
-        isDead: hoursSinceDeath < 23,
+        isDead: (hoursSinceDeath < 23 && stat.current_health === 0),
         deadAt: lastDeathTimestamp
       }
     })

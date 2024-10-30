@@ -1,8 +1,8 @@
 {
   "world": {
     "kind": "WorldContract",
-    "class_hash": "0x6f4515274ee23404789c3351a77107d0ec07508530119822046600ca6948d6e",
-    "original_class_hash": "0x6f4515274ee23404789c3351a77107d0ec07508530119822046600ca6948d6e",
+    "class_hash": "0x6f38d5d9507c5d9546290e1a27e309efe5a9af3770b6cc1627db4a1b90a7dce",
+    "original_class_hash": "0x6f38d5d9507c5d9546290e1a27e309efe5a9af3770b6cc1627db4a1b90a7dce",
     "abi": [
       {
         "type": "impl",
@@ -1234,10 +1234,10 @@
         ]
       }
     ],
-    "address": "0x7d27b3fb263c94dd5c8fc142a9a1a574b77799946cea9521a8e98cc0ba2a076",
-    "transaction_hash": "0x64c0bb5c4f41ec46bc831f2836a2dcbe820d29502f3cac2b08860076b557a4b",
+    "address": "0x27806969fa61287954fc7ea1bc2aea8c042222dea5fc7d6698d42b3ab27c8c7",
+    "transaction_hash": "0x4a81400632bfb9c39397d184048031d5f3de71a0bd9cf624fc8d8e972254db0",
     "block_number": null,
-    "seed": "summit",
+    "seed": "summit_dev",
     "metadata": {
       "profile_name": "prod",
       "rpc_url": "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_7/nY2Exo6EOH2Pvtylz1dAgzJ9UxWx7MLn"
@@ -1255,9 +1255,9 @@
   "contracts": [
     {
       "kind": "DojoContract",
-      "address": "0x254994078cfb2c8fb87fa1de583f20cc4aefa405bb13dec08f4655f7c220753",
-      "class_hash": "0x177a725ab132d9edea6dba5270efbc40de91088f0e0f2b397cfecf0bab1c08",
-      "original_class_hash": "0x177a725ab132d9edea6dba5270efbc40de91088f0e0f2b397cfecf0bab1c08",
+      "address": "0x6ebd6267dfe3e5965a0414b0e24d678e9baa5b679f232eef145ff2d8832400e",
+      "class_hash": "0x658c299a662c95478218daa9b5839e0219fef3129f59a5784e2921b7e5c42aa",
+      "original_class_hash": "0x658c299a662c95478218daa9b5839e0219fef3129f59a5784e2921b7e5c42aa",
       "base_class_hash": "0x2427dd10a58850ac9a5ca6ce04b7771b05330fd18f2e481831ad903b969e6b2",
       "abi": [
         {
@@ -1289,7 +1289,7 @@
           "items": [
             {
               "type": "function",
-              "name": "contract_name",
+              "name": "name",
               "inputs": [],
               "outputs": [
                 {
@@ -1409,6 +1409,24 @@
             {
               "name": "snapshot",
               "type": "@core::array::Array::<core::integer::u64>"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "savage_summit::models::consumable::ConsumableType",
+          "variants": [
+            {
+              "name": "Revive",
+              "type": "()"
+            },
+            {
+              "name": "Attack",
+              "type": "()"
+            },
+            {
+              "name": "ExtraLife",
+              "type": "()"
             }
           ]
         },
@@ -1539,6 +1557,20 @@
           ]
         },
         {
+          "type": "enum",
+          "name": "core::bool",
+          "variants": [
+            {
+              "name": "False",
+              "type": "()"
+            },
+            {
+              "name": "True",
+              "type": "()"
+            }
+          ]
+        },
+        {
           "type": "struct",
           "name": "savage_summit::models::beast_stats::LiveBeastStats",
           "members": [
@@ -1573,6 +1605,22 @@
             {
               "name": "last_killed_by",
               "type": "core::integer::u32"
+            },
+            {
+              "name": "attack_potions",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "revival_count",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "extra_lives",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "has_claimed_starter_kit",
+              "type": "core::bool"
             }
           ]
         },
@@ -1639,6 +1687,66 @@
                 {
                   "name": "adventurer_ids",
                   "type": "core::array::Span::<core::integer::u64>"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "apply_consumable",
+              "inputs": [
+                {
+                  "name": "beast_token_id",
+                  "type": "core::integer::u32"
+                },
+                {
+                  "name": "consumable",
+                  "type": "savage_summit::models::consumable::ConsumableType"
+                },
+                {
+                  "name": "amount",
+                  "type": "core::integer::u8"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "set_consumable_address",
+              "inputs": [
+                {
+                  "name": "consumable",
+                  "type": "savage_summit::models::consumable::ConsumableType"
+                },
+                {
+                  "name": "address",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "set_reward_address",
+              "inputs": [
+                {
+                  "name": "address",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "claim_starter_kit",
+              "inputs": [
+                {
+                  "name": "beast_token_ids",
+                  "type": "core::array::Span::<core::integer::u32>"
                 }
               ],
               "outputs": [],
@@ -1749,6 +1857,33 @@
                 }
               ],
               "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "get_consumable_address",
+              "inputs": [
+                {
+                  "name": "consumable",
+                  "type": "savage_summit::models::consumable::ConsumableType"
+                }
+              ],
+              "outputs": [
+                {
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "get_reward_address",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "state_mutability": "view"
             }
           ]
         },
@@ -1833,16 +1968,22 @@
       "reads": [],
       "writes": [
         "savage_summit-LiveBeastStats",
-        "savage_summit-ConsumableDetails",
+        "savage_summit-BeastRewards",
         "savage_summit-Summit",
         "savage_summit-SummitHistory",
-        "savage_summit-AdventurerConsumed"
+        "savage_summit-SummitReward",
+        "savage_summit-AdventurerConsumed",
+        "savage_summit-Consumable"
       ],
       "init_calldata": [],
       "tag": "savage_summit-summit_systems",
       "systems": [
         "attack",
-        "feed"
+        "feed",
+        "apply_consumable",
+        "set_consumable_address",
+        "set_reward_address",
+        "claim_starter_kit"
       ],
       "manifest_name": "savage_summit-summit_systems-237ab367"
     }
@@ -2294,8 +2435,8 @@
           "key": false
         }
       ],
-      "class_hash": "0xd33ee7b2d798f8d07b9e609aa6294dd537d149044345c57f88b9b4b5ea146",
-      "original_class_hash": "0xd33ee7b2d798f8d07b9e609aa6294dd537d149044345c57f88b9b4b5ea146",
+      "class_hash": "0x1d47af715cd191657b054cf6d63da312e949c136c989aa206973d4affcd617d",
+      "original_class_hash": "0x1d47af715cd191657b054cf6d63da312e949c136c989aa206973d4affcd617d",
       "abi": [
         {
           "type": "impl",
@@ -2769,6 +2910,20 @@
           ]
         },
         {
+          "type": "enum",
+          "name": "core::bool",
+          "variants": [
+            {
+              "name": "False",
+              "type": "()"
+            },
+            {
+              "name": "True",
+              "type": "()"
+            }
+          ]
+        },
+        {
           "type": "struct",
           "name": "savage_summit::models::beast_stats::LiveBeastStats",
           "members": [
@@ -2803,6 +2958,22 @@
             {
               "name": "last_killed_by",
               "type": "core::integer::u32"
+            },
+            {
+              "name": "attack_potions",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "revival_count",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "extra_lives",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "has_claimed_starter_kit",
+              "type": "core::bool"
             }
           ]
         },
@@ -3367,28 +3538,18 @@
       "kind": "DojoModel",
       "members": [
         {
-          "name": "id",
+          "name": "beast_token_id",
           "type": "u32",
           "key": true
         },
         {
-          "name": "name",
-          "type": "felt252",
-          "key": false
-        },
-        {
-          "name": "effect",
-          "type": "ConsumableType",
-          "key": false
-        },
-        {
-          "name": "amount",
-          "type": "u16",
+          "name": "rewards_earned",
+          "type": "u64",
           "key": false
         }
       ],
-      "class_hash": "0x380169be87bdc5671d74dc722ceee5746f8b6b4cc4f18897063c4fa0df90d43",
-      "original_class_hash": "0x380169be87bdc5671d74dc722ceee5746f8b6b4cc4f18897063c4fa0df90d43",
+      "class_hash": "0x49377d72a28c5b88275d7050a4745621571098c2c01a5acda5281a64df980e4",
+      "original_class_hash": "0x49377d72a28c5b88275d7050a4745621571098c2c01a5acda5281a64df980e4",
       "abi": [
         {
           "type": "impl",
@@ -3754,56 +3915,26 @@
         },
         {
           "type": "impl",
-          "name": "consumable_detailsImpl",
-          "interface_name": "savage_summit::models::consumable::Iconsumable_details"
-        },
-        {
-          "type": "enum",
-          "name": "savage_summit::models::consumable::ConsumableType",
-          "variants": [
-            {
-              "name": "Health",
-              "type": "()"
-            },
-            {
-              "name": "Attack",
-              "type": "()"
-            },
-            {
-              "name": "Armor",
-              "type": "()"
-            },
-            {
-              "name": "Revive",
-              "type": "()"
-            }
-          ]
+          "name": "beast_rewardsImpl",
+          "interface_name": "savage_summit::models::beast_stats::Ibeast_rewards"
         },
         {
           "type": "struct",
-          "name": "savage_summit::models::consumable::ConsumableDetails",
+          "name": "savage_summit::models::beast_stats::BeastRewards",
           "members": [
             {
-              "name": "id",
+              "name": "beast_token_id",
               "type": "core::integer::u32"
             },
             {
-              "name": "name",
-              "type": "core::felt252"
-            },
-            {
-              "name": "effect",
-              "type": "savage_summit::models::consumable::ConsumableType"
-            },
-            {
-              "name": "amount",
-              "type": "core::integer::u16"
+              "name": "rewards_earned",
+              "type": "core::integer::u64"
             }
           ]
         },
         {
           "type": "interface",
-          "name": "savage_summit::models::consumable::Iconsumable_details",
+          "name": "savage_summit::models::beast_stats::Ibeast_rewards",
           "items": [
             {
               "type": "function",
@@ -3811,7 +3942,7 @@
               "inputs": [
                 {
                   "name": "model",
-                  "type": "savage_summit::models::consumable::ConsumableDetails"
+                  "type": "savage_summit::models::beast_stats::BeastRewards"
                 }
               ],
               "outputs": [],
@@ -3821,14 +3952,459 @@
         },
         {
           "type": "event",
-          "name": "savage_summit::models::consumable::consumable_details::Event",
+          "name": "savage_summit::models::beast_stats::beast_rewards::Event",
           "kind": "enum",
           "variants": []
         }
       ],
-      "tag": "savage_summit-ConsumableDetails",
-      "qualified_path": "savage_summit::models::consumable::consumable_details",
-      "manifest_name": "savage_summit-ConsumableDetails-77c83828"
+      "tag": "savage_summit-BeastRewards",
+      "qualified_path": "savage_summit::models::beast_stats::beast_rewards",
+      "manifest_name": "savage_summit-BeastRewards-2d2982ec"
+    },
+    {
+      "kind": "DojoModel",
+      "members": [
+        {
+          "name": "consumable",
+          "type": "ConsumableType",
+          "key": true
+        },
+        {
+          "name": "address",
+          "type": "ContractAddress",
+          "key": false
+        }
+      ],
+      "class_hash": "0x7c9fd7df84d032abb159e12b3d14c2d374faddd6d4db586ce8c50c88870f1e9",
+      "original_class_hash": "0x7c9fd7df84d032abb159e12b3d14c2d374faddd6d4db586ce8c50c88870f1e9",
+      "abi": [
+        {
+          "type": "impl",
+          "name": "DojoModelImpl",
+          "interface_name": "dojo::model::model::IModel"
+        },
+        {
+          "type": "struct",
+          "name": "core::byte_array::ByteArray",
+          "members": [
+            {
+              "name": "data",
+              "type": "core::array::Array::<core::bytes_31::bytes31>"
+            },
+            {
+              "name": "pending_word",
+              "type": "core::felt252"
+            },
+            {
+              "name": "pending_word_len",
+              "type": "core::integer::u32"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::option::Option::<core::integer::u32>",
+          "variants": [
+            {
+              "name": "Some",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "None",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<core::integer::u8>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<core::integer::u8>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "dojo::model::layout::FieldLayout",
+          "members": [
+            {
+              "name": "selector",
+              "type": "core::felt252"
+            },
+            {
+              "name": "layout",
+              "type": "dojo::model::layout::Layout"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<dojo::model::layout::FieldLayout>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<dojo::model::layout::FieldLayout>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<dojo::model::layout::Layout>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<dojo::model::layout::Layout>"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "dojo::model::layout::Layout",
+          "variants": [
+            {
+              "name": "Fixed",
+              "type": "core::array::Span::<core::integer::u8>"
+            },
+            {
+              "name": "Struct",
+              "type": "core::array::Span::<dojo::model::layout::FieldLayout>"
+            },
+            {
+              "name": "Tuple",
+              "type": "core::array::Span::<dojo::model::layout::Layout>"
+            },
+            {
+              "name": "Array",
+              "type": "core::array::Span::<dojo::model::layout::Layout>"
+            },
+            {
+              "name": "ByteArray",
+              "type": "()"
+            },
+            {
+              "name": "Enum",
+              "type": "core::array::Span::<dojo::model::layout::FieldLayout>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<core::felt252>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<core::felt252>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "dojo::model::introspect::Member",
+          "members": [
+            {
+              "name": "name",
+              "type": "core::felt252"
+            },
+            {
+              "name": "attrs",
+              "type": "core::array::Span::<core::felt252>"
+            },
+            {
+              "name": "ty",
+              "type": "dojo::model::introspect::Ty"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<dojo::model::introspect::Member>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<dojo::model::introspect::Member>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "dojo::model::introspect::Struct",
+          "members": [
+            {
+              "name": "name",
+              "type": "core::felt252"
+            },
+            {
+              "name": "attrs",
+              "type": "core::array::Span::<core::felt252>"
+            },
+            {
+              "name": "children",
+              "type": "core::array::Span::<dojo::model::introspect::Member>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<(core::felt252, dojo::model::introspect::Ty)>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<(core::felt252, dojo::model::introspect::Ty)>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "dojo::model::introspect::Enum",
+          "members": [
+            {
+              "name": "name",
+              "type": "core::felt252"
+            },
+            {
+              "name": "attrs",
+              "type": "core::array::Span::<core::felt252>"
+            },
+            {
+              "name": "children",
+              "type": "core::array::Span::<(core::felt252, dojo::model::introspect::Ty)>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<dojo::model::introspect::Ty>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<dojo::model::introspect::Ty>"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "dojo::model::introspect::Ty",
+          "variants": [
+            {
+              "name": "Primitive",
+              "type": "core::felt252"
+            },
+            {
+              "name": "Struct",
+              "type": "dojo::model::introspect::Struct"
+            },
+            {
+              "name": "Enum",
+              "type": "dojo::model::introspect::Enum"
+            },
+            {
+              "name": "Tuple",
+              "type": "core::array::Span::<dojo::model::introspect::Ty>"
+            },
+            {
+              "name": "Array",
+              "type": "core::array::Span::<dojo::model::introspect::Ty>"
+            },
+            {
+              "name": "ByteArray",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "interface",
+          "name": "dojo::model::model::IModel",
+          "items": [
+            {
+              "type": "function",
+              "name": "name",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::byte_array::ByteArray"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "namespace",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::byte_array::ByteArray"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "tag",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::byte_array::ByteArray"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "version",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::integer::u8"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "selector",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::felt252"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "name_hash",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::felt252"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "namespace_hash",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::felt252"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "unpacked_size",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::option::Option::<core::integer::u32>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "packed_size",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::option::Option::<core::integer::u32>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "layout",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "dojo::model::layout::Layout"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "schema",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "dojo::model::introspect::Ty"
+                }
+              ],
+              "state_mutability": "view"
+            }
+          ]
+        },
+        {
+          "type": "impl",
+          "name": "consumableImpl",
+          "interface_name": "savage_summit::models::consumable::Iconsumable"
+        },
+        {
+          "type": "enum",
+          "name": "savage_summit::models::consumable::ConsumableType",
+          "variants": [
+            {
+              "name": "Revive",
+              "type": "()"
+            },
+            {
+              "name": "Attack",
+              "type": "()"
+            },
+            {
+              "name": "ExtraLife",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "savage_summit::models::consumable::Consumable",
+          "members": [
+            {
+              "name": "consumable",
+              "type": "savage_summit::models::consumable::ConsumableType"
+            },
+            {
+              "name": "address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ]
+        },
+        {
+          "type": "interface",
+          "name": "savage_summit::models::consumable::Iconsumable",
+          "items": [
+            {
+              "type": "function",
+              "name": "ensure_abi",
+              "inputs": [
+                {
+                  "name": "model",
+                  "type": "savage_summit::models::consumable::Consumable"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "view"
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "name": "savage_summit::models::consumable::consumable::Event",
+          "kind": "enum",
+          "variants": []
+        }
+      ],
+      "tag": "savage_summit-Consumable",
+      "qualified_path": "savage_summit::models::consumable::consumable",
+      "manifest_name": "savage_summit-Consumable-6d35ac82"
     },
     {
       "kind": "DojoModel",
@@ -3872,10 +4448,30 @@
           "name": "last_killed_by",
           "type": "u32",
           "key": false
+        },
+        {
+          "name": "attack_potions",
+          "type": "u8",
+          "key": false
+        },
+        {
+          "name": "revival_count",
+          "type": "u8",
+          "key": false
+        },
+        {
+          "name": "extra_lives",
+          "type": "u8",
+          "key": false
+        },
+        {
+          "name": "has_claimed_starter_kit",
+          "type": "bool",
+          "key": false
         }
       ],
-      "class_hash": "0x73027a3348ed323d585ba274be7fe444d5f310eebf44cb29aebc918b7a4b073",
-      "original_class_hash": "0x73027a3348ed323d585ba274be7fe444d5f310eebf44cb29aebc918b7a4b073",
+      "class_hash": "0x3ac5248437e45808d6a38ce21dc95c40cf4000ec7592e52c14475510211e91f",
+      "original_class_hash": "0x3ac5248437e45808d6a38ce21dc95c40cf4000ec7592e52c14475510211e91f",
       "abi": [
         {
           "type": "impl",
@@ -4245,6 +4841,20 @@
           "interface_name": "savage_summit::models::beast_stats::Ilive_beast_stats"
         },
         {
+          "type": "enum",
+          "name": "core::bool",
+          "variants": [
+            {
+              "name": "False",
+              "type": "()"
+            },
+            {
+              "name": "True",
+              "type": "()"
+            }
+          ]
+        },
+        {
           "type": "struct",
           "name": "savage_summit::models::beast_stats::LiveBeastStats",
           "members": [
@@ -4279,6 +4889,22 @@
             {
               "name": "last_killed_by",
               "type": "core::integer::u32"
+            },
+            {
+              "name": "attack_potions",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "revival_count",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "extra_lives",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "has_claimed_starter_kit",
+              "type": "core::bool"
             }
           ]
         },
@@ -5618,6 +6244,433 @@
       "tag": "savage_summit-SummitHistory",
       "qualified_path": "savage_summit::models::summit::summit_history",
       "manifest_name": "savage_summit-SummitHistory-b317749a"
+    },
+    {
+      "kind": "DojoModel",
+      "members": [
+        {
+          "name": "summit_id",
+          "type": "u8",
+          "key": true
+        },
+        {
+          "name": "address",
+          "type": "ContractAddress",
+          "key": false
+        }
+      ],
+      "class_hash": "0x4bf1a8f16f09087e186d37a37301de8b3cb417945a71d58a41f1a198ea9fed9",
+      "original_class_hash": "0x4bf1a8f16f09087e186d37a37301de8b3cb417945a71d58a41f1a198ea9fed9",
+      "abi": [
+        {
+          "type": "impl",
+          "name": "DojoModelImpl",
+          "interface_name": "dojo::model::model::IModel"
+        },
+        {
+          "type": "struct",
+          "name": "core::byte_array::ByteArray",
+          "members": [
+            {
+              "name": "data",
+              "type": "core::array::Array::<core::bytes_31::bytes31>"
+            },
+            {
+              "name": "pending_word",
+              "type": "core::felt252"
+            },
+            {
+              "name": "pending_word_len",
+              "type": "core::integer::u32"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "core::option::Option::<core::integer::u32>",
+          "variants": [
+            {
+              "name": "Some",
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "None",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<core::integer::u8>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<core::integer::u8>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "dojo::model::layout::FieldLayout",
+          "members": [
+            {
+              "name": "selector",
+              "type": "core::felt252"
+            },
+            {
+              "name": "layout",
+              "type": "dojo::model::layout::Layout"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<dojo::model::layout::FieldLayout>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<dojo::model::layout::FieldLayout>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<dojo::model::layout::Layout>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<dojo::model::layout::Layout>"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "dojo::model::layout::Layout",
+          "variants": [
+            {
+              "name": "Fixed",
+              "type": "core::array::Span::<core::integer::u8>"
+            },
+            {
+              "name": "Struct",
+              "type": "core::array::Span::<dojo::model::layout::FieldLayout>"
+            },
+            {
+              "name": "Tuple",
+              "type": "core::array::Span::<dojo::model::layout::Layout>"
+            },
+            {
+              "name": "Array",
+              "type": "core::array::Span::<dojo::model::layout::Layout>"
+            },
+            {
+              "name": "ByteArray",
+              "type": "()"
+            },
+            {
+              "name": "Enum",
+              "type": "core::array::Span::<dojo::model::layout::FieldLayout>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<core::felt252>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<core::felt252>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "dojo::model::introspect::Member",
+          "members": [
+            {
+              "name": "name",
+              "type": "core::felt252"
+            },
+            {
+              "name": "attrs",
+              "type": "core::array::Span::<core::felt252>"
+            },
+            {
+              "name": "ty",
+              "type": "dojo::model::introspect::Ty"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<dojo::model::introspect::Member>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<dojo::model::introspect::Member>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "dojo::model::introspect::Struct",
+          "members": [
+            {
+              "name": "name",
+              "type": "core::felt252"
+            },
+            {
+              "name": "attrs",
+              "type": "core::array::Span::<core::felt252>"
+            },
+            {
+              "name": "children",
+              "type": "core::array::Span::<dojo::model::introspect::Member>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<(core::felt252, dojo::model::introspect::Ty)>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<(core::felt252, dojo::model::introspect::Ty)>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "dojo::model::introspect::Enum",
+          "members": [
+            {
+              "name": "name",
+              "type": "core::felt252"
+            },
+            {
+              "name": "attrs",
+              "type": "core::array::Span::<core::felt252>"
+            },
+            {
+              "name": "children",
+              "type": "core::array::Span::<(core::felt252, dojo::model::introspect::Ty)>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "core::array::Span::<dojo::model::introspect::Ty>",
+          "members": [
+            {
+              "name": "snapshot",
+              "type": "@core::array::Array::<dojo::model::introspect::Ty>"
+            }
+          ]
+        },
+        {
+          "type": "enum",
+          "name": "dojo::model::introspect::Ty",
+          "variants": [
+            {
+              "name": "Primitive",
+              "type": "core::felt252"
+            },
+            {
+              "name": "Struct",
+              "type": "dojo::model::introspect::Struct"
+            },
+            {
+              "name": "Enum",
+              "type": "dojo::model::introspect::Enum"
+            },
+            {
+              "name": "Tuple",
+              "type": "core::array::Span::<dojo::model::introspect::Ty>"
+            },
+            {
+              "name": "Array",
+              "type": "core::array::Span::<dojo::model::introspect::Ty>"
+            },
+            {
+              "name": "ByteArray",
+              "type": "()"
+            }
+          ]
+        },
+        {
+          "type": "interface",
+          "name": "dojo::model::model::IModel",
+          "items": [
+            {
+              "type": "function",
+              "name": "name",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::byte_array::ByteArray"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "namespace",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::byte_array::ByteArray"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "tag",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::byte_array::ByteArray"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "version",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::integer::u8"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "selector",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::felt252"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "name_hash",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::felt252"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "namespace_hash",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::felt252"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "unpacked_size",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::option::Option::<core::integer::u32>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "packed_size",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::option::Option::<core::integer::u32>"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "layout",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "dojo::model::layout::Layout"
+                }
+              ],
+              "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "schema",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "dojo::model::introspect::Ty"
+                }
+              ],
+              "state_mutability": "view"
+            }
+          ]
+        },
+        {
+          "type": "impl",
+          "name": "summit_rewardImpl",
+          "interface_name": "savage_summit::models::summit::Isummit_reward"
+        },
+        {
+          "type": "struct",
+          "name": "savage_summit::models::summit::SummitReward",
+          "members": [
+            {
+              "name": "summit_id",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            }
+          ]
+        },
+        {
+          "type": "interface",
+          "name": "savage_summit::models::summit::Isummit_reward",
+          "items": [
+            {
+              "type": "function",
+              "name": "ensure_abi",
+              "inputs": [
+                {
+                  "name": "model",
+                  "type": "savage_summit::models::summit::SummitReward"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "view"
+            }
+          ]
+        },
+        {
+          "type": "event",
+          "name": "savage_summit::models::summit::summit_reward::Event",
+          "kind": "enum",
+          "variants": []
+        }
+      ],
+      "tag": "savage_summit-SummitReward",
+      "qualified_path": "savage_summit::models::summit::summit_reward",
+      "manifest_name": "savage_summit-SummitReward-92bcd614"
     }
   ]
 }

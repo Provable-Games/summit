@@ -8,6 +8,8 @@ import { DojoContext } from '../../contexts/dojoContext';
 import { GameContext } from '../../contexts/gameContext';
 import { calculateBattleResult, fetchBeastImage } from '../../helpers/beasts';
 import { AttackButton } from '../../helpers/styles';
+import { dojoConfig } from '../../../dojoConfig';
+import { getContractByName } from '@dojoengine/core';
 
 function ApplyAttackPotion(props) {
   const dojo = useContext(DojoContext)
@@ -26,14 +28,18 @@ function ApplyAttackPotion(props) {
     setApplyingConsumable(true)
 
     try {
-      const success = true
-      // const success = await dojo.executeTx([
-      //   {
-      //     contractName: "summit_systems",
-      //     entrypoint: "apply_consumable",
-      //     calldata: [beast.id, 1, amount]
-      //   }
-      // ])
+      const success = await dojo.executeTx([
+        {
+          contractAddress: import.meta.env.VITE_PUBLIC_ATTACK_ERC20_ADDRESS,
+          entrypoint: "approve",
+          calldata: [getContractByName(dojoConfig.manifest, "savage_summit", "summit_systems")?.address, amount * 1e18, "0"]
+        },
+        {
+          contractName: "summit_systems",
+          entrypoint: "apply_consumable",
+          calldata: [beast.id, "0x1", amount]
+        }
+      ])
 
       if (success) {
         game.setState.beasts(prev => prev.map(_beast => ({

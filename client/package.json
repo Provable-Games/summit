@@ -12,10 +12,9 @@
   "dependencies": {
     "@argent/starknet-react-webwallet-connector": "^6.6.0",
     "@cartridge/connector": "^0.3.44",
-    "@dojoengine/core": "1.0.0-alpha.12",
-    "@dojoengine/create-burner": "1.0.0-alpha.12",
+    "@dojoengine/core": "1.0.0-alpha.25",
     "@dojoengine/recs": "^2.0.13",
-    "@dojoengine/torii-client": "1.0.0-alpha.12",
+    "@dojoengine/torii-client": "1.0.0-alpha.25",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@fontsource/roboto": "^4.5.8",
