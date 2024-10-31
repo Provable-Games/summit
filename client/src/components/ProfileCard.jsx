@@ -77,7 +77,7 @@ const ProfileCard = () => {
 
       <Box display={'flex'} width={'100%'}>
         <Box sx={styles.infoSection} borderRight={'1px solid rgba(0, 0, 0, 1)'} pr={1}>
-          <Typography sx={{ fontSize: '13px', letterSpacing: '0.5px' }}>Summit</Typography>
+          <Typography sx={{ fontSize: '13px', letterSpacing: '0.5px' }}>$Reward</Typography>
 
           <Box display={'flex'} alignItems={'start'} gap={'2px'} mt={'-3px'}>
             <Typography variant='h2' mb={'2px'}>
