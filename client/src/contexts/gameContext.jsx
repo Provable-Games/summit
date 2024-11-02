@@ -251,7 +251,7 @@ export const GameProvider = ({ children }) => {
 
     selected.map(id => {
       let beast = collection.find(beast => beast.id === id);
-      totalDamage += beast.capture ? summit.current_health : beast.damage
+      totalDamage += beast.damage
     })
 
     setTotalDamage(totalDamage)
@@ -277,6 +277,10 @@ export const GameProvider = ({ children }) => {
     fetchLeaderboard()
   }, [summit.id])
 
+
+  useEffect(() => {
+    setBeastCollection()
+  }, [summit.extra_lives, summit.current_health])
 
   useEffect(() => {
     if (selectedItem === 'deadAdventurer' && selected.length > 0) {
@@ -316,7 +320,6 @@ export const GameProvider = ({ children }) => {
                 setCollection(prev => prev.map(beast => ({
                   ...beast,
                   current_health: beast.id === beastId ? current_health : beast.current_health,
-                  extra_lives: beast.id === beastId ? extra_lives : beast.extra_lives
                 })))
               }
             }

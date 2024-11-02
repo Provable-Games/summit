@@ -76,7 +76,8 @@ export const calculateBattleResult = (beast, summit, potions = 0) => {
           beastDamage,
           summitDamage,
           elemental,
-          power: beastPower
+          power: beastPower,
+          damage: totalBeastDamage
         }
       }
     }

@@ -10,10 +10,13 @@ import SummitReward from './SummitReward'
 import AttackAnimation from './animations/AttackAnimation'
 import { useStarkProfile } from '@starknet-react/core'
 import heart from '../assets/images/heart.png';
+import sword from '../assets/images/sword.png';
+import skull from '../assets/images/skull.png';
+import explosion from '../assets/images/explosion.png';
 
 function Summit() {
   const game = useContext(GameContext)
-  const { summitAnimations, summit, attackAnimations, attackInProgress } = game.getState
+  const { collection, summitAnimations, summit, attackAnimations, attackInProgress, totalDamage, selectedBeasts } = game.getState
 
   const controls = useAnimationControls()
   const { data: profile } = useStarkProfile({ address: summit.owner });
@@ -55,6 +58,27 @@ function Summit() {
       game.setState.summitAnimations(prev => prev.slice(1))
     }
   }, [summitAnimations, attackAnimations, attackInProgress])
+
+  const beast = collection.find(beast => beast.id === selectedBeasts[0])
+  const isSavage = Boolean(collection.find(beast => beast.id === summit.id))
+  const showAttack = !isSavage && !attackInProgress && selectedBeasts.length > 0 && beast?.current_health > 0 && totalDamage > 0
+  const summitHealthRemaining = summit.current_health + (summit.extra_lives * (summit.health + summit.bonus_health))
+
+  const calculateExtraLifeLoss = () => {
+    let loss = 0
+    let damageRemaining = totalDamage
+
+    if (damageRemaining < summit.current_health) {
+      return loss
+    }
+
+    loss = 1
+    damageRemaining -= summit.current_health
+
+    loss += Math.floor(damageRemaining / (summit.health + summit.bonus_health))
+
+    return Math.min(loss, summit.extra_lives)
+  }
 
   return (
     <Box sx={styles.beastSummit}>
@@ -108,7 +132,7 @@ function Summit() {
 
         <motion.img
           key={summit.id}
-          style={{ zIndex: 1, height: '200px', marginTop: '-10px' }}
+          style={{ zIndex: 1, height: '200px', marginTop: '-10px', opacity: showAttack ? 0.6 : 1 }}
           src={fetchBeastImage(summit.name)} alt=''
           animate={controls}
         />
@@ -121,6 +145,30 @@ function Summit() {
           <AttackAnimation key={attackingBeast.id} attackingBeast={attackingBeast} onEnd={removeAttackAnimation} delay={i} />
         ))}
 
+        {showAttack && <>
+          <Box sx={styles.damageText} component={motion.div} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+            <Typography variant='h2'>
+              -{totalDamage}
+            </Typography>
+
+            <img src={sword} alt='' height={'18px'} />
+          </Box>
+
+          <Box sx={styles.monsterDmgIcon} component={motion.div} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+            {totalDamage < summitHealthRemaining
+              ? <img src={explosion} alt='' height={'60px'} />
+              : <img src={skull} alt='' height={'60px'} />
+            }
+          </Box>
+
+          {calculateExtraLifeLoss() > 0 && <Box sx={styles.extraLifeLoss} component={motion.div} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+            <Typography variant='h5'>
+              -{calculateExtraLifeLoss()}
+            </Typography>
+
+            <img src={heart} alt='' height={'12px'} />
+          </Box>}
+        </>}
       </motion.div>
 
     </Box>
@@ -173,6 +221,31 @@ const styles = {
     top: 0,
     right: '6px',
     height: '16px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px'
+  },
+  damageText: {
+    position: 'absolute',
+    zIndex: 100,
+    right: 0,
+    top: '100px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px'
+  },
+  monsterDmgIcon: {
+    position: 'absolute',
+    width: '100px',
+    left: '145px',
+    top: '130px',
+    zIndex: 98
+  },
+  extraLifeLoss: {
+    position: 'absolute',
+    zIndex: 100,
+    right: '5px',
+    top: '20px',
     display: 'flex',
     alignItems: 'center',
     gap: '2px'

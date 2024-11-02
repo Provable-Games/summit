@@ -28,6 +28,8 @@ function ActionBar(props) {
   const enableExtraLifePotion = selectedBeasts.length === 1 && walletBalances.extraLifePotions > 0 && beast?.current_health > 0
   const enableFeedingGround = selectedBeasts.length === 1 && adventurerCollection.length > 0
 
+  const summitHealthRemaining = summit.current_health + (summit.extra_lives * (summit.health + summit.bonus_health))
+
   if (showFeedingGround) {
     return <Box sx={styles.container}>
 
@@ -71,19 +73,11 @@ function ActionBar(props) {
               <div className='dotLoader white' />
             </Box>
 
-            : totalDamage < summit.current_health
+            : totalDamage < summitHealthRemaining
               ? <Box sx={{ display: 'flex', gap: 1.5 }}>
                 <Typography color={!enableAttack ? 'rgba(0, 0, 0, 0.26)' : 'white'} variant='h4'>
                   Attack
                 </Typography>
-
-                {totalDamage > 0 && <Box display={'flex'} gap={'3px'} alignItems={'center'}>
-                  <img src={sword} alt='' height={'15px'} />
-
-                  <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'white'} variant='h4'>
-                    {totalDamage}
-                  </Typography>
-                </Box>}
               </Box>
               : <Typography color={!enableAttack ? 'rgba(0, 0, 0, 0.26)' : 'white'} variant='h4'>
                 TAKE SUMMIT
