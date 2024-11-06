@@ -1,21 +1,24 @@
 [package]
-cairo-version = "=2.7.0"
+cairo-version = "=2.8.4"
 name = "savage_summit"
-version = "0.2.0"
+version = "1.0.0-rc.1"
 
 [cairo]
 sierra-replace-ids = true
 
 [dependencies]
-dojo = { git = "https://github.com/dojoengine/dojo", tag = "v1.0.0-alpha.17" }
+dojo = { git = "https://github.com/dojoengine/dojo", tag = "v1.0.0-rc.1" }
 openzeppelin_token = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v0.15.1" }
 combat = { git = "https://github.com/Provable-Games/loot-survivor.git", branch = "feat/savage-summit-support" }
 game = { git = "https://github.com/Provable-Games/loot-survivor.git", branch = "feat/savage-summit-support" }
 pixel_beasts = { git = "https://github.com/leetship/beasts.git" }
 
+[[target.starknet-contract]]
+build-external-contracts = ["dojo::world::world_contract::world"]
+
 [dev-dependencies]
 openzeppelin_test_common = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v0.15.1" }
 openzeppelin_testing = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v0.15.1" }
+dojo_cairo_test = { git = "https://github.com/dojoengine/dojo", tag = "v1.0.0-rc.1" }
 
-[[target.dojo]]
 [profile.prod]

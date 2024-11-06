@@ -56,6 +56,12 @@ export const GameProvider = ({ children }) => {
     savage: 0
   })
 
+  const [potionsApplied, applyPotions] = useState({
+    revive: 0,
+    attack: 0,
+    extraLife: 0
+  })
+
   const [potionPrices, setPotionPrices] = useState({
     revive: 0,
     attack: 0,
@@ -95,7 +101,7 @@ export const GameProvider = ({ children }) => {
       let summitBeastDetails = await getBeastDetails(summitBeastId)
       let summitLiveStats = (await fetchBeastLiveData([summitBeastId]))[0]
       let summitHistory = await fetchSummitHistory(summitBeastId)
-
+      console.log(summitLiveStats)
       let takenAt = parseInt((summitHistory?.taken_at || 0), 16);
       summitBeast = { ...summitBeastDetails, ...summitLiveStats, current_health: summitLiveStats?.current_health || summitBeastDetails.health, takenAt }
     }
@@ -126,6 +132,18 @@ export const GameProvider = ({ children }) => {
     setToriiClient(client);
   };
 
+  const updateBattleResult = () => {
+    let beasts = collection.map((beast) => {
+      const attackPotions = selected.length > 0 ? selected[0] === beast.id ? potionsApplied.attack : 0 : potionsApplied.attack
+      return {
+        ...beast,
+        ...calculateBattleResult(beast, summit, attackPotions),
+      }
+    })
+
+    setCollection(beasts)
+  }
+
   const setBeastCollection = () => {
     let beasts = [...ownedBeasts].map((beast) => {
       let liveStat = liveBeastStats?.find(s => s.id === beast.id) ?? {}
@@ -146,9 +164,10 @@ export const GameProvider = ({ children }) => {
       beast.level = Math.floor(Math.sqrt(totalXp))
       beast.totalXp = totalXp
 
+      const attackPotions = selected.length > 0 ? selected[0] === beast.id ? potionsApplied.attack : 0 : potionsApplied.attack
       return {
         ...beast,
-        ...calculateBattleResult(beast, summit, liveStat?.attack_potions || 0),
+        ...calculateBattleResult(beast, summit, attackPotions),
         ...liveStat
       }
     }).sort((a, b) => {
@@ -277,17 +296,32 @@ export const GameProvider = ({ children }) => {
     fetchLeaderboard()
   }, [summit.id])
 
-
   useEffect(() => {
     setBeastCollection()
   }, [summit.extra_lives, summit.current_health])
 
   useEffect(() => {
-    if (selectedItem === 'deadAdventurer' && selected.length > 0) {
-      setShowFeedingGround(true)
-      setSelectedItem(null)
+    if (selected.length > 0) {
+      updateBattleResult()
+    } else {
+      setBeastCollection()
     }
-  }, [selectedItem, selected])
+  }, [selected, potionsApplied.attack])
+
+  useEffect(() => {
+    const totalRevivePotionsApplied = selected.reduce((sum, id) => {
+      const beast = collection.find(beast => beast.id === id);
+      if (beast.current_health === 0) {
+        return sum + beast.revival_count + 1;
+      }
+      return sum;
+    }, 0);
+
+    applyPotions(prev => ({
+      ...prev,
+      revive: totalRevivePotionsApplied
+    }));
+  }, [selected])
 
   useEffect(() => {
     setupToriiClient();
@@ -425,7 +459,8 @@ export const GameProvider = ({ children }) => {
           attackInProgress: setAttackInProgress,
           feedInProgress: setFeedingInProgress,
           selectedItem: setSelectedItem,
-          walletBalances: setWalletBalances
+          walletBalances: setWalletBalances,
+          applyPotions: applyPotions
         },
 
         getState: {
@@ -453,6 +488,7 @@ export const GameProvider = ({ children }) => {
           userRanks,
           selectedItem,
           leaderboard,
+          potionsApplied
         }
       }}
     >

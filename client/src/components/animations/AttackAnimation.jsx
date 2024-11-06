@@ -69,7 +69,7 @@ function AttackAnimation(props) {
       game.setState.beasts(prev => prev.map(beast => ({
         ...beast,
         current_health: beast.id === attackingBeast.id ? 0 : beast.current_health,
-        deadAt: Date.now()
+        deadAt: beast.id === attackingBeast.id ? Date.now() : beast.deadAt,
       })))
     }
 

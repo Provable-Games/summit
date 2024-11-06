@@ -47,21 +47,6 @@ function BeastCollection() {
       </Typography>
     }
 
-    if (beast.current_health === 0) {
-      return <Typography lineHeight={'10px'} letterSpacing={'0.5px'} color={'rgba(0, 0, 0, 0.6)'}>
-        {(() => {
-          const timeLeft = (beast.deadAt + 23 * 3600 * 1000 - Date.now()) / 1000;
-          const hours = Math.floor(timeLeft / 3600);
-
-          if (hours > 0) {
-            return `Revives in ${hours}h`;
-          } else {
-            return `Revives in ${Math.floor((timeLeft % 3600) / 60)}m`;
-          }
-        })()}
-      </Typography>
-    }
-
     if (beast.capture) {
       return <Box display={'flex'} alignItems={'center'} gap={'2px'}>
         <img src={health} alt='' height={'13px'} />
@@ -206,9 +191,25 @@ function BeastCollection() {
                 <HealthBar variant="determinate" value={normaliseHealth(current_health, beast.health)} />
 
                 <Box sx={[styles.healthText, extraLives > 0 && { left: '7px', transform: 'none' }]}>
-                  <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
-                    {current_health}
-                  </Typography>
+
+                  {current_health === 0
+                    ? <Typography lineHeight={'17px'} letterSpacing={'0.5px'} color={'white'} sx={{ fontSize: '13px', textWrap: 'nowrap', opacity: 0.8 }}>
+                      {(() => {
+                        const timeLeft = (beast.deadAt + 23 * 3600 * 1000 - Date.now()) / 1000;
+                        const hours = Math.floor(timeLeft / 3600);
+
+                        if (hours > 0) {
+                          return `Revives in ${hours}h`;
+                        } else {
+                          return `Revives in ${Math.floor((timeLeft % 3600) / 60)}m`;
+                        }
+                      })()}
+                    </Typography>
+
+                    : <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
+                      {current_health}
+                    </Typography>}
+
                 </Box>
 
                 {extraLives > 0 && <Box sx={styles.extraLife}>

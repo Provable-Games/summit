@@ -32,3 +32,7 @@ mod errors {
     const NOT_ENOUGH_CONSUMABLES: felt252 = 'not enough consumables';
     const POTION_NOT_ALLOWED_ON_SUMMIT: felt252 = 'Potion not allowed on summit';
 }
+
+fn DEFAULT_NS() -> @ByteArray {
+    @"savage_summit"
+}

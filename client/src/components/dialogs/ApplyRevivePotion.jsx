@@ -42,7 +42,7 @@ function ApplyRevivePotion(props) {
       ])
 
       if (success) {
-        let newBeast = { ...beast, revival_count: Math.min(beast.revival_count + 1, 16), current_health: beast.health }
+        let newBeast = { ...beast, revival_count: Math.min(beast.revival_count + 1, 15), current_health: beast.health }
         const newBattleResult = calculateBattleResult(newBeast, summit, 0)
 
         game.setState.beasts(prev => prev.map(_beast => ({

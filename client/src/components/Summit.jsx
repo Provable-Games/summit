@@ -62,6 +62,7 @@ function Summit() {
   const beast = collection.find(beast => beast.id === selectedBeasts[0])
   const isSavage = Boolean(collection.find(beast => beast.id === summit.id))
   const showAttack = !isSavage && !attackInProgress && selectedBeasts.length > 0 && beast?.current_health > 0 && totalDamage > 0
+  console.log(summit)
   const summitHealthRemaining = summit.current_health + (summit.extra_lives * (summit.health + summit.bonus_health))
 
   const calculateExtraLifeLoss = () => {

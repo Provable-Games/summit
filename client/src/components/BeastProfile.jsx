@@ -46,7 +46,7 @@ export default function BeastProfile({ beast }) {
               Level
             </Typography>
             <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              {beast.level}{beast.level !== beast.originalLevel ? `(${beast.originalLevel})` : ''}
+              {beast.originalLevel}
             </Typography>
           </Box>
 

@@ -16,7 +16,7 @@ impl ImplBeastDetails of IBeastDetails {
     fn get_beast_details(id: u8) -> BeastDetails {
         // TODO: Create constants or reuse constants from beasts contract
         if id == 1 {
-            GET_WARLOCK()
+            BeastDetails { name: 'Warlock', elemental: Type::Magic_or_Cloth, tier: Tier::T1, }
         } else if id == 2 {
             GET_TYPHON()
         } else if id == 3 {
