@@ -17,9 +17,7 @@ trait ISummitSystem<T> {
 
     fn feed(ref self: T, beast_token_id: u32, adventurer_ids: Span<u64>);
 
-    fn set_consumable_address(
-        ref self: T, consumable: ConsumableType, address: ContractAddress
-    );
+    fn set_consumable_address(ref self: T, consumable: ConsumableType, address: ContractAddress);
     fn set_reward_address(ref self: T, address: ContractAddress);
     fn claim_starter_kit(ref self: T, beast_token_ids: Span<u32>);
 
@@ -57,11 +55,16 @@ pub mod summit_systems {
     use savage_summit::models::adventurer::{Adventurer, AdventurerConsumed};
     use savage_summit::models::beast::{Beast, ImplBeast};
     use savage_summit::models::beast_details::{BeastDetails, ImplBeastDetails};
-    use savage_summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats, BeastRewards};
+    use savage_summit::models::beast_stats::{
+        BeastStats, FixedBeastStats, LiveBeastStats, BeastRewards
+    };
     use savage_summit::models::consumable::{Consumable, ConsumableType};
     use savage_summit::models::summit::{Summit, SummitHistory, SummitReward};
     use savage_summit::utils;
-    use savage_summit::erc20::interface::{ConsumableERC20Dispatcher, ConsumableERC20DispatcherTrait, RewardERC20Dispatcher, RewardERC20DispatcherTrait};
+    use savage_summit::erc20::interface::{
+        ConsumableERC20Dispatcher, ConsumableERC20DispatcherTrait, RewardERC20Dispatcher,
+        RewardERC20DispatcherTrait
+    };
     use starknet::{
         ContractAddress, get_caller_address, get_tx_info, get_block_timestamp, get_contract_address,
         contract_address_const
@@ -79,7 +82,7 @@ pub mod summit_systems {
         ) {
             let mut world = self.world(DEFAULT_NS());
             // assert the provided defending beast is the summit beast
-            let summit_beast_token_id = self._get_summit_beast_token_id();
+            let summit_beast_token_id = InternalSummitImpl::_get_summit_beast_token_id(world);
             assert(defending_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
 
             // assert consumable amounts
@@ -89,13 +92,15 @@ pub mod summit_systems {
             if summit_beast_token_id == 0 {
                 let new_summit_beast_token_id = *attacking_beast_token_ids.at(0);
                 // initialize summit history for the new beast
-                self._init_summit_history(new_summit_beast_token_id);
+                InternalSummitImpl::_init_summit_history(ref world, new_summit_beast_token_id);
 
                 // set the new summit beast
-                self._set_summit_beast(new_summit_beast_token_id);
+                InternalSummitImpl::_set_summit_beast(ref world, new_summit_beast_token_id);
 
                 // set live stats
-                let mut attacking_beast = self._get_beast(new_summit_beast_token_id);
+                let mut attacking_beast = InternalSummitImpl::_get_beast(
+                    world, new_summit_beast_token_id
+                );
                 attacking_beast
                     .stats
                     .live
@@ -111,7 +116,7 @@ pub mod summit_systems {
                 return;
             }
 
-            let mut defending_beast = self._get_beast(summit_beast_token_id);
+            let mut defending_beast = InternalSummitImpl::_get_beast(world, summit_beast_token_id);
 
             let mut remaining_attack_potions = attack_potions;
             let mut remaining_revival_potions = revival_potions;
@@ -120,16 +125,22 @@ pub mod summit_systems {
                 let attacking_beast_token_id = *attacking_beast_token_ids.at(i);
 
                 // assert the caller owns the beast they attacking with
-                self._assert_beast_ownership(attacking_beast_token_id);
+                InternalSummitImpl::_assert_beast_ownership(attacking_beast_token_id);
 
                 // assert not attacking own beast
-                self._assert_not_attacking_own_beast(attacking_beast_token_id);
+                InternalSummitImpl::_assert_not_attacking_own_beast(
+                    world, attacking_beast_token_id
+                );
 
                 // get stats for the beast that is attacking
-                let mut attacking_beast = self._get_beast(attacking_beast_token_id);
+                let mut attacking_beast = InternalSummitImpl::_get_beast(
+                    world, attacking_beast_token_id
+                );
 
                 // assert the attacking beast is alive
-                self._use_revival_potions(ref attacking_beast, ref remaining_revival_potions);
+                InternalSummitImpl::_use_revival_potions(
+                    ref attacking_beast, ref remaining_revival_potions
+                );
 
                 // reset health to starting health plus any bonus health they have accrued
                 // @dev beasts attack till death so we don't need any additional logic
@@ -152,7 +163,7 @@ pub mod summit_systems {
 
                 // loop until the attacking beast is dead or the summit beast is dead
                 loop {
-                    self._use_extra_life(ref defending_beast);
+                    InternalSummitImpl::_use_extra_life(ref defending_beast);
 
                     // if either beast is dead, break
                     if attacking_beast.stats.live.current_health == 0
@@ -161,12 +172,16 @@ pub mod summit_systems {
                     }
 
                     // attack the summit beast
-                    let (_, defender_died) = self._attack(attacking_beast, ref defending_beast, remaining_attack_potions);
+                    let (_, defender_died) = InternalSummitImpl::_attack(
+                        ref world, attacking_beast, ref defending_beast, remaining_attack_potions
+                    );
 
                     // if the defending beast is still alive
                     if !defender_died {
                         // it counter attacks
-                        self._attack(defending_beast, ref attacking_beast, 0);
+                        InternalSummitImpl::_attack(
+                            ref world, defending_beast, ref attacking_beast, 0
+                        );
                     }
                 };
 
@@ -177,7 +192,7 @@ pub mod summit_systems {
                 }
 
                 // check if max xp is reached
-                if self._beast_can_get_xp(attacking_beast) {
+                if InternalSummitImpl::_beast_can_get_xp(attacking_beast) {
                     attacking_beast.stats.live.bonus_xp += 10
                         + attacking_beast.stats.live.attack_streak.into();
                 }
@@ -205,14 +220,16 @@ pub mod summit_systems {
                     defending_beast.stats.live.last_death_timestamp = get_block_timestamp();
 
                     // initialize summit history for the new beast
-                    InternalSummitImpl::_init_summit_history(attacking_beast_token_id);
+                    InternalSummitImpl::_init_summit_history(ref world, attacking_beast_token_id);
 
                     // set the new summit beast
                     InternalSummitImpl::_set_summit_beast(ref world, attacking_beast_token_id);
 
                     // Apply extra life potions
                     attacking_beast.stats.live.extra_lives = extra_life_potions;
-                    InternalSummitImpl::_burn_consumable(ConsumableType::ExtraLife, extra_life_potions);
+                    InternalSummitImpl::_burn_consumable(
+                        world, ConsumableType::ExtraLife, extra_life_potions
+                    );
 
                     // update the live stats of the attacking beast
                     world.write_model(@attacking_beast.stats.live);
@@ -227,17 +244,17 @@ pub mod summit_systems {
 
             // Burn consumables
             assert(remaining_revival_potions == 0, 'Unused revival potions');
-            InternalSummitImpl::_burn_consumable(ConsumableType::Revive, revival_potions);
-            InternalSummitImpl::_burn_consumable(ConsumableType::Attack, attack_potions);
+            InternalSummitImpl::_burn_consumable(world, ConsumableType::Revive, revival_potions);
+            InternalSummitImpl::_burn_consumable(world, ConsumableType::Attack, attack_potions);
         }
 
         fn feed(ref self: ContractState, beast_token_id: u32, adventurer_ids: Span<u64>) {
-            let world = self.world(DEFAULT_NS());
+            let mut world = self.world(DEFAULT_NS());
 
             // assert the caller owns the beast they are feeding
             InternalSummitImpl::_assert_beast_ownership(beast_token_id);
 
-            let mut beast = InternalSummitImpl::_get_beast(beast_token_id);
+            let mut beast = InternalSummitImpl::_get_beast(world, beast_token_id);
 
             let summit_beast_token_id = InternalSummitImpl::_get_summit_beast_token_id(world);
 
@@ -247,7 +264,9 @@ pub mod summit_systems {
                 let adventurer = InternalSummitImpl::_get_adventurer(adventurer_id);
 
                 InternalSummitImpl::_assert_adventurer_ownership(adventurer_id);
-                InternalSummitImpl::_assert_beast_can_consume(beast, adventurer_id, adventurer);
+                InternalSummitImpl::_assert_beast_can_consume(
+                    world, beast, adventurer_id, adventurer
+                );
 
                 beast.stats.live.bonus_health += adventurer.level.into();
                 if (beast.stats.live.bonus_health > BEAST_MAX_BONUS_HEALTH) {
@@ -268,40 +287,62 @@ pub mod summit_systems {
         fn set_consumable_address(
             ref self: ContractState, consumable: ConsumableType, address: ContractAddress
         ) {
-            let world = self.world(DEFAULT_NS());
-            assert(world.is_owner(self.selector().into(), get_caller_address()), 'Not Owner');
+            let mut world = self.world(DEFAULT_NS());
+            assert(
+                world
+                    .dispatcher
+                    .is_owner(
+                        selector_from_tag!("savage_summit-summit_systems"), get_caller_address()
+                    ),
+                'Not Owner'
+            );
 
             let consumable_model: Consumable = world.read_model(consumable);
             assert(
-                consumable_model.address == contract_address_const::<0x0>(),
-                'Address already set'
+                consumable_model.address == contract_address_const::<0x0>(), 'Address already set'
             );
             world.write_model(@Consumable { consumable, address });
         }
 
         fn set_reward_address(ref self: ContractState, address: ContractAddress) {
-            let world = self.world(DEFAULT_NS());
-            assert(world.is_owner(self.selector().into(), get_caller_address()), 'Not Owner');
+            let mut world = self.world(DEFAULT_NS());
+            assert(
+                world
+                    .dispatcher
+                    .is_owner(
+                        selector_from_tag!("savage_summit-summit_systems"), get_caller_address()
+                    ),
+                'Not Owner'
+            );
 
             let mut summit_reward: SummitReward = world.read_model(1);
-            assert(
-                summit_reward.address == contract_address_const::<0x0>(),
-                'Address already set'
-            );
+            assert(summit_reward.address == contract_address_const::<0x0>(), 'Address already set');
             summit_reward.address = address;
             world.write_model(@summit_reward);
         }
 
         fn claim_starter_kit(ref self: ContractState, beast_token_ids: Span<u32>) {
-            let world = self.world(DEFAULT_NS());
+            let mut world = self.world(DEFAULT_NS());
 
             let mut unclaimed_revive_potions = array![];
             let mut unclaimed_attack_potions = array![];
             let mut unclaimed_extra_life_potions = array![];
 
-            let revive_dispatcher = ConsumableERC20Dispatcher { contract_address: InternalSummitImpl::_get_consumable_address(ConsumableType::Revive) };
-            let attack_dispatcher = ConsumableERC20Dispatcher { contract_address: InternalSummitImpl::_get_consumable_address(ConsumableType::Attack) };
-            let extra_life_dispatcher = ConsumableERC20Dispatcher { contract_address: InternalSummitImpl::_get_consumable_address(ConsumableType::ExtraLife) };
+            let revive_dispatcher = ConsumableERC20Dispatcher {
+                contract_address: InternalSummitImpl::_get_consumable_address(
+                    world, ConsumableType::Revive
+                )
+            };
+            let attack_dispatcher = ConsumableERC20Dispatcher {
+                contract_address: InternalSummitImpl::_get_consumable_address(
+                    world, ConsumableType::Attack
+                )
+            };
+            let extra_life_dispatcher = ConsumableERC20Dispatcher {
+                contract_address: InternalSummitImpl::_get_consumable_address(
+                    world, ConsumableType::ExtraLife
+                )
+            };
 
             let mut i = 0;
             while (i < beast_token_ids.len()) {
@@ -329,15 +370,20 @@ pub mod summit_systems {
             };
 
             if unclaimed_revive_potions.len() > 0 {
-                revive_dispatcher.claim_starter_kits_for_owner(get_caller_address(), unclaimed_revive_potions);
+                revive_dispatcher
+                    .claim_starter_kits_for_owner(get_caller_address(), unclaimed_revive_potions);
             }
 
             if unclaimed_attack_potions.len() > 0 {
-                attack_dispatcher.claim_starter_kits_for_owner(get_caller_address(), unclaimed_attack_potions);
+                attack_dispatcher
+                    .claim_starter_kits_for_owner(get_caller_address(), unclaimed_attack_potions);
             }
 
             if unclaimed_extra_life_potions.len() > 0 {
-                extra_life_dispatcher.claim_starter_kits_for_owner(get_caller_address(), unclaimed_extra_life_potions);
+                extra_life_dispatcher
+                    .claim_starter_kits_for_owner(
+                        get_caller_address(), unclaimed_extra_life_potions
+                    );
             }
         }
 
@@ -346,23 +392,24 @@ pub mod summit_systems {
         }
 
         fn get_summit_beast(self: @ContractState) -> Beast {
-            let token_id = InternalSummitImpl::_get_summit_beast_token_id(self.world(DEFAULT_NS()));
-            InternalSummitImpl::_get_beast(token_id)
+            let world = self.world(DEFAULT_NS());
+            let token_id = InternalSummitImpl::_get_summit_beast_token_id(world);
+            InternalSummitImpl::_get_beast(world, token_id)
         }
 
-        fn get_summit_history(
-            self: @ContractState, beast_id: u32, lost_at: u64
-        ) -> SummitHistory {
-            let mut summit_history: SummitHistory = self.world(DEFAULT_NS()).read_model((beast_id, lost_at));
+        fn get_summit_history(self: @ContractState, beast_id: u32, lost_at: u64) -> SummitHistory {
+            let mut summit_history: SummitHistory = self
+                .world(DEFAULT_NS())
+                .read_model((beast_id, lost_at));
             summit_history
         }
 
         fn get_beast(self: @ContractState, id: u32) -> Beast {
-            InternalSummitImpl::_get_beast(id)
+            InternalSummitImpl::_get_beast(self.world(DEFAULT_NS()), id)
         }
 
         fn get_beast_stats(self: @ContractState, id: u32) -> BeastStats {
-            InternalSummitImpl::_get_beast_stats(id)
+            InternalSummitImpl::_get_beast_stats(self.world(DEFAULT_NS()), id)
         }
 
         fn get_beast_stats_live(self: @ContractState, id: u32) -> LiveBeastStats {
@@ -377,7 +424,7 @@ pub mod summit_systems {
         fn get_consumable_address(
             self: @ContractState, consumable: ConsumableType
         ) -> ContractAddress {
-            InternalSummitImpl::_get_consumable_address(consumable)
+            InternalSummitImpl::_get_consumable_address(self.world(DEFAULT_NS()), consumable)
         }
 
         fn get_reward_address(self: @ContractState) -> ContractAddress {
@@ -388,7 +435,7 @@ pub mod summit_systems {
 
     #[generate_trait]
     pub impl InternalSummitImpl of InternalSummitUtils {
-        fn _get_summit_beast_token_id(ref world: WorldStorage) -> u32 {
+        fn _get_summit_beast_token_id(world: WorldStorage) -> u32 {
             let summit: Summit = world.read_model(1);
             summit.beast_token_id
         }
@@ -397,8 +444,8 @@ pub mod summit_systems {
         /// @notice this function is used to get a beast from the contract
         /// @param token_id the id of the beast
         /// @return Beast the beast
-        fn _get_beast(token_id: u32) -> Beast {
-            let stats = Self::_get_beast_stats(token_id);
+        fn _get_beast(world: WorldStorage, token_id: u32) -> Beast {
+            let stats = Self::_get_beast_stats(world, token_id);
             let details = ImplBeastDetails::get_beast_details(stats.fixed.beast_id);
             Beast { token_id, details, stats }
         }
@@ -407,9 +454,9 @@ pub mod summit_systems {
         /// @notice this function is used to get the stats of a beast
         /// @param token_id the id of the beast
         /// @return BeastStats the stats of the beast
-        fn _get_beast_stats(token_id: u32) -> BeastStats {
+        fn _get_beast_stats(world: WorldStorage, token_id: u32) -> BeastStats {
             let fixed = Self::_get_beast_fixed_stats(token_id);
-            let live = Self::_get_beast_stats_live(token_id);
+            let live: LiveBeastStats = world.read_model(token_id);
             BeastStats { fixed, live }
         }
 
@@ -476,9 +523,12 @@ pub mod summit_systems {
         /// @notice this function is used to create a new summit history for a beast
         /// @param token_id the id of the beast that is taking the summits
         fn _init_summit_history(ref world: WorldStorage, token_id: u32) {
-            world.write_model(@SummitHistory {
-                    id: token_id, lost_at: 0, taken_at: get_block_timestamp(), rewards: 0
-            });
+            world
+                .write_model(
+                    @SummitHistory {
+                        id: token_id, lost_at: 0, taken_at: get_block_timestamp(), rewards: 0
+                    }
+                );
         }
 
         /// @title set_summit_beast
@@ -537,9 +587,14 @@ pub mod summit_systems {
 
         fn _burn_consumable(world: WorldStorage, consumable: ConsumableType, amount: u8) {
             if amount > 0 {
-                let dispatcher = ConsumableERC20Dispatcher { contract_address: Self::_get_consumable_address(world, consumable) };
+                let dispatcher = ConsumableERC20Dispatcher {
+                    contract_address: Self::_get_consumable_address(world, consumable)
+                };
                 let amount_with_decimals: u256 = amount.into() * 1000000000000000000;
-                dispatcher.transfer_from(get_caller_address(), get_contract_address(), amount_with_decimals);
+                dispatcher
+                    .transfer_from(
+                        get_caller_address(), get_contract_address(), amount_with_decimals
+                    );
                 dispatcher.burn(amount_with_decimals);
             }
         }
@@ -547,8 +602,8 @@ pub mod summit_systems {
         /// @title assert_adventurer_ownership
         /// @notice this function is used to assert that the caller is the owner of an adventurer
         /// @param token_id the id of the adventurer
-        fn _assert_adventurer_ownership(self: @ContractState, token_id: u64) {
-            let owner = self._get_owner_of_adventurer(token_id);
+        fn _assert_adventurer_ownership(token_id: u64) {
+            let owner = Self::_get_owner_of_adventurer(token_id);
             assert(owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
         }
 
@@ -556,7 +611,7 @@ pub mod summit_systems {
         /// @notice this function is used to get the owner of am adventurer
         /// @param token_id the id of the adventurer
         /// @return ContractAddress the owner of the adventurer
-        fn _get_owner_of_adventurer(self: @ContractState, token_id: u64) -> ContractAddress {
+        fn _get_owner_of_adventurer(token_id: u64) -> ContractAddress {
             let contract_address = utils::ADVENTURER_ADDRESS_MAINNET();
             let erc721_dispatcher = IERC721Dispatcher { contract_address };
             erc721_dispatcher.owner_of(token_id.into())
@@ -565,8 +620,8 @@ pub mod summit_systems {
         /// @title assert_beast_ownership
         /// @notice this function is used to assert that the caller is the owner of a beast
         /// @param token_id the id of the beast
-        fn _assert_beast_ownership(self: @ContractState, token_id: u32) {
-            let owner = self._get_owner_of_beast(token_id);
+        fn _assert_beast_ownership(token_id: u32) {
+            let owner = Self::_get_owner_of_beast(token_id);
             assert(owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
         }
 
@@ -574,7 +629,7 @@ pub mod summit_systems {
         /// @notice this function is used to get the owner of a beast
         /// @param token_id the id of the beast
         /// @return ContractAddress the owner of the beast
-        fn _get_owner_of_beast(self: @ContractState, token_id: u32) -> ContractAddress {
+        fn _get_owner_of_beast(token_id: u32) -> ContractAddress {
             let contract_address = utils::get_beast_address(get_tx_info().unbox().chain_id);
             let erc721_dispatcher = IERC721Dispatcher { contract_address };
             erc721_dispatcher.owner_of(token_id.into())
@@ -583,23 +638,23 @@ pub mod summit_systems {
         /// @title assert_not_attacking_own_beast
         /// @notice this function is used to assert that a beast is not attacking its own beast
         /// @param attacking_beast_token_id the id of the beast that is attacking
-        fn _assert_not_attacking_own_beast(self: @ContractState, attacking_beast_token_id: u32) {
-            let summit = self.world(DEFAULT_NS()).read_model(1);
-            let summit_owner = self._get_owner_of_beast(summit.beast_token_id);
-            let attacking_owner = self._get_owner_of_beast(attacking_beast_token_id);
+        fn _assert_not_attacking_own_beast(world: WorldStorage, attacking_beast_token_id: u32) {
+            let summit_beast_token_id = Self::_get_summit_beast_token_id(world);
+            let summit_owner = Self::_get_owner_of_beast(summit_beast_token_id);
+            let attacking_owner = Self::_get_owner_of_beast(attacking_beast_token_id);
             assert(attacking_owner != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
         }
 
         /// @title _use_revival_potions
         /// @notice this function is used to apply revival potions if needed
         /// @param live_beast_stats the stats of the beast to check
-        fn _use_revival_potions(self: @ContractState, ref beast: Beast, ref remaining_potions: u8) {
+        fn _use_revival_potions(ref beast: Beast, ref remaining_potions: u8) {
             let last_death_timestamp = beast.stats.live.last_death_timestamp;
             let current_time = get_block_timestamp();
             let time_since_death = current_time - last_death_timestamp;
 
             if time_since_death >= BASE_REVIVAL_TIME_SECONDS {
-                self._assert_beast_can_be_revived(beast, remaining_potions);
+                Self::_assert_beast_can_be_revived(beast, remaining_potions);
 
                 remaining_potions -= beast.stats.live.revival_count + 1;
 
@@ -616,7 +671,7 @@ pub mod summit_systems {
         /// @notice this function is used to check if a beast can get xp
         /// @param beast the beast to check
         /// @return bool true if the beast can get xp, false otherwise
-        fn _beast_can_get_xp(self: @ContractState, beast: Beast) -> bool {
+        fn _beast_can_get_xp(beast: Beast) -> bool {
             let base_xp = beast.stats.fixed.level * beast.stats.fixed.level;
             let max_xp = (beast.stats.fixed.level + BEAST_MAX_BONUS_LVLS)
                 * (beast.stats.fixed.level + BEAST_MAX_BONUS_LVLS);
@@ -629,7 +684,7 @@ pub mod summit_systems {
         /// @param beast the beast to check
         /// @param adventurer the adventurer to check
         fn _assert_beast_can_consume(
-            self: @ContractState, beast: Beast, adventurer_id: u64, adventurer: Adventurer
+            world: WorldStorage, beast: Beast, adventurer_id: u64, adventurer: Adventurer
         ) {
             assert(
                 beast.stats.live.bonus_health < BEAST_MAX_BONUS_HEALTH,
@@ -638,14 +693,11 @@ pub mod summit_systems {
             assert(adventurer.health == 0, errors::ADVENTURER_ALIVE);
             assert(adventurer.rank_at_death == 0, errors::ADVENTURER_RANKED);
 
-            let adventurer_consumed: AdventurerConsumed = self.world(DEFAULT_NS()).read_model((adventurer_id));
-            assert(
-                adventurer_consumed.beast_token_id == 0,
-                errors::ADVENTURER_ALREADY_CONSUMED
-            );
+            let adventurer_consumed: AdventurerConsumed = world.read_model((adventurer_id));
+            assert(adventurer_consumed.beast_token_id == 0, errors::ADVENTURER_ALREADY_CONSUMED);
         }
 
-        fn _assert_beast_can_be_revived(self: @ContractState, beast: Beast, potion_count: u8) {
+        fn _assert_beast_can_be_revived(beast: Beast, potion_count: u8) {
             assert(beast.stats.live.current_health == 0, errors::BEAST_ALIVE);
             assert(
                 potion_count >= beast.stats.live.revival_count + 1, errors::NOT_ENOUGH_CONSUMABLES
@@ -663,7 +715,7 @@ pub mod summit_systems {
             }
         }
 
-        fn _use_extra_life(self: @ContractState, ref beast: Beast) {
+        fn _use_extra_life(ref beast: Beast) {
             if beast.stats.live.current_health == 0 && beast.stats.live.extra_lives > 0 {
                 beast.stats.live.extra_lives -= 1;
                 beast.stats.live.current_health = beast.stats.fixed.starting_health.into()
