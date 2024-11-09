@@ -1,5 +1,5 @@
-use starknet::{ContractAddress, contract_address_const};
 use savage_summit::constants::{MAINNET_CHAIN_ID, SEPOLIA_CHAIN_ID, TESTING_CHAIN_ID};
+use starknet::{ContractAddress, contract_address_const};
 
 fn get_beast_address(chain_id: felt252) -> ContractAddress {
     if chain_id == SEPOLIA_CHAIN_ID {

@@ -49,7 +49,7 @@ export const Dojo = ({ children }) => {
       return true
     } catch (ex) {
       console.log(ex)
-      enqueueSnackbar(ex.issues ? ex.issues[0].message : 'Something went wrong', { variant: 'error', anchorOrigin: { vertical: 'bottom', horizontal: 'right' } })
+      enqueueSnackbar(ex.issues ? ex.issues[0].message : 'Something went wrong', { autoHideDuration: 2000, variant: 'error', anchorOrigin: { vertical: 'bottom', horizontal: 'right' } })
     }
   }
 

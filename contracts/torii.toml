@@ -1,0 +1,8 @@
+contracts = [
+  { type = "ERC721", address = "0x0158160018d590d93528995b340260e65aedd76d28a686e9daa5c4e8fad0c5dd" }, # beasts
+  { type = "ERC721", address = "0x018108b32cea514a78ef1b0e4a0753e855cdf620bc0565202c02456f618c4dc4" }, # adventurers
+  { type = "ERC20", address = "0x047529f4192903483e1ef90f13c8811ec1ec5fab7ef4ffb88dab5aa647293dec" }, # revive potion
+  { type = "ERC20", address = "0x03f7c3e970efc401e66e740eb5d93cde94044f95e087fa95eb1c96036a27f56e" }, # attack potion
+  { type = "ERC20", address = "0x073120980951bf1ca8aa9b5a1625ecf578e1ac0dad46ecf154fed23662c55356" }, # extra life potion
+  { type = "ERC20", address = "0x02980d687ebf7bf1318b2c1089d1fb753126751e620641ab21e2246f06852300" }, # reward token
+]

@@ -7,6 +7,7 @@ import { fetchAdventurerData, fetchBeastLiveData, fetchDeadBeastCount, fetchSumm
 import { getAdventurers, getBeastDetails, getBeastHolders, getBeasts, getERC20Balances, getTotalBeasts } from "../api/starknet";
 import { calculateBattleResult } from "../helpers/beasts";
 import { DojoContext } from "./dojoContext";
+import { getContractByName } from "@dojoengine/core";
 
 export const GameContext = createContext()
 
@@ -79,13 +80,26 @@ export const GameProvider = ({ children }) => {
     setAdventurersSelected([])
     setTotalDamage(0)
     setAdventurerCollection([])
+    setUserRanks({ beastRank: undefined, adventurerRank: undefined })
+    setWalletBalances({
+      revivePotions: 0,
+      attackPotions: 0,
+      extraLifePotions: 0,
+      savage: 0
+    })
+    applyPotions({
+      revive: 0,
+      attack: 0,
+      extraLife: 0
+    })
   }
 
   const syncGameData = async () => {
     fetchLeaderboard()
     // fetchPotionPrices()
+
+    countDeadBeasts()
     setTotalSupply(await getTotalBeasts() ?? 0)
-    setDeadBeastCount(await fetchDeadBeastCount() ?? 0)
 
     let summitBeastId = await fetchSummitBeastTokenId()
 
@@ -101,9 +115,9 @@ export const GameProvider = ({ children }) => {
       let summitBeastDetails = await getBeastDetails(summitBeastId)
       let summitLiveStats = (await fetchBeastLiveData([summitBeastId]))[0]
       let summitHistory = await fetchSummitHistory(summitBeastId)
-      console.log(summitLiveStats)
+
       let takenAt = parseInt((summitHistory?.taken_at || 0), 16);
-      summitBeast = { ...summitBeastDetails, ...summitLiveStats, current_health: summitLiveStats?.current_health || summitBeastDetails.health, takenAt }
+      summitBeast = { ...summitBeastDetails, ...summitLiveStats, takenAt }
     }
 
     if (ownedBeasts.some(beast => beast.id === summit.id)) {
@@ -146,21 +160,23 @@ export const GameProvider = ({ children }) => {
 
   const setBeastCollection = () => {
     let beasts = [...ownedBeasts].map((beast) => {
-      let liveStat = liveBeastStats?.find(s => s.id === beast.id) ?? {}
-
-      beast.originalHealth = beast.health
-      beast.health += liveStat?.bonus_health ?? 0
-
-      if (liveStat.isDead) {
-        liveStat.current_health = 0
-      } else {
-        liveStat.current_health = liveStat?.current_health > 0 ? liveStat?.current_health : beast.health
+      let liveStat = liveBeastStats?.find(s => s.id === beast.id) ?? {
+        bonus_health: 0,
+        bonus_xp: 0,
+        isDead: false,
+        attack_streak: 0,
+        revival_count: 0,
+        extra_lives: 0,
+        has_claimed_starter_kit: false
       }
-
+ 
+      beast.originalHealth = liveStat.starting_health || beast.health
+      beast.health = beast.originalHealth + liveStat.bonus_health
+      
       beast.originalLevel = beast.level
-      beast.current_health = liveStat.current_health
+      liveStat.current_health = liveStat.isDead ? 0 : liveStat.current_health || beast.health
 
-      let totalXp = Math.pow(beast.level, 2) + (liveStat?.bonus_xp || 0)
+      let totalXp = Math.pow(beast.level, 2) + liveStat.bonus_xp
       beast.level = Math.floor(Math.sqrt(totalXp))
       beast.totalXp = totalXp
 
@@ -175,24 +191,20 @@ export const GameProvider = ({ children }) => {
         return -1
       } else if (b.id === summit.id) {
         return 1
-      } else if (a.capture && !b.capture) {
-        return -1;
-      } else if (b.capture && !a.capture) {
-        return 1;
-      } else if (a.capture && b.capture) {
-        if (a.healthLeft !== b.healthLeft) {
-          return b.healthLeft - a.healthLeft
-        } else {
-          return b.power - a.power
-        }
-      } else if (a.damage !== b.damage) {
-        return b.damage - a.damage
-      } else {
+      } else if (a.elemental !== b.elemental) {
+        return b.elemental - a.elemental
+      } else if (b.power !== a.power) {
         return b.power - a.power
+      } else {
+        return b.health - a.health
       }
     })
 
     setCollection(beasts)
+  }
+
+  const countDeadBeasts = async () => {
+    setDeadBeastCount(await fetchDeadBeastCount() ?? 0)
   }
 
   const fetchLeaderboard = async () => {
@@ -297,16 +309,8 @@ export const GameProvider = ({ children }) => {
   }, [summit.id])
 
   useEffect(() => {
-    setBeastCollection()
-  }, [summit.extra_lives, summit.current_health])
-
-  useEffect(() => {
-    if (selected.length > 0) {
-      updateBattleResult()
-    } else {
-      setBeastCollection()
-    }
-  }, [selected, potionsApplied.attack])
+    updateBattleResult()
+  }, [selected, potionsApplied.attack, summit.extra_lives, summit.current_health])
 
   useEffect(() => {
     const totalRevivePotionsApplied = selected.reduce((sum, id) => {
@@ -354,8 +358,11 @@ export const GameProvider = ({ children }) => {
                 setCollection(prev => prev.map(beast => ({
                   ...beast,
                   current_health: beast.id === beastId ? current_health : beast.current_health,
+                  extra_lives: beast.id === beastId ? extra_lives : beast.extra_lives,
                 })))
               }
+
+              countDeadBeasts()
             }
           }
         }
@@ -388,22 +395,54 @@ export const GameProvider = ({ children }) => {
     try {
       setCollection(prev => prev.map(beast => ({
         ...beast,
-        totalXp: selected.includes(beast.id) ? beast.totalXp + 10 + (beast.attack_streak || 0) : beast.totalXp,
-        attack_streak: selected.includes(beast.id) ? (beast.attack_streak || 0) + 1 : beast.attack_streak
+        totalXp: selected.includes(beast.id) ? beast.totalXp + 10 + beast.attack_streak : beast.totalXp,
+        revival_count: selected.includes(beast.id) && beast.current_health === 0 ? Math.min(beast.revival_count + 1, 15) : beast.revival_count
       })))
 
       const success = await dojo.executeTx([
+        ...(potionsApplied.revive > 0 ? [{
+          contractAddress: import.meta.env.VITE_PUBLIC_REVIVE_ERC20_ADDRESS,
+          entrypoint: "approve",
+          calldata: [getContractByName(dojoConfig.manifest, "savage_summit", "summit_systems")?.address, potionsApplied.revive * 1e18, "0"]
+        }] : []),
+        ...(potionsApplied.attack > 0 ? [{
+          contractAddress: import.meta.env.VITE_PUBLIC_ATTACK_ERC20_ADDRESS,
+          entrypoint: "approve",
+          calldata: [getContractByName(dojoConfig.manifest, "savage_summit", "summit_systems")?.address, potionsApplied.attack * 1e18, "0"]
+        }] : []),
+        ...(potionsApplied.extraLife > 0 ? [{
+          contractAddress: import.meta.env.VITE_PUBLIC_EXTRA_LIFE_ERC20_ADDRESS,
+          entrypoint: "approve",
+          calldata: [getContractByName(dojoConfig.manifest, "savage_summit", "summit_systems")?.address, potionsApplied.extraLife * 1e18, "0"]
+        }] : []),
         {
           contractName: "summit_systems",
           entrypoint: "attack",
-          calldata: [summit.id, selected]
+          calldata: [summit.id, selected, potionsApplied.revive, potionsApplied.attack, potionsApplied.extraLife]
         }
       ])
 
       if (success) {
         let attackingBeasts = collection.filter(beast => selected.includes(beast.id))
         setAttackAnimations(attackingBeasts)
+        applyPotions({
+          revive: 0,
+          attack: 0,
+          extraLife: 0
+        })
+        setWalletBalances(prev => ({
+          ...prev,
+          revivePotions: prev.revivePotions - potionsApplied.revive,
+          attackPotions: prev.attackPotions - potionsApplied.attack,
+          extraLifePotions: prev.extraLifePotions - potionsApplied.extraLife
+        }))
         setSelected([])
+      } else {
+        setCollection(prev => prev.map(beast => ({
+          ...beast,
+          totalXp: selected.includes(beast.id) ? beast.totalXp - (10 + beast.attack_streak) : beast.totalXp,
+          revival_count: selected.includes(beast.id) && beast.current_health === 0 ? beast.revival_count - 1 : beast.revival_count
+        })))
       }
     } catch (ex) {
       console.log(ex)
@@ -460,7 +499,8 @@ export const GameProvider = ({ children }) => {
           feedInProgress: setFeedingInProgress,
           selectedItem: setSelectedItem,
           walletBalances: setWalletBalances,
-          applyPotions: applyPotions
+          applyPotions: applyPotions,
+          beastCollection: setBeastCollection
         },
 
         getState: {

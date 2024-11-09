@@ -1,5 +1,5 @@
-use combat::constants::CombatEnums::{Type, Tier};
 use combat::combat::ImplCombat;
+use combat::constants::CombatEnums::{Type, Tier};
 
 #[derive(Copy, Drop, Introspect, Serde)]
 #[dojo::model]
@@ -15,7 +15,7 @@ impl ImplBeastDetails of IBeastDetails {
     fn get_beast_details(id: u8) -> BeastDetails {
         // TODO: Create constants or reuse constants from beasts contract
         if id == 1 {
-            BeastDetails { name: 'Warlock', elemental: Type::Magic_or_Cloth, tier: Tier::T1, }
+            GET_WARLOCK()
         } else if id == 2 {
             GET_TYPHON()
         } else if id == 3 {

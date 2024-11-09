@@ -111,16 +111,16 @@ export const getBeastDetails = async (tokenId) => {
     acc[attr.trait_type] = isNaN(attr.value) ? attr.value : Number(attr.value);
     return acc;
   }, {});
- 
+
   let beastDetails = {
     id: Number(tokenId),
     owner: data.ownerAddress,
     ...attributesMap
   }
-  
+
   storedDetails[tokenId] = beastDetails
   localStorage.setItem('beastDetails', JSON.stringify(storedDetails))
- 
+
   return beastDetails
 }
 
@@ -240,10 +240,10 @@ export const getAdventurerDetails = async (tokenId) => {
     storedDetails[tokenId] = adventurer
     localStorage.setItem('adventurerDetails', JSON.stringify(storedDetails))
 
-    return adventurer || {}
+    return adventurer || { health: 1 }
   } catch (ex) {
     console.log('error fetching adventurer details')
-    return {}
+    return { health: 1 }
   }
 }
 

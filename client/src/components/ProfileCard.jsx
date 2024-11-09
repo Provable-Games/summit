@@ -10,7 +10,7 @@ import ChooseWallet from './dialogs/ConnectWallet';
 
 const ProfileCard = () => {
   const game = useContext(GameContext)
-  const { collection, userRanks, walletBalances } = game.getState
+  const { collection, ownedBeasts, userRanks, walletBalances } = game.getState
 
   const { address } = useAccount()
   const { disconnect } = useDisconnect()
@@ -94,7 +94,7 @@ const ProfileCard = () => {
           <Typography sx={{ fontSize: '13px', letterSpacing: '0.5px' }}>Beasts</Typography>
 
           <Box display={'flex'} alignItems={'start'} gap={'2px'} mt={'-3px'}>
-            <Typography variant='h2' mb={'2px'}>{collection.length}</Typography>
+            <Typography variant='h2' mb={'2px'}>{ownedBeasts.length}</Typography>
             {userRanks.beastRank > 0 && <Typography fontSize={'13px'} mb={'2px'} color={'rgba(0,0,0,0.5)'}>#{userRanks.beastRank}</Typography>}
           </Box>
 

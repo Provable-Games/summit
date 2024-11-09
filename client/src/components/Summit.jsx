@@ -20,7 +20,6 @@ function Summit() {
 
   const controls = useAnimationControls()
   const { data: profile } = useStarkProfile({ address: summit.owner });
-  const extraLives = summit.extra_lives ?? 0
 
   const removeAttackAnimation = (id) => {
     game.setState.attackAnimations((prevAnimations) => prevAnimations.filter((anim) => anim.id !== id));
@@ -62,7 +61,6 @@ function Summit() {
   const beast = collection.find(beast => beast.id === selectedBeasts[0])
   const isSavage = Boolean(collection.find(beast => beast.id === summit.id))
   const showAttack = !isSavage && !attackInProgress && selectedBeasts.length > 0 && beast?.current_health > 0 && totalDamage > 0
-  console.log(summit)
   const summitHealthRemaining = summit.current_health + (summit.extra_lives * (summit.health + summit.bonus_health))
 
   const calculateExtraLifeLoss = () => {
@@ -91,7 +89,7 @@ function Summit() {
         exit="exit"
       >
         <Box position={'relative'} width={'100%'} mb={2}>
-          <HealthBar variant="determinate" value={normaliseHealth(summit.current_health, summit.health + (summit.bonus_health || 0))} />
+          <HealthBar variant="determinate" value={normaliseHealth(summit.current_health, summit.starting_health + summit.bonus_health)} />
 
           <Box sx={styles.healthText}>
             <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white' }}>
@@ -99,9 +97,9 @@ function Summit() {
             </Typography>
           </Box>
 
-          {extraLives > 0 && <Box sx={styles.extraLife}>
-            {extraLives > 1 && <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px', textShadow: '0 0 3px #FFD700' }}>
-              {extraLives}
+          {summit.extra_lives > 0 && <Box sx={styles.extraLife}>
+            {summit.extra_lives > 1 && <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px', textShadow: '0 0 3px #FFD700' }}>
+              {summit.extra_lives}
             </Typography>}
 
             <img src={heart} alt='' height={'12px'} />

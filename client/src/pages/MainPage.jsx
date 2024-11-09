@@ -12,9 +12,6 @@ import Leaderboard from '../components/Leaderboard'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import WalletConnect from '../components/WalletConnect'
-import ApplyAttackPotion from '../components/dialogs/ApplyAttackPotion'
-import ApplyExtraLifePotion from '../components/dialogs/ApplyExtraLifePotion'
-import ApplyRevivePotion from '../components/dialogs/ApplyRevivePotion'
 import { GameContext } from '../contexts/gameContext'
 import { BEAST_NAMES } from '../helpers/BeastData'
 import { fetchBeastImage } from '../helpers/beasts'
@@ -101,9 +98,6 @@ function MainPage() {
     </Box >
 
     {PreloadBeastImages()}
-    {selectedBeasts.length > 0 && selectedItem === 'revivePotion' && <ApplyRevivePotion open={true} close={() => game.setState.selectedItem(null)} />}
-    {selectedBeasts.length > 0 && selectedItem === 'attackPotion' && <ApplyAttackPotion open={true} close={() => game.setState.selectedItem(null)} />}
-    {selectedBeasts.length > 0 && selectedItem === 'extraLifePotion' && <ApplyExtraLifePotion open={true} close={() => game.setState.selectedItem(null)} />}
   </>
 }
 

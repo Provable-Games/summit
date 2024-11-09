@@ -19,7 +19,7 @@ export default function BeastProfile({ beast }) {
   const diff = (beast.deadAt + 46 * 60 * 60 * 1000) - Date.now();
   const timeLeft = diff > 3600000 ? `${Math.floor(diff / 3600000)}h` : `${Math.floor((diff % 3600000) / 60000)}m`;
   const streakEnded = diff <= 0;
-  const attackStreak = streakEnded ? 0 : beast.attack_streak ?? 0;
+  const attackStreak = streakEnded ? 0 : beast.attack_streak;
 
   return (
     <Box sx={styles.container}>
@@ -109,7 +109,7 @@ export default function BeastProfile({ beast }) {
             </Typography>
           ) : (
             <Typography letterSpacing={'0.5px'}>
-              {MAX_LEVELS}
+              {bonusLevels}/{MAX_LEVELS}
             </Typography>
           )}
         </Box>
@@ -159,11 +159,11 @@ export default function BeastProfile({ beast }) {
         </Box>
 
         <Box position={'relative'} width={'100%'}>
-          <HealthBar sx={{ height: '12px', border: '2px solid black' }} variant="determinate" value={normaliseHealth(beast.bonus_health ?? 0, MAX_HEALTH)} />
+          <HealthBar sx={{ height: '12px', border: '2px solid black' }} variant="determinate" value={normaliseHealth(beast.bonus_health, MAX_HEALTH)} />
 
           <Box sx={styles.healthText}>
             <Typography sx={{ fontSize: '11px', lineHeight: '9px', color: 'white', letterSpacing: '0.5px' }}>
-              {beast.bonus_health ?? 0}
+              {beast.bonus_health}
             </Typography>
           </Box>
         </Box>
@@ -192,7 +192,7 @@ export default function BeastProfile({ beast }) {
 
         <Box sx={{ display: 'flex', justifyContent: 'center' }} mt={'3px'}>
           <Typography color='rgba(0,0,0,0.7)' fontStyle={'normal'} fontSize={'13px'}>
-            Revival Cost: {(beast.revival_count || 0) + 1} {(beast.revival_count || 0) + 1 > 1 ? 'Potions' : 'Potion'}
+            Revival Cost: {beast.revival_count + 1} {beast.revival_count + 1 > 1 ? 'Potions' : 'Potion'}
           </Typography>
         </Box>
       </Box>

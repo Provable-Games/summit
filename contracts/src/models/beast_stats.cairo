@@ -18,6 +18,7 @@ pub struct FixedBeastStats {
 pub struct LiveBeastStats {
     #[key]
     pub token_id: u32,
+    pub starting_health: u16,
     pub current_health: u16,
     pub bonus_health: u16,
     pub bonus_xp: u16,
@@ -26,7 +27,7 @@ pub struct LiveBeastStats {
     pub num_deaths: u16,
     pub last_killed_by: u32,
     pub revival_count: u8, // 4 bits storage
-    pub extra_lives: u8, // 7 bits storage
+    pub extra_lives: u8, // 8 bits storage
     pub has_claimed_starter_kit: bool,
 }
 

@@ -9,10 +9,10 @@ trait IBeastUtils {
 
 #[dojo::contract]
 pub mod beast_utils {
-    use savage_summit::utils::{BEAST_ADDRESS_MAINNET};
-    use savage_summit::models::beast::Beast;
     use beasts::interfaces::{IBeasts, IBeastsDispatcher, IBeastsDispatcherTrait};
     use beasts::pack::PackableBeast;
+    use savage_summit::models::beast::Beast;
+    use savage_summit::utils::{BEAST_ADDRESS_MAINNET};
 
     #[abi(embed_v0)]
     impl BeastUtilsImpl of super::IBeastUtils<ContractState> {

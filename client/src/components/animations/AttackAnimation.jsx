@@ -65,13 +65,31 @@ function AttackAnimation(props) {
       transition: { duration: 0.8 }
     })
 
+    let updatedBeastObject = {}
+
     if (!attackingBeast.capture && summit.current_health > 0) {
-      game.setState.beasts(prev => prev.map(beast => ({
-        ...beast,
-        current_health: beast.id === attackingBeast.id ? 0 : beast.current_health,
-        deadAt: beast.id === attackingBeast.id ? Date.now() : beast.deadAt,
-      })))
+      let newBonusXp = attackingBeast.bonus_xp + (10 + attackingBeast.attack_streak)
+      let totalXp = Math.pow(attackingBeast.level, 2) + newBonusXp
+      let newLevel = Math.floor(Math.sqrt(totalXp))
+
+      updatedBeastObject = {
+        level: newLevel,
+        totalXp: totalXp,
+        current_health: 0,
+        deadAt: Date.now(),
+        attack_streak: Math.min(attackingBeast.attack_streak + 1, 10),
+        bonus_xp: newBonusXp,
+      }
+    } else if (summit.current_health === 0) {
+      updatedBeastObject = {
+        totalXp: Math.pow(attackingBeast.level, 2) + attackingBeast.bonus_xp
+      }
     }
+
+    game.setState.beasts(prev => prev.map(beast => ({
+      ...beast,
+      ...(beast.id === attackingBeast.id ? updatedBeastObject : {})
+    })))
 
     onEnd(attackingBeast.id)
   }

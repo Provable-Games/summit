@@ -264,7 +264,7 @@ source = "git+https://github.com/Provable-Games/pragma-lib.git?branch=2.7#a6ea9f
 
 [[package]]
 name = "savage_summit"
-version = "1.0.0-rc.1"
+version = "1.0.0"
 dependencies = [
  "combat",
  "dojo",

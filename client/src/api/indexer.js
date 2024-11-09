@@ -90,13 +90,13 @@ export async function fetchBeastLiveData(tokenIds) {
       edges {
         node {
           token_id
+          starting_health
           current_health
           last_death_timestamp
           bonus_health
           bonus_xp
           num_deaths
           attack_streak
-          attack_potions
           revival_count
           extra_lives
           has_claimed_starter_kit

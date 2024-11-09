@@ -1,5 +1,5 @@
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import { Box, Input, ListItemText, Menu, MenuItem, Slider, Tooltip, Typography } from '@mui/material';
+import { Box, IconButton, Input, ListItemText, Menu, MenuItem, Slider, Tooltip, Typography } from '@mui/material';
 import React, { useContext, useState } from 'react';
 import attackPotionIcon from '../assets/images/attack-potion.png';
 import cauldronIcon from '../assets/images/cauldron.png';
@@ -8,8 +8,9 @@ import revivePotionIcon from '../assets/images/revive-potion.png';
 import { GameContext } from '../contexts/gameContext';
 import { AttackButton, RoundBlueButton } from '../helpers/styles';
 import BuyConsumables from './dialogs/BuyConsumables';
-import sword from '../assets/images/sword.png';
 import heart from '../assets/images/heart.png';
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
 
 function ActionBar(props) {
   const game = useContext(GameContext)
@@ -35,7 +36,7 @@ function ActionBar(props) {
 
   const isSavage = Boolean(ownedBeasts.find(beast => beast.id === summit.id))
 
-  const revivalPotionsRequired = selectedBeasts.filter(beast => beast.current_health === 0).reduce((sum, beast) => sum + beast.revival_count, 0)
+  const revivalPotionsRequired = selectedBeasts.filter(beast => beast.current_health === 0).reduce((sum, beast) => sum + beast.revival_count + 1, 0)
   const enableAttack = !attackInProgress && selectedBeasts.length > 0 && walletBalances.revivePotions >= revivalPotionsRequired;
   const enableFeedingGround = selectedBeasts.length === 1 && adventurerCollection.length > 0
 
@@ -223,13 +224,27 @@ function ActionBar(props) {
         </Box>
 
         <Box textAlign={'center'} display={'flex'} alignItems={'center'} mt={1}>
-          <Box textAlign={'right'}>
+          <IconButton onClick={() => game.setState.applyPotions(prev => ({
+            ...prev,
+            [potion]: Math.max(0, prev[potion] - 1)
+          }))}>
+            <RemoveIcon />
+          </IconButton>
+
+          <Box textAlign={'right'} ml={1}>
             <Typography variant='h2'>
               {potion === 'attack' ? potionsApplied.attack : potionsApplied.extraLife}
             </Typography>
           </Box>
 
           <img src={potion === 'attack' ? attackPotionIcon : lifePotionIcon} alt='' />
+
+          <IconButton onClick={() => game.setState.applyPotions(prev => ({
+            ...prev,
+            [potion]: Math.min(prev[potion] + 1, Math.min(potion === 'attack' ? walletBalances.attackPotions : walletBalances.extraLifePotions, 255))
+          }))}>
+            <AddIcon />
+          </IconButton>
         </Box>
 
         <Slider
@@ -237,7 +252,7 @@ function ActionBar(props) {
           step={1}
           marks
           min={0}
-          max={Math.min(potion === 'attack' ? walletBalances.attackPotions : walletBalances.extraLifePotions, potion === 'attack' ? 255 : 127)}
+          max={Math.min(potion === 'attack' ? walletBalances.attackPotions : walletBalances.extraLifePotions, 255)}
           onChange={(e) => game.setState.applyPotions(prev => ({
             ...prev,
             [potion]: e.target.value

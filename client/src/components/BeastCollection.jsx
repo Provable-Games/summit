@@ -5,6 +5,7 @@ import React, { useContext, useState } from 'react';
 import { Scrollbars } from 'react-custom-scrollbars';
 import health from '../assets/images/health.png';
 import selectAll from '../assets/images/selectall.png';
+import skull from '../assets/images/skull_black.png';
 import sword from '../assets/images/sword.png';
 import { GameContext } from '../contexts/gameContext';
 import { beastElementalColor, fetchBeastImage, normaliseHealth } from "../helpers/beasts";
@@ -16,12 +17,15 @@ import SwordAnimation from '../assets/animations/swords.json';
 import heart from '../assets/images/heart.png';
 import BeastProfile from './BeastProfile';
 import { BruteIcon, HunterIcon, MagicalIcon } from "./Icons";
+import { useEffect } from 'react';
 
 function BeastCollection() {
   const game = useContext(GameContext)
-  const { loadingCollection, collection, selectedBeasts, attackInProgress, summit } = game.getState
+  const { loadingCollection, collection, ownedBeasts, selectedBeasts, attackInProgress, summit } = game.getState
 
   const { address } = useAccount()
+
+  const [hideDeadBeasts, setHideDeadBeasts] = useState(false)
 
   const selectBeast = (id) => {
     if (selectedBeasts.includes(id)) {
@@ -32,12 +36,28 @@ function BeastCollection() {
   }
 
   const selectAllBeasts = () => {
-    if (collection.filter(x => x.current_health > 0).length === selectedBeasts.length) {
+    if (collection.length === selectedBeasts.length) {
       game.setState.selectedBeasts([])
     } else {
-      game.setState.selectedBeasts(collection.filter(x => x.current_health > 0).map(x => x.id))
+      game.setState.selectedBeasts(collection.map(x => x.id))
     }
   }
+
+  const hideDead = (hide) => {
+    game.setState.selectedBeasts([])
+
+    if (hide) {
+      game.setState.beasts(prev => prev.filter(x => x.current_health > 0))
+    } else {
+      game.setState.beastCollection()
+    }
+
+    setHideDeadBeasts(hide)
+  }
+
+  useEffect(() => {
+    game.setState.beasts()
+  }, [hideDeadBeasts])
 
   const RenderBottomText = (beast) => {
 
@@ -114,18 +134,26 @@ function BeastCollection() {
 
         </Box>}
 
-        {collection.length > 5 && (
-          <Box sx={[styles.utilityButton, selectedBeasts.length === collection.filter(x => x.current_health > 0).length && styles.selectedItem]} onClick={() => selectAllBeasts()}>
-            <img src={selectAll} alt='' height={'100%'} />
-          </Box>
-        )}
+        {ownedBeasts.length > 4 && <Box sx={{ display: 'flex', gap: '4px', flexDirection: 'column' }}>
+          <Tooltip title={<Box sx={{ background: '#616161', padding: '4px 8px', borderRadius: '4px' }}>Select all</Box>}>
+            <Box sx={[styles.utilityButton, selectedBeasts.length === collection.length && styles.selectedItem]} onClick={() => selectAllBeasts()}>
+              <img src={selectAll} alt='' height={'100%'} />
+            </Box>
+          </Tooltip>
+
+
+          <Tooltip title={<Box sx={{ background: '#616161', padding: '4px 8px', borderRadius: '4px' }}>Hide dead</Box>}>
+            <Box sx={[styles.utilityButton, hideDeadBeasts && styles.selectedItem]} onClick={() => hideDead(!hideDeadBeasts)}>
+              <img src={skull} alt='' height={'90%'} style={{ opacity: hideDeadBeasts ? 1 : 0.6 }} />
+            </Box>
+          </Tooltip>
+        </Box>}
 
         {collection.map(beast => {
           const isSelected = selectedBeasts.includes(beast.id)
           const isSavage = summit.id === beast.id
           const elementalColor = beastElementalColor(beast)
           const current_health = isSavage ? summit.current_health : beast.current_health
-          const extraLives = beast.extra_lives ?? 0
 
           return <Box
             key={beast.id}
@@ -190,7 +218,7 @@ function BeastCollection() {
               <Box position={'relative'} width={'100%'}>
                 <HealthBar variant="determinate" value={normaliseHealth(current_health, beast.health)} />
 
-                <Box sx={[styles.healthText, extraLives > 0 && { left: '7px', transform: 'none' }]}>
+                <Box sx={[styles.healthText, beast.extra_lives > 0 && { left: '7px', transform: 'none' }]}>
 
                   {current_health === 0
                     ? <Typography lineHeight={'17px'} letterSpacing={'0.5px'} color={'white'} sx={{ fontSize: '13px', textWrap: 'nowrap', opacity: 0.8 }}>
@@ -212,9 +240,9 @@ function BeastCollection() {
 
                 </Box>
 
-                {extraLives > 0 && <Box sx={styles.extraLife}>
-                  {extraLives > 1 && <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px', textShadow: '0 0 3px #FFD700' }}>
-                    {extraLives}
+                {beast.extra_lives > 0 && <Box sx={styles.extraLife}>
+                  {beast.extra_lives > 1 && <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px', textShadow: '0 0 3px #FFD700' }}>
+                    {beast.extra_lives}
                   </Typography>}
 
                   <img src={heart} alt='' height={'12px'} />
@@ -228,7 +256,7 @@ function BeastCollection() {
 
                 <Box sx={styles.healthText}>
                   <Typography sx={{ fontSize: '10px', lineHeight: '10px', color: 'white', letterSpacing: '0.5px' }}>
-                    {beast.totalXp >= Math.pow(beast.level + 1, 2) ? 'Level up' : (isSelected && attackInProgress ? `+${9 + beast.attack_streak || 0} XP` : 'XP')}
+                    {beast.totalXp >= Math.pow(beast.level + 1, 2) ? 'Level up' : (isSelected && attackInProgress ? `+${10 + beast.attack_streak} XP` : 'XP')}
                   </Typography>
                 </Box>
               </Box>
