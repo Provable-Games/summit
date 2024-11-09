@@ -14,15 +14,11 @@ sozo -P prod build
 #-----------------
 # migrate
 #
-echo "------------------------------------------------------------------------------"
-echo ">>> Migrate plan..."
-sozo -P prod migrate plan
-# exit 0
 echo ">>> Migrate apply..."
-sozo -P prod migrate apply
+sozo -P prod migrate
 echo "👍"
 
 #------------------
 echo "--- DONE! 👍"
 
-# slot deployments create summit-dev torii --version v1.0.0-alpha.17 --world 0x27806969fa61287954fc7ea1bc2aea8c042222dea5fc7d6698d42b3ab27c8c7 --rpc https://api.cartridge.gg/x/starknet/mainnet --start-block 835325 --index-pending true
+# slot deployments create summit-dev-1 torii --version v1.0.0-rc.1 --world 0x051ce9ff7e94dc891a709a938f150eb101641a7b1508ba00263b7726981eba0a --rpc https://api.cartridge.gg/x/starknet/mainnet --start-block 881925 --index-pending true
