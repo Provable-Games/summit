@@ -1,16 +1,16 @@
+import AddIcon from '@mui/icons-material/Add';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import { Box, IconButton, Input, ListItemText, Menu, MenuItem, Slider, Tooltip, Typography } from '@mui/material';
+import RemoveIcon from '@mui/icons-material/Remove';
+import { Box, IconButton, Menu, Slider, Tooltip, Typography } from '@mui/material';
 import React, { useContext, useState } from 'react';
 import attackPotionIcon from '../assets/images/attack-potion.png';
 import cauldronIcon from '../assets/images/cauldron.png';
+import heart from '../assets/images/heart.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import { GameContext } from '../contexts/gameContext';
 import { AttackButton, RoundBlueButton } from '../helpers/styles';
 import BuyConsumables from './dialogs/BuyConsumables';
-import heart from '../assets/images/heart.png';
-import AddIcon from '@mui/icons-material/Add';
-import RemoveIcon from '@mui/icons-material/Remove';
 
 function ActionBar(props) {
   const game = useContext(GameContext)

@@ -18,7 +18,7 @@ import { fetchBeastImage } from '../helpers/beasts'
 
 function MainPage() {
   const game = useContext(GameContext)
-  const { showFeedingGround, summit, selectedBeasts, selectedItem } = game.getState
+  const { showFeedingGround, summit } = game.getState
 
   function PreloadBeastImages() {
     return <>

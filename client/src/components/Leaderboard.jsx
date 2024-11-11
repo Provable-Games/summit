@@ -4,34 +4,6 @@ import { GameContext } from '../contexts/gameContext';
 import { normaliseHealth } from '../helpers/beasts';
 import { BeastsCollectedBar } from '../helpers/styles';
 
-const leaderboardExample = [
-  {
-    rank: 1,
-    name: "'Wrath Bane' Warlock",
-    savage: 500,
-  },
-  {
-    rank: 2,
-    name: "'Ghoul Root' Typhon",
-    savage: 482,
-  },
-  {
-    rank: 3,
-    name: "'Phoenix Form' Goblin",
-    savage: 485,
-  },
-  {
-    rank: 4,
-    name: "'Spirit Song' Sprite",
-    savage: 392,
-  },
-  {
-    rank: 5,
-    name: "'Honour Bender' Gorgon",
-    savage: 360,
-  },
-]
-
 function Leaderboard(props) {
   const game = useContext(GameContext)
   const { totalSupply, deadBeastCount, potionPrices, leaderboard } = game.getState

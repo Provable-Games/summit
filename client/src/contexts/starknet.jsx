@@ -17,18 +17,6 @@ const summit_systems = getContractByName(dojoConfig.manifest, "savage_summit", "
 const cartridge = new CartridgeConnector({
   policies: [
     {
-      target: import.meta.env.VITE_PUBLIC_REVIVE_ERC20_ADDRESS,
-      method: "approve",
-    },
-    {
-      target: import.meta.env.VITE_PUBLIC_ATTACK_ERC20_ADDRESS,
-      method: "approve",
-    },
-    {
-      target: import.meta.env.VITE_PUBLIC_EXTRA_LIFE_ERC20_ADDRESS,
-      method: "approve",
-    },
-    {
       target: summit_systems,
       method: "attack",
     },
@@ -43,7 +31,19 @@ const cartridge = new CartridgeConnector({
     {
       target: summit_systems,
       method: "claim_starter_kit"
-    }
+    },
+    {
+      target: import.meta.env.VITE_PUBLIC_REVIVE_ERC20_ADDRESS,
+      method: "approve",
+    },
+    {
+      target: import.meta.env.VITE_PUBLIC_ATTACK_ERC20_ADDRESS,
+      method: "approve",
+    },
+    {
+      target: import.meta.env.VITE_PUBLIC_EXTRA_LIFE_ERC20_ADDRESS,
+      method: "approve",
+    },
   ],
   rpc: dojoConfig.rpcUrl,
   theme: "savage-summit",
