@@ -78,8 +78,7 @@ impl Savager of TrophyTrait {
 
     #[inline]
     fn tasks(level: u8) -> Span<BushidoTask> {
-        let count: u32 = Self::count(level);
-        let total: u32 = 1;
-        Task::Savaging.tasks(level, count, total)
+        let total: u32 = Self::count(level);
+        Task::Savaging.tasks(level, total, total)
     }
 }
