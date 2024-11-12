@@ -63,6 +63,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "arcade_trophy"
+version = "0.0.0"
+source = "git+https://github.com/cartridge-gg/arcade?tag=v1.0.0#7bc838f173278e1b0b60044e32cc7c489230de92"
+dependencies = [
+ "dojo",
+]
+
+[[package]]
 name = "beasts"
 version = "0.1.0"
 source = "git+https://github.com/Provable-Games/loot-survivor.git?branch=feat%2Fsavage-summit-support#e2e8f5409ac687457f49a8371ff954a51c98dc8c"
@@ -266,6 +274,7 @@ source = "git+https://github.com/Provable-Games/pragma-lib.git?branch=2.7#a6ea9f
 name = "savage_summit"
 version = "1.0.0"
 dependencies = [
+ "arcade_trophy",
  "combat",
  "dojo",
  "dojo_cairo_test",
