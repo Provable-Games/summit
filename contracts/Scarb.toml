@@ -9,13 +9,18 @@ sierra-replace-ids = true
 [dependencies]
 starknet = "2.8.4"
 dojo = { git = "https://github.com/dojoengine/dojo", tag = "v1.0.0" }
+arcade_trophy = { git = "https://github.com/cartridge-gg/arcade", tag = "v1.0.0" }
 openzeppelin_token = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v0.15.1" }
 combat = { git = "https://github.com/Provable-Games/loot-survivor.git", branch = "feat/savage-summit-support" }
 game = { git = "https://github.com/Provable-Games/loot-survivor.git", branch = "feat/savage-summit-support" }
 pixel_beasts = { git = "https://github.com/leetship/beasts.git" }
 
 [[target.starknet-contract]]
-build-external-contracts = ["dojo::world::world_contract::world"]
+build-external-contracts = [
+    "dojo::world::world_contract::world",
+    "arcade_trophy::events::index::e_TrophyCreation",
+    "arcade_trophy::events::index::e_TrophyProgression",
+]
 
 [dev-dependencies]
 openzeppelin_test_common = { git = "https://github.com/OpenZeppelin/cairo-contracts", tag = "v0.15.1" }

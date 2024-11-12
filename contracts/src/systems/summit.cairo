@@ -35,6 +35,8 @@ trait ISummitSystem<T> {
 
 #[dojo::contract]
 pub mod summit_systems {
+    use arcade_trophy::components::achievable::AchievableComponent;
+    use arcade_trophy::store::{Store as ArcadeStore, StoreTrait as ArcadeStoreTrait};
     use combat::combat::{ImplCombat, CombatSpec, CombatResult, SpecialPowers};
     use combat::constants::CombatEnums::{Type, Tier};
     use core::num::traits::{OverflowingAdd, OverflowingSub};
@@ -62,11 +64,66 @@ pub mod summit_systems {
     use savage_summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats, BeastRewards};
     use savage_summit::models::consumable::{Consumable, ConsumableType};
     use savage_summit::models::summit::{Summit, SummitHistory, SummitReward};
+    use savage_summit::types::task::{Task, TaskTrait};
+    use savage_summit::types::trophy::{Trophy, TrophyTrait, TROPHY_COUNT};
     use savage_summit::utils;
     use starknet::{
         ContractAddress, get_caller_address, get_tx_info, get_block_timestamp, get_contract_address,
         contract_address_const
     };
+
+    // Components
+
+    component!(path: AchievableComponent, storage: achievable, event: AchievableEvent);
+    impl AchievableInternalImpl = AchievableComponent::InternalImpl<ContractState>;
+
+    // Storage
+
+    #[storage]
+    struct Storage {
+        #[substorage(v0)]
+        achievable: AchievableComponent::Storage,
+    }
+
+    // Events
+
+    #[event]
+    #[derive(Drop, starknet::Event)]
+    enum Event {
+        #[flat]
+        AchievableEvent: AchievableComponent::Event,
+    }
+
+    // Constructor
+
+    fn dojo_init(self: @ContractState) {
+        // [Event] Emit all Trophy events
+        let world = self.world(DEFAULT_NS());
+        let mut trophy_id: u8 = TROPHY_COUNT;
+        while trophy_id > 0 {
+            let trophy: Trophy = trophy_id.into();
+            self
+                .achievable
+                .create(
+                    world,
+                    id: trophy.identifier(),
+                    hidden: trophy.hidden(),
+                    index: trophy.index(),
+                    points: trophy.points(),
+                    start: trophy.start(),
+                    end: trophy.end(),
+                    group: trophy.group(),
+                    icon: trophy.icon(),
+                    title: trophy.title(),
+                    description: trophy.description(),
+                    tasks: trophy.tasks(),
+                    data: trophy.data(),
+                );
+            trophy_id -= 1;
+        }
+    }
+
+    // Implementations
 
     #[abi(embed_v0)]
     impl SummitSystemImpl of super::ISummitSystem<ContractState> {
@@ -96,17 +153,8 @@ pub mod summit_systems {
                 InternalSummitImpl::_set_summit_beast(ref world, new_summit_beast_token_id);
 
                 // set live stats
-                let mut attacking_beast = InternalSummitImpl::_get_beast(
-                    world, new_summit_beast_token_id
-                );
-                attacking_beast
-                    .stats
-                    .live
-                    .current_health = attacking_beast
-                    .stats
-                    .fixed
-                    .starting_health
-                    .into()
+                let mut attacking_beast = InternalSummitImpl::_get_beast(world, new_summit_beast_token_id);
+                attacking_beast.stats.live.current_health = attacking_beast.stats.fixed.starting_health.into()
                     + attacking_beast.stats.live.bonus_health;
 
                 // Apply extra life potions
@@ -121,6 +169,7 @@ pub mod summit_systems {
 
             let mut remaining_attack_potions = attack_potions;
             let mut remaining_revival_potions = revival_potions;
+            let mut attacking_count = 0;
             let mut i = 0;
             while (i < attacking_beast_token_ids.len()) {
                 let attacking_beast_token_id = *attacking_beast_token_ids.at(i);
@@ -135,7 +184,8 @@ pub mod summit_systems {
                 let mut attacking_beast = InternalSummitImpl::_get_beast(world, attacking_beast_token_id);
 
                 // assert the attacking beast is alive
-                remaining_revival_potions = InternalSummitImpl::_use_revival_potions(ref attacking_beast, ref remaining_revival_potions);
+                remaining_revival_potions =
+                    InternalSummitImpl::_use_revival_potions(ref attacking_beast, ref remaining_revival_potions);
 
                 // reset health to starting health plus any bonus health they have accrued
                 // @dev beasts attack till death so we don't need any additional logic
@@ -148,6 +198,9 @@ pub mod summit_systems {
                 let total_xp = attacking_beast.stats.fixed.level * attacking_beast.stats.fixed.level
                     + attacking_beast.stats.live.bonus_xp;
                 attacking_beast.stats.fixed.level = total_xp.sqrt().into();
+
+                // increment attacking counter
+                attacking_count += 1;
 
                 // loop until the attacking beast is dead or the summit beast is dead
                 loop {
@@ -229,6 +282,36 @@ pub mod summit_systems {
             assert(remaining_revival_potions == 0, 'Unused revival potions');
             InternalSummitImpl::_burn_consumable(world, ConsumableType::Revive, revival_potions);
             InternalSummitImpl::_burn_consumable(world, ConsumableType::Attack, attack_potions);
+
+            // [Trophy] Update Attacking task event
+            let store = ArcadeStoreTrait::new(world);
+            let player_id: felt252 = get_caller_address().into();
+            let time = get_block_timestamp();
+            let task_id = Task::Attacking.identifier(0);
+            if attacking_count > 0 {
+                store.progress(player_id, task_id, attacking_count, time);
+            }
+
+            // [Trophy] Update Reviving task event
+            let task_id = Task::Reviving.identifier(0);
+            let count: u32 = (revival_potions - remaining_revival_potions).into();
+            if count > 0 {
+                store.progress(player_id, task_id, count, time);
+            }
+
+            // [Trophy] Update Boosting task event
+            let task_id = Task::Boosting.identifier(0);
+            let count: u32 = (attack_potions - remaining_attack_potions).into();
+            if count > 0 {
+                store.progress(player_id, task_id, count, time);
+            }
+
+            // [Trophy] Update Healing task event
+            let task_id = Task::Healing.identifier(0);
+            let count: u32 = extra_life_potions.into();
+            if count > 0 {
+                store.progress(player_id, task_id, count, time);
+            }
         }
 
         fn feed(ref self: ContractState, beast_token_id: u32, adventurer_ids: Span<u64>) {
@@ -259,8 +342,17 @@ pub mod summit_systems {
                 }
 
                 world.write_model(@AdventurerConsumed { token_id: adventurer_id, beast_token_id });
+
                 i += 1;
             };
+
+            // [Trophy] Update feeding task event
+            let store = ArcadeStoreTrait::new(world);
+            let task_id = Task::Feeding.identifier(0);
+            let player_id: felt252 = get_caller_address().into();
+            let time = get_block_timestamp();
+            let count = adventurer_ids.len();
+            store.progress(player_id, task_id, count, time);
 
             world.write_model(@beast.stats.live);
         }
@@ -362,7 +454,9 @@ pub mod summit_systems {
             while (beast_token_id <= end_id) {
                 let mut beast_stats: BeastStats = InternalSummitImpl::_get_beast_stats(world, beast_token_id);
 
-                if revive_dispatcher.claimed_starter_kit(beast_token_id) && attack_dispatcher.claimed_starter_kit(beast_token_id) && extra_life_dispatcher.claimed_starter_kit(beast_token_id) {
+                if revive_dispatcher.claimed_starter_kit(beast_token_id)
+                    && attack_dispatcher.claimed_starter_kit(beast_token_id)
+                    && extra_life_dispatcher.claimed_starter_kit(beast_token_id) {
                     beast_stats.live.has_claimed_starter_kit = true;
                 }
 
@@ -494,11 +588,27 @@ pub mod summit_systems {
 
             // Mint reward
             if (time_on_summit > 0) {
+                let owner_of_beast = Self::_get_owner_of_beast(beast.token_id);
                 RewardERC20Dispatcher { contract_address: Self::_get_reward_address(world) }
-                    .mint(Self::_get_owner_of_beast(beast.token_id), time_on_summit.into() * 1000000000000000000);
+                    .mint(owner_of_beast, time_on_summit.into() * 1000000000000000000);
                 let mut beast_rewards: BeastRewards = world.read_model(beast.token_id);
                 beast_rewards.rewards_earned += time_on_summit;
                 world.write_model(@beast_rewards);
+                // [Trophy] Update Hodling task event
+                let store = ArcadeStoreTrait::new(world);
+                let player_id: felt252 = owner_of_beast.into();
+                let task_id = Task::Hodling.identifier(0);
+                let bound: u32 = core::integer::BoundedU32::max();
+                let count = if time_on_summit > bound.into() {
+                    core::integer::BoundedU32::max()
+                } else {
+                    (time_on_summit % bound.into()).try_into().unwrap()
+                };
+                store.progress(player_id, task_id, count, current_time);
+                // [Trophy] Update Savaging task event
+                let task_id = Task::Savaging.identifier(0);
+                let player_id: felt252 = get_caller_address().into();
+                store.progress(player_id, task_id, 1, current_time);
             }
         }
 
