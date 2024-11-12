@@ -11,7 +11,7 @@ impl Hodling of TaskTrait {
         if count == 1 {
             "Hold the summit for 1 hour total"
         } else {
-            format!("Hold the summit for {} hours total", count)
+            format!("Hold the summit for {} hours total", count / 3600)
         }
     }
 }

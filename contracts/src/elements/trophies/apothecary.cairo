@@ -79,6 +79,6 @@ impl Apothecary of TrophyTrait {
     #[inline]
     fn tasks(level: u8) -> Span<BushidoTask> {
         let total: u32 = Self::count(level);
-        Task::Boosting.tasks(level, total, total)
+        Task::Healing.tasks(level, total, total)
     }
 }

@@ -13,23 +13,23 @@ mod types {
 
 mod elements {
     mod tasks {
-        mod interface;
         mod attacking;
         mod boosting;
         mod feeding;
         mod healing;
         mod hodling;
+        mod interface;
         mod reviving;
         mod savaging;
     }
     mod trophies {
-        mod interface;
-        mod attacker;
-        mod feeder;
-        mod hodler;
-        mod savager;
         mod alchemist;
         mod apothecary;
+        mod attacker;
+        mod feeder;
         mod herbalist;
+        mod hodler;
+        mod interface;
+        mod savager;
     }
 }
