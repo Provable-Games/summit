@@ -1,6 +1,6 @@
 use combat::combat::{CombatSpec, SpecialPowers};
-use savage_summit::models::beast_details::BeastDetails;
-use savage_summit::models::beast_stats::BeastStats;
+use summit::models::beast_details::BeastDetails;
+use summit::models::beast_stats::BeastStats;
 
 #[derive(Copy, Drop, Introspect, Serde)]
 #[dojo::model]

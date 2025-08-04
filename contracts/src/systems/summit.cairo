@@ -1,7 +1,7 @@
-use savage_summit::models::beast::Beast;
-use savage_summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats};
-use savage_summit::models::consumable::{Consumable, ConsumableType};
-use savage_summit::models::summit::{SummitHistory};
+use summit::models::beast::Beast;
+use summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats};
+use summit::models::consumable::{Consumable, ConsumableType};
+use summit::models::summit::{SummitHistory};
 use starknet::ContractAddress;
 
 #[starknet::interface]
@@ -49,20 +49,20 @@ pub mod summit_systems {
     use pixel_beasts::interfaces::{IBeasts, IBeastsDispatcher, IBeastsDispatcherTrait};
     use pixel_beasts::pack::PackableBeast;
 
-    use savage_summit::constants::{
+    use summit::constants::{
         errors, BASE_REVIVAL_TIME_SECONDS, MINIMUM_DAMAGE, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS,
         MAX_REVIVAL_COUNT, EIGHT_BITS_MAX, DEFAULT_NS
     };
-    use savage_summit::erc20::interface::{
+    use summit::erc20::interface::{
         ConsumableERC20Dispatcher, ConsumableERC20DispatcherTrait, RewardERC20Dispatcher, RewardERC20DispatcherTrait
     };
-    use savage_summit::models::adventurer::{Adventurer, AdventurerConsumed};
-    use savage_summit::models::beast::{Beast, ImplBeast};
-    use savage_summit::models::beast_details::{BeastDetails, ImplBeastDetails};
-    use savage_summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats, BeastRewards};
-    use savage_summit::models::consumable::{Consumable, ConsumableType};
-    use savage_summit::models::summit::{Summit, SummitHistory, SummitReward};
-    use savage_summit::utils;
+    use summit::models::adventurer::{Adventurer, AdventurerConsumed};
+    use summit::models::beast::{Beast, ImplBeast};
+    use summit::models::beast_details::{BeastDetails, ImplBeastDetails};
+    use summit::models::beast_stats::{BeastStats, FixedBeastStats, LiveBeastStats, BeastRewards};
+    use summit::models::consumable::{Consumable, ConsumableType};
+    use summit::models::summit::{Summit, SummitHistory, SummitReward};
+    use summit::utils;
     use starknet::{
         ContractAddress, get_caller_address, get_tx_info, get_block_timestamp, get_contract_address,
         contract_address_const
@@ -268,7 +268,7 @@ pub mod summit_systems {
         fn set_consumable_address(ref self: ContractState, consumable: ConsumableType, address: ContractAddress) {
             let mut world = self.world(DEFAULT_NS());
             assert(
-                world.dispatcher.is_owner(selector_from_tag!("savage_summit-summit_systems"), get_caller_address()),
+                world.dispatcher.is_owner(selector_from_tag!("summit-summit_systems"), get_caller_address()),
                 'Not Owner'
             );
 
@@ -280,7 +280,7 @@ pub mod summit_systems {
         fn set_reward_address(ref self: ContractState, address: ContractAddress) {
             let mut world = self.world(DEFAULT_NS());
             assert(
-                world.dispatcher.is_owner(selector_from_tag!("savage_summit-summit_systems"), get_caller_address()),
+                world.dispatcher.is_owner(selector_from_tag!("summit-summit_systems"), get_caller_address()),
                 'Not Owner'
             );
 
@@ -720,10 +720,10 @@ mod tests {
     use dojo::model::{Model, ModelTest, ModelIndex, ModelEntityTest};
     use dojo::utils::test::deploy_contract;
     use dojo::world::{IWorldDispatcherTrait, IWorldDispatcher};
-    use savage_summit::constants::TESTING_CHAIN_ID;
-    use savage_summit::models::beast::{Beast, BeastDetails, BeastDetailsStore, BeastStats, BeastStatsStore, Type, Tier};
-    use savage_summit::models::consumable::{Consumable, ConsumableDetails, ConsumableDetailsStore};
-    use savage_summit::models::summit::{Summit, SummitStore, SummitHistory, SummitHistoryStore};
+    use summit::constants::TESTING_CHAIN_ID;
+    use summit::models::beast::{Beast, BeastDetails, BeastDetailsStore, BeastStats, BeastStatsStore, Type, Tier};
+    use summit::models::consumable::{Consumable, ConsumableDetails, ConsumableDetailsStore};
+    use summit::models::summit::{Summit, SummitStore, SummitHistory, SummitHistoryStore};
     use super::{summit_systems, ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
 
     /// @title setup_world

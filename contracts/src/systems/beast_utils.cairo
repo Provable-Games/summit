@@ -1,5 +1,5 @@
-use savage_summit::models::beast_details::BeastDetails;
-use savage_summit::models::beast_stats::{StaticBeastStats};
+use summit::models::beast_details::BeastDetails;
+use summit::models::beast_stats::{StaticBeastStats};
 
 #[dojo::interface]
 trait IBeastUtils {
@@ -11,8 +11,8 @@ trait IBeastUtils {
 pub mod beast_utils {
     use beasts::interfaces::{IBeasts, IBeastsDispatcher, IBeastsDispatcherTrait};
     use beasts::pack::PackableBeast;
-    use savage_summit::models::beast::Beast;
-    use savage_summit::utils::{BEAST_ADDRESS_MAINNET};
+    use summit::models::beast::Beast;
+    use summit::utils::{BEAST_ADDRESS_MAINNET};
 
     #[abi(embed_v0)]
     impl BeastUtilsImpl of super::IBeastUtils<ContractState> {
