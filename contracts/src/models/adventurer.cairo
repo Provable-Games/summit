@@ -1,12 +1,11 @@
-#[derive(Copy, Drop, Introspect, Serde)]
+#[derive(Introspect, Drop, Copy, Serde)]
 pub struct Adventurer {
     pub level: u8,
     pub health: u16,
-    pub rank_at_death: u8,
 }
 
 
-#[derive(Copy, Drop, Introspect, Serde)]
+#[derive(Introspect, Drop, Copy, Serde)]
 #[dojo::model]
 pub struct AdventurerConsumed {
     #[key]

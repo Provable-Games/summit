@@ -1,7 +1,13 @@
 mod constants;
-mod models;
-mod systems;
+mod models {
+    pub mod adventurer;
+    pub mod beast;
+    pub mod summit; 
+}
+mod systems {
+    pub mod summit;
+}
 mod utils;
-mod erc20 {
-    mod interface;
+pub mod erc20 {
+    pub mod interface;
 }

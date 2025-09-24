@@ -1,5 +1,5 @@
-use summit::constants::{MAINNET_CHAIN_ID, SEPOLIA_CHAIN_ID};
 use starknet::{ContractAddress, contract_address_const};
+use summit::constants::{MAINNET_CHAIN_ID, SEPOLIA_CHAIN_ID};
 
 pub fn get_beast_address(chain_id: felt252) -> ContractAddress {
     if chain_id == SEPOLIA_CHAIN_ID {

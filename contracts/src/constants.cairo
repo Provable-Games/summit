@@ -1,4 +1,4 @@
-
+pub const SUMMIT_ID: u8 = 1;
 pub const MAINNET_CHAIN_ID: felt252 = 0x534e5f4d41494e;
 pub const SEPOLIA_CHAIN_ID: felt252 = 0x534e5f5345504f4c4941;
 pub const KATANA_CHAIN_ID: felt252 = 0x4b4154414e41;
@@ -12,6 +12,7 @@ pub const BEAST_MAX_BONUS_HEALTH: u16 = 1023;
 pub const BEAST_MAX_BONUS_LVLS: u16 = 40;
 pub const MAX_REVIVAL_COUNT: u8 = 15;
 pub const EIGHT_BITS_MAX: u8 = 255;
+pub const TOKEN_DECIMALS: u256 = 1_000_000_000_000_000_000;
 
 pub mod errors {
     pub const BEAST_NOT_YET_REVIVED: felt252 = 'beast not yet revived';
@@ -32,6 +33,6 @@ pub mod errors {
     pub const POTION_NOT_ALLOWED_ON_SUMMIT: felt252 = 'Potion not allowed on summit';
 }
 
-pub fn DEFAULT_NS() -> @ByteArray {
-    @"summit"
+pub fn DEFAULT_NS() -> ByteArray {
+    "summit_0_0_1"
 }

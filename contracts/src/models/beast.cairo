@@ -1,25 +1,32 @@
-use combat::combat::{CombatSpec, SpecialPowers};
-use summit::models::beast_details::BeastDetails;
-use summit::models::beast_stats::BeastStats;
+use beasts_nft::pack::PackableBeast;
 
-#[derive(Copy, Drop, Introspect, Serde)]
+#[derive(Copy, Drop, IntrospectPacked, Serde)]
 #[dojo::model]
-pub struct Beast {
+pub struct LiveBeastStats {
     #[key]
     pub token_id: u32,
-    pub details: BeastDetails,
-    pub stats: BeastStats,
+    pub current_health: u16,
+    pub bonus_health: u16,
+    pub bonus_xp: u16,
+    pub attack_streak: u8,
+    pub last_death_timestamp: u64,
+    pub num_deaths: u16,
+    pub last_killed_by: u32,
+    pub revival_count: u8,
+    pub extra_lives: u8,
+    pub has_claimed_starter_kit: bool,
 }
 
-#[generate_trait]
-impl ImplBeast of IBeast {
-    fn get_combat_spec(self: Beast) -> CombatSpec {
-        CombatSpec {
-            tier: self.details.tier,
-            item_type: self.details.elemental,
-            level: self.stats.fixed.level,
-            // TODO: diisable specials until we think of a good way to use them
-            specials: SpecialPowers { special1: 0, special2: 0, special3: 0, },
-        }
-    }
+#[derive(Copy, Drop, Serde)]
+pub struct Beast {
+    pub fixed: PackableBeast,
+    pub live: LiveBeastStats,
+}
+
+#[derive(Copy, Drop, IntrospectPacked, Serde)]
+#[dojo::model]
+pub struct BeastRewards {
+    #[key]
+    pub beast_token_id: u32,
+    pub rewards_earned: u64,
 }

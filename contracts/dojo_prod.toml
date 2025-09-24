@@ -9,9 +9,9 @@ x = "https://x.com/provablegames"
 github = "https://github.com/provablegames"
 
 [namespace]
-default = "savage_summit"
+default = "summit_0_0_1"
 
 [writers]
-"savage_summit" = [
-    "savage_summit-summit_systems",
+"summit_0_0_1" = [
+    "summit_0_0_1-summit_systems",
 ]

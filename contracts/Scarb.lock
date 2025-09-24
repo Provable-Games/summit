@@ -49,9 +49,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "beasts_nft"
+version = "0.1.0"
+source = "git+https://github.com/Provable-Games/beasts.git#61ced9b1f477c87b6828a37d60a0525b2a1da651"
+dependencies = [
+ "openzeppelin_access",
+ "openzeppelin_governance",
+ "openzeppelin_introspection",
+ "openzeppelin_token",
+ "openzeppelin_utils",
+]
+
+[[package]]
 name = "death_mountain"
 version = "0.1.0"
-source = "git+https://github.com/Provable-Games/death-mountain.git#4ea75e272dad5bcd552bfdcd7ab1901b29b262ba"
+source = "git+https://github.com/Provable-Games/death-mountain.git#c63d22551a027a5587bebc16fc082d6f1dd35448"
 dependencies = [
  "alexandria_encoding",
  "dojo",
@@ -66,16 +78,16 @@ dependencies = [
 
 [[package]]
 name = "dojo"
-version = "1.6.0-alpha.0"
-source = "git+https://github.com/dojoengine/dojo?tag=v1.6.0-alpha.2#184a4e8368269815823004d61e71f0699059ad77"
+version = "1.6.0"
+source = "git+https://github.com/dojoengine/dojo?tag=v1.6.0#c7d8b321abc711c14bddcf76f41587f6ef21c356"
 dependencies = [
  "dojo_plugin",
 ]
 
 [[package]]
 name = "dojo_cairo_test"
-version = "1.6.0-alpha.0"
-source = "git+https://github.com/dojoengine/dojo?tag=v1.6.0-alpha.2#184a4e8368269815823004d61e71f0699059ad77"
+version = "1.6.0"
+source = "git+https://github.com/dojoengine/dojo?tag=v1.6.0#c7d8b321abc711c14bddcf76f41587f6ef21c356"
 dependencies = [
  "dojo",
 ]
@@ -83,23 +95,24 @@ dependencies = [
 [[package]]
 name = "dojo_plugin"
 version = "2.10.1"
-source = "git+https://github.com/dojoengine/dojo?tag=v1.6.0-alpha.2#184a4e8368269815823004d61e71f0699059ad77"
+source = "git+https://github.com/dojoengine/dojo?tag=v1.6.0#c7d8b321abc711c14bddcf76f41587f6ef21c356"
 
 [[package]]
 name = "game_components_metagame"
 version = "1.5.1"
-source = "git+https://github.com/Provable-Games/game-components?tag=0.0.3#99e1aefbf56f742b586667f3a90a3799961a6bde"
+source = "git+https://github.com/Provable-Games/game-components?tag=0.0.10#6c31321731571c6019df5a70dffca569ab273961"
 dependencies = [
  "game_components_minigame",
  "game_components_token",
  "game_components_utils",
  "openzeppelin_introspection",
+ "openzeppelin_token",
 ]
 
 [[package]]
 name = "game_components_minigame"
 version = "1.5.1"
-source = "git+https://github.com/Provable-Games/game-components?tag=0.0.3#99e1aefbf56f742b586667f3a90a3799961a6bde"
+source = "git+https://github.com/Provable-Games/game-components?tag=0.0.10#6c31321731571c6019df5a70dffca569ab273961"
 dependencies = [
  "game_components_metagame",
  "game_components_token",
@@ -111,7 +124,7 @@ dependencies = [
 [[package]]
 name = "game_components_test_starknet"
 version = "1.5.1"
-source = "git+https://github.com/Provable-Games/game-components?tag=0.0.3#99e1aefbf56f742b586667f3a90a3799961a6bde"
+source = "git+https://github.com/Provable-Games/game-components?tag=0.0.10#6c31321731571c6019df5a70dffca569ab273961"
 dependencies = [
  "game_components_metagame",
  "game_components_minigame",
@@ -124,7 +137,7 @@ dependencies = [
 [[package]]
 name = "game_components_token"
 version = "1.5.1"
-source = "git+https://github.com/Provable-Games/game-components?tag=0.0.3#99e1aefbf56f742b586667f3a90a3799961a6bde"
+source = "git+https://github.com/Provable-Games/game-components?tag=0.0.10#6c31321731571c6019df5a70dffca569ab273961"
 dependencies = [
  "game_components_metagame",
  "game_components_minigame",
@@ -137,11 +150,12 @@ dependencies = [
 [[package]]
 name = "game_components_utils"
 version = "1.5.1"
-source = "git+https://github.com/Provable-Games/game-components?tag=0.0.3#99e1aefbf56f742b586667f3a90a3799961a6bde"
+source = "git+https://github.com/Provable-Games/game-components?tag=0.0.10#6c31321731571c6019df5a70dffca569ab273961"
 dependencies = [
  "alexandria_encoding",
  "game_components_metagame",
  "game_components_minigame",
+ "game_components_token",
  "graffiti",
 ]
 
@@ -167,6 +181,19 @@ source = "registry+https://scarbs.xyz/"
 checksum = "sha256:7e943a2de32ddca4d48e467e52790e380ab1f49c4daddbbbc4634dd930d0243f"
 dependencies = [
  "openzeppelin_introspection",
+ "openzeppelin_utils",
+]
+
+[[package]]
+name = "openzeppelin_governance"
+version = "1.0.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:c05add2974b3193c3a5c022b9586a84cf98c5970cdb884dcf201c77dbe359f55"
+dependencies = [
+ "openzeppelin_access",
+ "openzeppelin_account",
+ "openzeppelin_introspection",
+ "openzeppelin_token",
  "openzeppelin_utils",
 ]
 
@@ -198,6 +225,7 @@ checksum = "sha256:fd348b31c4a4407add33adc3c2b8f26dca71dbd7431faaf726168f37a91db
 name = "summit"
 version = "0.1.0"
 dependencies = [
+ "beasts_nft",
  "death_mountain",
  "dojo",
  "dojo_cairo_test",
