@@ -14,7 +14,7 @@ trait ISummitSystem<T> {
     fn feed(ref self: T, beast_token_id: u32, adventurer_ids: Span<u64>);
     fn claim_starter_kit(ref self: T, beast_token_ids: Span<u32>);
 
-    fn get_summit_config(self: @T, summit_id: u8) -> SummitConfig;
+    fn get_summit_config(self: @T) -> SummitConfig;
     fn get_summit_history(self: @T, beast_token_id: u32, lost_at: u64) -> SummitHistory;
     fn get_summit_beast_token_id(self: @T) -> u32;
     fn get_summit_beast(self: @T) -> Beast;
@@ -390,8 +390,8 @@ pub mod summit_systems {
             InternalSummitImpl::_get_beast(self.world(@DEFAULT_NS()), beast_token_id)
         }
 
-        fn get_summit_config(self: @ContractState, summit_id: u8) -> SummitConfig {
-            self.world(@DEFAULT_NS()).read_model(summit_id)
+        fn get_summit_config(self: @ContractState) -> SummitConfig {
+            self.world(@DEFAULT_NS()).read_model(SUMMIT_ID)
         }
     }
 
