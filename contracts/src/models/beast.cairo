@@ -15,18 +15,11 @@ pub struct LiveBeastStats {
     pub revival_count: u8,
     pub extra_lives: u8,
     pub has_claimed_starter_kit: bool,
+    pub rewards_earned: u64,
 }
 
 #[derive(Copy, Drop, Serde)]
 pub struct Beast {
     pub fixed: PackableBeast,
     pub live: LiveBeastStats,
-}
-
-#[derive(Copy, Drop, IntrospectPacked, Serde)]
-#[dojo::model]
-pub struct BeastRewards {
-    #[key]
-    pub beast_token_id: u32,
-    pub rewards_earned: u64,
 }
