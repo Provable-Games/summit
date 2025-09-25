@@ -27,8 +27,12 @@ pub mod summit_systems {
     use beasts_nft::interfaces::{IBeastsDispatcher, IBeastsDispatcherTrait};
     use beasts_nft::pack::PackableBeast;
     use core::num::traits::{Sqrt};
+    use death_mountain::models::adventurer::adventurer::{Adventurer, ImplAdventurer};
     use death_mountain::models::beast::{ImplBeast};
     use death_mountain::models::combat::{CombatResult, CombatSpec, ImplCombat, SpecialPowers};
+    use death_mountain::systems::adventurer::contracts::{
+        IAdventurerSystemsDispatcher, IAdventurerSystemsDispatcherTrait,
+    };
     use dojo::model::ModelStorage;
     use dojo::world::WorldStorage;
 
@@ -43,7 +47,7 @@ pub mod summit_systems {
     use summit::erc20::interface::{
         ConsumableERC20Dispatcher, ConsumableERC20DispatcherTrait, RewardERC20Dispatcher, RewardERC20DispatcherTrait,
     };
-    use summit::models::adventurer::{Adventurer, AdventurerConsumed};
+    use summit::models::adventurer::{AdventurerConsumed};
     use summit::models::beast::{Beast, BeastRewards, LiveBeastStats};
     use summit::models::summit::{Summit, SummitConfig, SummitHistory, SummitReward};
 
@@ -56,6 +60,8 @@ pub mod summit_systems {
     fn dojo_init(
         ref self: ContractState,
         adventurer_address: ContractAddress,
+        denshokan_address: ContractAddress,
+        dungeon_address: ContractAddress,
         beast_address: ContractAddress,
         reward_address: ContractAddress,
         attack_potion_address: ContractAddress,
@@ -72,6 +78,8 @@ pub mod summit_systems {
                 @SummitConfig {
                     summit_id: SUMMIT_ID,
                     adventurer_address: adventurer_address,
+                    denshokan_address: denshokan_address,
+                    dungeon_address: dungeon_address,
                     beast_address: beast_address,
                     reward_address: reward_address,
                     attack_potion_address: attack_potion_address,
@@ -228,31 +236,26 @@ pub mod summit_systems {
             assert(beast_dispatcher.owner_of(beast_token_id.into()) == get_caller_address(), errors::NOT_TOKEN_OWNER);
 
             let mut beast = InternalSummitImpl::_get_beast(world, beast_token_id);
-
             let summit_beast_token_id = InternalSummitImpl::_get_summit_beast_token_id(world);
 
-            let adventurer_dispatcher = IERC721Dispatcher { contract_address: summit_config.adventurer_address };
             let mut i = 0;
             while (i < adventurer_ids.len()) {
                 let adventurer_id = *adventurer_ids.at(i);
-                let adventurer = InternalSummitImpl::_get_adventurer(world, adventurer_id);
+                let adventurer = InternalSummitImpl::_get_adventurer(summit_config, adventurer_id);
 
-                assert(
-                    adventurer_dispatcher.owner_of(adventurer_id.into()) == get_caller_address(),
-                    errors::NOT_TOKEN_OWNER,
-                );
-                InternalSummitImpl::_assert_beast_can_consume(world, beast, adventurer_id, adventurer);
+                InternalSummitImpl::_assert_beast_can_consume(world, beast, adventurer_id, adventurer.health);
 
-                beast.live.bonus_health += adventurer.level.into();
+                let level: u16 = adventurer.get_level().into();
+                beast.live.bonus_health += level;
                 if (beast.live.bonus_health > BEAST_MAX_BONUS_HEALTH) {
                     beast.live.bonus_health = BEAST_MAX_BONUS_HEALTH;
                 }
 
                 if beast_token_id == summit_beast_token_id {
-                    beast.live.current_health += adventurer.level.into();
+                    beast.live.current_health += level;
                 }
 
-                world.write_model(@AdventurerConsumed { token_id: adventurer_id, beast_token_id });
+                world.write_model(@AdventurerConsumed { adventurer_id, beast_token_id });
                 i += 1;
             };
 
@@ -366,11 +369,16 @@ pub mod summit_systems {
             CombatSpec { tier: beast_tier, item_type: beast_type, level, specials }
         }
 
-        fn _get_adventurer(world: WorldStorage, token_id: u64) -> Adventurer {
-            let summit_config: SummitConfig = world.read_model(1);
-            let adventurer_token = IERC721Dispatcher { contract_address: summit_config.adventurer_address };
+        fn _get_adventurer(summit_config: SummitConfig, id: u64) -> Adventurer {
+            let adventurer_systems_address = summit_config.adventurer_address;
+            let adventurer_systems = IAdventurerSystemsDispatcher { contract_address: adventurer_systems_address };
+            let dungeon = adventurer_systems.get_adventurer_dungeon(id);
+            assert!(dungeon == summit_config.dungeon_address, "Adventurer not from beast mode dungeon");
 
-            Adventurer { level: 10, health: 100 }
+            let adventurer_token = IERC721Dispatcher { contract_address: summit_config.denshokan_address };
+            assert!(adventurer_token.owner_of(id.into()) == get_caller_address(), "Not Owner");
+
+            adventurer_systems.get_adventurer(id)
         }
 
         /// @title finalize_summit_history
@@ -502,10 +510,11 @@ pub mod summit_systems {
         /// @title assert_beast_can_consume
         /// @notice this function is used to assert that a beast can consume an adventurer
         /// @param beast the beast to check
-        /// @param adventurer the adventurer to check
-        fn _assert_beast_can_consume(world: WorldStorage, beast: Beast, adventurer_id: u64, adventurer: Adventurer) {
+        /// @param adventurer_id the id of the adventurer to check
+        /// @param health the health of the adventurer to check
+        fn _assert_beast_can_consume(world: WorldStorage, beast: Beast, adventurer_id: u64, health: u16) {
             assert(beast.live.bonus_health < BEAST_MAX_BONUS_HEALTH, errors::BEAST_MAX_BONUS_HEALTH);
-            assert(adventurer.health == 0, errors::ADVENTURER_ALIVE);
+            assert(health == 0, errors::ADVENTURER_ALIVE);
 
             let adventurer_consumed: AdventurerConsumed = world.read_model((adventurer_id));
             assert(adventurer_consumed.beast_token_id == 0, errors::ADVENTURER_ALREADY_CONSUMED);

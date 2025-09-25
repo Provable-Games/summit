@@ -6,6 +6,8 @@ pub struct SummitConfig {
     #[key]
     pub summit_id: u8,
     pub adventurer_address: ContractAddress,
+    pub denshokan_address: ContractAddress,
+    pub dungeon_address: ContractAddress,
     pub beast_address: ContractAddress,
     pub reward_address: ContractAddress,
     pub attack_potion_address: ContractAddress,
