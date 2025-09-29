@@ -1,3 +1,4 @@
+use starknet::ContractAddress;
 use summit::models::beast::{Beast};
 use summit::models::summit::{SummitConfig, SummitHistory};
 
@@ -14,6 +15,7 @@ trait ISummitSystem<T> {
     fn feed(ref self: T, beast_token_id: u32, adventurer_ids: Span<u64>);
     fn claim_starter_kit(ref self: T, beast_token_ids: Span<u32>);
 
+    fn get_summit_data(self: @T) -> (Beast, SummitHistory, ContractAddress);
     fn get_summit_config(self: @T) -> SummitConfig;
     fn get_summit_history(self: @T, beast_token_id: u32, lost_at: u64) -> SummitHistory;
     fn get_summit_beast_token_id(self: @T) -> u32;
@@ -73,8 +75,13 @@ pub mod summit_systems {
     ) {
         let mut world: WorldStorage = self.world(@DEFAULT_NS());
 
-        InternalSummitImpl::_init_summit_history(ref world, 1);
-        InternalSummitImpl::_set_summit_beast(ref world, 1);
+        let start_token_id = 1;
+        let mut beast = InternalSummitImpl::_get_beast(world, start_token_id);
+        beast.live.current_health = beast.fixed.health;
+        world.write_model(@beast.live);
+        
+        InternalSummitImpl::_init_summit_history(ref world, start_token_id);
+        InternalSummitImpl::_set_summit_beast(ref world, start_token_id);
 
         world
             .write_model(
@@ -371,6 +378,17 @@ pub mod summit_systems {
             }
         }
 
+        fn get_summit_data(self: @ContractState) -> (Beast, SummitHistory, ContractAddress) {
+            let world = self.world(@DEFAULT_NS());
+            let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
+            let token_id = InternalSummitImpl::_get_summit_beast_token_id(world);
+            let beast = InternalSummitImpl::_get_beast(world, token_id);
+            let summit_history: SummitHistory = world.read_model((token_id, 0));
+            let beast_dispatcher = IERC721Dispatcher { contract_address: summit_config.beast_address };
+            let summit_owner = beast_dispatcher.owner_of(token_id.into());
+            (beast, summit_history, summit_owner)
+        }
+
         fn get_summit_beast_token_id(self: @ContractState) -> u32 {
             InternalSummitImpl::_get_summit_beast_token_id(self.world(@DEFAULT_NS()))
         }
@@ -450,16 +468,15 @@ pub mod summit_systems {
             let current_time = get_block_timestamp();
             let time_on_summit = current_time - summit_history.taken_at;
             summit_history.lost_at = current_time;
-            summit_history.rewards = time_on_summit;
             world.write_model(@summit_history);
 
             // Mint reward
-            if (time_on_summit > 0) {
-                let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
-                let reward_dispatcher = RewardERC20Dispatcher { contract_address: summit_config.reward_address };
-                reward_dispatcher.mint(summit_owner, time_on_summit.into() * TOKEN_DECIMALS);
-                beast.live.rewards_earned += time_on_summit;
-            }
+            // if (time_on_summit > 0) {
+            //     let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
+            //     let reward_dispatcher = RewardERC20Dispatcher { contract_address: summit_config.reward_address };
+            //     reward_dispatcher.mint(summit_owner, time_on_summit.into() * TOKEN_DECIMALS);
+            //     beast.live.rewards_earned += time_on_summit;
+            // }
         }
 
         /// @title new_summit_history
@@ -469,7 +486,7 @@ pub mod summit_systems {
             world
                 .write_model(
                     @SummitHistory {
-                        beast_token_id: token_id, lost_at: 0, taken_at: get_block_timestamp(), rewards: 0,
+                        beast_token_id: token_id, lost_at: 0, taken_at: get_block_timestamp(),
                     },
                 );
         }

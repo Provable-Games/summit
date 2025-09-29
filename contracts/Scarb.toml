@@ -29,4 +29,4 @@ build-external-contracts = [
 sort-module-level-items = true
 max-line-length = 120
 
-[profile.prod]
+[profile.mainnet]

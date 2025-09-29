@@ -1,12 +1,11 @@
+import { useGameStore } from '@/stores/gameStore';
 import { Box, Typography } from '@mui/material';
-import React, { useContext } from 'react';
-import { GameContext } from '../contexts/gameContext';
-import { normaliseHealth } from '../helpers/beasts';
-import { BeastsCollectedBar } from '../helpers/styles';
+import React from 'react';
+import { normaliseHealth } from '@/utils/beasts';
+import { BeastsCollectedBar } from '@/utils/styles';
 
 function Leaderboard(props) {
-  const game = useContext(GameContext)
-  const { totalSupply, deadBeastCount, potionPrices, leaderboard } = game.getState
+  const { totalSupply, deadBeastCount, potionPrices, leaderboard } = useGameStore()
 
   return <Box sx={styles.container}>
     <Box sx={styles.innerContainer}>
@@ -34,25 +33,6 @@ function Leaderboard(props) {
 
           <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
         </Box>
-
-        {React.Children.toArray(
-          leaderboard.map((beast, rank) => <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
-            <Box sx={{ display: 'flex', gap: '2px' }}>
-              <Typography sx={{ width: '8px' }}>
-                {rank + 1}.
-              </Typography>
-              <Typography sx={{ letterSpacing: '0.5px' }}>
-                "{beast.prefix} {beast.suffix}" {beast.name}
-              </Typography>
-            </Box>
-
-            <Box display={'flex'} alignItems={'center'} gap={'2px'}>
-              <Typography>
-                {parseInt(beast.rewards_earned, 16).toLocaleString()}
-              </Typography>
-            </Box>
-          </Box>
-          ))}
 
         {/* <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
           <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />

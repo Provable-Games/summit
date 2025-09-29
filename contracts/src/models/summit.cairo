@@ -32,7 +32,6 @@ pub struct SummitHistory {
     #[key]
     pub lost_at: u64,
     pub taken_at: u64,
-    pub rewards: u64,
 }
 
 // ------------------------------------------ //
