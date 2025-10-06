@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x342d7436aeadfeec52cb0e25dcb36f6054f756e2bedbfb4ee8a444c46af22f0",
-      "class_hash": "0x4f1c53d5af6d61be0e0a06878a2eee12d19c23f31be7927553ba1c3a9a81cb3",
+      "address": "0xaa87f9df91379c1fc3d481be72c4d04152041d9790583ac75e6659e49b800d",
+      "class_hash": "0x3efdbe607b3de6078afd2909798b48ab251ee8e439b573c2fac7731f9edca15",
       "abi": [
         {
           "type": "impl",
@@ -1878,12 +1878,12 @@
         "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42",
         "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
         "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
-        "0x02443d3015ce29e20f80bee6653b42009e5d244c7b35e28a198ff5486a1a0347",
-        "0x04db6edc3536c577430733b0bd519032447b5a126edd9eee5a282ae1c159865a",
-        "0x013f5bb45df2802bcc63a7ea54c35b7590c0619b307efb6b54e3548451a0d80f"
+        "0x0211d8503ba9615471bd08522a8045bcf8daad34fef2cc4c704d5be5a82c91ed",
+        "0x040205f702a45f481cbb02edfc672d128a79b8406a828b27191bbe645a8360a1",
+        "0x0248e3ecad5e6c25539fd3cc0169744d62b834d337e740e2e584e23c29693748"
       ],
-      "tag": "summit_0_0_1-summit_systems",
-      "selector": "0x16a4371618db71665fa361ae0bc03183e124ba36705c228e4c4b9e5154ea12e",
+      "tag": "summit_0_0_2-summit_systems",
+      "selector": "0x3aaf2d45586a07419cf55eab7ec9d923fbf5f9811588d748b809df250a6a45a",
       "systems": [
         "dojo_init",
         "attack",
@@ -1898,40 +1898,40 @@
     {
       "members": [],
       "class_hash": "0x110890d83df21f98ec72c0a44cc464a171e905634d20c36f58cb1adb892b165",
-      "tag": "summit_0_0_1-AdventurerConsumed",
-      "selector": "0x74180d532ca1adaf7aef2cf1d93d4c9ec8875654cba2874f8ee35ac85a7290a"
+      "tag": "summit_0_0_2-AdventurerConsumed",
+      "selector": "0x19acffe40d027bfc6c679704434c5dc2f02e6d8176a36b2d675bf0720427e18"
     },
     {
       "members": [],
       "class_hash": "0x5b12fbdf1515683c1fa2b58b5077035e2bb0ca2be52d56d4e80e5ccf575b03f",
-      "tag": "summit_0_0_1-LiveBeastStats",
-      "selector": "0x1e27942802f236f649e9b515588fca82d494c8550a745a015a2b160cc3c9b5a"
+      "tag": "summit_0_0_2-LiveBeastStats",
+      "selector": "0x7a1b65c6c2b21b5d3292b08e8c2db7d6a2d1feeb0e7147810f93541c1e350f5"
     },
     {
       "members": [],
       "class_hash": "0x8d25ee5b0ee630d2b82c6da7cf79192d19e185adfde90e6c7904251245e7c",
-      "tag": "summit_0_0_1-Summit",
-      "selector": "0x3e32a1d25b0b289ca3f6b84bd0c7823174505e7244fbb7ec1e0726ae02c0ec5"
+      "tag": "summit_0_0_2-Summit",
+      "selector": "0x6f2795b30918466e93035f182bb75033b7ee365b8d43d5ddaad147087da2343"
     },
     {
       "members": [],
       "class_hash": "0x6a7e37a367fe2ad8b8a31e89e4abe9c1871140d1d8dea067191d1e724c4536c",
-      "tag": "summit_0_0_1-SummitConfig",
-      "selector": "0x1a6bc97dd094564e5f7c462ab497ce479bf5db960cd5cce38d2289b9539223f"
+      "tag": "summit_0_0_2-SummitConfig",
+      "selector": "0x3b24bc24d5d8c092650d68684ca545c91b5fce0382d6bb06af09572e8c975bb"
     },
     {
       "members": [],
       "class_hash": "0x3fc8a6a83cf48f21fa851b62c2b8cac6ce0ce9d0c78a97b6692a0efd29c91a1",
-      "tag": "summit_0_0_1-SummitHistory",
-      "selector": "0x1832bbff4ae7b16f1f74d364d7db6a36c14bce831d80c0a04d44380d825090b"
+      "tag": "summit_0_0_2-SummitHistory",
+      "selector": "0x4a2a7cdf70fbe77c5031c0f4722c3d8c430d39091e05b4938b1d56694e3db7c"
     }
   ],
   "events": [
     {
       "members": [],
       "class_hash": "0x2fc054ce0d74bf1c009c18f5137e2a7456fa86c181f3aa7ef6b7e694efc45ec",
-      "tag": "summit_0_0_1-GameEvent",
-      "selector": "0x1080a9e9794103c746fcb4e957c22d3a02ace9f593695c22c7cc81310f26af3"
+      "tag": "summit_0_0_2-GameEvent",
+      "selector": "0x430ac5b497a677f42bf1961dc5470dc5e4412153ed1a97153e2bf56bec7a441"
     }
   ],
   "external_contracts": []

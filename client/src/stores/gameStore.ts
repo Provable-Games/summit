@@ -9,7 +9,7 @@ interface GameState {
   attackInProgress: boolean;
   feedingInProgress: boolean;
   totalDamage: number;
-  selectedBeasts: number[];
+  selectedBeasts: Beast[];
   adventurerCollection: Adventurer[];
   selectedAdventurers: Adventurer[];
   appliedPotions: AppliedPotions;
@@ -22,7 +22,7 @@ interface GameState {
   setAttackInProgress: (attackInProgress: boolean) => void;
   setFeedingInProgress: (feedingInProgress: boolean) => void;
   setTotalDamage: (totalDamage: number) => void;
-  setSelectedBeasts: (selectedBeasts: number[]) => void;
+  setSelectedBeasts: (selectedBeasts: Beast[]) => void;
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => void;
   setAppliedPotions: (appliedPotions: AppliedPotions) => void;
   disconnect: () => void;
@@ -71,7 +71,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setAttackInProgress: (attackInProgress: boolean) => set({ attackInProgress }),
   setFeedingInProgress: (feedingInProgress: boolean) => set({ feedingInProgress }),
   setTotalDamage: (totalDamage: number) => set({ totalDamage }),
-  setSelectedBeasts: (selectedBeasts: number[]) => set({ selectedBeasts }),
+  setSelectedBeasts: (selectedBeasts: Beast[]) => set({ selectedBeasts }),
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => set({ selectedAdventurers }),
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => set({ adventurerCollection }),
   setAppliedPotions: (appliedPotions: AppliedPotions) => set({ appliedPotions }),

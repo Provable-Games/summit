@@ -1,197 +1,230 @@
 import { useGameStore } from '@/stores/gameStore';
+import { Beast } from '@/types/game';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, LinearProgress } from "@mui/material";
 import { fetchBeastImage, fetchBeastTypeImage, normaliseHealth } from "../utils/beasts";
+import { gameColors } from '../utils/themes';
 import { ExperienceBar, HealthBar } from "../utils/styles";
 
 const MAX_HEALTH = 1023;
 const MAX_LEVELS = 40;
 
-export default function BeastProfile({ beast }) {
+interface BeastProfileProps {
+  beast: Beast;
+}
+
+export default function BeastProfile({ beast }: BeastProfileProps) {
   const { summit } = useGameStore()
 
   const originalExperience = Math.pow(beast.level, 2);
-  const currentExperience = beast.totalXp;
+  const currentExperience = originalExperience + beast.bonus_xp;
   const nextLevelExperience = Math.pow(beast.level + 1, 2);
-  const bonusLevels = beast.level - beast.originalLevel;
-  const diff = (beast.deadAt + 46 * 60 * 60 * 1000) - Date.now();
+  const bonusLevels = Math.floor(Math.sqrt(currentExperience)) - beast.level;
+  const diff = (beast.last_death_timestamp + 46 * 60 * 60 * 1000) - Date.now();
   const timeLeft = diff > 3600000 ? `${Math.floor(diff / 3600000)}h` : `${Math.floor((diff % 3600000) / 60000)}m`;
   const streakEnded = diff <= 0;
   const attackStreak = streakEnded ? 0 : beast.attack_streak;
 
   return (
-    <Box sx={styles.container}>
-      <Typography variant='h4' sx={{ lineHeight: '16px', textAlign: 'center' }}>
-        "{beast.prefix} {beast.suffix}"
-      </Typography>
+    <Box sx={styles.beastContainer}>
+      {/* Pixel Art Border Frame */}
+      <Box sx={styles.pixelBorder}>
+        <Box sx={styles.headerContent}>
+          <Box />
 
-      <Box sx={{ display: 'flex', width: '100%', justifyContent: 'center', gap: 1, my: 2, mb: 1 }}>
-        <Box sx={{ width: '50%', display: 'flex', justifyContent: 'center' }}>
-          <img src={fetchBeastImage(beast.name)} alt='' height={'100px'} />
+          <Box sx={{ textAlign: 'center' }}>
+            {/* Special Name at Top */}
+            <Typography sx={styles.specialName}>
+              "{beast.prefix} {beast.suffix}"
+            </Typography>
+
+            {/* Beast Name */}
+            <Box sx={styles.beastNameContainer}>
+              <Typography sx={styles.beastName}>
+                {beast.name}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box sx={styles.beastRankContainer}>
+            <Box sx={styles.rankIconContainer}>
+              {beast.tier === 1 ? (
+                <svg width="16" height="16" viewBox="0 0 20 20">
+                  <g id="crown" fill="#e6c56e" stroke="#af8a3c" strokeWidth="1">
+                    <path d="M2 14h16l-1.5 4h-13z" />
+                    <path d="m2 14 2-9 3 5 4-5 3 5 2-5 2 9Z" strokeLinejoin="round" strokeLinecap="round" />
+                    <circle cx="5" cy="5" r="1.2" fill="#fff3c4" />
+                    <circle cx="12" cy="5" r="1.2" fill="#fff3c4" />
+                    <circle cx="17" cy="5" r="1.2" fill="#fff3c4" />
+                  </g>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 20 20">
+                  <g id="trophy" fill="#c0c0c0" stroke="#8a8a8a" strokeWidth="1">
+                    <rect x="4" y="6" width="10" height="8" rx="1" />
+                    <rect x="2" y="7" width="2" height="3" />
+                    <rect x="14" y="7" width="2" height="3" />
+                    <rect x="6" y="13" width="6" height="4" />
+                  </g>
+                </svg>
+              )}
+            </Box>
+            <Typography sx={styles.pixelRankValue}>{beast.tier}</Typography>
+          </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '50%' }}>
-          <Box sx={styles.infoSection}>
-            <Typography sx={{ fontSize: '18px', lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              {beast.name}
-            </Typography>
-
-            <img src={fetchBeastTypeImage(beast.type)} alt='' height={'16px'} />
+        {/* Main Content Area */}
+        <Box sx={styles.mainContent}>
+          {/* Beast Image */}
+          <Box sx={styles.beastImageSection}>
+            <img src={fetchBeastImage(beast)} alt='' height={'100%'} />
           </Box>
 
-          <Box sx={styles.infoSection}>
-            <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              Level
-            </Typography>
-            <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              {beast.originalLevel}
+          {/* Stats Section */}
+          <Box sx={styles.statsContainer}>
+            <Box sx={styles.statsRow}>
+              <Box sx={styles.statBox}>
+                <Typography sx={styles.statLabel}>TIER</Typography>
+                <Typography sx={styles.statValue}>{beast.tier}</Typography>
+              </Box>
+              <Box sx={styles.statBox}>
+                <Typography sx={styles.statLabel}>LEVEL</Typography>
+                <Typography sx={styles.statValue}>{beast.level}</Typography>
+              </Box>
+              <Box sx={styles.statBox}>
+                <Typography sx={styles.statLabel}>TYPE</Typography>
+                <Typography sx={styles.statValue}>{beast.type}</Typography>
+              </Box>
+            </Box>
+            <Box sx={styles.statsRow}>
+              <Box sx={styles.statBox}>
+                <Typography sx={styles.statLabel}>POWER</Typography>
+                <Box sx={styles.statValueWithIcon}>
+                  <Typography sx={[styles.statValue, { fontSize: '14px' }]}>{beast.power}</Typography>
+                  <Box sx={styles.powerIcon}>⚡</Box>
+                </Box>
+              </Box>
+              <Box sx={styles.statBox}>
+                <Typography sx={styles.statLabel}>HEALTH</Typography>
+                <Box sx={styles.statValueWithIcon}>
+                  <Typography sx={[styles.statValue, { fontSize: '14px' }]}>{beast.health}</Typography>
+                  <Box sx={styles.healthIcon}>❤️</Box>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Divider */}
+          <Box sx={styles.divider} />
+
+          {/* Attack Streak Section */}
+          <Box sx={styles.pixelStreakContainer}>
+            <Box sx={styles.pixelStreakHeader}>
+              <Typography sx={styles.pixelStreakTitle}>ATTACK STREAK</Typography>
+              {attackStreak > 0 && !streakEnded && (
+                <Typography sx={styles.pixelStreakTimer}>
+                  {beast.token_id === summit.beast.token_id ? "PAUSED" : `ENDS IN ${timeLeft}`}
+                </Typography>
+              )}
+            </Box>
+
+            <Box sx={styles.pixelStreakIcons}>
+              {[...Array(10)].map((_, index) => {
+                const isActive = index < attackStreak;
+                return (
+                  <Box
+                    key={index}
+                    sx={{
+                      ...styles.pixelFireIcon,
+                      backgroundColor: isActive ? '#FF4500' : '#1a1a1a',
+                      border: isActive ? '2px solid #FFD700' : '2px solid #333',
+                      boxShadow: isActive 
+                        ? '0 0 12px #FF4500, 0 0 20px rgba(255, 69, 0, 0.6), inset 0 1px 0 #FF8C42' 
+                        : 'inset 0 2px 4px rgba(0,0,0,0.5)',
+                      transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    <WhatshotIcon sx={{ 
+                      fontSize: '16px', 
+                      color: isActive ? '#FFD700' : '#444',
+                      filter: isActive ? 'drop-shadow(0 0 4px #FFD700)' : 'none',
+                    }} />
+                  </Box>
+                );
+              })}
+            </Box>
+
+            <Typography sx={styles.pixelStreakBonus}>
+              +{attackStreak * 10}% BONUS XP NEXT ATTACK
             </Typography>
           </Box>
 
-          <Box sx={styles.infoSection}>
-            <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              Tier
-            </Typography>
-            <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              {beast.tier}
-            </Typography>
-          </Box>
+          {/* Bonus Levels Section */}
+          <Box sx={styles.pixelProgressContainer}>
+            <Box sx={styles.pixelProgressHeader}>
+              <Typography sx={styles.pixelProgressLabel}>BONUS LEVELS</Typography>
+              {bonusLevels === MAX_LEVELS ? (
+                <Typography sx={styles.pixelMaxedText}>MAXED</Typography>
+              ) : (
+                <Typography sx={styles.pixelProgressValue}>{bonusLevels}/{MAX_LEVELS}</Typography>
+              )}
+            </Box>
 
-          <Box sx={styles.infoSection}>
-            <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              Health
-            </Typography>
-            <Typography variant='h5' sx={{ lineHeight: '16px', textAlign: 'center', letterSpacing: '0.5px' }}>
-              {beast.originalHealth}
-            </Typography>
-          </Box>
-        </Box>
-      </Box>
+            <Box sx={styles.pixelLevelBars}>
+              {[...Array(MAX_LEVELS)].map((_, index) => {
+                const isActive = index < bonusLevels;
+                const intensity = isActive ? (index / MAX_LEVELS) : 0;
+                return (
+                  <Box
+                    key={index}
+                    sx={{
+                      ...styles.pixelLevelBar,
+                      backgroundColor: isActive ? `rgb(${Math.floor(255 * (1 - intensity))}, ${Math.floor(255 * intensity)}, 0)` : '#2a2a2e',
+                      boxShadow: isActive ? `0 0 4px rgb(${Math.floor(255 * (1 - intensity))}, ${Math.floor(255 * intensity)}, 0)` : 'inset 0 1px 2px rgba(0, 0, 0, 0.3)',
+                    }}
+                  />
+                );
+              })}
+            </Box>
 
-      <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', mb: 1, gap: 1 }}>
-        <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', textAlign: 'center', border: '1px solid rgba(0, 0, 0, 0.6)', borderRadius: '4px' }}>
-          <Box sx={{ display: 'flex', justifyContent: (attackStreak > 0) ? 'space-between' : 'center', alignItems: 'center', px: 1 }}>
-            <Typography sx={{ fontSize: '12px', letterSpacing: '0.5px' }}>
-              Attack Streak
-            </Typography>
-            {attackStreak > 0 && !streakEnded && <Typography sx={{ fontSize: '12px', letterSpacing: '0.5px' }}>
-              {beast.token_id === summit.beast.token_id ? "paused" : `ends in ${timeLeft}`}
-            </Typography>}
-          </Box>
-
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mt: '-5px' }}>
-            {[...Array(10)].map((_, index) => (
-              <WhatshotIcon
-                key={index}
-                htmlColor={index < attackStreak ? 'red' : 'gray'}
-                sx={{ fontSize: '18px', pt: '4px' }}
+            {/* XP Progress Bar */}
+            <Box sx={{ position: 'relative' }}>
+              <LinearProgress
+                variant="determinate"
+                value={normaliseHealth(currentExperience - originalExperience, nextLevelExperience - originalExperience)}
+                sx={styles.xpBar}
               />
-            ))}
+            </Box>
           </Box>
 
-          <Typography sx={{ fontSize: '12px', letterSpacing: '0.5px', color: 'rgba(0, 0, 0, 0.6)' }}>
-            +{attackStreak * 10}% Bonus XP Next Attack
-          </Typography>
-        </Box>
-      </Box>
+          {/* Bonus Health Section */}
+          <Box sx={styles.pixelProgressContainer}>
+            <Box sx={styles.pixelProgressHeader}>
+              <Typography sx={styles.pixelProgressLabel}>BONUS HEALTH</Typography>
+              {beast.bonus_health === MAX_HEALTH ? (
+                <Typography sx={styles.pixelMaxedText}>MAXED</Typography>
+              ) : (
+                <Typography sx={styles.pixelProgressValue}>{beast.bonus_health}</Typography>
+              )}
+            </Box>
 
-      <Box sx={{ width: '100%', mb: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', height: '16px' }}>
-          <Typography letterSpacing={'0.5px'}>
-            Bonus Levels
-          </Typography>
-
-          {bonusLevels === MAX_LEVELS ? (
-            <Typography letterSpacing={'1px'} className="special-text" fontSize={'12px'}>
-              MAXED
-            </Typography>
-          ) : (
-            <Typography letterSpacing={'0.5px'}>
-              {bonusLevels}/{MAX_LEVELS}
-            </Typography>
-          )}
-        </Box>
-
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {[...Array(MAX_LEVELS)].map((_, index) => {
-            let color;
-            if (index < bonusLevels) {
-              const ratio = index / MAX_LEVELS;
-              const red = Math.floor(255 * (1 - ratio));
-              const green = Math.floor(255 * ratio);
-              color = `rgb(${red}, ${green}, 0)`;
-            } else {
-              color = 'gray';
-            }
-            return (
-              <Box
-                key={index}
-                sx={{
-                  width: '5px',
-                  height: '10px',
-                  backgroundColor: color,
-                  borderRadius: '2px',
-                  mr: '1px'
-                }}
+            <Box sx={{ position: 'relative' }}>
+              <LinearProgress
+                variant="determinate"
+                value={normaliseHealth(beast.bonus_health, MAX_HEALTH)}
+                sx={styles.healthBar}
               />
-            );
-          })}
-        </Box>
-      </Box>
+            </Box>
+          </Box>
 
-      <Box sx={{ width: '100%', mb: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', height: '16px' }}>
-          <Typography letterSpacing={'0.5px'}>
-            Bonus Health
-          </Typography>
 
-          {beast.bonus_health === MAX_HEALTH ? (
-            <Typography letterSpacing={'1px'} className="special-text" fontSize={'12px'}>
-              MAXED
-            </Typography>
-          ) : (
-            <Typography letterSpacing={'0.5px'}>
-              {MAX_HEALTH}
-            </Typography>
-          )}
-        </Box>
-
-        <Box position={'relative'} width={'100%'}>
-          <HealthBar sx={{ height: '12px', border: '2px solid black' }} variant="determinate" value={normaliseHealth(beast.bonus_health, MAX_HEALTH)} />
-
-          <Box sx={styles.healthText}>
-            <Typography sx={{ fontSize: '11px', lineHeight: '9px', color: 'white', letterSpacing: '0.5px' }}>
-              {beast.bonus_health}
+          {/* Revival Cost */}
+          <Box sx={styles.pixelRevivalContainer}>
+            <Typography sx={styles.pixelRevivalText}>
+              REVIVAL COST: {beast.revival_count + 1} {beast.revival_count + 1 > 1 ? 'POTIONS' : 'POTION'}
             </Typography>
           </Box>
-        </Box>
-      </Box>
-
-      <Box sx={{ width: '100%' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', height: '16px' }}>
-          <Typography letterSpacing={'0.5px'}>
-            Experience
-          </Typography>
-
-          <Typography letterSpacing={'0.5px'}>
-            lvl {beast.level + 1}
-          </Typography>
-        </Box>
-
-        <Box position={'relative'} width={'100%'}>
-          <ExperienceBar sx={{ height: '12px', border: '2px solid black' }} variant="determinate" value={normaliseHealth(currentExperience - originalExperience, nextLevelExperience - originalExperience)} />
-
-          <Box sx={styles.healthText}>
-            <Typography sx={{ fontSize: '11px', lineHeight: '9px', color: 'white', letterSpacing: '0.5px' }}>
-              {currentExperience - originalExperience}
-            </Typography>
-          </Box>
-        </Box>
-
-        <Box sx={{ display: 'flex', justifyContent: 'center' }} mt={'3px'}>
-          <Typography color='rgba(0,0,0,0.7)' fontStyle={'normal'} fontSize={'13px'}>
-            Revival Cost: {beast.revival_count + 1} {beast.revival_count + 1 > 1 ? 'Potions' : 'Potion'}
-          </Typography>
         </Box>
       </Box>
     </Box>
@@ -199,29 +232,432 @@ export default function BeastProfile({ beast }) {
 }
 
 const styles = {
-  container: {
+  // Main pixel art container
+  beastContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '220px',
+    px: '12px',
+    py: '8px',
+    pb: '4px',
+    background: '#1e1e22',
+    border: '2px solid #d0c98d',
+    borderRadius: '12px',
+  },
+
+  // Pixel art border with retro styling
+  pixelBorder: {
+    position: 'relative',
+    width: '100%',
+    padding: '4px',
+    borderRadius: '0',
+  },
+
+  // Special name container (small at top)
+  specialNameContainer: {
+    textAlign: 'center',
+    padding: '4px 8px',
+  },
+
+  // Special name (small text)
+  specialName: {
+    fontSize: '10px',
+    fontWeight: 'bold',
+    color: '#FFF',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    lineHeight: '1.2',
+  },
+
+  // Beast name container
+  beastNameContainer: {
+    textAlign: 'center',
+    marginBottom: '4px',
+    padding: '6px 8px',
+  },
+
+  // Beast name
+  beastName: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#FFF',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    lineHeight: '1.2',
+  },
+
+  // Header content
+  headerContent: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+
+  // Main content area
+  mainContent: {
+    position: 'relative',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1,
+  },
+
+  // Beast image section
+  beastImageSection: {
+    background: '#000',
+    display: 'flex',
+    justifyContent: 'center',
+    width: '100%',
+    height: '120px',
+    borderRadius: '8px',
+  },
+
+  // Stats container
+  statsContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  },
+
+  // Stats row
+  statsRow: {
+    display: 'flex',
+    gap: '4px',
+  },
+
+  // Stat box
+  statBox: {
+    flex: 1,
+    background: '#2a2a2e',
+    borderRadius: '4px',
+    pt: 1.5,
+    pb: 1.5,
+    textAlign: 'center',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
+
+  // Stat label
+  statLabel: {
+    fontSize: '8px',
+    color: '#FFF',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    marginBottom: '2px',
+    lineHeight: '1',
+  },
+
+  // Stat value
+  statValue: {
+    fontSize: '12px',
+    color: '#FFF',
+    fontWeight: 'bold',
+    lineHeight: '1',
+  },
+
+  // Stat value with icon
+  statValueWithIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px',
+  },
+
+  // Power icon
+  powerIcon: {
+    fontSize: '10px',
+    color: '#FFF',
+  },
+
+  // Health icon
+  healthIcon: {
+    fontSize: '10px',
+    color: '#FF6B6B',
+  },
+
+  // Divider
+  divider: {
+    height: '1px',
+    background: '#d3c091',
+    opacity: 0.3,
+  },
+
+  // Beast rank container (top right corner)
+  beastRankContainer: {
+    position: 'absolute',
+    textAlign: 'center',
+    top: '-5px',
+    right: '0',
+    zIndex: 10,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    width: '210px',
-    backgroundColor: '#f6e6bc',
-    border: '3px solid rgba(0, 0, 0, 0.5)',
-    borderRadius: '10px',
-    padding: '10px 12px',
-    pb: 0.5,
+    gap: '2px',
   },
-  infoSection: {
+
+  // Rank icon container
+  rankIconContainer: {
     display: 'flex',
-    borderBottom: '1px solid rgba(0, 0, 0, 0.5)',
-    width: '100px',
-    justifyContent: 'space-between',
-    paddingBottom: '4px',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  healthText: {
+
+  // Pixel rank frame
+  pixelRankFrame: {
+    padding: '4px 6px',
+    position: 'relative',
+    minWidth: '40px',
+    textAlign: 'center',
+  },
+
+  // Pixel rank label
+  pixelRankLabel: {
+    fontSize: '8px',
+    color: '#FFF',
+    textShadow: '1px 1px 0px #000000',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    fontWeight: 'bold',
+    lineHeight: '1',
+    marginBottom: '1px',
+  },
+
+  // Pixel rank value
+  pixelRankValue: {
+    fontSize: '12px',
+    color: '#FFF',
+    textShadow: '1px 1px 0px #000000',
+    letterSpacing: '0.5px',
+    fontWeight: 'bold',
+    lineHeight: '1',
+  },
+
+  // Pixel image frame
+  pixelImageFrame: {
+    padding: '8px',
+    position: 'relative',
+  },
+
+  // Pixel streak container
+  pixelStreakContainer: {
+    position: 'relative',
+  },
+
+  // Pixel streak header
+  pixelStreakHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  // Pixel streak title
+  pixelStreakTitle: {
+    fontSize: '11px',
+    color: '#FFF',
+    textShadow: '1px 1px 0px #000000',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    fontWeight: 'bold',
+  },
+
+  // Pixel streak timer
+  pixelStreakTimer: {
+    fontSize: '9px',
+    color: '#FF6B35',
+    textShadow: '1px 1px 0px #000000',
+    letterSpacing: '0.5px',
+    fontWeight: 'bold',
+  },
+
+  // Pixel streak icons
+  pixelStreakIcons: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: '2px',
+  },
+
+  // Pixel fire icon
+  pixelFireIcon: {
+    width: '20px',
+    height: '20px',
+    borderRadius: '0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+
+  // Pixel streak bonus
+  pixelStreakBonus: {
+    fontSize: '10px',
+    color: '#d0c98d',
+    textShadow: '1px 1px 0px #000000',
+    letterSpacing: '0.5px',
+    fontWeight: 'bold',
+  },
+
+  // Pixel progress container
+  pixelProgressContainer: {
+    position: 'relative',
+  },
+
+  // Pixel progress header
+  pixelProgressHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  // Pixel progress label
+  pixelProgressLabel: {
+    fontSize: '10px',
+    color: '#FFF',
+    textShadow: '1px 1px 0px #000000',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    fontWeight: 'bold',
+  },
+
+  // Pixel progress value
+  pixelProgressValue: {
+    fontSize: '10px',
+    color: '#d0c98d',
+    textShadow: '1px 1px 0px #000000',
+    letterSpacing: '0.5px',
+    fontWeight: 'bold',
+  },
+
+  // Pixel maxed text
+  pixelMaxedText: {
+    fontSize: '10px',
+    color: '#FFF',
+    textShadow: '1px 1px 0px #000000, 0 0 4px #FFF',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    fontWeight: 'bold',
+  },
+
+  // Pixel level bars
+  pixelLevelBars: {
+    display: 'flex',
+    gap: '1px',
+    justifyContent: 'center',
+  },
+
+  // Pixel level bar
+  pixelLevelBar: {
+    width: '6px',
+    height: '12px',
+    borderRadius: '0',
+    position: 'relative',
+  },
+
+  // XP Bar
+  xpBar: {
+    height: '6px',
+    borderRadius: '2px',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    marginTop: '4px',
+    position: 'relative',
+    overflow: 'hidden',
+    '& .MuiLinearProgress-bar': {
+      backgroundColor: '#9C27B0',
+      boxShadow: '0 0 8px rgba(156, 39, 176, 0.5)',
+    },
+  },
+
+  // XP Overlay Text
+  xpOverlayText: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: '#fff',
+    fontWeight: 'bold',
+    textShadow: '0 0 4px #000',
+    pointerEvents: 'none',
+    fontSize: '0.75rem',
+  },
+
+  // Health Bar
+  healthBar: {
+    height: '10px',
+    borderRadius: '6px',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    marginTop: '2px',
+    position: 'relative',
+    overflow: 'hidden',
+    '& .MuiLinearProgress-bar': {
+      backgroundColor: '#58b000',
+    },
+  },
+
+  // Pixel health bar container
+  pixelHealthBarContainer: {
+    position: 'relative',
+    width: '100%',
+  },
+
+  // Pixel health bar
+  pixelHealthBar: {
+    height: '14px',
+    background: '#1A3A2A',
+    borderRadius: '0',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+
+  // Pixel health bar fill
+  pixelHealthBarFill: {
+    height: '100%',
+    background: 'linear-gradient(90deg, #d0c98d 0%, #4A8762 100%)',
+    border: 'none',
+    borderRadius: '0',
+    position: 'relative',
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      top: '0',
+      left: '0',
+      right: '0',
+      bottom: '0',
+      background: 'linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.2) 50%, transparent 100%)',
+    }
+  },
+
+  // Pixel health text
+  pixelHealthText: {
     position: 'absolute',
     top: '50%',
-    left: '3px',
-    transform: 'translate(3px, -50%)',
-    zIndex: 1000
-  }
+    left: '4px',
+    transform: 'translateY(-50%)',
+    fontSize: '9px',
+    color: '#FFF',
+    textShadow: '1px 1px 0px #000000',
+    letterSpacing: '0.5px',
+    fontWeight: 'bold',
+    zIndex: 10,
+  },
+
+  // Pixel revival container
+  pixelRevivalContainer: {
+    textAlign: 'center',
+    position: 'relative',
+  },
+
+  // Pixel revival text
+  pixelRevivalText: {
+    fontSize: '11px',
+    color: '#d0c98d',
+    letterSpacing: '0.5px',
+    fontWeight: 'bold',
+    mt: '2px'
+  },
 }

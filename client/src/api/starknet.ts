@@ -72,11 +72,6 @@ interface HoldersResponse {
   holders: string[];
 }
 
-interface NFTDetailsResponse {
-  tokenUri: string;
-  ownerAddress: string;
-}
-
 const BLAST_URL = import.meta.env.VITE_PUBLIC_BLAST_API;
 
 export const useStarknetApi = () => {
@@ -106,7 +101,6 @@ export const useStarknetApi = () => {
       });
 
       const data = await response.json();
-      console.log('data', data)
       let beast = {
         id: parseInt(data?.result[0], 16),
         prefix: parseInt(data?.result[1], 16),

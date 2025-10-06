@@ -4,10 +4,9 @@ import { motion, useAnimationControls } from 'framer-motion'
 import explosion from '../assets/images/explosion.png'
 import heart from '../assets/images/heart.png'
 import skull from '../assets/images/skull.png'
-import summitImage from '../assets/images/summit.png'
 import sword from '../assets/images/sword.png'
-import { fetchBeastImage, normaliseHealth } from '../utils/beasts'
-import { HealthBar } from '../utils/styles'
+import { fetchBeastSummitImage, normaliseHealth } from '../utils/beasts'
+import { gameColors } from '../utils/themes'
 
 function Summit() {
   const { collection, summit, attackInProgress, totalDamage, selectedBeasts } = useGameStore()
@@ -17,6 +16,7 @@ function Summit() {
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit.beast.token_id))
   const showAttack = !isSavage && !attackInProgress && selectedBeasts.length > 0 && totalDamage > 0
   const summitHealthRemaining = summit.beast.current_health + (summit.beast.extra_lives * (summit.beast.health + summit.beast.bonus_health))
+  const name = summit.beast.prefix ? `"${summit.beast.prefix} ${summit.beast.suffix}" ${summit.beast.name}` : summit.beast.name
 
   const calculateExtraLifeLoss = () => {
     let loss = 0
@@ -35,82 +35,94 @@ function Summit() {
   }
 
   return (
-    <Box sx={styles.beastSummit}>
-      <Box position={'relative'} width={'100%'} mb={2}>
-        <HealthBar variant="determinate" value={normaliseHealth(summit.beast.current_health, summit.beast.health + summit.beast.bonus_health)} />
-
-        <Box sx={styles.healthText}>
-          <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white' }}>
-            {summit.beast.current_health}
+    <Box sx={styles.summitContainer}>
+      {/* Stats and Health Section */}
+      <Box sx={styles.statsSection}>
+        {/* Name and Owner */}
+        <Box sx={styles.nameSection}>
+          <Typography sx={styles.beastName}>
+            {name}
+          </Typography>
+          <Typography sx={styles.ownerText}>
+            Owned by {summit.owner?.replace('.stark', '') || 'Unknown'}
           </Typography>
         </Box>
 
-        {summit.beast.extra_lives > 0 && <Box sx={styles.extraLife}>
-          {summit.beast.extra_lives > 1 && <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px', textShadow: '0 0 3px #FFD700' }}>
-            {summit.beast.extra_lives}
-          </Typography>}
+        {/* Health Bar */}
+        <Box sx={styles.healthContainer}>
+          <Box sx={styles.healthBar}>
+            <Box sx={[styles.healthFill, {
+              width: `${normaliseHealth(summit.beast.current_health, summit.beast.health + summit.beast.bonus_health)}%`
+            }]} />
 
-          <img src={heart} alt='' height={'12px'} />
-        </Box>}
-      </Box>
-
-      <motion.div animate={controls} style={{ display: 'flex', flexDirection: 'column' as const, alignItems: 'center', marginBottom: '8px' }}>
-        <Typography variant='h3' sx={{ lineHeight: '12px', textAlign: 'center' }}>
-          "{summit.beast.prefix} {summit.beast.suffix}" {summit.beast.name}
-        </Typography>
-
-        <Typography variant='h6' sx={{ textAlign: 'center', letterSpacing: '0.5px' }}>
-          Owned by {summit.owner?.replace('.stark', '') || 'Unknown'}
-        </Typography>
-
-        <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', gap: 1, alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', gap: '2px' }}>
-            <Typography variant='h5' sx={{ letterSpacing: '0.5px', color: 'rgba(0, 0, 0, 0.6)', lineHeight: '16px' }}>
-              Pwr
-            </Typography>
-
-            <Typography variant='h5' sx={{ letterSpacing: '0.5px', color: 'rgba(0, 0, 0, 0.6)', lineHeight: '16px' }}>
-              {summit.beast.power}
+            <Typography sx={styles.healthText}>
+              {summit.beast.current_health} / {summit.beast.health + summit.beast.bonus_health}
             </Typography>
           </Box>
-
-        </Box>
-      </motion.div>
-
-      <motion.img
-        key={summit.beast.token_id}
-        style={{ zIndex: 1, height: '200px', marginTop: '-10px', opacity: showAttack ? 0.6 : 1 }}
-        src={fetchBeastImage(summit.beast.name)} alt=''
-        animate={controls}
-      />
-
-      <img src={summitImage} alt='' width={'100%'} style={{ marginTop: '-105px', zIndex: 0 }} />
-
-      {showAttack && <>
-        <Box sx={styles.damageText} component={motion.div} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-          <Typography variant='h2'>
-            -{totalDamage}
-          </Typography>
-
-          <img src={sword} alt='' height={'18px'} />
         </Box>
 
-        <Box sx={styles.monsterDmgIcon} component={motion.div} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-          {totalDamage < summitHealthRemaining
-            ? <img src={explosion} alt='' height={'60px'} />
-            : <img src={skull} alt='' height={'60px'} />
-          }
+        {/* Stats Row */}
+        <Box sx={styles.statsRow}>
+          <Box sx={styles.statBox}>
+            <Typography sx={styles.statLabel}>LEVEL</Typography>
+            <Typography sx={styles.levelValue}>{summit.beast.level}</Typography>
+          </Box>
+          <Box sx={styles.statBox}>
+            <Typography sx={styles.statLabel}>POWER</Typography>
+            <Box sx={styles.powerValueContainer}>
+              <Typography sx={styles.powerValue}>{summit.beast.power}</Typography>
+            </Box>
+          </Box>
         </Box>
+      </Box>
 
-        {calculateExtraLifeLoss() > 0 && <Box sx={styles.extraLifeLoss} component={motion.div} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-          <Typography variant='h5'>
-            -{calculateExtraLifeLoss()}
-          </Typography>
+      {/* Beast Image */}
+      <Box sx={styles.beastImageContainer}>
+        <motion.img
+          key={summit.beast.token_id}
+          style={styles.beastImage}
+          src={fetchBeastSummitImage(summit.beast)}
+          alt=''
+          animate={controls}
+        />
 
-          <img src={heart} alt='' height={'12px'} />
-        </Box>}
-      </>}
+        {/* Attack Effects */}
+        {showAttack && (
+          <>
+            <Box sx={styles.damageIndicator} component={motion.div}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}>
+              <Typography variant='h3' sx={styles.damageText}>
+                -{totalDamage}
+              </Typography>
+              <img src={sword} alt='' height={'24px'} />
+            </Box>
 
+            <Box sx={styles.effectIcon} component={motion.div}
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}>
+              {totalDamage < summitHealthRemaining
+                ? <img src={explosion} alt='' height={'80px'} />
+                : <img src={skull} alt='' height={'80px'} />
+              }
+            </Box>
+
+            {calculateExtraLifeLoss() > 0 && (
+              <Box sx={styles.heartLossIndicator} component={motion.div}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}>
+                <Typography sx={styles.heartLossText}>
+                  -{calculateExtraLifeLoss()}
+                </Typography>
+                <img src={heart} alt='' height={'16px'} />
+              </Box>
+            )}
+          </>
+        )}
+      </Box>
     </Box>
   );
 }
@@ -118,76 +130,165 @@ function Summit() {
 export default Summit;
 
 const styles = {
-  beastSummit: {
+  summitContainer: {
     height: 'calc(100% - 270px)',
-    width: '350px',
-    maxWidth: '95vw',
-    boxSizing: 'border-box',
+    width: '100%',
+    maxWidth: '450px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  nameSection: {
+    textAlign: 'center',
+    marginBottom: '8px',
+  },
+  beastName: {
+    fontSize: '20px',
+    fontWeight: 'bold',
+    color: '#ffedbb',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    marginBottom: '4px',
+    textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
+  },
+  ownerText: {
+    fontSize: '12px',
+    color: '#ffedbbdd',
+    letterSpacing: '0.5px',
+  },
+  beastImageContainer: {
+    position: 'relative',
+    width: '280px',
+    height: '280px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  beastImage: {
+    height: '240px',
+    maxWidth: '240px',
+    transition: 'all 0.3s ease',
+    zIndex: 1,
+  },
+  statsSection: {
+    width: '100%',
+    maxWidth: '350px',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  statsRow: {
+    display: 'flex',
+    gap: '8px',
+    marginTop: '2px',
+    justifyContent: 'center',
+  },
+  statBox: {
+    background: `${gameColors.darkGreen}70`,
     borderRadius: '4px',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    padding: '4px 12px',
+    minWidth: '60px',
+    textAlign: 'center',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-    transition: '0.3s',
   },
-  mainContainer: {
+  statLabel: {
+    fontSize: '9px',
+    color: '#ffedbb',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    marginBottom: '2px',
+    lineHeight: '1',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  levelValue: {
+    fontSize: '14px',
+    color: '#ffedbb',
+    fontWeight: 'bold',
+    lineHeight: '1',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  powerValueContainer: {
     display: 'flex',
-    flexDirection: 'column',
-    width: '100%',
     alignItems: 'center',
-    height: '380px',
-    justifyContent: 'space-between',
-    position: 'relative',
-    opacity: 0
+    justifyContent: 'center',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
   },
-  clock: {
-    position: 'absolute',
-    top: '200px',
-    left: '50px',
-    width: '100px',
-    height: '50px',
+  powerValue: {
+    fontSize: '14px',
+    color: '#FFD700',
+    fontWeight: 'bold',
+    lineHeight: '1',
+  },
+  healthContainer: {
+    width: '100%',
+    marginBottom: '4px',
+  },
+  healthBar: {
+    position: 'relative',
+    width: '100%',
+    height: '16px',
+    backgroundColor: `${gameColors.darkGreen}90`,
+    border: `1px solid ${gameColors.accentGreen}40`,
+    borderRadius: '8px',
+    overflow: 'hidden',
+  },
+  healthFill: {
+    height: '100%',
+    backgroundColor: gameColors.brightGreen,
+    borderRadius: '8px',
+    transition: 'width 0.3s ease',
   },
   healthText: {
     position: 'absolute',
-    top: 0,
+    top: '50%',
     left: '50%',
-    transform: 'translate(-50%)',
-    textAlign: 'center',
-    letterSpacing: '0.5px'
+    transform: 'translate(-50%, -50%)',
+    fontSize: '12px',
+    color: '#ffedbb',
+    fontWeight: 'bold',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    letterSpacing: '0.5px',
+    zIndex: 2,
   },
-  extraLife: {
+  damageIndicator: {
     position: 'absolute',
-    top: 0,
-    right: '6px',
-    height: '16px',
+    top: '20px',
+    right: '-40px',
     display: 'flex',
     alignItems: 'center',
-    gap: '2px'
+    gap: '8px',
+    zIndex: 10,
   },
   damageText: {
-    position: 'absolute',
-    zIndex: 100,
-    right: 0,
-    top: '100px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '2px'
+    color: gameColors.red,
+    fontWeight: 'bold',
+    textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
   },
-  monsterDmgIcon: {
+  effectIcon: {
     position: 'absolute',
-    width: '100px',
-    left: '145px',
-    top: '130px',
-    zIndex: 98
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    zIndex: 5,
   },
-  extraLifeLoss: {
+  heartLossIndicator: {
     position: 'absolute',
-    zIndex: 100,
-    right: '5px',
     top: '20px',
+    left: '-40px',
     display: 'flex',
     alignItems: 'center',
-    gap: '2px'
+    gap: '4px',
+    zIndex: 10,
+  },
+  heartLossText: {
+    fontSize: '18px',
+    color: gameColors.red,
+    fontWeight: 'bold',
+    textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
   },
 }

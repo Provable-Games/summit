@@ -22,26 +22,35 @@ export interface Beast {
   bonus_health: number;
   bonus_xp: number;
   attack_streak: number;
-  last_death_timestamp: number;
   num_deaths: number;
+  last_death_timestamp: number;
   last_killed_by: number;
   revival_count: number;
   extra_lives: number;
   has_claimed_starter_kit: boolean;
   rewards_earned: number;
+  rank?: number;
+  last_dm_death_timestamp?: number;
+  adventurers_killed?: number;
   combat?: Combat;
 }
 
 export interface Combat {
   capture: boolean;
   damage: number;
-  healthLeft: number;
-  attack_potions: number;
+  healthLeft?: number;
+  beastDamage?: number;
+  summitDamage?: number;
+  elemental?: number;
+  power?: number;
 }
 
 export interface Adventurer {
   id: number;
+  name: string;
   level: number;
+  metadata: any;
+  soulbound: boolean;
 }
 
 export interface AppliedPotions {

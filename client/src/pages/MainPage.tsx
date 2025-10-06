@@ -1,8 +1,7 @@
+import { useGameStore } from "@/stores/gameStore"
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import { Box, IconButton, Typography } from '@mui/material'
-import React from 'react'
 import { isBrowser, isMobile } from 'react-device-detect'
-import { LazyLoadImage } from 'react-lazy-load-image-component'
 import ActionBar from '../components/ActionBar'
 import AdventurerCollection from '../components/AdventurerCollection'
 import BeastCollection from '../components/BeastCollection'
@@ -11,37 +10,20 @@ import Leaderboard from '../components/Leaderboard'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import ConnectWallet from '../components/dialogs/ConnectWallet'
-import { useGameStore } from "@/stores/gameStore";
-import { BEAST_NAMES } from '../utils/BeastData'
-import { fetchBeastImage } from '../utils/beasts'
+import { gameColors } from '../utils/themes'
 
 function MainPage() {
   const { summit, showFeedingGround, setShowFeedingGround } = useGameStore()
-
-  function PreloadBeastImages() {
-    return <>
-      {React.Children.toArray(
-        Object.values(BEAST_NAMES).map(name =>
-          <LazyLoadImage
-            style={{ position: 'fixed', top: '-5px', left: '-5px' }}
-            alt={""}
-            height={1}
-            src={fetchBeastImage(name)}
-            width={1}
-          />
-        ))}
-    </>
-  }
 
   return <>
     <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
       {showFeedingGround ? <>
         {isBrowser && <Box sx={styles.sideContainer}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <IconButton size='large'>
-              <ArrowBackIcon fontSize='large' htmlColor='black' />
+            <IconButton size='large' onClick={() => setShowFeedingGround(false)}>
+              <ArrowBackIcon fontSize='large' htmlColor={gameColors.gameYellow} />
             </IconButton>
-            <Typography variant='h2'>
+            <Typography variant='h3' color={gameColors.gameYellow} fontWeight={'600'} mt={'4px'}>
               Feeding Ground
             </Typography>
           </Box>
@@ -80,7 +62,7 @@ function MainPage() {
         {showFeedingGround
           ? <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
             <IconButton size='large' onClick={() => { setShowFeedingGround(false); }}>
-              <ArrowBackIcon fontSize='large' htmlColor='black' />
+              <ArrowBackIcon fontSize='large' htmlColor={gameColors.brightGreen} />
             </IconButton>
 
             <Typography variant='h2'>
@@ -95,7 +77,6 @@ function MainPage() {
       }
     </Box >
 
-    {PreloadBeastImages()}
   </>
 }
 
@@ -106,14 +87,15 @@ const styles = {
     width: '100%',
     height: '100%',
     display: 'flex',
-    position: 'relative'
+    justifyContent: 'space-between',
+    position: 'relative',
+    backgroundColor: 'transparent'
   },
   bottomContainer: {
     width: '100%',
-    height: '260px',
-    minHeight: '260px',
+    height: '271px',
     position: 'absolute',
-    background: '#fbf7da',
+    background: `linear-gradient(to bottom, transparent, ${gameColors.darkGreen})`,
     bottom: 0,
     zIndex: 101
   },

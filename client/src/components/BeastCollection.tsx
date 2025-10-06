@@ -1,255 +1,276 @@
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
-import InfoIcon from '@mui/icons-material/Info';
-import { Box, Tooltip, Typography } from "@mui/material";
+import { Box, Typography, Popover, Tooltip } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
-import Lottie from "lottie-react";
-import { useState } from 'react';
-import { isBrowser } from "react-device-detect";
-import SwordAnimation from '../assets/animations/swords.json';
-import attackPotionIcon from '../assets/images/attack-potion.png';
-import health from '../assets/images/health.png';
-import heart from '../assets/images/heart.png';
-import selectAll from '../assets/images/selectall.png';
-import skull from '../assets/images/skull_black.png';
-import sword from '../assets/images/sword.png';
-import { beastElementalColor, fetchBeastImage, normaliseHealth } from "../utils/beasts";
-import { ExperienceBar, HealthBar } from '../utils/styles';
+import { useMemo, useState } from 'react';
+import { fetchBeastImage, normaliseHealth, calculateBattleResult } from "../utils/beasts";
+import { gameColors } from '../utils/themes';
 import BeastProfile from './BeastProfile';
-import { BruteIcon, HunterIcon, MagicalIcon } from "./Icons";
+import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 function BeastCollection() {
-  const { loadingCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit } = useGameStore()
-
+  const { loadingCollection, setCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit, appliedPotions } = useGameStore()
   const { address } = useAccount()
   const [hideDeadBeasts, setHideDeadBeasts] = useState(false)
+  const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
 
-  const selectBeast = (id) => {
-    if (selectedBeasts.includes(id)) {
-      setSelectedBeasts(selectedBeasts.filter(prevId => prevId !== id))
+  const collectionWithCombat = useMemo(() => {
+    if (summit && collection.length > 0) {
+      return collection.map((beast: Beast) => ({
+        ...beast,
+        combat: calculateBattleResult(beast, summit.beast, appliedPotions?.attack || 0)
+      })).sort((a: Beast, b: Beast) => {
+        if (a.token_id === summit.beast.token_id) {
+          return -1
+        } else if (b.token_id === summit.beast.token_id) {
+          return 1
+        } else if (a.combat?.elemental !== b.combat?.elemental) {
+          return b.combat?.elemental - a.combat?.elemental
+        } else if (b.combat?.power !== a.combat?.power) {
+          return b.combat?.power - a.combat?.power
+        } else {
+          return b.health - a.health
+        }
+      })
+    }
+
+    return collection
+  }, [collection, summit, appliedPotions?.attack]);
+
+  const selectBeast = (beast: Beast) => {
+    if (selectedBeasts.find(prevBeast => prevBeast.token_id === beast.token_id)) {
+      setSelectedBeasts(selectedBeasts.filter(prevBeast => prevBeast.token_id !== beast.token_id))
     } else {
-      setSelectedBeasts([...selectedBeasts, id])
+      setSelectedBeasts([...selectedBeasts, beast])
     }
   }
 
   const selectAllBeasts = () => {
-    if (collection.length === selectedBeasts.length) {
+    const allBeasts = collectionWithCombat.filter(x => hideDeadBeasts ? x.current_health > 0 : true);
+
+    // If all alive beasts are selected, deselect all
+    if (selectedBeasts.length === allBeasts.length) {
       setSelectedBeasts([])
     } else {
-      setSelectedBeasts(collection.filter(x => hideDeadBeasts ? x.current_health > 0 : true).map(x => x.id))
+      // Select all alive beasts
+      setSelectedBeasts(allBeasts)
     }
   }
 
-  const hideDead = (hide: boolean) => {
-    setSelectedBeasts([])
+  const hideDead = (hide) => {
     setHideDeadBeasts(hide)
   }
 
-  const RenderBottomText = (beast: Beast) => {
-    if (summit.beast.token_id === beast.token_id) {
-      return <Typography variant="h5" letterSpacing={'2px'} className="glitch-effect" lineHeight={'14px'}>
-        SAVÁGE
-      </Typography>
-    }
+  // Helper to check if all alive beasts are selected
+  const allAliveBeastsSelected = useMemo(() => {
+    const allBeasts = collection.filter(x => hideDeadBeasts ? x.current_health > 0 : true);
+    return allBeasts.length > 0 && allBeasts.length === selectedBeasts.length;
+  }, [collection, selectedBeasts, hideDeadBeasts]);
 
-    if (beast.combat.capture) {
-      return <Box display={'flex'} alignItems={'center'} gap={'2px'}>
-        <img src={health} alt='' height={'13px'} />
+  const handleHoverEnter = (event: React.MouseEvent<HTMLElement>, beast: Beast) => {
+    setAnchorEl(event.currentTarget);
+    setHoveredBeast(beast);
+  };
 
-        <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkgreen'}>
-          {beast.combat.healthLeft} hp left
+  const handleHoverLeave = () => {
+    setAnchorEl(null);
+    setHoveredBeast(null);
+  };
+
+  const RenderBeastCard = (beast: Beast) => {
+    const isSelected = selectedBeasts.find(prevBeast => prevBeast.token_id === beast.token_id)
+    const isSavage = summit?.beast.token_id === beast.token_id
+    const isDead = beast.current_health === 0
+
+    // Use pre-calculated combat result
+    const battleResult = summit && !isSavage ? beast.combat : null
+
+    if (hideDeadBeasts && isDead) return null;
+
+    return (
+      <Box
+        key={beast.token_id}
+        sx={[
+          styles.beastCard,
+          isSelected && styles.selectedCard,
+          isDead && styles.deadCard
+        ]}
+        onClick={() => selectBeast(beast)}
+        onMouseEnter={(e) => handleHoverEnter(e, beast)}
+        onMouseLeave={handleHoverLeave}
+      >
+        {/* Glow effect for selected cards */}
+        {isSelected && (
+          <Box sx={styles.glowEffect} />
+        )}
+
+        {/* Beast Image */}
+        <Box sx={styles.imageContainer}>
+          <img
+            src={fetchBeastImage(beast)}
+            alt={beast.name}
+            style={{ ...styles.beastImage }}
+          />
+        </Box>
+
+        {/* Beast Name */}
+        <Typography sx={styles.beastName}>
+          {beast.name}
         </Typography>
+
+        {/* Stats Row */}
+        <Box sx={styles.statsRow}>
+          {/* Power */}
+          <Box sx={styles.stat}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill={gameColors.yellow}>
+              <path d="M7 2v11h3v9l7-12h-4l4-8z" />
+            </svg>
+            <Typography sx={styles.statText}>
+              {beast.power}
+            </Typography>
+          </Box>
+
+          {/* Health */}
+          <Box sx={styles.stat}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill={gameColors.red}>
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+            </svg>
+            <Typography sx={styles.statText}>
+              {beast.current_health}
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Combat Preview */}
+        {battleResult && !isDead && (
+          <Box sx={[
+            styles.combatPreview,
+            battleResult.capture && styles.combatCapture
+          ]}>
+            <Box sx={styles.combatContent}>
+              <img src={'/images/sword.png'} alt='' height={'12px'} />
+              <Typography sx={[
+                styles.combatText,
+                battleResult.capture ? styles.combatTextSuccess : styles.combatTextFailure
+              ]}>
+                {battleResult.capture
+                  ? `${battleResult.healthLeft} HP LEFT`
+                  : `${battleResult.damage} DMG`
+                }
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
+        {/* Status indicators */}
+        {isSavage && (
+          <Box sx={styles.savageIndicator}>
+            <Typography sx={styles.savageText}>
+              SUMMIT
+            </Typography>
+          </Box>
+        )}
+
+        {/* Selection order number */}
+        {isSelected && (
+          <Box sx={styles.selectionIndicator}>
+            <Typography sx={styles.selectionNumber}>
+              {selectedBeasts.findIndex(prevBeast => prevBeast.token_id === beast.token_id) + 1}
+            </Typography>
+          </Box>
+        )}
       </Box>
-    }
-
-    return <Box display={'flex'} gap={'3px'} alignItems={'center'}>
-      <img src={sword} alt='' height={'10px'} />
-
-      <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'darkred'}>
-        {beast.combat.damage} dmg
-      </Typography>
-    </Box>
+    )
   }
 
   return (
     <Box sx={styles.container}>
-      {!address && !loadingCollection && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
-
-        <Box textAlign={'center'}>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            Connect Your Wallet
+      {!address && !loadingCollection && (
+        <Box sx={styles.emptyState}>
+          <Typography variant="h2">
+            CONNECT YOUR WALLET
           </Typography>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            Take the summit
-          </Typography>
-        </Box>
-
-        <img src={fetchBeastImage('tarrasque')} alt='' height={'150px'} />
-
-      </Box>}
-
-      {address && !loadingCollection && collection.length < 1 && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
-
-        <Box textAlign={'center'}>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            You don't own any beast nfts
-          </Typography>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            Collect them in <a style={{ color: '#30a019' }} href="https://lootsurvivor.io" target="_blank">loot survivor 1.5</a>
-          </Typography>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            Or buy in <a style={{ color: '#ff92b6' }} href="https://realms.world/collection/beasts" target="_blank">Realms world</a>
+          <Typography variant="h3">
+            TO TAKE THE SUMMIT
           </Typography>
         </Box>
+      )}
 
-        {isBrowser && <img src={fetchBeastImage('golem')} alt='' height={'150px'} />}
-
-      </Box>}
-
-      {loadingCollection && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
-
-        <Box textAlign={'center'}>
-          <Box display={'flex'} alignItems={'baseline'}>
-            <Typography variant="h2" letterSpacing={'0.5px'}>Fetching beasts</Typography>
-            <div className='dotLoader' />
-          </Box>
+      {address && !loadingCollection && collection.length < 1 && (
+        <Box sx={styles.emptyState}>
+          <Typography variant="h2">
+            NO BEASTS FOUND
+          </Typography>
+          <Typography variant="h3">
+            COLLECT IN LOOT SURVIVOR
+          </Typography>
         </Box>
+      )}
 
-      </Box>}
+      {loadingCollection && (
+        <Box sx={styles.emptyState}>
+          <Typography variant="h2">
+            LOADING BEASTS...
+          </Typography>
+        </Box>
+      )}
 
-      <Box sx={{ display: 'flex', gap: '4px', flexDirection: 'column' }}>
-        <Tooltip title={<Box sx={{ background: '#616161', padding: '4px 8px', borderRadius: '4px' }}>Select all</Box>}>
-          <Box sx={[styles.utilityButton, selectedBeasts.length === collection.length && styles.selectedItem]} onClick={() => selectAllBeasts()}>
-            <img src={selectAll} alt='' height={'100%'} />
-          </Box>
-        </Tooltip>
-
-
-        <Tooltip title={<Box sx={{ background: '#616161', padding: '4px 8px', borderRadius: '4px' }}>Hide dead</Box>}>
-          <Box sx={[styles.utilityButton, hideDeadBeasts && styles.selectedItem]} onClick={() => hideDead(!hideDeadBeasts)}>
-            <img src={skull} alt='' height={'90%'} style={{ opacity: hideDeadBeasts ? 1 : 0.6 }} />
-          </Box>
-        </Tooltip>
-      </Box>
-
-      {collection.map(beast => {
-        const xp = Math.pow(beast.level, 2)
-        const isSelected = selectedBeasts.includes(beast.id)
-        const isSavage = summit.beast.token_id === beast.token_id
-        const elementalColor = beastElementalColor(beast)
-        const current_health = isSavage ? summit.beast.current_health : beast.current_health
-
-        return <Box
-          key={beast.id}
-          sx={[styles.itemContainer, isSelected && styles.selectedItem, (selectedBeasts.length > 0 && !isSelected) && { opacity: 0.5, borderColor: 'transparent' }]}
-          onClick={() => selectBeast(beast.id)}>
-
-          <Tooltip title={<Box sx={{ background: '#616161', padding: '4px 8px', borderRadius: '4px' }}>{beast.type}</Box>}>
-            <Box sx={{ position: 'absolute', top: '3px', left: '4px' }} >
-              {beast.type === 'Hunter' && <HunterIcon color={elementalColor} />}
-              {beast.type === 'Magical' && <MagicalIcon color={elementalColor} />}
-              {beast.type === 'Brute' && <BruteIcon color={elementalColor} />}
-            </Box>
-          </Tooltip>
-
-          {beast.combat.attack_potions > 0 && <Box sx={{ position: 'absolute', top: '23px', left: '6px', display: 'flex', alignItems: 'center' }}>
-            <Typography sx={{ fontSize: '14px', lineHeight: '10px', marginRight: '-2px' }}>
-              {beast.combat.attack_potions}
-            </Typography>
-            <img src={attackPotionIcon} alt='' height={'16px'} />
-          </Box>}
-
-          {isSelected && attackInProgress && <Box sx={{ position: 'absolute', bottom: '45px' }}>
-            <Lottie animationData={SwordAnimation} loop={true} style={{ height: '90px' }} />
-          </Box>}
-
-          {isSelected && selectedBeasts.length > 1 && <Box sx={styles.order}>
-            <Typography variant="h6" lineHeight={'19px'}>
-              {selectedBeasts.findIndex(x => x === beast.id) + 1}
-            </Typography>
-          </Box>}
-
-          {selectedBeasts.length <= 1 &&
-            <Tooltip title={<BeastProfile beast={beast} />} placement='top'>
-              <Box sx={[styles.order, { cursor: 'pointer', right: 2 }]}>
-                <InfoIcon fontSize='small' color='primary' />
+      {/* Beast Grid with Utility Buttons */}
+      {collectionWithCombat.length > 0 && (
+        <Box sx={styles.beastGridContainer}>
+          {/* Utility Buttons */}
+          <Box sx={styles.utilityButtonsContainer}>
+            <Tooltip placement='right' title={<Box sx={styles.tooltipContent}>Select all</Box>}>
+              <Box sx={[styles.utilityButton, allAliveBeastsSelected && styles.selectedItem]} onClick={() => selectAllBeasts()}>
+                <LibraryAddCheckIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />
               </Box>
             </Tooltip>
-          }
 
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, width: '100%' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: '4x' }}>
-              <Typography variant='h6' sx={{ lineHeight: '12px', letterSpacing: '0.5px' }}>
-                {beast.name}
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: 'flex', justifyContent: 'space-evenly', width: '100%', alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', gap: '2px' }}>
-                <Typography sx={{ letterSpacing: '0.5px', color: 'rgba(0, 0, 0, 0.6)' }}>
-                  Pwr
-                </Typography>
-                <Typography sx={{ letterSpacing: '0.5px', color: 'rgba(0, 0, 0, 0.6)' }}>
-                  {beast.power}
-                </Typography>
+            <Tooltip placement='right' title={<Box sx={styles.tooltipContent}>Hide dead</Box>}>
+              <Box sx={[styles.utilityButton, hideDeadBeasts && styles.selectedItem]} onClick={() => hideDead(!hideDeadBeasts)}>
+                <VisibilityOffIcon sx={{
+                  color: gameColors.brightGreen,
+                  fontSize: '20px',
+                  opacity: hideDeadBeasts ? 1 : 0.6
+                }} />
               </Box>
-            </Box>
+            </Tooltip>
           </Box>
 
-          <img alt='' src={fetchBeastImage(beast.name)} height={'85px'} style={{ marginTop: '-3px' }} />
-
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px', width: '100%' }}>
-            <Box position={'relative'} width={'100%'}>
-              <HealthBar variant="determinate" value={normaliseHealth(current_health, beast.health)} />
-
-              <Box sx={[styles.healthText, beast.extra_lives > 0 && { left: '7px', transform: 'none' }]}>
-
-                {current_health === 0
-                  ? <Typography lineHeight={'17px'} letterSpacing={'0.5px'} color={'white'} sx={{ fontSize: '13px', textWrap: 'nowrap', opacity: 0.8 }}>
-                    {(() => {
-                      const timeLeft = (beast.last_death_timestamp + 23 * 3600 * 1000 - Date.now()) / 1000;
-                      const hours = Math.floor(timeLeft / 3600);
-
-                      if (hours > 0) {
-                        return `Revives in ${hours}h`;
-                      } else {
-                        return `Revives in ${Math.floor((timeLeft % 3600) / 60)}m`;
-                      }
-                    })()}
-                  </Typography>
-
-                  : <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
-                    {current_health}
-                  </Typography>}
-
-              </Box>
-
-              {beast.extra_lives > 0 && <Box sx={styles.extraLife}>
-                {beast.extra_lives > 1 && <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px', textShadow: '0 0 3px #FFD700' }}>
-                  {beast.extra_lives}
-                </Typography>}
-
-                <img src={heart} alt='' height={'12px'} />
-              </Box>}
-            </Box>
-
-            <Box position={'relative'} width={'100%'}>
-              <ExperienceBar variant="determinate"
-                value={normaliseHealth(xp + beast.bonus_xp, Math.pow(beast.level + 1, 2) - xp)}
-                sx={{ height: '10px', border: '2px solid black' }} />
-
-              <Box sx={styles.healthText}>
-                <Typography sx={{ fontSize: '10px', lineHeight: '10px', color: 'white', letterSpacing: '0.5px' }}>
-                  {xp + beast.bonus_xp >= Math.pow(beast.level + 1, 2) ? 'Level up' : (isSelected && attackInProgress ? `+${10 + beast.attack_streak} XP` : 'XP')}
-                </Typography>
-              </Box>
-            </Box>
+          {/* Beast Grid */}
+          <Box sx={styles.beastGrid}>
+            {collectionWithCombat.filter(beast => !hideDeadBeasts || beast.current_health > 0).map((beast: Beast) => RenderBeastCard(beast))}
           </Box>
-
-          {RenderBottomText(beast)}
         </Box>
-      })}
-    </Box >
+      )}
+
+      {/* Beast Profile Popover */}
+      <Popover
+        open={Boolean(anchorEl && hoveredBeast)}
+        anchorEl={anchorEl}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center',
+        }}
+        disableRestoreFocus
+        sx={{
+          pointerEvents: 'none',
+          '& .MuiPopover-paper': {
+            backgroundColor: 'transparent',
+            boxShadow: 'none',
+            mt: -2,
+          }
+        }}
+      >
+        {hoveredBeast && <BeastProfile beast={hoveredBeast} />}
+      </Popover>
+    </Box>
   );
 }
 
@@ -258,67 +279,286 @@ export default BeastCollection;
 const styles = {
   container: {
     width: '100%',
-    display: 'flex',
-    gap: 1,
-    overflowX: 'auto',
-    boxSizing: 'border-box',
-    p: '5px'
-  },
-  itemContainer: {
-    position: 'relative',
-    height: '180px',
-    boxSizing: 'border-box',
-    width: '100px',
-    minWidth: '120px',
+    backdropFilter: 'blur(12px) saturate(1.2)',
+    border: `1px solid ${gameColors.accentGreen}40`,
     padding: 1,
+    pt: 0.5,
+    pb: 0,
+    overflowY: 'hidden',
+    boxSizing: 'border-box',
+    position: 'relative',
+  },
+  emptyState: {
     display: 'flex',
     flexDirection: 'column',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 0.5,
-    cursor: 'pointer',
-    borderRadius: '5px',
-    border: '2px solid rgba(0, 0, 0, 0.5)',
-    background: '#f6e6bc',
-    transition: 'border-color 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease',
+    minHeight: '300px',
+    gap: 2,
+    textAlign: 'center',
   },
-  selectedItem: {
-    boxShadow: 'rgba(0, 0, 0, 0.35) 0px 5px 15px;',
-    border: '2px solid rgba(0, 0, 0, 0.8)',
-  },
-  healthText: {
-    position: 'absolute',
-    top: 0,
-    left: '50%',
-    transform: 'translate(-50%)',
-    textAlign: 'center'
-  },
-  extraLife: {
-    position: 'absolute',
-    top: 0,
-    right: '6px',
-    height: '16px',
+  beastGridContainer: {
     display: 'flex',
-    alignItems: 'center',
-    gap: '2px'
+    alignItems: 'flex-start',
+    gap: '4px',
   },
-  order: {
+  beastGrid: {
+    display: 'flex',
+    gap: 1,
+    alignItems: 'flex-start',
+    overflowX: 'scroll',
+    flex: 1,
+    px: '4px',
+  },
+  beastCard: {
+    position: 'relative',
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
+    borderRadius: '6px',
+    padding: '6px',
+    mt: '6px',
+    mb: '4px',
+    boxSizing: 'border-box',
+    cursor: 'pointer',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    overflow: 'hidden',
+    width: '140px',
+    minWidth: '140px',
+    height: '180px',
+    display: 'flex',
+    flexDirection: 'column',
+    flexShrink: 0,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.accentGreen}40,
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      0 0 0 1px ${gameColors.darkGreen}
+    `,
+    '&:hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: `
+        inset 0 1px 0 ${gameColors.brightGreen}60,
+        0 8px 16px rgba(127, 255, 0, 0.2),
+        0 0 0 2px ${gameColors.accentGreen}
+      `,
+    },
+  },
+  selectedCard: {
+    background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.brightGreen}80,
+      0 4px 12px rgba(127, 255, 0, 0.4),
+      0 0 0 2px ${gameColors.brightGreen}
+    `,
+    '&:hover': {
+      boxShadow: `
+        inset 0 1px 0 ${gameColors.brightGreen},
+        0 8px 20px rgba(127, 255, 0, 0.5),
+        0 0 0 2px ${gameColors.brightGreen}
+      `,
+    }
+  },
+  deadCard: {
+    opacity: 0.5,
+    filter: 'grayscale(100%)',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: `
+        inset 0 1px 0 ${gameColors.darkGray}40,
+        0 2px 4px rgba(0, 0, 0, 0.3),
+        0 0 0 1px ${gameColors.darkGray}
+      `,
+    }
+  },
+  glowEffect: {
     position: 'absolute',
-    top: 0,
-    right: 5
+    top: '-50%',
+    left: '-50%',
+    width: '200%',
+    height: '200%',
+    background: `radial-gradient(circle, ${gameColors.brightGreen}20 0%, transparent 70%)`,
+    animation: 'pulse 2s ease-in-out infinite',
+    '@keyframes pulse': {
+      '0%, 100%': {
+        opacity: 0.5,
+      },
+      '50%': {
+        opacity: 0.8,
+      }
+    }
   },
-  utilityButton: {
+  imageContainer: {
+    position: 'relative',
+    width: '100%',
+    height: '110px',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    height: '30px',
-    width: '30px',
-    border: '2px solid rgba(0, 0, 0, 0.4)',
-    background: '#f6e6bc',
-    borderRadius: '5px',
+    marginBottom: '4px',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.black} 100%)`,
+    boxShadow: `inset 0 1px 0 ${gameColors.darkGreen}, inset 0 -1px 0 ${gameColors.black}`,
+  },
+  beastImage: {
+    maxWidth: '90%',
+    maxHeight: '90%',
+    filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))',
+  },
+  typeOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '40%',
+    pointerEvents: 'none',
+  },
+  beastName: {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#FFF',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    marginBottom: '4px',
+    textShadow: `0 1px 2px ${gameColors.darkGreen}`,
+  },
+  statsRow: {
+    display: 'flex',
+    justifyContent: 'center',
+    gap: 1,
+    marginBottom: '6px',
+  },
+  stat: {
+    display: 'flex',
+    alignItems: 'center',
+    flex: 1,
+    gap: '3px',
+    padding: '3px 10px',
+    borderRadius: '4px',
+    background: `${gameColors.darkGreen}80`,
+    backdropFilter: 'blur(4px)',
+  },
+  statText: {
+    fontSize: '14px',
+    color: '#FFF',
+    fontWeight: 'bold',
+    textShadow: `0 1px 1px ${gameColors.darkGreen}`,
+  },
+  savageIndicator: {
+    position: 'absolute',
+    top: '8px',
+    right: '8px',
+    backgroundColor: gameColors.yellow,
+    padding: '2px 6px',
+    borderRadius: '4px',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
+  },
+  savageText: {
+    fontSize: '9px',
+    color: gameColors.darkGreen,
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    top: '10px',
+    left: '10px',
+  },
+  selectionNumber: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#d0c98d',
+    lineHeight: 1,
+  },
+  combatPreview: {
+    padding: '2px',
+    borderRadius: '4px',
+    background: `${gameColors.darkGreen}90`,
+    backdropFilter: 'blur(4px)',
+    border: `1px solid ${gameColors.red}60`,
+    textAlign: 'center',
+    marginTop: 'auto',
+  },
+  combatCapture: {
+    border: `1px solid ${gameColors.brightGreen}60`,
+  },
+  combatContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    justifyContent: 'center',
+  },
+  combatText: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    textShadow: `0 1px 1px ${gameColors.darkGreen}`,
+  },
+  combatTextSuccess: {
+    color: gameColors.brightGreen,
+  },
+  combatTextFailure: {
+    color: gameColors.red,
+  },
+  utilityButton: {
+    position: 'relative',
+    width: '32px',
+    height: '32px',
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
+    borderRadius: '6px',
+    border: `1px solid ${gameColors.accentGreen}40`,
     cursor: 'pointer',
-    padding: '3px',
-    boxSizing: 'border-box',
-    transition: 'border-color 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease',
-    marginRight: '-3px'
-  }
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.accentGreen}40,
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      0 0 0 1px ${gameColors.darkGreen}
+    `,
+    '&:hover': {
+      background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    },
+  },
+  selectedItem: {
+    background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    border: `1px solid ${gameColors.brightGreen}80`,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.brightGreen}80,
+      0 2px 6px rgba(127, 255, 0, 0.3),
+      0 0 0 1px ${gameColors.brightGreen}
+    `,
+    '&:hover': {
+      background: `linear-gradient(135deg, ${gameColors.brightGreen}20 0%, ${gameColors.lightGreen} 100%)`,
+      boxShadow: `
+        inset 0 1px 0 ${gameColors.brightGreen},
+        0 4px 10px rgba(127, 255, 0, 0.4),
+        0 0 0 1px ${gameColors.brightGreen}
+      `,
+    }
+  },
+  utilityButtonsContainer: {
+    display: 'flex',
+    gap: '6px',
+    flexDirection: 'column',
+    flexShrink: 0,
+    marginTop: '6px',
+  },
+  tooltipContent: {
+    background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    padding: '6px 10px',
+    borderRadius: '4px',
+    border: `1px solid ${gameColors.accentGreen}60`,
+    color: gameColors.brightGreen,
+    fontSize: '12px',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    textShadow: `0 1px 2px ${gameColors.darkGreen}`,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.accentGreen}40,
+      0 2px 4px rgba(0, 0, 0, 0.3)
+    `,
+  },
 }

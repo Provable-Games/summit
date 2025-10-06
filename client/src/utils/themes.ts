@@ -1,43 +1,85 @@
 import { createTheme } from '@mui/material/styles';
 
+// Define our custom color palette
+export const gameColors = {
+  // Primary colors from the design
+  gameYellow: '#ffedbb',
+  darkGreen: '#0A1F0F',
+  mediumGreen: '#1A3A2A',
+  lightGreen: '#2D5941',
+  accentGreen: '#4A8762',
+  brightGreen: '#58b000',
+  
+  // Secondary colors
+  orange: '#FF6B35',
+  yellow: '#FFD700',
+  purple: '#9B59B6',
+  blue: '#3498DB',
+  red: '#E74C3C',
+  
+  // Neutral colors
+  black: '#000000',
+  darkGray: '#1A1A1A',
+  mediumGray: '#333333',
+  lightGray: '#666666',
+  white: '#FFFFFF',
+  offWhite: '#F5F5F5',
+  
+  // Beast type colors
+  hunterColor: '#FF6B35',
+  magicalColor: '#9B59B6',
+  bruteColor: '#E74C3C',
+}
+
 export const mainTheme = createTheme({
   typography: {
     fontFamily: [
-      'New Amsterdam',
+      'Cinzel',
       'roboto',
     ].join(','),
     allVariants: {
-      color: '#000'
+      color: gameColors.brightGreen
     },
     h1: {
-      fontSize: '42px'
+      fontSize: '42px',
+      color: gameColors.brightGreen,
+      textTransform: 'uppercase',
+      letterSpacing: '2px'
     },
     h2: {
       fontSize: '26px',
+      color: gameColors.brightGreen,
+      textTransform: 'uppercase',
+      letterSpacing: '1.5px'
     },
     h3: {
-      fontSize: '22px'
+      fontSize: '22px',
+      color: gameColors.accentGreen
     },
     h4: {
-      fontSize: '20px'
+      fontSize: '20px',
+      color: gameColors.accentGreen
     },
     h5: {
-      fontSize: '16px'
+      fontSize: '16px',
+      color: gameColors.brightGreen
     },
     h6: {
-      fontSize: '15px'
+      fontSize: '15px',
+      color: gameColors.brightGreen
     },
     body1: {
       fontSize: '14px',
-      lineHeight: '18px'
+      lineHeight: '18px',
+      color: gameColors.accentGreen
     },
     subtitle1: {
       fontSize: '14px',
       lineHeight: '18px',
-      color: 'rgba(255, 255, 255, 0.7)'
+      color: gameColors.lightGreen
     },
     subtitle2: {
-      color: 'rgba(0, 0, 0, 0.5)',
+      color: gameColors.lightGreen,
       fontStyle: 'italic',
       fontSize: '12px',
       letterSpacing: '0.5px'
@@ -45,23 +87,24 @@ export const mainTheme = createTheme({
   },
   palette: {
     primary: {
-      main: '#fc5c1d',
-      contrastText: '#000'
+      main: gameColors.brightGreen,
+      contrastText: gameColors.darkGreen
     },
     secondary: {
-      main: '#ffb000',
-      contrastText: "#000"
+      main: gameColors.orange,
+      contrastText: gameColors.white
     },
     warning: {
-      main: '#ffb000',
-      contrastText: "#fff"
+      main: gameColors.yellow,
+      contrastText: gameColors.darkGreen
     },
     background: {
-      default: '#1F1E1F',
-      paper: '#f6e6bc'
+      default: gameColors.darkGreen,
+      paper: gameColors.mediumGreen
     },
     text: {
-      primary: '#FFF'
+      primary: gameColors.brightGreen,
+      secondary: gameColors.accentGreen
     },
   },
   components: {
@@ -69,17 +112,24 @@ export const mainTheme = createTheme({
       styleOverrides: {
         root: {
           letterSpacing: '1px',
-          borderRadius: '20px',
-          color: 'white'
+          borderRadius: '4px',
+          color: gameColors.brightGreen,
+          border: `2px solid ${gameColors.brightGreen}`,
+          background: 'transparent',
+          textTransform: 'uppercase',
+          '&:hover': {
+            background: gameColors.brightGreen,
+            color: gameColors.darkGreen
+          }
         }
       }
     },
     MuiMenu: {
       styleOverrides: {
         paper: {
-          backgroundColor: '#f6e6bc',
-          border: '3px solid rgba(0, 0, 0, 0.5)',
-          borderRadius: '10px',
+          backgroundColor: gameColors.mediumGreen,
+          border: `2px solid ${gameColors.brightGreen}`,
+          borderRadius: '4px',
           padding: '0 12px'
         }
       }
@@ -89,7 +139,9 @@ export const mainTheme = createTheme({
         tooltip: {
           fontSize: '14px',
           letterSpacing: '0.5px',
-          background: 'transparent'
+          background: 'transparent',
+          border: 'none',
+          color: gameColors.brightGreen
         }
       }
     },
@@ -103,9 +155,13 @@ export const mainTheme = createTheme({
     MuiTab: {
       styleOverrides: {
         root: {
-          textTransform: 'none',
+          textTransform: 'uppercase',
           padding: '8px 16px',
-          minHeight: '40px'
+          minHeight: '40px',
+          color: gameColors.accentGreen,
+          '&.Mui-selected': {
+            color: gameColors.brightGreen
+          }
         }
       }
     },
@@ -122,8 +178,8 @@ export const mainTheme = createTheme({
       styleOverrides: {
         input: {
           '&:-webkit-autofill': {
-            'webkitBoxShadow': '0 0 0 100px #282729 inset',
-            'webkitTextFillColor': '#fff'
+            'webkitBoxShadow': `0 0 0 100px ${gameColors.mediumGreen} inset`,
+            'webkitTextFillColor': gameColors.brightGreen
           }
         }
       }

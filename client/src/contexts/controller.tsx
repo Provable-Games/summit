@@ -1,6 +1,10 @@
 import { ERC20Balances, useStarknetApi } from "@/api/starknet";
+import { useGameTokens } from "@/dojo/useGameTokens";
+import { useGameStore } from "@/stores/gameStore";
 import { useAnalytics } from "@/utils/analytics";
+import { ChainId } from "@/utils/networkConfig";
 import { useAccount, useConnect, useDisconnect } from "@starknet-react/core";
+import { useGameTokens as useMetagameTokens } from "metagame-sdk/sql";
 import {
   createContext,
   PropsWithChildren,
@@ -8,6 +12,8 @@ import {
   useEffect,
   useState,
 } from "react";
+import { addAddressPadding } from "starknet";
+import { useDynamicConnector } from "./starknet";
 
 export interface ControllerContext {
   playerName: string | undefined;
@@ -27,10 +33,13 @@ const ControllerContext = createContext<ControllerContext>(
 
 // Create a provider component
 export const ControllerProvider = ({ children }: PropsWithChildren) => {
+  const { currentNetworkConfig } = useDynamicConnector();
   const { account, isConnecting } = useAccount();
   const { connector, connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
+  const { setCollection, setAdventurerCollection } = useGameStore();
   const { getERC20Balances } = useStarknetApi();
+  const { getBeastCollection } = useGameTokens();
   const [userName, setUserName] = useState<string>();
   const [tokenBalances, setTokenBalances] = useState<ERC20Balances>({
     revivePotions: 0,
@@ -42,8 +51,30 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const [showTermsOfService, setShowTermsOfService] = useState(false);
   const { identifyAddress } = useAnalytics();
 
+  const { games: adventurers, loading: adventurersLoading } = useMetagameTokens({
+    mintedByAddress: addAddressPadding(currentNetworkConfig.dungeon),
+    owner: account?.address || "0x0",
+    gameOver: true,
+    sortBy: "minted_at",
+    sortOrder: "desc",
+    limit: 10000,
+  });
+
+  useEffect(() => {
+    if (adventurers) {
+      setAdventurerCollection(adventurers.map((adventurer) => ({
+        id: adventurer.token_id,
+        name: adventurer.player_name,
+        level: Math.floor(Math.sqrt(adventurer.score)),
+        metadata: JSON.parse(adventurer.metadata || "{}"),
+        soulbound: adventurer.soulbound,
+      })));
+    }
+  }, [adventurers]);
+
   useEffect(() => {
     if (account) {
+      fetchBeastCollection();
       fetchTokenBalances();
       identifyAddress({ address: account.address });
 
@@ -71,6 +102,11 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
     if (connector) getUsername();
   }, [connector]);
+
+  async function fetchBeastCollection() {
+    let collection = await getBeastCollection(account!.address);
+    setCollection(collection);
+  }
 
   async function fetchTokenBalances() {
     let balances = await getERC20Balances();

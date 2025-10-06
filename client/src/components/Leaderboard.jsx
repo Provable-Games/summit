@@ -1,37 +1,23 @@
-import { useGameStore } from '@/stores/gameStore';
+import { useStatistics } from '@/contexts/Statistics';
+import { gameColors } from '@/utils/themes';
 import { Box, Typography } from '@mui/material';
-import React from 'react';
-import { normaliseHealth } from '@/utils/beasts';
-import { BeastsCollectedBar } from '@/utils/styles';
 
 function Leaderboard(props) {
-  const { totalSupply, deadBeastCount, potionPrices, leaderboard } = useGameStore()
+  const { beastsRegistered } = useStatistics()
 
   return <Box sx={styles.container}>
     <Box sx={styles.innerContainer}>
 
       <Box sx={styles.content}>
 
-        <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography sx={{ fontSize: '28px', letterSpacing: '1px', textAlign: 'center', width: '100%' }}>
-            Summit
+        <Typography sx={styles.title}>
+          SUMMIT
+        </Typography>
+
+        <Box sx={styles.sectionHeader}>
+          <Typography sx={styles.sectionTitle}>
+            THE BIG FIVE
           </Typography>
-
-          {/* <Typography sx={{ letterSpacing: '0.5px' }} variant='h5'>
-            ${totalReward}
-          </Typography> */}
-        </Box>
-
-        <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1.5, mb: 1 }}>
-          <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
-
-          <Box sx={{ width: '50%', height: '18px', border: '2px solid #07323d', textAlign: 'center', borderRadius: '10px', background: '#ddcdaa' }}>
-            <Typography letterSpacing={'1px'} fontWeight={'bold'}>
-              The Big Five
-            </Typography>
-          </Box>
-
-          <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
         </Box>
 
         {/* <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
@@ -73,31 +59,20 @@ function Leaderboard(props) {
           </Typography>
         </Box> */}
 
-        <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
-          <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
-
-          <Box sx={{ width: '50%', height: '18px', border: '2px solid #07323d', textAlign: 'center', borderRadius: '10px', background: '#ddcdaa' }}>
-            <Typography letterSpacing={'1px'} fontWeight={'bold'}>
-              Stats
-            </Typography>
-          </Box>
-
-          <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
-        </Box>
-
-        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            Beasts alive
-          </Typography>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            {totalSupply - deadBeastCount}/{totalSupply}
+        <Box sx={styles.sectionHeader}>
+          <Typography sx={styles.sectionTitle}>
+            STATS
           </Typography>
         </Box>
 
-        <Typography letterSpacing={'0.5px'} mt={1} color={'#006400'}>
-          Beasts collected
-        </Typography>
-        <BeastsCollectedBar variant="determinate" value={normaliseHealth(totalSupply, 93150)} />
+        <Box sx={styles.statRow}>
+          <Typography sx={styles.statLabel}>
+            Beasts Registered
+          </Typography>
+          <Typography sx={styles.statValue}>
+            {beastsRegistered}
+          </Typography>
+        </Box>
 
       </Box>
 
@@ -110,29 +85,88 @@ export default Leaderboard;
 const styles = {
   container: {
     width: '295px',
-    border: '4px solid #1f8c9b',
-    borderRadius: '16px',
-    boxShadow: 'rgba(0, 0, 0, 0.16) 0px 1px 4px, rgb(51, 51, 51) 0px 0px 0px 2px'
+    background: `${gameColors.darkGreen}90`,
+    backdropFilter: 'blur(12px) saturate(1.2)',
+    border: `2px solid ${gameColors.accentGreen}60`,
+    borderRadius: '12px',
+    boxShadow: `
+      0 8px 24px rgba(0, 0, 0, 0.6),
+      0 0 0 1px ${gameColors.darkGreen}
+    `,
+    p: 2,
   },
   innerContainer: {
     width: '100%',
     height: '100%',
-    borderRadius: '12px',
-    boxSizing: 'border-box',
-    border: '2px solid #1f8c9b',
-    boxShadow: 'rgba(0, 0, 0, 0.16) 0px 1px 4px, rgb(51, 51, 51) 0px 0px 0px 2px'
   },
   content: {
     width: '100%',
     minHeight: '100%',
-    borderRadius: '10px',
-    boxSizing: 'border-box',
-    p: '12px',
-    background: '#f6e6bc',
-    border: '2px solid rgb(51, 51, 51)',
-    boxShadow: 'rgba(0, 0, 0, 0.24) 0px 3px 8px inset',
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center'
-  }
+    gap: 1,
+  },
+  title: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: gameColors.yellow,
+    textAlign: 'center',
+    letterSpacing: '1.5px',
+    textTransform: 'uppercase',
+    textShadow: `
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 12px ${gameColors.yellow}40
+    `,
+  },
+  sectionHeader: {
+    width: '100%',
+    padding: '4px 0',
+    borderBottom: `1px solid ${gameColors.accentGreen}40`,
+    marginBottom: '8px',
+  },
+  sectionTitle: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: gameColors.accentGreen,
+    textAlign: 'center',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+  },
+  statRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: '8px',
+  },
+  statLabel: {
+    fontSize: '14px',
+    color: '#ffedbb',
+  },
+  statValue: {
+    fontSize: '14px',
+    color: '#ffedbb',
+    fontWeight: '600',
+  },
+  progressSection: {
+    width: '100%',
+    marginTop: '12px',
+  },
+  progressBarContainer: {
+    width: '100%',
+    height: '12px',
+    backgroundColor: `${gameColors.darkGreen}80`,
+    borderRadius: '6px',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    overflow: 'hidden',
+    marginTop: '6px',
+    position: 'relative',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: gameColors.brightGreen,
+    borderRadius: '6px',
+    transition: 'width 0.3s ease',
+    boxShadow: `inset 0 1px 2px rgba(255, 255, 255, 0.2)`,
+  },
 }

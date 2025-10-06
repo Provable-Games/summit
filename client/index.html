@@ -1,64 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Summit is a king of the hill style game that uses the onchain collectible beasts from Loot Survivor"
-    />
-    <link rel="icon" href="/favicon.png" type="image/png" />
-    <link rel="manifest" href="/manifest.json" />
-    <link rel="preload" href="/images/start.png" as="image" type="image/png" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&display=swap"
-      rel="stylesheet"
-    />
-    <link
-      href="https://fonts.googleapis.com/css2?family=VT323&display=swap"
-      rel="stylesheet"
-    />
-    <title>Summit</title>
 
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://summit.game" />
-    <meta property="og:title" content="Summit" />
-    <meta
-      property="og:description"
-      content="Summit is a king of the hill style game that uses the onchain collectible beasts from Loot Survivor"
-    />
-    <meta property="og:image"
-    content="https://www.deathmountain.gg/banner.png"
-    />
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="description"
+    content="Summit is a king of the hill style game that uses the onchain collectible beasts from Loot Survivor" />
+  <link rel="icon" href="/favicon.png" type="image/png" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="preload" href="/images/start.png" as="image" type="image/png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&display=swap" rel="stylesheet" />
+  <title>Summit</title>
 
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://summit.game" />
-    <meta property="twitter:title" content="Loot Survivor 2" />
-    <meta
-      property="twitter:description"
-      content="Summit is a king of the hill style game that uses the onchain collectible beasts from Loot Survivor"
-    />
-    <meta
-      property="twitter:image"
-      content="https://www.deathmountain.gg/banner.png"
-    />
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://summit.game" />
+  <meta property="og:title" content="Summit" />
+  <meta property="og:description"
+    content="Summit is a king of the hill style game that uses the onchain collectible beasts from Loot Survivor" />
+  <meta property="og:image" content="https://www.deathmountain.gg/banner.png" />
 
-    <!-- Twitter conversion tracking base code -->
-    <script>
-    !function(e,t,n,s,u,a){e.twq||(s=e.twq=function(){s.exe?s.exe.apply(s,arguments):s.queue.push(arguments);
-    },s.version='1.1',s.queue=[],u=t.createElement(n),u.async=!0,u.src='https://static.ads-twitter.com/uwt.js',
-    a=t.getElementsByTagName(n)[0],a.parentNode.insertBefore(u,a))}(window,document,'script');
-    twq('config','qbo32');
-    </script>
-    <!-- End Twitter conversion tracking base code -->
-  </head>
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://summit.game" />
+  <meta property="twitter:title" content="Loot Survivor 2" />
+  <meta property="twitter:description"
+    content="Summit is a king of the hill style game that uses the onchain collectible beasts from Loot Survivor" />
+  <meta property="twitter:image" content="https://www.deathmountain.gg/banner.png" />
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="./src/main.tsx"></script>
-  </body>
+  <!-- Twitter conversion tracking base code -->
+  <script>
+    !function (e, t, n, s, u, a) {
+      e.twq || (s = e.twq = function () {
+        s.exe ? s.exe.apply(s, arguments) : s.queue.push(arguments);
+      }, s.version = '1.1', s.queue = [], u = t.createElement(n), u.async = !0, u.src = 'https://static.ads-twitter.com/uwt.js',
+        a = t.getElementsByTagName(n)[0], a.parentNode.insertBefore(u, a))
+    }(window, document, 'script');
+    twq('config', 'qbo32');
+  </script>
+  <!-- End Twitter conversion tracking base code -->
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="./src/main.tsx"></script>
+</body>
+
 </html>

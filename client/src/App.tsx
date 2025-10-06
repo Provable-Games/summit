@@ -10,6 +10,7 @@ import MainPage from "./pages/MainPage";
 
 import { GameDirector } from './contexts/GameDirector';
 import { ControllerProvider } from './contexts/controller';
+import { StatisticsProvider } from './contexts/Statistics';
 
 function App() {
   return (
@@ -19,19 +20,21 @@ function App() {
 
           <ThemeProvider theme={mainTheme}>
             <SnackbarProvider anchorOrigin={{ vertical: 'top', horizontal: 'center' }} preventDuplicate>
-              <ControllerProvider>
-                <GameDirector>
+              <StatisticsProvider>
+                <ControllerProvider>
+                  <GameDirector>
 
-                  <Box className='main'>
-                    <AnimatePresence mode="wait">
+                    <Box className='main'>
+                      <AnimatePresence mode="wait">
 
-                      <MainPage />
+                        <MainPage />
 
-                    </AnimatePresence>
-                  </Box>
+                      </AnimatePresence>
+                    </Box>
 
-                </GameDirector>
-              </ControllerProvider>
+                  </GameDirector>
+                </ControllerProvider>
+              </StatisticsProvider>
             </SnackbarProvider>
           </ThemeProvider>
 

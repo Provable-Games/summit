@@ -75,11 +75,8 @@ pub mod summit_systems {
     ) {
         let mut world: WorldStorage = self.world(@DEFAULT_NS());
 
-        let start_token_id = 1;
-        let mut beast = InternalSummitImpl::_get_beast(world, start_token_id);
-        beast.live.current_health = beast.fixed.health;
-        world.write_model(@beast.live);
         
+        let start_token_id = 1;
         InternalSummitImpl::_init_summit_history(ref world, start_token_id);
         InternalSummitImpl::_set_summit_beast(ref world, start_token_id);
 
@@ -97,6 +94,10 @@ pub mod summit_systems {
                     extra_life_potion_address: extra_life_potion_address,
                 },
             );
+
+        let mut beast = InternalSummitImpl::_get_beast(world, start_token_id);
+        beast.live.current_health = beast.fixed.health;
+        world.write_model(@beast.live);
     }
 
     #[abi(embed_v0)]

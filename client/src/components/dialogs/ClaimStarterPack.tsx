@@ -1,13 +1,13 @@
 import InfoIcon from '@mui/icons-material/Info';
-import { Box, Dialog, Tooltip, Typography } from '@mui/material';
+import { Box, Dialog, Tooltip, Typography, Button } from '@mui/material';
 import React from 'react';
 import attackPotionIcon from '@/assets/images/attack-potion.png';
 import lifePotionIcon from '@/assets/images/life-potion.png';
 import revivePotionIcon from '@/assets/images/revive-potion.png';
 import { useGameStore } from '@/stores/gameStore';
-import { BuyConsumablesButton } from '@/utils/styles';
 import { useState } from 'react';
 import { useGameDirector } from '@/contexts/GameDirector';
+import { gameColors } from '@/utils/themes';
 
 const POTIONS = [
   {
@@ -67,7 +67,16 @@ function ClaimStarterPack(props) {
       maxWidth={'lg'}
       slotProps={{
         paper: {
-          sx: { background: '#feffda', border: '3px solid rgba(0, 0, 0, 0.35)', borderRadius: '10px' }
+          sx: { 
+            background: `${gameColors.darkGreen}95`,
+            backdropFilter: 'blur(12px) saturate(1.2)',
+            border: `2px solid ${gameColors.accentGreen}60`,
+            borderRadius: '12px',
+            boxShadow: `
+              0 8px 24px rgba(0, 0, 0, 0.6),
+              0 0 16px ${gameColors.accentGreen}30
+            `
+          }
         }
       }}
     >
@@ -76,11 +85,11 @@ function ClaimStarterPack(props) {
         <Box sx={styles.container}>
 
           <Box sx={{ textAlign: 'center' }}>
-            <Typography fontSize={'35px'} letterSpacing={'1px'} mb={2}>
+            <Typography sx={styles.title}>
               Beast Starter Pack
             </Typography>
 
-            <Typography fontSize={'16px'} color={'rgba(0,0,0,0.7)'} letterSpacing={'0.5px'}>
+            <Typography sx={styles.subtitle}>
               You have {unclaimedBeasts.length} unclaimed starter packs.
             </Typography>
           </Box>
@@ -90,27 +99,27 @@ function ClaimStarterPack(props) {
               POTIONS.map(potion => {
                 return <Box sx={styles.itemContainer}>
                   <Box sx={styles.itemTitle}>
-                    <Typography variant='h3' color='white' letterSpacing={'1px'}>
+                    <Typography sx={styles.itemTitleText}>
                       {potion.name}
                     </Typography>
                   </Box>
 
-                  <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'space-between', width: '100%', px: 0.5, boxSizing: 'border-box' }}>
+                  <Box sx={styles.itemContent}>
                     <Box sx={styles.imageContainer}>
                       <img src={potion.icon} alt='' width={'90%'} />
                     </Box>
 
                     <Box display={'flex'} flexDirection={'column'} gap={0.5}>
                       <Box sx={styles.description}>
-                        <Typography letterSpacing={'0.5px'} lineHeight={'14px'} sx={{ fontSize: '13px', opacity: 0.8 }}>
+                        <Typography sx={styles.descriptionText}>
                           {potion.description}
 
-                          {potion.name === 'revive potion' && <Tooltip title={<Box sx={{ background: '#616161', padding: '8px 12px', borderRadius: '4px' }}>
-                            <Typography color='white'>
+                          {potion.name === 'revive potion' && <Tooltip title={<Box sx={styles.tooltip}>
+                            <Typography sx={styles.tooltipText}>
                               Potions required to revive a beast depends on how many times you have revived it. Up to 16 potions.
                             </Typography>
                           </Box>}>
-                            <InfoIcon htmlColor='black' sx={{ fontSize: '13px', ml: '2px', mb: '-2px' }} />
+                            <InfoIcon sx={styles.infoIcon} />
                           </Tooltip>}
                         </Typography>
 
@@ -118,11 +127,11 @@ function ClaimStarterPack(props) {
                     </Box>
                   </Box>
 
-                  <Box sx={{ my: 2, display: 'flex', width: '100%', justifyContent: 'center', px: 1, boxSizing: 'border-box', alignItems: 'baseline', gap: '2px' }}>
-                    <Typography fontSize={'16px'}>
+                  <Box sx={styles.amountContainer}>
+                    <Typography sx={styles.amountPrefix}>
                       x
                     </Typography>
-                    <Typography variant='h2' letterSpacing={'1px'}>
+                    <Typography sx={styles.amountValue}>
                       {unclaimedBeasts.length * potion.packAmount}
                     </Typography>
                   </Box>
@@ -132,17 +141,24 @@ function ClaimStarterPack(props) {
           </Box>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-            <BuyConsumablesButton disabled={claimInProgress || unclaimedBeasts.length === 0} onClick={claimAll}>
-              {claimInProgress
-                ? <Box display={'flex'} alignItems={'baseline'}>
-                  <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>
-                    Claiming
-                  </Typography>
-                  <div className='dotLoader white' />
-                </Box>
-                : unclaimedBeasts.length > 150 ? 'Claim 150' : 'Claim All'
-              }
-            </BuyConsumablesButton>
+            <Button 
+              disabled={claimInProgress || unclaimedBeasts.length === 0} 
+              onClick={claimAll}
+              sx={[
+                styles.claimButton,
+                (!claimInProgress && unclaimedBeasts.length > 0) && styles.claimButtonActive
+              ]}
+            >
+              <Typography sx={styles.claimButtonText}>
+                {claimInProgress
+                  ? <Box display={'flex'} alignItems={'center'} gap={1}>
+                      <span>Claiming</span>
+                      <div className='dotLoader white' />
+                    </Box>
+                  : unclaimedBeasts.length > 150 ? 'CLAIM 150' : 'CLAIM ALL'
+                }
+              </Typography>
+            </Button>
           </Box>
         </Box>
 
@@ -172,6 +188,24 @@ const styles = {
     alignItems: 'center',
     gap: 3
   },
+  title: {
+    fontSize: '28px',
+    fontWeight: 'bold',
+    color: gameColors.yellow,
+    letterSpacing: '1.5px',
+    textTransform: 'uppercase',
+    marginBottom: '8px',
+    textShadow: `
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 12px ${gameColors.yellow}40
+    `,
+  },
+  subtitle: {
+    fontSize: '16px',
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
   itemsContainer: {
     height: '100%',
     maxWidth: '99%',
@@ -186,15 +220,32 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     gap: 0.5,
-    border: '3px solid #d2ad68',
-    boxShadow: 'rgba(0, 0, 0, 0.16) 0px 1px 4px, rgb(51, 51, 51) 0px 0px 0px 2px',
-    borderRadius: '5px',
+    background: `${gameColors.mediumGreen}60`,
+    border: `2px solid ${gameColors.accentGreen}60`,
+    borderRadius: '8px',
+    overflow: 'hidden',
   },
   itemTitle: {
-    background: 'black',
+    background: `${gameColors.darkGreen}`,
     width: '100%',
     textAlign: 'center',
     py: 0.5,
+    borderBottom: `1px solid ${gameColors.accentGreen}60`,
+  },
+  itemTitleText: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#FFD700',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+  },
+  itemContent: {
+    display: 'flex',
+    gap: 0.5,
+    justifyContent: 'space-between',
+    width: '100%',
+    px: 0.5,
+    boxSizing: 'border-box',
   },
   imageContainer: {
     p: 1,
@@ -205,21 +256,97 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: '5px',
-    border: '1px solid rgba(0, 0, 0, 0.5)',
-    background: '#f6e6bc',
+    background: `${gameColors.darkGreen}40`,
+    border: `1px solid ${gameColors.accentGreen}40`,
   },
   description: {
     p: '5px',
-    border: '1px solid #c87d3b',
+    border: `1px solid ${gameColors.accentGreen}40`,
     borderRadius: '4px',
-    width: '90px',
-    minHeight: '70px'
+    width: '100px',
+    minHeight: '100px',
+    background: `${gameColors.darkGreen}40`,
   },
-  cost: {
-    p: 1,
-    border: '1px solid #c87d3b',
-    borderRadius: '4px',
+  descriptionText: {
+    fontSize: '11px',
+    lineHeight: '14px',
+    letterSpacing: '0.5px',
+    color: '#ffedbb',
+  },
+  amountContainer: {
+    my: 2,
     display: 'flex',
-    justifyContent: 'space-between'
-  }
+    width: '100%',
+    justifyContent: 'center',
+    px: 1,
+    boxSizing: 'border-box',
+    alignItems: 'baseline',
+    gap: '2px',
+  },
+  amountPrefix: {
+    fontSize: '16px',
+    color: '#FFD700',
+  },
+  amountValue: {
+    fontSize: '28px',
+    fontWeight: 'bold',
+    color: '#FFD700',
+    letterSpacing: '1px',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  tooltip: {
+    background: `${gameColors.darkGreen}`,
+    padding: '8px 12px',
+    borderRadius: '4px',
+    border: `1px solid ${gameColors.accentGreen}60`,
+  },
+  tooltipText: {
+    color: '#ffedbb',
+    fontSize: '12px',
+  },
+  infoIcon: {
+    fontSize: '13px',
+    ml: '2px',
+    mb: '-2px',
+    color: gameColors.brightGreen,
+  },
+  claimButton: {
+    background: `${gameColors.mediumGreen}60`,
+    borderRadius: '8px',
+    width: '160px',
+    height: '48px',
+    my: '6px',
+    border: `2px solid ${gameColors.accentGreen}60`,
+    transition: 'all 0.3s ease',
+    opacity: 0.7,
+    '&:disabled': {
+      opacity: 0.4,
+      cursor: 'not-allowed',
+    },
+  },
+  claimButtonActive: {
+    background: `linear-gradient(135deg, ${gameColors.brightGreen} 0%, ${gameColors.accentGreen} 100%)`,
+    border: `2px solid ${gameColors.brightGreen}`,
+    opacity: 1,
+    boxShadow: `
+      0 0 12px ${gameColors.brightGreen}40,
+      0 2px 4px rgba(0, 0, 0, 0.3)
+    `,
+    '&:hover': {
+      background: `linear-gradient(135deg, ${gameColors.brightGreen} 20%, ${gameColors.lightGreen} 100%)`,
+      boxShadow: `
+        0 0 16px ${gameColors.brightGreen}60,
+        0 4px 8px rgba(0, 0, 0, 0.4)
+      `,
+      transform: 'translateY(-1px)',
+    },
+  },
+  claimButtonText: {
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    textTransform: 'uppercase',
+  },
 }

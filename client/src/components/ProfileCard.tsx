@@ -8,22 +8,31 @@ import { useAccount, useDisconnect } from '@starknet-react/core';
 import { useState } from 'react';
 import ClaimStarterPack from './dialogs/ClaimStarterPack';
 import ConnectWallet from './dialogs/ConnectWallet';
+import { gameColors } from '@/utils/themes';
 
 const ProfileCard = () => {
   const { collection } = useGameStore()
   const { address } = useAccount()
   const { disconnect } = useDisconnect()
-  const { playerName, tokenBalances } = useController()
+  const { playerName, tokenBalances, openProfile } = useController()
 
   const [accountDialog, openAccountDialog] = useState(false)
   const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false)
 
   const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit)
 
+  const handleProfileClick = async () => {
+    if (address) {
+      openProfile()
+    } else {
+      await navigator.clipboard.writeText(address)
+    }
+  }
+
   if (!address) {
     return <>
-      <Button variant='contained' onClick={() => openAccountDialog(true)} sx={{ borderRadius: '20px' }}>
-        <Typography color='white' variant='h5'>
+      <Button onClick={() => openAccountDialog(true)} sx={styles.connectButton}>
+        <Typography sx={styles.connectButtonText}>
           CONNECT WALLET
         </Typography>
       </Button>
@@ -35,66 +44,56 @@ const ProfileCard = () => {
   return (
     <Box sx={styles.container}>
       <Box sx={styles.profileContainer}>
-        <Tooltip title={<Box sx={{ background: '#616161', padding: '4px 8px', borderRadius: '4px' }}>Copy address</Box>}>
-          <Button variant='text' sx={{ display: 'flex' }} onClick={async () => await navigator.clipboard.writeText(address)}>
-            <SportsEsportsIcon htmlColor='black' sx={{ fontSize: '18px', mr: '4px' }} />
-
-            <Typography color='black' sx={{ fontSize: '15px' }} letterSpacing={'0.5px'}>
+        <Tooltip title={<Box sx={styles.tooltip}>Copy address</Box>}>
+          <Button variant='text' sx={styles.addressButton} onClick={handleProfileClick}>
+            <SportsEsportsIcon sx={styles.gameIcon} />
+            <Typography sx={styles.addressText}>
               {playerName || ellipseAddress(address, 5, 4)}
             </Typography>
           </Button>
         </Tooltip>
 
         <Box sx={{ display: 'flex' }}>
-          <Tooltip title={<Box sx={{ background: '#616161', padding: '4px 8px', borderRadius: '4px' }}>Disconnect</Box>}>
-            <IconButton size='small' onClick={() => { disconnect(); }}>
-              <LogoutIcon fontSize='small' htmlColor='black' />
+          <Tooltip title={<Box sx={styles.tooltip}>Disconnect</Box>}>
+            <IconButton size='small' sx={styles.logoutButton} onClick={() => { disconnect(); }}>
+              <LogoutIcon fontSize='small' sx={styles.logoutIcon} />
             </IconButton>
           </Tooltip>
         </Box>
       </Box>
 
       <Box display={'flex'} width={'100%'}>
-        <Box sx={styles.infoSection} borderRight={'1px solid rgba(0, 0, 0, 1)'} pr={1}>
-          <Typography sx={{ fontSize: '13px', letterSpacing: '0.5px' }}>$Reward</Typography>
+        <Box sx={[styles.infoSection, styles.leftSection]}>
+          <Typography sx={styles.infoLabel}>$REWARD</Typography>
 
-          <Box display={'flex'} alignItems={'start'} gap={'2px'} mt={'-3px'}>
-            <Typography variant='h2' mb={'2px'}>
+          <Box display={'flex'} alignItems={'start'}>
+            <Typography sx={styles.infoValue}>
               {tokenBalances.survivor.toLocaleString()}
             </Typography>
           </Box>
-
-          <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: 0, opacity: 0 }} size='small'>
-            Mint
-          </Button>
         </Box>
 
-        <Box sx={styles.infoSection} pl={1}>
-          <Typography sx={{ fontSize: '13px', letterSpacing: '0.5px' }}>Beasts</Typography>
+        <Box sx={[styles.infoSection, styles.rightSection]}>
+          <Typography sx={styles.infoLabel}>BEASTS</Typography>
 
-          <Box display={'flex'} alignItems={'start'} gap={'2px'} mt={'-3px'}>
-            <Typography variant='h2' mb={'2px'}>{collection.length}</Typography>
+          <Box display={'flex'} alignItems={'start'}>
+            <Typography sx={styles.infoValue}>{collection.length}</Typography>
           </Box>
-
-          <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: 0 }} size='small' component='a'
-            href='https://market.realms.world/collection/0x0158160018d590d93528995b340260e65aedd76d28a686e9daa5c4e8fad0c5dd' target='_blank'>
-            Buy
-          </Button>
         </Box>
       </Box>
 
-      {unclaimedBeasts.length > 0 && <Box sx={{ width: '100%', borderTop: '1px solid rgba(0, 0, 0, 1)', pt: 1, textAlign: 'center' }}>
-        <Typography letterSpacing={'0.5px'}>
-          Beast Starter Pack
+      {unclaimedBeasts.length > 0 && <Box sx={styles.starterPackSection}>
+        <Typography sx={styles.starterPackTitle}>
+          BEAST STARTER PACK
         </Typography>
 
-        <Typography color='rgba(0,0,0,0.5)' fontSize={'13px'} mt={'-4px'} letterSpacing={'0.5px'}>
+        <Typography sx={styles.starterPackSubtitle}>
           {unclaimedBeasts.length} available
         </Typography>
 
-        <Button variant='contained' sx={{ borderRadius: '4px', width: '100px', height: '26px', my: '4px' }} className='button-glow' onClick={() => setClaimStarterPackDialog(true)}>
-          <Typography color='white' letterSpacing={'0.5px'} variant='h6'>
-            Claim
+        <Button sx={styles.claimButton} onClick={() => setClaimStarterPackDialog(true)}>
+          <Typography sx={styles.claimButtonText}>
+            CLAIM
           </Typography>
         </Button>
       </Box>}
@@ -112,20 +111,79 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     width: '180px',
-    borderRadius: '10px',
-    backgroundColor: '#f6e6bc',
-    border: '2px solid rgba(0, 0, 0, 0.2)',
-    boxShadow: '0px 0px 10px 0px rgba(0, 0, 0, 0.1)',
+    borderRadius: '8px',
+    background: `${gameColors.darkGreen}90`,
+    backdropFilter: 'blur(12px) saturate(1.2)',
+    border: `2px solid ${gameColors.accentGreen}60`,
+    boxShadow: `
+      0 4px 12px rgba(0, 0, 0, 0.4),
+      0 0 0 1px ${gameColors.darkGreen}
+    `,
     boxSizing: 'border-box',
     px: 1,
-    py: '4px'
+    py: '6px'
+  },
+  connectButton: {
+    background: `${gameColors.mediumGreen}90`,
+    border: `1px solid ${gameColors.accentGreen}60`,
+    borderRadius: '20px',
+    padding: '8px 16px',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      background: `${gameColors.mediumGreen}`,
+      border: `1px solid ${gameColors.brightGreen}`,
+      boxShadow: `0 0 12px ${gameColors.brightGreen}40`,
+    },
+  },
+  connectButtonText: {
+    color: '#ffedbb',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    letterSpacing: '1px',
   },
   profileContainer: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    borderBottom: '1px solid rgba(0, 0, 0, 1)',
+    borderBottom: `1px solid ${gameColors.accentGreen}40`,
+    pb: '4px',
+  },
+  addressButton: {
+    display: 'flex',
+    textTransform: 'none',
+    padding: '2px 8px',
+    border: `1px solid #ffedbb`,
+    borderRadius: '4px',
+    '&:hover': {
+      backgroundColor: `${gameColors.mediumGreen}30`,
+      border: `1px solid #ffedbb`,
+    },
+  },
+  gameIcon: {
+    fontSize: '18px',
+    mr: '4px',
+    color: '#ffedbb',
+  },
+  addressText: {
+    fontSize: '13px',
+    letterSpacing: '0.5px',
+    color: '#ffedbb',
+  },
+  logoutButton: {
+    '&:hover': {
+      backgroundColor: `${gameColors.mediumGreen}30`,
+    },
+  },
+  logoutIcon: {
+    color: '#ffedbb',
+  },
+  tooltip: {
+    background: `${gameColors.darkGreen}`,
+    padding: '4px 8px',
+    borderRadius: '4px',
+    border: `1px solid ${gameColors.accentGreen}60`,
+    color: '#ffedbb',
   },
   infoSection: {
     display: 'flex',
@@ -134,6 +192,141 @@ const styles = {
     width: '50%',
     justifyContent: 'space-between',
     py: 0.5,
+    gap: '2px',
     boxSizing: 'border-box',
+  },
+  leftSection: {
+    borderRight: `1px solid ${gameColors.accentGreen}40`,
+    pr: 1,
+  },
+  rightSection: {
+    pl: 1,
+  },
+  infoLabel: {
+    fontSize: '11px',
+    letterSpacing: '0.5px',
+    color: gameColors.gameYellow,
+    fontWeight: 'bold',
+  },
+  infoValue: {
+    fontSize: '18px',
+    fontWeight: 'bold',
+    color: '#FFD700',
+    mb: '2px',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  actionButton: {
+    backgroundColor: `${gameColors.mediumGreen}80`,
+    color: '#ffedbb',
+    borderRadius: '4px',
+    padding: '2px 8px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: `${gameColors.mediumGreen}`,
+      border: `1px solid ${gameColors.brightGreen}`,
+    },
+  },
+  starterPackSection: {
+    width: '100%',
+    borderTop: `1px solid ${gameColors.accentGreen}40`,
+    pt: 1,
+    textAlign: 'center',
+  },
+  starterPackTitle: {
+    fontSize: '12px',
+    letterSpacing: '0.5px',
+    color: gameColors.gameYellow,
+    fontWeight: 'bold',
+  },
+  starterPackSubtitle: {
+    color: gameColors.yellow,
+    fontSize: '11px',
+    mt: '-2px',
+    letterSpacing: '0.5px',
+  },
+  claimButton: {
+    background: `linear-gradient(135deg, ${gameColors.brightGreen} 0%, ${gameColors.accentGreen} 100%)`,
+    borderRadius: '6px',
+    width: '100px',
+    height: '28px',
+    my: '6px',
+    border: `2px solid ${gameColors.brightGreen}`,
+    transition: 'all 0.3s ease',
+    boxShadow: `
+      0 0 20px ${gameColors.brightGreen}50,
+      0 2px 4px rgba(0, 0, 0, 0.3)
+    `,
+    animation: 'claimGlow 1.5s ease-in-out infinite',
+    '&:hover': {
+      background: `linear-gradient(135deg, ${gameColors.brightGreen} 20%, ${gameColors.lightGreen} 100%)`,
+      boxShadow: `
+        0 0 30px ${gameColors.brightGreen}80,
+        0 4px 8px rgba(0, 0, 0, 0.4)
+      `,
+      transform: 'translateY(-1px)',
+      animation: 'claimGlowHover 0.8s ease-in-out infinite',
+    },
+    '@keyframes claimGlow': {
+      '0%': {
+        boxShadow: `
+          0 0 15px ${gameColors.brightGreen}40,
+          0 2px 4px rgba(0, 0, 0, 0.3)
+        `,
+      },
+      '25%': {
+        boxShadow: `
+          0 0 25px ${gameColors.brightGreen}60,
+          0 2px 4px rgba(0, 0, 0, 0.3)
+        `,
+      },
+      '50%': {
+        boxShadow: `
+          0 0 40px ${gameColors.brightGreen}90,
+          0 2px 4px rgba(0, 0, 0, 0.3)
+        `,
+      },
+      '75%': {
+        boxShadow: `
+          0 0 25px ${gameColors.brightGreen}60,
+          0 2px 4px rgba(0, 0, 0, 0.3)
+        `,
+      },
+      '100%': {
+        boxShadow: `
+          0 0 15px ${gameColors.brightGreen}40,
+          0 2px 4px rgba(0, 0, 0, 0.3)
+        `,
+      },
+    },
+    '@keyframes claimGlowHover': {
+      '0%': {
+        boxShadow: `
+          0 0 30px ${gameColors.brightGreen}80,
+          0 4px 8px rgba(0, 0, 0, 0.4)
+        `,
+      },
+      '50%': {
+        boxShadow: `
+          0 0 45px ${gameColors.brightGreen}100,
+          0 4px 8px rgba(0, 0, 0, 0.4)
+        `,
+      },
+      '100%': {
+        boxShadow: `
+          0 0 30px ${gameColors.brightGreen}80,
+          0 4px 8px rgba(0, 0, 0, 0.4)
+        `,
+      },
+    },
+  },
+  claimButtonText: {
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
   },
 }

@@ -1,99 +1,111 @@
-import { Box, Typography } from "@mui/material";
-import React, { useContext } from 'react';
-import skull from '../assets/images/skull.svg';
-import hero from '../assets/images/profile.svg';
 import { useGameStore } from '@/stores/gameStore';
-import { fetchBeastImage, normaliseHealth } from "../utils/beasts";
-import { HealthBar } from '../utils/styles';
-import StarIcon from '@mui/icons-material/Star';
-import { isBrowser } from "react-device-detect";
-
-const STAR_COLORS = {
-  1: "#ff6f3a",
-  2: "#C0C0C0",
-  3: "#CD7F32"
-}
+import { Adventurer } from "@/types/game";
+import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
+import { Box, Tooltip, Typography } from "@mui/material";
+import React, { useMemo } from 'react';
+import { gameColors } from '../utils/themes';
 
 function AdventurerCollection() {
-  const game = useGameStore()
-  const { adventurerCollection, selectedAdventurers, loadingAdventurers } = game.getState
+  const { adventurerCollection, selectedAdventurers, setSelectedAdventurers } = useGameStore()
 
   const selectAdventurer = (adventurer) => {
-    if (selectedAdventurers.find(selected => selected.id === adventurer.id)) {
-      game.setState.selectedAdventurers(prev => prev.filter(prev => prev.id !== adventurer.id))
+    if (selectedAdventurers.find((selected: Adventurer) => selected.id === adventurer.id)) {
+      setSelectedAdventurers(selectedAdventurers.filter((prev: Adventurer) => prev.id !== adventurer.id))
     } else {
-      game.setState.selectedAdventurers(prev => [...prev, adventurer])
+      setSelectedAdventurers([...selectedAdventurers, adventurer as Adventurer])
     }
   }
 
+  const selectAllAdventurers = () => {
+    // If all adventurers are selected, deselect all
+    if (adventurerCollection.every(adventurer => selectedAdventurers.some(selected => selected.id === adventurer.id))) {
+      setSelectedAdventurers([])
+    } else {
+      // Select all adventurers
+      setSelectedAdventurers([...adventurerCollection])
+    }
+  }
+
+  // Helper to check if all adventurers are selected
+  const allAdventurersSelected = useMemo(() => {
+    return adventurerCollection.length > 0 && adventurerCollection.every(adventurer =>
+      selectedAdventurers.some(selected => selected.id === adventurer.id)
+    );
+  }, [adventurerCollection, selectedAdventurers]);
+
   return (
     <Box sx={styles.container}>
-      {loadingAdventurers && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
-
-        <Box textAlign={'center'}>
-          <Box display={'flex'} alignItems={'baseline'}>
-            <Typography variant="h2" letterSpacing={'0.5px'}>Fetching adventurers</Typography>
-            <div className='dotLoader' />
-          </Box>
-        </Box>
-
-      </Box>}
-
-      {React.Children.toArray(
-        adventurerCollection.map(adventurer => {
-          const isSelected = selectedAdventurers.some(selected => selected.id === adventurer.id)
-          const isRanked = adventurer.rank > 0
-
-          return <Box onClick={() => { if (!isRanked) selectAdventurer(adventurer); }}
-            sx={[styles.itemContainer, isRanked && styles.rankedItem, isSelected && styles.selectedItem, ((selectedAdventurers.length > 0) && !isSelected) && { opacity: 0.5, borderColor: 'transparent' }]}
-          >
-
-            {isRanked && <StarIcon htmlColor={STAR_COLORS[adventurer.rank]} sx={{ position: 'absolute', top: '0', left: '0', fontSize: '20px' }} />}
-
-            <Typography variant="h5" sx={{ lineHeight: '15px', letterSpacing: '1px', textAlign: 'center' }}>
-              Adventurer #{adventurer.id}
-            </Typography>
-
-            <Box mt={1.5} mb={1.5}>
-              {adventurer.health > 0 ? <img alt='' src={hero} height={'50px'} /> : <img alt='' src={skull} height={'50px'} />}
-            </Box>
-
-            <Typography sx={{ letterSpacing: '1px', lineHeight: '14px' }}>
-              LEVEL {adventurer.level}
-            </Typography>
-
-            <Box position={'relative'} width={'100%'}>
-              <HealthBar variant="determinate" value={normaliseHealth(adventurer.health, Math.max(90, adventurer.health))} />
-
-              <Box sx={styles.healthText}>
-                <Typography sx={{ fontSize: '13px', lineHeight: '16px', color: 'white', letterSpacing: '0.5px' }}>
-                  {adventurer.health}
-                </Typography>
+      {/* Adventurer Grid with Utility Button */}
+      {adventurerCollection.length > 0 && (
+        <Box sx={styles.adventurerGridContainer}>
+          {/* Utility Button */}
+          <Box sx={styles.utilityButtonsContainer}>
+            <Tooltip placement='right' title={<Box sx={styles.tooltipContent}>Select all</Box>}>
+              <Box sx={[styles.utilityButton, allAdventurersSelected && styles.selectedItem]} onClick={() => selectAllAdventurers()}>
+                <LibraryAddCheckIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />
               </Box>
-            </Box>
+            </Tooltip>
           </Box>
-        })
 
-      )}
+          {/* Adventurer Grid */}
+          <Box sx={styles.adventurerGrid}>
+            {React.Children.toArray(
+              adventurerCollection.map(adventurer => {
+                const isSelected = selectedAdventurers.some(selected => selected.id === adventurer.id)
+                const healthGiven = adventurer.level
 
-      {adventurerCollection.length < 1 && <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 3, height: '200px', width: '100%' }}>
+                return <Box
+                  onClick={() => { selectAdventurer(adventurer); }}
+                  sx={[
+                    styles.adventurerCard,
+                    isSelected && styles.selectedCard,
+                    ((selectedAdventurers.length > 0) && !isSelected) && { opacity: 0.5 }
+                  ]}
+                >
+                  {/* Glow effect for selected cards */}
+                  {isSelected && (
+                    <Box sx={styles.glowEffect} />
+                  )}
 
-        <Box textAlign={'center'}>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            You don't own any dead adventurers
-          </Typography>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            Collect them in <a style={{ color: '#30a019' }} href="https://lootsurvivor.io" target="_blank">loot survivor 1.5</a>
-          </Typography>
-          <Typography variant="h2" letterSpacing={'0.5px'}>
-            Or buy in <a style={{ color: '#ff92b6' }} href="https://market.realms.world/collection/0x018108b32cea514a78ef1b0e4a0753e855cdf620bc0565202c02456f618c4dc4" target="_blank">Market</a>
-          </Typography>
+                  {/* Tombstone Image */}
+                  <Box sx={styles.imageContainer}>
+                    <img
+                      src={'/images/tombstone.png'}
+                      alt="tombstone"
+                      style={styles.tombstoneImage}
+                    />
+                  </Box>
+
+                  {/* Adventurer Name */}
+                  <Typography sx={styles.adventurerName}>
+                    Adventurer #{adventurer.id}
+                  </Typography>
+
+                  {/* Level */}
+                  <Box sx={styles.levelContainer}>
+                    <Typography sx={styles.levelText}>
+                      Level {adventurer.level}
+                    </Typography>
+                  </Box>
+
+                  {/* Combat Preview - Health Given */}
+                  <Box sx={styles.combatPreview}>
+                    <Box sx={styles.combatContent}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill={gameColors.brightGreen}>
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                      </svg>
+                      <Typography sx={styles.combatTextSuccess}>
+                        +{healthGiven} HP
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              })
+            )}
+          </Box>
         </Box>
-
-        {isBrowser && <img src={fetchBeastImage('ettin')} alt='' height={'150px'} />}
-
-      </Box>}
-    </Box >
+      )}
+    </Box>
   );
 }
 
@@ -102,51 +114,223 @@ export default AdventurerCollection;
 const styles = {
   container: {
     width: '100%',
+    backdropFilter: 'blur(12px) saturate(1.2)',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    padding: 1,
+    pt: 0.5,
+    pb: 0,
+    overflowY: 'hidden',
+    boxSizing: 'border-box',
+    position: 'relative',
+  },
+  adventurerGridContainer: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '4px',
+  },
+  adventurerGrid: {
     display: 'flex',
     gap: 1,
-    overflowX: 'auto',
-    boxSizing: 'border-box',
-    p: '5px'
+    alignItems: 'flex-start',
+    overflowX: 'scroll',
+    flex: 1,
+    px: '4px',
   },
-  itemContainer: {
+  adventurerCard: {
     position: 'relative',
-    height: '180px',
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
+    borderRadius: '6px',
+    padding: '6px',
+    mt: '6px',
     boxSizing: 'border-box',
-    width: '120px',
-    minWidth: '120px',
-    padding: 1,
+    cursor: 'pointer',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    overflow: 'hidden',
+    width: '140px',
+    minWidth: '140px',
+    mb: '4px',
+    height: '180px',
     display: 'flex',
     flexDirection: 'column',
+    flexShrink: 0,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.accentGreen}40,
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      0 0 0 1px ${gameColors.darkGreen}
+    `,
+    '&:hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: `
+        inset 0 1px 0 ${gameColors.brightGreen}60,
+        0 8px 16px rgba(127, 255, 0, 0.2),
+        0 0 0 2px ${gameColors.accentGreen}
+      `,
+    },
+  },
+  selectedCard: {
+    background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.brightGreen}80,
+      0 4px 12px rgba(127, 255, 0, 0.4),
+      0 0 0 2px ${gameColors.brightGreen}
+    `,
+    '&:hover': {
+      boxShadow: `
+        inset 0 1px 0 ${gameColors.brightGreen},
+        0 8px 20px rgba(127, 255, 0, 0.5),
+        0 0 0 2px ${gameColors.brightGreen}
+      `,
+    }
+  },
+  glowEffect: {
+    position: 'absolute',
+    top: '-50%',
+    left: '-50%',
+    width: '200%',
+    height: '200%',
+    background: `radial-gradient(circle, ${gameColors.brightGreen}20 0%, transparent 70%)`,
+    animation: 'pulse 2s ease-in-out infinite',
+    '@keyframes pulse': {
+      '0%, 100%': {
+        opacity: 0.5,
+      },
+      '50%': {
+        opacity: 0.8,
+      }
+    }
+  },
+  imageContainer: {
+    position: 'relative',
+    width: '100%',
+    height: '110px',
+    display: 'flex',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 0.5,
+    marginBottom: '4px',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.black} 100%)`,
+    boxShadow: `inset 0 1px 0 ${gameColors.darkGreen}, inset 0 -1px 0 ${gameColors.black}`,
+  },
+  tombstoneImage: {
+    maxWidth: '90%',
+    maxHeight: '90%',
+  },
+  adventurerName: {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#FFF',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    marginBottom: '4px',
+    textShadow: `0 1px 2px ${gameColors.darkGreen}`,
+  },
+  levelContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    marginBottom: '6px',
+  },
+  levelText: {
+    fontSize: '12px',
+    color: '#ffedbb',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textShadow: `0 1px 1px ${gameColors.darkGreen}`,
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    top: '10px',
+    left: '10px',
+  },
+  selectionNumber: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#d0c98d',
+    lineHeight: 1,
+  },
+  combatPreview: {
+    padding: '2px',
+    borderRadius: '4px',
+    background: `${gameColors.darkGreen}90`,
+    backdropFilter: 'blur(4px)',
+    border: `1px solid ${gameColors.brightGreen}60`,
+    textAlign: 'center',
+    marginTop: 'auto',
+  },
+  combatContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    justifyContent: 'center',
+  },
+  combatTextSuccess: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    textShadow: `0 1px 1px ${gameColors.darkGreen}`,
+    color: gameColors.brightGreen,
+  },
+  utilityButton: {
+    position: 'relative',
+    width: '32px',
+    height: '32px',
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
+    borderRadius: '6px',
+    border: `1px solid ${gameColors.accentGreen}40`,
     cursor: 'pointer',
-    borderRadius: '5px',
-    border: '2px solid rgba(0, 0, 0, 0.5)',
-    background: '#f6e6bc',
-    transition: 'border-color 0.3s ease, box-shadow 0.3s ease, opacity 0.3s ease',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.accentGreen}40,
+      0 2px 4px rgba(0, 0, 0, 0.3),
+      0 0 0 1px ${gameColors.darkGreen}
+    `,
+    '&:hover': {
+      background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    },
   },
   selectedItem: {
-    boxShadow: 'rgba(0, 0, 0, 0.35) 0px 5px 15px;',
-    border: '2px solid rgba(0, 0, 0, 0.8)',
+    background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    border: `1px solid ${gameColors.brightGreen}80`,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.brightGreen}80,
+      0 2px 6px rgba(127, 255, 0, 0.3),
+      0 0 0 1px ${gameColors.brightGreen}
+    `,
+    '&:hover': {
+      background: `linear-gradient(135deg, ${gameColors.brightGreen}20 0%, ${gameColors.lightGreen} 100%)`,
+      boxShadow: `
+        inset 0 1px 0 ${gameColors.brightGreen},
+        0 4px 10px rgba(127, 255, 0, 0.4),
+        0 0 0 1px ${gameColors.brightGreen}
+      `,
+    }
   },
-  rankedItem: {
-    boxShadow: '0 0 5px 3px rgba(255, 165, 0, 1)'
+  utilityButtonsContainer: {
+    display: 'flex',
+    gap: '6px',
+    flexDirection: 'column',
+    flexShrink: 0,
+    marginTop: '6px',
   },
-  healthText: {
-    position: 'absolute',
-    top: 0,
-    left: '50%',
-    transform: 'translate(-50%)',
-    textAlign: 'center'
+  tooltipContent: {
+    background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    padding: '6px 10px',
+    borderRadius: '4px',
+    border: `1px solid ${gameColors.accentGreen}60`,
+    color: gameColors.brightGreen,
+    fontSize: '12px',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    textShadow: `0 1px 2px ${gameColors.darkGreen}`,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.accentGreen}40,
+      0 2px 4px rgba(0, 0, 0, 0.3)
+    `,
   },
-  order: {
-    position: 'absolute',
-    top: 0,
-    left: 5
-  },
-  rank: {
-    position: 'absolute',
-    left: '5px',
-    top: '40%'
-  }
 }

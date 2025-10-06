@@ -11,7 +11,7 @@ import cauldronIcon from '../assets/images/cauldron.png';
 import heart from '../assets/images/heart.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
-import { AttackButton, RoundBlueButton } from '../utils/styles';
+import { gameColors } from '../utils/themes';
 import BuyConsumables from './dialogs/BuyConsumables';
 
 interface ActionBarProps {
@@ -41,6 +41,14 @@ function ActionBar(props: ActionBarProps) {
     setPotion(null);
   };
 
+  const handleAttack = () => {
+    if (!enableAttack) return;
+
+    executeGameAction({
+      type: 'attack',
+      beastIds: selectedBeasts.map(beast => beast.token_id)
+    });
+  }
 
   const isSavage = Boolean(collection.find((beast: any) => beast.token_id === summit.beast.token_id))
 
@@ -54,157 +62,149 @@ function ActionBar(props: ActionBarProps) {
 
   if (showFeedingGround) {
     return <Box sx={styles.container}>
-
-      <Box sx={{ display: 'flex', gap: 1 }}>
-        <AttackButton disabled={feedingInProgress || selectedAdventurers.length < 1} onClick={() => executeGameAction({ type: 'feed' })}>
+      <Box sx={styles.buttonGroup}>
+        <Box sx={[styles.attackButton, (!feedingInProgress && selectedAdventurers.length >= 1) && styles.attackButtonEnabled]}
+          onClick={() => executeGameAction({ type: 'feed' })}>
           {feedingInProgress
-            ? <Box display={'flex'} alignItems={'baseline'}>
-              <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>Feeding</Typography>
-              <div className='dotLoader white' />
+            ? <Box display={'flex'} alignItems={'baseline'} gap={1}>
+              <Typography variant="h5" sx={styles.buttonText}>Feeding</Typography>
+              <div className='dotLoader' style={{ background: 'radial-gradient(circle closest-side, #ffedbb 90%, #0000) 0/calc(100%/3) 100% space' }} />
             </Box>
-            : <Box sx={{ display: 'flex', gap: 1.5 }}>
-              <Typography variant="h4" color={'white'} letterSpacing={'0.5px'}>
+            : <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="h5" sx={styles.buttonText}>
                 Feed
               </Typography>
 
-              {selectedAdventurers.length > 0 && <Box display={'flex'} gap={'3px'} alignItems={'center'}>
-                <Typography lineHeight={'6px'} letterSpacing={'0.5px'} color={'white'} variant='h4'>
+              {selectedAdventurers.length > 0 && <Box display={'flex'} gap={'4px'} alignItems={'center'}>
+                <Typography sx={styles.statText} variant='h6'>
                   +{selectedAdventurers.reduce((sum, adventurer) => sum + adventurer.level, 0)}
                 </Typography>
-
-                <FavoriteIcon fontSize='small' htmlColor='white' />
+                <FavoriteIcon fontSize='small' htmlColor={gameColors.red} />
               </Box>}
             </Box>
           }
-        </AttackButton>
+        </Box>
       </Box>
     </Box>
   }
 
   return <Box sx={styles.container}>
-
-    <Box sx={{ display: 'flex', gap: 1 }}>
+    {/* Attack Button + Potions */}
+    <Box sx={styles.buttonGroup}>
+      {/* Section 1: Attack Button */}
       {isSavage
-        ? <AttackButton sx={{ fontSize: '18px' }}>
-          YOU'RE THE SAVÁGE
-        </AttackButton>
-        : <AttackButton disabled={!enableAttack} onClick={() => executeGameAction({ type: 'attack' })}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: isappliedPotions ? '4px' : '0px' }}>
+        ? <Box sx={[styles.attackButton, styles.savageButton]}>
+          <Typography color={gameColors.yellow}>
+            YOU'RE THE SAVÁGE
+          </Typography>
+        </Box>
+        : <Box sx={[styles.attackButton, enableAttack && styles.attackButtonEnabled]}
+          onClick={handleAttack}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
             {attackInProgress
-              ? <Box display={'flex'} alignItems={'baseline'}>
-                <Typography variant={isappliedPotions ? 'h5' : 'h4'} lineHeight={isappliedPotions ? '14px' : '16px'} color={'white'}>Attacking</Typography>
-                <div className='dotLoader white' />
+              ? <Box display={'flex'} alignItems={'center'} gap={1}>
+                <Typography variant="h5" sx={styles.buttonText}>Attacking</Typography>
+                <div className='dotLoader' style={{ background: 'radial-gradient(circle closest-side, #ffedbb 90%, #0000) 0/calc(100%/3) 100% space' }} />
               </Box>
-              : <Typography color={!enableAttack ? 'rgba(0, 0, 0, 0.26)' : 'white'} variant={isappliedPotions ? 'h5' : 'h4'} lineHeight={isappliedPotions ? '14px' : '16px'}>
+              : <Typography sx={[styles.buttonText, !enableAttack && styles.disabledText]} variant="h5">
                 Attack
               </Typography>
             }
 
-            {isappliedPotions && <Box sx={{ display: 'flex', gap: 0.5 }}>
-              {appliedPotions.revive > 0 && <Box display={'flex'} alignItems={'center'}>
-                <Typography color={'#000000a8'} mr={'-3px'}>{appliedPotions.revive}</Typography>
-                <img src={revivePotionIcon} alt='' height={'16px'} />
+            {isappliedPotions && <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
+              {appliedPotions.revive > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+                <Typography sx={styles.potionCount}>{appliedPotions.revive}</Typography>
+                <img src={revivePotionIcon} alt='' height={'14px'} />
               </Box>}
-              {appliedPotions.attack > 0 && <Box display={'flex'} alignItems={'center'}>
-                <Typography color={'#000000a8'} mr={'-2px'}>{appliedPotions.attack}</Typography>
-                <img src={attackPotionIcon} alt='' height={'16px'} />
+              {appliedPotions.attack > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+                <Typography sx={styles.potionCount}>{appliedPotions.attack}</Typography>
+                <img src={attackPotionIcon} alt='' height={'14px'} />
               </Box>}
-              {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'}>
-                <Typography color={'#000000a8'}>{appliedPotions.extraLife}</Typography>
-                <img src={heart} alt='' height={'14px'} />
+              {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+                <Typography sx={styles.potionCount}>{appliedPotions.extraLife}</Typography>
+                <img src={heart} alt='' height={'12px'} />
               </Box>}
             </Box>
             }
           </Box>
-        </AttackButton>}
+        </Box>}
 
-      <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.potionTooltip}>
-        <Typography variant='h6' letterSpacing={'0.5px'}>Revive Potions</Typography>
-        <Typography sx={{ opacity: 0.8, mb: 0.5 }}>Attack with your dead beasts by using revival potions</Typography>
-        {/* <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: '0px 12px', height: '20px' }} size='small' onClick={() => openBuyPotionsDialog(true)}>
-          Buy Potions
-        </Button> */}
-      </Box>}>
-        <RoundBlueButton
-          sx={styles.fadeButton}
-        >
-          <img src={revivePotionIcon} alt='' height={'32px'} />
+      {/* Divider 1 */}
+      <Box sx={styles.divider} />
 
-          <Box sx={styles.count}>
-            <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '13px', lineHeight: '12px' }}>
-              {tokenBalances.revivePotions}
-            </Typography>
+      {/* Section 2: Potion Buttons */}
+      <Box sx={styles.potionSubGroup}>
+        <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+          <Typography sx={styles.tooltipTitle}>Revive Potions</Typography>
+          <Typography sx={styles.tooltipText}>Attack with your dead beasts</Typography>
+        </Box>}>
+          <Box sx={styles.potionButton}>
+            <img src={revivePotionIcon} alt='' height={'24px'} />
+            <Box sx={styles.count}>
+              <Typography sx={styles.countText}>
+                {tokenBalances.revivePotions}
+              </Typography>
+            </Box>
           </Box>
-        </RoundBlueButton>
-      </Tooltip>
+        </Tooltip>
 
-      <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.potionTooltip}>
-        <Typography variant='h6' letterSpacing={'0.5px'}>Attack Potion</Typography>
-        <Typography sx={{ opacity: 0.8, mb: 0.5 }}>Add 10% damage to your beast's next attack</Typography>
-        {/* <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: '0px 12px', height: '20px' }} size='small' onClick={() => openBuyPotionsDialog(true)}>
-          Buy Potions
-        </Button> */}
-      </Box>}>
-        <RoundBlueButton
-          sx={enableAttackPotion ? styles.highlightButton : styles.fadeButton}
-          onClick={(event) => {
-            if (!enableAttackPotion) return;
-            handleClick(event, 'attack');
-          }}
-        >
-          <img src={attackPotionIcon} alt='' height={'32px'} />
-
-          <Box sx={styles.count}>
-            <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '12px', lineHeight: '12px' }}>
-              {tokenBalances.attackPotions}
-            </Typography>
+        <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+          <Typography sx={styles.tooltipTitle}>Attack Potion</Typography>
+          <Typography sx={styles.tooltipText}>Add 10% damage boost</Typography>
+        </Box>}>
+          <Box sx={[styles.potionButton, enableAttackPotion && styles.potionButtonActive]}
+            onClick={(event) => {
+              if (!enableAttackPotion) return;
+              handleClick(event, 'attack');
+            }}>
+            <img src={attackPotionIcon} alt='' height={'24px'} />
+            <Box sx={styles.count}>
+              <Typography sx={styles.countText}>
+                {tokenBalances.attackPotions}
+              </Typography>
+            </Box>
           </Box>
-        </RoundBlueButton>
-      </Tooltip>
+        </Tooltip>
 
-      <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.potionTooltip}>
-        <Typography variant='h6' letterSpacing={'0.5px'}>Extra Life Potion</Typography>
-        <Typography sx={{ opacity: 0.8, mb: 0.5 }}>Apply extra lives to your beast after taking the summit</Typography>
-        {/* <Button sx={{ backgroundColor: 'black', color: 'white', borderRadius: '4px', padding: '0px 12px', height: '20px' }} size='small' onClick={() => openBuyPotionsDialog(true)}>
-          Buy Potions
-        </Button> */}
-      </Box>}>
-        <RoundBlueButton
-          sx={enableExtraLifePotion ? styles.highlightButton : styles.fadeButton}
-          onClick={(event) => {
-            if (!enableExtraLifePotion) return;
-            handleClick(event, 'extraLife');
-          }}
-        >
-          <img src={lifePotionIcon} alt='' height={'32px'} />
-
-          <Box sx={styles.count}>
-            <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '12px', lineHeight: '12px' }}>
-              {tokenBalances.extraLifePotions}
-            </Typography>
+        <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+          <Typography sx={styles.tooltipTitle}>Extra Life</Typography>
+          <Typography sx={styles.tooltipText}>Grant additional lives</Typography>
+        </Box>}>
+          <Box sx={[styles.potionButton, enableExtraLifePotion && styles.potionButtonActive]}
+            onClick={(event) => {
+              if (!enableExtraLifePotion) return;
+              handleClick(event, 'extraLife');
+            }}>
+            <img src={lifePotionIcon} alt='' height={'24px'} />
+            <Box sx={styles.count}>
+              <Typography sx={styles.countText}>
+                {tokenBalances.extraLifePotions}
+              </Typography>
+            </Box>
           </Box>
-        </RoundBlueButton>
-      </Tooltip>
+        </Tooltip>
+      </Box>
 
-      <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.potionTooltip}>
-        <Typography variant='h6' letterSpacing={'0.5px'}>Dead adventurers</Typography>
-        <Typography sx={{ opacity: 0.8, mb: 0.5 }}>Feed dead adventurers from Loot Survivor to increase your beasts max health</Typography>
+      {/* Divider 2 */}
+      <Box sx={styles.divider} />
+
+      {/* Section 3: Cauldron */}
+      <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+        <Typography sx={styles.tooltipTitle}>Feeding Ground</Typography>
+        <Typography sx={styles.tooltipText}>Feed dead adventurers</Typography>
       </Box>}>
-        <RoundBlueButton
-          sx={enableFeedingGround ? styles.highlightButton : styles.fadeButton}
+        <Box sx={[styles.potionButton, enableFeedingGround && styles.potionButtonActive]}
           onClick={() => {
             if (!enableFeedingGround) return;
             setShowFeedingGround(true);
-          }}
-        >
-          <img src={cauldronIcon} alt='' height={'32px'} style={{ marginTop: '-4px' }} />
-
+          }}>
+          <img src={cauldronIcon} alt='' height={'24px'} />
           <Box sx={styles.count}>
-            <Typography pl={'3px'} pr={'2px'} py={'1px'} sx={{ fontSize: '12px', lineHeight: '12px' }}>
+            <Typography sx={styles.countText}>
               {adventurerCollection.length}
             </Typography>
           </Box>
-        </RoundBlueButton>
+        </Box>
       </Tooltip>
     </Box>
 
@@ -224,41 +224,40 @@ function ActionBar(props: ActionBarProps) {
         horizontal: 'center',
       }}
     >
-      <Box width={'150px'} display={'flex'} alignItems={'center'} flexDirection={'column'} justifyContent={'space-between'} m={1}>
-        <Box sx={{ textAlign: 'center', display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Typography fontSize={'20px'} letterSpacing={'0.5px'}>
-            {potion === 'attack' ? 'Boost Attack' : 'Extra Life'}
-          </Typography>
-        </Box>
+      <Box width={'140px'} display={'flex'} alignItems={'center'} flexDirection={'column'} p={2}>
+        <Typography variant='h6' sx={{ color: '#ffedbb', mb: 1 }}>
+          {potion === 'attack' ? 'Boost Attack' : 'Extra Life'}
+        </Typography>
 
-        <Box textAlign={'center'} display={'flex'} alignItems={'center'} mt={1}>
-          <IconButton onClick={() => setAppliedPotions({
-            ...appliedPotions,
-            [potion]: Math.max(0, appliedPotions[potion] - 1)
-          })}>
-            <RemoveIcon />
+        <Box display={'flex'} alignItems={'center'} gap={1} mb={2}>
+          <IconButton
+            size="small"
+            sx={{ color: gameColors.brightGreen }}
+            onClick={() => setAppliedPotions({
+              ...appliedPotions,
+              [potion]: Math.max(0, appliedPotions[potion] - 1)
+            })}>
+            <RemoveIcon fontSize="small" />
           </IconButton>
 
-          <Box textAlign={'right'} ml={1}>
-            <Typography variant='h2'>
-              {potion === 'attack' ? appliedPotions.attack : appliedPotions.extraLife}
-            </Typography>
-          </Box>
+          <Typography variant='h4' sx={{ color: '#ffedbb', minWidth: '32px', textAlign: 'center' }}>
+            {potion === 'attack' ? appliedPotions.attack : appliedPotions.extraLife}
+          </Typography>
 
-          <img src={potion === 'attack' ? attackPotionIcon : lifePotionIcon} alt='' />
-
-          <IconButton onClick={() => setAppliedPotions({
-            ...appliedPotions,
-            [potion]: Math.min(appliedPotions[potion] + 1, Math.min(potion === 'attack' ? tokenBalances.attackPotions : tokenBalances.extraLifePotions, 255))
-          })}>
-            <AddIcon />
+          <IconButton
+            size="small"
+            sx={{ color: gameColors.brightGreen }}
+            onClick={() => setAppliedPotions({
+              ...appliedPotions,
+              [potion]: Math.min(appliedPotions[potion] + 1, Math.min(potion === 'attack' ? tokenBalances.attackPotions : tokenBalances.extraLifePotions, 255))
+            })}>
+            <AddIcon fontSize="small" />
           </IconButton>
         </Box>
 
         <Slider
           value={potion === 'attack' ? appliedPotions.attack : appliedPotions.extraLife}
           step={1}
-          marks
           min={0}
           max={Math.min(potion === 'attack' ? tokenBalances.attackPotions : tokenBalances.extraLifePotions, 255)}
           onChange={(e, value) => setAppliedPotions({
@@ -266,6 +265,19 @@ function ActionBar(props: ActionBarProps) {
             [potion]: value
           })}
           size='small'
+          sx={{
+            color: gameColors.brightGreen,
+            width: '100%',
+            '& .MuiSlider-thumb': {
+              backgroundColor: gameColors.brightGreen,
+            },
+            '& .MuiSlider-track': {
+              backgroundColor: gameColors.brightGreen,
+            },
+            '& .MuiSlider-rail': {
+              backgroundColor: gameColors.darkGreen,
+            }
+          }}
         />
       </Box>
     </Menu>}
@@ -278,46 +290,180 @@ const styles = {
   container: {
     height: '60px',
     width: '100%',
-    maxWidth: '100vw',
-    background: '#07323d',
     display: 'flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 2,
-    px: 2,
-    boxSizing: 'border-box'
+    justifyContent: 'flex-start',
+    boxSizing: 'border-box',
+    zIndex: 100,
+  },
+  buttonGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1.5,
+    background: `
+      linear-gradient(135deg, 
+        ${gameColors.darkGreen}90 0%, 
+        ${gameColors.mediumGreen}80 50%, 
+        ${gameColors.darkGreen}90 100%
+      )
+    `,
+    backdropFilter: 'blur(12px) saturate(1.2)',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    padding: '8px',
+    marginBottom: '-1px',
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.accentGreen}30,
+      0 4px 16px rgba(0, 0, 0, 0.4),
+      0 0 0 1px ${gameColors.darkGreen}60
+    `,
+  },
+  potionSubGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+  },
+  attackButton: {
+    padding: '10px 20px',
+    borderRadius: '8px',
+    background: `${gameColors.darkGreen}20`,
+    border: `2px solid ${gameColors.lightGreen}40`,
+    cursor: 'pointer',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    minWidth: '120px',
+    textAlign: 'center',
+    opacity: 0.7,
+    '&:hover': {
+      opacity: 0.9,
+      boxShadow: `0 2px 6px rgba(0, 0, 0, 0.2)`,
+    }
+  },
+  attackButtonEnabled: {
+    opacity: 1,
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen}30 0%, ${gameColors.darkGreen}50 100%)`,
+    border: `2px solid ${gameColors.brightGreen}`,
+    boxShadow: `
+      0 0 16px ${gameColors.brightGreen}40,
+      0 4px 8px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 ${gameColors.accentGreen}30
+    `,
+    '&:hover': {
+      opacity: 1,
+      background: `linear-gradient(135deg, ${gameColors.lightGreen}40 0%, ${gameColors.mediumGreen}60 100%)`,
+      boxShadow: `
+        0 0 20px ${gameColors.brightGreen}60,
+        0 6px 12px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 ${gameColors.brightGreen}40
+      `,
+    }
+  },
+  savageButton: {
+    background: `linear-gradient(135deg, ${gameColors.yellow}20 0%, ${gameColors.orange}20 100%)`,
+    border: `1px solid ${gameColors.yellow}`,
+    boxShadow: `0 0 12px ${gameColors.yellow}40`,
+  },
+  potionButton: {
+    position: 'relative',
+    width: '40px',
+    height: '40px',
+    borderRadius: '8px',
+    background: `${gameColors.darkGreen}40`,
+    border: `2px solid ${gameColors.accentGreen}60`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    opacity: 0.6,
+    '&:hover': {
+      border: `2px solid ${gameColors.brightGreen}80`,
+      boxShadow: `0 4px 8px rgba(0, 0, 0, 0.3)`,
+      opacity: 0.8,
+    }
+  },
+  potionButtonActive: {
+    opacity: 1,
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen}60 0%, ${gameColors.darkGreen}80 100%)`,
+    border: `2px solid ${gameColors.brightGreen}`,
+    boxShadow: `
+      0 0 12px ${gameColors.brightGreen}50,
+      0 4px 8px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 ${gameColors.accentGreen}40
+    `,
+    '&:hover': {
+      boxShadow: `
+        0 0 16px ${gameColors.brightGreen}70,
+        0 6px 12px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 ${gameColors.brightGreen}60
+      `,
+      background: `linear-gradient(135deg, ${gameColors.lightGreen}60 0%, ${gameColors.mediumGreen}80 100%)`,
+    }
   },
   count: {
     position: 'absolute',
-    bottom: '-5px',
-    borderRadius: '10px',
-    right: '-2px',
-    background: '#f6e6bc',
-    color: 'white',
-    border: '1px solid rgba(0, 0, 0, 1)',
+    bottom: '-6px',
+    right: '-6px',
+    borderRadius: '12px',
+    background: `linear-gradient(135deg, ${gameColors.brightGreen} 0%, ${gameColors.accentGreen} 100%)`,
+    border: `2px solid ${gameColors.darkGreen}`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: '15px'
+    minWidth: '20px',
+    height: '20px',
+    boxShadow: `
+      0 2px 4px rgba(0, 0, 0, 0.6),
+      0 0 8px ${gameColors.brightGreen}40,
+      inset 0 1px 0 rgba(255, 255, 255, 0.2)
+    `,
   },
-  highlightButton: {
-    opacity: 1,
-    boxShadow: '0 0 8px white'
+  countText: {
+    fontSize: '10px',
+    fontWeight: 'bold',
+    color: gameColors.darkGreen,
+    lineHeight: 1,
+    textShadow: `0 1px 1px rgba(255, 255, 255, 0.3)`,
   },
-  fadeButton: {
+  buttonText: {
+    color: '#58b000',
+    fontWeight: 'bold',
+    textShadow: `0 1px 2px ${gameColors.darkGreen}`,
+  },
+  disabledText: {
+    color: `${gameColors.lightGreen}`,
+  },
+  statText: {
+    color: gameColors.brightGreen,
+    fontSize: '14px',
+    fontWeight: 'bold',
+  },
+  potionCount: {
+    color: '#ffedbb',
+    fontSize: '10px',
+    fontWeight: 'bold',
+  },
+  tooltip: {
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
+    border: `2px solid ${gameColors.accentGreen}`,
+    borderRadius: '6px',
+    padding: '8px 12px',
+    textAlign: 'center',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+  },
+  tooltipTitle: {
+    color: '#ffedbb',
+    fontWeight: 'bold',
+    fontSize: '14px',
+    mb: 0.3,
+  },
+  tooltipText: {
+    color: gameColors.accentGreen,
+    fontSize: '12px',
+    fontWeight: 'bold',
+  },
+  divider: {
+    width: '1px',
+    height: '40px',
+    background: `linear-gradient(to bottom, transparent 0%, ${gameColors.accentGreen}60 25%, ${gameColors.accentGreen}60 75%, transparent 100%)`,
     opacity: 0.6,
   },
-  potionTooltip: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    textAlign: 'center',
-    backgroundColor: '#f6e6bc',
-    border: '3px solid rgba(0, 0, 0, 0.5)',
-    borderRadius: '10px',
-    px: 2,
-    pt: 0.5,
-    pb: 1
-  }
 }

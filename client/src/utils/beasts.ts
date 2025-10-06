@@ -1,3 +1,4 @@
+import { Beast } from '@/types/game';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
 
 export const fetchBeastTypeImage = (type: string): string => {
@@ -8,13 +9,21 @@ export const fetchBeastTypeImage = (type: string): string => {
   }
 }
 
-export const fetchBeastImage = (name: string): string => {
-  try {
-    return new URL(`../assets/beasts/${name.toLowerCase()}.png`, import.meta.url).href
-  } catch (ex) {
-    return ""
+export const fetchBeastSummitImage = (beast: Beast) => {
+  return `/images/beasts/${beast.name.toLowerCase()}.png`;
+};
+
+export const fetchBeastImage = (beast: Beast) => {
+  if (beast.shiny && beast.animated) {
+    return `/images/nfts/animated/shiny/${beast.name.toLowerCase()}.gif`;
+  } else if (beast.animated) {
+    return `/images/nfts/animated/regular/${beast.name.toLowerCase()}.gif`;
+  } else if (beast.shiny) {
+    return `/images/nfts/static/shiny/${beast.name.toLowerCase()}.png`;
+  } else {
+    return `/images/nfts/static/regular/${beast.name.toLowerCase()}.png`;
   }
-}
+};
 
 export function normaliseHealth(value: number, max: number): number {
   return Math.min(100, (value * 100) / max)

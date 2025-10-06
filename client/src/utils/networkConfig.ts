@@ -21,6 +21,7 @@ export interface NetworkConfig {
   denshokan: string;
   ekuboRouter: string;
   beasts: string;
+  dungeon: string;
 }
 
 export enum ChainId {
@@ -32,7 +33,7 @@ export enum ChainId {
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_0_0_1",
+    namespace: "summit_0_0_2",
     manifest: manifest_mainnet,
     slot: "pg-mainnet-5",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
@@ -67,6 +68,8 @@ export const NETWORKS = {
     },
     denshokan:
       "0x036017e69d21d6d8c13e266eabb73ef1f1d02722d86bdcabe5f168f8e549d3cd",
+    dungeon:
+      "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42",
     beasts:
       "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
     ekuboRouter:
@@ -94,6 +97,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     denshokan: network.denshokan,
     ekuboRouter: network.ekuboRouter,
     beasts: network.beasts,
+    dungeon: network.dungeon,
   };
 }
 
