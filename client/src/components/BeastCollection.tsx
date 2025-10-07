@@ -1,6 +1,6 @@
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
-import { Box, Typography, Popover, Tooltip } from "@mui/material";
+import { Box, Typography, Popover, Tooltip, Link } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
 import { useMemo, useState } from 'react';
 import { fetchBeastImage, normaliseHealth, calculateBattleResult } from "../utils/beasts";
@@ -10,7 +10,7 @@ import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 
 function BeastCollection() {
-  const { loadingCollection, setCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit, appliedPotions } = useGameStore()
+  const { loadingCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit, appliedPotions } = useGameStore()
   const { address } = useAccount()
   const [hideDeadBeasts, setHideDeadBeasts] = useState(false)
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
@@ -189,36 +189,93 @@ function BeastCollection() {
     <Box sx={styles.container}>
       {!address && !loadingCollection && (
         <Box sx={styles.emptyState}>
-          <Typography variant="h2">
-            CONNECT YOUR WALLET
-          </Typography>
-          <Typography variant="h3">
-            TO TAKE THE SUMMIT
-          </Typography>
+          <Box sx={styles.connectWalletContent}>
+            {/* Text and Steps */}
+            <Box sx={styles.connectTextContainer}>
+              <Typography sx={styles.emptyStateTitle}>
+                GET STARTED
+              </Typography>
+
+              {/* Steps */}
+              <Box sx={styles.stepsContainer}>
+                <Box sx={styles.step}>
+                  <Box sx={styles.stepNumber}>1</Box>
+                  <Typography sx={styles.stepText}>Connect your Beast Wallet</Typography>
+                </Box>
+                <Box sx={styles.step}>
+                  <Box sx={styles.stepNumber}>2</Box>
+                  <Typography sx={styles.stepText}>Select your beasts for battle</Typography>
+                </Box>
+                <Box sx={styles.step}>
+                  <Box sx={styles.stepNumber}>3</Box>
+                  <Typography sx={styles.stepText}>Conquer the summit</Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Beast Images */}
+            <Box sx={styles.beastShowcase}>
+              <Box sx={[styles.showcaseBeast, styles.showcaseBeastLeft]}>
+                <img src="/images/beasts/titan.png" alt="" style={styles.showcaseImage} />
+              </Box>
+            </Box>
+          </Box>
         </Box>
       )}
 
       {address && !loadingCollection && collection.length < 1 && (
         <Box sx={styles.emptyState}>
-          <Typography variant="h2">
-            NO BEASTS FOUND
-          </Typography>
-          <Typography variant="h3">
-            COLLECT IN LOOT SURVIVOR
-          </Typography>
+          <Box sx={styles.noBeastsContent}>
+            {/* Text and Steps */}
+            <Box sx={styles.noBeastsTextContainer}>
+              <Typography sx={styles.emptyStateTitle} mb={2}>
+                NO BEASTS FOUND
+              </Typography>
+              <Typography sx={styles.emptyStateSubtitle} mb={'2px'}>
+                COLLECT BEASTS BY PLAYING
+              </Typography>
+              <Link sx={[styles.emptyStateSubtitle, { textDecoration: 'underline !important' }]} href="https://lootsurvivor.io" target="_blank">
+                LOOT SURVIVOR 2
+              </Link>
+            </Box>
+
+            {/* Sad Beast */}
+            <Box sx={styles.singleBeastShowcase}>
+              <img src="/images/beasts/wolf.png" alt="" style={styles.sadBeastImage} />
+            </Box>
+          </Box>
         </Box>
       )}
 
       {loadingCollection && (
         <Box sx={styles.emptyState}>
-          <Typography variant="h2">
-            LOADING BEASTS...
-          </Typography>
+          <Box sx={styles.loadingStateContent}>
+            {/* Text Content */}
+            <Box sx={styles.loadingTextContainer}>
+              <Typography sx={styles.emptyStateTitle}>
+                SUMMONING BEASTS
+              </Typography>
+              <Typography sx={styles.loadingText}>
+                Gathering your collection...
+              </Typography>
+              <Box sx={styles.loadingDots}>
+                <Box sx={styles.loadingDot} />
+                <Box sx={[styles.loadingDot, styles.loadingDotDelay1]} />
+                <Box sx={[styles.loadingDot, styles.loadingDotDelay2]} />
+              </Box>
+            </Box>
+
+            {/* Loading Beast */}
+            <Box sx={styles.loadingBeastContainer}>
+              <Box sx={styles.loadingGlow} />
+              <img src="/images/beasts/warlock.png" alt="" style={styles.loadingBeastImage} />
+            </Box>
+          </Box>
         </Box>
       )}
 
       {/* Beast Grid with Utility Buttons */}
-      {collectionWithCombat.length > 0 && (
+      {!loadingCollection && collectionWithCombat.length > 0 && (
         <Box sx={styles.beastGridContainer}>
           {/* Utility Buttons */}
           <Box sx={styles.utilityButtonsContainer}>
@@ -293,9 +350,236 @@ const styles = {
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: '300px',
-    gap: 2,
+    height: '208px',
     textAlign: 'center',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  emptyStateContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 2,
+    position: 'relative',
+    zIndex: 1,
+  },
+  emptyStateTitle: {
+    fontSize: '20px',
+    fontWeight: 'bold',
+    color: '#ffedbb',
+    letterSpacing: '2px',
+    textTransform: 'uppercase',
+    textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
+  },
+  emptyStateSubtitle: {
+    fontSize: '14px',
+    color: gameColors.accentGreen,
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.6)`,
+  },
+  // Connect wallet state styles
+  connectWalletContent: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    position: 'relative',
+    zIndex: 1,
+  },
+  connectTextContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 2,
+  },
+  beastShowcase: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 3,
+    height: '150px',
+    position: 'relative',
+  },
+  showcaseBeast: {
+    position: 'relative',
+    filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6))',
+    transition: 'all 0.4s ease',
+  },
+  showcaseBeastLeft: {
+    zIndex: 1,
+  },
+  showcaseImage: {
+    height: '160px',
+    width: 'auto',
+  },
+  // No beasts found state styles
+  noBeastsContent: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    position: 'relative',
+    zIndex: 1,
+  },
+  noBeastsTextContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  singleBeastShowcase: {
+    position: 'relative',
+    height: '210px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sadBeastImage: {
+    height: '160px',
+    width: 'auto',
+    opacity: 1,
+  },
+  tearDrop: {
+    position: 'absolute',
+    top: '30px',
+    right: '45%',
+    fontSize: '16px',
+    animation: 'tearfall 2s ease-in-out infinite',
+    '@keyframes tearfall': {
+      '0%': {
+        transform: 'translateY(0)',
+        opacity: 0,
+      },
+      '20%': {
+        opacity: 1,
+      },
+      '100%': {
+        transform: 'translateY(40px)',
+        opacity: 0,
+      },
+    },
+  },
+  // Loading state styles
+  loadingBeastContainer: {
+    position: 'relative',
+    height: '150px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingGlow: {
+    position: 'absolute',
+    width: '200px',
+    height: '200px',
+    background: `radial-gradient(circle, ${gameColors.brightGreen}30 0%, transparent 60%)`,
+    animation: 'pulseGlow 2s ease-in-out infinite',
+    '@keyframes pulseGlow': {
+      '0%, 100%': {
+        opacity: 0.3,
+        transform: 'scale(0.8)',
+      },
+      '50%': {
+        opacity: 0.8,
+        transform: 'scale(1.2)',
+      },
+    },
+  },
+  loadingStateContent: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    position: 'relative',
+    zIndex: 1,
+  },
+  loadingTextContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 1,
+  },
+  loadingBeastImage: {
+    height: '180px',
+    width: 'auto',
+    filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6))',
+    animation: 'rotate 20s linear infinite',
+    '@keyframes rotate': {
+      '0%': {
+        transform: 'rotate(0deg)',
+      },
+      '100%': {
+        transform: 'rotate(360deg)',
+      },
+    },
+  },
+  loadingDots: {
+    display: 'flex',
+    gap: '8px',
+    justifyContent: 'center',
+    marginTop: '8px',
+  },
+  loadingDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    backgroundColor: gameColors.brightGreen,
+    animation: 'bounce 1.4s ease-in-out infinite',
+    '@keyframes bounce': {
+      '0%, 60%, 100%': {
+        transform: 'translateY(0)',
+        opacity: 0.3,
+      },
+      '30%': {
+        transform: 'translateY(-10px)',
+        opacity: 1,
+      },
+    },
+  },
+  loadingDotDelay1: {
+    animationDelay: '0.2s',
+  },
+  loadingDotDelay2: {
+    animationDelay: '0.4s',
+  },
+  // Steps styles
+  stepsContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+    width: '100%',
+    maxWidth: '300px',
+  },
+  step: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  stepNumber: {
+    width: '24px',
+    height: '24px',
+    borderRadius: '50%',
+    background: `linear-gradient(135deg, ${gameColors.brightGreen} 0%, ${gameColors.accentGreen} 100%)`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: gameColors.darkGreen,
+    flexShrink: 0,
+    boxShadow: `0 2px 4px rgba(0, 0, 0, 0.3)`,
+  },
+  stepText: {
+    fontSize: '13px',
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    textAlign: 'left',
+  },
+  loadingText: {
+    fontSize: '13px',
+    color: gameColors.accentGreen,
+    letterSpacing: '0.5px',
+    mb: 1,
+    fontStyle: 'italic',
   },
   beastGridContainer: {
     display: 'flex',

@@ -163,8 +163,71 @@ export const useGameTokens = () => {
     }
   }
 
+  const getBigFive = async () => {
+    let q = `
+      WITH top5 AS (
+        SELECT 
+          token_id,
+          rewards_earned,
+          LOWER(printf('%064x', CAST(token_id AS INTEGER))) AS token_hex64
+        FROM "summit_0_0_2-LiveBeastStats"
+        ORDER BY rewards_earned DESC
+        LIMIT 5
+      ),
+      attrs AS (
+        SELECT
+          ta.token_hex64,
+          MAX(CASE WHEN ta.trait_name = 'Beast'  THEN ta.trait_value END) AS "Beast",
+          MAX(CASE WHEN ta.trait_name = 'Prefix' THEN ta.trait_value END) AS "Prefix",
+          MAX(CASE WHEN ta.trait_name = 'Suffix' THEN ta.trait_value END) AS "Suffix"
+        FROM (
+          SELECT
+            LOWER(CASE WHEN SUBSTR(suf,1,2)='0x' THEN SUBSTR(suf,3) ELSE suf END) AS token_hex64,
+            trait_name,
+            trait_value
+          FROM (
+            SELECT
+              SUBSTR(token_id, INSTR(token_id, ':')+1) AS suf,
+              trait_name,
+              trait_value
+            FROM token_attributes
+          )
+        ) AS ta
+        WHERE ta.trait_name IN ('Beast','Prefix','Suffix')
+        GROUP BY ta.token_hex64
+      )
+      SELECT
+        t.token_id,
+        a."Prefix",
+        a."Beast",
+        a."Suffix",
+        t.rewards_earned
+      FROM top5 AS t
+      LEFT JOIN attrs AS a
+        ON a.token_hex64 = t.token_hex64
+      ORDER BY t.rewards_earned DESC;
+    `
+
+    try {
+      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+
+      let data = await sql.json()
+      return data
+    } catch (error) {
+      console.error("Error getting big five:", error);
+      return [];
+    }
+  }
+
   return {
     getBeastCollection,
     countRegisteredBeasts,
+    getBigFive,
   };
 };

@@ -37,7 +37,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { account, isConnecting } = useAccount();
   const { connector, connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
-  const { setCollection, setAdventurerCollection } = useGameStore();
+  const { setCollection, setAdventurerCollection, setLoadingCollection } = useGameStore();
   const { getERC20Balances } = useStarknetApi();
   const { getBeastCollection } = useGameTokens();
   const [userName, setUserName] = useState<string>();
@@ -104,8 +104,10 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   }, [connector]);
 
   async function fetchBeastCollection() {
+    setLoadingCollection(true);
     let collection = await getBeastCollection(account!.address);
     setCollection(collection);
+    setLoadingCollection(false);
   }
 
   async function fetchTokenBalances() {

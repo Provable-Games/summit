@@ -1,9 +1,34 @@
 import { useStatistics } from '@/contexts/Statistics';
 import { gameColors } from '@/utils/themes';
 import { Box, Typography } from '@mui/material';
+import { useGameTokens } from '@/dojo/useGameTokens';
+import { useEffect, useState } from 'react';
 
 function Leaderboard(props) {
   const { beastsRegistered } = useStatistics()
+  const { getBigFive } = useGameTokens()
+  const [bigFive, setBigFive] = useState([])
+  const [loadingBigFive, setLoadingBigFive] = useState(true)
+
+  useEffect(() => {
+    const fetchBigFive = async () => {
+      try {
+        const data = await getBigFive()
+        setBigFive(data)
+      } catch (error) {
+        console.error('Error fetching big five:', error)
+      } finally {
+        setLoadingBigFive(false)
+      }
+    }
+
+    fetchBigFive()
+  }, [])
+
+  const formatRewards = (rewards) => {
+    const num = parseInt(rewards, 16)
+    return num.toLocaleString(undefined, { maximumFractionDigits: 0 })
+  }
 
   return <Box sx={styles.container}>
     <Box sx={styles.innerContainer}>
@@ -18,11 +43,42 @@ function Leaderboard(props) {
           Test Alpha
         </Typography>
 
-        <Box sx={styles.sectionHeader} mt={1}>
+        <Box sx={styles.sectionHeader}>
           <Typography sx={styles.sectionTitle}>
             THE BIG FIVE
           </Typography>
         </Box>
+
+        {loadingBigFive ? (
+          <Box sx={styles.loadingContainer}>
+            <Typography sx={styles.loadingText}>Loading...</Typography>
+          </Box>
+        ) : bigFive.length > 0 ? (
+          <Box sx={styles.bigFiveContainer}>
+            {bigFive.map((beast, index) => (
+              <Box key={index} sx={styles.bigFiveRow}>
+                <Typography sx={styles.bigFiveRank}>{index + 1}.</Typography>
+                <Typography sx={styles.bigFiveCompact}>
+                  {beast.Prefix && beast.Suffix ? (
+                    <span>
+                      <span style={styles.bigFiveName}>"{beast.Prefix} {beast.Suffix}"</span>{' '}
+                      <span style={styles.bigFiveName}>{beast.Beast || 'Unknown'}</span>
+                    </span>
+                  ) : (
+                    <span style={styles.bigFiveName}>{beast.Beast || 'Unknown'}</span>
+                  )}
+                </Typography>
+                <Typography sx={styles.bigFiveRewards}>
+                  {formatRewards(beast.rewards_earned)}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        ) : (
+          <Box sx={styles.emptyContainer}>
+            <Typography sx={styles.emptyText}>No data available</Typography>
+          </Box>
+        )}
 
         {/* <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
           <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
@@ -126,7 +182,6 @@ const styles = {
     width: '100%',
     padding: '4px 0',
     borderBottom: `1px solid ${gameColors.accentGreen}40`,
-    marginBottom: '8px',
   },
   sectionTitle: {
     fontSize: '12px',
@@ -171,5 +226,75 @@ const styles = {
     borderRadius: '6px',
     transition: 'width 0.3s ease',
     boxShadow: `inset 0 1px 2px rgba(255, 255, 255, 0.2)`,
+  },
+  // Big Five styles
+  bigFiveContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+  },
+  bigFiveRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '4px 6px',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      background: `${gameColors.darkGreen}40`,
+      borderRadius: '4px',
+    },
+  },
+  bigFiveRank: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: gameColors.brightGreen,
+    minWidth: '16px',
+  },
+  bigFiveCompact: {
+    flex: 1,
+    fontSize: '12px',
+    color: '#ffedbb',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  bigFivePrefix: {
+    color: gameColors.accentGreen,
+    fontStyle: 'italic',
+    fontSize: '11px',
+  },
+  bigFiveName: {
+    fontSize: '12px',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  bigFiveRewards: {
+    fontSize: '11px',
+    color: gameColors.yellow,
+    fontWeight: '600',
+    textAlign: 'right',
+    minWidth: '60px',
+  },
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100px',
+  },
+  loadingText: {
+    fontSize: '12px',
+    color: gameColors.accentGreen,
+    fontStyle: 'italic',
+  },
+  emptyContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100px',
+  },
+  emptyText: {
+    fontSize: '12px',
+    color: gameColors.accentGreen,
+    opacity: 0.7,
   },
 }

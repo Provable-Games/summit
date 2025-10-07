@@ -101,6 +101,7 @@ export const useStarknetApi = () => {
       });
 
       const data = await response.json();
+      console.log("Summit data:", data);
       let beast = {
         id: parseInt(data?.result[0], 16),
         prefix: parseInt(data?.result[1], 16),
@@ -128,7 +129,7 @@ export const useStarknetApi = () => {
           ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.level),
         },
         taken_at: parseInt(data?.result[21], 16),
-        owner: data?.result[23],
+        owner: data?.result[22],
       }
     } catch (error) {
       console.log('error', error)

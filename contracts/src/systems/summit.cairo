@@ -472,12 +472,12 @@ pub mod summit_systems {
             world.write_model(@summit_history);
 
             // Mint reward
-            // if (time_on_summit > 0) {
-            //     let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
-            //     let reward_dispatcher = RewardERC20Dispatcher { contract_address: summit_config.reward_address };
-            //     reward_dispatcher.mint(summit_owner, time_on_summit.into() * TOKEN_DECIMALS);
-            //     beast.live.rewards_earned += time_on_summit;
-            // }
+            if (time_on_summit > 0) {
+                // let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
+                // let reward_dispatcher = RewardERC20Dispatcher { contract_address: summit_config.reward_address };
+                // reward_dispatcher.mint(summit_owner, time_on_summit.into() * TOKEN_DECIMALS);
+                beast.live.rewards_earned += time_on_summit;
+            }
         }
 
         /// @title new_summit_history

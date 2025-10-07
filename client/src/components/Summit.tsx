@@ -7,12 +7,18 @@ import strikeAnim from '../assets/animations/strike.json'
 import heart from '../assets/images/heart.png'
 import { fetchBeastSummitImage, normaliseHealth } from '../utils/beasts'
 import { gameColors } from '../utils/themes'
+import { lookupAddresses } from '@cartridge/controller'
+import { useStarkProfile } from '@starknet-react/core'
 
 function Summit() {
   const { collection, summit, attackInProgress, selectedBeasts, lastAttack } = useGameStore()
   const controls = useAnimationControls()
 
   const [totalDamage, setTotalDamage] = useState(0)
+  const [cartridgeName, setCartridgeName] = useState<string | null>(null)
+
+  // Use StarkProfile hook for StarkNet ID
+  const { data: profile } = useStarkProfile({ address: summit?.owner as `0x${string}` })
 
   const strike = useLottie({
     animationData: strikeAnim,
@@ -33,6 +39,26 @@ function Summit() {
   useEffect(() => {
     setTotalDamage(selectedBeasts.reduce((acc, beast) => acc + beast.combat?.damage || 0, 0));
   }, [selectedBeasts]);
+
+  useEffect(() => {
+    // Fetch Cartridge name when summit changes
+    const fetchCartridgeName = async () => {
+      console.log("Summit owner:", summit);
+      if (summit?.owner) {
+        try {
+          const addressMap = await lookupAddresses([summit.owner]);
+          setCartridgeName(addressMap.get(summit.owner) || null);
+        } catch (error) {
+          console.log("Cartridge lookup failed:", error);
+          setCartridgeName(null);
+        }
+      } else {
+        setCartridgeName(null);
+      }
+    };
+
+    fetchCartridgeName();
+  }, [summit?.owner]);
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit.beast.token_id))
   const showAttack = !isSavage && !attackInProgress && selectedBeasts.length > 0 && totalDamage > 0
@@ -65,7 +91,7 @@ function Summit() {
             {name}
           </Typography>
           <Typography sx={styles.ownerText}>
-            Owned by {summit.owner?.replace('.stark', '') || 'Unknown'}
+            Owned by {cartridgeName || profile?.name?.replace('.stark', '') || 'Unknown'}
           </Typography>
         </Box>
 
@@ -176,6 +202,7 @@ const styles = {
     position: 'relative',
     width: '300px',
     height: '300px',
+    maxHeight: '35dvh',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',

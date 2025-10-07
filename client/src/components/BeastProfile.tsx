@@ -1,10 +1,9 @@
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
-import { Box, Typography, LinearProgress } from "@mui/material";
-import { fetchBeastImage, fetchBeastTypeImage, normaliseHealth } from "../utils/beasts";
+import { Box, LinearProgress, Typography } from "@mui/material";
+import { fetchBeastImage, normaliseHealth } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
-import { ExperienceBar, HealthBar } from "../utils/styles";
 
 const MAX_HEALTH = 1023;
 const MAX_LEVELS = 40;

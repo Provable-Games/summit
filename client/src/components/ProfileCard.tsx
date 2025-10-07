@@ -12,7 +12,7 @@ import { gameColors } from '@/utils/themes';
 
 const ProfileCard = () => {
   const { collection } = useGameStore()
-  const { address } = useAccount()
+  const { address, account, connector } = useAccount()
   const { disconnect } = useDisconnect()
   const { playerName, tokenBalances, openProfile } = useController()
 
@@ -20,9 +20,10 @@ const ProfileCard = () => {
   const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false)
 
   const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit)
+  const isCartridge = connector?.id === 'controller'
 
   const handleProfileClick = async () => {
-    if (address) {
+    if (address && isCartridge) {
       openProfile()
     } else {
       await navigator.clipboard.writeText(address)
@@ -44,7 +45,7 @@ const ProfileCard = () => {
   return (
     <Box sx={styles.container}>
       <Box sx={styles.profileContainer}>
-        <Tooltip title={<Box sx={styles.tooltip}>Copy address</Box>}>
+        <Tooltip title={!isCartridge ? <Box sx={styles.tooltip}>Copy address</Box> : undefined}>
           <Button variant='text' sx={styles.addressButton} onClick={handleProfileClick}>
             <SportsEsportsIcon sx={styles.gameIcon} />
             <Typography sx={styles.addressText}>
@@ -169,6 +170,9 @@ const styles = {
     fontSize: '13px',
     letterSpacing: '0.5px',
     color: '#ffedbb',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
   },
   logoutButton: {
     '&:hover': {
