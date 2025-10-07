@@ -1,17 +1,38 @@
 import { useGameStore } from '@/stores/gameStore'
 import { Box, Typography } from '@mui/material'
 import { motion, useAnimationControls } from 'framer-motion'
-import explosion from '../assets/images/explosion.png'
+import { useLottie } from 'lottie-react'
+import { useEffect, useState } from 'react'
+import strikeAnim from '../assets/animations/strike.json'
 import heart from '../assets/images/heart.png'
-import skull from '../assets/images/skull.png'
-import sword from '../assets/images/sword.png'
 import { fetchBeastSummitImage, normaliseHealth } from '../utils/beasts'
 import { gameColors } from '../utils/themes'
 
 function Summit() {
-  const { collection, summit, attackInProgress, totalDamage, selectedBeasts } = useGameStore()
-
+  const { collection, summit, attackInProgress, selectedBeasts, lastAttack } = useGameStore()
   const controls = useAnimationControls()
+
+  const [totalDamage, setTotalDamage] = useState(0)
+
+  const strike = useLottie({
+    animationData: strikeAnim,
+    loop: false,
+    autoplay: false,
+    style: { position: 'absolute', width: '50%', height: '50%', top: '25%', right: '25%', zIndex: 10 },
+    onComplete: () => {
+      strike.stop();
+    }
+  });
+
+  useEffect(() => {
+    if (lastAttack && lastAttack > 0) {
+      strike.play();
+    }
+  }, [lastAttack]);
+
+  useEffect(() => {
+    setTotalDamage(selectedBeasts.reduce((acc, beast) => acc + beast.combat?.damage || 0, 0));
+  }, [selectedBeasts]);
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit.beast.token_id))
   const showAttack = !isSavage && !attackInProgress && selectedBeasts.length > 0 && totalDamage > 0
@@ -80,7 +101,7 @@ function Summit() {
       <Box sx={styles.beastImageContainer}>
         <motion.img
           key={summit.beast.token_id}
-          style={styles.beastImage}
+          style={{ ...styles.beastImage, opacity: showAttack && totalDamage >= summitHealthRemaining ? 0.7 : showAttack ? 0.9 : 1 }}
           src={fetchBeastSummitImage(summit.beast)}
           alt=''
           animate={controls}
@@ -89,31 +110,22 @@ function Summit() {
         {/* Attack Effects */}
         {showAttack && (
           <>
-            <Box sx={styles.damageIndicator} component={motion.div}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}>
+            <Box sx={styles.damageIndicator}>
               <Typography variant='h3' sx={styles.damageText}>
                 -{totalDamage}
               </Typography>
-              <img src={sword} alt='' height={'24px'} />
+              <img src={'/images/sword.png'} alt='' height={'24px'} />
             </Box>
 
-            <Box sx={styles.effectIcon} component={motion.div}
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}>
+            <Box sx={styles.effectIcon}>
               {totalDamage < summitHealthRemaining
-                ? <img src={explosion} alt='' height={'80px'} />
-                : <img src={skull} alt='' height={'80px'} />
+                ? <img src={'/images/explosion.png'} alt='' height={'120px'} style={{ opacity: 0.85 }} />
+                : <img src={'/images/skull.png'} alt='' height={'100px'} style={{ opacity: 0.85 }} />
               }
             </Box>
 
             {calculateExtraLifeLoss() > 0 && (
-              <Box sx={styles.heartLossIndicator} component={motion.div}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4, delay: 0.3 }}>
+              <Box sx={styles.heartLossIndicator}>
                 <Typography sx={styles.heartLossText}>
                   -{calculateExtraLifeLoss()}
                 </Typography>
@@ -122,6 +134,8 @@ function Summit() {
             )}
           </>
         )}
+
+        {strike.View}
       </Box>
     </Box>
   );
@@ -160,15 +174,15 @@ const styles = {
   },
   beastImageContainer: {
     position: 'relative',
-    width: '280px',
-    height: '280px',
+    width: '300px',
+    height: '300px',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
   },
   beastImage: {
-    height: '240px',
-    maxWidth: '240px',
+    height: '100%',
+    maxWidth: '100%',
     transition: 'all 0.3s ease',
     zIndex: 1,
   },
@@ -265,7 +279,7 @@ const styles = {
     zIndex: 10,
   },
   damageText: {
-    color: gameColors.red,
+    color: gameColors.yellow,
     fontWeight: 'bold',
     textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
   },

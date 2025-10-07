@@ -25,6 +25,23 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
   const streakEnded = diff <= 0;
   const attackStreak = streakEnded ? 0 : beast.attack_streak;
 
+  // Calculate revival time for dead beasts
+  const isDead = beast.current_health === 0;
+  let revivalTime = null;
+  if (isDead && beast.last_death_timestamp) {
+    // Check if timestamp is in seconds or milliseconds
+    const deathTimestamp = beast.last_death_timestamp < 10000000000 ? beast.last_death_timestamp * 1000 : beast.last_death_timestamp;
+    const revivalTimestamp = deathTimestamp + (24 * 60 * 60 * 1000); // 24 hours from death
+    const now = Date.now();
+    const timeRemaining = revivalTimestamp - now;
+
+    if (timeRemaining > 0) {
+      const hours = Math.floor(timeRemaining / (60 * 60 * 1000));
+      const minutes = Math.floor((timeRemaining % (60 * 60 * 1000)) / (60 * 1000));
+      revivalTime = `${hours}h ${minutes}m`;
+    }
+  }
+
   return (
     <Box sx={styles.beastContainer}>
       {/* Pixel Art Border Frame */}
@@ -48,7 +65,7 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
 
           <Box sx={styles.beastRankContainer}>
             <Box sx={styles.rankIconContainer}>
-              {beast.tier === 1 ? (
+              {beast.rank === 1 ? (
                 <svg width="16" height="16" viewBox="0 0 20 20">
                   <g id="crown" fill="#e6c56e" stroke="#af8a3c" strokeWidth="1">
                     <path d="M2 14h16l-1.5 4h-13z" />
@@ -69,7 +86,7 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
                 </svg>
               )}
             </Box>
-            <Typography sx={styles.pixelRankValue}>{beast.tier}</Typography>
+            <Typography sx={styles.pixelRankValue}>{beast.rank}</Typography>
           </Box>
         </Box>
 
@@ -138,15 +155,15 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
                       ...styles.pixelFireIcon,
                       backgroundColor: isActive ? '#FF4500' : '#1a1a1a',
                       border: isActive ? '2px solid #FFD700' : '2px solid #333',
-                      boxShadow: isActive 
-                        ? '0 0 12px #FF4500, 0 0 20px rgba(255, 69, 0, 0.6), inset 0 1px 0 #FF8C42' 
+                      boxShadow: isActive
+                        ? '0 0 12px #FF4500, 0 0 20px rgba(255, 69, 0, 0.6), inset 0 1px 0 #FF8C42'
                         : 'inset 0 2px 4px rgba(0,0,0,0.5)',
                       transform: isActive ? 'scale(1.1)' : 'scale(1)',
                       transition: 'all 0.3s ease',
                     }}
                   >
-                    <WhatshotIcon sx={{ 
-                      fontSize: '16px', 
+                    <WhatshotIcon sx={{
+                      fontSize: '16px',
                       color: isActive ? '#FFD700' : '#444',
                       filter: isActive ? 'drop-shadow(0 0 4px #FFD700)' : 'none',
                     }} />
@@ -221,6 +238,11 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
 
           {/* Revival Cost */}
           <Box sx={styles.pixelRevivalContainer}>
+            {isDead && revivalTime && (
+              <Typography sx={styles.pixelRevivalTimeText}>
+                REVIVES IN: {revivalTime}
+              </Typography>
+            )}
             <Typography sx={styles.pixelRevivalText}>
               REVIVAL COST: {beast.revival_count + 1} {beast.revival_count + 1 > 1 ? 'POTIONS' : 'POTION'}
             </Typography>
@@ -658,6 +680,13 @@ const styles = {
     color: '#d0c98d',
     letterSpacing: '0.5px',
     fontWeight: 'bold',
-    mt: '2px'
+  },
+
+  // Pixel revival time text
+  pixelRevivalTimeText: {
+    fontSize: '11px',
+    color: gameColors.orange,
+    letterSpacing: '0.5px',
+    fontWeight: 'bold',
   },
 }

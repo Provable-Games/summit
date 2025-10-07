@@ -50,6 +50,14 @@ function ActionBar(props: ActionBarProps) {
     });
   }
 
+  const handleFeed = () => {
+    executeGameAction({
+      type: 'feed',
+      beastId: selectedBeasts[0].token_id,
+      adventurerIds: selectedAdventurers.map(adventurer => adventurer.id)
+    });
+  }
+
   const isSavage = Boolean(collection.find((beast: any) => beast.token_id === summit.beast.token_id))
 
   const revivalPotionsRequired = selectedBeasts.filter((beast: any) => beast.current_health === 0).reduce((sum: number, beast: any) => sum + beast.revival_count + 1, 0)

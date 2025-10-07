@@ -14,6 +14,7 @@ export interface NetworkConfig {
   | undefined;
   rpcUrl: string;
   toriiUrl: string;
+  subscriptionUrl: string;
   chains: Array<{
     rpcUrl: string;
   }>;
@@ -38,6 +39,7 @@ export const NETWORKS = {
     slot: "pg-mainnet-5",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-5/torii",
+    subscriptionUrl: "https://api.cartridge.gg/x/summit/torii",
     tokens: {
       erc20: [
         {
@@ -92,6 +94,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     policies,
     rpcUrl: network.rpcUrl,
     toriiUrl: network.torii,
+    subscriptionUrl: network.subscriptionUrl,
     chains: [{ rpcUrl: network.rpcUrl }],
     tokens: network.tokens,
     denshokan: network.denshokan,

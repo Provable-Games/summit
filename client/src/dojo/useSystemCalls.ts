@@ -40,7 +40,8 @@ export const useSystemCalls = () => {
 
       if (receipt.execution_status === "REVERTED") {
         forceResetAction();
-        return enqueueSnackbar('Action failed', { variant: 'warning', anchorOrigin: { vertical: 'top', horizontal: 'center' } })
+        enqueueSnackbar('Action failed', { variant: 'warning', anchorOrigin: { vertical: 'top', horizontal: 'center' } })
+        return
       }
 
       const translatedEvents = receipt.events.map((event: any) =>

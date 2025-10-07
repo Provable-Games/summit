@@ -1,7 +1,10 @@
 import { useStarknetApi } from "@/api/starknet";
+import { useDojoSDK } from '@dojoengine/sdk/react';
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useGameStore } from "@/stores/gameStore";
 import { GameAction } from "@/types/game";
+import { useQueries } from '@/utils/queries';
+import { getEntityModel } from '@/types/game';
 import { delay } from "@/utils/utils";
 import {
   createContext,
@@ -31,27 +34,31 @@ const GameDirectorContext = createContext<GameDirectorContext>(
  * Wait times for events in milliseconds
  */
 const delayTimes: any = {
-  attack: 2000,
+  attack: 500,
 };
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
-  const { setSummit } = useGameStore();
+  const { sdk } = useDojoSDK();
+  const { summit, setSummit, setNewSummit, setLastAttack } = useGameStore();
+  const { gameEventsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimStarterKit } = useSystemCalls();
 
+  const [subscription, setSubscription] = useState<any>(null);
   const [actionFailed, setActionFailed] = useReducer((x) => x + 1, 0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [eventQueue, setEventQueue] = useState<any[]>([]);
   const [eventsProcessed, setEventsProcessed] = useState(0);
   const [videoQueue, setVideoQueue] = useState<string[]>([]);
 
-  useEffect(() => {
-    const fetchSummitBeast = async () => {
-      const summitBeast = await getSummitData();
-      setSummit(summitBeast);
-    };
+  const fetchSummitBeast = async () => {
+    const summitBeast = await getSummitData();
+    setSummit(summitBeast);
+  };
 
+  useEffect(() => {
     fetchSummitBeast();
+    subscribeEvents();
   }, []);
 
   useEffect(() => {
@@ -69,11 +76,56 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     processNextEvent();
   }, [eventQueue, isProcessing]);
 
-  const processEvent = async (event: any, skipDelay: boolean = false) => {
-    if (event.type === "attack") {
+  const subscribeEvents = async () => {
+    if (subscription) {
+      try {
+        subscription.cancel();
+      } catch (error) { }
     }
 
-    if (delayTimes[event.type] && !skipDelay) {
+    const [initialData, sub] = await sdk.subscribeEventQuery({
+      query: gameEventsQuery(1),
+      callback: ({ data, error }: { data?: any[]; error?: Error }) => {
+        if (data && data.length > 0) {
+          let events = data
+            .filter((entity: any) => Boolean(getEntityModel(entity, "GameEvent")))
+            .map((entity: any) => processEvent(getEntityModel(entity, "GameEvent")));
+
+          setEventQueue((prev: any) => [...prev, ...events]);
+        }
+      },
+    });
+
+    console.log('initialData', initialData.getItems().map((entity: any) => getEntityModel(entity, "GameEvent")));
+
+    setSubscription(sub);
+  };
+
+
+  const processEvent = async (event: any) => {
+    if (event.type === "attack" && event.defending_beast_token_id === summit?.beast.token_id) {
+      setLastAttack(event.damage);
+      setSummit({
+        ...summit,
+        beast: {
+          ...summit?.beast,
+          current_health: Math.max(0, summit?.beast.current_health - event.damage),
+        },
+      });
+    }
+
+    if (event.type === "summit") {
+      setNewSummit({
+        beast: {
+          ...event.beast,
+          ...event.live_stats,
+        },
+        taken_at: event.timestamp,
+        owner: event.owner,
+      });
+    }
+
+    if (delayTimes[event.type]) {
       await delay(delayTimes[event.type]);
     }
   };
@@ -94,7 +146,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     const events = await executeAction(txs, setActionFailed);
+
+    if (!events || events.length === 0) {
+      return;
+    }
+
     setEventQueue((prev) => [...prev, ...events]);
+    return true;
   };
 
   return (

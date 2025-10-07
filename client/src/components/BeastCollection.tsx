@@ -144,7 +144,7 @@ function BeastCollection() {
         </Box>
 
         {/* Combat Preview */}
-        {battleResult && !isDead && (
+        {battleResult && (
           <Box sx={[
             styles.combatPreview,
             battleResult.capture && styles.combatCapture

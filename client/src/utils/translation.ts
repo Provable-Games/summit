@@ -84,9 +84,9 @@ export const components: any = {
     live_stats: "beast_stats",
     attack_potions: 'number',
     damage: 'number',
+    defending_beast_token_id: 'number',
     owner: null,
     timestamp: 'number',
-    defending_beast_token_id: 'number',
   },
   'FeedEvent': {
     beast: "beast_event",

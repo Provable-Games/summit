@@ -127,7 +127,6 @@ export const useStarknetApi = () => {
           ...beast,
           ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.level),
         },
-        lost_at: parseInt(data?.result[20], 16),
         taken_at: parseInt(data?.result[21], 16),
         owner: data?.result[23],
       }

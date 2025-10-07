@@ -1,7 +1,6 @@
 export interface Summit {
   beast: Beast;
   taken_at: number;
-  lost_at: number;
   owner: string;
 }
 
@@ -65,3 +64,13 @@ export interface GameAction {
   beastIds?: number[];
   adventurerIds?: number[];
 }
+
+import { NETWORKS } from '@/utils/networkConfig';
+import { HistoricalToriiQueryBuilder } from '@dojoengine/sdk';
+
+export class GameQueryBuilder extends HistoricalToriiQueryBuilder<any> { }
+
+export const getEntityModel = (entity: any, modelName: string) => {
+  let namespace = NETWORKS.SN_MAIN.namespace
+  return entity?.models[`${namespace}`]?.[modelName]
+};

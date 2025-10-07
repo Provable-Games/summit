@@ -14,7 +14,11 @@ function Leaderboard(props) {
           SUMMIT
         </Typography>
 
-        <Box sx={styles.sectionHeader}>
+        <Typography sx={[styles.title, { fontSize: '14px', lineHeight: '14px', opacity: 0.9 }]}>
+          Test Alpha
+        </Typography>
+
+        <Box sx={styles.sectionHeader} mt={1}>
           <Typography sx={styles.sectionTitle}>
             THE BIG FIVE
           </Typography>
@@ -137,7 +141,6 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
-    marginBottom: '8px',
   },
   statLabel: {
     fontSize: '14px',

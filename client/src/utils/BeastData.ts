@@ -43,7 +43,7 @@ export const BEAST_NAMES = {
   42: "Fenrir",
   43: "Jaguar",
   44: "Satori",
-  45: "DireWolf",
+  45: "Direwolf",
   46: "Bear",
   47: "Wolf",
   48: "Mantis",

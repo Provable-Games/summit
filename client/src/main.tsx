@@ -30,7 +30,7 @@ function DojoApp() {
       try {
         const initializedSdk = await init({
           client: {
-            toriiUrl: currentNetworkConfig.toriiUrl,
+            toriiUrl: currentNetworkConfig.subscriptionUrl,
             worldAddress: currentNetworkConfig.manifest.world.address,
           },
           domain: {

@@ -7,7 +7,7 @@ import { fadeVariant } from '../utils/variants'
 
 function Feeding() {
   const { selectedBeasts, collection } = useGameStore()
-  const beast = collection.find(beast => beast.token_id === selectedBeasts[0])
+  const beast = collection.find(beast => beast.token_id === selectedBeasts[0].token_id)
   const controls = useAnimationControls()
 
   const name = beast.prefix ? `"${beast.prefix} ${beast.suffix}" ${beast.name}` : beast.name
