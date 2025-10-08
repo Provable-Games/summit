@@ -153,7 +153,8 @@ function BeastCollection() {
         {battleResult && (
           <Box sx={[
             styles.combatPreview,
-            battleResult.capture && styles.combatCapture
+            battleResult.capture && styles.combatCapture,
+            appliedPotions?.attack > 0 && styles.combatBoosted
           ]}>
             <Box sx={styles.combatContent}>
               <img src={'/images/sword.png'} alt='' height={'12px'} />
@@ -166,6 +167,11 @@ function BeastCollection() {
                   : `${battleResult.damage} DMG`
                 }
               </Typography>
+              {appliedPotions?.attack > 0 && (
+                <Typography sx={styles.boostIndicator}>
+                  +{appliedPotions.attack * 10}%
+                </Typography>
+              )}
             </Box>
           </Box>
         )}
@@ -789,6 +795,16 @@ const styles = {
   },
   combatTextFailure: {
     color: gameColors.red,
+  },
+  combatBoosted: {
+    border: `1px solid ${gameColors.yellow}60`,
+    background: `linear-gradient(135deg, ${gameColors.yellow}10 0%, ${gameColors.darkGreen}90 100%)`,
+  },
+  boostIndicator: {
+    fontSize: '10px',
+    color: gameColors.yellow,
+    fontWeight: 'bold',
+    marginLeft: '4px',
   },
   utilityButton: {
     position: 'relative',

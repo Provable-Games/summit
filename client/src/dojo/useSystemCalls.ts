@@ -1,5 +1,6 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { useGameStore } from "@/stores/gameStore";
+import { AppliedPotions } from "@/types/game";
 import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { getContractByName } from "@dojoengine/core";
@@ -91,8 +92,9 @@ export const useSystemCalls = () => {
   /**
    * Attacks a beast, optionally fighting to the death.
    * @param beastIds The IDs of the beasts to attack
+   * @param appliedPotions The potions to apply to the beasts
    */
-  const attack = (beastIds: number[]) => {
+  const attack = (beastIds: number[], appliedPotions: AppliedPotions) => {
     return {
       contractAddress: SUMMIT_ADDRESS,
       entrypoint: "attack",

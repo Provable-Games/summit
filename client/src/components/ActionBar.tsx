@@ -49,7 +49,8 @@ function ActionBar(props: ActionBarProps) {
 
     executeGameAction({
       type: 'attack',
-      beastIds: selectedBeasts.map(beast => beast.token_id)
+      beastIds: selectedBeasts.map(beast => beast.token_id),
+      appliedPotions: appliedPotions
     });
   }
 
@@ -74,11 +75,27 @@ function ActionBar(props: ActionBarProps) {
     setFeedingInProgress(false);
   }
 
-  const isSavage = Boolean(collection.find((beast: any) => beast.token_id === summit.beast.token_id))
+  const isSavage = Boolean(collection.find((beast: any) => beast.token_id === summit?.beast?.token_id))
 
-  const revivalPotionsRequired = selectedBeasts.filter((beast: any) => beast.current_health === 0).reduce((sum: number, beast: any) => sum + beast.revival_count + 1, 0)
-  const enableAttack = !attackInProgress && selectedBeasts.length > 0 && tokenBalances["REVIVE"] >= revivalPotionsRequired;
-  const enableFeedingGround = selectedBeasts.length === 1 && adventurerCollection.length > 0
+  const deadBeasts = selectedBeasts.filter((beast: any) => beast.current_health === 0);
+  const revivalPotionsRequired = deadBeasts.reduce((sum: number, beast: any) => sum + beast.revival_count + 1, 0);
+  
+  // Auto-apply revive potions when dead beasts are selected
+  React.useEffect(() => {
+    if (deadBeasts.length > 0 && appliedPotions.revive < revivalPotionsRequired) {
+      setAppliedPotions((prev: AppliedPotions) => ({
+        ...prev,
+        revive: Math.min(revivalPotionsRequired, tokenBalances["REVIVE"] || 0)
+      }));
+    } else if (deadBeasts.length === 0 && appliedPotions.revive > 0) {
+      // Clear revive potions if no dead beasts selected
+      setAppliedPotions((prev: AppliedPotions) => ({ ...prev, revive: 0 }));
+    }
+  }, [deadBeasts.length, revivalPotionsRequired, tokenBalances["REVIVE"]]);
+
+  const hasEnoughRevivePotions = tokenBalances["REVIVE"] >= revivalPotionsRequired;
+  const enableAttack = !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions;
+  const enableFeedingGround = selectedBeasts.length === 1 && adventurerCollection.length > 0;
 
   const enableExtraLifePotion = tokenBalances["EXTRA LIFE"] > 0;
   const enableAttackPotion = tokenBalances["ATTACK"] > 0;
@@ -130,9 +147,16 @@ function ActionBar(props: ActionBarProps) {
                 <Typography variant="h5" sx={styles.buttonText}>Attacking</Typography>
                 <div className='dotLoader green' />
               </Box>
-              : <Typography sx={[styles.buttonText, !enableAttack && styles.disabledText]} variant="h5">
-                Attack
-              </Typography>
+              : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                <Typography sx={[styles.buttonText, !enableAttack && styles.disabledText]} variant="h5">
+                  Attack
+                </Typography>
+                {!hasEnoughRevivePotions && revivalPotionsRequired > 0 && (
+                  <Typography sx={styles.insufficientWarning}>
+                    Need {revivalPotionsRequired - tokenBalances["REVIVE"]} more revive potions
+                  </Typography>
+                )}
+              </Box>
             }
 
             {isappliedPotions && <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
@@ -160,10 +184,30 @@ function ActionBar(props: ActionBarProps) {
       <Box sx={styles.potionSubGroup}>
         <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
           <Typography sx={styles.tooltipTitle}>Revive Potions</Typography>
-          <Typography sx={styles.tooltipText}>Attack with your dead beasts</Typography>
+          <Typography sx={styles.tooltipText}>
+            {revivalPotionsRequired > 0 
+              ? `${revivalPotionsRequired} required for dead beasts` 
+              : 'Attack with your dead beasts'}
+          </Typography>
+          {revivalPotionsRequired > tokenBalances["REVIVE"] && (
+            <Typography sx={styles.tooltipWarning}>
+              ⚠️ Not enough potions!
+            </Typography>
+          )}
         </Box>}>
-          <Box sx={styles.potionButton}>
+          <Box sx={[
+            styles.potionButton, 
+            revivalPotionsRequired > 0 && styles.potionButtonActive,
+            revivalPotionsRequired > tokenBalances["REVIVE"] && styles.potionButtonInsufficient
+          ]}>
             <img src={revivePotionIcon} alt='' height={'24px'} />
+            {revivalPotionsRequired > 0 && (
+              <Box sx={styles.requiredIndicator}>
+                <Typography sx={styles.requiredText}>
+                  {revivalPotionsRequired}
+                </Typography>
+              </Box>
+            )}
             <Box sx={styles.count}>
               <Typography sx={styles.countText}>
                 {tokenBalances["REVIVE"]}
@@ -174,14 +218,29 @@ function ActionBar(props: ActionBarProps) {
 
         <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
           <Typography sx={styles.tooltipTitle}>Attack Potion</Typography>
-          <Typography sx={styles.tooltipText}>Add 10% damage boost</Typography>
+          <Typography sx={styles.tooltipText}>
+            {appliedPotions.attack > 0 
+              ? `${appliedPotions.attack * 10}% damage boost applied`
+              : 'Add 10% damage boost per potion'}
+          </Typography>
         </Box>}>
-          <Box sx={[styles.potionButton, enableAttackPotion && styles.potionButtonActive]}
+          <Box sx={[
+            styles.potionButton, 
+            enableAttackPotion && styles.potionButtonActive,
+            appliedPotions.attack > 0 && styles.potionButtonApplied
+          ]}
             onClick={(event) => {
               if (!enableAttackPotion) return;
               handleClick(event, 'attack');
             }}>
             <img src={attackPotionIcon} alt='' height={'24px'} />
+            {appliedPotions.attack > 0 && (
+              <Box sx={styles.appliedIndicator}>
+                <Typography sx={styles.appliedText}>
+                  {appliedPotions.attack}
+                </Typography>
+              </Box>
+            )}
             <Box sx={styles.count}>
               <Typography sx={styles.countText}>
                 {tokenBalances["ATTACK"]}
@@ -192,14 +251,29 @@ function ActionBar(props: ActionBarProps) {
 
         <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
           <Typography sx={styles.tooltipTitle}>Extra Life</Typography>
-          <Typography sx={styles.tooltipText}>Grant additional lives</Typography>
+          <Typography sx={styles.tooltipText}>
+            {appliedPotions.extraLife > 0 
+              ? `${appliedPotions.extraLife} extra lives applied`
+              : 'Grant additional lives'}
+          </Typography>
         </Box>}>
-          <Box sx={[styles.potionButton, enableExtraLifePotion && styles.potionButtonActive]}
+          <Box sx={[
+            styles.potionButton, 
+            enableExtraLifePotion && styles.potionButtonActive,
+            appliedPotions.extraLife > 0 && styles.potionButtonApplied
+          ]}
             onClick={(event) => {
               if (!enableExtraLifePotion) return;
               handleClick(event, 'extraLife');
             }}>
             <img src={lifePotionIcon} alt='' height={'24px'} />
+            {appliedPotions.extraLife > 0 && (
+              <Box sx={styles.appliedIndicator}>
+                <Typography sx={styles.appliedText}>
+                  {appliedPotions.extraLife}
+                </Typography>
+              </Box>
+            )}
             <Box sx={styles.count}>
               <Typography sx={styles.countText}>
                 {tokenBalances["EXTRA LIFE"]}
@@ -489,5 +563,74 @@ const styles = {
     height: '40px',
     background: `linear-gradient(to bottom, transparent 0%, ${gameColors.accentGreen}60 25%, ${gameColors.accentGreen}60 75%, transparent 100%)`,
     opacity: 0.6,
+  },
+  potionButtonInsufficient: {
+    border: `2px solid ${gameColors.red}`,
+    background: `linear-gradient(135deg, ${gameColors.red}20 0%, ${gameColors.darkGreen}80 100%)`,
+    '&:hover': {
+      border: `2px solid ${gameColors.red}`,
+      boxShadow: `0 0 12px ${gameColors.red}40`,
+    }
+  },
+  potionButtonApplied: {
+    border: `2px solid ${gameColors.yellow}`,
+    boxShadow: `
+      0 0 16px ${gameColors.yellow}50,
+      0 4px 8px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 ${gameColors.yellow}40
+    `,
+  },
+  requiredIndicator: {
+    position: 'absolute',
+    top: '-8px',
+    right: '-8px',
+    borderRadius: '50%',
+    background: gameColors.red,
+    width: '24px',
+    height: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    border: `2px solid ${gameColors.darkGreen}`,
+    boxShadow: `0 2px 4px rgba(0, 0, 0, 0.6)`,
+  },
+  requiredText: {
+    fontSize: '11px',
+    fontWeight: 'bold',
+    color: '#ffedbb',
+    lineHeight: 1,
+  },
+  appliedIndicator: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    borderRadius: '50%',
+    background: `${gameColors.yellow}90`,
+    width: '28px',
+    height: '28px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: `0 0 8px ${gameColors.yellow}60`,
+  },
+  appliedText: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: gameColors.darkGreen,
+    lineHeight: 1,
+  },
+  insufficientWarning: {
+    fontSize: '9px',
+    color: gameColors.red,
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textShadow: `0 1px 1px ${gameColors.darkGreen}`,
+  },
+  tooltipWarning: {
+    color: gameColors.red,
+    fontSize: '11px',
+    fontWeight: 'bold',
+    mt: 0.5,
   },
 }

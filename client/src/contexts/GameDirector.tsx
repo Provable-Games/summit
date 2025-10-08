@@ -153,7 +153,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     if (action.type === 'attack') {
-      txs.push(attack(action.beastIds));
+      txs.push(attack(action.beastIds, action.appliedPotions));
     }
 
     if (action.type === 'claim_starter_kit') {

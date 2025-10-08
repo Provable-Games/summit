@@ -170,7 +170,7 @@ export const useGameTokens = () => {
           token_id,
           rewards_earned,
           LOWER(printf('%064x', CAST(token_id AS INTEGER))) AS token_hex64
-        FROM "summit_0_0_2-LiveBeastStats"
+        FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
         ORDER BY rewards_earned DESC
         LIMIT 5
       ),

@@ -12,6 +12,7 @@ import { useStarkProfile } from '@starknet-react/core'
 
 function Summit() {
   const { collection, summit, attackInProgress, selectedBeasts, lastAttack } = useGameStore()
+  console.log("Summit:", summit);
   const controls = useAnimationControls()
 
   const [totalDamage, setTotalDamage] = useState(0)

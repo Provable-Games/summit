@@ -65,12 +65,11 @@ const ProfileCard = () => {
 
       <Box display={'flex'} width={'100%'}>
         <Box sx={[styles.infoSection, styles.leftSection]}>
-          <Typography sx={styles.infoLabel}>$REWARD</Typography>
+          <Typography sx={styles.infoLabel}>SCORE</Typography>
 
           <Box display={'flex'} alignItems={'start'}>
             <Typography sx={styles.infoValue}>
-              {/* {tokenBalances["SURVIVOR"]} */}
-              0
+              {collection.reduce((acc, beast) => acc + beast.rewards_earned, 0)}
             </Typography>
           </Box>
         </Box>
