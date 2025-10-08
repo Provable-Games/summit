@@ -20,7 +20,7 @@ interface DynamicConnectorContext {
   currentNetworkConfig: NetworkConfig;
 }
 
-const DynamicConnectorContext = createContext < DynamicConnectorContext | null > (
+const DynamicConnectorContext = createContext<DynamicConnectorContext | null>(
   null
 );
 
@@ -34,7 +34,9 @@ const cartridgeController =
       preset: controllerConfig.preset,
       chains: controllerConfig.chains,
       defaultChainId: stringToFelt(controllerConfig.chainId).toString(),
-      tokens: controllerConfig.tokens,
+      tokens: {
+        erc20: controllerConfig.tokens.erc20.map(token => token.address),
+      },
     })
     : null;
 
@@ -46,7 +48,7 @@ export function DynamicConnectorProvider({ children }: PropsWithChildren) {
   };
 
   const [currentNetworkConfig, setCurrentNetworkConfig] =
-    useState < NetworkConfig > (getInitialNetwork);
+    useState<NetworkConfig>(getInitialNetwork);
 
   const { connectors } = useInjectedConnectors({
     recommended: [

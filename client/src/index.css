@@ -94,7 +94,11 @@ input:-webkit-autofill {
 }
 
 .dotLoader.white {
-  background: radial-gradient(circle closest-side, #FFF 90%, #FFF0) 0/calc(100%/3) 100% space;
+  background: radial-gradient(circle closest-side, #ffedbb 90%, #FFF0) 0/calc(100%/3) 100% space;
+}
+
+.dotLoader.green {
+  background: radial-gradient(circle closest-side, #58b000 90%, #FFF0) 0/calc(100%/3) 100% space;
 }
 
 .loadingDots {

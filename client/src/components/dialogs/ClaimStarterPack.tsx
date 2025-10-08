@@ -8,6 +8,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { useState } from 'react';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { gameColors } from '@/utils/themes';
+import { useController } from '@/contexts/controller';
 
 const POTIONS = [
   {
@@ -37,8 +38,8 @@ function ClaimStarterPack(props) {
   const { open, close } = props
   const { executeGameAction } = useGameDirector()
   const { collection } = useGameStore()
-
-  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit).map(beast => beast.id)
+  const { fetchTokenBalances } = useController()
+  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit).map(beast => beast.token_id)
 
   const [claimInProgress, setClaimInProgress] = useState(false)
 
@@ -49,9 +50,11 @@ function ClaimStarterPack(props) {
       await executeGameAction(
         {
           type: "claim_starter_kit",
-          beastIds: unclaimedBeasts.slice(0, 150)
+          beastIds: unclaimedBeasts.slice(0, 5)
         }
       )
+
+      fetchTokenBalances()
     } catch (ex) {
       console.log(ex)
     } finally {
@@ -67,7 +70,7 @@ function ClaimStarterPack(props) {
       maxWidth={'lg'}
       slotProps={{
         paper: {
-          sx: { 
+          sx: {
             background: `${gameColors.darkGreen}95`,
             backdropFilter: 'blur(12px) saturate(1.2)',
             border: `2px solid ${gameColors.accentGreen}60`,
@@ -141,8 +144,8 @@ function ClaimStarterPack(props) {
           </Box>
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-            <Button 
-              disabled={claimInProgress || unclaimedBeasts.length === 0} 
+            <Button
+              disabled={claimInProgress || unclaimedBeasts.length === 0}
               onClick={claimAll}
               sx={[
                 styles.claimButton,
@@ -151,11 +154,11 @@ function ClaimStarterPack(props) {
             >
               <Typography sx={styles.claimButtonText}>
                 {claimInProgress
-                  ? <Box display={'flex'} alignItems={'center'} gap={1}>
-                      <span>Claiming</span>
-                      <div className='dotLoader white' />
-                    </Box>
-                  : unclaimedBeasts.length > 150 ? 'CLAIM 150' : 'CLAIM ALL'
+                  ? <Box display={'flex'} alignItems={'baseline'}>
+                    <span>Claiming</span>
+                    <div className='dotLoader white' />
+                  </Box>
+                  : unclaimedBeasts.length > 5 ? 'CLAIM 5' : 'CLAIM ALL'
                 }
               </Typography>
             </Button>

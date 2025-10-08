@@ -1,8 +1,7 @@
-import { ERC20Balances, useStarknetApi } from "@/api/starknet";
+import { useStarknetApi } from "@/api/starknet";
 import { useGameTokens } from "@/dojo/useGameTokens";
 import { useGameStore } from "@/stores/gameStore";
 import { useAnalytics } from "@/utils/analytics";
-import { ChainId } from "@/utils/networkConfig";
 import { useAccount, useConnect, useDisconnect } from "@starknet-react/core";
 import { useGameTokens as useMetagameTokens } from "metagame-sdk/sql";
 import {
@@ -18,7 +17,8 @@ import { useDynamicConnector } from "./starknet";
 export interface ControllerContext {
   playerName: string | undefined;
   isPending: boolean;
-  tokenBalances: ERC20Balances;
+  tokenBalances: Record<string, number>;
+  fetchTokenBalances: () => void;
   openProfile: () => void;
   login: () => void;
   logout: () => void;
@@ -38,10 +38,10 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { connector, connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
   const { setCollection, setAdventurerCollection, setLoadingCollection } = useGameStore();
-  const { getERC20Balances } = useStarknetApi();
+  const { getTokenBalances } = useStarknetApi();
   const { getBeastCollection } = useGameTokens();
   const [userName, setUserName] = useState<string>();
-  const [tokenBalances, setTokenBalances] = useState<ERC20Balances>({
+  const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({
     revivePotions: 0,
     attackPotions: 0,
     extraLifePotions: 0,
@@ -111,7 +111,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   }
 
   async function fetchTokenBalances() {
-    let balances = await getERC20Balances();
+    let balances = await getTokenBalances(currentNetworkConfig.tokens.erc20);
     setTokenBalances(balances);
   }
 
@@ -125,6 +125,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         playerName: userName,
         isPending: isConnecting || isPending,
         tokenBalances,
+        fetchTokenBalances,
         showTermsOfService,
         acceptTermsOfService,
 

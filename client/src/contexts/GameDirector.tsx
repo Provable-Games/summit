@@ -1,11 +1,10 @@
 import { useStarknetApi } from "@/api/starknet";
-import { useDojoSDK } from '@dojoengine/sdk/react';
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useGameStore } from "@/stores/gameStore";
-import { GameAction } from "@/types/game";
+import { Beast, GameAction, getEntityModel } from "@/types/game";
 import { useQueries } from '@/utils/queries';
-import { getEntityModel } from '@/types/game';
 import { delay } from "@/utils/utils";
+import { useDojoSDK } from '@dojoengine/sdk/react';
 import {
   createContext,
   PropsWithChildren,
@@ -16,7 +15,7 @@ import {
 } from "react";
 
 export interface GameDirectorContext {
-  executeGameAction: (action: GameAction) => void;
+  executeGameAction: (action: GameAction) => Promise<boolean>;
   actionFailed: number;
   videoQueue: string[];
   setVideoQueue: (videoQueue: string[]) => void;
@@ -39,7 +38,8 @@ const delayTimes: any = {
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
-  const { summit, setSummit, setNewSummit, setLastAttack } = useGameStore();
+  const { summit, setSummit, setNewSummit, setLastAttack, setAttackInProgress,
+    collection, setCollection, setSelectedBeasts, setFeedingInProgress } = useGameStore();
   const { gameEventsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimStarterKit } = useSystemCalls();
@@ -83,7 +83,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       } catch (error) { }
     }
 
-    const [initialData, sub] = await sdk.subscribeEventQuery({
+    const [_, sub] = await sdk.subscribeEventQuery({
       query: gameEventsQuery(1),
       callback: ({ data, error }: { data?: any[]; error?: Error }) => {
         if (data && data.length > 0) {
@@ -95,8 +95,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         }
       },
     });
-
-    console.log('initialData', initialData.getItems().map((entity: any) => getEntityModel(entity, "GameEvent")));
 
     setSubscription(sub);
   };
@@ -112,6 +110,16 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           current_health: Math.max(0, summit?.beast.current_health - event.damage),
         },
       });
+
+      if (collection.find((beast: Beast) => beast.token_id === event.beast.token_id)) {
+        setCollection(collection.map((beast: Beast) => beast.token_id === event.beast.token_id
+          ? { ...beast, ...event.beast, ...event.live_stats }
+          : beast
+        ));
+
+        setSelectedBeasts([]);
+        setAttackInProgress(false);
+      }
     }
 
     if (event.type === "summit") {
@@ -123,6 +131,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         taken_at: event.timestamp,
         owner: event.owner,
       });
+    }
+
+    if (event.type === "feed") {
+      setCollection(collection.map((beast: Beast) => beast.token_id === event.beast.token_id
+        ? { ...beast, ...event.beast, ...event.live_stats }
+        : beast
+      ));
     }
 
     if (delayTimes[event.type]) {
@@ -148,7 +163,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     const events = await executeAction(txs, setActionFailed);
 
     if (!events || events.length === 0) {
-      return;
+      return false;
     }
 
     setEventQueue((prev) => [...prev, ...events]);

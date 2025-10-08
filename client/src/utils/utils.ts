@@ -23,7 +23,7 @@ export const getShortNamespace = (namespace: string) => {
 export function parseBalances(
   results: { id: number; jsonrpc: string; result: [string, string] }[],
   tokens: { name: string; address: string; displayDecimals: number; decimals?: number; }[],
-): Record<string, string> {
+): Record<string, number> {
   function toBigIntSmart(v: string | number | bigint): bigint {
     const s = String(v);
     return s.startsWith("0x") ? BigInt(s) : BigInt(s);
@@ -41,13 +41,13 @@ export function parseBalances(
     return `${intPart}${showDecimals > 0 ? "." + frac : ""}`;
   }
 
-  const out: Record<string, string> = {};
+  const out: Record<string, number> = {};
   for (let i = 0; i < results.length; i++) {
     const token = tokens[i];
     const raw = uint256ToBigInt(results[i].result);
     const tokenDecimals = token.decimals ?? 18;
     const shownDecimals = token.displayDecimals;
-    out[token.name] = formatBalance(raw, tokenDecimals, shownDecimals);
+    out[token.name] = parseInt(formatBalance(raw, tokenDecimals, shownDecimals));
   }
   return out;
 }

@@ -22,9 +22,10 @@ function ActionBar(props: ActionBarProps) {
   const { executeGameAction } = useGameDirector();
   const { tokenBalances } = useController();
 
-  const { selectedBeasts, summit, showFeedingGround,
+  const { selectedBeasts, summit, showFeedingGround, setAttackInProgress,
     selectedAdventurers, attackInProgress, collection, setShowFeedingGround,
-    feedingInProgress, adventurerCollection, appliedPotions, setAppliedPotions } = useGameStore();
+    feedingInProgress, adventurerCollection, appliedPotions, setAppliedPotions,
+    setFeedingInProgress, setSelectedAdventurers, setAdventurerCollection } = useGameStore();
 
   const [buyPotionsDialog, openBuyPotionsDialog] = useState(false)
 
@@ -44,39 +45,54 @@ function ActionBar(props: ActionBarProps) {
   const handleAttack = () => {
     if (!enableAttack) return;
 
+    setAttackInProgress(true);
+
     executeGameAction({
       type: 'attack',
       beastIds: selectedBeasts.map(beast => beast.token_id)
     });
   }
 
-  const handleFeed = () => {
-    executeGameAction({
+  const handleFeed = async () => {
+    if (!enableFeedingGround) return;
+
+    setFeedingInProgress(true);
+
+    let result = await executeGameAction({
       type: 'feed',
       beastId: selectedBeasts[0].token_id,
       adventurerIds: selectedAdventurers.map(adventurer => adventurer.id)
     });
+
+    if (result) {
+      setAdventurerCollection(adventurerCollection.filter(
+        adventurer => !selectedAdventurers.some(selected => selected.id === adventurer.id)
+      ));
+      setSelectedAdventurers([]);
+    }
+
+    setFeedingInProgress(false);
   }
 
   const isSavage = Boolean(collection.find((beast: any) => beast.token_id === summit.beast.token_id))
 
   const revivalPotionsRequired = selectedBeasts.filter((beast: any) => beast.current_health === 0).reduce((sum: number, beast: any) => sum + beast.revival_count + 1, 0)
-  const enableAttack = !attackInProgress && selectedBeasts.length > 0 && tokenBalances.revivePotions >= revivalPotionsRequired;
+  const enableAttack = !attackInProgress && selectedBeasts.length > 0 && tokenBalances["REVIVE"] >= revivalPotionsRequired;
   const enableFeedingGround = selectedBeasts.length === 1 && adventurerCollection.length > 0
 
-  const enableExtraLifePotion = tokenBalances.extraLifePotions > 0;
-  const enableAttackPotion = tokenBalances.attackPotions > 0;
+  const enableExtraLifePotion = tokenBalances["EXTRA LIFE"] > 0;
+  const enableAttackPotion = tokenBalances["ATTACK"] > 0;
   const isappliedPotions = appliedPotions.revive + appliedPotions.attack + appliedPotions.extraLife > 0
 
   if (showFeedingGround) {
     return <Box sx={styles.container}>
       <Box sx={styles.buttonGroup}>
         <Box sx={[styles.attackButton, (!feedingInProgress && selectedAdventurers.length >= 1) && styles.attackButtonEnabled]}
-          onClick={() => executeGameAction({ type: 'feed' })}>
+          onClick={handleFeed}>
           {feedingInProgress
-            ? <Box display={'flex'} alignItems={'baseline'} gap={1}>
+            ? <Box display={'flex'} alignItems={'baseline'}>
               <Typography variant="h5" sx={styles.buttonText}>Feeding</Typography>
-              <div className='dotLoader' style={{ background: 'radial-gradient(circle closest-side, #ffedbb 90%, #0000) 0/calc(100%/3) 100% space' }} />
+              <div className='dotLoader green' />
             </Box>
             : <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Typography variant="h5" sx={styles.buttonText}>
@@ -110,9 +126,9 @@ function ActionBar(props: ActionBarProps) {
           onClick={handleAttack}>
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
             {attackInProgress
-              ? <Box display={'flex'} alignItems={'center'} gap={1}>
+              ? <Box display={'flex'} alignItems={'baseline'}>
                 <Typography variant="h5" sx={styles.buttonText}>Attacking</Typography>
-                <div className='dotLoader' style={{ background: 'radial-gradient(circle closest-side, #ffedbb 90%, #0000) 0/calc(100%/3) 100% space' }} />
+                <div className='dotLoader green' />
               </Box>
               : <Typography sx={[styles.buttonText, !enableAttack && styles.disabledText]} variant="h5">
                 Attack
@@ -150,7 +166,7 @@ function ActionBar(props: ActionBarProps) {
             <img src={revivePotionIcon} alt='' height={'24px'} />
             <Box sx={styles.count}>
               <Typography sx={styles.countText}>
-                {tokenBalances.revivePotions}
+                {tokenBalances["REVIVE"]}
               </Typography>
             </Box>
           </Box>
@@ -168,7 +184,7 @@ function ActionBar(props: ActionBarProps) {
             <img src={attackPotionIcon} alt='' height={'24px'} />
             <Box sx={styles.count}>
               <Typography sx={styles.countText}>
-                {tokenBalances.attackPotions}
+                {tokenBalances["ATTACK"]}
               </Typography>
             </Box>
           </Box>
@@ -186,7 +202,7 @@ function ActionBar(props: ActionBarProps) {
             <img src={lifePotionIcon} alt='' height={'24px'} />
             <Box sx={styles.count}>
               <Typography sx={styles.countText}>
-                {tokenBalances.extraLifePotions}
+                {tokenBalances["EXTRA LIFE"]}
               </Typography>
             </Box>
           </Box>
@@ -257,7 +273,7 @@ function ActionBar(props: ActionBarProps) {
             sx={{ color: gameColors.brightGreen }}
             onClick={() => setAppliedPotions({
               ...appliedPotions,
-              [potion]: Math.min(appliedPotions[potion] + 1, Math.min(potion === 'attack' ? tokenBalances.attackPotions : tokenBalances.extraLifePotions, 255))
+              [potion]: Math.min(appliedPotions[potion] + 1, Math.min(potion === 'attack' ? tokenBalances["ATTACK"] : tokenBalances["EXTRA LIFE"], 255))
             })}>
             <AddIcon fontSize="small" />
           </IconButton>
@@ -267,7 +283,7 @@ function ActionBar(props: ActionBarProps) {
           value={potion === 'attack' ? appliedPotions.attack : appliedPotions.extraLife}
           step={1}
           min={0}
-          max={Math.min(potion === 'attack' ? tokenBalances.attackPotions : tokenBalances.extraLifePotions, 255)}
+          max={Math.min(potion === 'attack' ? tokenBalances["ATTACK"] : tokenBalances["EXTRA LIFE"], 255)}
           onChange={(e, value) => setAppliedPotions({
             ...appliedPotions,
             [potion]: value

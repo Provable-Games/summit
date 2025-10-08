@@ -12,7 +12,7 @@ import { gameColors } from '@/utils/themes';
 
 const ProfileCard = () => {
   const { collection } = useGameStore()
-  const { address, account, connector } = useAccount()
+  const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
   const { playerName, tokenBalances, openProfile } = useController()
 
@@ -69,7 +69,8 @@ const ProfileCard = () => {
 
           <Box display={'flex'} alignItems={'start'}>
             <Typography sx={styles.infoValue}>
-              {tokenBalances.survivor.toLocaleString()}
+              {/* {tokenBalances["SURVIVOR"]} */}
+              0
             </Typography>
           </Box>
         </Box>

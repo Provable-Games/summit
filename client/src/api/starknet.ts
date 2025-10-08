@@ -1,82 +1,39 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { Summit } from "@/types/game";
 import { getBeastDetails } from "@/utils/beasts";
+import { parseBalances } from "@/utils/utils";
 import { getContractByName } from "@dojoengine/core";
 import { useAccount } from "@starknet-react/core";
-
-// Type definitions for the API responses
-interface BeastAttribute {
-  trait_type: string;
-  value: string | number;
-}
-
-interface BeastNFT {
-  tokenId: string;
-  tokenUri: string;
-  ownerAddress?: string;
-}
-
-interface BeastData {
-  id: number;
-  [key: string]: string | number;
-}
-
-interface AdventurerAttribute {
-  trait: string;
-  value: string | number;
-}
-
-interface AdventurerMetadata {
-  attributes: AdventurerAttribute[];
-}
-
-interface AdventurerNFT {
-  tokenId: string;
-  tokenMetadata: string;
-}
-
-interface AdventurerData {
-  id: number;
-  name: string;
-  health?: number;
-  level?: number;
-  rank?: number;
-}
-
-interface TokenBalance {
-  contractAddress: string;
-  balance: string;
-}
-
-interface TokenBalancesResponse {
-  tokenBalances: TokenBalance[];
-}
-
-export interface ERC20Balances {
-  revivePotions: number;
-  attackPotions: number;
-  extraLifePotions: number;
-  survivor: number;
-}
-
-interface NFTResponse {
-  nfts: BeastNFT[] | AdventurerNFT[];
-  nextPageKey?: string;
-}
-
-interface CollectionResponse {
-  totalSupply: number;
-}
-
-interface HoldersResponse {
-  holders: string[];
-}
-
-const BLAST_URL = import.meta.env.VITE_PUBLIC_BLAST_API;
 
 export const useStarknetApi = () => {
   const { currentNetworkConfig } = useDynamicConnector();
   const { address } = useAccount();
+
+  const getTokenBalances = async (tokens: any[]): Promise<Record<string, number>> => {
+    const calls = tokens.map((token, i) => ({
+      id: i + 1,
+      jsonrpc: "2.0",
+      method: "starknet_call",
+      params: [
+        {
+          contract_address: token.address,
+          entry_point_selector: "0x2e4263afad30923c891518314c3c95dbe830a16874e8abc5777a9a20b54c76e",
+          calldata: [address]
+        },
+        "latest"
+      ]
+    }));
+
+    const response = await fetch(currentNetworkConfig.rpcUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(calls),
+    });
+
+    const data = await response.json();
+
+    return parseBalances(data || [], tokens);
+  }
 
   const getSummitData = async (): Promise<Summit> => {
     try {
@@ -138,174 +95,8 @@ export const useStarknetApi = () => {
     return null;
   }
 
-  const getBeasts = async (): Promise<BeastData[]> => {
-    let env = import.meta.env.VITE_PUBLIC_CHAIN
-
-    if (env === 'mainnet') {
-      return getBeastsMainnet()
-    }
-
-    return [];
-  }
-
-  const getBeastHolders = async (): Promise<string[]> => {
-    let url = `${BLAST_URL}/builder/getNFTCollectionHolders?contractAddress=${currentNetworkConfig.beasts}&pageSize=100`
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    const data: HoldersResponse = await response.json();
-    return data.holders
-  }
-
-  const getTotalBeasts = async (): Promise<number> => {
-    let url = `${BLAST_URL}/builder/getNFTCollection?contractAddress=${currentNetworkConfig.beasts}`
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    const data: CollectionResponse = await response.json();
-    return data.totalSupply
-  }
-
-  const getBeastsMainnet = async (): Promise<BeastData[]> => {
-    const recursiveFetchBeast = async (beasts: BeastNFT[], nextPageKey: string | null): Promise<BeastNFT[]> => {
-      let url = `${BLAST_URL}/builder/getWalletNFTs?contractAddress=${currentNetworkConfig.beasts}&walletAddress=${address}&pageSize=100`
-
-      if (nextPageKey) {
-        url += `&pageKey=${nextPageKey}`
-      }
-
-      try {
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        const data: NFTResponse = await response.json();
-        beasts = beasts.concat(data.nfts as BeastNFT[])
-
-        if (data.nextPageKey) {
-          return recursiveFetchBeast(beasts, data.nextPageKey)
-        }
-      } catch (ex) {
-        console.log('error fetching beasts', ex)
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return recursiveFetchBeast(beasts, nextPageKey);
-      }
-
-      return beasts
-    }
-
-    let beasts = await recursiveFetchBeast([], null)
-
-    return beasts.map(beast => {
-      const attributesString = beast.tokenUri.match(/"attributes":\[(.*?)\]/)?.[0];
-      if (!attributesString) {
-        throw new Error('Invalid token URI format');
-      }
-
-      const attributesObject = JSON.parse(`{${attributesString}}`).attributes as BeastAttribute[];
-
-      const attributesMap = attributesObject.reduce((acc: Record<string, string | number>, attr: BeastAttribute) => {
-        acc[attr.trait_type] = isNaN(Number(attr.value)) ? attr.value : Number(attr.value);
-        return acc;
-      }, {});
-
-      return {
-        id: Number(beast.tokenId),
-        ...attributesMap
-      }
-    })
-  };
-
-  const getAdventurers = async (): Promise<AdventurerData[]> => {
-    const recursiveFetch = async (adventurers: AdventurerData[], nextPageKey: string | null): Promise<AdventurerData[]> => {
-      let url = `${BLAST_URL}/builder/getWalletNFTs?contractAddress=${currentNetworkConfig.denshokan}&walletAddress=${address}&pageSize=100`
-
-      if (nextPageKey) {
-        url += `&pageKey=${nextPageKey}`
-      }
-
-      try {
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        const data: NFTResponse = await response.json();
-        const adventurerNFTs = data.nfts as AdventurerNFT[];
-        adventurers = adventurers.concat(adventurerNFTs?.map((adventurer: AdventurerNFT) => {
-          const metadata: AdventurerMetadata = JSON.parse(adventurer.tokenMetadata);
-
-          const attributesMap = metadata.attributes.reduce((acc: Record<string, string | number>, attr: AdventurerAttribute) => {
-            acc[attr.trait] = isNaN(Number(attr.value)) ? attr.value : Number(attr.value);
-            return acc;
-          }, {});
-
-          return {
-            id: Number(adventurer.tokenId),
-            name: attributesMap.Name as string
-          }
-        }) || [])
-
-        if (data.nextPageKey) {
-          return recursiveFetch(adventurers, data.nextPageKey)
-        }
-      } catch (ex) {
-        console.log('error fetching adventurers', ex)
-      }
-
-      return adventurers
-    }
-
-    let adventurers = await recursiveFetch([], null)
-    return adventurers
-  }
-
-  const getERC20Balances = async (): Promise<ERC20Balances> => {
-    let revivePotions = currentNetworkConfig.tokens.erc20.find(token => token.name === 'REVIVE')?.address
-    let attackPotions = currentNetworkConfig.tokens.erc20.find(token => token.name === 'ATTACK')?.address
-    let extraLifePotions = currentNetworkConfig.tokens.erc20.find(token => token.name === 'EXTRA LIFE')?.address
-    let survivor = currentNetworkConfig.tokens.erc20.find(token => token.name === 'SURVIVOR')?.address
-
-    let url = `${BLAST_URL}/builder/getWalletTokenBalances?walletAddress=${address}`
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    const data: TokenBalancesResponse = await response.json();
-
-    return {
-      revivePotions: Math.floor(Number(data.tokenBalances.find(balance => balance.contractAddress === revivePotions)?.balance || 0) / 1e18),
-      attackPotions: Math.floor(Number(data.tokenBalances.find(balance => balance.contractAddress === attackPotions)?.balance || 0) / 1e18),
-      extraLifePotions: Math.floor(Number(data.tokenBalances.find(balance => balance.contractAddress === extraLifePotions)?.balance || 0) / 1e18),
-      survivor: Math.floor(Number(data.tokenBalances.find(balance => balance.contractAddress === survivor)?.balance || 0) / 1e18),
-    }
-  }
-
   return {
     getSummitData,
-    getBeasts,
-    getBeastHolders,
-    getTotalBeasts,
-    getAdventurers,
-    getERC20Balances,
+    getTokenBalances,
   }
 }

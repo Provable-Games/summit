@@ -1,13 +1,13 @@
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
-import { Box, Typography, Popover, Tooltip, Link } from "@mui/material";
-import { useAccount } from "@starknet-react/core";
-import { useMemo, useState } from 'react';
-import { fetchBeastImage, normaliseHealth, calculateBattleResult } from "../utils/beasts";
-import { gameColors } from '../utils/themes';
-import BeastProfile from './BeastProfile';
 import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import { Box, Link, Popover, Tooltip, Typography } from "@mui/material";
+import { useAccount } from "@starknet-react/core";
+import { useMemo, useState } from 'react';
+import { calculateBattleResult, fetchBeastImage } from "../utils/beasts";
+import { gameColors } from '../utils/themes';
+import BeastProfile from './BeastProfile';
 
 function BeastCollection() {
   const { loadingCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit, appliedPotions } = useGameStore()
@@ -40,6 +40,8 @@ function BeastCollection() {
   }, [collection, summit, appliedPotions?.attack]);
 
   const selectBeast = (beast: Beast) => {
+    if (attackInProgress) return;
+
     if (selectedBeasts.find(prevBeast => prevBeast.token_id === beast.token_id)) {
       setSelectedBeasts(selectedBeasts.filter(prevBeast => prevBeast.token_id !== beast.token_id))
     } else {
@@ -48,6 +50,8 @@ function BeastCollection() {
   }
 
   const selectAllBeasts = () => {
+    if (attackInProgress) return;
+
     const allBeasts = collectionWithCombat.filter(x => hideDeadBeasts ? x.current_health > 0 : true);
 
     // If all alive beasts are selected, deselect all
@@ -60,6 +64,8 @@ function BeastCollection() {
   }
 
   const hideDead = (hide) => {
+    if (attackInProgress) return;
+
     setHideDeadBeasts(hide)
   }
 
