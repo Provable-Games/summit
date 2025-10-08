@@ -1,6 +1,6 @@
 import InfoIcon from '@mui/icons-material/Info';
 import { Box, Dialog, Tooltip, Typography, Button } from '@mui/material';
-import React from 'react';
+import React, { useEffect } from 'react';
 import attackPotionIcon from '@/assets/images/attack-potion.png';
 import lifePotionIcon from '@/assets/images/life-potion.png';
 import revivePotionIcon from '@/assets/images/revive-potion.png';
@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { gameColors } from '@/utils/themes';
 import { useController } from '@/contexts/controller';
+import { delay } from '@/utils/utils';
 
 const POTIONS = [
   {
@@ -36,12 +37,16 @@ const POTIONS = [
 
 function ClaimStarterPack(props) {
   const { open, close } = props
-  const { executeGameAction } = useGameDirector()
+  const { executeGameAction, actionFailed } = useGameDirector()
   const { collection } = useGameStore()
-  const { fetchTokenBalances } = useController()
+  const { fetchTokenBalances, fetchBeastCollection } = useController()
   const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit).map(beast => beast.token_id)
 
   const [claimInProgress, setClaimInProgress] = useState(false)
+
+  useEffect(() => {
+    setClaimInProgress(false);
+  }, [actionFailed]);
 
   const claimAll = async () => {
     setClaimInProgress(true)
@@ -50,10 +55,12 @@ function ClaimStarterPack(props) {
       await executeGameAction(
         {
           type: "claim_starter_kit",
-          beastIds: unclaimedBeasts.slice(0, 5)
+          beastIds: unclaimedBeasts.slice(0, 150)
         }
       )
 
+      await delay(2000)
+      fetchBeastCollection()
       fetchTokenBalances()
     } catch (ex) {
       console.log(ex)
@@ -158,7 +165,7 @@ function ClaimStarterPack(props) {
                     <span>Claiming</span>
                     <div className='dotLoader white' />
                   </Box>
-                  : unclaimedBeasts.length > 5 ? 'CLAIM 5' : 'CLAIM ALL'
+                  : unclaimedBeasts.length > 150 ? 'CLAIM 150' : 'CLAIM ALL'
                 }
               </Typography>
             </Button>

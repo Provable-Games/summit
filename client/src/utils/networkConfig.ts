@@ -45,25 +45,25 @@ export const NETWORKS = {
         {
           name: "SURVIVOR",
           address:
-            "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
+            "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
           displayDecimals: 0,
         },
         {
           name: "ATTACK",
           address:
-            "0x0211d8503ba9615471bd08522a8045bcf8daad34fef2cc4c704d5be5a82c91ed",
+            "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
           displayDecimals: 0,
         },
         {
           name: "REVIVE",
           address:
-            "0x040205f702a45f481cbb02edfc672d128a79b8406a828b27191bbe645a8360a1",
+            "0x068292fdfa280f371fabd1d6e49c346f11b341e1d3fe80d4ac320648ab03539c",
           displayDecimals: 0,
         },
         {
           name: "EXTRA LIFE",
           address:
-            "0x0248e3ecad5e6c25539fd3cc0169744d62b834d337e740e2e584e23c29693748",
+            "0x0793f1104a3b0d2316abc92039421f7160a7f4caad0ed405b6f8732271717328",
           displayDecimals: 0,
         },
       ],

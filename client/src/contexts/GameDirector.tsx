@@ -2,6 +2,8 @@ import { useStarknetApi } from "@/api/starknet";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useGameStore } from "@/stores/gameStore";
 import { Beast, GameAction, getEntityModel } from "@/types/game";
+import { getBeastCurrentHealth, getBeastDetails } from "@/utils/beasts";
+import { processGameEvent } from "@/utils/events";
 import { useQueries } from '@/utils/queries';
 import { delay } from "@/utils/utils";
 import { useDojoSDK } from '@dojoengine/sdk/react';
@@ -33,13 +35,13 @@ const GameDirectorContext = createContext<GameDirectorContext>(
  * Wait times for events in milliseconds
  */
 const delayTimes: any = {
-  attack: 500,
+  attack: 1000,
 };
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
-  const { summit, setSummit, setNewSummit, setLastAttack, setAttackInProgress,
-    collection, setCollection, setSelectedBeasts, setFeedingInProgress } = useGameStore();
+  const { summit, setSummit, setLastAttack, setAttackInProgress, setFeedingInProgress,
+    collection, setCollection, setSelectedBeasts } = useGameStore();
   const { gameEventsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimStarterKit } = useSystemCalls();
@@ -55,6 +57,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     const summitBeast = await getSummitData();
     setSummit(summitBeast);
   };
+
+  useEffect(() => {
+    setAttackInProgress(false);
+    setFeedingInProgress(false);
+  }, [actionFailed]);
 
   useEffect(() => {
     fetchSummitBeast();
@@ -89,7 +96,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         if (data && data.length > 0) {
           let events = data
             .filter((entity: any) => Boolean(getEntityModel(entity, "GameEvent")))
-            .map((entity: any) => processEvent(getEntityModel(entity, "GameEvent")));
+            .map((entity: any) => processGameEvent(getEntityModel(entity, "GameEvent")));
 
           setEventQueue((prev: any) => [...prev, ...events]);
         }
@@ -111,9 +118,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         },
       });
 
-      if (collection.find((beast: Beast) => beast.token_id === event.beast.token_id)) {
-        setCollection(collection.map((beast: Beast) => beast.token_id === event.beast.token_id
-          ? { ...beast, ...event.beast, ...event.live_stats }
+      if (collection.find((beast: Beast) => beast.token_id === event.live_stats.token_id)) {
+        setCollection(collection.map((beast: Beast) => beast.token_id === event.live_stats.token_id
+          ? { ...beast, ...event.live_stats }
           : beast
         ));
 
@@ -123,10 +130,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     if (event.type === "summit") {
-      setNewSummit({
+      setSummit({
         beast: {
           ...event.beast,
           ...event.live_stats,
+          ...getBeastDetails(event.beast.id, event.beast.prefix, event.beast.suffix, event.beast.level),
         },
         taken_at: event.timestamp,
         owner: event.owner,
@@ -134,8 +142,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     if (event.type === "feed") {
-      setCollection(collection.map((beast: Beast) => beast.token_id === event.beast.token_id
-        ? { ...beast, ...event.beast, ...event.live_stats }
+      let updatedBeast = { ...event.live_stats, health: event.beast.health }
+      updatedBeast.current_health = getBeastCurrentHealth(updatedBeast)
+
+      setCollection(collection.map((beast: Beast) => beast.token_id === event.live_stats.token_id
+        ? { ...beast, ...updatedBeast }
         : beast
       ));
     }
@@ -160,13 +171,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       txs.push(claimStarterKit(action.beastIds));
     }
 
-    const events = await executeAction(txs, setActionFailed);
+    const success = await executeAction(txs, setActionFailed);
 
-    if (!events || events.length === 0) {
+    if (!success) {
       return false;
     }
 
-    setEventQueue((prev) => [...prev, ...events]);
     return true;
   };
 

@@ -3,7 +3,6 @@ import { Summit, Beast, Adventurer, AppliedPotions } from '@/types/game';
 
 interface GameState {
   summit: Summit | null;
-  newSummit: Summit | null;
   lastAttack: number | null;
   showFeedingGround: boolean;
   collection: Beast[];
@@ -13,10 +12,10 @@ interface GameState {
   selectedBeasts: Beast[];
   adventurerCollection: Adventurer[];
   selectedAdventurers: Adventurer[];
+  totalDamage: number;
   appliedPotions: AppliedPotions;
 
   setSummit: (summit: Summit | null) => void;
-  setNewSummit: (newSummit: Summit | null) => void;
   setLastAttack: (lastAttack: number | null) => void;
   setShowFeedingGround: (showFeedingGround: boolean) => void;
   setCollection: (collection: Beast[]) => void;
@@ -27,12 +26,12 @@ interface GameState {
   setSelectedBeasts: (selectedBeasts: Beast[]) => void;
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => void;
   setAppliedPotions: (appliedPotions: AppliedPotions) => void;
+  setTotalDamage: (totalDamage: number) => void;
   disconnect: () => void;
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
   summit: null,
-  newSummit: null,
   lastAttack: null,
   showFeedingGround: false,
   collection: [],
@@ -42,6 +41,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   feedingInProgress: false,
   selectedBeasts: [],
   selectedAdventurers: [],
+  totalDamage: 0,
   appliedPotions: {
     revive: 0,
     attack: 0,
@@ -50,7 +50,6 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   disconnect: () => {
     set({
-      newSummit: null,
       lastAttack: null,
       showFeedingGround: false,
       collection: [],
@@ -60,6 +59,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       feedingInProgress: false,
       selectedBeasts: [],
       selectedAdventurers: [],
+      totalDamage: 0,
       appliedPotions: {
         revive: 0,
         attack: 0,
@@ -69,7 +69,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   setSummit: (summit: Summit | null) => set({ summit }),
-  setNewSummit: (newSummit: Summit | null) => set({ newSummit }),
   setLastAttack: (lastAttack: number | null) => set({ lastAttack }),
   setShowFeedingGround: (showFeedingGround: boolean) => set({ showFeedingGround }),
   setCollection: (collection: Beast[]) => set({ collection }),
@@ -80,4 +79,5 @@ export const useGameStore = create<GameState>((set, get) => ({
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => set({ selectedAdventurers }),
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => set({ adventurerCollection }),
   setAppliedPotions: (appliedPotions: AppliedPotions) => set({ appliedPotions }),
+  setTotalDamage: (totalDamage: number) => set({ totalDamage }),
 }));

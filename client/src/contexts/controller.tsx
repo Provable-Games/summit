@@ -19,6 +19,7 @@ export interface ControllerContext {
   isPending: boolean;
   tokenBalances: Record<string, number>;
   fetchTokenBalances: () => void;
+  fetchBeastCollection: () => void;
   openProfile: () => void;
   login: () => void;
   logout: () => void;
@@ -39,7 +40,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { disconnect } = useDisconnect();
   const { setCollection, setAdventurerCollection, setLoadingCollection } = useGameStore();
   const { getTokenBalances } = useStarknetApi();
-  const { getBeastCollection } = useGameTokens();
+  const { getBeastCollection, getValidAdventurers } = useGameTokens();
   const [userName, setUserName] = useState<string>();
   const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({
     revivePotions: 0,
@@ -62,13 +63,26 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     if (adventurers) {
-      setAdventurerCollection(adventurers.map((adventurer) => ({
-        id: adventurer.token_id,
-        name: adventurer.player_name,
-        level: Math.floor(Math.sqrt(adventurer.score)),
-        metadata: JSON.parse(adventurer.metadata || "{}"),
-        soulbound: adventurer.soulbound,
-      })));
+      const filterValidAdventurers = async () => {
+        const adventurerIds = adventurers.map(adventurer => adventurer.token_id);
+        const validIds = await getValidAdventurers(adventurerIds);
+
+        const validAdventurers = adventurers.filter(adventurer =>
+          validIds.includes(adventurer.token_id)
+        );
+
+        setAdventurerCollection(
+          validAdventurers.map((adventurer) => ({
+            id: adventurer.token_id,
+            name: adventurer.player_name,
+            level: Math.floor(Math.sqrt(adventurer.score)),
+            metadata: JSON.parse(adventurer.metadata || "{}"),
+            soulbound: adventurer.soulbound,
+          }))
+        );
+      };
+
+      filterValidAdventurers();
     }
   }, [adventurers]);
 
@@ -126,6 +140,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         isPending: isConnecting || isPending,
         tokenBalances,
         fetchTokenBalances,
+        fetchBeastCollection,
         showTermsOfService,
         acceptTermsOfService,
 

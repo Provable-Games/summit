@@ -4,13 +4,13 @@ import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import { Box, Link, Popover, Tooltip, Typography } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { calculateBattleResult, fetchBeastImage } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 import BeastProfile from './BeastProfile';
 
 function BeastCollection() {
-  const { loadingCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit, appliedPotions } = useGameStore()
+  const { loadingCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit, appliedPotions, setTotalDamage } = useGameStore()
   const { address } = useAccount()
   const [hideDeadBeasts, setHideDeadBeasts] = useState(false)
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
@@ -38,6 +38,15 @@ function BeastCollection() {
 
     return collection
   }, [collection, summit, appliedPotions?.attack]);
+
+  useEffect(() => {
+    const total = selectedBeasts.reduce((acc, beast) => {
+      const combatBeast = collectionWithCombat.find(cb => cb.token_id === beast.token_id);
+      return acc + (combatBeast?.combat?.damage || 0);
+    }, 0);
+
+    setTotalDamage(total);
+  }, [selectedBeasts, collectionWithCombat]);
 
   const selectBeast = (beast: Beast) => {
     if (attackInProgress) return;
@@ -144,7 +153,7 @@ function BeastCollection() {
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
             <Typography sx={styles.statText}>
-              {beast.current_health}
+              {isSavage ? summit?.beast.current_health : beast.current_health}
             </Typography>
           </Box>
         </Box>
@@ -154,7 +163,6 @@ function BeastCollection() {
           <Box sx={[
             styles.combatPreview,
             battleResult.capture && styles.combatCapture,
-            appliedPotions?.attack > 0 && styles.combatBoosted
           ]}>
             <Box sx={styles.combatContent}>
               <img src={'/images/sword.png'} alt='' height={'12px'} />
@@ -167,11 +175,6 @@ function BeastCollection() {
                   : `${battleResult.damage} DMG`
                 }
               </Typography>
-              {appliedPotions?.attack > 0 && (
-                <Typography sx={styles.boostIndicator}>
-                  +{appliedPotions.attack * 10}%
-                </Typography>
-              )}
             </Box>
           </Box>
         )}
@@ -795,10 +798,6 @@ const styles = {
   },
   combatTextFailure: {
     color: gameColors.red,
-  },
-  combatBoosted: {
-    border: `1px solid ${gameColors.yellow}60`,
-    background: `linear-gradient(135deg, ${gameColors.yellow}10 0%, ${gameColors.darkGreen}90 100%)`,
   },
   boostIndicator: {
     fontSize: '10px',

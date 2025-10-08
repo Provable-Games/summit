@@ -1,14 +1,14 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { useGameStore } from "@/stores/gameStore";
 import { AppliedPotions } from "@/types/game";
-import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { getContractByName } from "@dojoengine/core";
 import { useAccount } from "@starknet-react/core";
 import { useSnackbar } from "notistack";
+import { CallData } from "starknet";
 
 export const useSystemCalls = () => {
-  const { summit, appliedPotions } = useGameStore()
+  const { summit } = useGameStore()
   const { enqueueSnackbar } = useSnackbar();
   const { account } = useAccount();
   const { currentNetworkConfig } = useDynamicConnector();
@@ -45,11 +45,7 @@ export const useSystemCalls = () => {
         return
       }
 
-      const translatedEvents = receipt.events.map((event: any) =>
-        translateGameEvent(event, currentNetworkConfig.manifest)
-      );
-
-      return translatedEvents.filter(Boolean);
+      return true;
     } catch (error) {
       console.error("Error executing action:", error);
       forceResetAction();
@@ -85,7 +81,7 @@ export const useSystemCalls = () => {
     return {
       contractAddress: SUMMIT_ADDRESS,
       entrypoint: "feed",
-      calldata: [beastId, adventurerIds],
+      calldata: CallData.compile([beastId, adventurerIds]),
     };
   };
 
@@ -98,7 +94,7 @@ export const useSystemCalls = () => {
     return {
       contractAddress: SUMMIT_ADDRESS,
       entrypoint: "attack",
-      calldata: [summit.beast.token_id, beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife],
+      calldata: CallData.compile([summit.beast.token_id, beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife]),
     };
   };
 
@@ -106,7 +102,7 @@ export const useSystemCalls = () => {
     return {
       contractAddress: SUMMIT_ADDRESS,
       entrypoint: "claim_starter_kit",
-      calldata: [beastIds],
+      calldata: CallData.compile([beastIds]),
     };
   };
 

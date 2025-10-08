@@ -1,5 +1,6 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { Adventurer, Beast } from "@/types/game";
+import { getBeastCurrentHealth } from "@/utils/beasts";
 
 
 export const useGameTokens = () => {
@@ -109,7 +110,7 @@ export const useGameTokens = () => {
     let data = await sql.json()
 
     let beasts: Beast[] = data.map((data: any) => {
-      return {
+      let beast = {
         id: Number(data["Beast ID"]),
         token_id: Number(data["Token ID"]),
         name: data["Beast"],
@@ -128,7 +129,7 @@ export const useGameTokens = () => {
         attack_streak: data.attack_streak || 0,
         bonus_health: data.bonus_health || 0,
         bonus_xp: data.bonus_xp || 0,
-        current_health: data.current_health === null ? data["Health"] : data.current_health,
+        current_health: data.current_health,
         extra_lives: data.extra_lives || 0,
         has_claimed_starter_kit: data.has_claimed_starter_kit || 0,
         last_death_timestamp: parseInt(data.last_death_timestamp, 16) || 0,
@@ -137,6 +138,8 @@ export const useGameTokens = () => {
         revival_count: data.revival_count || 0,
         rewards_earned: parseInt(data.rewards_earned, 16) || 0,
       }
+      beast.current_health = getBeastCurrentHealth(beast)
+      return beast
     })
 
     return beasts
@@ -225,9 +228,38 @@ export const useGameTokens = () => {
     }
   }
 
+  const getValidAdventurers = async (adventurerIds: number[]) => {
+    // Convert integer IDs to hex format for database query
+    const hexIds = adventurerIds.map(id => `0x${id.toString(16).padStart(16, '0')}`)
+
+    let q = `
+      SELECT adventurer_id
+      FROM "${currentNetworkConfig.namespace}-AdventurerConsumed"
+      WHERE adventurer_id IN (${hexIds.map(id => `'${id}'`).join(',')})
+      LIMIT 1000;
+    `
+
+    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+    const sql = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json"
+      }
+    })
+
+    let data = await sql.json()
+    const eatenHexIds = data.map((row: any) => row.adventurer_id)
+    const validIds = adventurerIds.filter(id => {
+      const hexId = `0x${id.toString(16).padStart(16, '0')}`
+      return !eatenHexIds.includes(hexId)
+    })
+    return validIds
+  }
+
   return {
     getBeastCollection,
     countRegisteredBeasts,
     getBigFive,
+    getValidAdventurers,
   };
 };

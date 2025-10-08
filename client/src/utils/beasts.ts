@@ -95,8 +95,24 @@ export const calculateBattleResult = (beast: any, summit: any, potions: number):
   }
 }
 
-export const formatBeastName = (beast: any): string => {
+export const getBeastCurrentHealth = (beast: any): number => {
+  if (beast.current_health === null || (beast.last_death_timestamp === 0 && beast.current_health === 0)) {
+    return beast.health + beast.bonus_health
+  }
 
+  if (beast.current_health === 0) {
+    const revivalTimestamp = (beast.last_death_timestamp * 1000) + (23 * 60 * 60 * 1000);
+    const timeRemaining = revivalTimestamp - Date.now();
+
+    if (timeRemaining <= 0) {
+      return beast.health + beast.bonus_health
+    }
+  }
+
+  return beast.current_health
+}
+
+export const formatBeastName = (beast: any): string => {
   return `'${beast.prefix} ${beast.suffix}' ${beast.name}`
 }
 

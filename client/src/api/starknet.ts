@@ -58,7 +58,6 @@ export const useStarknetApi = () => {
       });
 
       const data = await response.json();
-      console.log("Summit data:", data);
       let beast = {
         id: parseInt(data?.result[0], 16),
         prefix: parseInt(data?.result[1], 16),

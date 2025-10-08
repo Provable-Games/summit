@@ -111,7 +111,7 @@ function ActionBar(props: ActionBarProps) {
               <Typography variant="h5" sx={styles.buttonText}>Feeding</Typography>
               <div className='dotLoader green' />
             </Box>
-            : <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            : <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
               <Typography variant="h5" sx={styles.buttonText}>
                 Feed
               </Typography>
@@ -141,7 +141,7 @@ function ActionBar(props: ActionBarProps) {
         </Box>
         : <Box sx={[styles.attackButton, enableAttack && styles.attackButtonEnabled]}
           onClick={handleAttack}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
             {attackInProgress
               ? <Box display={'flex'} alignItems={'baseline'}>
                 <Typography variant="h5" sx={styles.buttonText}>Attacking</Typography>
@@ -151,24 +151,19 @@ function ActionBar(props: ActionBarProps) {
                 <Typography sx={[styles.buttonText, !enableAttack && styles.disabledText]} variant="h5">
                   Attack
                 </Typography>
-                {!hasEnoughRevivePotions && revivalPotionsRequired > 0 && (
-                  <Typography sx={styles.insufficientWarning}>
-                    Need {revivalPotionsRequired - tokenBalances["REVIVE"]} more revive potions
-                  </Typography>
-                )}
               </Box>
             }
 
-            {isappliedPotions && <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
-              {appliedPotions.revive > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+            {isappliedPotions && <Box sx={{ display: 'flex', gap: 0.5 }}>
+              {appliedPotions.revive > 0 && <Box display={'flex'} alignItems={'center'}>
                 <Typography sx={styles.potionCount}>{appliedPotions.revive}</Typography>
                 <img src={revivePotionIcon} alt='' height={'14px'} />
               </Box>}
-              {appliedPotions.attack > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+              {appliedPotions.attack > 0 && <Box display={'flex'} alignItems={'center'}>
                 <Typography sx={styles.potionCount}>{appliedPotions.attack}</Typography>
                 <img src={attackPotionIcon} alt='' height={'14px'} />
               </Box>}
-              {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+              {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'}>
                 <Typography sx={styles.potionCount}>{appliedPotions.extraLife}</Typography>
                 <img src={heart} alt='' height={'12px'} />
               </Box>}
@@ -223,6 +218,9 @@ function ActionBar(props: ActionBarProps) {
               ? `${appliedPotions.attack * 10}% damage boost applied`
               : 'Add 10% damage boost per potion'}
           </Typography>
+          <Typography sx={styles.tooltipSubtext}>
+            Applied on next attack
+          </Typography>
         </Box>}>
           <Box sx={[
             styles.potionButton,
@@ -255,6 +253,9 @@ function ActionBar(props: ActionBarProps) {
             {appliedPotions.extraLife > 0
               ? `${appliedPotions.extraLife} extra lives applied`
               : 'Grant additional lives'}
+          </Typography>
+          <Typography sx={styles.tooltipSubtext}>
+            Applied after you take the Summit
           </Typography>
         </Box>}>
           <Box sx={[
@@ -307,7 +308,17 @@ function ActionBar(props: ActionBarProps) {
     </Box>
 
     {potion && <Menu
-      sx={{ zIndex: 10000 }}
+      sx={{
+        zIndex: 10000,
+        '& .MuiPaper-root': {
+          backgroundColor: '#1a1f1a',
+          backdropFilter: 'blur(10px)',
+          border: `1px solid ${gameColors.accentGreen}20`,
+          borderRadius: '8px',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+          overflow: 'visible',
+        }
+      }}
       anchorEl={anchorEl}
       open={Boolean(anchorEl)}
       onClose={handleClose}
@@ -320,15 +331,39 @@ function ActionBar(props: ActionBarProps) {
         horizontal: 'center',
       }}
     >
-      <Box width={'140px'} display={'flex'} alignItems={'center'} flexDirection={'column'} p={2}>
-        <Typography variant='h6' sx={{ color: '#ffedbb', mb: 1 }}>
-          {potion === 'attack' ? 'Boost Attack' : 'Extra Life'}
+      <Box width={'160px'} display={'flex'} alignItems={'center'} flexDirection={'column'} p={1}>
+        <Typography
+          variant='body1'
+          sx={{
+            color: gameColors.gameYellow,
+            fontWeight: 500,
+            mb: 2,
+            fontSize: '14px',
+          }}
+        >
+          {potion === 'attack' ? 'Attack Boost' : 'Extra Life'}
         </Typography>
 
-        <Box display={'flex'} alignItems={'center'} gap={1} mb={2}>
+        <Box
+          display={'flex'}
+          alignItems={'center'}
+          gap={1}
+          mb={1}
+        >
           <IconButton
             size="small"
-            sx={{ color: gameColors.brightGreen }}
+            sx={{
+              color: gameColors.gameYellow,
+              backgroundColor: 'transparent',
+              border: `1px solid ${gameColors.gameYellow}30`,
+              borderRadius: '4px',
+              padding: '4px',
+              transition: 'all 0.15s ease',
+              '&:hover': {
+                backgroundColor: `${gameColors.gameYellow}10`,
+                borderColor: gameColors.gameYellow,
+              }
+            }}
             onClick={() => setAppliedPotions({
               ...appliedPotions,
               [potion]: Math.max(0, appliedPotions[potion] - 1)
@@ -336,13 +371,33 @@ function ActionBar(props: ActionBarProps) {
             <RemoveIcon fontSize="small" />
           </IconButton>
 
-          <Typography variant='h4' sx={{ color: '#ffedbb', minWidth: '32px', textAlign: 'center' }}>
+          <Typography
+            variant='h5'
+            sx={{
+              color: gameColors.gameYellow,
+              fontWeight: 500,
+              minWidth: '40px',
+              textAlign: 'center',
+              mx: 1,
+            }}
+          >
             {potion === 'attack' ? appliedPotions.attack : appliedPotions.extraLife}
           </Typography>
 
           <IconButton
             size="small"
-            sx={{ color: gameColors.brightGreen }}
+            sx={{
+              color: gameColors.gameYellow,
+              backgroundColor: 'transparent',
+              border: `1px solid ${gameColors.gameYellow}30`,
+              borderRadius: '4px',
+              padding: '4px',
+              transition: 'all 0.15s ease',
+              '&:hover': {
+                backgroundColor: `${gameColors.gameYellow}10`,
+                borderColor: gameColors.gameYellow,
+              }
+            }}
             onClick={() => setAppliedPotions({
               ...appliedPotions,
               [potion]: Math.min(appliedPotions[potion] + 1, Math.min(potion === 'attack' ? tokenBalances["ATTACK"] : tokenBalances["EXTRA LIFE"], 255))
@@ -351,30 +406,70 @@ function ActionBar(props: ActionBarProps) {
           </IconButton>
         </Box>
 
-        <Slider
-          value={potion === 'attack' ? appliedPotions.attack : appliedPotions.extraLife}
-          step={1}
-          min={0}
-          max={Math.min(potion === 'attack' ? tokenBalances["ATTACK"] : tokenBalances["EXTRA LIFE"], 255)}
-          onChange={(e, value) => setAppliedPotions({
-            ...appliedPotions,
-            [potion]: value
-          })}
-          size='small'
+        <Box sx={{ width: '100%', px: 0.5 }}>
+          <Slider
+            value={potion === 'attack' ? appliedPotions.attack : appliedPotions.extraLife}
+            step={1}
+            min={0}
+            max={Math.min(potion === 'attack' ? tokenBalances["ATTACK"] : tokenBalances["EXTRA LIFE"], 255)}
+            onChange={(e, value) => setAppliedPotions({
+              ...appliedPotions,
+              [potion]: value
+            })}
+            size='small'
+            sx={{
+              color: gameColors.gameYellow,
+              width: '100%',
+              height: 4,
+              '& .MuiSlider-thumb': {
+                backgroundColor: gameColors.gameYellow,
+                width: 14,
+                height: 14,
+                border: 'none',
+                boxShadow: 'none',
+                transition: 'opacity 0.15s ease',
+                '&:hover': {
+                  boxShadow: 'none',
+                },
+              },
+              '& .MuiSlider-track': {
+                backgroundColor: gameColors.gameYellow,
+                height: 4,
+                border: 'none',
+              },
+              '& .MuiSlider-rail': {
+                backgroundColor: `${gameColors.gameYellow}20`,
+                height: 4,
+              },
+              '& .MuiSlider-valueLabel': {
+                backgroundColor: '#2a2f2a',
+                border: `1px solid ${gameColors.gameYellow}40`,
+                borderRadius: '4px',
+                fontSize: '12px',
+                '& *': {
+                  color: gameColors.gameYellow,
+                }
+              }
+            }}
+            valueLabelDisplay="auto"
+          />
+        </Box>
+
+        <Box
           sx={{
-            color: gameColors.brightGreen,
+            display: 'flex',
+            justifyContent: 'space-between',
             width: '100%',
-            '& .MuiSlider-thumb': {
-              backgroundColor: gameColors.brightGreen,
-            },
-            '& .MuiSlider-track': {
-              backgroundColor: gameColors.brightGreen,
-            },
-            '& .MuiSlider-rail': {
-              backgroundColor: gameColors.darkGreen,
-            }
+            px: 0.5,
           }}
-        />
+        >
+          <Typography sx={{ fontSize: '11px', color: gameColors.gameYellow, opacity: 0.6 }}>
+            0
+          </Typography>
+          <Typography sx={{ fontSize: '11px', color: gameColors.gameYellow, opacity: 0.6 }}>
+            {Math.min(potion === 'attack' ? tokenBalances["ATTACK"] : tokenBalances["EXTRA LIFE"], 255)}
+          </Typography>
+        </Box>
       </Box>
     </Menu>}
   </Box>
@@ -419,13 +514,13 @@ const styles = {
     gap: 1,
   },
   attackButton: {
-    padding: '10px 20px',
+    padding: '10px',
     borderRadius: '8px',
     background: `${gameColors.darkGreen}20`,
     border: `2px solid ${gameColors.lightGreen}40`,
     cursor: 'pointer',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    minWidth: '120px',
+    minWidth: '200px',
     textAlign: 'center',
     opacity: 0.7,
     '&:hover': {
@@ -534,7 +629,7 @@ const styles = {
   },
   potionCount: {
     color: '#ffedbb',
-    fontSize: '10px',
+    fontSize: '12px',
     fontWeight: 'bold',
   },
   tooltip: {
@@ -555,6 +650,13 @@ const styles = {
     color: gameColors.accentGreen,
     fontSize: '12px',
     fontWeight: 'bold',
+  },
+  tooltipSubtext: {
+    color: '#999',
+    fontSize: '11px',
+    fontStyle: 'italic',
+    lineHeight: 1.1,
+    mt: 0.5,
   },
   divider: {
     width: '1px',

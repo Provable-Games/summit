@@ -11,11 +11,9 @@ import { lookupAddresses } from '@cartridge/controller'
 import { useStarkProfile } from '@starknet-react/core'
 
 function Summit() {
-  const { collection, summit, attackInProgress, selectedBeasts, lastAttack } = useGameStore()
-  console.log("Summit:", summit);
+  const { collection, summit, attackInProgress, selectedBeasts, lastAttack, totalDamage } = useGameStore()
   const controls = useAnimationControls()
 
-  const [totalDamage, setTotalDamage] = useState(0)
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
 
   // Use StarkProfile hook for StarkNet ID
@@ -38,19 +36,13 @@ function Summit() {
   }, [lastAttack]);
 
   useEffect(() => {
-    setTotalDamage(selectedBeasts.reduce((acc, beast) => acc + beast.combat?.damage || 0, 0));
-  }, [selectedBeasts]);
-
-  useEffect(() => {
     // Fetch Cartridge name when summit changes
     const fetchCartridgeName = async () => {
-      console.log("Summit owner:", summit);
       if (summit?.owner) {
         try {
           const addressMap = await lookupAddresses([summit.owner]);
           setCartridgeName(addressMap.get(summit.owner) || null);
         } catch (error) {
-          console.log("Cartridge lookup failed:", error);
           setCartridgeName(null);
         }
       } else {

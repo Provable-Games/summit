@@ -24,7 +24,6 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
 
   const fetchCollectedBeasts = async () => {
     const result = await countRegisteredBeasts();
-    console.log("beastsRegistered", result);
     setBeastsRegistered(result);
   };
 

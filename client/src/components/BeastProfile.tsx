@@ -14,12 +14,12 @@ interface BeastProfileProps {
 
 export default function BeastProfile({ beast }: BeastProfileProps) {
   const { summit } = useGameStore()
-
   const originalExperience = Math.pow(beast.level, 2);
   const currentExperience = originalExperience + beast.bonus_xp;
   const nextLevelExperience = Math.pow(beast.level + 1, 2);
   const bonusLevels = Math.floor(Math.sqrt(currentExperience)) - beast.level;
-  const diff = (beast.last_death_timestamp + 46 * 60 * 60 * 1000) - Date.now();
+
+  const diff = ((beast.last_death_timestamp * 1000) + 46 * 60 * 60 * 1000) - Date.now();
   const timeLeft = diff > 3600000 ? `${Math.floor(diff / 3600000)}h` : `${Math.floor((diff % 3600000) / 60000)}m`;
   const streakEnded = diff <= 0;
   const attackStreak = streakEnded ? 0 : beast.attack_streak;
@@ -28,11 +28,8 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
   const isDead = beast.current_health === 0;
   let revivalTime = null;
   if (isDead && beast.last_death_timestamp) {
-    // Check if timestamp is in seconds or milliseconds
-    const deathTimestamp = beast.last_death_timestamp < 10000000000 ? beast.last_death_timestamp * 1000 : beast.last_death_timestamp;
-    const revivalTimestamp = deathTimestamp + (24 * 60 * 60 * 1000); // 24 hours from death
-    const now = Date.now();
-    const timeRemaining = revivalTimestamp - now;
+    const revivalTimestamp = (beast.last_death_timestamp * 1000) + (23 * 60 * 60 * 1000);
+    const timeRemaining = revivalTimestamp - Date.now();
 
     if (timeRemaining > 0) {
       const hours = Math.floor(timeRemaining / (60 * 60 * 1000));
@@ -153,12 +150,7 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
                     sx={{
                       ...styles.pixelFireIcon,
                       backgroundColor: isActive ? '#FF4500' : '#1a1a1a',
-                      border: isActive ? '2px solid #FFD700' : '2px solid #333',
-                      boxShadow: isActive
-                        ? '0 0 12px #FF4500, 0 0 20px rgba(255, 69, 0, 0.6), inset 0 1px 0 #FF8C42'
-                        : 'inset 0 2px 4px rgba(0,0,0,0.5)',
-                      transform: isActive ? 'scale(1.1)' : 'scale(1)',
-                      transition: 'all 0.3s ease',
+                      border: isActive ? '2px solid #FFD70099' : '2px solid #333',
                     }}
                   >
                     <WhatshotIcon sx={{
