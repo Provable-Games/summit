@@ -1,18 +1,18 @@
 import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useGameStore } from '@/stores/gameStore';
+import { AppliedPotions } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import RemoveIcon from '@mui/icons-material/Remove';
 import { Box, IconButton, Menu, Slider, Tooltip, Typography } from '@mui/material';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import attackPotionIcon from '../assets/images/attack-potion.png';
 import cauldronIcon from '../assets/images/cauldron.png';
 import heart from '../assets/images/heart.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import { gameColors } from '../utils/themes';
-import BuyConsumables from './dialogs/BuyConsumables';
 
 interface ActionBarProps {
   [key: string]: any;
@@ -79,17 +79,17 @@ function ActionBar(props: ActionBarProps) {
 
   const deadBeasts = selectedBeasts.filter((beast: any) => beast.current_health === 0);
   const revivalPotionsRequired = deadBeasts.reduce((sum: number, beast: any) => sum + beast.revival_count + 1, 0);
-  
+
   // Auto-apply revive potions when dead beasts are selected
-  React.useEffect(() => {
+  useEffect(() => {
     if (deadBeasts.length > 0 && appliedPotions.revive < revivalPotionsRequired) {
-      setAppliedPotions((prev: AppliedPotions) => ({
-        ...prev,
+      setAppliedPotions({
+        ...appliedPotions,
         revive: Math.min(revivalPotionsRequired, tokenBalances["REVIVE"] || 0)
-      }));
+      });
     } else if (deadBeasts.length === 0 && appliedPotions.revive > 0) {
       // Clear revive potions if no dead beasts selected
-      setAppliedPotions((prev: AppliedPotions) => ({ ...prev, revive: 0 }));
+      setAppliedPotions({ ...appliedPotions, revive: 0 });
     }
   }, [deadBeasts.length, revivalPotionsRequired, tokenBalances["REVIVE"]]);
 
@@ -185,8 +185,8 @@ function ActionBar(props: ActionBarProps) {
         <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
           <Typography sx={styles.tooltipTitle}>Revive Potions</Typography>
           <Typography sx={styles.tooltipText}>
-            {revivalPotionsRequired > 0 
-              ? `${revivalPotionsRequired} required for dead beasts` 
+            {revivalPotionsRequired > 0
+              ? `${revivalPotionsRequired} required for dead beasts`
               : 'Attack with your dead beasts'}
           </Typography>
           {revivalPotionsRequired > tokenBalances["REVIVE"] && (
@@ -196,7 +196,7 @@ function ActionBar(props: ActionBarProps) {
           )}
         </Box>}>
           <Box sx={[
-            styles.potionButton, 
+            styles.potionButton,
             revivalPotionsRequired > 0 && styles.potionButtonActive,
             revivalPotionsRequired > tokenBalances["REVIVE"] && styles.potionButtonInsufficient
           ]}>
@@ -219,13 +219,13 @@ function ActionBar(props: ActionBarProps) {
         <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
           <Typography sx={styles.tooltipTitle}>Attack Potion</Typography>
           <Typography sx={styles.tooltipText}>
-            {appliedPotions.attack > 0 
+            {appliedPotions.attack > 0
               ? `${appliedPotions.attack * 10}% damage boost applied`
               : 'Add 10% damage boost per potion'}
           </Typography>
         </Box>}>
           <Box sx={[
-            styles.potionButton, 
+            styles.potionButton,
             enableAttackPotion && styles.potionButtonActive,
             appliedPotions.attack > 0 && styles.potionButtonApplied
           ]}
@@ -252,13 +252,13 @@ function ActionBar(props: ActionBarProps) {
         <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
           <Typography sx={styles.tooltipTitle}>Extra Life</Typography>
           <Typography sx={styles.tooltipText}>
-            {appliedPotions.extraLife > 0 
+            {appliedPotions.extraLife > 0
               ? `${appliedPotions.extraLife} extra lives applied`
               : 'Grant additional lives'}
           </Typography>
         </Box>}>
           <Box sx={[
-            styles.potionButton, 
+            styles.potionButton,
             enableExtraLifePotion && styles.potionButtonActive,
             appliedPotions.extraLife > 0 && styles.potionButtonApplied
           ]}
@@ -305,8 +305,6 @@ function ActionBar(props: ActionBarProps) {
         </Box>
       </Tooltip>
     </Box>
-
-    {buyPotionsDialog && <BuyConsumables open={buyPotionsDialog} close={openBuyPotionsDialog} />}
 
     {potion && <Menu
       sx={{ zIndex: 10000 }}
