@@ -13,8 +13,6 @@ import { useStarkProfile } from '@starknet-react/core'
 function Summit() {
   const { collection, summit, attackInProgress, selectedBeasts, lastAttack, totalDamage } = useGameStore()
   const controls = useAnimationControls()
-  console.log("summit", summit);
-
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
 
   // Use StarkProfile hook for StarkNet ID
