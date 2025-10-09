@@ -1,6 +1,7 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { Adventurer, Beast } from "@/types/game";
 import { getBeastCurrentHealth } from "@/utils/beasts";
+import { addAddressPadding } from "starknet";
 
 
 export const useGameTokens = () => {
@@ -11,8 +12,8 @@ export const useGameTokens = () => {
       WITH tbf AS (
         SELECT tb.token_id, tb.account_address, tb.contract_address, tb.balance
         FROM token_balances tb
-        WHERE tb.account_address = '${accountAddress.replace(/^0x0+/, "0x").toLowerCase()}'
-          AND tb.contract_address = '${currentNetworkConfig.beasts.replace(/^0x0+/, "0x").toLowerCase()}'
+        WHERE tb.account_address = '${addAddressPadding(accountAddress.toLowerCase())}'
+          AND tb.contract_address = '${addAddressPadding(currentNetworkConfig.beasts.toLowerCase())}'
           AND tb.balance = '0x0000000000000000000000000000000000000000000000000000000000000001'
         LIMIT 1000
       ),
