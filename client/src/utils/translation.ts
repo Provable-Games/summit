@@ -82,6 +82,7 @@ export const components: any = {
   'AttackEvent': {
     beast: "beast_event",
     live_stats: "beast_stats",
+    summit_live_stats: "beast_stats",
     attack_potions: 'number',
     damage: 'number',
     defending_beast_token_id: 'number',

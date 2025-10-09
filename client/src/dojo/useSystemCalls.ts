@@ -91,10 +91,37 @@ export const useSystemCalls = () => {
    * @param appliedPotions The potions to apply to the beasts
    */
   const attack = (beastIds: number[], appliedPotions: AppliedPotions) => {
-    return {
+    let txs: any[] = [];
+
+    if (appliedPotions.revive > 0) {
+      let reviveAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "REVIVE")?.address;
+      txs.push(approvePotions(reviveAddress, appliedPotions.revive));
+    }
+
+    if (appliedPotions.attack > 0) {
+      let attackAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "ATTACK")?.address;
+      txs.push(approvePotions(attackAddress, appliedPotions.attack));
+    }
+
+    if (appliedPotions.extraLife > 0) {
+      let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
+      txs.push(approvePotions(extraLifeAddress, appliedPotions.extraLife));
+    }
+
+    txs.push({
       contractAddress: SUMMIT_ADDRESS,
       entrypoint: "attack",
       calldata: CallData.compile([summit.beast.token_id, beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife]),
+    });
+
+    return txs;
+  };
+
+  const approvePotions = (address: string, amount: number) => {
+    return {
+      contractAddress: address,
+      entrypoint: "approve",
+      calldata: CallData.compile([SUMMIT_ADDRESS, amount * 1e18, "0"]),
     };
   };
 

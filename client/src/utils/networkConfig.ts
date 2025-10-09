@@ -1,3 +1,4 @@
+import { getContractByName } from "@dojoengine/core";
 import manifest_mainnet from "../../manifest.json";
 
 export interface NetworkConfig {
@@ -34,11 +35,11 @@ export enum ChainId {
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_0_0_3",
+    namespace: "summit_0_0_4",
     manifest: manifest_mainnet,
-    slot: "pg-mainnet-5",
+    slot: "pg-mainnet-7",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
-    torii: "https://api.cartridge.gg/x/pg-mainnet-5/torii",
+    torii: "https://api.cartridge.gg/x/pg-mainnet-7/torii",
     subscriptionUrl: "https://api.cartridge.gg/x/summit/torii",
     tokens: {
       erc20: [
@@ -83,7 +84,38 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
   const network = NETWORKS[networkKey as keyof typeof NETWORKS];
   if (!network) throw new Error(`Network ${networkKey} not found`);
 
-  const policies = undefined;
+  const SUMMIT_ADDRESS = getContractByName(
+    network.manifest,
+    network.namespace,
+    "summit_systems"
+  )?.address;
+
+  const policies = [
+    {
+      target: SUMMIT_ADDRESS,
+      method: "attack",
+    },
+    {
+      target: SUMMIT_ADDRESS,
+      method: "feed",
+    },
+    {
+      target: SUMMIT_ADDRESS,
+      method: "claim_starter_kit",
+    },
+    {
+      target: network.tokens.erc20.find(token => token.name === "REVIVE")?.address,
+      method: "approve",
+    },
+    {
+      target: network.tokens.erc20.find(token => token.name === "ATTACK")?.address,
+      method: "approve",
+    },
+    {
+      target: network.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address,
+      method: "approve",
+    },
+  ];
 
   return {
     chainId: network.chainId,

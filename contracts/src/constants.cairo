@@ -34,5 +34,5 @@ pub mod errors {
 }
 
 pub fn DEFAULT_NS() -> ByteArray {
-    "summit_0_0_3"
+    "summit_0_0_4"
 }

@@ -13,6 +13,7 @@ import { useStarkProfile } from '@starknet-react/core'
 function Summit() {
   const { collection, summit, attackInProgress, selectedBeasts, lastAttack, totalDamage } = useGameStore()
   const controls = useAnimationControls()
+  console.log("summit", summit);
 
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
 
@@ -98,6 +99,18 @@ function Summit() {
             <Typography sx={styles.healthText}>
               {summit.beast.current_health} / {summit.beast.health + summit.beast.bonus_health}
             </Typography>
+            
+            {/* Extra Lives Indicator */}
+            {summit.beast.extra_lives > 0 && (
+              <Box sx={styles.extraLivesContainer}>
+                {summit.beast.extra_lives > 1 && (
+                  <Typography sx={styles.extraLivesNumber}>
+                    {summit.beast.extra_lives}
+                  </Typography>
+                )}
+                <img src={heart} alt='Extra Life' style={styles.extraLivesHeart} />
+              </Box>
+            )}
           </Box>
         </Box>
 
@@ -289,6 +302,28 @@ const styles = {
     letterSpacing: '0.5px',
     zIndex: 2,
   },
+  extraLivesContainer: {
+    position: 'absolute',
+    top: '50%',
+    right: '4px',
+    transform: 'translateY(-50%)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px',
+    zIndex: 3,
+  },
+  extraLivesNumber: {
+    fontSize: '12px',
+    color: '#ffedbb',
+    fontWeight: 'bold',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    letterSpacing: '0.5px',
+  },
+  extraLivesHeart: {
+    width: '14px',
+    height: '14px',
+    filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))',
+  },
   damageIndicator: {
     position: 'absolute',
     top: '20px',
@@ -312,8 +347,8 @@ const styles = {
   },
   heartLossIndicator: {
     position: 'absolute',
-    top: '20px',
-    left: '-40px',
+    top: '-30px',
+    right: '-20px',
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
@@ -321,7 +356,7 @@ const styles = {
   },
   heartLossText: {
     fontSize: '18px',
-    color: gameColors.red,
+    color: gameColors.yellow,
     fontWeight: 'bold',
     textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
   },

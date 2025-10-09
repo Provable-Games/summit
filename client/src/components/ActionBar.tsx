@@ -13,6 +13,7 @@ import heart from '../assets/images/heart.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import { gameColors } from '../utils/themes';
+import { isBrowser } from 'react-device-detect';
 
 interface ActionBarProps {
   [key: string]: any;
@@ -26,8 +27,6 @@ function ActionBar(props: ActionBarProps) {
     selectedAdventurers, attackInProgress, collection, setShowFeedingGround,
     feedingInProgress, adventurerCollection, appliedPotions, setAppliedPotions,
     setFeedingInProgress, setSelectedAdventurers, setAdventurerCollection } = useGameStore();
-
-  const [buyPotionsDialog, openBuyPotionsDialog] = useState(false)
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
@@ -80,7 +79,6 @@ function ActionBar(props: ActionBarProps) {
   const deadBeasts = selectedBeasts.filter((beast: any) => beast.current_health === 0);
   const revivalPotionsRequired = deadBeasts.reduce((sum: number, beast: any) => sum + beast.revival_count + 1, 0);
 
-  // Auto-apply revive potions when dead beasts are selected
   useEffect(() => {
     if (deadBeasts.length > 0 && appliedPotions.revive < revivalPotionsRequired) {
       setAppliedPotions({
@@ -136,7 +134,7 @@ function ActionBar(props: ActionBarProps) {
       {isSavage
         ? <Box sx={[styles.attackButton, styles.savageButton]}>
           <Typography color={gameColors.yellow}>
-            YOU'RE THE SAVÁGE
+            {isBrowser ? "YOU'RE THE SAVÁGE" : "SAVÁGE"}
           </Typography>
         </Box>
         : <Box sx={[styles.attackButton, enableAttack && styles.attackButtonEnabled]}
@@ -154,7 +152,7 @@ function ActionBar(props: ActionBarProps) {
               </Box>
             }
 
-            {isappliedPotions && <Box sx={{ display: 'flex', gap: 0.5 }}>
+            {isappliedPotions && isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
               {appliedPotions.revive > 0 && <Box display={'flex'} alignItems={'center'}>
                 <Typography sx={styles.potionCount}>{appliedPotions.revive}</Typography>
                 <img src={revivePotionIcon} alt='' height={'14px'} />
@@ -481,11 +479,14 @@ const styles = {
   container: {
     height: '60px',
     width: '100%',
+    maxWidth: '100dvw',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'flex-start',
     boxSizing: 'border-box',
     zIndex: 100,
+    overflowX: 'auto',
+    overflowY: 'hidden',
   },
   buttonGroup: {
     display: 'flex',
@@ -520,7 +521,7 @@ const styles = {
     border: `2px solid ${gameColors.lightGreen}40`,
     cursor: 'pointer',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    minWidth: '200px',
+    minWidth: isBrowser ? '200px' : '100px',
     textAlign: 'center',
     opacity: 0.7,
     '&:hover': {

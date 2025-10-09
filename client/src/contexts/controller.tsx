@@ -18,6 +18,7 @@ export interface ControllerContext {
   playerName: string | undefined;
   isPending: boolean;
   tokenBalances: Record<string, number>;
+  setTokenBalances: (tokenBalances: Record<string, number>) => void;
   fetchTokenBalances: () => void;
   fetchBeastCollection: () => void;
   openProfile: () => void;
@@ -42,12 +43,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { getTokenBalances } = useStarknetApi();
   const { getBeastCollection, getValidAdventurers } = useGameTokens();
   const [userName, setUserName] = useState<string>();
-  const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({
-    revivePotions: 0,
-    attackPotions: 0,
-    extraLifePotions: 0,
-    survivor: 0,
-  });
+  const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({});
 
   const [showTermsOfService, setShowTermsOfService] = useState(false);
   const { identifyAddress } = useAnalytics();
@@ -138,6 +134,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
       value={{
         playerName: userName,
         isPending: isConnecting || isPending,
+        setTokenBalances,
         tokenBalances,
         fetchTokenBalances,
         fetchBeastCollection,

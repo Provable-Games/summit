@@ -5,15 +5,18 @@ import { isBrowser, isMobile } from 'react-device-detect'
 import ActionBar from '../components/ActionBar'
 import AdventurerCollection from '../components/AdventurerCollection'
 import BeastCollection from '../components/BeastCollection'
+import BurgerMenu from '../components/BurgerMenu'
 import Feeding from '../components/Feeding'
 import Leaderboard from '../components/Leaderboard'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import ConnectWallet from '../components/dialogs/ConnectWallet'
 import { gameColors } from '../utils/themes'
+import { useState } from "react"
 
 function MainPage() {
   const { summit, showFeedingGround, setShowFeedingGround } = useGameStore()
+  const [accountDialog, openAccountDialog] = useState(false)
 
   return <>
     <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
@@ -60,21 +63,24 @@ function MainPage() {
 
       {isMobile && <Box sx={{ position: 'absolute', top: '10px', width: '100%', boxSizing: 'border-box', px: 1, display: 'flex', justifyContent: 'center' }}>
         {showFeedingGround
-          ? <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <IconButton size='large' onClick={() => { setShowFeedingGround(false); }}>
-              <ArrowBackIcon fontSize='large' htmlColor={gameColors.brightGreen} />
+          ? <Box sx={{ display: 'flex', alignItems: 'start', justifyContent: 'space-between', width: '100%' }}>
+            <IconButton size='medium' onClick={() => setShowFeedingGround(false)}>
+              <ArrowBackIcon fontSize='medium' htmlColor={gameColors.gameYellow} />
             </IconButton>
-
-            <Typography variant='h2'>
+            <Typography variant='h4' color={gameColors.gameYellow} fontWeight={'600'} mt={'10px'}>
               Feeding Ground
             </Typography>
 
             <Box width={'60px'} />
           </Box>
-          : <ConnectWallet />
+          : <Box pt={'12px'}>
+            <Typography sx={styles.title}>SUMMIT</Typography>
+          </Box>
         }
       </Box>
       }
+
+      {isMobile && <BurgerMenu />}
     </Box >
 
   </>
@@ -107,5 +113,17 @@ const styles = {
     width: '400px',
     p: 1.5,
     boxSizing: 'border-box',
-  }
+  },
+  title: {
+    fontSize: '24px',
+    fontWeight: 'bold',
+    color: gameColors.yellow,
+    textAlign: 'center',
+    letterSpacing: '1.5px',
+    textTransform: 'uppercase',
+    textShadow: `
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 12px ${gameColors.yellow}40
+    `,
+  },
 }

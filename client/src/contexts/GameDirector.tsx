@@ -15,6 +15,7 @@ import {
   useReducer,
   useState,
 } from "react";
+import { useController } from "./controller";
 
 export interface GameDirectorContext {
   executeGameAction: (action: GameAction) => Promise<boolean>;
@@ -41,10 +42,11 @@ const delayTimes: any = {
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
   const { summit, setSummit, setLastAttack, setAttackInProgress, setFeedingInProgress,
-    collection, setCollection, setSelectedBeasts } = useGameStore();
+    collection, setCollection, setSelectedBeasts, setAppliedPotions, appliedPotions } = useGameStore();
   const { gameEventsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimStarterKit } = useSystemCalls();
+  const { tokenBalances, setTokenBalances } = useController();
 
   const [subscription, setSubscription] = useState<any>(null);
   const [actionFailed, setActionFailed] = useReducer((x) => x + 1, 0);
@@ -114,7 +116,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         ...summit,
         beast: {
           ...summit?.beast,
-          current_health: Math.max(0, summit?.beast.current_health - event.damage),
+          ...event.summit_live_stats,
         },
       });
 
@@ -126,6 +128,18 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
         setSelectedBeasts([]);
         setAttackInProgress(false);
+
+        setTokenBalances({
+          ...tokenBalances,
+          ATTACK: tokenBalances["ATTACK"] - appliedPotions.attack,
+          EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - appliedPotions.extraLife,
+          REVIVE: tokenBalances["REVIVE"] - appliedPotions.revive,
+        });
+        setAppliedPotions({
+          revive: 0,
+          attack: 0,
+          extraLife: 0,
+        });
       }
     }
 
@@ -164,7 +178,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     if (action.type === 'attack') {
-      txs.push(attack(action.beastIds, action.appliedPotions));
+      txs.push(
+        ...attack(action.beastIds, action.appliedPotions)
+      );
     }
 
     if (action.type === 'claim_starter_kit') {

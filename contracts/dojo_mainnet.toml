@@ -8,15 +8,15 @@ rpc_url = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_8"
 world_address = "0x02ef591697f0fd9adc0ba9dbe0ca04dabad80cf95f08ba02e435d9cb6698a28a"
 
 [namespace]
-default = "summit_0_0_3"
+default = "summit_0_0_4"
 
 [writers]
-"summit_0_0_3" = [
-    "summit_0_0_3-summit_systems",
+"summit_0_0_4" = [
+    "summit_0_0_4-summit_systems",
 ]
 
 [init_call_args]
-"summit_0_0_3-summit_systems" = [
+"summit_0_0_4-summit_systems" = [
     "0x3fc7ecd6d577daa1ee855a9fa13a914d01acda06715c9fc74f1ee1a5e346a01", # adventurer_systems
     "0x036017e69d21d6d8c13e266eabb73ef1f1d02722d86bdcabe5f168f8e549d3cd", # Denshokan
     "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42", # Dungeon

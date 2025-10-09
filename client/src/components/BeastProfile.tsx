@@ -13,6 +13,8 @@ interface BeastProfileProps {
 }
 
 export default function BeastProfile({ beast }: BeastProfileProps) {
+  console.log(beast);
+
   const { summit } = useGameStore()
   const originalExperience = Math.pow(beast.level, 2);
   const currentExperience = originalExperience + beast.bonus_xp;

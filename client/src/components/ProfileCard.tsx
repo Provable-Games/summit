@@ -9,6 +9,7 @@ import { useState } from 'react';
 import ClaimStarterPack from './dialogs/ClaimStarterPack';
 import ConnectWallet from './dialogs/ConnectWallet';
 import { gameColors } from '@/utils/themes';
+import { isMobile } from 'react-device-detect';
 
 const ProfileCard = () => {
   const { collection } = useGameStore()
@@ -56,8 +57,8 @@ const ProfileCard = () => {
 
         <Box sx={{ display: 'flex' }}>
           <Tooltip title={<Box sx={styles.tooltip}>Disconnect</Box>}>
-            <IconButton size='small' sx={styles.logoutButton} onClick={() => { disconnect(); }}>
-              <LogoutIcon fontSize='small' sx={styles.logoutIcon} />
+            <IconButton size={isMobile ? 'medium' : 'small'} sx={styles.logoutButton} onClick={() => { disconnect(); }}>
+              <LogoutIcon fontSize={isMobile ? 'medium' : 'small'} sx={styles.logoutIcon} />
             </IconButton>
           </Tooltip>
         </Box>
@@ -111,7 +112,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    width: '180px',
+    width: isMobile ? '100%' : '180px',
     borderRadius: '8px',
     background: `${gameColors.darkGreen}90`,
     backdropFilter: 'blur(12px) saturate(1.2)',
@@ -148,12 +149,12 @@ const styles = {
     justifyContent: 'space-between',
     width: '100%',
     borderBottom: `1px solid ${gameColors.accentGreen}40`,
-    pb: '4px',
+    pb: isMobile ? '8px' : '4px',
   },
   addressButton: {
     display: 'flex',
     textTransform: 'none',
-    padding: '2px 8px',
+    padding: isMobile ? '8px 16px' : '2px 8px',
     border: `1px solid #ffedbb`,
     borderRadius: '4px',
     '&:hover': {
@@ -254,8 +255,8 @@ const styles = {
   claimButton: {
     background: `linear-gradient(135deg, ${gameColors.brightGreen} 0%, ${gameColors.accentGreen} 100%)`,
     borderRadius: '6px',
-    width: '100px',
-    height: '28px',
+    width: isMobile ? '100%' : '100px',
+    height: isMobile ? '40px' : '28px',
     my: '6px',
     border: `2px solid ${gameColors.brightGreen}`,
     transition: 'all 0.3s ease',

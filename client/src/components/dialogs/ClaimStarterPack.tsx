@@ -188,7 +188,7 @@ const styles = {
     boxSizing: 'border-box',
     width: '800px',
     maxWidth: '98vw',
-    p: 4
+    p: 4,
   },
   container: {
     width: '100%',
@@ -200,6 +200,7 @@ const styles = {
   },
   title: {
     fontSize: '28px',
+    lineHeight: '30px',
     fontWeight: 'bold',
     color: gameColors.yellow,
     letterSpacing: '1.5px',
@@ -226,6 +227,7 @@ const styles = {
   },
   itemContainer: {
     width: '180px',
+    minWidth: '180px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',

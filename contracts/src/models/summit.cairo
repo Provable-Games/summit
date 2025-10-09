@@ -65,6 +65,7 @@ pub struct SummitEvent {
 pub struct AttackEvent {
     pub beast: BeastEvent,
     pub live_stats: LiveBeastStats,
+    pub summit_live_stats: LiveBeastStats,
     pub attack_potions: u8,
     pub damage: u16,
     pub owner: ContractAddress,

@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { calculateBattleResult, fetchBeastImage } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 import BeastProfile from './BeastProfile';
+import { isMobile } from 'react-device-detect';
 
 function BeastCollection() {
   const { loadingCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit, appliedPotions, setTotalDamage } = useGameStore()
@@ -353,7 +354,7 @@ const styles = {
     width: '100%',
     backdropFilter: 'blur(12px) saturate(1.2)',
     border: `1px solid ${gameColors.accentGreen}40`,
-    padding: 1,
+    padding: 2,
     pt: 0.5,
     pb: 0,
     overflowY: 'hidden',
@@ -398,7 +399,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: isMobile ? 2 : 4,
     position: 'relative',
     zIndex: 1,
   },
@@ -503,7 +504,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: isMobile ? 2 : 4,
     position: 'relative',
     zIndex: 1,
   },
