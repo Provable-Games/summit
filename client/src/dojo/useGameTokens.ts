@@ -1,5 +1,5 @@
 import { useDynamicConnector } from "@/contexts/starknet";
-import { Adventurer, Beast } from "@/types/game";
+import { Beast } from "@/types/game";
 import { getBeastCurrentHealth } from "@/utils/beasts";
 import { addAddressPadding } from "starknet";
 
@@ -114,7 +114,7 @@ export const useGameTokens = () => {
       let beast = {
         id: Number(data["Beast ID"]),
         token_id: Number(data["Token ID"]),
-        name: data["Beast"],
+        name: data["Beast"].replace(" ", ""),
         level: Number(data["Level"]),
         health: Number(data["Health"]),
         prefix: data["Prefix"],

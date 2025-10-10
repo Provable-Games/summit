@@ -39,8 +39,9 @@ function Summit() {
     const fetchCartridgeName = async () => {
       if (summit?.owner) {
         try {
-          const addressMap = await lookupAddresses([summit.owner]);
-          setCartridgeName(addressMap.get(summit.owner) || null);
+          let owner = summit.owner.replace(/^0x0+/, "0x").toLowerCase();
+          const addressMap = await lookupAddresses([owner]);
+          setCartridgeName(addressMap.get(owner) || null);
         } catch (error) {
           setCartridgeName(null);
         }
@@ -97,7 +98,7 @@ function Summit() {
             <Typography sx={styles.healthText}>
               {summit.beast.current_health} / {summit.beast.health + summit.beast.bonus_health}
             </Typography>
-            
+
             {/* Extra Lives Indicator */}
             {summit.beast.extra_lives > 0 && (
               <Box sx={styles.extraLivesContainer}>
