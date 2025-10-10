@@ -168,61 +168,78 @@ export const useGameTokens = () => {
   }
 
   const getBigFive = async () => {
-    let q = `
-      WITH top5 AS (
+    try {
+      // Query 1: Get all beast owners (fast with index on contract_address)
+      const ownersQuery = `
+        SELECT 
+          account_address,
+          token_id
+        FROM token_balances
+        WHERE contract_address = '${addAddressPadding(currentNetworkConfig.beasts.toLowerCase())}'
+          AND balance = '0x0000000000000000000000000000000000000000000000000000000000000001'
+      `;
+
+      // Query 2: Get all beast rewards (fast, no filtering)
+      const rewardsQuery = `
         SELECT 
           token_id,
-          rewards_earned,
-          LOWER(printf('%064x', CAST(token_id AS INTEGER))) AS token_hex64
+          rewards_earned
         FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
-        ORDER BY rewards_earned DESC
-        LIMIT 5
-      ),
-      attrs AS (
-        SELECT
-          ta.token_hex64,
-          MAX(CASE WHEN ta.trait_name = 'Beast'  THEN ta.trait_value END) AS "Beast",
-          MAX(CASE WHEN ta.trait_name = 'Prefix' THEN ta.trait_value END) AS "Prefix",
-          MAX(CASE WHEN ta.trait_name = 'Suffix' THEN ta.trait_value END) AS "Suffix"
-        FROM (
-          SELECT
-            LOWER(CASE WHEN SUBSTR(suf,1,2)='0x' THEN SUBSTR(suf,3) ELSE suf END) AS token_hex64,
-            trait_name,
-            trait_value
-          FROM (
-            SELECT
-              SUBSTR(token_id, INSTR(token_id, ':')+1) AS suf,
-              trait_name,
-              trait_value
-            FROM token_attributes
-          )
-        ) AS ta
-        WHERE ta.trait_name IN ('Beast','Prefix','Suffix')
-        GROUP BY ta.token_hex64
-      )
-      SELECT
-        t.token_id,
-        a."Prefix",
-        a."Beast",
-        a."Suffix",
-        t.rewards_earned
-      FROM top5 AS t
-      LEFT JOIN attrs AS a
-        ON a.token_hex64 = t.token_hex64
-      ORDER BY t.rewards_earned DESC;
-    `
+        WHERE rewards_earned IS NOT NULL AND rewards_earned != '0x0'
+      `;
 
-    try {
-      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-      const sql = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json"
+      // Execute both queries in parallel
+      const [ownersResponse, rewardsResponse] = await Promise.all([
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(ownersQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        }),
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(rewardsQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        })
+      ]);
+
+      const [owners, rewards] = await Promise.all([
+        ownersResponse.json(),
+        rewardsResponse.json()
+      ]);
+
+      // Build a map of token_id -> rewards for fast lookup
+      const rewardsMap = new Map();
+      rewards.forEach((beast: any) => {
+        const rewardValue = parseInt(beast.rewards_earned, 16) || 0;
+        if (rewardValue > 0) {
+          rewardsMap.set(beast.token_id.toString(), rewardValue);
         }
-      })
+      });
 
-      let data = await sql.json()
-      return data
+      // Aggregate rewards by player
+      const playerRewards = new Map();
+      owners.forEach((owner: any) => {
+        // Extract token_id from the full token_id string (contract:token_id)
+        const tokenIdPart = owner.token_id.split(':')[1];
+        if (tokenIdPart) {
+          // Convert hex to decimal if needed
+          const tokenIdInt = tokenIdPart.startsWith('0x') 
+            ? parseInt(tokenIdPart, 16).toString()
+            : tokenIdPart;
+          
+          const beastReward = rewardsMap.get(tokenIdInt) || 0;
+          if (beastReward > 0) {
+            const current = playerRewards.get(owner.account_address) || 0;
+            playerRewards.set(owner.account_address, current + beastReward);
+          }
+        }
+      });
+
+      // Sort and get top 5
+      const sortedPlayers = Array.from(playerRewards.entries())
+        .map(([account_address, total_rewards]) => ({ account_address, total_rewards }))
+        .sort((a, b) => b.total_rewards - a.total_rewards)
+        .slice(0, 5);
+
+      return sortedPlayers;
     } catch (error) {
       console.error("Error getting big five:", error);
       return [];

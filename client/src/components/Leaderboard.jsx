@@ -3,18 +3,34 @@ import { gameColors } from '@/utils/themes';
 import { Box, Typography } from '@mui/material';
 import { useGameTokens } from '@/dojo/useGameTokens';
 import { useEffect, useState } from 'react';
+import { lookupAddresses } from '@cartridge/controller';
+import { useStarkProfile } from '@starknet-react/core';
 
 function Leaderboard(props) {
   const { beastsRegistered } = useStatistics()
   const { getBigFive } = useGameTokens()
   const [bigFive, setBigFive] = useState([])
   const [loadingBigFive, setLoadingBigFive] = useState(true)
+  const [addressNames, setAddressNames] = useState({})
 
   useEffect(() => {
     const fetchBigFive = async () => {
       try {
         const data = await getBigFive()
         setBigFive(data)
+
+        // Fetch names for all addresses
+        if (data.length > 0) {
+          const addresses = data.map(player => player.account_address.replace(/^0x0+/, "0x").toLowerCase());
+          const addressMap = await lookupAddresses(addresses);
+
+          const names = {};
+          data.forEach(player => {
+            const normalizedAddress = player.account_address.replace(/^0x0+/, "0x").toLowerCase();
+            names[player.account_address] = addressMap.get(normalizedAddress) || null;
+          });
+          setAddressNames(names);
+        }
       } catch (error) {
         console.error('Error fetching big five:', error)
       } finally {
@@ -26,8 +42,30 @@ function Leaderboard(props) {
   }, [])
 
   const formatRewards = (rewards) => {
-    const num = parseInt(rewards, 16)
-    return num.toLocaleString(undefined, { maximumFractionDigits: 0 })
+    // rewards is already a number from getBigFive
+    return rewards.toLocaleString(undefined, { maximumFractionDigits: 0 })
+  }
+
+  const formatAddress = (address) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`
+  }
+
+  // Component to handle individual player display with StarkNet profile
+  const PlayerRow = ({ player, index, cartridgeName }) => {
+    const { data: profile } = useStarkProfile({ address: player.account_address })
+    const displayName = cartridgeName || profile?.name?.replace('.stark', '') || formatAddress(player.account_address)
+
+    return (
+      <Box key={player.account_address} sx={styles.bigFiveRow}>
+        <Typography sx={styles.bigFiveRank}>{index + 1}.</Typography>
+        <Typography sx={styles.bigFiveCompact}>
+          {displayName}
+        </Typography>
+        <Typography sx={styles.bigFiveRewards}>
+          {formatRewards(player.total_rewards)}
+        </Typography>
+      </Box>
+    )
   }
 
   return <Box sx={styles.container}>
@@ -55,23 +93,13 @@ function Leaderboard(props) {
           </Box>
         ) : bigFive.length > 0 ? (
           <Box sx={styles.bigFiveContainer}>
-            {bigFive.map((beast, index) => (
-              <Box key={index} sx={styles.bigFiveRow}>
-                <Typography sx={styles.bigFiveRank}>{index + 1}.</Typography>
-                <Typography sx={styles.bigFiveCompact}>
-                  {beast.Prefix && beast.Suffix ? (
-                    <span>
-                      <span style={styles.bigFiveName}>"{beast.Prefix} {beast.Suffix}"</span>{' '}
-                      <span style={styles.bigFiveName}>{beast.Beast || 'Unknown'}</span>
-                    </span>
-                  ) : (
-                    <span style={styles.bigFiveName}>{beast.Beast || 'Unknown'}</span>
-                  )}
-                </Typography>
-                <Typography sx={styles.bigFiveRewards}>
-                  {formatRewards(beast.rewards_earned)}
-                </Typography>
-              </Box>
+            {bigFive.map((player, index) => (
+              <PlayerRow
+                key={player.account_address}
+                player={player}
+                index={index}
+                cartridgeName={addressNames[player.account_address]}
+              />
             ))}
           </Box>
         ) : (
