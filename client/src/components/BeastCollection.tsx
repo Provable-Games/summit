@@ -13,7 +13,7 @@ import { isMobile } from 'react-device-detect';
 function BeastCollection() {
   const { loadingCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit, appliedPotions, setTotalDamage } = useGameStore()
   const { address } = useAccount()
-  const [hideDeadBeasts, setHideDeadBeasts] = useState(false)
+  const [hideDeadBeasts, setHideDeadBeasts] = useState(true)
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
 
@@ -63,13 +63,14 @@ function BeastCollection() {
     if (attackInProgress) return;
 
     const allBeasts = collectionWithCombat.filter(x => hideDeadBeasts ? x.current_health > 0 : true);
+    const maxBeasts = Math.min(50, allBeasts.length);
 
-    // If all alive beasts are selected, deselect all
-    if (selectedBeasts.length === allBeasts.length) {
+    // If 50 or more beasts are selected, or all alive beasts are selected, deselect all
+    if (selectedBeasts.length >= maxBeasts) {
       setSelectedBeasts([])
     } else {
-      // Select all alive beasts
-      setSelectedBeasts(allBeasts)
+      // Select up to 50 beasts (or all if less than 50)
+      setSelectedBeasts(allBeasts.slice(0, maxBeasts))
     }
   }
 
@@ -79,11 +80,12 @@ function BeastCollection() {
     setHideDeadBeasts(hide)
   }
 
-  // Helper to check if all alive beasts are selected
-  const allAliveBeastsSelected = useMemo(() => {
-    const allBeasts = collection.filter(x => hideDeadBeasts ? x.current_health > 0 : true);
-    return allBeasts.length > 0 && allBeasts.length === selectedBeasts.length;
-  }, [collection, selectedBeasts, hideDeadBeasts]);
+  // Helper to check if max beasts are selected (50 or all if less than 50)
+  const maxBeastsSelected = useMemo(() => {
+    const allBeasts = collectionWithCombat.filter(x => hideDeadBeasts ? x.current_health > 0 : true);
+    const maxBeasts = Math.min(50, allBeasts.length);
+    return allBeasts.length > 0 && selectedBeasts.length >= maxBeasts;
+  }, [collectionWithCombat, selectedBeasts, hideDeadBeasts]);
 
   const handleHoverEnter = (event: React.MouseEvent<HTMLElement>, beast: Beast) => {
     setAnchorEl(event.currentTarget);
@@ -295,8 +297,8 @@ function BeastCollection() {
         <Box sx={styles.beastGridContainer}>
           {/* Utility Buttons */}
           <Box sx={styles.utilityButtonsContainer}>
-            <Tooltip placement='right' title={<Box sx={styles.tooltipContent}>Select all</Box>}>
-              <Box sx={[styles.utilityButton, allAliveBeastsSelected && styles.selectedItem]} onClick={() => selectAllBeasts()}>
+            <Tooltip placement='right' title={<Box sx={styles.tooltipContent}>Select 50</Box>}>
+              <Box sx={[styles.utilityButton, maxBeastsSelected && styles.selectedItem]} onClick={() => selectAllBeasts()}>
                 <LibraryAddCheckIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />
               </Box>
             </Tooltip>
