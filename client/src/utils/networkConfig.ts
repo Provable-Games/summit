@@ -1,4 +1,3 @@
-import { getContractByName } from "@dojoengine/core";
 import manifest_mainnet from "../../manifest.json";
 
 export interface NetworkConfig {
@@ -84,38 +83,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
   const network = NETWORKS[networkKey as keyof typeof NETWORKS];
   if (!network) throw new Error(`Network ${networkKey} not found`);
 
-  const SUMMIT_ADDRESS = getContractByName(
-    network.manifest,
-    network.namespace,
-    "summit_systems"
-  )?.address;
-
-  const policies = [
-    {
-      target: SUMMIT_ADDRESS,
-      method: "attack",
-    },
-    {
-      target: SUMMIT_ADDRESS,
-      method: "feed",
-    },
-    {
-      target: SUMMIT_ADDRESS,
-      method: "claim_starter_kit",
-    },
-    {
-      target: network.tokens.erc20.find(token => token.name === "REVIVE")?.address,
-      method: "approve",
-    },
-    {
-      target: network.tokens.erc20.find(token => token.name === "ATTACK")?.address,
-      method: "approve",
-    },
-    {
-      target: network.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address,
-      method: "approve",
-    },
-  ];
+  const policies = undefined;
 
   return {
     chainId: network.chainId,
