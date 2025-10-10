@@ -39,7 +39,7 @@ function ClaimStarterPack(props) {
   const { open, close } = props
   const { executeGameAction, actionFailed } = useGameDirector()
   const { collection } = useGameStore()
-  const { fetchTokenBalances, fetchBeastCollection } = useController()
+  const { fetchTokenBalances, fetchBeastCollection, tokenBalances } = useController()
   const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit).map(beast => beast.token_id)
 
   const [claimInProgress, setClaimInProgress] = useState(false)
@@ -52,6 +52,8 @@ function ClaimStarterPack(props) {
     setClaimInProgress(true)
 
     try {
+      const initialTokenBalances = { ...tokenBalances }
+
       await executeGameAction(
         {
           type: "claim_starter_kit",
@@ -59,9 +61,28 @@ function ClaimStarterPack(props) {
         }
       )
 
-      await delay(2000)
-      fetchBeastCollection()
-      fetchTokenBalances()
+      let retryCount = 0
+      const maxRetries = 5
+      const retryDelay = 2000
+
+      while (retryCount < maxRetries) {
+        await fetchTokenBalances()
+
+        const hasTokenIncrease = Object.keys(tokenBalances).some(tokenId => {
+          const currentBalance = tokenBalances[tokenId] || 0
+          const initialBalance = initialTokenBalances[tokenId] || 0
+          return currentBalance > initialBalance
+        })
+
+        if (hasTokenIncrease) {
+          break
+        }
+
+        await delay(retryDelay)
+        retryCount++
+      }
+
+      await fetchBeastCollection()
     } catch (ex) {
       console.log(ex)
     } finally {

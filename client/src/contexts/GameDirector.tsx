@@ -108,7 +108,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     setSubscription(sub);
   };
 
-
   const processEvent = async (event: any) => {
     if (event.type === "attack" && event.defending_beast_token_id === summit?.beast.token_id) {
       setLastAttack(event.damage);

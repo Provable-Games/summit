@@ -29,10 +29,10 @@ function BeastCollection() {
           return 1
         } else if (a.combat?.elemental !== b.combat?.elemental) {
           return b.combat?.elemental - a.combat?.elemental
-        } else if (b.combat?.power !== a.combat?.power) {
-          return b.combat?.power - a.combat?.power
+        } else if (b.power !== a.power) {
+          return b.power - a.power
         } else {
-          return b.health - a.health
+          return (b.health + b.bonus_health) - (a.health + a.bonus_health)
         }
       })
     }

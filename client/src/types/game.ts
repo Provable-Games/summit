@@ -41,7 +41,6 @@ export interface Combat {
   beastDamage?: number;
   summitDamage?: number;
   elemental?: number;
-  power?: number;
 }
 
 export interface Adventurer {

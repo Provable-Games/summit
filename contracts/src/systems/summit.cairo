@@ -177,7 +177,8 @@ pub mod summit_systems {
                         ref world, attacking_beast, ref defending_beast, remaining_attack_potions,
                     );
 
-                    total_damage += combat_result.total_damage;
+                    // TODO: Change to u32
+                    // total_damage += combat_result.total_damage;
 
                     // if the defending beast is still alive
                     if !defender_died {
