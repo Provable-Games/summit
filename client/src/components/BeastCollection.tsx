@@ -2,7 +2,9 @@ import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import { Box, Link, Popover, Tooltip, Typography } from "@mui/material";
+import FilterListIcon from '@mui/icons-material/FilterList';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import { Box, Link, Menu, MenuItem, Popover, Tooltip, Typography, Divider, Slider } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
 import { useEffect, useMemo, useState } from 'react';
 import { calculateBattleResult, fetchBeastImage } from "../utils/beasts";
@@ -16,6 +18,13 @@ function BeastCollection() {
   const [hideDeadBeasts, setHideDeadBeasts] = useState(true)
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
+
+  // Filter states
+  const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null)
+  const [showKillersOnly, setShowKillersOnly] = useState(false)
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([])
+  const [hpRange, setHpRange] = useState<number[]>([0, 1000])
+  const [sortByHPLeft, setSortByHPLeft] = useState(false)
 
   const collectionWithCombat = useMemo(() => {
     if (summit && collection.length > 0) {
@@ -40,6 +49,48 @@ function BeastCollection() {
     return collection
   }, [collection, summit, appliedPotions?.attack]);
 
+  // Calculate max HP in collection
+  const maxHP = useMemo(() => {
+    if (collectionWithCombat.length === 0) return 100;
+    return Math.max(...collectionWithCombat.map(beast => beast.current_health));
+  }, [collectionWithCombat]);
+
+  // Update HP range when maxHP changes
+  useEffect(() => {
+    setHpRange(prev => [prev[0], maxHP]);
+  }, [maxHP]);
+
+  // Apply filters and sorting
+  const filteredCollection = useMemo(() => {
+    let filtered = collectionWithCombat;
+
+    // Filter by killers only (beasts that can capture the summit)
+    if (showKillersOnly) {
+      filtered = filtered.filter(beast => beast.combat?.capture === true);
+    }
+
+    // Filter by type
+    if (selectedTypes.length > 0) {
+      filtered = filtered.filter(beast => selectedTypes.includes(beast.type));
+    }
+
+    // Filter by HP
+    filtered = filtered.filter(beast =>
+      beast.current_health >= hpRange[0] && beast.current_health <= hpRange[1]
+    );
+
+    // Sort by HP left after combat if enabled
+    if (sortByHPLeft) {
+      filtered = [...filtered].sort((a, b) => {
+        const aHPLeft = a.combat?.healthLeft || 0;
+        const bHPLeft = b.combat?.healthLeft || 0;
+        return bHPLeft - aHPLeft; // Descending order
+      });
+    }
+
+    return filtered;
+  }, [collectionWithCombat, showKillersOnly, selectedTypes, hpRange, sortByHPLeft]);
+
   useEffect(() => {
     const total = selectedBeasts.reduce((acc, beast) => {
       const combatBeast = collectionWithCombat.find(cb => cb.token_id === beast.token_id);
@@ -62,7 +113,7 @@ function BeastCollection() {
   const selectAllBeasts = () => {
     if (attackInProgress) return;
 
-    const allBeasts = collectionWithCombat.filter(x => hideDeadBeasts ? x.current_health > 0 : true);
+    const allBeasts = filteredCollection.filter(x => hideDeadBeasts ? x.current_health > 0 : true);
     const maxBeasts = Math.min(50, allBeasts.length);
 
     // If 50 or more beasts are selected, or all alive beasts are selected, deselect all
@@ -80,12 +131,37 @@ function BeastCollection() {
     setHideDeadBeasts(hide)
   }
 
+  const handleFilterClick = (event: React.MouseEvent<HTMLElement>) => {
+    setFilterAnchorEl(event.currentTarget);
+  };
+
+  const handleFilterClose = () => {
+    setFilterAnchorEl(null);
+  };
+
+  const toggleType = (type: string) => {
+    if (selectedTypes.includes(type)) {
+      setSelectedTypes(selectedTypes.filter(t => t !== type));
+    } else {
+      setSelectedTypes([...selectedTypes, type]);
+    }
+  };
+
+  const resetFilters = () => {
+    setShowKillersOnly(false);
+    setSelectedTypes([]);
+    setHpRange([0, maxHP]);
+  };
+
+  const hasActiveFilters = showKillersOnly || selectedTypes.length > 0 ||
+    hpRange[0] !== 0 || hpRange[1] !== maxHP;
+
   // Helper to check if max beasts are selected (50 or all if less than 50)
   const maxBeastsSelected = useMemo(() => {
-    const allBeasts = collectionWithCombat.filter(x => hideDeadBeasts ? x.current_health > 0 : true);
+    const allBeasts = filteredCollection.filter(x => hideDeadBeasts ? x.current_health > 0 : true);
     const maxBeasts = Math.min(50, allBeasts.length);
     return allBeasts.length > 0 && selectedBeasts.length >= maxBeasts;
-  }, [collectionWithCombat, selectedBeasts, hideDeadBeasts]);
+  }, [filteredCollection, selectedBeasts, hideDeadBeasts]);
 
   const handleHoverEnter = (event: React.MouseEvent<HTMLElement>, beast: Beast) => {
     setAnchorEl(event.currentTarget);
@@ -312,11 +388,31 @@ function BeastCollection() {
                 }} />
               </Box>
             </Tooltip>
+
+            <Tooltip placement='right' title={<Box sx={styles.tooltipContent}>Sort by HP left</Box>}>
+              <Box sx={[styles.utilityButton, sortByHPLeft && styles.selectedItem]} onClick={() => setSortByHPLeft(!sortByHPLeft)}>
+                <FavoriteIcon sx={{
+                  color: gameColors.red,
+                  fontSize: '20px',
+                  opacity: sortByHPLeft ? 1 : 0.6
+                }} />
+              </Box>
+            </Tooltip>
+
+            <Tooltip placement='right' title={<Box sx={styles.tooltipContent}>Filters</Box>}>
+              <Box sx={[styles.utilityButton, hasActiveFilters && styles.selectedItem]} onClick={handleFilterClick}>
+                <FilterListIcon sx={{
+                  color: gameColors.brightGreen,
+                  fontSize: '20px',
+                  opacity: hasActiveFilters ? 1 : 0.6
+                }} />
+              </Box>
+            </Tooltip>
           </Box>
 
           {/* Beast Grid */}
           <Box sx={styles.beastGrid}>
-            {collectionWithCombat.filter(beast => !hideDeadBeasts || beast.current_health > 0).map((beast: Beast) => RenderBeastCard(beast))}
+            {filteredCollection.filter(beast => !hideDeadBeasts || beast.current_health > 0).map((beast: Beast) => RenderBeastCard(beast))}
           </Box>
         </Box>
       )}
@@ -345,6 +441,108 @@ function BeastCollection() {
       >
         {hoveredBeast && <BeastProfile beast={hoveredBeast} />}
       </Popover>
+
+      {/* Filter Menu */}
+      <Menu
+        anchorEl={filterAnchorEl}
+        open={Boolean(filterAnchorEl)}
+        onClose={handleFilterClose}
+        sx={{
+          '& .MuiPaper-root': {
+            background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+            border: `1px solid ${gameColors.accentGreen}60`,
+            borderRadius: '8px',
+            minWidth: '280px',
+            padding: '12px',
+            boxShadow: `
+              inset 0 1px 0 ${gameColors.accentGreen}40,
+              0 4px 12px rgba(0, 0, 0, 0.5)
+            `,
+          }
+        }}
+      >
+        {/* Killers Only Filter */}
+        <MenuItem
+          onClick={() => setShowKillersOnly(!showKillersOnly)}
+          sx={{
+            ...styles.filterMenuItem,
+            background: showKillersOnly ? `${gameColors.brightGreen}20` : 'transparent',
+          }}
+        >
+          <Typography sx={styles.filterLabel}>
+            Killers Only {showKillersOnly && '✓'}
+          </Typography>
+        </MenuItem>
+
+        <Divider sx={{ my: 1, borderColor: `${gameColors.accentGreen}40` }} />
+
+        {/* Type Filters */}
+        <Typography sx={styles.filterSectionTitle}>Type</Typography>
+        {['Hunter', 'Magic', 'Brute'].map(type => (
+          <MenuItem
+            key={type}
+            onClick={() => toggleType(type)}
+            sx={{
+              ...styles.filterMenuItem,
+              background: selectedTypes.includes(type) ? `${gameColors.brightGreen}20` : 'transparent',
+            }}
+          >
+            <Typography sx={styles.filterLabel}>
+              {type} {selectedTypes.includes(type) && '✓'}
+            </Typography>
+          </MenuItem>
+        ))}
+
+        <Divider sx={{ my: 1, borderColor: `${gameColors.accentGreen}40` }} />
+
+        {/* HP Range Filter */}
+        <Typography sx={styles.filterSectionTitle}>HP: {hpRange[0]} - {hpRange[1]}</Typography>
+        <Box sx={{ px: 2, py: 1 }}>
+          <Slider
+            value={hpRange}
+            onChange={(_, newValue) => setHpRange(newValue as number[])}
+            valueLabelDisplay="auto"
+            min={0}
+            max={maxHP}
+            sx={{
+              color: gameColors.red,
+              '& .MuiSlider-thumb': {
+                backgroundColor: gameColors.red,
+              },
+              '& .MuiSlider-track': {
+                backgroundColor: gameColors.red,
+              },
+              '& .MuiSlider-rail': {
+                backgroundColor: `${gameColors.darkGreen}80`,
+              }
+            }}
+          />
+        </Box>
+
+        <Divider sx={{ my: 1, borderColor: `${gameColors.accentGreen}40` }} />
+
+        {/* Reset Filters Button */}
+        <MenuItem
+          onClick={resetFilters}
+          disabled={!hasActiveFilters}
+          sx={{
+            ...styles.filterMenuItem,
+            justifyContent: 'center',
+            mt: 1,
+            background: `${gameColors.red}20`,
+            '&:hover': {
+              background: `${gameColors.red}30`,
+            },
+            '&.Mui-disabled': {
+              opacity: 0.5,
+            }
+          }}
+        >
+          <Typography sx={{ ...styles.filterLabel, color: gameColors.red }}>
+            Reset Filters
+          </Typography>
+        </MenuItem>
+      </Menu>
     </Box>
   );
 }
@@ -868,5 +1066,28 @@ const styles = {
       inset 0 1px 0 ${gameColors.accentGreen}40,
       0 2px 4px rgba(0, 0, 0, 0.3)
     `,
+  },
+  filterMenuItem: {
+    padding: '8px 12px',
+    borderRadius: '4px',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      background: `${gameColors.brightGreen}15 !important`,
+    },
+  },
+  filterLabel: {
+    fontSize: '13px',
+    color: gameColors.brightGreen,
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+  },
+  filterSectionTitle: {
+    fontSize: '11px',
+    color: gameColors.accentGreen,
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    padding: '8px 12px 4px',
   },
 }
