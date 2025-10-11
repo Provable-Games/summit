@@ -8,6 +8,7 @@ import { useStarkProfile } from '@starknet-react/core';
 
 function Leaderboard(props) {
   const { beastsRegistered } = useStatistics()
+  const { summit } = useGameStore()
   const { getBigFive } = useGameTokens()
   const [bigFive, setBigFive] = useState([])
   const [loadingBigFive, setLoadingBigFive] = useState(true)
@@ -39,7 +40,7 @@ function Leaderboard(props) {
     }
 
     fetchBigFive()
-  }, [])
+  }, [summit?.beast?.token_id])
 
   const formatRewards = (rewards) => {
     // rewards is already a number from getBigFive
@@ -107,45 +108,6 @@ function Leaderboard(props) {
             <Typography sx={styles.emptyText}>No data available</Typography>
           </Box>
         )}
-
-        {/* <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
-          <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
-
-          <Box sx={{ width: '50%', height: '18px', border: '2px solid #07323d', textAlign: 'center', borderRadius: '10px', background: '#ddcdaa' }}>
-            <Typography letterSpacing={'1px'} fontWeight={'bold'}>
-              Potion cost
-            </Typography>
-          </Box>
-
-          <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
-        </Box>
-
-        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            Revive potion
-          </Typography>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            ${potionPrices.revive}
-          </Typography>
-        </Box>
-
-        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            Attack potion
-          </Typography>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            ${potionPrices.attack}
-          </Typography>
-        </Box>
-
-        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            Extra life potion
-          </Typography>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            ${potionPrices.extraLife}
-          </Typography>
-        </Box> */}
 
         <Box sx={styles.sectionHeader}>
           <Typography sx={styles.sectionTitle}>
