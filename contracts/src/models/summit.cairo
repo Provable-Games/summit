@@ -10,10 +10,12 @@ pub struct SummitConfig {
     pub denshokan_address: ContractAddress,
     pub dungeon_address: ContractAddress,
     pub beast_address: ContractAddress,
+    pub beast_data_address: ContractAddress,
     pub reward_address: ContractAddress,
     pub attack_potion_address: ContractAddress,
     pub revive_potion_address: ContractAddress,
     pub extra_life_potion_address: ContractAddress,
+    pub prev_summit_address: ContractAddress,
 }
 
 #[derive(Copy, Drop, Serde, IntrospectPacked)]

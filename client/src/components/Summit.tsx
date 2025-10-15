@@ -125,6 +125,12 @@ function Summit() {
               <Typography sx={styles.powerValue}>{summit.beast.power}</Typography>
             </Box>
           </Box>
+          <Box sx={styles.statBox}>
+            <Typography sx={styles.statLabel}>TYPE</Typography>
+            <Box sx={styles.powerValueContainer}>
+              <Typography sx={styles.typeValue}>{summit.beast.type}</Typography>
+            </Box>
+          </Box>
         </Box>
       </Box>
 
@@ -190,7 +196,7 @@ const styles = {
     marginBottom: '8px',
   },
   beastName: {
-    fontSize: '20px',
+    fontSize: '18px',
     fontWeight: 'bold',
     color: '#ffedbb',
     textTransform: 'uppercase',
@@ -254,6 +260,13 @@ const styles = {
   levelValue: {
     fontSize: '14px',
     color: '#ffedbb',
+    fontWeight: 'bold',
+    lineHeight: '1',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  typeValue: {
+    fontSize: '12px',
+    color: '#FFF',
     fontWeight: 'bold',
     lineHeight: '1',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { lookupAddresses } from '@cartridge/controller';
 import { useStarkProfile } from '@starknet-react/core';
 
-function Leaderboard(props) {
+function Leaderboard() {
   const { beastsRegistered } = useStatistics()
   const { summit } = useGameStore()
   const { getBigFive } = useGameTokens()
@@ -134,7 +134,7 @@ export default Leaderboard;
 
 const styles = {
   container: {
-    width: '295px',
+    width: '250px',
     background: `${gameColors.darkGreen}90`,
     backdropFilter: 'blur(12px) saturate(1.2)',
     border: `2px solid ${gameColors.accentGreen}60`,
