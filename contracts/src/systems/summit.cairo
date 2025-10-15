@@ -186,7 +186,7 @@ pub mod summit_systems {
 
                 let mut level: u16 = adventurer.get_level().into();
                 if killed_by_adventurer {
-                    level *= 2;
+                    level *= 10;
                 }
 
                 beast.live.bonus_health += level;

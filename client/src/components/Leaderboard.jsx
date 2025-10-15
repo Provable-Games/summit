@@ -5,6 +5,7 @@ import { useGameTokens } from '@/dojo/useGameTokens';
 import { useEffect, useState } from 'react';
 import { lookupAddresses } from '@cartridge/controller';
 import { useStarkProfile } from '@starknet-react/core';
+import { useGameStore } from '@/stores/gameStore';
 
 function Leaderboard() {
   const { beastsRegistered } = useStatistics()

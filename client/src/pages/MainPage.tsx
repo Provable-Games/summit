@@ -10,16 +10,17 @@ import Feeding from '../components/Feeding'
 import Leaderboard from '../components/Leaderboard'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
-import ConnectWallet from '../components/dialogs/ConnectWallet'
 import { gameColors } from '../utils/themes'
-import { useState } from "react"
 
 function MainPage() {
   const { summit, showFeedingGround, setShowFeedingGround } = useGameStore()
-  const [accountDialog, openAccountDialog] = useState(false)
 
   return <>
     <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
+      {summit?.beast?.shiny ? <Box sx={styles.shinyContainer}>
+        <img src="/images/shiny.png" alt="shiny" />
+      </Box> : null}
+
       {showFeedingGround ? <>
         {isBrowser && <Box sx={styles.sideContainer}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -82,7 +83,6 @@ function MainPage() {
 
       {isMobile && <BurgerMenu />}
     </Box >
-
   </>
 }
 
@@ -96,6 +96,14 @@ const styles = {
     justifyContent: 'space-between',
     position: 'relative',
     backgroundColor: 'transparent'
+  },
+  shinyContainer: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    display: 'flex',
+    justifyContent: 'center',
+    zIndex: 0
   },
   bottomContainer: {
     width: '100%',
