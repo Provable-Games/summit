@@ -10,10 +10,12 @@ pub struct SummitConfig {
     pub denshokan_address: ContractAddress,
     pub dungeon_address: ContractAddress,
     pub beast_address: ContractAddress,
+    pub beast_data_address: ContractAddress,
     pub reward_address: ContractAddress,
     pub attack_potion_address: ContractAddress,
     pub revive_potion_address: ContractAddress,
     pub extra_life_potion_address: ContractAddress,
+    pub prev_summit_address: ContractAddress,
 }
 
 #[derive(Copy, Drop, Serde, IntrospectPacked)]
@@ -50,6 +52,12 @@ pub enum GameEventDetails {
     summit: SummitEvent,
     attack: AttackEvent,
     feed: FeedEvent,
+    update_beast: UpdateBeastEvent,
+}
+
+#[derive(Introspect, Copy, Drop, Serde)]
+pub struct UpdateBeastEvent {
+    pub live_stats: LiveBeastStats,
 }
 
 #[derive(Introspect, Copy, Drop, Serde)]
@@ -58,7 +66,6 @@ pub struct SummitEvent {
     pub live_stats: LiveBeastStats,
     pub owner: ContractAddress,
     pub timestamp: u64,
-    pub defending_beast_token_id: u32,
 }
 
 #[derive(Introspect, Copy, Drop, Serde)]
@@ -67,10 +74,9 @@ pub struct AttackEvent {
     pub live_stats: LiveBeastStats,
     pub summit_live_stats: LiveBeastStats,
     pub attack_potions: u8,
-    pub damage: u16,
+    pub damage: u32,
     pub owner: ContractAddress,
     pub timestamp: u64,
-    pub defending_beast_token_id: u32,
 }
 
 #[derive(Introspect, Copy, Drop, Serde)]

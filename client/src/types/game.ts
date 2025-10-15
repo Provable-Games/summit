@@ -63,6 +63,7 @@ export interface GameAction {
   beastIds?: number[];
   adventurerIds?: number[];
   appliedPotions?: AppliedPotions;
+  safeAttack?: boolean;
 }
 
 import { NETWORKS } from '@/utils/networkConfig';

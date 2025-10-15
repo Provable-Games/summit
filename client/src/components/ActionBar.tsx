@@ -1,19 +1,18 @@
 import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useGameStore } from '@/stores/gameStore';
-import { AppliedPotions } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import RemoveIcon from '@mui/icons-material/Remove';
-import { Box, IconButton, Menu, Slider, Tooltip, Typography } from '@mui/material';
+import { Box, Checkbox, IconButton, Menu, Slider, Tooltip, Typography } from '@mui/material';
 import React, { useEffect, useState } from 'react';
+import { isBrowser } from 'react-device-detect';
 import attackPotionIcon from '../assets/images/attack-potion.png';
 import cauldronIcon from '../assets/images/cauldron.png';
 import heart from '../assets/images/heart.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import { gameColors } from '../utils/themes';
-import { isBrowser } from 'react-device-detect';
 
 interface ActionBarProps {
   [key: string]: any;
@@ -30,6 +29,7 @@ function ActionBar(props: ActionBarProps) {
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
+  const [safeAttack, setSafeAttack] = useState(true);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>, potion: any) => {
     setAnchorEl(event.currentTarget);
@@ -49,7 +49,8 @@ function ActionBar(props: ActionBarProps) {
     executeGameAction({
       type: 'attack',
       beastIds: selectedBeasts.map(beast => beast.token_id),
-      appliedPotions: appliedPotions
+      appliedPotions: appliedPotions,
+      safeAttack: safeAttack
     });
   }
 
@@ -137,37 +138,76 @@ function ActionBar(props: ActionBarProps) {
             {isBrowser ? "YOU'RE THE SAVÁGE" : "SAVÁGE"}
           </Typography>
         </Box>
-        : <Box sx={[styles.attackButton, enableAttack && styles.attackButtonEnabled]}
-          onClick={handleAttack}>
-          <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
-            {attackInProgress
-              ? <Box display={'flex'} alignItems={'baseline'}>
-                <Typography variant="h5" sx={styles.buttonText}>Attacking</Typography>
-                <div className='dotLoader green' />
-              </Box>
-              : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                <Typography sx={[styles.buttonText, !enableAttack && styles.disabledText]} variant="h5">
-                  Attack
-                </Typography>
-              </Box>
-            }
+        : <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={[styles.attackButton, enableAttack && styles.attackButtonEnabled]}
+            onClick={handleAttack}>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
+              {attackInProgress
+                ? <Box display={'flex'} alignItems={'baseline'}>
+                  <Typography variant="h5" sx={styles.buttonText}>Attacking</Typography>
+                  <div className='dotLoader green' />
+                </Box>
+                : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                  <Typography sx={[styles.buttonText, !enableAttack && styles.disabledText]} variant="h5">
+                    Attack
+                  </Typography>
+                </Box>
+              }
 
-            {isappliedPotions && isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
-              {appliedPotions.revive > 0 && <Box display={'flex'} alignItems={'center'}>
-                <Typography sx={styles.potionCount}>{appliedPotions.revive}</Typography>
-                <img src={revivePotionIcon} alt='' height={'14px'} />
-              </Box>}
-              {appliedPotions.attack > 0 && <Box display={'flex'} alignItems={'center'}>
-                <Typography sx={styles.potionCount}>{appliedPotions.attack}</Typography>
-                <img src={attackPotionIcon} alt='' height={'14px'} />
-              </Box>}
-              {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'}>
-                <Typography sx={styles.potionCount}>{appliedPotions.extraLife}</Typography>
-                <img src={heart} alt='' height={'12px'} />
-              </Box>}
+              {isappliedPotions && isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
+                {appliedPotions.revive > 0 && <Box display={'flex'} alignItems={'center'}>
+                  <Typography sx={styles.potionCount}>{appliedPotions.revive}</Typography>
+                  <img src={revivePotionIcon} alt='' height={'14px'} />
+                </Box>}
+                {appliedPotions.attack > 0 && <Box display={'flex'} alignItems={'center'}>
+                  <Typography sx={styles.potionCount}>{appliedPotions.attack}</Typography>
+                  <img src={attackPotionIcon} alt='' height={'14px'} />
+                </Box>}
+                {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'}>
+                  <Typography sx={styles.potionCount}>{appliedPotions.extraLife}</Typography>
+                  <img src={heart} alt='' height={'12px'} />
+                </Box>}
+              </Box>
+              }
             </Box>
-            }
           </Box>
+          {/* <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+            <Typography sx={styles.tooltipTitle}>Safe Attack</Typography>
+            <Typography sx={[styles.tooltipText, { lineHeight: 1.2 }]}>
+              Attack only if Summit beast has not changed
+            </Typography>
+            <Typography sx={styles.tooltipSubtext}>
+              Toggle off to attack no matter what
+            </Typography>
+          </Box>}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <Typography
+                sx={{
+                  fontSize: '12px',
+                  color: gameColors.brightGreen,
+                  fontWeight: 'bold',
+                  lineHeight: 1,
+                  textAlign: 'center'
+                }}
+              >Safe
+              </Typography>
+              <Checkbox
+                checked={safeAttack}
+                onChange={(e) => setSafeAttack(e.target.checked)}
+                size="large"
+                sx={{
+                  color: gameColors.lightGreen,
+                  padding: '0px',
+                  '&.Mui-checked': {
+                    color: gameColors.brightGreen,
+                  },
+                  '& .MuiSvgIcon-root': {
+                    fontSize: '26px',
+                  }
+                }}
+              />
+            </Box>
+          </Tooltip> */}
         </Box>}
 
       {/* Divider 1 */}
@@ -521,7 +561,7 @@ const styles = {
     border: `2px solid ${gameColors.lightGreen}40`,
     cursor: 'pointer',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    minWidth: isBrowser ? '200px' : '100px',
+    minWidth: isBrowser ? '200px' : '120px',
     textAlign: 'center',
     opacity: 0.7,
     '&:hover': {

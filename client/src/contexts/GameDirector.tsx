@@ -2,10 +2,7 @@ import { useStarknetApi } from "@/api/starknet";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useGameStore } from "@/stores/gameStore";
 import { Beast, GameAction, getEntityModel } from "@/types/game";
-import { getBeastCurrentHealth, getBeastDetails } from "@/utils/beasts";
-import { processGameEvent } from "@/utils/events";
 import { useQueries } from '@/utils/queries';
-import { delay } from "@/utils/utils";
 import { useDojoSDK } from '@dojoengine/sdk/react';
 import {
   createContext,
@@ -14,51 +11,38 @@ import {
   useEffect,
   useReducer,
   useState,
+  useRef,
 } from "react";
 import { useController } from "./controller";
 
 export interface GameDirectorContext {
   executeGameAction: (action: GameAction) => Promise<boolean>;
   actionFailed: number;
-  videoQueue: string[];
-  setVideoQueue: (videoQueue: string[]) => void;
-  processEvent: (event: any, skipDelay?: boolean) => void;
-  eventsProcessed: number;
-  setEventQueue: (events: any) => void;
-  setEventsProcessed: (eventsProcessed: number) => void;
 }
 
 const GameDirectorContext = createContext<GameDirectorContext>(
   {} as GameDirectorContext
 );
 
-/**
- * Wait times for events in milliseconds
- */
-const delayTimes: any = {
-  attack: 1000,
-};
-
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
-  const { summit, setSummit, setLastAttack, setAttackInProgress, setFeedingInProgress,
+  const { summit, setSummit, setAttackInProgress, setFeedingInProgress,
     collection, setCollection, setSelectedBeasts, setAppliedPotions, appliedPotions } = useGameStore();
-  const { gameEventsQuery } = useQueries();
+  const { gameModelsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimStarterKit } = useSystemCalls();
   const { tokenBalances, setTokenBalances } = useController();
 
   const [subscription, setSubscription] = useState<any>(null);
+  const summitIntervalRef = useRef<number | null>(null);
   const [actionFailed, setActionFailed] = useReducer((x) => x + 1, 0);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [eventQueue, setEventQueue] = useState<any[]>([]);
-  const [eventsProcessed, setEventsProcessed] = useState(0);
-  const [videoQueue, setVideoQueue] = useState<string[]>([]);
 
-  const fetchSummitBeast = async () => {
-    const summitBeast = await getSummitData();
-    setSummit(summitBeast);
-  };
+  useEffect(() => {
+    fetchSummitData();
+    subscribeSummitBeast();
+    subscribeBeastUpdates();
+  }, []);
 
   useEffect(() => {
     setAttackInProgress(false);
@@ -66,41 +50,54 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   }, [actionFailed]);
 
   useEffect(() => {
-    fetchSummitBeast();
-    subscribeEvents();
-  }, []);
-
-  useEffect(() => {
     const processNextEvent = async () => {
-      if (eventQueue.length > 0 && !isProcessing) {
-        setIsProcessing(true);
+      if (eventQueue.length > 0) {
         const event = eventQueue[0];
-        await processEvent(event);
+        processBeastUpdate(event);
         setEventQueue((prev) => prev.slice(1));
-        setIsProcessing(false);
-        setEventsProcessed((prev) => prev + 1);
       }
     };
 
     processNextEvent();
-  }, [eventQueue, isProcessing]);
+  }, [eventQueue]);
 
-  const subscribeEvents = async () => {
+  const fetchSummitData = async () => {
+    const summitBeast = await getSummitData();
+
+    if (summitBeast && (
+      !summit ||
+
+      summitBeast.beast.token_id !== summit?.beast.token_id
+    )) {
+      setSummit(summitBeast);
+    }
+  }
+
+  const subscribeSummitBeast = async () => {
+    if (summitIntervalRef.current) {
+      clearInterval(summitIntervalRef.current);
+    }
+
+    const interval = setInterval(async () => {
+      fetchSummitData();
+    }, 2000);
+
+    summitIntervalRef.current = interval;
+  };
+
+  const subscribeBeastUpdates = async () => {
     if (subscription) {
       try {
         subscription.cancel();
       } catch (error) { }
     }
 
-    const [_, sub] = await sdk.subscribeEventQuery({
-      query: gameEventsQuery(1),
+    const [_, sub] = await sdk.subscribeEntityQuery({
+      query: gameModelsQuery(),
       callback: ({ data, error }: { data?: any[]; error?: Error }) => {
         if (data && data.length > 0) {
-          let events = data
-            .filter((entity: any) => Boolean(getEntityModel(entity, "GameEvent")))
-            .map((entity: any) => processGameEvent(getEntityModel(entity, "GameEvent")));
-
-          setEventQueue((prev: any) => [...prev, ...events]);
+          let events = data.filter((entity: any) => Boolean(getEntityModel(entity, "LiveBeastStats"))).map((entity: any) => getEntityModel(entity, "LiveBeastStats"))
+          setEventQueue((prev) => [...prev, ...events]);
         }
       },
     });
@@ -108,66 +105,24 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     setSubscription(sub);
   };
 
-  const processEvent = async (event: any) => {
-    if (event.type === "attack" && event.defending_beast_token_id === summit?.beast.token_id) {
-      setLastAttack(event.damage);
+  const processBeastUpdate = (update: any) => {
+    if (update.token_id === summit?.beast.token_id) {
       setSummit({
         ...summit,
         beast: {
           ...summit?.beast,
-          ...event.summit_live_stats,
+          ...update,
         },
-      });
-
-      if (collection.find((beast: Beast) => beast.token_id === event.live_stats.token_id)) {
-        setCollection(collection.map((beast: Beast) => beast.token_id === event.live_stats.token_id
-          ? { ...beast, ...event.live_stats }
-          : beast
-        ));
-
-        setSelectedBeasts([]);
-        setAttackInProgress(false);
-
-        setTokenBalances({
-          ...tokenBalances,
-          ATTACK: tokenBalances["ATTACK"] - appliedPotions.attack,
-          EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - appliedPotions.extraLife,
-          REVIVE: tokenBalances["REVIVE"] - appliedPotions.revive,
-        });
-        setAppliedPotions({
-          revive: 0,
-          attack: 0,
-          extraLife: 0,
-        });
-      }
-    }
-
-    if (event.type === "summit") {
-      setSummit({
-        beast: {
-          ...event.beast,
-          ...event.live_stats,
-          ...getBeastDetails(event.beast.id, event.beast.prefix, event.beast.suffix, event.beast.level),
-        },
-        taken_at: event.timestamp,
-        owner: event.owner,
       });
     }
 
-    if (event.type === "feed") {
-      let updatedBeast = { ...event.live_stats, health: event.beast.health }
-      updatedBeast.current_health = getBeastCurrentHealth(updatedBeast)
-
-      setCollection(collection.map((beast: Beast) => beast.token_id === event.live_stats.token_id
-        ? { ...beast, ...updatedBeast }
+    if (collection.find((beast: Beast) => beast.token_id === update.token_id)) {
+      setCollection(collection.map((beast: Beast) => beast.token_id === update.token_id
+        ? { ...beast, ...update }
         : beast
       ));
     }
-
-    if (delayTimes[event.type]) {
-      await delay(delayTimes[event.type]);
-    }
-  };
+  }
 
   const executeGameAction = async (action: GameAction) => {
     let txs: any[] = [];
@@ -178,7 +133,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     if (action.type === 'attack') {
       txs.push(
-        ...attack(action.beastIds, action.appliedPotions)
+        ...attack(action.beastIds, action.appliedPotions, action.safeAttack)
       );
     }
 
@@ -192,6 +147,23 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       return false;
     }
 
+    if (action.type === 'attack') {
+      setSelectedBeasts([]);
+      setAttackInProgress(false);
+
+      setTokenBalances({
+        ...tokenBalances,
+        ATTACK: tokenBalances["ATTACK"] - appliedPotions.attack,
+        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - appliedPotions.extraLife,
+        REVIVE: tokenBalances["REVIVE"] - appliedPotions.revive,
+      });
+      setAppliedPotions({
+        revive: 0,
+        attack: 0,
+        extraLife: 0,
+      });
+    }
+
     return true;
   };
 
@@ -200,12 +172,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       value={{
         executeGameAction,
         actionFailed,
-        videoQueue,
-        setVideoQueue,
-        eventsProcessed,
-        setEventsProcessed,
-        processEvent,
-        setEventQueue,
       }}
     >
       {children}

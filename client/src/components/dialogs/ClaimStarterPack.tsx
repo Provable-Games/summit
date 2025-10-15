@@ -39,7 +39,7 @@ function ClaimStarterPack(props) {
   const { open, close } = props
   const { executeGameAction, actionFailed } = useGameDirector()
   const { collection } = useGameStore()
-  const { fetchTokenBalances, fetchBeastCollection, tokenBalances } = useController()
+  const { fetchTokenBalances, tokenBalances } = useController()
   const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit).map(beast => beast.token_id)
 
   const [claimInProgress, setClaimInProgress] = useState(false)
@@ -81,8 +81,6 @@ function ClaimStarterPack(props) {
         await delay(retryDelay)
         retryCount++
       }
-
-      await fetchBeastCollection()
     } catch (ex) {
       console.log(ex)
     } finally {

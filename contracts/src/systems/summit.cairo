@@ -12,8 +12,17 @@ trait ISummitSystem<T> {
         attack_potions: u8,
         extra_life_potions: u8,
     );
+    fn attack_unsafe(
+        ref self: T,
+        attacking_beast_token_ids: Span<u32>,
+        revival_potions: u8,
+        attack_potions: u8,
+        extra_life_potions: u8,
+    );
     fn feed(ref self: T, beast_token_id: u32, adventurer_ids: Span<u64>);
     fn claim_starter_kit(ref self: T, beast_token_ids: Span<u32>);
+    fn add_extra_life(ref self: T, beast_token_id: u32, extra_life_potions: u8);
+    fn load_beasts(ref self: T, beast_token_ids: Span<u32>);
 
     fn get_summit_data(self: @T) -> (Beast, SummitHistory, ContractAddress);
     fn get_summit_config(self: @T) -> SummitConfig;
@@ -28,12 +37,14 @@ pub mod summit_systems {
     use beasts_nft::interfaces::{IBeastsDispatcher, IBeastsDispatcherTrait};
     use beasts_nft::pack::PackableBeast;
     use core::num::traits::{Sqrt};
+    use core::poseidon::poseidon_hash_span;
     use death_mountain::models::adventurer::adventurer::{Adventurer, ImplAdventurer};
     use death_mountain::models::beast::{ImplBeast};
     use death_mountain::models::combat::{CombatResult, CombatSpec, ImplCombat, SpecialPowers};
     use death_mountain::systems::adventurer::contracts::{
         IAdventurerSystemsDispatcher, IAdventurerSystemsDispatcherTrait,
     };
+    use death_mountain::systems::beast::contracts::{IBeastSystemsDispatcher, IBeastSystemsDispatcherTrait};
     use dojo::event::EventStorage;
     use dojo::model::ModelStorage;
     use dojo::world::WorldStorage;
@@ -43,8 +54,9 @@ pub mod summit_systems {
     use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
 
     use summit::constants::{
-        BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS, DEFAULT_NS, EIGHT_BITS_MAX,
-        MAX_REVIVAL_COUNT, MINIMUM_DAMAGE, SUMMIT_ID, TOKEN_DECIMALS, errors,
+        BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS, DAY_SECONDS, DEFAULT_NS,
+        EIGHT_BITS_MAX, MAX_REVIVAL_COUNT, MINIMUM_DAMAGE, REDUCED_REVIVAL_TIME_SECONDS, SUMMIT_ID, TOKEN_DECIMALS,
+        errors,
     };
     use summit::erc20::interface::{
         ConsumableERC20Dispatcher, ConsumableERC20DispatcherTrait, RewardERC20Dispatcher, RewardERC20DispatcherTrait,
@@ -53,8 +65,9 @@ pub mod summit_systems {
     use summit::models::beast::{Beast, LiveBeastStats};
     use summit::models::summit::{
         AttackEvent, BeastEvent, FeedEvent, GameEvent, GameEventDetails, Summit, SummitConfig, SummitEvent,
-        SummitHistory,
+        SummitHistory, UpdateBeastEvent,
     };
+    use summit::systems::summit::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
 
     /// @title Dojo Init
     /// @notice Initializes the contract
@@ -68,10 +81,12 @@ pub mod summit_systems {
         denshokan_address: ContractAddress,
         dungeon_address: ContractAddress,
         beast_address: ContractAddress,
+        beast_data_address: ContractAddress,
         reward_address: ContractAddress,
         attack_potion_address: ContractAddress,
         revive_potion_address: ContractAddress,
         extra_life_potion_address: ContractAddress,
+        prev_summit_address: ContractAddress,
     ) {
         let mut world: WorldStorage = self.world(@DEFAULT_NS());
 
@@ -87,10 +102,12 @@ pub mod summit_systems {
                     denshokan_address: denshokan_address,
                     dungeon_address: dungeon_address,
                     beast_address: beast_address,
+                    beast_data_address: beast_data_address,
                     reward_address: reward_address,
                     attack_potion_address: attack_potion_address,
                     revive_potion_address: revive_potion_address,
                     extra_life_potion_address: extra_life_potion_address,
+                    prev_summit_address: prev_summit_address,
                 },
             );
 
@@ -115,183 +132,37 @@ pub mod summit_systems {
             let summit_beast_token_id = InternalSummitImpl::_get_summit_beast_token_id(world);
             assert(defending_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
 
-            // assert consumable amounts
-            assert(attack_potions <= EIGHT_BITS_MAX, errors::MAX_ATTACK_POTION);
-            assert(extra_life_potions <= EIGHT_BITS_MAX, errors::BEAST_MAX_EXTRA_LIVES);
+            InternalSummitImpl::_attack_summit(
+                ref world, attacking_beast_token_ids, revival_potions, attack_potions, extra_life_potions,
+            );
+        }
 
-            let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
-            let beast_dispatcher = IERC721Dispatcher { contract_address: summit_config.beast_address };
-
-            let summit_owner = beast_dispatcher.owner_of(summit_beast_token_id.into());
-
-            let mut defending_beast = InternalSummitImpl::_get_beast(world, summit_beast_token_id);
-
-            let mut remaining_attack_potions = attack_potions;
-            let mut remaining_revival_potions = revival_potions;
-
-            let mut game_events: Array<GameEventDetails> = array![];
-            let current_time = get_block_timestamp();
-
-            let mut i = 0;
-            while (i < attacking_beast_token_ids.len()) {
-                let attacking_beast_token_id = *attacking_beast_token_ids.at(i);
-
-                // assert the caller owns the beast they attacking with
-                let beast_owner = beast_dispatcher.owner_of(attacking_beast_token_id.into());
-                assert(beast_owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
-
-                // assert not attacking own beast
-                assert(beast_owner != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
-
-                // get stats for the beast that is attacking
-                let mut attacking_beast = InternalSummitImpl::_get_beast(world, attacking_beast_token_id);
-
-                // assert the attacking beast is alive
-                remaining_revival_potions =
-                    InternalSummitImpl::_use_revival_potions(ref attacking_beast, ref remaining_revival_potions);
-
-                // reset health to starting health plus any bonus health they have accrued
-                // @dev beasts attack till death so we don't need any additional logic
-
-                // Add the bonus health to the beast
-                attacking_beast.live.current_health = attacking_beast.fixed.health + attacking_beast.live.bonus_health;
-
-                // Add bonus xp to the beast
-                let total_xp = attacking_beast.fixed.level * attacking_beast.fixed.level
-                    + attacking_beast.live.bonus_xp;
-                attacking_beast.fixed.level = total_xp.sqrt().into();
-
-                let mut total_damage = 0;
-
-                // loop until the attacking beast is dead or the summit beast is dead
-                loop {
-                    InternalSummitImpl::_use_extra_life(ref defending_beast);
-
-                    // if either beast is dead, break
-                    if attacking_beast.live.current_health == 0 || defending_beast.live.current_health == 0 {
-                        break;
-                    }
-
-                    // attack the summit beast
-                    let (combat_result, defender_died) = InternalSummitImpl::_attack(
-                        ref world, attacking_beast, ref defending_beast, remaining_attack_potions,
-                    );
-
-                    // TODO: Change to u32
-                    // total_damage += combat_result.total_damage;
-
-                    // if the defending beast is still alive
-                    if !defender_died {
-                        // it counter attacks
-                        InternalSummitImpl::_attack(ref world, defending_beast, ref attacking_beast, 0);
-                    }
-                };
-
-                // reset attack streak if 2x base revival time has passed since last death
-                if attacking_beast.live.last_death_timestamp + BASE_REVIVAL_TIME_SECONDS * 2 < get_block_timestamp() {
-                    attacking_beast.live.attack_streak = 0;
-                }
-
-                // check if max xp is reached
-                if InternalSummitImpl::_beast_can_get_xp(attacking_beast) {
-                    attacking_beast.live.bonus_xp += 10 + attacking_beast.live.attack_streak.into();
-                }
-
-                // increase attack streak if less than 10
-                if attacking_beast.live.attack_streak < 10 {
-                    attacking_beast.live.attack_streak += 1;
-                }
-
-                // Remove attack potions
-                remaining_attack_potions = 0;
-
-                if attacking_beast.live.current_health == 0 {
-                    // set death timestamp for prev summit beast
-                    attacking_beast.live.last_death_timestamp = get_block_timestamp();
-                    attacking_beast.live.num_deaths += 1;
-                    attacking_beast.live.last_killed_by = summit_beast_token_id;
-                    // update the live stats of the attacking beast
-                    world.write_model(@attacking_beast.live);
-                } else if defending_beast.live.current_health == 0 {
-                    // finalize the summit history for prev summit beast
-                    InternalSummitImpl::_finalize_summit_history(ref world, ref defending_beast, summit_owner);
-
-                    // set death timestamp for prev summit beast
-                    defending_beast.live.last_death_timestamp = get_block_timestamp();
-
-                    // initialize summit history for the new beast
-                    InternalSummitImpl::_init_summit_history(ref world, attacking_beast_token_id);
-
-                    // set the new summit beast
-                    InternalSummitImpl::_set_summit_beast(ref world, attacking_beast_token_id);
-
-                    // Apply extra life potions
-                    attacking_beast.live.extra_lives = extra_life_potions;
-                    InternalSummitImpl::_burn_consumable(summit_config.extra_life_potion_address, extra_life_potions);
-
-                    // update the live stats of the attacking beast
-                    world.write_model(@attacking_beast.live);
-                }
-
-                game_events
-                    .append(
-                        GameEventDetails::attack(
-                            AttackEvent {
-                                beast: InternalSummitImpl::_get_beast_event(attacking_beast),
-                                live_stats: attacking_beast.live,
-                                summit_live_stats: defending_beast.live,
-                                attack_potions: remaining_attack_potions,
-                                damage: total_damage,
-                                defending_beast_token_id,
-                                owner: beast_owner,
-                                timestamp: current_time,
-                            },
-                        ),
-                    );
-
-                if defending_beast.live.current_health == 0 {
-                    game_events
-                        .append(
-                            GameEventDetails::summit(
-                                SummitEvent {
-                                    beast: InternalSummitImpl::_get_beast_event(attacking_beast),
-                                    live_stats: attacking_beast.live,
-                                    owner: beast_owner,
-                                    timestamp: current_time,
-                                    defending_beast_token_id,
-                                },
-                            ),
-                        );
-
-                    break;
-                }
-
-                i += 1;
-            };
-
-            // update the live stats of the defending beast after all attacks
-            world.write_model(@defending_beast.live);
-
-            // Burn consumables
-            assert(remaining_revival_potions == 0, 'Unused revival potions');
-            InternalSummitImpl::_burn_consumable(summit_config.revive_potion_address, revival_potions);
-            InternalSummitImpl::_burn_consumable(summit_config.attack_potion_address, attack_potions);
-
-            while (game_events.len() > 0) {
-                let event = game_events.pop_front().unwrap();
-                InternalSummitImpl::_emit_game_event(ref world, event);
-            }
+        fn attack_unsafe(
+            ref self: ContractState,
+            attacking_beast_token_ids: Span<u32>,
+            revival_potions: u8,
+            attack_potions: u8,
+            extra_life_potions: u8,
+        ) {
+            let mut world = self.world(@DEFAULT_NS());
+            InternalSummitImpl::_attack_summit(
+                ref world, attacking_beast_token_ids, revival_potions, attack_potions, extra_life_potions,
+            );
         }
 
         fn feed(ref self: ContractState, beast_token_id: u32, adventurer_ids: Span<u64>) {
             let mut world = self.world(@DEFAULT_NS());
             let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
+            let beast_data = IBeastSystemsDispatcher { contract_address: summit_config.beast_data_address };
 
             // assert the caller owns the beast they are feeding
             let beast_dispatcher = IERC721Dispatcher { contract_address: summit_config.beast_address };
             assert(beast_dispatcher.owner_of(beast_token_id.into()) == get_caller_address(), errors::NOT_TOKEN_OWNER);
 
             let mut beast = InternalSummitImpl::_get_beast(world, beast_token_id);
+            let beast_hash = ImplBeast::get_beast_hash(beast.fixed.id, beast.fixed.prefix, beast.fixed.suffix);
+            let collectable_count = beast_data.get_collectable_count(summit_config.dungeon_address, beast_hash);
+
             let summit_beast_token_id = InternalSummitImpl::_get_summit_beast_token_id(world);
             let previous_bonus_health = beast.live.bonus_health;
 
@@ -302,7 +173,22 @@ pub mod summit_systems {
 
                 InternalSummitImpl::_assert_beast_can_consume(world, beast, adventurer_id, adventurer.health);
 
-                let level: u16 = adventurer.get_level().into();
+                let mut killed_by_adventurer = false;
+                let mut j = 0;
+                while j < collectable_count {
+                    let collectable = beast_data.get_collectable(summit_config.dungeon_address, beast_hash, j);
+                    if collectable.killed_by == adventurer_id {
+                        killed_by_adventurer = true;
+                        break;
+                    }
+                    j += 1;
+                };
+
+                let mut level: u16 = adventurer.get_level().into();
+                if killed_by_adventurer {
+                    level *= 10;
+                }
+
                 beast.live.bonus_health += level;
                 if (beast.live.bonus_health > BEAST_MAX_BONUS_HEALTH) {
                     beast.live.bonus_health = BEAST_MAX_BONUS_HEALTH;
@@ -385,6 +271,60 @@ pub mod summit_systems {
             }
         }
 
+        fn add_extra_life(ref self: ContractState, beast_token_id: u32, extra_life_potions: u8) {
+            let mut world = self.world(@DEFAULT_NS());
+
+            let summit_beast_token_id = InternalSummitImpl::_get_summit_beast_token_id(world);
+            assert(beast_token_id == summit_beast_token_id, 'Not summit beast');
+
+            assert(extra_life_potions <= EIGHT_BITS_MAX, errors::BEAST_MAX_EXTRA_LIVES);
+
+            let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
+            let beast_dispatcher = IERC721Dispatcher { contract_address: summit_config.beast_address };
+
+            let summit_owner = beast_dispatcher.owner_of(summit_beast_token_id.into());
+            assert(summit_owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
+
+            let mut beast = InternalSummitImpl::_get_beast(world, beast_token_id);
+
+            // Apply extra life potions
+            let mut potions_to_use = extra_life_potions;
+
+            // Prevent u8 overflow
+            if beast.live.extra_lives > EIGHT_BITS_MAX - extra_life_potions {
+                potions_to_use = EIGHT_BITS_MAX - beast.live.extra_lives;
+            }
+
+            beast.live.extra_lives += potions_to_use;
+            InternalSummitImpl::_burn_consumable(summit_config.extra_life_potion_address, potions_to_use);
+
+            // update the live stats of the beast
+            world.write_model(@beast.live);
+
+            InternalSummitImpl::_emit_game_event(
+                ref world, GameEventDetails::update_beast(UpdateBeastEvent { live_stats: beast.live }),
+            );
+        }
+
+        fn load_beasts(ref self: ContractState, beast_token_ids: Span<u32>) {
+            let mut world = self.world(@DEFAULT_NS());
+            let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
+            let prev_summit_address = summit_config.prev_summit_address;
+            let prev_summit_dispatcher = ISummitSystemDispatcher { contract_address: prev_summit_address };
+
+            let mut i = 0;
+            while (i < beast_token_ids.len()) {
+                let beast_token_id = *beast_token_ids.at(i);
+
+                let beast = InternalSummitImpl::_get_beast(world, beast_token_id);
+                assert(beast.live.bonus_xp == 0 && beast.live.bonus_health == 0, 'Beast Initialized');
+
+                let beast = prev_summit_dispatcher.get_beast(beast_token_id);
+                world.write_model(@beast.live);
+                i += 1;
+            }
+        }
+
         fn get_summit_data(self: @ContractState) -> (Beast, SummitHistory, ContractAddress) {
             let world = self.world(@DEFAULT_NS());
             let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
@@ -440,10 +380,21 @@ pub mod summit_systems {
             Beast { fixed, live }
         }
 
-        fn get_combat_spec(self: Beast) -> CombatSpec {
+        fn get_combat_spec(
+            self: Beast, dungeon_address: ContractAddress, beast_data: IBeastSystemsDispatcher,
+        ) -> CombatSpec {
             let beast_tier = ImplBeast::get_tier(self.fixed.id);
             let beast_type = ImplBeast::get_type(self.fixed.id);
-            let level = self.fixed.level;
+            let beast_hash = ImplBeast::get_beast_hash(self.fixed.id, self.fixed.prefix, self.fixed.suffix);
+
+            let kill_count = beast_data.get_entity_stats(dungeon_address, beast_hash).adventurers_killed;
+            let kill_bonus_levels: u16 = if kill_count > 50 {
+                50
+            } else {
+                kill_count.try_into().unwrap()
+            };
+
+            let level = self.fixed.level + Self::_get_level_from_xp(self.live.bonus_xp).into() + kill_bonus_levels;
 
             // TODO: disable specials until we think of a good way to use them
             let specials = SpecialPowers { special1: 0, special2: 0, special3: 0 };
@@ -500,45 +451,191 @@ pub mod summit_systems {
             world.write_model(@Summit { summit_id: SUMMIT_ID, beast_token_id });
         }
 
-        /// @title attack
-        /// @notice this function is used to process a beast attacking another beast
-        /// @param attacker the beast that is attacking
-        /// @param defender a ref to the beast that is defending
-        /// @return a tuple containing the combat result and a bool indicating if the defender died
-        /// @dev this function only mutates the defender
-        fn _attack(
-            ref world: WorldStorage, attacker: Beast, ref defender: Beast, attack_potions: u8,
-        ) -> (CombatResult, bool) {
-            let attacker_combat_spec = attacker.get_combat_spec();
-            let defender_combat_spec = defender.get_combat_spec();
-            let minimum_damage = MINIMUM_DAMAGE;
+        fn _attack_summit(
+            ref world: WorldStorage,
+            attacking_beast_token_ids: Span<u32>,
+            revival_potions: u8,
+            attack_potions: u8,
+            extra_life_potions: u8,
+        ) {
+            // assert the provided defending beast is the summit beast
+            let summit_beast_token_id = Self::_get_summit_beast_token_id(world);
 
-            let attacker_strength = attack_potions;
-            let defender_strength = 0;
+            // assert consumable amounts
+            assert(attack_potions <= EIGHT_BITS_MAX, errors::MAX_ATTACK_POTION);
+            assert(extra_life_potions <= EIGHT_BITS_MAX, errors::BEAST_MAX_EXTRA_LIVES);
 
-            // TODO: incorporate critical hit
-            let critical_hit_chance = 0;
-            let critical_hit_rnd = 0;
+            let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
+            let beast_dispatcher = IERC721Dispatcher { contract_address: summit_config.beast_address };
+            let beast_data = IBeastSystemsDispatcher { contract_address: summit_config.beast_data_address };
 
-            let combat_result = ImplCombat::calculate_damage(
-                attacker_combat_spec,
-                defender_combat_spec,
-                minimum_damage,
-                attacker_strength,
-                defender_strength,
-                critical_hit_chance,
-                critical_hit_rnd,
-            );
+            let summit_owner = beast_dispatcher.owner_of(summit_beast_token_id.into());
 
-            if combat_result.total_damage >= defender.live.current_health {
-                defender.live.current_health = 0;
-            } else {
-                defender.live.current_health -= combat_result.total_damage;
+            let mut defending_beast = Self::_get_beast(world, summit_beast_token_id);
+            let defender_combat_spec = defending_beast.get_combat_spec(summit_config.dungeon_address, beast_data);
+
+            let mut remaining_attack_potions = attack_potions;
+            let mut remaining_revival_potions = revival_potions;
+
+            let mut game_events: Array<GameEventDetails> = array![];
+            let current_time = get_block_timestamp();
+
+            let mut i = 0;
+            while (i < attacking_beast_token_ids.len()) {
+                let attacking_beast_token_id = *attacking_beast_token_ids.at(i);
+
+                // assert the caller owns the beast they attacking with
+                let beast_owner = beast_dispatcher.owner_of(attacking_beast_token_id.into());
+                assert(beast_owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
+
+                // assert not attacking own beast
+                assert(beast_owner != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
+
+                // get stats for the beast that is attacking
+                let mut attacking_beast = Self::_get_beast(world, attacking_beast_token_id);
+                let attacker_combat_spec = attacking_beast.get_combat_spec(summit_config.dungeon_address, beast_data);
+
+                // assert the attacking beast is alive
+                remaining_revival_potions =
+                    Self::_use_revival_potions(
+                        ref attacking_beast, ref remaining_revival_potions, summit_config, beast_data,
+                    );
+
+                // reset health to starting health plus any bonus health they have accrued
+                // @dev beasts attack till death so we don't need any additional logic
+                attacking_beast.live.current_health = attacking_beast.fixed.health + attacking_beast.live.bonus_health;
+
+                let attacker_combat_result = ImplCombat::calculate_damage(
+                    attacker_combat_spec, defender_combat_spec, MINIMUM_DAMAGE, remaining_attack_potions, 0, 0, 0,
+                );
+                let defender_combat_result = ImplCombat::calculate_damage(
+                    defender_combat_spec, attacker_combat_spec, MINIMUM_DAMAGE, 0, 0, 0, 0,
+                );
+
+                // Store total damage for event
+                let mut total_damage: u32 = 0;
+
+                // loop until the attacking beast is dead or the summit beast is dead
+                loop {
+                    // if either beast is dead, break
+                    if attacking_beast.live.current_health == 0 || defending_beast.live.current_health == 0 {
+                        break;
+                    }
+
+                    // attack the summit beast
+                    if attacker_combat_result.total_damage >= defending_beast.live.current_health {
+                        total_damage += defending_beast.live.current_health.into();
+                        defending_beast.live.current_health = 0;
+                    } else {
+                        total_damage += attacker_combat_result.total_damage.into();
+                        defending_beast.live.current_health -= attacker_combat_result.total_damage;
+                    }
+
+                    Self::_use_extra_life(ref defending_beast);
+
+                    // if the defending beast is still alive
+                    if defending_beast.live.current_health != 0 {
+                        // it counter attacks
+                        if defender_combat_result.total_damage >= attacking_beast.live.current_health {
+                            attacking_beast.live.current_health = 0;
+                        } else {
+                            attacking_beast.live.current_health -= defender_combat_result.total_damage;
+                        }
+                    }
+                };
+
+                // reset attack streak if 2x base revival time has passed since last death
+                if attacking_beast.live.last_death_timestamp + BASE_REVIVAL_TIME_SECONDS * 2 < current_time {
+                    attacking_beast.live.attack_streak = 0;
+                }
+
+                // check if max xp is reached
+                if Self::_beast_can_get_xp(attacking_beast) {
+                    attacking_beast.live.bonus_xp += 10 + attacking_beast.live.attack_streak.into();
+                }
+
+                // increase attack streak if less than 10
+                if attacking_beast.live.attack_streak < 10 {
+                    attacking_beast.live.attack_streak += 1;
+                }
+
+                // Remove attack potions
+                remaining_attack_potions = 0;
+
+                if attacking_beast.live.current_health == 0 {
+                    // set death timestamp for prev summit beast
+                    attacking_beast.live.last_death_timestamp = current_time;
+                    attacking_beast.live.num_deaths += 1;
+                    attacking_beast.live.last_killed_by = summit_beast_token_id;
+                    // update the live stats of the attacking beast
+                    world.write_model(@attacking_beast.live);
+                } else if defending_beast.live.current_health == 0 {
+                    // finalize the summit history for prev summit beast
+                    Self::_finalize_summit_history(ref world, ref defending_beast, summit_owner);
+
+                    // set death timestamp for prev summit beast
+                    defending_beast.live.last_death_timestamp = current_time;
+
+                    // initialize summit history for the new beast
+                    Self::_init_summit_history(ref world, attacking_beast_token_id);
+
+                    // set the new summit beast
+                    Self::_set_summit_beast(ref world, attacking_beast_token_id);
+
+                    // Apply extra life potions
+                    attacking_beast.live.extra_lives = extra_life_potions;
+                    Self::_burn_consumable(summit_config.extra_life_potion_address, extra_life_potions);
+
+                    // update the live stats of the attacking beast
+                    world.write_model(@attacking_beast.live);
+                }
+
+                game_events
+                    .append(
+                        GameEventDetails::attack(
+                            AttackEvent {
+                                beast: Self::_get_beast_event(attacking_beast),
+                                live_stats: attacking_beast.live,
+                                summit_live_stats: defending_beast.live,
+                                attack_potions: remaining_attack_potions,
+                                damage: total_damage,
+                                owner: beast_owner,
+                                timestamp: current_time,
+                            },
+                        ),
+                    );
+
+                if defending_beast.live.current_health == 0 {
+                    game_events
+                        .append(
+                            GameEventDetails::summit(
+                                SummitEvent {
+                                    beast: Self::_get_beast_event(attacking_beast),
+                                    live_stats: attacking_beast.live,
+                                    owner: beast_owner,
+                                    timestamp: current_time,
+                                },
+                            ),
+                        );
+
+                    break;
+                }
+
+                i += 1;
+            };
+
+            // update the live stats of the defending beast after all attacks
+            world.write_model(@defending_beast.live);
+
+            // Burn consumables
+            assert(remaining_revival_potions == 0, 'Unused revival potions');
+            Self::_burn_consumable(summit_config.revive_potion_address, revival_potions);
+            Self::_burn_consumable(summit_config.attack_potion_address, attack_potions);
+
+            while (game_events.len() > 0) {
+                let event = game_events.pop_front().unwrap();
+                Self::_emit_game_event(ref world, event);
             }
-
-            let defender_died = defender.live.current_health == 0;
-
-            (combat_result, defender_died)
         }
 
         fn _burn_consumable(consumable_address: ContractAddress, amount: u8) {
@@ -553,12 +650,23 @@ pub mod summit_systems {
         /// @title _use_revival_potions
         /// @notice this function is used to apply revival potions if needed
         /// @param live_beast_stats the stats of the beast to check
-        fn _use_revival_potions(ref beast: Beast, ref remaining_potions: u8) -> u8 {
+        fn _use_revival_potions(
+            ref beast: Beast,
+            ref remaining_potions: u8,
+            summit_config: SummitConfig,
+            beast_data: IBeastSystemsDispatcher,
+        ) -> u8 {
             let last_death_timestamp = beast.live.last_death_timestamp;
             let current_time = get_block_timestamp();
             let time_since_death = current_time - last_death_timestamp;
 
             if time_since_death < BASE_REVIVAL_TIME_SECONDS {
+                let last_killed_timestamp = Self::_get_last_killed_timestamp(beast, summit_config, beast_data);
+                if last_killed_timestamp < get_block_timestamp()
+                    - (DAY_SECONDS * 14) && time_since_death < REDUCED_REVIVAL_TIME_SECONDS {
+                    return remaining_potions;
+                }
+
                 Self::_assert_beast_can_be_revived(beast, remaining_potions);
 
                 remaining_potions -= beast.live.revival_count + 1;
@@ -569,6 +677,25 @@ pub mod summit_systems {
             }
 
             remaining_potions
+        }
+
+        fn _get_last_killed_timestamp(
+            beast: Beast, summit_config: SummitConfig, beast_data: IBeastSystemsDispatcher,
+        ) -> u64 {
+            let beast_hash = Self::_get_beast_hash(beast.fixed.id, beast.fixed.prefix, beast.fixed.suffix);
+
+            let num_deaths = beast_data.get_collectable_count(summit_config.dungeon_address, beast_hash);
+            let collectable_entity = beast_data
+                .get_collectable(summit_config.dungeon_address, beast_hash, num_deaths - 1);
+            collectable_entity.timestamp
+        }
+
+        fn _get_beast_hash(id: u8, prefix: u8, suffix: u8) -> felt252 {
+            let mut data = array![];
+            data.append(id.into());
+            data.append(prefix.into());
+            data.append(suffix.into());
+            poseidon_hash_span(data.span())
         }
 
         /// @title beast_can_get_xp

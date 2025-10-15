@@ -22,5 +22,13 @@ export const useQueries = () => {
       .withLimit(10000)
   };
 
-  return { gameEventsQuery };
+  const gameModelsQuery = () => {
+    return new GameQueryBuilder()
+      .withEntityModels([
+        `${currentNetworkConfig.namespace}-LiveBeastStats`,
+      ])
+      .withLimit(1)
+  };
+
+  return { gameEventsQuery, gameModelsQuery };
 };

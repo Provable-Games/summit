@@ -90,7 +90,7 @@ export const useSystemCalls = () => {
    * @param beastIds The IDs of the beasts to attack
    * @param appliedPotions The potions to apply to the beasts
    */
-  const attack = (beastIds: number[], appliedPotions: AppliedPotions) => {
+  const attack = (beastIds: number[], appliedPotions: AppliedPotions, safeAttack: boolean) => {
     let txs: any[] = [];
 
     if (appliedPotions.revive > 0) {
@@ -108,11 +108,19 @@ export const useSystemCalls = () => {
       txs.push(approvePotions(extraLifeAddress, appliedPotions.extraLife));
     }
 
-    txs.push({
-      contractAddress: SUMMIT_ADDRESS,
-      entrypoint: "attack",
-      calldata: CallData.compile([summit.beast.token_id, beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife]),
-    });
+    if (safeAttack) {
+      txs.push({
+        contractAddress: SUMMIT_ADDRESS,
+        entrypoint: "attack",
+        calldata: CallData.compile([summit.beast.token_id, beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife]),
+      });
+    } else {
+      txs.push({
+        contractAddress: SUMMIT_ADDRESS,
+        entrypoint: "attack_unsafe",
+        calldata: CallData.compile([beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife]),
+      });
+    }
 
     return txs;
   };

@@ -5,9 +5,11 @@ import { useGameTokens } from '@/dojo/useGameTokens';
 import { useEffect, useState } from 'react';
 import { lookupAddresses } from '@cartridge/controller';
 import { useStarkProfile } from '@starknet-react/core';
+import { useGameStore } from '@/stores/gameStore';
 
-function Leaderboard(props) {
+function Leaderboard() {
   const { beastsRegistered } = useStatistics()
+  const { summit } = useGameStore()
   const { getBigFive } = useGameTokens()
   const [bigFive, setBigFive] = useState([])
   const [loadingBigFive, setLoadingBigFive] = useState(true)
@@ -39,7 +41,7 @@ function Leaderboard(props) {
     }
 
     fetchBigFive()
-  }, [])
+  }, [summit?.beast?.token_id])
 
   const formatRewards = (rewards) => {
     // rewards is already a number from getBigFive
@@ -108,45 +110,6 @@ function Leaderboard(props) {
           </Box>
         )}
 
-        {/* <Box sx={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', mt: 1, mb: 1 }}>
-          <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
-
-          <Box sx={{ width: '50%', height: '18px', border: '2px solid #07323d', textAlign: 'center', borderRadius: '10px', background: '#ddcdaa' }}>
-            <Typography letterSpacing={'1px'} fontWeight={'bold'}>
-              Potion cost
-            </Typography>
-          </Box>
-
-          <Box sx={{ width: '25%', height: '2px', background: '#07323d' }} />
-        </Box>
-
-        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            Revive potion
-          </Typography>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            ${potionPrices.revive}
-          </Typography>
-        </Box>
-
-        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            Attack potion
-          </Typography>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            ${potionPrices.attack}
-          </Typography>
-        </Box>
-
-        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between' }}>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            Extra life potion
-          </Typography>
-          <Typography sx={{ letterSpacing: '0.5px' }}>
-            ${potionPrices.extraLife}
-          </Typography>
-        </Box> */}
-
         <Box sx={styles.sectionHeader}>
           <Typography sx={styles.sectionTitle}>
             STATS
@@ -172,7 +135,7 @@ export default Leaderboard;
 
 const styles = {
   container: {
-    width: '295px',
+    width: '250px',
     background: `${gameColors.darkGreen}90`,
     backdropFilter: 'blur(12px) saturate(1.2)',
     border: `2px solid ${gameColors.accentGreen}60`,
