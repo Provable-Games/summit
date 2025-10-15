@@ -74,7 +74,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     )) {
       setSummit(summitBeast);
     }
-  }, [summit, getSummitData, setSummit]);
+  }, [summit]);
 
   const subscribeSummitBeast = useCallback(async () => {
     if (summitIntervalRef.current) {
