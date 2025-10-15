@@ -66,9 +66,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     if (summitBeast && (
       !summit ||
-      (summitBeast.beast.current_health < summit?.beast.current_health && summitBeast.beast.extra_lives <= summit?.beast.extra_lives) ||
-      summitBeast.beast.extra_lives < summit?.beast.extra_lives ||
-      summitBeast.beast.bonus_health > summit?.beast.bonus_health ||
+
       summitBeast.beast.token_id !== summit?.beast.token_id
     )) {
       setSummit(summitBeast);
