@@ -12,6 +12,7 @@ import {
   useReducer,
   useState,
   useRef,
+  useCallback,
 } from "react";
 import { useController } from "./controller";
 
@@ -61,19 +62,21 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     processNextEvent();
   }, [eventQueue]);
 
-  const fetchSummitData = async () => {
+  const fetchSummitData = useCallback(async () => {
     const summitBeast = await getSummitData();
-
+    
     if (summitBeast && (
       !summit ||
-
+      (summitBeast.beast.current_health < summit?.beast.current_health && summitBeast.beast.extra_lives <= summit?.beast.extra_lives) ||
+      summitBeast.beast.extra_lives < summit?.beast.extra_lives ||
+      summitBeast.beast.bonus_health > summit?.beast.bonus_health ||
       summitBeast.beast.token_id !== summit?.beast.token_id
     )) {
       setSummit(summitBeast);
     }
-  }
+  }, [summit]);
 
-  const subscribeSummitBeast = async () => {
+  const subscribeSummitBeast = useCallback(async () => {
     if (summitIntervalRef.current) {
       clearInterval(summitIntervalRef.current);
     }
@@ -83,7 +86,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }, 2000);
 
     summitIntervalRef.current = interval;
-  };
+  }, [fetchSummitData]);
+
+  // Recreate the interval when subscribeSummitBeast changes (which happens when summit changes)
+  useEffect(() => {
+    subscribeSummitBeast();
+  }, [subscribeSummitBeast]);
 
   const subscribeBeastUpdates = async () => {
     if (subscription) {
