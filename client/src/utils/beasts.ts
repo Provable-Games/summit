@@ -90,18 +90,27 @@ export const calculateBattleResult = (beast: Beast, summit: Beast, potions: numb
   }
 }
 
+export const getBeastRevivalTime = (beast: Beast): number => {
+  let revivalTime = 86400000;
+
+  if (beast.last_dm_death_timestamp < Date.now() - 1209600000) {
+    revivalTime -= 28800000;
+  }
+
+  if (beast.stats.spirit) {
+    revivalTime -= 43200000;
+  }
+
+  return revivalTime;
+}
+
 export const getBeastCurrentHealth = (beast: Beast): number => {
   if (beast.current_health === null || (beast.last_death_timestamp === 0 && beast.current_health === 0)) {
     return beast.health + beast.bonus_health
   }
 
-  if (beast.current_health === 0) {
-    const revivalTimestamp = (beast.last_death_timestamp * 1000) + (23 * 60 * 60 * 1000);
-    const timeRemaining = revivalTimestamp - Date.now();
-
-    if (timeRemaining <= 0) {
-      return beast.health + beast.bonus_health
-    }
+  if (beast.current_health === 0 && beast.last_death_timestamp * 1000 + beast.revival_time < Date.now()) {
+    return beast.health + beast.bonus_health
   }
 
   return beast.current_health

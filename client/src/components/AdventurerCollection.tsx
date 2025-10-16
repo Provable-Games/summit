@@ -4,9 +4,25 @@ import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
 import { Box, Tooltip, Typography } from "@mui/material";
 import React, { useMemo } from 'react';
 import { gameColors } from '../utils/themes';
+import AdventurerProfile from './AdventurerProfile';
 
 function AdventurerCollection() {
-  const { adventurerCollection, selectedAdventurers, setSelectedAdventurers } = useGameStore()
+  const { adventurerCollection, selectedAdventurers, setSelectedAdventurers, killedByAdventurers } = useGameStore()
+
+  // Sort adventurers: killedByAdventurers first, then by level
+  const sortedAdventurers = useMemo(() => {
+    return [...adventurerCollection].sort((a, b) => {
+      const aIsKilledBy = killedByAdventurers.includes(a.id)
+      const bIsKilledBy = killedByAdventurers.includes(b.id)
+
+      // If one is killedBy and the other isn't, killedBy comes first
+      if (aIsKilledBy && !bIsKilledBy) return -1
+      if (!aIsKilledBy && bIsKilledBy) return 1
+
+      // If both are in the same group, sort by level (descending)
+      return b.level - a.level
+    })
+  }, [adventurerCollection, killedByAdventurers])
 
   const selectAdventurer = (adventurer) => {
     if (selectedAdventurers.find((selected: Adventurer) => selected.id === adventurer.id)) {
@@ -18,25 +34,25 @@ function AdventurerCollection() {
 
   const selectAllAdventurers = () => {
     // If all adventurers are selected, deselect all
-    if (adventurerCollection.every(adventurer => selectedAdventurers.some(selected => selected.id === adventurer.id))) {
+    if (sortedAdventurers.every(adventurer => selectedAdventurers.some(selected => selected.id === adventurer.id))) {
       setSelectedAdventurers([])
     } else {
       // Select all adventurers
-      setSelectedAdventurers([...adventurerCollection])
+      setSelectedAdventurers([...sortedAdventurers])
     }
   }
 
   // Helper to check if all adventurers are selected
   const allAdventurersSelected = useMemo(() => {
-    return adventurerCollection.length > 0 && adventurerCollection.every(adventurer =>
+    return sortedAdventurers.length > 0 && sortedAdventurers.every(adventurer =>
       selectedAdventurers.some(selected => selected.id === adventurer.id)
     );
-  }, [adventurerCollection, selectedAdventurers]);
+  }, [sortedAdventurers, selectedAdventurers]);
 
   return (
     <Box sx={styles.container}>
       {/* Adventurer Grid with Utility Button */}
-      {adventurerCollection.length > 0 && (
+      {sortedAdventurers.length > 0 && (
         <Box sx={styles.adventurerGridContainer}>
           {/* Utility Button */}
           <Box sx={styles.utilityButtonsContainer}>
@@ -50,18 +66,38 @@ function AdventurerCollection() {
           {/* Adventurer Grid */}
           <Box sx={styles.adventurerGrid}>
             {React.Children.toArray(
-              adventurerCollection.map(adventurer => {
+              sortedAdventurers.map(adventurer => {
                 const isSelected = selectedAdventurers.some(selected => selected.id === adventurer.id)
-                const healthGiven = adventurer.level
+                const healthGiven = killedByAdventurers.includes(adventurer.id) ? adventurer.level * 10 : adventurer.level
+                const isKilledBy = killedByAdventurers.includes(adventurer.id)
 
-                return <Box
-                  onClick={() => { selectAdventurer(adventurer); }}
-                  sx={[
-                    styles.adventurerCard,
-                    isSelected && styles.selectedCard,
-                    ((selectedAdventurers.length > 0) && !isSelected) && { opacity: 0.5 }
-                  ]}
+                return <Tooltip
+                  key={adventurer.id}
+                  title={<AdventurerProfile adventurer={adventurer} />}
+                  placement="top"
+                  arrow
+                  PopperProps={{
+                    sx: {
+                      '& .MuiTooltip-tooltip': {
+                        backgroundColor: 'transparent',
+                        maxWidth: 'none',
+                        padding: 0,
+                      },
+                      '& .MuiTooltip-arrow': {
+                        color: '#d0c98d',
+                      }
+                    }
+                  }}
                 >
+                  <Box
+                    onClick={() => { selectAdventurer(adventurer); }}
+                    sx={[
+                      styles.adventurerCard,
+                      isKilledBy && styles.killedByCard,
+                      isSelected && styles.selectedCard,
+                      ((selectedAdventurers.length > 0) && !isSelected) && { opacity: 0.5 }
+                    ]}
+                  >
                   {/* Glow effect for selected cards */}
                   {isSelected && (
                     <Box sx={styles.glowEffect} />
@@ -77,7 +113,7 @@ function AdventurerCollection() {
                   </Box>
 
                   {/* Adventurer Name */}
-                  <Typography sx={styles.adventurerName}>
+                  <Typography sx={[styles.adventurerName, isKilledBy && styles.killedByText]}>
                     Adventurer #{adventurer.id}
                   </Typography>
 
@@ -99,7 +135,8 @@ function AdventurerCollection() {
                       </Typography>
                     </Box>
                   </Box>
-                </Box>
+                  </Box>
+                </Tooltip>
               })
             )}
           </Box>
@@ -271,6 +308,12 @@ const styles = {
     textTransform: 'uppercase',
     textShadow: `0 1px 1px ${gameColors.darkGreen}`,
     color: gameColors.brightGreen,
+  },
+  killedByText: {
+    color: gameColors.brightGreen,
+  },
+  killedByCard: {
+    border: `1px solid ${gameColors.brightGreen}`,
   },
   utilityButton: {
     position: 'relative',

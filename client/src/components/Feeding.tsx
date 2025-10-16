@@ -1,19 +1,34 @@
+import { useGameTokens } from '@/dojo/useGameTokens'
 import { useGameStore } from '@/stores/gameStore'
+import { Beast } from '@/types/game'
 import { Box, Typography } from '@mui/material'
 import { motion, useAnimationControls } from 'framer-motion'
+import { useEffect } from 'react'
 import { fetchBeastSummitImage, normaliseHealth } from '../utils/beasts'
 import { gameColors } from '../utils/themes'
 import { fadeVariant } from '../utils/variants'
 
 function Feeding() {
-  const { selectedBeasts, collection } = useGameStore()
-  const beast = collection.find(beast => beast.token_id === selectedBeasts[0].token_id)
+  const { getKilledBy } = useGameTokens()
+  const { selectedBeasts, collection, setKilledByAdventurers } = useGameStore()
   const controls = useAnimationControls()
 
+  const beast = collection.find((beast: Beast) => beast.token_id === selectedBeasts[0].token_id)
   const name = beast.prefix ? `"${beast.prefix} ${beast.suffix}" ${beast.name}` : beast.name
+
+  useEffect(() => {
+    const fetchKilledBy = async () => {
+      let killedBy = await getKilledBy(beast)
+      setKilledByAdventurers(killedBy)
+    }
+    if (beast) {
+      fetchKilledBy()
+    }
+  }, [beast])
 
   return (
     <Box sx={styles.feedingContainer}>
+
       <motion.div
         style={styles.mainContainer}
         variants={fadeVariant}

@@ -5,6 +5,7 @@ interface GameState {
   summit: Summit | null;
   lastAttack: number | null;
   showFeedingGround: boolean;
+  killedByAdventurers: number[];
   collection: Beast[];
   loadingCollection: boolean;
   attackInProgress: boolean;
@@ -18,6 +19,7 @@ interface GameState {
   setSummit: (summit: Summit | null) => void;
   setLastAttack: (lastAttack: number | null) => void;
   setShowFeedingGround: (showFeedingGround: boolean) => void;
+  setKilledByAdventurers: (killedByAdventurers: number[]) => void;
   setCollection: (collection: Beast[]) => void;
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => void;
   setLoadingCollection: (loadingCollection: boolean) => void;
@@ -34,6 +36,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   summit: null,
   lastAttack: null,
   showFeedingGround: false,
+  killedByAdventurers: [],
   collection: [],
   adventurerCollection: [],
   loadingCollection: false,
@@ -52,6 +55,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       lastAttack: null,
       showFeedingGround: false,
+      killedByAdventurers: [],
       collection: [],
       adventurerCollection: [],
       loadingCollection: false,
@@ -71,6 +75,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setSummit: (summit: Summit | null) => set({ summit }),
   setLastAttack: (lastAttack: number | null) => set({ lastAttack }),
   setShowFeedingGround: (showFeedingGround: boolean) => set({ showFeedingGround }),
+  setKilledByAdventurers: (killedByAdventurers: number[]) => set({ killedByAdventurers }),
   setCollection: (collection: Beast[]) => set({ collection }),
   setLoadingCollection: (loadingCollection: boolean) => set({ loadingCollection }),
   setAttackInProgress: (attackInProgress: boolean) => set({ attackInProgress }),

@@ -21,19 +21,24 @@ export interface Beast {
   bonus_health: number;
   bonus_xp: number;
   attack_streak: number;
-  num_deaths: number;
   last_death_timestamp: number;
-  last_killed_by: number;
   revival_count: number;
+  revival_time: number;
   extra_lives: number;
   has_claimed_starter_kit: boolean;
   rewards_earned: number;
+  stats: Stats;
   rank?: number;
   last_dm_death_timestamp?: number;
   adventurers_killed?: number;
   combat?: Combat;
 }
 
+export interface Stats {
+  spirit: boolean;
+  luck: boolean;
+  specials: boolean;
+}
 export interface Combat {
   capture: boolean;
   damage: number;

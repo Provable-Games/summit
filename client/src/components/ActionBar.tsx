@@ -25,7 +25,7 @@ function ActionBar(props: ActionBarProps) {
   const { selectedBeasts, summit, showFeedingGround, setAttackInProgress,
     selectedAdventurers, attackInProgress, collection, setShowFeedingGround,
     feedingInProgress, adventurerCollection, appliedPotions, setAppliedPotions,
-    setFeedingInProgress, setSelectedAdventurers, setAdventurerCollection } = useGameStore();
+    setFeedingInProgress, setSelectedAdventurers, setAdventurerCollection, killedByAdventurers } = useGameStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
@@ -117,7 +117,10 @@ function ActionBar(props: ActionBarProps) {
 
               {selectedAdventurers.length > 0 && <Box display={'flex'} gap={'4px'} alignItems={'center'}>
                 <Typography sx={styles.statText} variant='h6'>
-                  +{selectedAdventurers.reduce((sum, adventurer) => sum + adventurer.level, 0)}
+                  +{selectedAdventurers.reduce((sum, adventurer) => {
+                    const healthGiven = killedByAdventurers.includes(adventurer.id) ? adventurer.level * 10 : adventurer.level
+                    return sum + healthGiven
+                  }, 0)}
                 </Typography>
                 <FavoriteIcon fontSize='small' htmlColor={gameColors.red} />
               </Box>}
@@ -171,7 +174,7 @@ function ActionBar(props: ActionBarProps) {
               }
             </Box>
           </Box>
-          {/* <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+          <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
             <Typography sx={styles.tooltipTitle}>Safe Attack</Typography>
             <Typography sx={[styles.tooltipText, { lineHeight: 1.2 }]}>
               Attack only if Summit beast has not changed
@@ -207,7 +210,7 @@ function ActionBar(props: ActionBarProps) {
                 }}
               />
             </Box>
-          </Tooltip> */}
+          </Tooltip>
         </Box>}
 
       {/* Divider 1 */}
