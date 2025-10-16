@@ -26,6 +26,7 @@ export const useQueries = () => {
     return new GameQueryBuilder()
       .withEntityModels([
         `${currentNetworkConfig.namespace}-LiveBeastStats`,
+        `${currentNetworkConfig.namespace}-Summit`,
       ])
       .withLimit(1)
   };
