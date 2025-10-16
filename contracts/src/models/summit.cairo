@@ -1,5 +1,4 @@
 use starknet::ContractAddress;
-use summit::models::beast::LiveBeastStats;
 
 #[derive(Copy, Drop, Serde, Introspect)]
 #[dojo::model]
@@ -34,68 +33,4 @@ pub struct SummitHistory {
     #[key]
     pub lost_at: u64,
     pub taken_at: u64,
-}
-
-// ------------------------------------------ //
-// ------------ Events ---------------------- //
-// ------------------------------------------ //
-#[derive(Introspect, Copy, Drop, Serde)]
-#[dojo::event]
-pub struct GameEvent {
-    #[key]
-    pub summit_id: u8,
-    pub details: GameEventDetails,
-}
-
-#[derive(Introspect, Copy, Drop, Serde)]
-pub enum GameEventDetails {
-    summit: SummitEvent,
-    attack: AttackEvent,
-    feed: FeedEvent,
-    update_beast: UpdateBeastEvent,
-}
-
-#[derive(Introspect, Copy, Drop, Serde)]
-pub struct UpdateBeastEvent {
-    pub live_stats: LiveBeastStats,
-}
-
-#[derive(Introspect, Copy, Drop, Serde)]
-pub struct SummitEvent {
-    pub beast: BeastEvent,
-    pub live_stats: LiveBeastStats,
-    pub owner: ContractAddress,
-    pub timestamp: u64,
-}
-
-#[derive(Introspect, Copy, Drop, Serde)]
-pub struct AttackEvent {
-    pub beast: BeastEvent,
-    pub live_stats: LiveBeastStats,
-    pub summit_live_stats: LiveBeastStats,
-    pub attack_potions: u8,
-    pub damage: u32,
-    pub owner: ContractAddress,
-    pub timestamp: u64,
-}
-
-#[derive(Introspect, Copy, Drop, Serde)]
-pub struct FeedEvent {
-    pub beast: BeastEvent,
-    pub live_stats: LiveBeastStats,
-    pub health_increase: u16,
-    pub adventurer_count: u32,
-    pub owner: ContractAddress,
-    pub timestamp: u64,
-}
-
-#[derive(Introspect, Copy, Drop, Serde)]
-pub struct BeastEvent {
-    pub id: u8,
-    pub prefix: u8,
-    pub suffix: u8,
-    pub level: u16,
-    pub health: u16,
-    pub shiny: u8,
-    pub animated: u8,
 }
