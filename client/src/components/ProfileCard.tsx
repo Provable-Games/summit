@@ -8,6 +8,7 @@ import { useAccount, useDisconnect } from '@starknet-react/core';
 import { useState } from 'react';
 import ClaimStarterPack from './dialogs/ClaimStarterPack';
 import ConnectWallet from './dialogs/ConnectWallet';
+import BeastUpgradeModal from './dialogs/BeastUpgradeModal';
 import { gameColors } from '@/utils/themes';
 import { isMobile } from 'react-device-detect';
 
@@ -19,8 +20,13 @@ const ProfileCard = () => {
 
   const [accountDialog, openAccountDialog] = useState(false)
   const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false)
+  const [beastUpgradeDialog, setBeastUpgradeDialog] = useState(false)
 
   const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit)
+  const beastsWithUpgrades = collection.filter(beast => {
+    const totalStats = Object.values(beast.stats).filter(Boolean).length;
+    return (beast.adventurers_killed || 0) > totalStats;
+  })
   const isCartridge = connector?.id === 'controller'
 
   const handleProfileClick = async () => {
@@ -100,7 +106,24 @@ const ProfileCard = () => {
         </Button>
       </Box>}
 
+      {beastsWithUpgrades.length > 0 && <Box sx={styles.upgradeSection}>
+        <Typography sx={styles.upgradeTitle}>
+          BEAST UPGRADES
+        </Typography>
+
+        <Typography sx={styles.starterPackSubtitle}>
+          {beastsWithUpgrades.length} available
+        </Typography>
+
+        <Button sx={styles.upgradeButton} onClick={() => setBeastUpgradeDialog(true)}>
+          <Typography sx={styles.upgradeButtonText}>
+            CHOOSE
+          </Typography>
+        </Button>
+      </Box>}
+
       <ClaimStarterPack open={claimStarterPackDialog} close={() => setClaimStarterPackDialog(false)} />
+      <BeastUpgradeModal open={beastUpgradeDialog} close={() => setBeastUpgradeDialog(false)} />
     </Box>
   )
 }
@@ -271,7 +294,6 @@ const styles = {
         0 0 30px ${gameColors.brightGreen}80,
         0 4px 8px rgba(0, 0, 0, 0.4)
       `,
-      transform: 'translateY(-1px)',
       animation: 'claimGlowHover 0.8s ease-in-out infinite',
     },
     '@keyframes claimGlow': {
@@ -333,5 +355,95 @@ const styles = {
     fontSize: '12px',
     fontWeight: 'bold',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  upgradeSection: {
+    width: '100%',
+    borderTop: `1px solid ${gameColors.accentGreen}40`,
+    mt: 0.5,
+    pt: 0.5,
+    textAlign: 'center',
+  },
+  upgradeTitle: {
+    fontSize: '12px',
+    letterSpacing: '0.5px',
+    color: gameColors.brightGreen,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  upgradeSubtitle: {
+    color: gameColors.lightGreen,
+    fontSize: '11px',
+    mt: '-2px',
+    letterSpacing: '0.5px',
+  },
+  upgradeButton: {
+    background: `linear-gradient(135deg, ${gameColors.brightGreen} 0%, ${gameColors.accentGreen} 100%)`,
+    borderRadius: '6px',
+    width: isMobile ? '100%' : '100px',
+    height: isMobile ? '40px' : '28px',
+    my: '6px',
+    border: `2px solid ${gameColors.brightGreen}`,
+    transition: 'all 0.3s ease',
+    boxShadow: `
+      0 0 20px ${gameColors.brightGreen}50,
+      0 2px 4px rgba(0, 0, 0, 0.3)
+    `,
+    animation: 'upgradeGlow 1.5s ease-in-out infinite',
+    '&:hover': {
+      background: `linear-gradient(135deg, ${gameColors.brightGreen} 20%, ${gameColors.lightGreen} 100%)`,
+      boxShadow: `
+        0 0 30px ${gameColors.brightGreen}80,
+        0 4px 8px rgba(0, 0, 0, 0.4)
+      `,
+      animation: 'upgradeGlowHover 0.8s ease-in-out infinite',
+    },
+    '@keyframes upgradeGlow': {
+      '0%': {
+        boxShadow: `
+          0 0 15px ${gameColors.brightGreen}40,
+          0 2px 4px rgba(0, 0, 0, 0.3)
+        `,
+      },
+      '50%': {
+        boxShadow: `
+          0 0 30px ${gameColors.brightGreen}70,
+          0 2px 4px rgba(0, 0, 0, 0.3)
+        `,
+      },
+      '100%': {
+        boxShadow: `
+          0 0 15px ${gameColors.brightGreen}40,
+          0 2px 4px rgba(0, 0, 0, 0.3)
+        `,
+      },
+    },
+    '@keyframes upgradeGlowHover': {
+      '0%': {
+        boxShadow: `
+          0 0 30px ${gameColors.brightGreen}80,
+          0 4px 8px rgba(0, 0, 0, 0.4)
+        `,
+      },
+      '50%': {
+        boxShadow: `
+          0 0 45px ${gameColors.brightGreen}100,
+          0 4px 8px rgba(0, 0, 0, 0.4)
+        `,
+      },
+      '100%': {
+        boxShadow: `
+          0 0 30px ${gameColors.brightGreen}80,
+          0 4px 8px rgba(0, 0, 0, 0.4)
+        `,
+      },
+    },
+  },
+  upgradeButtonText: {
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    textTransform: 'uppercase',
   },
 }

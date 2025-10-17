@@ -141,10 +141,34 @@ export const useSystemCalls = () => {
     };
   };
 
+  /**
+   * Upgrades beast stats
+   * @param upgrades Array of upgrades with tokenId and upgrade type
+   */
+  const upgradeStats = (upgrades: Array<{tokenId: number; upgrade: string}>) => {
+    // Convert upgrades to the format expected by the contract
+    const beastIds = upgrades.map(u => u.tokenId);
+    const upgradeTypes = upgrades.map(u => {
+      switch(u.upgrade) {
+        case 'spirit': return 0;
+        case 'luck': return 1;
+        case 'specials': return 2;
+        default: return 0;
+      }
+    });
+
+    return {
+      contractAddress: SUMMIT_ADDRESS,
+      entrypoint: "upgrade_stats",
+      calldata: CallData.compile([beastIds, upgradeTypes]),
+    };
+  };
+
   return {
     feed,
     attack,
     claimStarterKit,
+    upgradeStats,
     executeAction,
   };
 };

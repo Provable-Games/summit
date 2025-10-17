@@ -31,7 +31,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     collection, setCollection, setSelectedBeasts, setAppliedPotions, appliedPotions } = useGameStore();
   const { gameModelsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
-  const { executeAction, attack, feed, claimStarterKit } = useSystemCalls();
+  const { executeAction, attack, feed, claimStarterKit, upgradeStats } = useSystemCalls();
   const { tokenBalances, setTokenBalances } = useController();
 
   const [subscription, setSubscription] = useState<any>(null);
@@ -147,6 +147,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     if (action.type === 'claim_starter_kit') {
       txs.push(claimStarterKit(action.beastIds));
+    }
+
+    if (action.type === 'upgrade_stats') {
+      txs.push(upgradeStats(action.upgrades));
     }
 
     const success = await executeAction(txs, setActionFailed);

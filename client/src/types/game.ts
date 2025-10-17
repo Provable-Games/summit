@@ -69,6 +69,7 @@ export interface GameAction {
   adventurerIds?: number[];
   appliedPotions?: AppliedPotions;
   safeAttack?: boolean;
+  upgrades?: Array<{tokenId: number; upgrade: string}>;
 }
 
 import { NETWORKS } from '@/utils/networkConfig';

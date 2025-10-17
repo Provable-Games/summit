@@ -2,6 +2,9 @@ import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import EnergyIcon from '@mui/icons-material/ElectricBolt';
+import CasinoIcon from '@mui/icons-material/Casino';
+import StarIcon from '@mui/icons-material/Star';
 import { Box, Link, Popover, Tooltip, Typography } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
 import { useEffect, useMemo, useState } from 'react';
@@ -131,75 +134,104 @@ function BeastCollection() {
             alt={beast.name}
             style={{ ...styles.beastImage }}
           />
-        </Box>
+
+          {/* Upgrade Icons */}
+          {(beast.stats.spirit || beast.stats.luck || beast.stats.specials) && (
+            <Box sx={styles.upgradeIconsContainer}>
+              {beast.stats.luck && (
+                <Box sx={{ color: '#ff69b4' }}>
+                  <CasinoIcon sx={{ fontSize: '14px' }} />
+                </Box>
+              )}
+              {beast.stats.spirit && (
+                <Box sx={{ color: '#00ffff' }}>
+                  <EnergyIcon sx={{ fontSize: '14px' }} />
+                </Box>
+              )}
+              {beast.stats.specials && (
+                <Box sx={{ color: '#ffd700' }}>
+                  <StarIcon sx={{ fontSize: '14px' }} />
+                </Box>
+              )
+              }
+            </Box >
+          )
+          }
+        </Box >
 
         {/* Beast Name */}
-        <Typography sx={styles.beastName}>
+        < Typography sx={styles.beastName} >
           {beast.name}
-        </Typography>
+        </Typography >
 
         {/* Stats Row */}
-        <Box sx={styles.statsRow}>
+        < Box sx={styles.statsRow} >
           {/* Power */}
-          <Box sx={styles.stat}>
+          < Box sx={styles.stat} >
             <svg width="12" height="12" viewBox="0 0 24 24" fill={gameColors.yellow}>
               <path d="M7 2v11h3v9l7-12h-4l4-8z" />
             </svg>
             <Typography sx={styles.statText}>
               {beast.power}
             </Typography>
-          </Box>
+          </Box >
 
           {/* Health */}
-          <Box sx={styles.stat}>
+          < Box sx={styles.stat} >
             <svg width="12" height="12" viewBox="0 0 24 24" fill={gameColors.red}>
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
             <Typography sx={styles.statText}>
               {isSavage ? summit?.beast.current_health : beast.current_health}
             </Typography>
-          </Box>
-        </Box>
+          </Box >
+        </Box >
 
         {/* Combat Preview */}
-        {battleResult && (
-          <Box sx={[
-            styles.combatPreview,
-            battleResult.capture && styles.combatCapture,
-          ]}>
-            <Box sx={styles.combatContent}>
-              <img src={'/images/sword.png'} alt='' height={'12px'} />
-              <Typography sx={[
-                styles.combatText,
-                battleResult.capture ? styles.combatTextSuccess : styles.combatTextFailure
-              ]}>
-                {battleResult.capture
-                  ? `${battleResult.healthLeft} HP LEFT`
-                  : `${battleResult.damage} DMG`
-                }
-              </Typography>
+        {
+          battleResult && (
+            <Box sx={[
+              styles.combatPreview,
+              battleResult.capture && styles.combatCapture,
+            ]}>
+              <Box sx={styles.combatContent}>
+                <img src={'/images/sword.png'} alt='' height={'12px'} />
+                <Typography sx={[
+                  styles.combatText,
+                  battleResult.capture ? styles.combatTextSuccess : styles.combatTextFailure
+                ]}>
+                  {battleResult.capture
+                    ? `${battleResult.healthLeft} HP LEFT`
+                    : `${battleResult.damage} DMG`
+                  }
+                </Typography>
+              </Box>
             </Box>
-          </Box>
-        )}
+          )
+        }
 
         {/* Status indicators */}
-        {isSavage && (
-          <Box sx={styles.savageIndicator}>
-            <Typography sx={styles.savageText}>
-              SUMMIT
-            </Typography>
-          </Box>
-        )}
+        {
+          isSavage && (
+            <Box sx={styles.savageIndicator}>
+              <Typography sx={styles.savageText}>
+                SUMMIT
+              </Typography>
+            </Box>
+          )
+        }
 
         {/* Selection order number */}
-        {isSelected && (
-          <Box sx={styles.selectionIndicator}>
-            <Typography sx={styles.selectionNumber}>
-              {selectedBeasts.findIndex(prevBeast => prevBeast.token_id === beast.token_id) + 1}
-            </Typography>
-          </Box>
-        )}
-      </Box>
+        {
+          isSelected && (
+            <Box sx={styles.selectionIndicator}>
+              <Typography sx={styles.selectionNumber}>
+                {selectedBeasts.findIndex(prevBeast => prevBeast.token_id === beast.token_id) + 1}
+              </Typography>
+            </Box>
+          )
+        }
+      </Box >
     )
   }
 
@@ -699,6 +731,13 @@ const styles = {
     overflow: 'hidden',
     background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.black} 100%)`,
     boxShadow: `inset 0 1px 0 ${gameColors.darkGreen}, inset 0 -1px 0 ${gameColors.black}`,
+  },
+  upgradeIconsContainer: {
+    position: 'absolute',
+    top: '2px',
+    right: '0px',
+    display: 'flex',
+    flexDirection: 'column',
   },
   beastImage: {
     maxWidth: '90%',

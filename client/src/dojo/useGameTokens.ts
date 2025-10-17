@@ -126,7 +126,7 @@ export const useGameTokens = () => {
         shiny: Number(data["Shiny"]),
         animated: Number(data["Animated"]),
         rank: Number(data["Rank"]),
-        adventurers_killed: Number(data["Adventurers Killed"]),
+        adventurers_killed: 2, // Number(data["Adventurers Killed"]),
         last_dm_death_timestamp: Number(data["Last Death Timestamp"]),
         attack_streak: data.attack_streak || 0,
         bonus_health: data.bonus_health || 0,
@@ -141,9 +141,9 @@ export const useGameTokens = () => {
         rewards_earned: parseInt(data.rewards_earned, 16) || 0,
         revival_time: 0,
         stats: {
-          spirit: false,
-          luck: false,
-          specials: false,
+          spirit: true,
+          luck: true,
+          specials: true,
         }
       }
       beast.revival_time = getBeastRevivalTime(beast);
@@ -155,9 +155,16 @@ export const useGameTokens = () => {
   }
 
   const countRegisteredBeasts = async () => {
-    let url = `${currentNetworkConfig.toriiUrl}/sql?query=
-      SELECT COUNT(*) as count FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
+    // Calculate timestamp for 24 hours ago (in seconds)
+    const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - (24 * 60 * 60);
+
+    let q = `
+      SELECT 
+        COUNT(*) as total_count,
+        COUNT(CASE WHEN CAST(last_death_timestamp AS INTEGER) < ${twentyFourHoursAgo} THEN 1 END) as alive_count
+      FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
     `
+    let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
 
     try {
       const sql = await fetch(url, {
@@ -168,10 +175,13 @@ export const useGameTokens = () => {
       })
 
       let data = await sql.json()
-      return data[0].count
+      return {
+        total: data[0].total_count,
+        alive: data[0].alive_count
+      }
     } catch (error) {
       console.error("Error counting beasts:", error);
-      return 0;
+      return { total: 0, alive: 0 };
     }
   }
 
@@ -326,7 +336,6 @@ export const useGameTokens = () => {
     })
 
     let data = await sql.json()
-    console.log(data);
     return data
   }
 

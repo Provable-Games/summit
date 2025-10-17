@@ -8,7 +8,7 @@ import { useStarkProfile } from '@starknet-react/core';
 import { useGameStore } from '@/stores/gameStore';
 
 function Leaderboard() {
-  const { beastsRegistered } = useStatistics()
+  const { beastsRegistered, beastsAlive } = useStatistics()
   const { summit } = useGameStore()
   const { getBigFive } = useGameTokens()
   const [bigFive, setBigFive] = useState([])
@@ -125,6 +125,14 @@ function Leaderboard() {
           </Typography>
         </Box>
 
+        <Box sx={styles.statRow}>
+          <Typography sx={styles.statLabel}>
+            Beasts Alive
+          </Typography>
+          <Typography sx={styles.statValue}>
+            {beastsAlive}
+          </Typography>
+        </Box>
       </Box>
 
     </Box>
@@ -189,11 +197,11 @@ const styles = {
     width: '100%',
   },
   statLabel: {
-    fontSize: '14px',
+    fontSize: '12px',
     color: '#ffedbb',
   },
   statValue: {
-    fontSize: '14px',
+    fontSize: '12px',
     color: '#ffedbb',
     fontWeight: '600',
   },
