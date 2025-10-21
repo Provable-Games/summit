@@ -1,0 +1,661 @@
+import { useGameStore } from '@/stores/gameStore';
+import CasinoIcon from '@mui/icons-material/Casino';
+import EnergyIcon from '@mui/icons-material/ElectricBolt';
+import FlashOnIcon from '@mui/icons-material/FlashOn';
+import StarIcon from '@mui/icons-material/Star';
+import FastForwardIcon from '@mui/icons-material/FastForward';
+import { Box, Typography } from '@mui/material';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import attackPotionIcon from '../assets/images/attack-potion.png';
+import lifePotionIcon from '../assets/images/life-potion.png';
+import { BattleEvent, Beast } from '@/types/game';
+import { fetchBeastImage } from '../utils/beasts';
+import { gameColors } from '../utils/themes';
+import { useGameDirector } from '@/contexts/GameDirector';
+
+interface AttackingBeastsProps {
+  battleEvents?: BattleEvent[];
+}
+
+function AttackingBeasts({ battleEvents = [] }: AttackingBeastsProps) {
+  const { selectedBeasts, appliedPotions, setAttackInProgress, setSelectedBeasts } = useGameStore();
+  const { setPauseUpdates } = useGameDirector();
+  const [isAttacking, setIsAttacking] = useState(false);
+  const [deadBeasts, setDeadBeasts] = useState<Set<number>>(new Set());
+  const [damageNumbers, setDamageNumbers] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastIndex: number }>>([]);
+  const [damageQueue, setDamageQueue] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastIndex: number }>>([]);
+  const [beasts, setBeasts] = useState<Beast[]>([]);
+  const [activeBeastTokenId, setActiveBeastTokenId] = useState<number | null>(null);
+
+
+  // Create enhanced beasts with battle data
+  useEffect(() => {
+    if (selectedBeasts.length > 0) {
+      const enhancedBeasts = selectedBeasts.map(beast => ({
+        ...beast,
+        battle: {
+          attacking_beast_token_id: beast.token_id,
+          defending_beast_token_id: 0, // Summit beast
+          attacks: Array(100).fill(0).map(() => Math.floor(Math.random() * 50) + 20),
+          counter_attacks: Array(100).fill(0).map(() => Math.floor(Math.random() * 50) + 20),
+          attack_potions: 0,
+          xp_gained: Math.floor(Math.random() * 100) + 50
+        }
+      }));
+
+      setBeasts(enhancedBeasts);
+      setDeadBeasts(new Set());
+    }
+  }, [selectedBeasts]);
+
+  useEffect(() => {
+    if (beasts.length > 0 && !activeBeastTokenId) {
+      setActiveBeastTokenId(beasts[0]?.token_id);
+    }
+  }, [beasts]);
+
+  // Build damage queue for the CURRENT active beast only
+  useEffect(() => {
+    if (beasts.length === 0 || activeBeastTokenId === null) return;
+
+    const beast = beasts.find(b => b.token_id === activeBeastTokenId);
+    if (!beast || !beast.battle) return;
+
+    const queue = [];
+    const maxLength = Math.max(beast.battle.attacks.length, beast.battle.counter_attacks.length);
+
+    for (let i = 0; i < maxLength; i++) {
+      // Add attack if it exists
+      if (beast.battle.attacks[i] !== undefined) {
+        queue.push({
+          id: `${beast.token_id}-${i}-attack`,
+          value: beast.battle.attacks[i],
+          type: 'attack' as const,
+          beastIndex: beast.token_id // Store token_id instead of index
+        });
+      }
+
+      // Add counter-attack if it exists
+      if (beast.battle.counter_attacks[i] !== undefined) {
+        queue.push({
+          id: `${beast.token_id}-${i}-counter`,
+          value: beast.battle.counter_attacks[i],
+          type: 'counter' as const,
+          beastIndex: beast.token_id // Store token_id instead of index
+        });
+      }
+    }
+
+    setTimeout(() => {
+      setDamageQueue(queue);
+    }, 500);
+  }, [activeBeastTokenId]);
+
+  // Process damage queue continuously
+  useEffect(() => {
+    if (damageQueue.length === 0) return;
+
+    let currentIndex = 0;
+    const timeouts = [];
+
+    const processNext = () => {
+      if (currentIndex >= damageQueue.length) return;
+
+      const nextDamage = damageQueue[currentIndex];
+
+      // Set attacking state for attack phase
+      if (nextDamage.type === 'attack') {
+        setIsAttacking(true);
+      }
+
+      // Show damage number
+      setDamageNumbers(current => [...current, nextDamage]);
+
+      // Apply counter-attack damage to beast health
+      if (nextDamage.type === 'counter') {
+        setBeasts(prevBeasts => {
+          const newBeasts = [...prevBeasts];
+          const beastIndex = newBeasts.findIndex(b => b.token_id === nextDamage.beastIndex);
+          if (beastIndex === -1) return prevBeasts;
+
+          const newHealth = Math.max(0, newBeasts[beastIndex].current_health - nextDamage.value);
+          newBeasts[beastIndex] = {
+            ...newBeasts[beastIndex],
+            current_health: newHealth
+          };
+
+          if (newHealth === 0) {
+            setDamageQueue([])
+            setDamageNumbers([])
+
+            const deadTokenId = newBeasts[beastIndex].token_id;
+            setDeadBeasts(dead => {
+              const newDeadSet = new Set([...dead, deadTokenId]);
+              const nextBeast = newBeasts.find(b => !newDeadSet.has(b.token_id));
+
+              if (!nextBeast) {
+                setSelectedBeasts([]);
+                setPauseUpdates(false);
+              }
+
+              // Find next alive beast and set as active
+              setTimeout(() => {
+                if (nextBeast) {
+                  setActiveBeastTokenId(nextBeast.token_id);
+                } else {
+                  setAttackInProgress(false);
+                }
+              }, 500);
+
+              return newDeadSet;
+            });
+          }
+
+          return newBeasts;
+        });
+        setIsAttacking(false);
+      }
+
+      // Clean up damage number after display time
+      const cleanupTimeout = setTimeout(() => {
+        setDamageNumbers(prev => prev.filter(d => d.id !== nextDamage.id));
+      }, 1200);
+      timeouts.push(cleanupTimeout);
+
+      currentIndex++;
+      const nextTimeout = setTimeout(processNext, 300);
+      timeouts.push(nextTimeout);
+    };
+
+    processNext();
+
+    return () => {
+      timeouts.forEach(timeout => clearTimeout(timeout));
+    };
+  }, [damageQueue, deadBeasts]);
+
+  const visibleBeasts = beasts.filter(beast => !deadBeasts.has(beast.token_id));
+
+  const handleSkip = () => {
+    // TODO: Implement skip functionality - clear all animations and show results
+    console.log('Skip clicked');
+  };
+
+  return (
+    <Box sx={styles.container}>
+      <Box sx={styles.infoPanel}>
+        <Box sx={styles.beastsRemaining}>
+          <Typography sx={styles.remainingText}>
+            {visibleBeasts.length} Beast{visibleBeasts.length !== 1 ? 's' : ''} Remaining
+          </Typography>
+        </Box>
+        <Box sx={styles.skipButton} onClick={handleSkip}>
+          <FastForwardIcon sx={styles.skipIcon} />
+          <Typography sx={styles.skipButtonText}>Skip All</Typography>
+        </Box>
+      </Box>
+      <Box sx={styles.beastsRow}>
+        <AnimatePresence mode="popLayout">
+          {visibleBeasts.map((beast, index) => {
+            const isActiveBeast = index === 0;
+            const health = beast.current_health;
+            const maxHealth = beast.health + (beast.bonus_health || 0);
+            const healthPercentage = (health / maxHealth) * 100;
+
+            return (
+              <motion.div
+                key={beast.token_id}
+                layout
+                initial={{ opacity: 0, x: 50 }}
+                animate={{
+                  opacity: 1,
+                  x: 0,
+                  scale: isActiveBeast && isAttacking ? 1 : isActiveBeast ? 1 : 0.7,
+                }}
+                exit={{ opacity: 0, scale: 0.3, y: -30 }}
+                transition={{
+                  layout: { type: "spring", stiffness: 400, damping: 30 },
+                  scale: { duration: 0.15 },
+                }}
+                style={{
+                  position: 'relative',
+                  marginLeft: index > 1 ? '-35px' : '0'
+                }}
+              >
+                <Box sx={[
+                  styles.beastCard,
+                  isActiveBeast ? styles.activeBeastCard : styles.waitingBeastCard,
+                  isAttacking && isActiveBeast && styles.attackingCard
+                ]}>
+
+                  {/* Beast image */}
+                  <Box sx={styles.imageContainer}>
+                    <img
+                      src={fetchBeastImage(beast)}
+                      alt={beast.name}
+                      style={styles.beastImage}
+                    />
+                    {/* Upgrade Icons */}
+                    {(beast.stats.spirit || beast.stats.luck || beast.stats.specials) && (
+                      <Box sx={styles.upgradeIconsContainer}>
+                        {beast.stats.luck && (
+                          <Box sx={{ color: '#ff69b4' }}>
+                            <CasinoIcon sx={{ fontSize: '12px' }} />
+                          </Box>
+                        )}
+                        {beast.stats.spirit && (
+                          <Box sx={{ color: '#00ffff' }}>
+                            <EnergyIcon sx={{ fontSize: '12px' }} />
+                          </Box>
+                        )}
+                        {beast.stats.specials && (
+                          <Box sx={{ color: '#ffd700' }}>
+                            <StarIcon sx={{ fontSize: '12px' }} />
+                          </Box>
+                        )}
+                      </Box>
+                    )}
+                  </Box>
+
+                  {/* Beast name */}
+                  <Typography sx={[styles.beastName, index !== 0 && styles.smallBeastName]}>
+                    {beast.name}
+                  </Typography>
+
+                  {/* Health bar - only show for active beast */}
+                  {index === 0 && (
+                    <Box sx={styles.healthBarContainer}>
+                      <Box sx={styles.healthBarBackground}>
+                        <motion.div
+                          style={{
+                            ...styles.healthBarFill,
+                            backgroundColor: healthPercentage > 50 ? gameColors.brightGreen :
+                              healthPercentage > 25 ? gameColors.yellow :
+                                gameColors.red
+                          }}
+                          initial={{ width: '100%' }}
+                          animate={{ width: `${healthPercentage}%` }}
+                          transition={{ duration: 0.5 }}
+                        />
+                      </Box>
+                      <Typography sx={styles.healthText}>
+                        {health}/{maxHealth}
+                      </Typography>
+                    </Box>
+                  )}
+
+                  {/* Potion indicators - only show for active beast */}
+                  {index === 0 && (
+                    <Box sx={styles.potionIndicators}>
+                      {beast.battle?.attack_potions != null && beast.battle.attack_potions > 0 && (
+                        <Box sx={styles.potionIcon}>
+                          <Typography sx={styles.potionText}>{beast.battle.attack_potions}</Typography>
+                          <img src={attackPotionIcon} alt='' height={'14px'} />
+                        </Box>
+                      )}
+                      {appliedPotions.extraLife > 0 && (
+                        <Box sx={styles.potionIcon}>
+                          <Typography sx={styles.potionText}>{appliedPotions.extraLife}</Typography>
+                          <img src={lifePotionIcon} alt='' height={'14px'} />
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+
+                  {/* Stats row - show for all but smaller for waiting */}
+                  <Box sx={[styles.statsRow]}>
+                    <Box sx={[styles.statBox, index !== 0 && styles.smallStatBox]}>
+                      <Typography sx={[styles.statLabel, index !== 0 && styles.smallStatLabel]}>POWER</Typography>
+                      <Box sx={styles.powerValueContainer}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill={gameColors.yellow}>
+                          <path d="M7 2v11h3v9l7-12h-4l4-8z" />
+                        </svg>
+                        <Typography sx={[styles.powerValue]}>{beast.power}</Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={[styles.statBox]}>
+                      <Typography sx={[styles.statLabel, index !== 0 && styles.smallStatLabel]}>TYPE</Typography>
+                      <Typography sx={[styles.typeValue]}>{beast.type}</Typography>
+                    </Box>
+                  </Box>
+                </Box>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+      </Box>
+
+      {/* Damage numbers overlay */}
+      <AnimatePresence>
+        {damageNumbers.map((damage) => (
+          <motion.div
+            key={damage.id}
+            initial={{ opacity: 0, y: 0, scale: 0.8 }}
+            animate={{
+              opacity: [0, 1, 1, 0],
+              y: [-10, -40, -80, -120],
+              scale: [0.8, 1.1, 1, 0.9],
+            }}
+            transition={{
+              duration: 1.2,
+              ease: "easeOut",
+              times: [0, 0.2, 0.8, 1]
+            }}
+            style={{
+              position: 'fixed',
+              top: damage.type === 'attack' ? `calc(50% - 100px)` : `calc(100% - 120px)`,
+              left: damage.type === 'attack' ? 'calc(50% + 120px)' : '180px',
+              zIndex: 100,
+              pointerEvents: 'none',
+            }}
+          >
+            <Typography sx={[
+              styles.damageNumber,
+              styles.counterDamage
+            ]}>
+              -{damage.value}
+            </Typography>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+    </Box>
+  );
+}
+
+export default AttackingBeasts;
+
+const styles: any = {
+  container: {
+    bottom: 0,
+    padding: 2,
+    position: 'absolute',
+    width: '100%',
+    overflow: 'hidden',
+    boxSizing: 'border-box',
+    display: 'flex',
+    gap: 2,
+  },
+  infoPanel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 1,
+    minWidth: { xs: 'auto', sm: '220px' },
+  },
+  beastsRemaining: {
+    width: '100%',
+    background: 'transparent',
+    boxSizing: 'border-box',
+    display: { xs: 'none', sm: 'block' },
+  },
+  remainingText: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: gameColors.accentGreen,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  skipButton: {
+    background: `${gameColors.darkGreen}90`,
+    backdropFilter: 'blur(12px) saturate(1.2)',
+    border: `2px solid ${gameColors.red}60`,
+    borderRadius: '10px',
+    boxShadow: `
+      0 8px 24px rgba(0, 0, 0, 0.6),
+      0 0 0 1px ${gameColors.darkGreen}
+    `,
+    padding: { xs: '10px', sm: '12px' },
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+    minWidth: { xs: '44px', sm: 'auto' },
+    '&:hover': {
+      background: `${gameColors.darkGreen}95`,
+      border: `2px solid ${gameColors.red}80`,
+      boxShadow: `
+        0 8px 24px rgba(0, 0, 0, 0.6),
+        0 0 20px ${gameColors.red}40
+      `,
+    },
+  },
+  skipIcon: {
+    fontSize: '20px',
+    color: gameColors.red,
+    filter: `drop-shadow(0 0 8px ${gameColors.red}40)`,
+  },
+  skipButtonText: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: gameColors.red,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    textShadow: `
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 12px ${gameColors.red}40
+    `,
+    display: { xs: 'none', sm: 'block' },
+  },
+  beastsRow: {
+    display: 'flex',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    flex: 1,
+  },
+  beastCard: {
+    position: 'relative',
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
+    borderRadius: 2,
+    padding: 1,
+    boxShadow: `0 4px 8px rgba(0, 0, 0, 0.4)`,
+    border: `1px solid ${gameColors.accentGreen}40`,
+    transition: 'all 0.3s ease',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0.5
+  },
+  activeBeastCard: {
+    width: '140px',
+    border: `2px solid ${gameColors.accentGreen}`,
+    boxShadow: `0 6px 16px rgba(127, 255, 0, 0.3)`,
+  },
+  waitingBeastCard: {
+    width: '120px',
+    filter: 'brightness(0.85)',
+  },
+  attackingCard: {
+    border: `2px solid ${gameColors.brightGreen}`,
+    boxShadow: `0 0 20px rgba(127, 255, 0, 0.5)`,
+    filter: 'brightness(1.2)',
+  },
+  imageContainer: {
+    position: 'relative',
+    width: '100%',
+    height: '80px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: '4px',
+    borderRadius: '4px',
+    overflow: 'hidden',
+    background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.black} 100%)`,
+    boxShadow: `inset 0 1px 0 ${gameColors.darkGreen}, inset 0 -1px 0 ${gameColors.black}`,
+  },
+  beastImage: {
+    height: '90%',
+  },
+  beastName: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#FFF',
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  healthBarContainer: {
+    position: 'relative',
+  },
+  healthBarBackground: {
+    width: '100%',
+    height: '16px',
+    background: `${gameColors.darkGreen}80`,
+    borderRadius: 1,
+    overflow: 'hidden',
+    border: `1px solid ${gameColors.accentGreen}40`,
+  },
+  healthBarFill: {
+    height: '100%',
+    transition: 'width 0.5s ease',
+  },
+  healthText: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    fontSize: '11px',
+    fontWeight: 'bold',
+    color: '#FFF',
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
+  },
+  potionIndicators: {
+    display: 'flex',
+    gap: 0.5,
+    justifyContent: 'center',
+  },
+  potionIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1px',
+    background: `${gameColors.darkGreen}60`,
+    padding: '1px 6px',
+    borderRadius: 1,
+  },
+  potionText: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#FFF',
+  },
+  powerIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    mt: 0.5,
+    gap: '4px',
+    color: gameColors.yellow,
+  },
+  powerText: {
+    color: gameColors.yellow,
+    fontSize: '14px',
+    fontWeight: 'bold',
+  },
+  damageNumber: {
+    fontSize: '32px',
+    fontWeight: 'bold',
+    textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)',
+  },
+  attackDamage: {
+    color: gameColors.brightGreen,
+  },
+  counterDamage: {
+    color: gameColors.red,
+  },
+  battleInfo: {
+    position: 'absolute',
+    bottom: 10,
+    left: '50%',
+    transform: 'translateX(-50%)',
+  },
+  battleInfoText: {
+    fontSize: '12px',
+    color: gameColors.accentGreen,
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+  },
+  smallPowerIndicator: {
+    gap: '2px',
+  },
+  smallPowerText: {
+    fontSize: '12px',
+  },
+  smallBeastName: {
+    fontSize: '11px',
+  },
+  upgradeIconsContainer: {
+    position: 'absolute',
+    top: '2px',
+    right: '2px',
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  statsRow: {
+    display: 'flex',
+    gap: '4px',
+    marginTop: '2px',
+    justifyContent: 'center',
+  },
+  smallStatsRow: {
+    gap: '2px',
+    marginTop: '1px',
+  },
+  statBox: {
+    background: `${gameColors.darkGreen}70`,
+    borderRadius: '4px',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    padding: '4px 8px',
+    textAlign: 'center',
+    display: 'flex',
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'center',
+  },
+  smallStatBox: {
+    padding: '2px 4px',
+    minWidth: '40px',
+  },
+  statLabel: {
+    fontSize: '8px',
+    color: '#ffedbb',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    marginBottom: '2px',
+    lineHeight: '1',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  smallStatLabel: {
+    fontSize: '7px',
+    marginBottom: '1px',
+  },
+  powerValue: {
+    fontSize: '12px',
+    color: '#FFD700',
+    fontWeight: 'bold',
+    lineHeight: '1',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  smallPowerValue: {
+    fontSize: '10px',
+  },
+  typeValue: {
+    fontSize: '10px',
+    color: '#FFF',
+    fontWeight: 'bold',
+    lineHeight: '1',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  smallTypeValue: {
+    fontSize: '8px',
+  },
+  powerValueContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '1px',
+  },
+};

@@ -32,6 +32,7 @@ export interface Beast {
   last_dm_death_timestamp?: number;
   adventurers_killed?: number;
   combat?: Combat;
+  battle?: BattleEvent;
 }
 
 export interface Stats {
@@ -69,13 +70,14 @@ export interface GameAction {
   adventurerIds?: number[];
   appliedPotions?: AppliedPotions;
   safeAttack?: boolean;
-  upgrades?: Array<{tokenId: number; upgrade: string}>;
+  upgrades?: Array<{ tokenId: number; upgrade: string }>;
 }
 
 export interface BattleEvent {
   attacking_beast_token_id: number;
   defending_beast_token_id: number;
   attacks: number[];
+  counter_attacks: number[];
   attack_potions: number;
   xp_gained: number;
 }

@@ -13,6 +13,7 @@ import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
 import Countdown from "@/components/Countdown"
+import AttackingBeasts from "@/components/AttackingBeasts"
 
 function MainPage() {
   const { summit, showFeedingGround, setShowFeedingGround, attackInProgress } = useGameStore()
@@ -48,13 +49,13 @@ function MainPage() {
         </Box>
       </>
         : <>
-          {isBrowser && !attackInProgress && <Box sx={styles.sideContainer}>
+          {isBrowser && <Box sx={styles.sideContainer}>
             <Leaderboard />
           </Box>}
 
           {summit && <Summit />}
 
-          {isBrowser && !attackInProgress && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
+          {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
             <ProfileCard />
           </Box>}
 
@@ -62,6 +63,10 @@ function MainPage() {
             <ActionBar />
             <BeastCollection />
           </Box>}
+
+          {attackInProgress &&
+            <AttackingBeasts />
+          }
         </>
       }
 
@@ -114,8 +119,8 @@ const styles = {
     width: '100%',
     height: '271px',
     position: 'absolute',
-    background: `linear-gradient(to bottom, transparent, ${gameColors.darkGreen})`,
     bottom: 0,
+    background: `linear-gradient(to bottom, transparent, ${gameColors.darkGreen})`,
     zIndex: 101
   },
   sideContainer: {

@@ -36,9 +36,9 @@ export const NETWORKS = {
     chainId: ChainId.SN_MAIN,
     namespace: "summit_0_0_5_preview",
     manifest: manifest_mainnet,
-    slot: "pg-mainnet-8",
+    slot: "pg-mainnet-9",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
-    torii: "https://api.cartridge.gg/x/pg-mainnet-8/torii",
+    torii: "https://api.cartridge.gg/x/pg-mainnet-9/torii",
     subscriptionUrl: "https://api.cartridge.gg/x/summit/torii",
     tokens: {
       erc20: [
