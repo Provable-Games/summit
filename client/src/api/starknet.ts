@@ -78,14 +78,20 @@ export const useStarknetApi = () => {
         extra_lives: parseInt(data?.result[16], 16),
         has_claimed_starter_kit: Boolean(parseInt(data?.result[17], 16)),
         rewards_earned: parseInt(data?.result[18], 16),
+        stats: {
+          spirit: Boolean(parseInt(data?.result[19], 16)),
+          luck: Boolean(parseInt(data?.result[20], 16)),
+          specials: Boolean(parseInt(data?.result[21], 16)),
+        }
       }
       return {
         beast: {
           ...beast,
           ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.level),
+          revival_time: 0,
         },
-        taken_at: parseInt(data?.result[21], 16),
-        owner: data?.result[22],
+        taken_at: parseInt(data?.result[24], 16),
+        owner: data?.result[25],
       }
     } catch (error) {
       console.log('error', error)

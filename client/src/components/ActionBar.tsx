@@ -19,13 +19,13 @@ interface ActionBarProps {
 }
 
 function ActionBar(props: ActionBarProps) {
-  const { executeGameAction } = useGameDirector();
+  const { executeGameAction, setPauseUpdates } = useGameDirector();
   const { tokenBalances } = useController();
 
   const { selectedBeasts, summit, showFeedingGround, setAttackInProgress,
     selectedAdventurers, attackInProgress, collection, setShowFeedingGround,
     feedingInProgress, adventurerCollection, appliedPotions, setAppliedPotions,
-    setFeedingInProgress, setSelectedAdventurers, setAdventurerCollection, killedByAdventurers } = useGameStore();
+    setFeedingInProgress, killedByAdventurers } = useGameStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
@@ -45,34 +45,27 @@ function ActionBar(props: ActionBarProps) {
     if (!enableAttack) return;
 
     setAttackInProgress(true);
+    setPauseUpdates(true);
 
-    executeGameAction({
-      type: 'attack',
-      beastIds: selectedBeasts.map(beast => beast.token_id),
-      appliedPotions: appliedPotions,
-      safeAttack: safeAttack
-    });
+    // executeGameAction({
+    //   type: 'attack',
+    //   beastIds: selectedBeasts.map(beast => beast.token_id),
+    //   appliedPotions: appliedPotions,
+    //   safeAttack: safeAttack
+    // });
   }
 
-  const handleFeed = async () => {
+  const handleFeed = () => {
     if (!enableFeedingGround) return;
 
     setFeedingInProgress(true);
+    setPauseUpdates(true);
 
-    let result = await executeGameAction({
-      type: 'feed',
-      beastId: selectedBeasts[0].token_id,
-      adventurerIds: selectedAdventurers.map(adventurer => adventurer.id)
-    });
-
-    if (result) {
-      setAdventurerCollection(adventurerCollection.filter(
-        adventurer => !selectedAdventurers.some(selected => selected.id === adventurer.id)
-      ));
-      setSelectedAdventurers([]);
-    }
-
-    setFeedingInProgress(false);
+    // executeGameAction({
+    //   type: 'feed',
+    //   beastId: selectedBeasts[0].token_id,
+    //   adventurerIds: selectedAdventurers.map(adventurer => adventurer.id)
+    // });
   }
 
   const isSavage = Boolean(collection.find((beast: any) => beast.token_id === summit?.beast?.token_id))

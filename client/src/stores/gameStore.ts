@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { Summit, Beast, Adventurer, AppliedPotions } from '@/types/game';
+import { Summit, Beast, Adventurer, AppliedPotions, BattleEvent } from '@/types/game';
 
 interface GameState {
   summit: Summit | null;
-  lastAttack: number | null;
+  battleEvent: BattleEvent | null;
   showFeedingGround: boolean;
   killedByAdventurers: number[];
   collection: Beast[];
@@ -17,7 +17,7 @@ interface GameState {
   appliedPotions: AppliedPotions;
 
   setSummit: (summit: Summit | null) => void;
-  setLastAttack: (lastAttack: number | null) => void;
+  setBattleEvent: (battleEvent: BattleEvent | null) => void;
   setShowFeedingGround: (showFeedingGround: boolean) => void;
   setKilledByAdventurers: (killedByAdventurers: number[]) => void;
   setCollection: (collection: Beast[]) => void;
@@ -34,7 +34,7 @@ interface GameState {
 
 export const useGameStore = create<GameState>((set, get) => ({
   summit: null,
-  lastAttack: null,
+  battleEvent: null,
   showFeedingGround: false,
   killedByAdventurers: [],
   collection: [],
@@ -53,7 +53,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   disconnect: () => {
     set({
-      lastAttack: null,
+      battleEvent: null,
       showFeedingGround: false,
       killedByAdventurers: [],
       collection: [],
@@ -73,7 +73,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
 
   setSummit: (summit: Summit | null) => set({ summit }),
-  setLastAttack: (lastAttack: number | null) => set({ lastAttack }),
+  setBattleEvent: (battleEvent: BattleEvent | null) => set({ battleEvent }),
   setShowFeedingGround: (showFeedingGround: boolean) => set({ showFeedingGround }),
   setKilledByAdventurers: (killedByAdventurers: number[]) => set({ killedByAdventurers }),
   setCollection: (collection: Beast[]) => set({ collection }),

@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0xf394d0076fc06a68da5431a0db5376cd38dc862702556a668f82b3c04236ae",
-      "class_hash": "0x34336ba131a448c0553d5c7578db4d507d31bdb4ebc446f012f46953d8eeb7d",
+      "address": "0x75b0ff7ff5a679ec3dda661eb045d007067e5ee856b35ad9b55919684d1b21f",
+      "class_hash": "0x606a8bdbcabe208820136cdf800841d0500942984caf2b1c9ee7deabcbe2f23",
       "abi": [
         {
           "type": "impl",
@@ -1386,6 +1386,10 @@
           "name": "dojo_init",
           "inputs": [
             {
+              "name": "start_timestamp",
+              "type": "core::integer::u64"
+            },
+            {
               "name": "adventurer_address",
               "type": "core::starknet::contract_address::ContractAddress"
             },
@@ -1399,6 +1403,10 @@
             },
             {
               "name": "beast_address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "beast_data_address",
               "type": "core::starknet::contract_address::ContractAddress"
             },
             {
@@ -1437,12 +1445,44 @@
           ]
         },
         {
+          "type": "enum",
+          "name": "core::bool",
+          "variants": [
+            {
+              "name": "False",
+              "type": "()"
+            },
+            {
+              "name": "True",
+              "type": "()"
+            }
+          ]
+        },
+        {
           "type": "struct",
           "name": "core::array::Span::<core::integer::u64>",
           "members": [
             {
               "name": "snapshot",
               "type": "@core::array::Array::<core::integer::u64>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "summit::models::beast::Stats",
+          "members": [
+            {
+              "name": "spirit",
+              "type": "core::bool"
+            },
+            {
+              "name": "luck",
+              "type": "core::bool"
+            },
+            {
+              "name": "specials",
+              "type": "core::bool"
             }
           ]
         },
@@ -1481,20 +1521,6 @@
           ]
         },
         {
-          "type": "enum",
-          "name": "core::bool",
-          "variants": [
-            {
-              "name": "False",
-              "type": "()"
-            },
-            {
-              "name": "True",
-              "type": "()"
-            }
-          ]
-        },
-        {
           "type": "struct",
           "name": "summit::models::beast::LiveBeastStats",
           "members": [
@@ -1523,14 +1549,6 @@
               "type": "core::integer::u64"
             },
             {
-              "name": "num_deaths",
-              "type": "core::integer::u16"
-            },
-            {
-              "name": "last_killed_by",
-              "type": "core::integer::u32"
-            },
-            {
               "name": "revival_count",
               "type": "core::integer::u8"
             },
@@ -1544,7 +1562,11 @@
             },
             {
               "name": "rewards_earned",
-              "type": "core::integer::u64"
+              "type": "core::integer::u32"
+            },
+            {
+              "name": "stats",
+              "type": "summit::models::beast::Stats"
             }
           ]
         },
@@ -1589,6 +1611,10 @@
               "type": "core::integer::u8"
             },
             {
+              "name": "start_timestamp",
+              "type": "core::integer::u64"
+            },
+            {
               "name": "adventurer_address",
               "type": "core::starknet::contract_address::ContractAddress"
             },
@@ -1602,6 +1628,10 @@
             },
             {
               "name": "beast_address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "beast_data_address",
               "type": "core::starknet::contract_address::ContractAddress"
             },
             {
@@ -1628,12 +1658,47 @@
           "items": [
             {
               "type": "function",
+              "name": "start_summit",
+              "inputs": [],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
               "name": "attack",
               "inputs": [
                 {
                   "name": "defending_beast_token_id",
                   "type": "core::integer::u32"
                 },
+                {
+                  "name": "attacking_beast_token_ids",
+                  "type": "core::array::Span::<core::integer::u32>"
+                },
+                {
+                  "name": "revival_potions",
+                  "type": "core::integer::u8"
+                },
+                {
+                  "name": "attack_potions",
+                  "type": "core::integer::u8"
+                },
+                {
+                  "name": "extra_life_potions",
+                  "type": "core::integer::u8"
+                },
+                {
+                  "name": "vrf",
+                  "type": "core::bool"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "attack_unsafe",
+              "inputs": [
                 {
                   "name": "attacking_beast_token_ids",
                   "type": "core::array::Span::<core::integer::u32>"
@@ -1681,6 +1746,49 @@
               ],
               "outputs": [],
               "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "add_extra_life",
+              "inputs": [
+                {
+                  "name": "beast_token_id",
+                  "type": "core::integer::u32"
+                },
+                {
+                  "name": "extra_life_potions",
+                  "type": "core::integer::u8"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "select_upgrades",
+              "inputs": [
+                {
+                  "name": "beast_token_id",
+                  "type": "core::integer::u32"
+                },
+                {
+                  "name": "stats",
+                  "type": "summit::models::beast::Stats"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "get_start_timestamp",
+              "inputs": [],
+              "outputs": [
+                {
+                  "type": "core::integer::u64"
+                }
+              ],
+              "state_mutability": "view"
             },
             {
               "type": "function",
@@ -1873,22 +1981,28 @@
         }
       ],
       "init_calldata": [
+        "1760947200",
         "0x3fc7ecd6d577daa1ee855a9fa13a914d01acda06715c9fc74f1ee1a5e346a01",
         "0x036017e69d21d6d8c13e266eabb73ef1f1d02722d86bdcabe5f168f8e549d3cd",
         "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42",
         "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
+        "0x74abc15c0ddef39bdf1ede2a643c07968d3ed5bacb0123db2d5b7154fbb35c7",
         "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
         "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
         "0x068292fdfa280f371fabd1d6e49c346f11b341e1d3fe80d4ac320648ab03539c",
         "0x0793f1104a3b0d2316abc92039421f7160a7f4caad0ed405b6f8732271717328"
       ],
-      "tag": "summit_0_0_4-summit_systems",
-      "selector": "0x7d1c416e16a8cb049d99c38341ec8236cdd69e547254da435b9de048c8cf1ad",
+      "tag": "summit_0_0_5_preview-summit_systems",
+      "selector": "0x4120f6b438e22cea0e27d0306bcefff7def00bf84eaa2dda20c5afbbac2ec61",
       "systems": [
         "dojo_init",
+        "start_summit",
         "attack",
+        "attack_unsafe",
         "feed",
         "claim_starter_kit",
+        "add_extra_life",
+        "select_upgrades",
         "upgrade"
       ]
     }
@@ -1898,40 +2012,40 @@
     {
       "members": [],
       "class_hash": "0x110890d83df21f98ec72c0a44cc464a171e905634d20c36f58cb1adb892b165",
-      "tag": "summit_0_0_4-AdventurerConsumed",
-      "selector": "0x46827de8892fb9a3b27ac8fcce25d01901989cd48843dc2bf3dcbc9a28fb45c"
+      "tag": "summit_0_0_5_preview-AdventurerConsumed",
+      "selector": "0x35e3c84006b239daea24a850ec9afdc924dc82622b78b2c63285fdf2b1254a9"
     },
     {
       "members": [],
-      "class_hash": "0x5b12fbdf1515683c1fa2b58b5077035e2bb0ca2be52d56d4e80e5ccf575b03f",
-      "tag": "summit_0_0_4-LiveBeastStats",
-      "selector": "0x37d6c710c89a8e05e5091cb01e72c170422d4443c25859616a958f8cf327a31"
+      "class_hash": "0x60bfa3389bf657ba2aaf73b4f6c16615eef0feabe9345c380587c93df53fcac",
+      "tag": "summit_0_0_5_preview-LiveBeastStats",
+      "selector": "0x33eb22d16546c8b7eeacbb1e5c6b52bd4c1fc42070be93e6936bd0ee0f3821b"
     },
     {
       "members": [],
       "class_hash": "0x8d25ee5b0ee630d2b82c6da7cf79192d19e185adfde90e6c7904251245e7c",
-      "tag": "summit_0_0_4-Summit",
-      "selector": "0x5e5351f786b75a06068d8f533386461d4949f23f4d98f2e3d7ba08d3bbc9f33"
+      "tag": "summit_0_0_5_preview-Summit",
+      "selector": "0x1284df44de90921405b335d27ce71f53d74cff1124ea4aa37b262f6bba0cd69"
     },
     {
       "members": [],
-      "class_hash": "0x6a7e37a367fe2ad8b8a31e89e4abe9c1871140d1d8dea067191d1e724c4536c",
-      "tag": "summit_0_0_4-SummitConfig",
-      "selector": "0x30974e43bb60753b229b9366873248361400d635d9943248cb900ea7e3086e8"
+      "class_hash": "0x5d4e076829da9baf85d7fe192b29c18e296b76eeaba0799966b331fa4cbcf65",
+      "tag": "summit_0_0_5_preview-SummitConfig",
+      "selector": "0x18778bf53a111404ff875d6c7d826cb90fff7132a20ddc26f9d6831dc641ea9"
     },
     {
       "members": [],
       "class_hash": "0x3fc8a6a83cf48f21fa851b62c2b8cac6ce0ce9d0c78a97b6692a0efd29c91a1",
-      "tag": "summit_0_0_4-SummitHistory",
-      "selector": "0x3bc585d130a2f8ebdd919b907b14c09b167d3bb25909947b9280f0c6eb3340"
+      "tag": "summit_0_0_5_preview-SummitHistory",
+      "selector": "0x407737e359ba96c296e09becea41460c21d45b85ce460c678e97b385a3c653e"
     }
   ],
   "events": [
     {
       "members": [],
-      "class_hash": "0xa2a3f72262097ed22ab0ddf0847cf5913f51441b937186caa82e366127a3ca",
-      "tag": "summit_0_0_4-GameEvent",
-      "selector": "0x6c1305c93f7bc28acbdb3fe3336e609ede01a1147f76fb56b565e421a07485e"
+      "class_hash": "0x587f6ebf58f4070b1b646e2c1394de2a48c6b4935f3628a5f17bb3aa1f2fc80",
+      "tag": "summit_0_0_5_preview-BattleEvent",
+      "selector": "0x21d0231f73636a536b2b1086c2278def637bdf5f89b41d73373a238e19a5641"
     }
   ],
   "external_contracts": []

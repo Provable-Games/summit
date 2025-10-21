@@ -62,63 +62,16 @@ const parseComponent = (values: string[], componentType: string): any => {
 }
 
 const gameEventList = [
-  'summit',
-  'attack',
-  'feed',
+  'BattleEvent',
 ]
 
 export const components: any = {
-  'GameEvent': {
-    summit_id: 'number',
-    details: null,
-  },
-  'SummitEvent': {
-    beast: "beast_event",
-    live_stats: "beast_stats",
-    owner: null,
-    timestamp: 'number',
+  'BattleEvent': {
+    attacking_beast_token_id: 'number',
     defending_beast_token_id: 'number',
-  },
-  'AttackEvent': {
-    beast: "beast_event",
-    live_stats: "beast_stats",
-    summit_live_stats: "beast_stats",
+    attacks: 'array_number',
     attack_potions: 'number',
-    damage: 'number',
-    defending_beast_token_id: 'number',
-    owner: null,
-    timestamp: 'number',
-  },
-  'FeedEvent': {
-    beast: "beast_event",
-    live_stats: "beast_stats",
-    health_increase: 'number',
-    adventurer_count: 'number',
-    owner: null,
-    timestamp: 'number',
-  },
-  "beast_event": {
-    id: 'number',
-    prefix: 'number',
-    suffix: 'number',
-    level: 'number',
-    health: 'number',
-    shiny: 'number',
-    animated: 'number',
-  },
-  "beast_stats": {
-    token_id: 'number',
-    current_health: 'number',
-    bonus_health: 'number',
-    bonus_xp: 'number',
-    attack_streak: 'number',
-    last_death_timestamp: 'number',
-    num_deaths: 'number',
-    last_killed_by: 'number',
-    revival_count: 'number',
-    extra_lives: 'number',
-    has_claimed_starter_kit: 'boolean',
-    rewards_earned: 'number',
+    xp_gained: 'number',
   },
 }
 
@@ -127,27 +80,17 @@ export const translateGameEvent = (event: any, manifest: any): any => {
   const name = eventDefinition?.tag?.split('-')[1];
   const data = event.data;
 
-  if (name !== 'GameEvent') {
+  if (name !== 'BattleEvent') {
     return undefined;
   }
 
   const keysNumber = parseInt(data[0]);
   let values = [...data.slice(1, 1 + keysNumber), ...data.slice(keysNumber + 2)];
 
-  const action_count = parseInt(values[1]);
-  const type = gameEventList[parseInt(values[2])];
+  const parsedFields = parseComponent(values, name);
 
-  values = values.slice(3);
-
-  const parsedFields = parseComponent(values, type);
-
-  let result: any = {
-    type,
-    action_count,
-  }
-
-  result = {
-    ...result,
+  const result = {
+    name,
     ...parsedFields
   }
 

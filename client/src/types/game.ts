@@ -72,6 +72,14 @@ export interface GameAction {
   upgrades?: Array<{tokenId: number; upgrade: string}>;
 }
 
+export interface BattleEvent {
+  attacking_beast_token_id: number;
+  defending_beast_token_id: number;
+  attacks: number[];
+  attack_potions: number;
+  xp_gained: number;
+}
+
 import { NETWORKS } from '@/utils/networkConfig';
 import { HistoricalToriiQueryBuilder } from '@dojoengine/sdk';
 

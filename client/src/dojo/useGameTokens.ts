@@ -16,7 +16,7 @@ export const useGameTokens = () => {
         WHERE tb.account_address = '${addAddressPadding(accountAddress.toLowerCase())}'
           AND tb.contract_address = '${addAddressPadding(currentNetworkConfig.beasts.toLowerCase())}'
           AND tb.balance = '0x0000000000000000000000000000000000000000000000000000000000000001'
-        LIMIT 1000
+        LIMIT 10000
       ),
       tbn AS (
         SELECT
@@ -61,7 +61,7 @@ export const useGameTokens = () => {
         SELECT
           LOWER(printf('%064x', CAST(token_id AS INTEGER))) AS token_hex64,
           attack_streak, bonus_health, bonus_xp, current_health, extra_lives,
-          has_claimed_starter_kit, last_death_timestamp, last_killed_by, num_deaths,
+          has_claimed_starter_kit, last_death_timestamp, "stats.luck", "stats.spirit", "stats.specials",
           revival_count, rewards_earned
         FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
       )
@@ -92,15 +92,17 @@ export const useGameTokens = () => {
         s.extra_lives,
         s.has_claimed_starter_kit,
         s.last_death_timestamp,
-        s.last_killed_by,
-        s.num_deaths,
         s.revival_count,
-        s.rewards_earned
+        s.rewards_earned,
+        s."stats.luck",
+        s."stats.spirit",
+        s."stats.specials"
       FROM tbn
       LEFT JOIN attrs a  ON a.token_id    = tbn.token_id
       LEFT JOIN stats s  ON s.token_hex64 = tbn.token_hex64;
     `
 
+    console.log(q)
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
     const sql = await fetch(url, {
       method: "GET",
@@ -126,7 +128,7 @@ export const useGameTokens = () => {
         shiny: Number(data["Shiny"]),
         animated: Number(data["Animated"]),
         rank: Number(data["Rank"]),
-        adventurers_killed: 2, // Number(data["Adventurers Killed"]),
+        adventurers_killed: Number(data["Adventurers Killed"]),
         last_dm_death_timestamp: Number(data["Last Death Timestamp"]),
         attack_streak: data.attack_streak || 0,
         bonus_health: data.bonus_health || 0,
@@ -141,9 +143,9 @@ export const useGameTokens = () => {
         rewards_earned: parseInt(data.rewards_earned, 16) || 0,
         revival_time: 0,
         stats: {
-          spirit: true,
-          luck: true,
-          specials: true,
+          spirit: Boolean(data["stats.spirit"]),
+          luck: Boolean(data["stats.luck"]),
+          specials: Boolean(data["stats.specials"]),
         }
       }
       beast.revival_time = getBeastRevivalTime(beast);

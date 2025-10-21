@@ -34,11 +34,11 @@ export enum ChainId {
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_0_0_4",
+    namespace: "summit_0_0_5_preview",
     manifest: manifest_mainnet,
-    slot: "pg-mainnet-7",
+    slot: "pg-mainnet-8",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
-    torii: "https://api.cartridge.gg/x/pg-mainnet-7/torii",
+    torii: "https://api.cartridge.gg/x/pg-mainnet-8/torii",
     subscriptionUrl: "https://api.cartridge.gg/x/summit/torii",
     tokens: {
       erc20: [

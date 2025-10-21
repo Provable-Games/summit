@@ -11,7 +11,7 @@ import { lookupAddresses } from '@cartridge/controller'
 import { useStarkProfile } from '@starknet-react/core'
 
 function Summit() {
-  const { collection, summit, attackInProgress, selectedBeasts, lastAttack, totalDamage } = useGameStore()
+  const { collection, summit, attackInProgress, selectedBeasts, battleEvent, totalDamage } = useGameStore()
   const controls = useAnimationControls()
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
 
@@ -27,12 +27,6 @@ function Summit() {
       strike.stop();
     }
   });
-
-  useEffect(() => {
-    if (lastAttack && lastAttack > 0) {
-      strike.play();
-    }
-  }, [lastAttack]);
 
   useEffect(() => {
     // Fetch Cartridge name when summit changes

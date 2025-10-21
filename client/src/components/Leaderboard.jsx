@@ -125,14 +125,14 @@ function Leaderboard() {
           </Typography>
         </Box>
 
-        <Box sx={styles.statRow}>
+        {/* <Box sx={styles.statRow}>
           <Typography sx={styles.statLabel}>
             Beasts Alive
           </Typography>
           <Typography sx={styles.statValue}>
             {beastsAlive}
           </Typography>
-        </Box>
+        </Box> */}
       </Box>
 
     </Box>

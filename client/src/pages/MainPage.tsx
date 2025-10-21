@@ -12,9 +12,10 @@ import Leaderboard from '../components/Leaderboard'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
+import Countdown from "@/components/Countdown"
 
 function MainPage() {
-  const { summit, showFeedingGround, setShowFeedingGround } = useGameStore()
+  const { summit, showFeedingGround, setShowFeedingGround, attackInProgress } = useGameStore()
 
   return <>
     <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
@@ -47,20 +48,20 @@ function MainPage() {
         </Box>
       </>
         : <>
-          {isBrowser && <Box sx={styles.sideContainer}>
+          {isBrowser && !attackInProgress && <Box sx={styles.sideContainer}>
             <Leaderboard />
           </Box>}
 
           {summit && <Summit />}
 
-          {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
+          {isBrowser && !attackInProgress && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
             <ProfileCard />
           </Box>}
 
-          <Box sx={styles.bottomContainer}>
+          {!attackInProgress && <Box sx={styles.bottomContainer}>
             <ActionBar />
             <BeastCollection />
-          </Box>
+          </Box>}
         </>
       }
 
@@ -84,6 +85,8 @@ function MainPage() {
       }
 
       {isMobile && <BurgerMenu />}
+
+      <Countdown />
     </Box >
   </>
 }

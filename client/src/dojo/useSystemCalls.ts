@@ -1,6 +1,7 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { useGameStore } from "@/stores/gameStore";
 import { AppliedPotions } from "@/types/game";
+import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { getContractByName } from "@dojoengine/core";
 import { useAccount } from "@starknet-react/core";
@@ -45,7 +46,11 @@ export const useSystemCalls = () => {
         return
       }
 
-      return true;
+      const translatedEvents = receipt.events.map((event: any) =>
+        translateGameEvent(event, currentNetworkConfig.manifest)
+      );
+
+      return translatedEvents.filter(Boolean);
     } catch (error) {
       console.error("Error executing action:", error);
       forceResetAction();
@@ -145,11 +150,11 @@ export const useSystemCalls = () => {
    * Upgrades beast stats
    * @param upgrades Array of upgrades with tokenId and upgrade type
    */
-  const upgradeStats = (upgrades: Array<{tokenId: number; upgrade: string}>) => {
+  const upgradeStats = (upgrades: Array<{ tokenId: number; upgrade: string }>) => {
     // Convert upgrades to the format expected by the contract
     const beastIds = upgrades.map(u => u.tokenId);
     const upgradeTypes = upgrades.map(u => {
-      switch(u.upgrade) {
+      switch (u.upgrade) {
         case 'spirit': return 0;
         case 'luck': return 1;
         case 'specials': return 2;

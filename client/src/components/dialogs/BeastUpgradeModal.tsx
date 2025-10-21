@@ -62,7 +62,14 @@ function BeastUpgradeModal(props) {
   }, [actionFailed]);
 
   const currentBeast = beastsWithUpgrades[currentBeastIndex];
-  const availablePoints = currentBeast ? (currentBeast.adventurers_killed || 0) - Object.values(currentBeast.stats).filter(Boolean).length : 0;
+  const activeStatsCount = currentBeast ? Object.values(currentBeast.stats).filter(Boolean).length : 0;
+  const totalKills = currentBeast ? (currentBeast.adventurers_killed || 0) : 0;
+  const maxPossibleUpgrades = Math.max(0, totalKills - activeStatsCount);
+
+  // Calculate remaining available points after accounting for selected upgrades
+  const currentBeastUpgrades = currentBeast ? (beastUpgrades[currentBeast.token_id] || { luck: false, spirit: false, specials: false }) : { luck: false, spirit: false, specials: false };
+  const selectedUpgradesCount = Object.values(currentBeastUpgrades).filter(Boolean).length;
+  const availablePoints = Math.max(0, maxPossibleUpgrades - selectedUpgradesCount);
 
   const handleNext = () => {
     if (currentBeastIndex < beastsWithUpgrades.length - 1) {
@@ -83,8 +90,8 @@ function BeastUpgradeModal(props) {
     const selectedUpgradesCount = Object.values(currentBeastUpgrades).filter(Boolean).length;
 
     // Check if we can add more upgrades (have available points)
-    if (!currentBeastUpgrades[upgradeId] && selectedUpgradesCount >= availablePoints) {
-      return; // Can't select more upgrades than available points
+    if (!currentBeastUpgrades[upgradeId] && selectedUpgradesCount >= maxPossibleUpgrades) {
+      return; // Can't select more upgrades than max possible
     }
 
     const updatedUpgrades = {
@@ -142,6 +149,13 @@ function BeastUpgradeModal(props) {
   const hasSelectedUpgrades = Object.values(beastUpgrades).some(upgrades =>
     Object.values(upgrades).some(Boolean)
   );
+
+  // Determine button state and text
+  const isLastBeast = currentBeastIndex === beastsWithUpgrades.length - 1;
+  const allPointsSelected = selectedUpgradesCount >= maxPossibleUpgrades;
+  const shouldShowUpgradeButton = isLastBeast && hasSelectedUpgrades;
+  const shouldShowNextButton = !isLastBeast && allPointsSelected;
+  const shouldShowGrayedOutButton = !isLastBeast && !allPointsSelected;
 
   if (!currentBeast) {
     return null;
@@ -242,7 +256,7 @@ function BeastUpgradeModal(props) {
               const currentBeastUpgrades = beastUpgrades[currentBeast.token_id] || { luck: false, spirit: false, specials: false };
               const isSelected = currentBeastUpgrades[upgrade.id];
               const selectedUpgradesCount = Object.values(currentBeastUpgrades).filter(Boolean).length;
-              const canSelect = !isUnlocked && (isSelected || selectedUpgradesCount < availablePoints);
+              const canSelect = !isUnlocked && (isSelected || selectedUpgradesCount < maxPossibleUpgrades);
 
               return (
                 <Box
@@ -304,11 +318,11 @@ function BeastUpgradeModal(props) {
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
             <Button
-              disabled={upgradeInProgress || !hasSelectedUpgrades}
-              onClick={handleUpgradeAll}
+              disabled={upgradeInProgress || (!shouldShowUpgradeButton && !shouldShowNextButton)}
+              onClick={shouldShowNextButton ? handleNext : handleUpgradeAll}
               sx={[
                 styles.upgradeButton,
-                (!upgradeInProgress && hasSelectedUpgrades) && styles.upgradeButtonActive
+                shouldShowUpgradeButton && styles.upgradeButtonActive
               ]}
             >
               <Typography sx={styles.upgradeButtonText}>
@@ -317,9 +331,13 @@ function BeastUpgradeModal(props) {
                     <span>Upgrading</span>
                     <div className='dotLoader white' />
                   </Box>
-                  : hasSelectedUpgrades
+                  : shouldShowUpgradeButton
                     ? `UPGRADE ${Object.keys(beastUpgrades).length} BEASTS`
-                    : 'SELECT UPGRADES'
+                    : shouldShowNextButton
+                      ? 'NEXT'
+                      : shouldShowGrayedOutButton
+                        ? 'SELECT UPGRADES'
+                        : 'SELECT UPGRADES'
                 }
               </Typography>
             </Button>
@@ -616,12 +634,16 @@ const styles = {
     width: '200px',
     height: '48px',
     my: '6px',
-    border: `2px solid ${gameColors.accentGreen}60`,
+    border: `2px solid ${gameColors.gameYellow}`,
     transition: 'all 0.3s ease',
-    opacity: 0.7,
+    opacity: 0.9,
+    '&:hover': {
+      background: `${gameColors.mediumGreen}90`,
+    },
     '&:disabled': {
       opacity: 0.4,
       cursor: 'not-allowed',
+      border: `2px solid ${gameColors.gameYellow}40`,
     },
   },
   upgradeButtonActive: {
