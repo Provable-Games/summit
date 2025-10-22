@@ -108,7 +108,6 @@ function BeastUpgradeModal(props) {
         [currentBeast.token_id]: updatedUpgrades
       });
     } else {
-      // Remove the beast from beastUpgrades if no upgrades are selected
       const { [currentBeast.token_id]: removed, ...remainingUpgrades } = beastUpgrades;
       setBeastUpgrades(remainingUpgrades);
     }
@@ -118,27 +117,14 @@ function BeastUpgradeModal(props) {
     setUpgradeInProgress(true);
 
     try {
-      const upgradesToApply: Array<{ tokenId: number; upgrade: string }> = [];
-
-      Object.entries(beastUpgrades).forEach(([tokenId, upgrades]) => {
-        Object.entries(upgrades).forEach(([upgradeType, isSelected]) => {
-          if (isSelected) {
-            upgradesToApply.push({
-              tokenId: parseInt(tokenId),
-              upgrade: upgradeType
-            });
-          }
-        });
+      let result = await executeGameAction({
+        type: 'select_upgrades',
+        upgrades: beastUpgrades
       });
 
-      if (upgradesToApply.length > 0) {
-        await executeGameAction({
-          type: 'upgrade_stats',
-          upgrades: upgradesToApply
-        });
+      if (result) {
+        close(false);
       }
-
-      close(false);
     } catch (ex) {
       console.log(ex);
     } finally {

@@ -25,7 +25,7 @@ function ActionBar(props: ActionBarProps) {
   const { selectedBeasts, summit, showFeedingGround, setAttackInProgress,
     selectedAdventurers, attackInProgress, collection, setShowFeedingGround,
     feedingInProgress, adventurerCollection, appliedPotions, setAppliedPotions,
-    setFeedingInProgress, killedByAdventurers } = useGameStore();
+    setFeedingInProgress, killedByAdventurers, applyingPotions, setApplyingPotions } = useGameStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
@@ -47,12 +47,13 @@ function ActionBar(props: ActionBarProps) {
     setAttackInProgress(true);
     setPauseUpdates(true);
 
-    // executeGameAction({
-    //   type: 'attack',
-    //   beastIds: selectedBeasts.map(beast => beast.token_id),
-    //   appliedPotions: appliedPotions,
-    //   safeAttack: safeAttack
-    // });
+    executeGameAction({
+      type: 'attack',
+      beastIds: selectedBeasts.map(beast => beast.token_id),
+      appliedPotions: appliedPotions,
+      safeAttack: safeAttack,
+      vrf: selectedBeasts.find(beast => beast.stats.luck) ? true : false
+    });
   }
 
   const handleFeed = () => {
@@ -61,15 +62,26 @@ function ActionBar(props: ActionBarProps) {
     setFeedingInProgress(true);
     setPauseUpdates(true);
 
-    // executeGameAction({
-    //   type: 'feed',
-    //   beastId: selectedBeasts[0].token_id,
-    //   adventurerIds: selectedAdventurers.map(adventurer => adventurer.id)
-    // });
+    executeGameAction({
+      type: 'feed',
+      beastId: selectedBeasts[0].token_id,
+      adventurerIds: selectedAdventurers.map(adventurer => adventurer.id)
+    });
   }
 
-  const isSavage = Boolean(collection.find((beast: any) => beast.token_id === summit?.beast?.token_id))
+  const handleAddExtraLife = () => {
+    if (!applyingPotions) return;
 
+    setApplyingPotions(true);
+    setPauseUpdates(true);
+
+    executeGameAction({
+      type: 'add_extra_life',
+      beastId: selectedBeasts[0].token_id,
+    });
+  }
+
+  const isSavageSelected = Boolean(selectedBeasts.find((beast: any) => beast.token_id === summit?.beast?.token_id))
   const deadBeasts = selectedBeasts.filter((beast: any) => beast.current_health === 0);
   const revivalPotionsRequired = deadBeasts.reduce((sum: number, beast: any) => sum + beast.revival_count + 1, 0);
 
@@ -128,12 +140,32 @@ function ActionBar(props: ActionBarProps) {
     {/* Attack Button + Potions */}
     <Box sx={styles.buttonGroup}>
       {/* Section 1: Attack Button */}
-      {isSavage
-        ? <Box sx={[styles.attackButton, styles.savageButton]}>
-          <Typography color={gameColors.yellow}>
-            {isBrowser ? "YOU'RE THE SAVÁGE" : "SAVÁGE"}
-          </Typography>
+      {isSavageSelected
+        ? <Box sx={[styles.attackButton, appliedPotions.extraLife > 0 && styles.attackButtonEnabled]}
+          onClick={handleAddExtraLife}>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
+            {applyingPotions
+              ? <Box display={'flex'} alignItems={'baseline'}>
+                <Typography variant="h5" sx={styles.buttonText}>Applying</Typography>
+                <div className='dotLoader green' />
+              </Box>
+              : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                <Typography sx={[styles.buttonText, !(appliedPotions.extraLife > 0) && styles.disabledText]} variant="h5">
+                  Add Extra Life
+                </Typography>
+              </Box>
+            }
+
+            {isappliedPotions && isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
+              {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'}>
+                <Typography sx={styles.potionCount}>{appliedPotions.extraLife}</Typography>
+                <img src={heart} alt='' height={'12px'} />
+              </Box>}
+            </Box>
+            }
+          </Box>
         </Box>
+
         : <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box sx={[styles.attackButton, enableAttack && styles.attackButtonEnabled]}
             onClick={handleAttack}>

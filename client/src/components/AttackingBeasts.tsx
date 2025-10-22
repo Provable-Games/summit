@@ -14,11 +14,7 @@ import { fetchBeastImage } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 import { useGameDirector } from '@/contexts/GameDirector';
 
-interface AttackingBeastsProps {
-  battleEvents?: BattleEvent[];
-}
-
-function AttackingBeasts({ battleEvents = [] }: AttackingBeastsProps) {
+function AttackingBeasts() {
   const { selectedBeasts, appliedPotions, setAttackInProgress, setSelectedBeasts } = useGameStore();
   const { setPauseUpdates } = useGameDirector();
   const [isAttacking, setIsAttacking] = useState(false);

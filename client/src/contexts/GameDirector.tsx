@@ -15,6 +15,7 @@ import {
   useState
 } from "react";
 import { useController } from "./controller";
+import { getBeastCurrentHealth, getBeastRevivalTime } from "@/utils/beasts";
 
 export interface GameDirectorContext {
   executeGameAction: (action: GameAction) => Promise<boolean>;
@@ -35,7 +36,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     setBattleEvent } = useGameStore();
   const { gameModelsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
-  const { executeAction, attack, feed, claimStarterKit, upgradeStats } = useSystemCalls();
+  const { executeAction, attack, feed, claimStarterKit, addExtraLife, selectUpgrades } = useSystemCalls();
   const { tokenBalances, setTokenBalances } = useController();
 
   const [subscription, setSubscription] = useState<any>(null);
@@ -90,7 +91,16 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       query: gameModelsQuery(),
       callback: ({ data, error }: { data?: any[]; error?: Error }) => {
         if (data && data.length > 0) {
-          let events = data.filter((entity: any) => Boolean(getEntityModel(entity, "LiveBeastStats"))).map((entity: any) => getEntityModel(entity, "LiveBeastStats"))
+          let events = data.map((entity: any) => {
+            if (Boolean(getEntityModel(entity, "LiveBeastStats"))) {
+              return getEntityModel(entity, "LiveBeastStats");
+            } else if (Boolean(getEntityModel(entity, "Summit"))) {
+              return getEntityModel(entity, "Summit");
+            }
+
+            return false;
+          }).filter(Boolean);
+
           setEventQueue((prev) => [...prev, ...events]);
         }
       },
@@ -100,6 +110,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   };
 
   const processBeastUpdate = (update: any) => {
+    console.log("UPDATE", update);
     if (update.token_id === summit?.beast.token_id) {
       setSummit({
         ...summit,
@@ -111,10 +122,16 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     if (collection.find((beast: Beast) => beast.token_id === update.token_id)) {
-      setCollection(collection.map((beast: Beast) => beast.token_id === update.token_id
-        ? { ...beast, ...update }
-        : beast
-      ));
+      setCollection(collection.map((beast: Beast) => {
+        if (beast.token_id === update.token_id) {
+          let newBeast = { ...beast, ...update };
+          newBeast.current_health = getBeastCurrentHealth(newBeast);
+          newBeast.revival_time = getBeastRevivalTime(newBeast);
+          return newBeast;
+        }
+
+        return beast;
+      }));
     }
   }
 
@@ -141,7 +158,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     if (action.type === 'attack') {
       txs.push(
-        ...attack(action.beastIds, action.appliedPotions, action.safeAttack)
+        ...attack(action.beastIds, action.appliedPotions, action.safeAttack, action.vrf)
       );
     }
 
@@ -149,8 +166,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       txs.push(claimStarterKit(action.beastIds));
     }
 
-    if (action.type === 'upgrade_stats') {
-      txs.push(upgradeStats(action.upgrades));
+    if (action.type === 'add_extra_life') {
+      txs.push(addExtraLife(action.beastId, appliedPotions.extraLife));
+    }
+
+    if (action.type === 'select_upgrades') {
+      txs.push(...selectUpgrades(action.upgrades));
     }
 
     const events = await executeAction(txs, setActionFailed);
@@ -173,6 +194,16 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       });
 
       processBattleEvents(events);
+    } else if (action.type === 'add_extra_life') {
+      setTokenBalances({
+        ...tokenBalances,
+        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - appliedPotions.extraLife,
+      });
+      setAppliedPotions({
+        revive: 0,
+        attack: 0,
+        extraLife: 0,
+      });
     }
 
     return true;

@@ -16,7 +16,7 @@ import { isMobile } from 'react-device-detect';
 function BeastCollection() {
   const { loadingCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit, appliedPotions, setTotalDamage } = useGameStore()
   const { address } = useAccount()
-  const [hideDeadBeasts, setHideDeadBeasts] = useState(true)
+  const [hideDeadBeasts, setHideDeadBeasts] = useState(false)
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
 

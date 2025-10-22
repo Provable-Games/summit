@@ -28,8 +28,9 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
   // Calculate revival time for dead beasts
   const isDead = beast.current_health === 0;
   let revivalTime = null;
+
   if (isDead && beast.last_death_timestamp) {
-    const revivalTimeRemaining = (beast.last_death_timestamp * 1000) + beast.revival_time - Date.now();
+    const revivalTimeRemaining = (1000 * beast.last_death_timestamp + beast.revival_time) - Date.now();
 
     if (revivalTimeRemaining > 0) {
       const hours = Math.floor(revivalTimeRemaining / (60 * 60 * 1000));

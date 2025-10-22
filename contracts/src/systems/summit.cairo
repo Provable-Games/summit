@@ -433,7 +433,7 @@ pub mod summit_systems {
         /// @notice this function is used to create a new summit history for a beast
         /// @param token_id the id of the beast that is taking the summits
         fn _init_summit_history(ref world: WorldStorage, token_id: u32) {
-            world.write_model(@SummitHistory { beast_token_id: token_id, lost_at: 0, taken_at: get_block_timestamp() });
+            world.write_model(@SummitHistory { beast_token_id: token_id, lost_at: 0, taken_at: get_block_number() });
         }
 
         /// @title set_summit_beast
@@ -690,7 +690,7 @@ pub mod summit_systems {
             if time_since_death < revival_time {
                 // if the beast has not been killed in the last 14 days, reduce the revival time by 8 hours
                 let last_killed_timestamp = Self::_get_last_killed_timestamp(beast, summit_config, beast_data);
-                if last_killed_timestamp < get_block_timestamp() - (DAY_SECONDS * 14) {
+                if last_killed_timestamp < current_time() - (DAY_SECONDS * 14) {
                     revival_time -= 28800;
                 }
 

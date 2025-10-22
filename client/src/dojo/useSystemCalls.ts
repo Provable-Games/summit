@@ -1,6 +1,6 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { useGameStore } from "@/stores/gameStore";
-import { AppliedPotions } from "@/types/game";
+import { AppliedPotions, Stats } from "@/types/game";
 import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { getContractByName } from "@dojoengine/core";
@@ -95,7 +95,7 @@ export const useSystemCalls = () => {
    * @param beastIds The IDs of the beasts to attack
    * @param appliedPotions The potions to apply to the beasts
    */
-  const attack = (beastIds: number[], appliedPotions: AppliedPotions, safeAttack: boolean) => {
+  const attack = (beastIds: number[], appliedPotions: AppliedPotions, safeAttack: boolean, vrf: boolean) => {
     let txs: any[] = [];
 
     if (appliedPotions.revive > 0) {
@@ -117,7 +117,7 @@ export const useSystemCalls = () => {
       txs.push({
         contractAddress: SUMMIT_ADDRESS,
         entrypoint: "attack",
-        calldata: CallData.compile([summit.beast.token_id, beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife]),
+        calldata: CallData.compile([summit.beast.token_id, beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife, vrf]),
       });
     } else {
       txs.push({
@@ -126,6 +126,26 @@ export const useSystemCalls = () => {
         calldata: CallData.compile([beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife]),
       });
     }
+
+    return txs;
+  };
+
+  const addExtraLife = (beastId: number, extraLifePotions: number) => {
+    return {
+      contractAddress: SUMMIT_ADDRESS,
+      entrypoint: "add_extra_life",
+      calldata: CallData.compile([beastId, extraLifePotions]),
+    };
+  };
+
+  const selectUpgrades = (upgrades: { [beastId: number]: Stats }) => {
+    const txs = Object.entries(upgrades).map(([beastId, stats]) => {
+      return {
+        contractAddress: SUMMIT_ADDRESS,
+        entrypoint: "select_upgrades",
+        calldata: CallData.compile([beastId, stats]),
+      };
+    });
 
     return txs;
   };
@@ -146,34 +166,12 @@ export const useSystemCalls = () => {
     };
   };
 
-  /**
-   * Upgrades beast stats
-   * @param upgrades Array of upgrades with tokenId and upgrade type
-   */
-  const upgradeStats = (upgrades: Array<{ tokenId: number; upgrade: string }>) => {
-    // Convert upgrades to the format expected by the contract
-    const beastIds = upgrades.map(u => u.tokenId);
-    const upgradeTypes = upgrades.map(u => {
-      switch (u.upgrade) {
-        case 'spirit': return 0;
-        case 'luck': return 1;
-        case 'specials': return 2;
-        default: return 0;
-      }
-    });
-
-    return {
-      contractAddress: SUMMIT_ADDRESS,
-      entrypoint: "upgrade_stats",
-      calldata: CallData.compile([beastIds, upgradeTypes]),
-    };
-  };
-
   return {
     feed,
     attack,
     claimStarterKit,
-    upgradeStats,
     executeAction,
+    addExtraLife,
+    selectUpgrades,
   };
 };

@@ -70,7 +70,8 @@ export interface GameAction {
   adventurerIds?: number[];
   appliedPotions?: AppliedPotions;
   safeAttack?: boolean;
-  upgrades?: Array<{ tokenId: number; upgrade: string }>;
+  vrf?: boolean;
+  upgrades?: { [beastId: number]: Stats }
 }
 
 export interface BattleEvent {
