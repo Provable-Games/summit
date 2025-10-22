@@ -61,15 +61,12 @@ const parseComponent = (values: string[], componentType: string): any => {
   return parsedFields;
 }
 
-const gameEventList = [
-  'BattleEvent',
-]
-
 export const components: any = {
   'BattleEvent': {
     attacking_beast_token_id: 'number',
     defending_beast_token_id: 'number',
     attacks: 'array_number',
+    counter: 'array_number',
     attack_potions: 'number',
     xp_gained: 'number',
   },

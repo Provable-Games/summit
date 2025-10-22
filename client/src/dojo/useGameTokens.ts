@@ -1,7 +1,7 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { Beast } from "@/types/game";
 import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
-import { getBeastCurrentHealth, getBeastRevivalTime } from "@/utils/beasts";
+import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime } from "@/utils/beasts";
 import { addAddressPadding } from "starknet";
 
 
@@ -150,6 +150,7 @@ export const useGameTokens = () => {
       }
       beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)
+      beast.level = getBeastCurrentLevel(beast)
       return beast
     })
 

@@ -23,7 +23,7 @@ function ActionBar(props: ActionBarProps) {
   const { tokenBalances } = useController();
 
   const { selectedBeasts, summit, showFeedingGround, setAttackInProgress,
-    selectedAdventurers, attackInProgress, collection, setShowFeedingGround,
+    selectedAdventurers, attackInProgress, setShowFeedingGround,
     feedingInProgress, adventurerCollection, appliedPotions, setAppliedPotions,
     setFeedingInProgress, killedByAdventurers, applyingPotions, setApplyingPotions } = useGameStore();
 
@@ -98,7 +98,7 @@ function ActionBar(props: ActionBarProps) {
   }, [deadBeasts.length, revivalPotionsRequired, tokenBalances["REVIVE"]]);
 
   const hasEnoughRevivePotions = tokenBalances["REVIVE"] >= revivalPotionsRequired;
-  const enableAttack = !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions;
+  const enableAttack = summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions;
   const enableFeedingGround = selectedBeasts.length === 1 && adventurerCollection.length > 0;
 
   const enableExtraLifePotion = tokenBalances["EXTRA LIFE"] > 0;

@@ -1,21 +1,20 @@
+import { useGameDirector } from '@/contexts/GameDirector';
 import { useGameStore } from '@/stores/gameStore';
+import { Beast } from '@/types/game';
 import CasinoIcon from '@mui/icons-material/Casino';
 import EnergyIcon from '@mui/icons-material/ElectricBolt';
-import FlashOnIcon from '@mui/icons-material/FlashOn';
-import StarIcon from '@mui/icons-material/Star';
 import FastForwardIcon from '@mui/icons-material/FastForward';
+import StarIcon from '@mui/icons-material/Star';
 import { Box, Typography } from '@mui/material';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import attackPotionIcon from '../assets/images/attack-potion.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
-import { BattleEvent, Beast } from '@/types/game';
 import { fetchBeastImage } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
-import { useGameDirector } from '@/contexts/GameDirector';
 
 function AttackingBeasts() {
-  const { selectedBeasts, appliedPotions, setAttackInProgress, setSelectedBeasts } = useGameStore();
+  const { selectedBeasts, appliedPotions, setAttackInProgress, setSelectedBeasts, battleEvents } = useGameStore();
   const { setPauseUpdates } = useGameDirector();
   const [isAttacking, setIsAttacking] = useState(false);
   const [deadBeasts, setDeadBeasts] = useState<Set<number>>(new Set());
@@ -28,25 +27,22 @@ function AttackingBeasts() {
   // Create enhanced beasts with battle data
   useEffect(() => {
     if (selectedBeasts.length > 0) {
-      const enhancedBeasts = selectedBeasts.map(beast => ({
-        ...beast,
-        battle: {
-          attacking_beast_token_id: beast.token_id,
-          defending_beast_token_id: 0, // Summit beast
-          attacks: Array(100).fill(0).map(() => Math.floor(Math.random() * 50) + 20),
-          counter_attacks: Array(100).fill(0).map(() => Math.floor(Math.random() * 50) + 20),
-          attack_potions: 0,
-          xp_gained: Math.floor(Math.random() * 100) + 50
+      const enhancedBeasts = selectedBeasts.map(beast => {
+        const battleEvent = battleEvents.find(event => event.attacking_beast_token_id === beast.token_id);
+
+        return {
+          ...beast,
+          battle: battleEvent
         }
-      }));
+      });
 
       setBeasts(enhancedBeasts);
       setDeadBeasts(new Set());
     }
-  }, [selectedBeasts]);
+  }, [selectedBeasts, battleEvents]);
 
   useEffect(() => {
-    if (beasts.length > 0 && !activeBeastTokenId) {
+    if (beasts.length > 0 && !activeBeastTokenId && beasts[0]?.battle) {
       setActiveBeastTokenId(beasts[0]?.token_id);
     }
   }, [beasts]);

@@ -383,7 +383,8 @@ pub mod summit_systems {
         fn get_combat_spec(self: Beast, include_specials: bool) -> CombatSpec {
             let beast_tier = ImplBeast::get_tier(self.fixed.id);
             let beast_type = ImplBeast::get_type(self.fixed.id);
-            let level = self.fixed.level + Self::_get_level_from_xp(self.live.bonus_xp).into();
+            let beast_xp = self.fixed.level.into() * self.fixed.level.into() + self.live.bonus_xp.into();
+            let level = Self::_get_level_from_xp(beast_xp);
 
             let specials = if include_specials {
                 SpecialPowers { special1: 0, special2: self.fixed.prefix, special3: self.fixed.suffix }
@@ -583,9 +584,8 @@ pub mod summit_systems {
 
                 if attacking_beast.live.current_health == 0 {
                     // add xp to summit beast
-                    defending_beast
-                        .live
-                        .bonus_xp += ImplCombat::get_attack_hp(attacking_beast.get_combat_spec(false)) % 100
+                    defending_beast.live.bonus_xp += ImplCombat::get_attack_hp(attacking_beast.get_combat_spec(false))
+                        / 100
                         + 1;
                     // set death timestamp for prev summit beast
                     attacking_beast.live.last_death_timestamp = current_time;
@@ -759,7 +759,7 @@ pub mod summit_systems {
         /// @notice: gets level from xp
         /// @param xp: the xp to get the level for
         /// @return u8: the level for the given xp
-        fn _get_level_from_xp(xp: u16) -> u8 {
+        fn _get_level_from_xp(xp: u32) -> u16 {
             if (xp == 0) {
                 1
             } else {

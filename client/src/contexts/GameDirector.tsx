@@ -15,7 +15,7 @@ import {
   useState
 } from "react";
 import { useController } from "./controller";
-import { getBeastCurrentHealth, getBeastRevivalTime } from "@/utils/beasts";
+import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime } from "@/utils/beasts";
 
 export interface GameDirectorContext {
   executeGameAction: (action: GameAction) => Promise<boolean>;
@@ -33,7 +33,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
   const { summit, setSummit, setAttackInProgress, setFeedingInProgress,
     collection, setCollection, setAppliedPotions, appliedPotions,
-    setBattleEvent } = useGameStore();
+    setBattleEvents } = useGameStore();
   const { gameModelsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimStarterKit, addExtraLife, selectUpgrades } = useSystemCalls();
@@ -102,13 +102,14 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   };
 
   const processBeastUpdate = (update: any) => {
+    console.log("PROCESSING BEAST UPDATE", update);
     if (update.token_id === summit?.beast.token_id) {
+      let updatedBeast = { ...summit?.beast, ...update };
+      updatedBeast.level = getBeastCurrentLevel(updatedBeast);
+
       setSummit({
         ...summit,
-        beast: {
-          ...summit?.beast,
-          ...update,
-        },
+        beast: updatedBeast,
       });
     } else if (update.current_health > 0) {
       fetchSummitData();
@@ -120,6 +121,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           let newBeast = { ...beast, ...update };
           newBeast.current_health = getBeastCurrentHealth(newBeast);
           newBeast.revival_time = getBeastRevivalTime(newBeast);
+          newBeast.level = getBeastCurrentLevel(newBeast);
           return newBeast;
         }
 
@@ -127,20 +129,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       }));
     }
   }
-
-  const processBattleEvents = async (events: BattleEvent[]) => {
-    setPauseUpdates(true);
-
-    events = events.filter(event => event.defending_beast_token_id === summit?.beast.token_id);
-
-    for (const event of events) {
-      setBattleEvent(event);
-      await delay(event.attacks.length * 50);
-    }
-
-    setBattleEvent(null);
-    setPauseUpdates(false);
-  };
 
   const executeGameAction = async (action: GameAction) => {
     let txs: any[] = [];
@@ -186,7 +174,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         extraLife: 0,
       });
 
-      processBattleEvents(events);
+      console.log("BATTLE EVENTS", events);
+      setBattleEvents(events);
     } else if (action.type === 'add_extra_life') {
       setTokenBalances({
         ...tokenBalances,

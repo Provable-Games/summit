@@ -104,6 +104,14 @@ export const getBeastRevivalTime = (beast: Beast): number => {
   return revivalTime;
 }
 
+export const getBeastCurrentLevel = (beast: Beast): number => {
+  console.log("BEAST", beast);
+  console.log("BONUS XP", beast.bonus_xp);
+  console.log("LEVEL", beast.level);
+  console.log("CURRENT LEVEL", Math.floor(Math.sqrt(beast.bonus_xp + Math.pow(beast.level, 2))));
+  return Math.floor(Math.sqrt(beast.bonus_xp + Math.pow(beast.level, 2)));
+}
+
 export const getBeastCurrentHealth = (beast: Beast): number => {
   if (beast.current_health === null || (beast.last_death_timestamp === 0 && beast.current_health === 0)) {
     return beast.health + beast.bonus_health

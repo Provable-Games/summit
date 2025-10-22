@@ -1,6 +1,6 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { Summit } from "@/types/game";
-import { getBeastDetails } from "@/utils/beasts";
+import { getBeastCurrentLevel, getBeastDetails } from "@/utils/beasts";
 import { parseBalances } from "@/utils/utils";
 import { getContractByName } from "@dojoengine/core";
 import { useAccount } from "@starknet-react/core";
@@ -88,6 +88,7 @@ export const useStarknetApi = () => {
         beast: {
           ...beast,
           ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.level),
+          level: getBeastCurrentLevel(beast as any),
           revival_time: 0,
         },
         taken_at: parseInt(data?.result[24], 16),
