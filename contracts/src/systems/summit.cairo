@@ -583,7 +583,10 @@ pub mod summit_systems {
 
                 if attacking_beast.live.current_health == 0 {
                     // add xp to summit beast
-                    defending_beast.live.bonus_xp += ImplCombat::get_attack_hp(attacking_beast.get_combat_spec(false)) % 100 + 1;
+                    defending_beast
+                        .live
+                        .bonus_xp += ImplCombat::get_attack_hp(attacking_beast.get_combat_spec(false)) % 100
+                        + 1;
                     // set death timestamp for prev summit beast
                     attacking_beast.live.last_death_timestamp = current_time;
                     // update the live stats of the attacking beast
