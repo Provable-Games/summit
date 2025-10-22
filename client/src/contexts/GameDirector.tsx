@@ -91,16 +91,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       query: gameModelsQuery(),
       callback: ({ data, error }: { data?: any[]; error?: Error }) => {
         if (data && data.length > 0) {
-          let events = data.map((entity: any) => {
-            if (Boolean(getEntityModel(entity, "LiveBeastStats"))) {
-              return getEntityModel(entity, "LiveBeastStats");
-            } else if (Boolean(getEntityModel(entity, "Summit"))) {
-              return getEntityModel(entity, "Summit");
-            }
-
-            return false;
-          }).filter(Boolean);
-
+          let events = data.filter((entity: any) => Boolean(getEntityModel(entity, "LiveBeastStats")))
+            .map((entity: any) => getEntityModel(entity, "LiveBeastStats"))
           setEventQueue((prev) => [...prev, ...events]);
         }
       },
@@ -110,7 +102,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   };
 
   const processBeastUpdate = (update: any) => {
-    console.log("UPDATE", update);
     if (update.token_id === summit?.beast.token_id) {
       setSummit({
         ...summit,
@@ -119,6 +110,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           ...update,
         },
       });
+    } else if (update.current_health > 0) {
+      fetchSummitData();
     }
 
     if (collection.find((beast: Beast) => beast.token_id === update.token_id)) {

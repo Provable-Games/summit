@@ -693,7 +693,7 @@ pub mod summit_systems {
             if time_since_death < revival_time {
                 // if the beast has not been killed in the last 14 days, reduce the revival time by 8 hours
                 let last_killed_timestamp = Self::_get_last_killed_timestamp(beast, summit_config, beast_data);
-                if last_killed_timestamp < current_time() - (DAY_SECONDS * 14) {
+                if last_killed_timestamp < current_time - (DAY_SECONDS * 14) {
                     revival_time -= 28800;
                 }
 

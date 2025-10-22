@@ -1,5 +1,5 @@
 import { useGameStore } from '@/stores/gameStore'
-import { Box, Typography } from '@mui/material'
+import { Box, LinearProgress, Typography } from '@mui/material'
 import { motion, useAnimationControls } from 'framer-motion'
 import { useLottie } from 'lottie-react'
 import { useEffect, useState } from 'react'
@@ -14,6 +14,11 @@ function Summit() {
   const { collection, summit, attackInProgress, selectedBeasts, battleEvent, totalDamage } = useGameStore()
   const controls = useAnimationControls()
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
+
+  // Calculate experience progress
+  const originalExperience = Math.pow(summit.beast.level, 2);
+  const currentExperience = originalExperience + summit.beast.bonus_xp;
+  const nextLevelExperience = Math.pow(summit.beast.level + 1, 2);
 
   // Use StarkProfile hook for StarkNet ID
   const { data: profile } = useStarkProfile({ address: summit?.owner as `0x${string}` })
@@ -105,6 +110,16 @@ function Summit() {
               </Box>
             )}
           </Box>
+
+          {/* XP Progress Bar */}
+          <Box sx={{ position: 'relative' }}>
+            <LinearProgress
+              variant="determinate"
+              value={normaliseHealth(currentExperience - originalExperience, nextLevelExperience - originalExperience)}
+              sx={styles.xpBar}
+            />
+            <Typography sx={styles.xpText}>XP</Typography>
+          </Box>
         </Box>
 
         {/* Stats Row */}
@@ -130,6 +145,24 @@ function Summit() {
 
       {/* Beast Image */}
       <Box sx={styles.beastImageContainer}>
+        {/* Orbiting Light Behind Image - for animated beasts */}
+        {summit.beast.animated && (
+          <Box
+            component={motion.div}
+            sx={styles.orbitingLightBehind}
+            animate={{
+              rotate: 360,
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+          >
+            <Box sx={styles.glowingOrb} />
+          </Box>
+        )}
+
         <motion.img
           key={summit.beast.token_id}
           style={{ ...styles.beastImage, opacity: showAttack && totalDamage >= summitHealthRemaining ? 0.7 : showAttack ? 0.9 : 1 }}
@@ -137,6 +170,24 @@ function Summit() {
           alt=''
           animate={controls}
         />
+
+        {/* Orbiting Light In Front of Image - for animated beasts */}
+        {summit.beast.animated && (
+          <Box
+            component={motion.div}
+            sx={styles.orbitingLightFront}
+            animate={{
+              rotate: 360,
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+          >
+            <Box sx={styles.glowingOrb} />
+          </Box>
+        )}
 
         {/* Attack Effects */}
         {showAttack && (
@@ -216,7 +267,36 @@ const styles = {
     height: '100%',
     maxWidth: '100%',
     transition: 'all 0.3s ease',
+    zIndex: 2,
+  },
+  orbitingLightBehind: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    top: 0,
+    left: 0,
     zIndex: 1,
+    clipPath: 'polygon(0 0, 100% 0, 100% 50%, 0 50%)',
+  },
+  orbitingLightFront: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    top: 0,
+    left: 0,
+    zIndex: 3,
+    clipPath: 'polygon(0 50%, 100% 50%, 100% 100%, 0 100%)',
+  },
+  glowingOrb: {
+    position: 'absolute',
+    width: '20px',
+    height: '20px',
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, #00ff88 0%, #00cc66 40%, transparent 70%)',
+    top: '0',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    animation: 'pulse 1s ease-in-out infinite',
   },
   statsSection: {
     width: '100%',
@@ -329,6 +409,31 @@ const styles = {
     width: '14px',
     height: '14px',
     filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))',
+  },
+  xpBar: {
+    height: '6px',
+    borderRadius: '2px',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    marginTop: '4px',
+    position: 'relative',
+    overflow: 'hidden',
+    '& .MuiLinearProgress-bar': {
+      backgroundColor: '#9C27B0',
+      boxShadow: '0 0 8px rgba(156, 39, 176, 0.5)',
+    },
+  },
+  xpText: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    fontSize: '8px',
+    color: '#ffedbb',
+    fontWeight: 'bold',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    letterSpacing: '0.5px',
+    zIndex: 2,
+    lineHeight: '1',
   },
   damageIndicator: {
     position: 'absolute',
