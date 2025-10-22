@@ -4,7 +4,6 @@ import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime } from "@/utils/beasts";
 import { addAddressPadding } from "starknet";
 
-
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
@@ -102,7 +101,6 @@ export const useGameTokens = () => {
       LEFT JOIN stats s  ON s.token_hex64 = tbn.token_hex64;
     `
 
-    console.log(q)
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
     const sql = await fetch(url, {
       method: "GET",
@@ -150,7 +148,7 @@ export const useGameTokens = () => {
       }
       beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)
-      beast.level = getBeastCurrentLevel(beast)
+      beast.level = getBeastCurrentLevel(beast.level, beast.bonus_xp)
       return beast
     })
 

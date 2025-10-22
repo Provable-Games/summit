@@ -25,7 +25,7 @@ function ActionBar(props: ActionBarProps) {
   const { selectedBeasts, summit, showFeedingGround, setAttackInProgress,
     selectedAdventurers, attackInProgress, setShowFeedingGround,
     feedingInProgress, adventurerCollection, appliedPotions, setAppliedPotions,
-    setFeedingInProgress, killedByAdventurers, applyingPotions, setApplyingPotions } = useGameStore();
+    setFeedingInProgress, killedByAdventurers, applyingPotions, setApplyingPotions, setBattleEvents, collection } = useGameStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
@@ -44,6 +44,7 @@ function ActionBar(props: ActionBarProps) {
   const handleAttack = () => {
     if (!enableAttack) return;
 
+    setBattleEvents([]);
     setAttackInProgress(true);
     setPauseUpdates(true);
 
@@ -70,10 +71,9 @@ function ActionBar(props: ActionBarProps) {
   }
 
   const handleAddExtraLife = () => {
-    if (!applyingPotions) return;
+    if (applyingPotions || appliedPotions.extraLife === 0) return;
 
     setApplyingPotions(true);
-    setPauseUpdates(true);
 
     executeGameAction({
       type: 'add_extra_life',
@@ -81,6 +81,7 @@ function ActionBar(props: ActionBarProps) {
     });
   }
 
+  const isSavage = Boolean(collection.find(beast => beast.token_id === summit?.beast?.token_id))
   const isSavageSelected = Boolean(selectedBeasts.find((beast: any) => beast.token_id === summit?.beast?.token_id))
   const deadBeasts = selectedBeasts.filter((beast: any) => beast.current_health === 0);
   const revivalPotionsRequired = deadBeasts.reduce((sum: number, beast: any) => sum + beast.revival_count + 1, 0);
@@ -98,7 +99,7 @@ function ActionBar(props: ActionBarProps) {
   }, [deadBeasts.length, revivalPotionsRequired, tokenBalances["REVIVE"]]);
 
   const hasEnoughRevivePotions = tokenBalances["REVIVE"] >= revivalPotionsRequired;
-  const enableAttack = summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions;
+  const enableAttack = (!isSavage || !safeAttack) && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions;
   const enableFeedingGround = selectedBeasts.length === 1 && adventurerCollection.length > 0;
 
   const enableExtraLifePotion = tokenBalances["EXTRA LIFE"] > 0;
@@ -157,7 +158,7 @@ function ActionBar(props: ActionBarProps) {
             }
 
             {isappliedPotions && isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
-              {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'}>
+              {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
                 <Typography sx={styles.potionCount}>{appliedPotions.extraLife}</Typography>
                 <img src={heart} alt='' height={'12px'} />
               </Box>}
@@ -379,7 +380,7 @@ function ActionBar(props: ActionBarProps) {
         '& .MuiPaper-root': {
           backgroundColor: '#1a1f1a',
           backdropFilter: 'blur(10px)',
-          border: `1px solid ${gameColors.accentGreen}20`,
+          border: `1px solid ${gameColors.gameYellow}`,
           borderRadius: '8px',
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
           overflow: 'visible',

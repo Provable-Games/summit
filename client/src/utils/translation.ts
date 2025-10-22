@@ -66,7 +66,7 @@ export const components: any = {
     attacking_beast_token_id: 'number',
     defending_beast_token_id: 'number',
     attacks: 'array_number',
-    counter: 'array_number',
+    counter_attacks: 'array_number',
     attack_potions: 'number',
     xp_gained: 'number',
   },

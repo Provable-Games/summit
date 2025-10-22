@@ -1,4 +1,5 @@
 use starknet::ContractAddress;
+use summit::models::beast::LiveBeastStats;
 
 #[derive(Copy, Drop, Serde, Introspect)]
 #[dojo::model]
@@ -45,4 +46,34 @@ pub struct BattleEvent {
     pub counter_attacks: Span<u16>,
     pub attack_potions: u8,
     pub xp_gained: u8,
+}
+
+#[derive(Introspect, Copy, Drop, Serde)]
+#[dojo::event]
+pub struct RewardEvent {
+    #[key]
+    pub block_number: u64,
+    pub owner: ContractAddress,
+    pub amount: u32,
+}
+
+#[derive(Introspect, Copy, Drop, Serde)]
+#[dojo::event]
+pub struct SummitEvent {
+    #[key]
+    pub taken_at: u64,
+    pub beast: BeastEvent,
+    pub live_stats: LiveBeastStats,
+    pub owner: ContractAddress,
+}
+
+#[derive(Introspect, Copy, Drop, Serde)]
+pub struct BeastEvent {
+    pub id: u8,
+    pub prefix: u8,
+    pub suffix: u8,
+    pub level: u16,
+    pub health: u16,
+    pub shiny: u8,
+    pub animated: u8,
 }

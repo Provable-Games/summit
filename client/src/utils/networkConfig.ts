@@ -34,7 +34,7 @@ export enum ChainId {
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_0_0_5_preview_1",
+    namespace: "summit_0_0_5_preview_2",
     manifest: manifest_mainnet,
     slot: "pg-mainnet-9",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
@@ -83,7 +83,85 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
   const network = NETWORKS[networkKey as keyof typeof NETWORKS];
   if (!network) throw new Error(`Network ${networkKey} not found`);
 
-  const policies = undefined;
+  const policies = {
+    "contracts": {
+      "0x31d415735500f9fe24874de1c31f9d8d0771c6b33fe82d7984f8a9284ce5a71": {
+        "name": "Summit Game",
+        "description": "Main game contract for Summit gameplay",
+        "methods": [
+          {
+            "name": "Attack",
+            "description": "Attack the Summit",
+            "entrypoint": "attack"
+          },
+          {
+            "name": "Attack Unsafe",
+            "description": "Attack the Summit without safety checks",
+            "entrypoint": "attack_unsafe"
+          },
+          {
+            "name": "Feed",
+            "description": "Feed beast dead adventurers",
+            "entrypoint": "feed"
+          },
+          {
+            "name": "Claim Starter Kit",
+            "description": "Claim beast starter kit",
+            "entrypoint": "claim_starter_kit"
+          },
+          {
+            "name": "Add Extra Life",
+            "description": "Add extra life to beast",
+            "entrypoint": "add_extra_life"
+          },
+          {
+            "name": "Select Upgrades",
+            "description": "Select upgrades for beast",
+            "entrypoint": "select_upgrades"
+          }
+        ]
+      },
+      "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b": {
+        "name": "Attack Potion",
+        "description": "ERC 20 token for Attack Potion",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": "0xf394d0076fc06a68da5431a0db5376cd38dc862702556a668f82b3c04236ae",
+            "description": "Approve Attack Potion",
+            "entrypoint": "approve"
+          }
+        ]
+      },
+      "0x068292fdfa280f371fabd1d6e49c346f11b341e1d3fe80d4ac320648ab03539c": {
+        "name": "Revive Potion",
+        "description": "ERC 20 token for Revive Potion",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": "0xf394d0076fc06a68da5431a0db5376cd38dc862702556a668f82b3c04236ae",
+            "description": "Approve Revive Potion",
+            "entrypoint": "approve"
+          }
+        ]
+      },
+      "0x0793f1104a3b0d2316abc92039421f7160a7f4caad0ed405b6f8732271717328": {
+        "name": "Extra Life Potion",
+        "description": "ERC 20 token for Extra Life Potion",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": "0xf394d0076fc06a68da5431a0db5376cd38dc862702556a668f82b3c04236ae",
+            "description": "Approve Extra Life Potion",
+            "entrypoint": "approve"
+          }
+        ]
+      }
+    }
+  };
 
   return {
     chainId: network.chainId,
@@ -91,7 +169,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     manifest: network.manifest,
     slot: network.slot,
     preset: "savage-summit",
-    policies,
+    policies: policies as any,
     rpcUrl: network.rpcUrl,
     toriiUrl: network.torii,
     subscriptionUrl: network.subscriptionUrl,

@@ -33,7 +33,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
   const { summit, setSummit, setAttackInProgress, setFeedingInProgress,
     collection, setCollection, setAppliedPotions, appliedPotions,
-    setBattleEvents } = useGameStore();
+    setBattleEvents, setApplyingPotions } = useGameStore();
   const { gameModelsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimStarterKit, addExtraLife, selectUpgrades } = useSystemCalls();
@@ -52,6 +52,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     setAttackInProgress(false);
     setFeedingInProgress(false);
+    setApplyingPotions(false);
   }, [actionFailed]);
 
   useEffect(() => {
@@ -68,7 +69,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   const fetchSummitData = useCallback(async () => {
     const summitBeast = await getSummitData();
-
+    
     if (summitBeast && (
       !summit ||
       (summitBeast.beast.current_health < summit?.beast.current_health && summitBeast.beast.extra_lives <= summit?.beast.extra_lives) ||
@@ -105,7 +106,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     console.log("PROCESSING BEAST UPDATE", update);
     if (update.token_id === summit?.beast.token_id) {
       let updatedBeast = { ...summit?.beast, ...update };
-      updatedBeast.level = getBeastCurrentLevel(updatedBeast);
+      updatedBeast.level = getBeastCurrentLevel(updatedBeast.level, updatedBeast.bonus_xp);
 
       setSummit({
         ...summit,
@@ -121,7 +122,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           let newBeast = { ...beast, ...update };
           newBeast.current_health = getBeastCurrentHealth(newBeast);
           newBeast.revival_time = getBeastRevivalTime(newBeast);
-          newBeast.level = getBeastCurrentLevel(newBeast);
+          newBeast.level = getBeastCurrentLevel(newBeast.level, newBeast.bonus_xp);
           return newBeast;
         }
 
@@ -148,7 +149,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     if (action.type === 'add_extra_life') {
-      txs.push(addExtraLife(action.beastId, appliedPotions.extraLife));
+      txs.push(...addExtraLife(action.beastId, appliedPotions.extraLife));
     }
 
     if (action.type === 'select_upgrades') {
@@ -158,6 +159,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     const events = await executeAction(txs, setActionFailed);
 
     if (!events || events.length === 0) {
+      setActionFailed();
       return false;
     }
 
@@ -186,6 +188,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         attack: 0,
         extraLife: 0,
       });
+      setApplyingPotions(false);
     }
 
     return true;

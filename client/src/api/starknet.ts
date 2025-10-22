@@ -72,27 +72,25 @@ export const useStarknetApi = () => {
         bonus_xp: parseInt(data?.result[10], 16),
         attack_streak: parseInt(data?.result[11], 16),
         last_death_timestamp: parseInt(data?.result[12], 16),
-        num_deaths: parseInt(data?.result[13], 16),
-        last_killed_by: parseInt(data?.result[14], 16),
-        revival_count: parseInt(data?.result[15], 16),
-        extra_lives: parseInt(data?.result[16], 16),
-        has_claimed_starter_kit: Boolean(parseInt(data?.result[17], 16)),
-        rewards_earned: parseInt(data?.result[18], 16),
+        revival_count: parseInt(data?.result[13], 16),
+        extra_lives: parseInt(data?.result[14], 16),
+        has_claimed_starter_kit: Boolean(parseInt(data?.result[15], 16)),
+        rewards_earned: parseInt(data?.result[16], 16),
         stats: {
-          spirit: Boolean(parseInt(data?.result[19], 16)),
-          luck: Boolean(parseInt(data?.result[20], 16)),
-          specials: Boolean(parseInt(data?.result[21], 16)),
+          spirit: Boolean(parseInt(data?.result[17], 16)),
+          luck: Boolean(parseInt(data?.result[18], 16)),
+          specials: Boolean(parseInt(data?.result[19], 16)),
         }
       }
+      beast.level = getBeastCurrentLevel(beast.level, beast.bonus_xp);
       return {
         beast: {
           ...beast,
           ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.level),
-          level: getBeastCurrentLevel(beast as any),
           revival_time: 0,
         },
-        taken_at: parseInt(data?.result[24], 16),
-        owner: data?.result[25],
+        taken_at: parseInt(data?.result[22], 16),
+        owner: data?.result[23],
       }
     } catch (error) {
       console.log('error', error)

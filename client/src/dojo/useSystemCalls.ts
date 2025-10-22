@@ -15,6 +15,7 @@ export const useSystemCalls = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
   const namespace = currentNetworkConfig.namespace;
+  const VRF_PROVIDER_ADDRESS = "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f"
   const SUMMIT_ADDRESS = getContractByName(
     currentNetworkConfig.manifest,
     namespace,
@@ -113,6 +114,10 @@ export const useSystemCalls = () => {
       txs.push(approvePotions(extraLifeAddress, appliedPotions.extraLife));
     }
 
+    if (vrf || !safeAttack) {
+      txs.push(requestRandom());
+    }
+
     if (safeAttack) {
       txs.push({
         contractAddress: SUMMIT_ADDRESS,
@@ -131,11 +136,20 @@ export const useSystemCalls = () => {
   };
 
   const addExtraLife = (beastId: number, extraLifePotions: number) => {
-    return {
+    let txs: any[] = [];
+
+    if (extraLifePotions > 0) {
+      let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
+      txs.push(approvePotions(extraLifeAddress, extraLifePotions));
+    }
+
+    txs.push({
       contractAddress: SUMMIT_ADDRESS,
       entrypoint: "add_extra_life",
       calldata: CallData.compile([beastId, extraLifePotions]),
-    };
+    });
+
+    return txs;
   };
 
   const selectUpgrades = (upgrades: { [beastId: number]: Stats }) => {
@@ -166,6 +180,17 @@ export const useSystemCalls = () => {
     };
   };
 
+  const requestRandom = () => {
+    return {
+      contractAddress: VRF_PROVIDER_ADDRESS,
+      entrypoint: "request_random",
+      calldata: CallData.compile({
+        caller: SUMMIT_ADDRESS,
+        source: { type: 0, address: account!.address },
+      }),
+    };
+  };
+
   return {
     feed,
     attack,
@@ -173,5 +198,6 @@ export const useSystemCalls = () => {
     executeAction,
     addExtraLife,
     selectUpgrades,
+    requestRandom,
   };
 };

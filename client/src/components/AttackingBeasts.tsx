@@ -10,11 +10,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import attackPotionIcon from '../assets/images/attack-potion.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
-import { fetchBeastImage } from '../utils/beasts';
+import { fetchBeastImage, getBeastCurrentHealth } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 
 function AttackingBeasts() {
-  const { selectedBeasts, appliedPotions, setAttackInProgress, setSelectedBeasts, battleEvents } = useGameStore();
+  const { selectedBeasts, appliedPotions, setAttackInProgress, setSelectedBeasts, battleEvents, setSummit, summit } = useGameStore();
   const { setPauseUpdates } = useGameDirector();
   const [isAttacking, setIsAttacking] = useState(false);
   const [deadBeasts, setDeadBeasts] = useState<Set<number>>(new Set());
@@ -22,7 +22,6 @@ function AttackingBeasts() {
   const [damageQueue, setDamageQueue] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastIndex: number }>>([]);
   const [beasts, setBeasts] = useState<Beast[]>([]);
   const [activeBeastTokenId, setActiveBeastTokenId] = useState<number | null>(null);
-
 
   // Create enhanced beasts with battle data
   useEffect(() => {
@@ -32,6 +31,7 @@ function AttackingBeasts() {
 
         return {
           ...beast,
+          current_health: beast.current_health || (beast.health + beast.bonus_health),
           battle: battleEvent
         }
       });
@@ -79,9 +79,7 @@ function AttackingBeasts() {
       }
     }
 
-    setTimeout(() => {
-      setDamageQueue(queue);
-    }, 500);
+    setDamageQueue(queue);
   }, [activeBeastTokenId]);
 
   // Process damage queue continuously
@@ -92,7 +90,9 @@ function AttackingBeasts() {
     const timeouts = [];
 
     const processNext = () => {
-      if (currentIndex >= damageQueue.length) return;
+      if (currentIndex >= damageQueue.length) {
+        return;
+      };
 
       const nextDamage = damageQueue[currentIndex];
 
@@ -104,8 +104,18 @@ function AttackingBeasts() {
       // Show damage number
       setDamageNumbers(current => [...current, nextDamage]);
 
+      if (nextDamage.type === 'attack') {
+        setSummit({
+          ...summit,
+          beast: {
+            ...summit.beast,
+            current_health: Math.max(0, summit.beast.current_health - nextDamage.value)
+          }
+        });
+      }
+
       // Apply counter-attack damage to beast health
-      if (nextDamage.type === 'counter') {
+      else if (nextDamage.type === 'counter') {
         setBeasts(prevBeasts => {
           const newBeasts = [...prevBeasts];
           const beastIndex = newBeasts.findIndex(b => b.token_id === nextDamage.beastIndex);
@@ -118,9 +128,6 @@ function AttackingBeasts() {
           };
 
           if (newHealth === 0) {
-            setDamageQueue([])
-            setDamageNumbers([])
-
             const deadTokenId = newBeasts[beastIndex].token_id;
             setDeadBeasts(dead => {
               const newDeadSet = new Set([...dead, deadTokenId]);
@@ -138,7 +145,7 @@ function AttackingBeasts() {
                 } else {
                   setAttackInProgress(false);
                 }
-              }, 500);
+              }, 1000);
 
               return newDeadSet;
             });
@@ -165,27 +172,71 @@ function AttackingBeasts() {
     return () => {
       timeouts.forEach(timeout => clearTimeout(timeout));
     };
-  }, [damageQueue, deadBeasts]);
+  }, [damageQueue]);
 
   const visibleBeasts = beasts.filter(beast => !deadBeasts.has(beast.token_id));
 
   const handleSkip = () => {
-    // TODO: Implement skip functionality - clear all animations and show results
-    console.log('Skip clicked');
+    setPauseUpdates(false);
+    setSelectedBeasts([]);
+    setAttackInProgress(false);
   };
 
   return (
     <Box sx={styles.container}>
       <Box sx={styles.infoPanel}>
-        <Box sx={styles.beastsRemaining}>
+        {battleEvents.length > 0 ? (<Box sx={styles.beastsRemaining}>
           <Typography sx={styles.remainingText}>
             {visibleBeasts.length} Beast{visibleBeasts.length !== 1 ? 's' : ''} Remaining
           </Typography>
         </Box>
-        <Box sx={styles.skipButton} onClick={handleSkip}>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{
+              opacity: 1,
+              y: 0,
+            }}
+            transition={{ duration: 0.3 }}
+            style={{ width: '90%' }}
+          >
+            <Box sx={styles.preparingBattle}>
+              <Typography sx={styles.preparingTitle}>
+                Preparing Battle
+              </Typography>
+
+              <Box sx={styles.preparingDots}>
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      backgroundColor: gameColors.accentGreen,
+                    }}
+                    animate={{
+                      opacity: [0.3, 1, 0.3],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      delay: i * 0.2,
+                      ease: "easeInOut"
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          </motion.div>
+        )}
+
+        {battleEvents.length > 0 && <Box sx={styles.skipButton} onClick={handleSkip}>
           <FastForwardIcon sx={styles.skipIcon} />
-          <Typography sx={styles.skipButtonText}>Skip All</Typography>
-        </Box>
+          <Typography sx={styles.skipButtonText}>
+            Skip All
+          </Typography>
+        </Box>}
       </Box>
       <Box sx={styles.beastsRow}>
         <AnimatePresence mode="popLayout">
@@ -389,6 +440,34 @@ const styles: any = {
     textAlign: 'center',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
+  },
+  preparingBattle: {
+    position: 'relative',
+    width: '100%',
+    background: `${gameColors.darkGreen}40`,
+    backdropFilter: 'blur(4px)',
+    border: `1px solid ${gameColors.accentGreen}30`,
+    borderRadius: '8px',
+    padding: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '10px',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+  },
+  preparingTitle: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: gameColors.accentGreen,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    lineHeight: 1,
+  },
+  preparingDots: {
+    display: 'flex',
+    gap: '6px',
+    alignItems: 'center',
   },
   skipButton: {
     background: `${gameColors.darkGreen}90`,

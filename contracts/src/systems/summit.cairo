@@ -65,7 +65,9 @@ pub mod summit_systems {
     };
     use summit::models::adventurer::{AdventurerConsumed};
     use summit::models::beast::{Beast, LiveBeastStats, Stats};
-    use summit::models::summit::{BattleEvent, Summit, SummitConfig, SummitHistory};
+    use summit::models::summit::{
+        BattleEvent, BeastEvent, RewardEvent, Summit, SummitConfig, SummitEvent, SummitHistory,
+    };
     use summit::vrf::VRFImpl;
 
     /// @title Dojo Init
@@ -425,8 +427,13 @@ pub mod summit_systems {
             if (blocks_on_summit > 0) {
                 // let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
                 // let reward_dispatcher = RewardERC20Dispatcher { contract_address: summit_config.reward_address };
-                // reward_dispatcher.mint(summit_owner, blocks_on_summit.into() * TOKEN_DECIMALS);
-                beast.live.rewards_earned += blocks_on_summit.try_into().unwrap();
+                // reward_dispatcher.mint(summit_owner, reward_amount * TOKEN_DECIMALS);
+                let reward_amount = blocks_on_summit.try_into().unwrap();
+                beast.live.rewards_earned += reward_amount;
+                world
+                    .emit_event(
+                        @RewardEvent { block_number: current_block, owner: summit_owner, amount: reward_amount },
+                    );
             }
         }
 
@@ -610,6 +617,18 @@ pub mod summit_systems {
 
                     // update the live stats of the attacking beast
                     world.write_model(@attacking_beast.live);
+
+                    // emit summit event
+                    world
+                        .emit_event(
+                            @SummitEvent {
+                                taken_at: get_block_number(),
+                                beast: Self::_get_beast_event(attacking_beast),
+                                live_stats: attacking_beast.live,
+                                owner: summit_owner,
+                            },
+                        );
+
                     break;
                 }
 
@@ -805,6 +824,18 @@ pub mod summit_systems {
             let poseidon = poseidon_hash_span(hash_span.span());
             let rnd1_u64 = ImplAdventurer::felt_to_u32(poseidon);
             ImplAdventurer::u32_to_u8s(rnd1_u64)
+        }
+
+        fn _get_beast_event(beast: Beast) -> BeastEvent {
+            BeastEvent {
+                id: beast.fixed.id,
+                prefix: beast.fixed.prefix,
+                suffix: beast.fixed.suffix,
+                level: beast.fixed.level,
+                health: beast.fixed.health,
+                shiny: beast.fixed.shiny,
+                animated: beast.fixed.animated,
+            }
         }
     }
 }

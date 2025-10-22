@@ -11,7 +11,7 @@ import { lookupAddresses } from '@cartridge/controller'
 import { useStarkProfile } from '@starknet-react/core'
 
 function Summit() {
-  const { collection, summit, attackInProgress, selectedBeasts, battleEvent, totalDamage } = useGameStore()
+  const { collection, summit, attackInProgress, selectedBeasts, totalDamage } = useGameStore()
   const controls = useAnimationControls()
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
 
@@ -146,7 +146,7 @@ function Summit() {
       {/* Beast Image */}
       <Box sx={styles.beastImageContainer}>
         {/* Orbiting Light Behind Image - for animated beasts */}
-        {summit.beast.animated && (
+        {summit.beast.animated ?
           <Box
             component={motion.div}
             sx={styles.orbitingLightBehind}
@@ -161,7 +161,7 @@ function Summit() {
           >
             <Box sx={styles.glowingOrb} />
           </Box>
-        )}
+          : null}
 
         <motion.img
           key={summit.beast.token_id}
@@ -172,7 +172,7 @@ function Summit() {
         />
 
         {/* Orbiting Light In Front of Image - for animated beasts */}
-        {summit.beast.animated && (
+        {summit.beast.animated ?
           <Box
             component={motion.div}
             sx={styles.orbitingLightFront}
@@ -187,7 +187,7 @@ function Summit() {
           >
             <Box sx={styles.glowingOrb} />
           </Box>
-        )}
+          : null}
 
         {/* Attack Effects */}
         {showAttack && (
