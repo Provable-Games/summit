@@ -20,7 +20,6 @@ export default function AdventurerProfile({ adventurer }: AdventurerProfileProps
     const fetchKilledBeasts = async () => {
       try {
         const data = await getKilledBeasts(adventurer.id);
-        console.log(data);
         setKilledBeasts(data);
       } catch (error) {
         console.error('Failed to fetch killed beasts:', error);

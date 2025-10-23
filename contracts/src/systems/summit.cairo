@@ -293,6 +293,10 @@ pub mod summit_systems {
             let beast_data = IBeastSystemsDispatcher { contract_address: summit_config.beast_data_address };
             let mut beast = InternalSummitImpl::_get_beast(world, beast_token_id);
 
+            assert(stats.spirit || !beast.live.stats.spirit, 'Not allowed');
+            assert(stats.luck || !beast.live.stats.luck, 'Not allowed');
+            assert(stats.specials || !beast.live.stats.specials, 'Not allowed');
+
             let beast_hash = ImplBeast::get_beast_hash(beast.fixed.id, beast.fixed.prefix, beast.fixed.suffix);
             let kill_count = beast_data.get_entity_stats(summit_config.dungeon_address, beast_hash).adventurers_killed;
 

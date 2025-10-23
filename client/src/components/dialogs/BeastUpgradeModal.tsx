@@ -117,9 +117,23 @@ function BeastUpgradeModal(props) {
     setUpgradeInProgress(true);
 
     try {
+      // Merge active stats with selected upgrades
+      const upgradesWithActiveStats = Object.entries(beastUpgrades).reduce((acc, [tokenId, selectedUpgrades]) => {
+        const beast = collection.find(b => b.token_id.toString() === tokenId);
+        if (beast) {
+          // Combine active stats with newly selected upgrades
+          acc[tokenId] = {
+            spirit: beast.stats.spirit || selectedUpgrades.spirit || false,
+            luck: beast.stats.luck || selectedUpgrades.luck || false,
+            specials: beast.stats.specials || selectedUpgrades.specials || false,
+          };
+        }
+        return acc;
+      }, {} as { [key: number]: { spirit: boolean; luck: boolean; specials: boolean } });
+
       let result = await executeGameAction({
         type: 'select_upgrades',
-        upgrades: beastUpgrades
+        upgrades: upgradesWithActiveStats
       });
 
       if (result) {
