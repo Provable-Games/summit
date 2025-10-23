@@ -1,21 +1,20 @@
 import { useStarknetApi } from "@/api/starknet";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useGameStore } from "@/stores/gameStore";
-import { BattleEvent, Beast, GameAction, getEntityModel } from "@/types/game";
+import { Beast, GameAction, getEntityModel } from "@/types/game";
+import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime } from "@/utils/beasts";
 import { useQueries } from '@/utils/queries';
 import { delay } from "@/utils/utils";
 import { useDojoSDK } from '@dojoengine/sdk/react';
 import {
   createContext,
   PropsWithChildren,
-  useCallback,
   useContext,
   useEffect,
   useReducer,
   useState
 } from "react";
 import { useController } from "./controller";
-import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime } from "@/utils/beasts";
 
 export interface GameDirectorContext {
   executeGameAction: (action: GameAction) => Promise<boolean>;
@@ -67,13 +66,16 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     processNextEvent();
   }, [eventQueue, pauseUpdates]);
 
-  const fetchSummitData = useCallback(async () => {
+  const fetchSummitData = async () => {
     const summitBeast = await getSummitData();
 
-    if (summitBeast) {
+    if (!summitBeast || summitBeast.beast.token_id === summit?.beast.token_id) {
+      await delay(1000);
+      return fetchSummitData();
+    } else {
       setSummit(summitBeast);
     }
-  }, [summit]);
+  };
 
   const subscribeBeastUpdates = async () => {
     if (subscription) {

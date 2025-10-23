@@ -133,34 +133,33 @@ function Summit() {
               <Typography sx={styles.powerValue}>{summit.beast.power}</Typography>
             </Box>
           </Box>
-          <Box sx={[styles.statBox, { minWidth: '0px' }]}>
+          {(summit.beast.stats.spirit || summit.beast.stats.luck || summit.beast.stats.specials) ? (<Box sx={[styles.statBox, { minWidth: '0px' }]}>
             {/* Stats Upgrades Badge */}
-            {(summit.beast.stats.spirit || summit.beast.stats.luck || summit.beast.stats.specials) ? (
-              <Box sx={styles.statsBadge}>
-                {summit.beast.stats.luck && (
-                  <Tooltip title={<Box sx={styles.tooltipContent}>This beast has 50% crit chance</Box>} placement="bottom">
-                    <Box sx={{ color: '#ff69b4', display: 'flex' }}>
-                      <CasinoIcon sx={{ fontSize: '18px' }} />
-                    </Box>
-                  </Tooltip>
-                )}
-                {summit.beast.stats.spirit && (
-                  <Tooltip title={<Box sx={styles.tooltipContent}>This beast revives 50% faster</Box>} placement="bottom">
-                    <Box sx={{ color: '#00ffff', display: 'flex' }}>
-                      <EnergyIcon sx={{ fontSize: '18px' }} />
-                    </Box>
-                  </Tooltip>
-                )}
-                {summit.beast.stats.specials && (
-                  <Tooltip title={<Box sx={styles.tooltipContent}>This beast has name match bonus</Box>} placement="bottom">
-                    <Box sx={{ color: '#ffd700', display: 'flex' }}>
-                      <StarIcon sx={{ fontSize: '18px' }} />
-                    </Box>
-                  </Tooltip>
-                )}
-              </Box>
-            ) : null}
+            <Box sx={styles.statsBadge}>
+              {summit.beast.stats.luck && (
+                <Tooltip title={<Box sx={styles.tooltipContent}>This beast has 50% crit chance</Box>} placement="bottom">
+                  <Box sx={{ color: '#ff69b4', display: 'flex' }}>
+                    <CasinoIcon sx={{ fontSize: '20px' }} />
+                  </Box>
+                </Tooltip>
+              )}
+              {summit.beast.stats.spirit && (
+                <Tooltip title={<Box sx={styles.tooltipContent}>This beast revives 50% faster</Box>} placement="bottom">
+                  <Box sx={{ color: '#00ffff', display: 'flex' }}>
+                    <EnergyIcon sx={{ fontSize: '20px' }} />
+                  </Box>
+                </Tooltip>
+              )}
+              {summit.beast.stats.specials && (
+                <Tooltip title={<Box sx={styles.tooltipContent}>This beast has name match bonus</Box>} placement="bottom">
+                  <Box sx={{ color: '#ffd700', display: 'flex' }}>
+                    <StarIcon sx={{ fontSize: '20px' }} />
+                  </Box>
+                </Tooltip>
+              )}
+            </Box>
           </Box>
+          ) : null}
         </Box>
       </Box>
 
@@ -271,7 +270,7 @@ const styles = {
   statsBadge: {
     display: 'flex',
     justifyContent: 'space-between',
-    gap: '2px'
+    gap: '4px'
   },
   beastName: {
     fontSize: '18px',

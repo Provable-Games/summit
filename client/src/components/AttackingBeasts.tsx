@@ -8,20 +8,32 @@ import StarIcon from '@mui/icons-material/Star';
 import { Box, Typography } from '@mui/material';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import attackPotionIcon from '../assets/images/attack-potion.png';
-import lifePotionIcon from '../assets/images/life-potion.png';
-import { fetchBeastImage, getBeastCurrentHealth, getBeastCurrentLevel, getExperienceDefending } from '../utils/beasts';
+import { fetchBeastImage, getBeastCurrentLevel, getExperienceDefending } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
+import { useStarknetApi } from '@/api/starknet';
 
 function AttackingBeasts() {
   const { selectedBeasts, appliedPotions, setAttackInProgress, setSelectedBeasts, battleEvents, setSummit, summit } = useGameStore();
   const { setPauseUpdates } = useGameDirector();
+  const { getBeastData } = useStarknetApi();
   const [isAttacking, setIsAttacking] = useState(false);
   const [deadBeasts, setDeadBeasts] = useState<Set<number>>(new Set());
   const [damageNumbers, setDamageNumbers] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastIndex: number; critical: boolean }>>([]);
   const [damageQueue, setDamageQueue] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastIndex: number; critical: boolean }>>([]);
   const [beasts, setBeasts] = useState<Beast[]>([]);
   const [activeBeastTokenId, setActiveBeastTokenId] = useState<number | null>(null);
+
+  async function updateSummitBeastData(tokenId: number) {
+    const beastData = await getBeastData(tokenId);
+
+    if (beastData) {
+      setSummit(prevSummit => ({
+        ...prevSummit,
+        beast: beastData,
+        owner: '0x0000000000000000000000000000000000000000000000000000000000000000'
+      }));
+    }
+  }
 
   // Create enhanced beasts with battle data
   useEffect(() => {
@@ -40,6 +52,14 @@ function AttackingBeasts() {
       setDeadBeasts(new Set());
     }
   }, [selectedBeasts, battleEvents]);
+
+  useEffect(() => {
+    if (battleEvents.length > 0) {
+      if (battleEvents[0].defending_beast_token_id !== summit?.beast.token_id) {
+        updateSummitBeastData(battleEvents[0].defending_beast_token_id);
+      }
+    }
+  }, [battleEvents]);
 
   useEffect(() => {
     if (beasts.length > 0 && !activeBeastTokenId && beasts[0]?.battle) {
@@ -372,7 +392,7 @@ function AttackingBeasts() {
                   )}
 
                   {/* Potion indicators - only show for active beast */}
-                  {index === 0 && (
+                  {/* {index === 0 && (
                     <Box sx={styles.potionIndicators}>
                       {beast.battle?.attack_potions != null && beast.battle.attack_potions > 0 && (
                         <Box sx={styles.potionIcon}>
@@ -387,7 +407,7 @@ function AttackingBeasts() {
                         </Box>
                       )}
                     </Box>
-                  )}
+                  )} */}
 
                   {/* Stats row - show for all but smaller for waiting */}
                   <Box sx={[styles.statsRow]}>
