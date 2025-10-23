@@ -10,12 +10,18 @@ pub struct LiveBeastStats {
     pub bonus_xp: u16,
     pub attack_streak: u8,
     pub last_death_timestamp: u64,
-    pub num_deaths: u16,
-    pub last_killed_by: u32,
     pub revival_count: u8,
     pub extra_lives: u8,
     pub has_claimed_starter_kit: bool,
-    pub rewards_earned: u64,
+    pub rewards_earned: u32,
+    pub stats: Stats,
+}
+
+#[derive(IntrospectPacked, Copy, Drop, Serde)]
+pub struct Stats {
+    pub spirit: bool,
+    pub luck: bool,
+    pub specials: bool,
 }
 
 #[derive(Copy, Drop, Serde)]

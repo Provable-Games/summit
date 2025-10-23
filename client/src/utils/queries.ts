@@ -8,18 +8,11 @@ export const useQueries = () => {
 
   const gameEventsQuery = (summitId: number) => {
     return new GameQueryBuilder()
-      .withClause(
-        new ClauseBuilder().keys(
-          [
-            `${currentNetworkConfig.namespace}-GameEvent`,
-          ],
-          [addAddressPadding(`0x${summitId.toString(16)}`)]
-        ).build()
-      )
       .withEntityModels([
-        `${currentNetworkConfig.namespace}-GameEvent`,
+        `${currentNetworkConfig.namespace}-RewardEvent`,
+        `${currentNetworkConfig.namespace}-SummitEvent`,
       ])
-      .withLimit(10000)
+      .withLimit(1)
   };
 
   const gameModelsQuery = () => {

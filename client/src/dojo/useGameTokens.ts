@@ -1,8 +1,8 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { Beast } from "@/types/game";
-import { getBeastCurrentHealth } from "@/utils/beasts";
+import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
+import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime } from "@/utils/beasts";
 import { addAddressPadding } from "starknet";
-
 
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
@@ -15,7 +15,7 @@ export const useGameTokens = () => {
         WHERE tb.account_address = '${addAddressPadding(accountAddress.toLowerCase())}'
           AND tb.contract_address = '${addAddressPadding(currentNetworkConfig.beasts.toLowerCase())}'
           AND tb.balance = '0x0000000000000000000000000000000000000000000000000000000000000001'
-        LIMIT 1000
+        LIMIT 10000
       ),
       tbn AS (
         SELECT
@@ -60,7 +60,7 @@ export const useGameTokens = () => {
         SELECT
           LOWER(printf('%064x', CAST(token_id AS INTEGER))) AS token_hex64,
           attack_streak, bonus_health, bonus_xp, current_health, extra_lives,
-          has_claimed_starter_kit, last_death_timestamp, last_killed_by, num_deaths,
+          has_claimed_starter_kit, last_death_timestamp, "stats.luck", "stats.spirit", "stats.specials",
           revival_count, rewards_earned
         FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
       )
@@ -91,10 +91,11 @@ export const useGameTokens = () => {
         s.extra_lives,
         s.has_claimed_starter_kit,
         s.last_death_timestamp,
-        s.last_killed_by,
-        s.num_deaths,
         s.revival_count,
-        s.rewards_earned
+        s.rewards_earned,
+        s."stats.luck",
+        s."stats.spirit",
+        s."stats.specials"
       FROM tbn
       LEFT JOIN attrs a  ON a.token_id    = tbn.token_id
       LEFT JOIN stats s  ON s.token_hex64 = tbn.token_hex64;
@@ -111,7 +112,7 @@ export const useGameTokens = () => {
     let data = await sql.json()
 
     let beasts: Beast[] = data.map((data: any) => {
-      let beast = {
+      let beast: any = {
         id: Number(data["Beast ID"]),
         token_id: Number(data["Token ID"]),
         name: data["Beast"].replace(" ", ""),
@@ -138,8 +139,17 @@ export const useGameTokens = () => {
         num_deaths: data.num_deaths || 0,
         revival_count: data.revival_count || 0,
         rewards_earned: parseInt(data.rewards_earned, 16) || 0,
+        revival_time: 0,
+        stats: {
+          spirit: Boolean(data["stats.spirit"]),
+          luck: Boolean(data["stats.luck"]),
+          specials: Boolean(data["stats.specials"]),
+        }
       }
+      beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)
+      beast.current_level = getBeastCurrentLevel(beast.level, beast.bonus_xp)
+      beast.power = (6 - beast.tier) * beast.current_level;
       return beast
     })
 
@@ -147,9 +157,16 @@ export const useGameTokens = () => {
   }
 
   const countRegisteredBeasts = async () => {
-    let url = `${currentNetworkConfig.toriiUrl}/sql?query=
-      SELECT COUNT(*) as count FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
+    // Calculate timestamp for 24 hours ago (in seconds)
+    const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - (24 * 60 * 60);
+
+    let q = `
+      SELECT 
+        COUNT(*) as total_count,
+        COUNT(CASE WHEN CAST(last_death_timestamp AS INTEGER) < ${twentyFourHoursAgo} THEN 1 END) as alive_count
+      FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
     `
+    let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
 
     try {
       const sql = await fetch(url, {
@@ -160,86 +177,32 @@ export const useGameTokens = () => {
       })
 
       let data = await sql.json()
-      return data[0].count
+      return {
+        total: data[0].total_count,
+        alive: data[0].alive_count
+      }
     } catch (error) {
       console.error("Error counting beasts:", error);
-      return 0;
+      return { total: 0, alive: 0 };
     }
   }
 
-  const getBigFive = async () => {
+  const getLeaderboard = async () => {
+    const q = `
+        SELECT owner, SUM(amount) AS amount
+        FROM "${currentNetworkConfig.namespace}-RewardEvent"
+        GROUP BY owner
+        ORDER BY amount DESC
+      `;
+
+    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
     try {
-      // Query 1: Get all beast owners (fast with index on contract_address)
-      const ownersQuery = `
-        SELECT 
-          account_address,
-          token_id
-        FROM token_balances
-        WHERE contract_address = '${addAddressPadding(currentNetworkConfig.beasts.toLowerCase())}'
-          AND balance = '0x0000000000000000000000000000000000000000000000000000000000000001'
-      `;
-
-      // Query 2: Get all beast rewards (fast, no filtering)
-      const rewardsQuery = `
-        SELECT 
-          token_id,
-          rewards_earned
-        FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
-        WHERE rewards_earned IS NOT NULL AND rewards_earned != '0x0'
-      `;
-
-      // Execute both queries in parallel
-      const [ownersResponse, rewardsResponse] = await Promise.all([
-        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(ownersQuery)}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" }
-        }),
-        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(rewardsQuery)}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" }
-        })
-      ]);
-
-      const [owners, rewards] = await Promise.all([
-        ownersResponse.json(),
-        rewardsResponse.json()
-      ]);
-
-      // Build a map of token_id -> rewards for fast lookup
-      const rewardsMap = new Map();
-      rewards.forEach((beast: any) => {
-        const rewardValue = parseInt(beast.rewards_earned, 16) || 0;
-        if (rewardValue > 0) {
-          rewardsMap.set(beast.token_id.toString(), rewardValue);
-        }
-      });
-
-      // Aggregate rewards by player
-      const playerRewards = new Map();
-      owners.forEach((owner: any) => {
-        // Extract token_id from the full token_id string (contract:token_id)
-        const tokenIdPart = owner.token_id.split(':')[1];
-        if (tokenIdPart) {
-          // Convert hex to decimal if needed
-          const tokenIdInt = tokenIdPart.startsWith('0x') 
-            ? parseInt(tokenIdPart, 16).toString()
-            : tokenIdPart;
-          
-          const beastReward = rewardsMap.get(tokenIdInt) || 0;
-          if (beastReward > 0) {
-            const current = playerRewards.get(owner.account_address) || 0;
-            playerRewards.set(owner.account_address, current + beastReward);
-          }
-        }
-      });
-
-      // Sort and get top 5
-      const sortedPlayers = Array.from(playerRewards.entries())
-        .map(([account_address, total_rewards]) => ({ account_address, total_rewards }))
-        .sort((a, b) => b.total_rewards - a.total_rewards)
-        .slice(0, 5);
-
-      return sortedPlayers;
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      })
+      let data = await sql.json()
+      return data
     } catch (error) {
       console.error("Error getting big five:", error);
       return [];
@@ -274,10 +237,59 @@ export const useGameTokens = () => {
     return validIds
   }
 
+  const getKilledBy = async (beast: Beast) => {
+    let prefix =
+      Object.keys(ITEM_NAME_PREFIXES).find(
+        (key: any) => ITEM_NAME_PREFIXES[key] === beast.prefix
+      ) || 0;
+    let suffix =
+      Object.keys(ITEM_NAME_SUFFIXES).find(
+        (key: any) => ITEM_NAME_SUFFIXES[key] === beast.suffix
+      ) || 0;
+
+    let q = `
+      SELECT killed_by
+      FROM "ls_0_0_9-CollectableEntity"
+      WHERE dungeon = '${currentNetworkConfig.dungeon}'
+      AND id = ${beast.id} AND suffix = ${suffix} AND prefix = ${prefix}
+      LIMIT 1000;
+    `
+
+    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+    const sql = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    })
+
+    let data = await sql.json()
+    return data.map((row: any) => parseInt(row.killed_by, 16))
+  }
+
+  const getKilledBeasts = async (adventurer_id: number) => {
+    let q = `
+      SELECT *
+      FROM "ls_0_0_9-CollectableEntity"
+      WHERE dungeon = '${currentNetworkConfig.dungeon}'
+      AND killed_by = '0x${adventurer_id.toString(16).padStart(16, '0')}'
+      LIMIT 1000;
+    `
+
+    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+    const sql = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    })
+
+    let data = await sql.json()
+    return data
+  }
+
   return {
     getBeastCollection,
     countRegisteredBeasts,
-    getBigFive,
+    getLeaderboard,
     getValidAdventurers,
+    getKilledBy,
+    getKilledBeasts,
   };
 };

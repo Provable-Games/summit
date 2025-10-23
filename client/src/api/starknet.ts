@@ -1,9 +1,10 @@
 import { useDynamicConnector } from "@/contexts/starknet";
-import { Summit } from "@/types/game";
-import { getBeastDetails } from "@/utils/beasts";
+import { Beast, Summit } from "@/types/game";
+import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastDetails } from "@/utils/beasts";
 import { parseBalances } from "@/utils/utils";
 import { getContractByName } from "@dojoengine/core";
 import { useAccount } from "@starknet-react/core";
+import { num } from "starknet";
 
 export const useStarknetApi = () => {
   const { currentNetworkConfig } = useDynamicConnector();
@@ -58,7 +59,7 @@ export const useStarknetApi = () => {
       });
 
       const data = await response.json();
-      let beast = {
+      let beast: any = {
         id: parseInt(data?.result[0], 16),
         prefix: parseInt(data?.result[1], 16),
         suffix: parseInt(data?.result[2], 16),
@@ -72,20 +73,25 @@ export const useStarknetApi = () => {
         bonus_xp: parseInt(data?.result[10], 16),
         attack_streak: parseInt(data?.result[11], 16),
         last_death_timestamp: parseInt(data?.result[12], 16),
-        num_deaths: parseInt(data?.result[13], 16),
-        last_killed_by: parseInt(data?.result[14], 16),
-        revival_count: parseInt(data?.result[15], 16),
-        extra_lives: parseInt(data?.result[16], 16),
-        has_claimed_starter_kit: Boolean(parseInt(data?.result[17], 16)),
-        rewards_earned: parseInt(data?.result[18], 16),
+        revival_count: parseInt(data?.result[13], 16),
+        extra_lives: parseInt(data?.result[14], 16),
+        has_claimed_starter_kit: Boolean(parseInt(data?.result[15], 16)),
+        rewards_earned: parseInt(data?.result[16], 16),
+        stats: {
+          spirit: Boolean(parseInt(data?.result[17], 16)),
+          luck: Boolean(parseInt(data?.result[18], 16)),
+          specials: Boolean(parseInt(data?.result[19], 16)),
+        }
       }
+      beast.current_level = getBeastCurrentLevel(beast.level, beast.bonus_xp);
       return {
         beast: {
           ...beast,
-          ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.level),
+          ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.current_level),
+          revival_time: 0,
         },
-        taken_at: parseInt(data?.result[21], 16),
-        owner: data?.result[22],
+        taken_at: parseInt(data?.result[22], 16),
+        owner: data?.result[23],
       }
     } catch (error) {
       console.log('error', error)
@@ -94,8 +100,96 @@ export const useStarknetApi = () => {
     return null;
   }
 
+  const getBeastData = async (tokenId: number): Promise<Beast | null> => {
+    try {
+      const response = await fetch(currentNetworkConfig.rpcUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "starknet_call",
+          params: [
+            {
+              contract_address: getContractByName(currentNetworkConfig.manifest, currentNetworkConfig.namespace, "summit_systems")?.address,
+              entry_point_selector: "0x0385b69551f247794fe651459651cdabc76b6cdf4abacafb5b28ceb3b1ac2e98",
+              calldata: [num.toHex(tokenId)],
+            },
+            "latest",
+          ],
+          id: 0,
+        }),
+      });
+
+      const data = await response.json();
+      let beast: any = {
+        id: parseInt(data?.result[0], 16),
+        prefix: parseInt(data?.result[1], 16),
+        suffix: parseInt(data?.result[2], 16),
+        level: parseInt(data?.result[3], 16),
+        health: parseInt(data?.result[4], 16),
+        shiny: parseInt(data?.result[5], 16),
+        animated: parseInt(data?.result[6], 16),
+        token_id: parseInt(data?.result[7], 16),
+        current_health: parseInt(data?.result[8], 16),
+        bonus_health: parseInt(data?.result[9], 16),
+        bonus_xp: parseInt(data?.result[10], 16),
+        attack_streak: parseInt(data?.result[11], 16),
+        last_death_timestamp: parseInt(data?.result[12], 16),
+        revival_count: parseInt(data?.result[13], 16),
+        extra_lives: parseInt(data?.result[14], 16),
+        has_claimed_starter_kit: Boolean(parseInt(data?.result[15], 16)),
+        rewards_earned: parseInt(data?.result[16], 16),
+        stats: {
+          spirit: Boolean(parseInt(data?.result[17], 16)),
+          luck: Boolean(parseInt(data?.result[18], 16)),
+          specials: Boolean(parseInt(data?.result[19], 16)),
+        }
+      }
+
+      beast.current_health = getBeastCurrentHealth(beast);
+      beast.current_level = getBeastCurrentLevel(beast.level, beast.bonus_xp);
+
+      return {
+        ...beast,
+        ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.current_level),
+        revival_time: 0,
+      }
+    } catch (error) {
+      console.log('error', error)
+    }
+
+    return null;
+  }
+
+  const getCurrentBlock = async (): Promise<number> => {
+    try {
+      const response = await fetch(currentNetworkConfig.rpcUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "starknet_blockNumber",
+          params: [],
+          id: 0,
+        }),
+      });
+
+      const data = await response.json();
+      return data?.result || 0;
+    } catch (error) {
+      console.log('error fetching block number', error);
+      return 0;
+    }
+  }
+
   return {
     getSummitData,
+    getBeastData,
     getTokenBalances,
+    getCurrentBlock,
   }
 }

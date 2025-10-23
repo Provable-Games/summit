@@ -7,9 +7,9 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import { Box, Checkbox, IconButton, Menu, Slider, Tooltip, Typography } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { isBrowser } from 'react-device-detect';
-import attackPotionIcon from '../assets/images/attack-potion.png';
 import cauldronIcon from '../assets/images/cauldron.png';
 import heart from '../assets/images/heart.png';
+import attackPotionIcon from '../assets/images/attack-potion.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import { gameColors } from '../utils/themes';
@@ -19,13 +19,13 @@ interface ActionBarProps {
 }
 
 function ActionBar(props: ActionBarProps) {
-  const { executeGameAction } = useGameDirector();
+  const { executeGameAction, setPauseUpdates } = useGameDirector();
   const { tokenBalances } = useController();
 
   const { selectedBeasts, summit, showFeedingGround, setAttackInProgress,
-    selectedAdventurers, attackInProgress, collection, setShowFeedingGround,
+    selectedAdventurers, attackInProgress, setShowFeedingGround,
     feedingInProgress, adventurerCollection, appliedPotions, setAppliedPotions,
-    setFeedingInProgress, setSelectedAdventurers, setAdventurerCollection } = useGameStore();
+    setFeedingInProgress, killedByAdventurers, applyingPotions, setApplyingPotions, setBattleEvents, collection } = useGameStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
@@ -44,39 +44,45 @@ function ActionBar(props: ActionBarProps) {
   const handleAttack = () => {
     if (!enableAttack) return;
 
+    setBattleEvents([]);
     setAttackInProgress(true);
+    setPauseUpdates(true);
 
     executeGameAction({
       type: 'attack',
       beastIds: selectedBeasts.map(beast => beast.token_id),
       appliedPotions: appliedPotions,
-      safeAttack: safeAttack
+      safeAttack: safeAttack,
+      vrf: selectedBeasts.find(beast => beast.stats.luck) ? true : false
     });
   }
 
-  const handleFeed = async () => {
+  const handleFeed = () => {
     if (!enableFeedingGround) return;
 
     setFeedingInProgress(true);
+    setPauseUpdates(true);
 
-    let result = await executeGameAction({
+    executeGameAction({
       type: 'feed',
       beastId: selectedBeasts[0].token_id,
       adventurerIds: selectedAdventurers.map(adventurer => adventurer.id)
     });
-
-    if (result) {
-      setAdventurerCollection(adventurerCollection.filter(
-        adventurer => !selectedAdventurers.some(selected => selected.id === adventurer.id)
-      ));
-      setSelectedAdventurers([]);
-    }
-
-    setFeedingInProgress(false);
   }
 
-  const isSavage = Boolean(collection.find((beast: any) => beast.token_id === summit?.beast?.token_id))
+  const handleAddExtraLife = () => {
+    if (applyingPotions || appliedPotions.extraLife === 0) return;
 
+    setApplyingPotions(true);
+
+    executeGameAction({
+      type: 'add_extra_life',
+      beastId: selectedBeasts[0].token_id,
+    });
+  }
+
+  const isSavage = Boolean(collection.find(beast => beast.token_id === summit?.beast?.token_id))
+  const isSavageSelected = Boolean(selectedBeasts.find((beast: any) => beast.token_id === summit?.beast?.token_id))
   const deadBeasts = selectedBeasts.filter((beast: any) => beast.current_health === 0);
   const revivalPotionsRequired = deadBeasts.reduce((sum: number, beast: any) => sum + beast.revival_count + 1, 0);
 
@@ -93,7 +99,7 @@ function ActionBar(props: ActionBarProps) {
   }, [deadBeasts.length, revivalPotionsRequired, tokenBalances["REVIVE"]]);
 
   const hasEnoughRevivePotions = tokenBalances["REVIVE"] >= revivalPotionsRequired;
-  const enableAttack = !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions;
+  const enableAttack = (!isSavage || !safeAttack) && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions;
   const enableFeedingGround = selectedBeasts.length === 1 && adventurerCollection.length > 0;
 
   const enableExtraLifePotion = tokenBalances["EXTRA LIFE"] > 0;
@@ -117,7 +123,10 @@ function ActionBar(props: ActionBarProps) {
 
               {selectedAdventurers.length > 0 && <Box display={'flex'} gap={'4px'} alignItems={'center'}>
                 <Typography sx={styles.statText} variant='h6'>
-                  +{selectedAdventurers.reduce((sum, adventurer) => sum + adventurer.level, 0)}
+                  +{selectedAdventurers.reduce((sum, adventurer) => {
+                    const healthGiven = killedByAdventurers.includes(adventurer.id) ? adventurer.level * 10 : adventurer.level
+                    return sum + healthGiven
+                  }, 0)}
                 </Typography>
                 <FavoriteIcon fontSize='small' htmlColor={gameColors.red} />
               </Box>}
@@ -132,12 +141,32 @@ function ActionBar(props: ActionBarProps) {
     {/* Attack Button + Potions */}
     <Box sx={styles.buttonGroup}>
       {/* Section 1: Attack Button */}
-      {isSavage
-        ? <Box sx={[styles.attackButton, styles.savageButton]}>
-          <Typography color={gameColors.yellow}>
-            {isBrowser ? "YOU'RE THE SAVÁGE" : "SAVÁGE"}
-          </Typography>
+      {isSavageSelected
+        ? <Box sx={[styles.attackButton, appliedPotions.extraLife > 0 && styles.attackButtonEnabled]}
+          onClick={handleAddExtraLife}>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
+            {applyingPotions
+              ? <Box display={'flex'} alignItems={'baseline'}>
+                <Typography variant="h5" sx={styles.buttonText}>Applying</Typography>
+                <div className='dotLoader green' />
+              </Box>
+              : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                <Typography sx={[styles.buttonText, !(appliedPotions.extraLife > 0) && styles.disabledText]} variant="h5">
+                  Add Extra Life
+                </Typography>
+              </Box>
+            }
+
+            {isappliedPotions && isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
+              {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+                <Typography sx={styles.potionCount}>{appliedPotions.extraLife}</Typography>
+                <img src={heart} alt='' height={'12px'} />
+              </Box>}
+            </Box>
+            }
+          </Box>
         </Box>
+
         : <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box sx={[styles.attackButton, enableAttack && styles.attackButtonEnabled]}
             onClick={handleAttack}>
@@ -171,7 +200,7 @@ function ActionBar(props: ActionBarProps) {
               }
             </Box>
           </Box>
-          {/* <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+          <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
             <Typography sx={styles.tooltipTitle}>Safe Attack</Typography>
             <Typography sx={[styles.tooltipText, { lineHeight: 1.2 }]}>
               Attack only if Summit beast has not changed
@@ -207,7 +236,7 @@ function ActionBar(props: ActionBarProps) {
                 }}
               />
             </Box>
-          </Tooltip> */}
+          </Tooltip>
         </Box>}
 
       {/* Divider 1 */}
@@ -351,7 +380,7 @@ function ActionBar(props: ActionBarProps) {
         '& .MuiPaper-root': {
           backgroundColor: '#1a1f1a',
           backdropFilter: 'blur(10px)',
-          border: `1px solid ${gameColors.accentGreen}20`,
+          border: `1px solid ${gameColors.gameYellow}`,
           borderRadius: '8px',
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
           overflow: 'visible',

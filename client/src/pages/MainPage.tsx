@@ -7,13 +7,16 @@ import AdventurerCollection from '../components/AdventurerCollection'
 import BeastCollection from '../components/BeastCollection'
 import BurgerMenu from '../components/BurgerMenu'
 import Feeding from '../components/Feeding'
+import KilledByAdventurers from '../components/KilledByAdventurers'
 import Leaderboard from '../components/Leaderboard'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
+import Countdown from "@/components/Countdown"
+import AttackingBeasts from "@/components/AttackingBeasts"
 
 function MainPage() {
-  const { summit, showFeedingGround, setShowFeedingGround } = useGameStore()
+  const { summit, showFeedingGround, setShowFeedingGround, attackInProgress } = useGameStore()
 
   return <>
     <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
@@ -22,8 +25,8 @@ function MainPage() {
       </Box> : null}
 
       {showFeedingGround ? <>
-        {isBrowser && <Box sx={styles.sideContainer}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        {isBrowser && <Box sx={[styles.sideContainer, { justifyContent: 'flex-start' }]}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginBottom: 2 }}>
             <IconButton size='large' onClick={() => setShowFeedingGround(false)}>
               <ArrowBackIcon fontSize='large' htmlColor={gameColors.gameYellow} />
             </IconButton>
@@ -31,6 +34,7 @@ function MainPage() {
               Feeding Ground
             </Typography>
           </Box>
+          <KilledByAdventurers />
         </Box>}
 
         <Feeding />
@@ -55,10 +59,14 @@ function MainPage() {
             <ProfileCard />
           </Box>}
 
-          <Box sx={styles.bottomContainer}>
+          {!attackInProgress && <Box sx={styles.bottomContainer}>
             <ActionBar />
             <BeastCollection />
-          </Box>
+          </Box>}
+
+          {attackInProgress &&
+            <AttackingBeasts />
+          }
         </>
       }
 
@@ -82,6 +90,8 @@ function MainPage() {
       }
 
       {isMobile && <BurgerMenu />}
+
+      <Countdown />
     </Box >
   </>
 }
@@ -109,8 +119,8 @@ const styles = {
     width: '100%',
     height: '271px',
     position: 'absolute',
-    background: `linear-gradient(to bottom, transparent, ${gameColors.darkGreen})`,
     bottom: 0,
+    background: `linear-gradient(to bottom, transparent, ${gameColors.darkGreen})`,
     zIndex: 101
   },
   sideContainer: {

@@ -1,3 +1,4 @@
+import { getContractByName } from "@dojoengine/core";
 import manifest_mainnet from "../../manifest.json";
 
 export interface NetworkConfig {
@@ -34,12 +35,12 @@ export enum ChainId {
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_0_0_4",
+    namespace: "summit_0_0_5",
     manifest: manifest_mainnet,
-    slot: "pg-mainnet-7",
+    slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
-    torii: "https://api.cartridge.gg/x/pg-mainnet-7/torii",
-    subscriptionUrl: "https://api.cartridge.gg/x/summit/torii",
+    torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
+    subscriptionUrl: "https://api.cartridge.gg/x/summit-2/torii",
     tokens: {
       erc20: [
         {
@@ -51,19 +52,19 @@ export const NETWORKS = {
         {
           name: "ATTACK",
           address:
-            "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
+            "0x054d7e1f1243651039bbba1f03ebe3da91e58bcbee2901b30d1d5df72f5e2a12",
           displayDecimals: 0,
         },
         {
           name: "REVIVE",
           address:
-            "0x068292fdfa280f371fabd1d6e49c346f11b341e1d3fe80d4ac320648ab03539c",
+            "0x01e7b2aa4542e1cbbbbf3bf6c68869e1e04b303172819a6247ca49890491aa51",
           displayDecimals: 0,
         },
         {
           name: "EXTRA LIFE",
           address:
-            "0x0793f1104a3b0d2316abc92039421f7160a7f4caad0ed405b6f8732271717328",
+            "0x0570ae4e4abfa94e5262dafa0844fdccbd31b3a6f0ec184a812e27c77b5443d0",
           displayDecimals: 0,
         },
       ],
@@ -83,7 +84,102 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
   const network = NETWORKS[networkKey as keyof typeof NETWORKS];
   if (!network) throw new Error(`Network ${networkKey} not found`);
 
-  const policies = undefined;
+  const SUMMIT_ADDRESS = getContractByName(
+    network.manifest,
+    network.namespace,
+    "summit_systems"
+  )?.address;
+
+  const policies = {
+    "contracts": {
+      [SUMMIT_ADDRESS]: {
+        "name": "Summit Game",
+        "description": "Main game contract for Summit gameplay",
+        "methods": [
+          {
+            "name": "Attack",
+            "description": "Attack the Summit",
+            "entrypoint": "attack"
+          },
+          {
+            "name": "Attack Unsafe",
+            "description": "Attack the Summit without safety checks",
+            "entrypoint": "attack_unsafe"
+          },
+          {
+            "name": "Feed",
+            "description": "Feed beast dead adventurers",
+            "entrypoint": "feed"
+          },
+          {
+            "name": "Claim Starter Kit",
+            "description": "Claim beast starter kit",
+            "entrypoint": "claim_starter_kit"
+          },
+          {
+            "name": "Add Extra Life",
+            "description": "Add extra life to beast",
+            "entrypoint": "add_extra_life"
+          },
+          {
+            "name": "Select Upgrades",
+            "description": "Select upgrades for beast",
+            "entrypoint": "select_upgrades"
+          }
+        ]
+      },
+      "0x054d7e1f1243651039bbba1f03ebe3da91e58bcbee2901b30d1d5df72f5e2a12": {
+        "name": "Attack Potion",
+        "description": "ERC 20 token for Attack Potion",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": SUMMIT_ADDRESS,
+            "description": "Approve Attack Potion",
+            "entrypoint": "approve"
+          }
+        ]
+      },
+      "0x01e7b2aa4542e1cbbbbf3bf6c68869e1e04b303172819a6247ca49890491aa51": {
+        "name": "Revive Potion",
+        "description": "ERC 20 token for Revive Potion",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": SUMMIT_ADDRESS,
+            "description": "Approve Revive Potion",
+            "entrypoint": "approve"
+          }
+        ]
+      },
+      "0x0570ae4e4abfa94e5262dafa0844fdccbd31b3a6f0ec184a812e27c77b5443d0": {
+        "name": "Extra Life Potion",
+        "description": "ERC 20 token for Extra Life Potion",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": SUMMIT_ADDRESS,
+            "description": "Approve Extra Life Potion",
+            "entrypoint": "approve"
+          }
+        ]
+      },
+      "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f": {
+        "name": "Cartridge VRF Provider",
+        "description": "Verifiable Random Function contract, allows randomness in the game",
+        "methods": [
+          {
+            "name": "Request Random",
+            "description": "Allows requesting random numbers from the VRF provider",
+            "entrypoint": "request_random"
+          }
+        ]
+      },
+    }
+  };
 
   return {
     chainId: network.chainId,
@@ -91,7 +187,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     manifest: network.manifest,
     slot: network.slot,
     preset: "savage-summit",
-    policies,
+    policies: policies as any,
     rpcUrl: network.rpcUrl,
     toriiUrl: network.torii,
     subscriptionUrl: network.subscriptionUrl,

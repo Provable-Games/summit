@@ -1,19 +1,163 @@
+import { useGameTokens } from '@/dojo/useGameTokens'
 import { useGameStore } from '@/stores/gameStore'
+import { useGameDirector } from '@/contexts/GameDirector'
+import { Beast } from '@/types/game'
 import { Box, Typography } from '@mui/material'
-import { motion, useAnimationControls } from 'framer-motion'
+import { motion, AnimatePresence, Variants } from 'framer-motion'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { fetchBeastSummitImage, normaliseHealth } from '../utils/beasts'
 import { gameColors } from '../utils/themes'
 import { fadeVariant } from '../utils/variants'
 
+interface FloatingHealth {
+  id: string;
+  value: number;
+}
+
+interface AnimatingAdventurer {
+  id: number;
+  level: number;
+  healthGain: number;
+  image: string;
+  delay: number;
+}
+
 function Feeding() {
-  const { selectedBeasts, collection } = useGameStore()
-  const beast = collection.find(beast => beast.token_id === selectedBeasts[0].token_id)
-  const controls = useAnimationControls()
+  const { getKilledBy } = useGameTokens()
+  const { setPauseUpdates } = useGameDirector()
+  const {
+    selectedBeasts,
+    collection,
+    setKilledByAdventurers,
+    feedingInProgress,
+    killedByAdventurers,
+    selectedAdventurers,
+    adventurerCollection,
+    setAdventurerCollection,
+    setSelectedAdventurers,
+    setFeedingInProgress
+  } = useGameStore()
+
+  const [animatingAdventurers, setAnimatingAdventurers] = useState<AnimatingAdventurer[]>([])
+  const [floatingHealthTexts, setFloatingHealthTexts] = useState<FloatingHealth[]>([])
+  const [animatedHealth, setAnimatedHealth] = useState(0)
+  const [animatedBonusHealth, setAnimatedBonusHealth] = useState(0)
+
+  const beast = collection.find((beast: Beast) => beast.token_id === selectedBeasts[0]?.token_id)
+  if (!beast) return null
 
   const name = beast.prefix ? `"${beast.prefix} ${beast.suffix}" ${beast.name}` : beast.name
 
+  // Fetch killed by adventurers and initialize health
+  useEffect(() => {
+    const fetchKilledBy = async () => {
+      const killedBy = await getKilledBy(beast)
+      setKilledByAdventurers(killedBy)
+    }
+    fetchKilledBy()
+    setAnimatedHealth(beast.current_health)
+    setAnimatedBonusHealth(beast.bonus_health)
+  }, [beast.token_id])
+
+  const handleAnimationComplete = useCallback(() => {
+    // Remove selected adventurers from collection
+    setAdventurerCollection(
+      adventurerCollection.filter(
+        adventurer => !selectedAdventurers.some(selected => selected.id === adventurer.id)
+      )
+    )
+    setSelectedAdventurers([])
+    setFeedingInProgress(false)
+    setPauseUpdates(false)
+  }, [selectedAdventurers])
+
+  // Handle feeding animation when feedingInProgress becomes true
+  useEffect(() => {
+    if (!feedingInProgress || selectedAdventurers.length === 0) return
+
+    // Create animating adventurers with staggered delays
+    const adventurersToAnimate = selectedAdventurers.map((adventurer, index) => ({
+      id: adventurer.id,
+      level: adventurer.level,
+      healthGain: killedByAdventurers.includes(adventurer.id)
+        ? adventurer.level * 10
+        : adventurer.level,
+      image: `/images/adventurers/adventurer_${Math.floor(Math.random() * 7) + 1}.png`,
+      delay: index * 0.5 // 0.5 second delay between each
+    }))
+
+    setAnimatingAdventurers(adventurersToAnimate)
+
+    // Schedule health animations for each adventurer
+    adventurersToAnimate.forEach((adventurer) => {
+      const landingTime = adventurer.delay + 1 // delay + fall duration
+
+      setTimeout(() => {
+        // Show floating health text
+        const textId = `health-${adventurer.id}-${Date.now()}`
+        setFloatingHealthTexts(prev => [...prev, { id: textId, value: adventurer.healthGain }])
+
+        // Update health
+        setAnimatedHealth(prev => {
+          const newHealth = prev + adventurer.healthGain
+          const maxHealth = beast.health
+
+          if (newHealth > maxHealth) {
+            const overflow = newHealth - maxHealth
+            setAnimatedBonusHealth(prevBonus => Math.min(prevBonus + overflow, 1023))
+            return maxHealth
+          }
+          return newHealth
+        })
+
+        // Remove floating text after animation
+        setTimeout(() => {
+          setFloatingHealthTexts(prev => prev.filter(text => text.id !== textId))
+        }, 1000)
+      }, landingTime * 1000)
+    })
+
+    // Calculate total animation time and cleanup
+    const totalTime = adventurersToAnimate.length * 0.5
+
+    setTimeout(() => {
+      handleAnimationComplete()
+    }, totalTime * 1000)
+
+  }, [feedingInProgress, selectedAdventurers])
+
   return (
     <Box sx={styles.feedingContainer}>
+      {/* Animating adventurers */}
+      <AnimatePresence>
+        {animatingAdventurers.map((adventurer) => (
+          <motion.div
+            key={adventurer.id}
+            style={{
+              position: 'absolute',
+              left: `calc(50% - 100px)`,
+              width: '200px',
+              height: '200px',
+              zIndex: 1000,
+            }}
+            variants={adventurerVariants}
+            initial="hidden"
+            animate="animate"
+            exit="exit"
+            custom={{ delay: adventurer.delay }}
+          >
+            <img
+              src={adventurer.image}
+              alt="Falling adventurer"
+              style={{
+                width: '100%',
+                objectFit: 'contain',
+              }}
+            />
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
       <motion.div
         style={styles.mainContainer}
         variants={fadeVariant}
@@ -23,38 +167,36 @@ function Feeding() {
       >
         {/* Stats and Health Section */}
         <Box sx={styles.statsSection}>
-          {/* Name and Level */}
           <Box sx={styles.nameSection}>
-            <Typography sx={styles.beastName}>
-              {name}
-            </Typography>
+            <Typography sx={styles.beastName}>{name}</Typography>
           </Box>
 
-          {/* Health Bar */}
+          {/* Health Bars */}
           <Box sx={styles.healthContainer}>
             <Box sx={styles.healthBar}>
-              <Box sx={[styles.healthFill, {
-                width: `${normaliseHealth(beast.current_health, beast.health + beast.bonus_health)}%`
-              }]} />
-
+              <motion.div
+                style={styles.healthFill}
+                animate={{ width: `${normaliseHealth(animatedHealth, beast.health)}%` }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              />
               <Typography sx={styles.healthText}>
-                {beast.current_health} / {beast.health + beast.bonus_health} HP
+                {Math.round(animatedHealth)} / {beast.health} HP
               </Typography>
             </Box>
 
-            {/* Bonus Health Bar */}
             <Box sx={styles.bonusHealthBar}>
-              <Box sx={[styles.bonusHealthFill, {
-                width: `${normaliseHealth(beast.bonus_health, 1023)}%`
-              }]} />
-
+              <motion.div
+                style={styles.bonusHealthFill}
+                animate={{ width: `${normaliseHealth(animatedBonusHealth, 1023)}%` }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              />
               <Typography sx={styles.bonusHealthText}>
-                Bonus: {beast.bonus_health} / 1023 HP
+                Bonus: {Math.round(animatedBonusHealth)} / 1023 HP
               </Typography>
             </Box>
           </Box>
 
-          {/* Stats Row */}
+          {/* Stats */}
           <Box sx={styles.statsRow}>
             <Box sx={styles.statBox}>
               <Typography sx={styles.statLabel}>LEVEL</Typography>
@@ -69,20 +211,99 @@ function Feeding() {
 
         {/* Beast Image */}
         <Box sx={styles.beastImageContainer}>
-          <motion.img
-            key={beast.token_id}
+          <img
             style={styles.beastImage}
             src={fetchBeastSummitImage(beast)}
-            alt=''
-            animate={controls}
+            alt={name}
           />
+
+          {/* Floating health texts */}
+          <AnimatePresence>
+            {floatingHealthTexts.map((text) => (
+              <motion.div
+                key={text.id}
+                style={{
+                  position: 'absolute',
+                  left: '60%',
+                  top: '50%',
+                  pointerEvents: 'none',
+                  zIndex: 1001,
+                }}
+                variants={floatingTextVariants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+              >
+                <Typography
+                  sx={{
+                    fontSize: '28px',
+                    fontWeight: 'bold',
+                    color: gameColors.brightGreen,
+                    textShadow: `
+                      0 2px 4px rgba(0, 0, 0, 0.8),
+                      0 0 12px ${gameColors.brightGreen}60
+                    `,
+                  }}
+                >
+                  +{text.value}
+                </Typography>
+              </motion.div>
+            ))}
+          </AnimatePresence>
         </Box>
       </motion.div>
     </Box>
-  );
+  )
 }
 
-export default Feeding;
+export default Feeding
+
+const adventurerVariants: Variants = {
+  hidden: {
+    y: window.innerHeight * 0.3 * -1,
+    opacity: 0,
+  },
+  animate: (custom: { delay: number }) => ({
+    y: [null, null, window.innerHeight * 0.16, window.innerHeight * 0.16, window.innerHeight * 0.16],
+    opacity: [0, 1, 1, 1, 0],
+    transition: {
+      delay: custom.delay,
+      times: [0, 0.1, 0.6, 0.9, 1], // fade in 10%, fall for 50%, land for 17%, fade for 33%
+      duration: 2,
+    }
+  }),
+  exit: {
+    opacity: 0,
+    transition: {
+      duration: 0.2
+    }
+  }
+}
+
+const floatingTextVariants: Variants = {
+  hidden: {
+    y: 0,
+    opacity: 0,
+    scale: 0.8
+  },
+  visible: {
+    y: -50,
+    opacity: 1,
+    scale: 1.2,
+    transition: {
+      duration: 1,
+      ease: "easeOut"
+    }
+  },
+  exit: {
+    y: -80,
+    opacity: 0,
+    scale: 1,
+    transition: {
+      duration: 0.5
+    }
+  }
+}
 
 const styles = {
   feedingContainer: {
@@ -94,6 +315,7 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    overflow: 'hidden',
   },
   mainContainer: {
     display: 'flex',
@@ -116,12 +338,7 @@ const styles = {
     textTransform: 'uppercase',
     letterSpacing: '1px',
     marginBottom: '4px',
-    textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
-  },
-  levelText: {
-    fontSize: '12px',
-    color: '#ffedbb',
-    letterSpacing: '0.5px',
+    textShadow: '0 2px 4px rgba(0, 0, 0, 0.8)',
   },
   beastImageContainer: {
     position: 'relative',
@@ -169,14 +386,14 @@ const styles = {
     textTransform: 'uppercase',
     marginBottom: '2px',
     lineHeight: '1',
-    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
   },
   statValue: {
     fontSize: '14px',
     color: '#ffedbb',
     fontWeight: 'bold',
     lineHeight: '1',
-    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
   },
   powerValue: {
     fontSize: '14px',
@@ -216,7 +433,7 @@ const styles = {
     fontSize: '12px',
     color: '#ffedbb',
     fontWeight: 'bold',
-    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
     letterSpacing: '0.5px',
     zIndex: 2,
   },
@@ -243,7 +460,7 @@ const styles = {
     fontSize: '10px',
     color: '#ffedbb',
     fontWeight: 'bold',
-    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
     letterSpacing: '0.5px',
     zIndex: 2,
   },

@@ -1,6 +1,7 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { useGameStore } from "@/stores/gameStore";
-import { AppliedPotions } from "@/types/game";
+import { AppliedPotions, Stats } from "@/types/game";
+import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { getContractByName } from "@dojoengine/core";
 import { useAccount } from "@starknet-react/core";
@@ -14,6 +15,7 @@ export const useSystemCalls = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
   const namespace = currentNetworkConfig.namespace;
+  const VRF_PROVIDER_ADDRESS = "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f"
   const SUMMIT_ADDRESS = getContractByName(
     currentNetworkConfig.manifest,
     namespace,
@@ -45,11 +47,14 @@ export const useSystemCalls = () => {
         return
       }
 
-      return true;
+      const translatedEvents = receipt.events.map((event: any) =>
+        translateGameEvent(event, currentNetworkConfig.manifest)
+      );
+
+      return translatedEvents.filter(Boolean);
     } catch (error) {
       console.error("Error executing action:", error);
       forceResetAction();
-      throw error;
     }
   };
 
@@ -90,7 +95,7 @@ export const useSystemCalls = () => {
    * @param beastIds The IDs of the beasts to attack
    * @param appliedPotions The potions to apply to the beasts
    */
-  const attack = (beastIds: number[], appliedPotions: AppliedPotions, safeAttack: boolean) => {
+  const attack = (beastIds: number[], appliedPotions: AppliedPotions, safeAttack: boolean, vrf: boolean) => {
     let txs: any[] = [];
 
     if (appliedPotions.revive > 0) {
@@ -108,11 +113,15 @@ export const useSystemCalls = () => {
       txs.push(approvePotions(extraLifeAddress, appliedPotions.extraLife));
     }
 
+    if (vrf || !safeAttack) {
+      txs.push(requestRandom());
+    }
+
     if (safeAttack) {
       txs.push({
         contractAddress: SUMMIT_ADDRESS,
         entrypoint: "attack",
-        calldata: CallData.compile([summit.beast.token_id, beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife]),
+        calldata: CallData.compile([summit.beast.token_id, beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife, vrf]),
       });
     } else {
       txs.push({
@@ -121,6 +130,35 @@ export const useSystemCalls = () => {
         calldata: CallData.compile([beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife]),
       });
     }
+
+    return txs;
+  };
+
+  const addExtraLife = (beastId: number, extraLifePotions: number) => {
+    let txs: any[] = [];
+
+    if (extraLifePotions > 0) {
+      let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
+      txs.push(approvePotions(extraLifeAddress, extraLifePotions));
+    }
+
+    txs.push({
+      contractAddress: SUMMIT_ADDRESS,
+      entrypoint: "add_extra_life",
+      calldata: CallData.compile([beastId, extraLifePotions]),
+    });
+
+    return txs;
+  };
+
+  const selectUpgrades = (upgrades: { [beastId: number]: Stats }) => {
+    const txs = Object.entries(upgrades).map(([beastId, stats]) => {
+      return {
+        contractAddress: SUMMIT_ADDRESS,
+        entrypoint: "select_upgrades",
+        calldata: CallData.compile([beastId, stats]),
+      };
+    });
 
     return txs;
   };
@@ -141,10 +179,24 @@ export const useSystemCalls = () => {
     };
   };
 
+  const requestRandom = () => {
+    return {
+      contractAddress: VRF_PROVIDER_ADDRESS,
+      entrypoint: "request_random",
+      calldata: CallData.compile({
+        caller: SUMMIT_ADDRESS,
+        source: { type: 0, address: account!.address },
+      }),
+    };
+  };
+
   return {
     feed,
     attack,
     claimStarterKit,
     executeAction,
+    addExtraLife,
+    selectUpgrades,
+    requestRandom,
   };
 };

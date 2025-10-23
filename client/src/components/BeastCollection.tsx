@@ -2,6 +2,12 @@ import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import EnergyIcon from '@mui/icons-material/ElectricBolt';
+import CasinoIcon from '@mui/icons-material/Casino';
+import StarIcon from '@mui/icons-material/Star';
+import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
+import FlashOnIcon from '@mui/icons-material/FlashOn';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import { Box, Link, Popover, Tooltip, Typography } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
 import { useEffect, useMemo, useState } from 'react';
@@ -10,10 +16,16 @@ import { gameColors } from '../utils/themes';
 import BeastProfile from './BeastProfile';
 import { isMobile } from 'react-device-detect';
 
+type SortMethod = 'recommended' | 'power' | 'health';
+
 function BeastCollection() {
   const { loadingCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit, appliedPotions, setTotalDamage } = useGameStore()
   const { address } = useAccount()
-  const [hideDeadBeasts, setHideDeadBeasts] = useState(true)
+  const [hideDeadBeasts, setHideDeadBeasts] = useState(false)
+  const [sortMethod, setSortMethod] = useState<SortMethod>(() => {
+    const saved = localStorage.getItem('beastSortMethod');
+    return (saved as SortMethod) || 'recommended';
+  })
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
 
@@ -23,22 +35,33 @@ function BeastCollection() {
         ...beast,
         combat: calculateBattleResult(beast, summit.beast, appliedPotions?.attack || 0)
       })).sort((a: Beast, b: Beast) => {
+        // Always keep summit beast at the top
         if (a.token_id === summit.beast.token_id) {
           return -1
         } else if (b.token_id === summit.beast.token_id) {
           return 1
-        } else if (a.combat?.elemental !== b.combat?.elemental) {
-          return b.combat?.elemental - a.combat?.elemental
-        } else if (b.power !== a.power) {
+        }
+
+        // Apply selected sorting method
+        if (sortMethod === 'recommended') {
+          if (a.combat?.elemental !== b.combat?.elemental) {
+            return b.combat?.elemental - a.combat?.elemental
+          } else if (b.power !== a.power) {
+            return b.power - a.power
+          } else {
+            return (b.health + b.bonus_health) - (a.health + a.bonus_health)
+          }
+        } else if (sortMethod === 'power') {
           return b.power - a.power
-        } else {
+        } else if (sortMethod === 'health') {
           return (b.health + b.bonus_health) - (a.health + a.bonus_health)
         }
+        return 0
       })
     }
 
     return collection
-  }, [collection, summit, appliedPotions?.attack]);
+  }, [collection, summit, appliedPotions?.attack, sortMethod]);
 
   useEffect(() => {
     const total = selectedBeasts.reduce((acc, beast) => {
@@ -48,6 +71,10 @@ function BeastCollection() {
 
     setTotalDamage(total);
   }, [selectedBeasts, collectionWithCombat]);
+
+  useEffect(() => {
+    localStorage.setItem('beastSortMethod', sortMethod);
+  }, [sortMethod]);
 
   const selectBeast = (beast: Beast) => {
     if (attackInProgress) return;
@@ -78,6 +105,41 @@ function BeastCollection() {
     if (attackInProgress) return;
 
     setHideDeadBeasts(hide)
+  }
+
+  const cycleSortMethod = () => {
+    if (attackInProgress) return;
+
+    const sortOrder: SortMethod[] = ['recommended', 'power', 'health'];
+    const currentIndex = sortOrder.indexOf(sortMethod);
+    const nextIndex = (currentIndex + 1) % sortOrder.length;
+    setSortMethod(sortOrder[nextIndex]);
+  }
+
+  const getSortIcon = () => {
+    switch (sortMethod) {
+      case 'recommended':
+        return <TipsAndUpdatesIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />;
+      case 'power':
+        return <FlashOnIcon sx={{ color: gameColors.yellow, fontSize: '20px' }} />;
+      case 'health':
+        return <FavoriteIcon sx={{ color: gameColors.red, fontSize: '20px' }} />;
+      default:
+        return <TipsAndUpdatesIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />;
+    }
+  }
+
+  const getSortLabel = () => {
+    switch (sortMethod) {
+      case 'recommended':
+        return 'Recommended';
+      case 'power':
+        return 'Power';
+      case 'health':
+        return 'Health';
+      default:
+        return 'Recommended';
+    }
   }
 
   // Helper to check if max beasts are selected (50 or all if less than 50)
@@ -131,75 +193,104 @@ function BeastCollection() {
             alt={beast.name}
             style={{ ...styles.beastImage }}
           />
-        </Box>
+
+          {/* Upgrade Icons */}
+          {(beast.stats.spirit || beast.stats.luck || beast.stats.specials) && (
+            <Box sx={styles.upgradeIconsContainer}>
+              {beast.stats.luck && (
+                <Box sx={{ color: '#ff69b4' }}>
+                  <CasinoIcon sx={{ fontSize: '14px' }} />
+                </Box>
+              )}
+              {beast.stats.spirit && (
+                <Box sx={{ color: '#00ffff' }}>
+                  <EnergyIcon sx={{ fontSize: '14px' }} />
+                </Box>
+              )}
+              {beast.stats.specials && (
+                <Box sx={{ color: '#ffd700' }}>
+                  <StarIcon sx={{ fontSize: '14px' }} />
+                </Box>
+              )
+              }
+            </Box >
+          )
+          }
+        </Box >
 
         {/* Beast Name */}
-        <Typography sx={styles.beastName}>
+        < Typography sx={styles.beastName} >
           {beast.name}
-        </Typography>
+        </Typography >
 
         {/* Stats Row */}
-        <Box sx={styles.statsRow}>
+        < Box sx={styles.statsRow} >
           {/* Power */}
-          <Box sx={styles.stat}>
+          < Box sx={styles.stat} >
             <svg width="12" height="12" viewBox="0 0 24 24" fill={gameColors.yellow}>
               <path d="M7 2v11h3v9l7-12h-4l4-8z" />
             </svg>
             <Typography sx={styles.statText}>
               {beast.power}
             </Typography>
-          </Box>
+          </Box >
 
           {/* Health */}
-          <Box sx={styles.stat}>
+          < Box sx={styles.stat} >
             <svg width="12" height="12" viewBox="0 0 24 24" fill={gameColors.red}>
               <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
             </svg>
             <Typography sx={styles.statText}>
               {isSavage ? summit?.beast.current_health : beast.current_health}
             </Typography>
-          </Box>
-        </Box>
+          </Box >
+        </Box >
 
         {/* Combat Preview */}
-        {battleResult && (
-          <Box sx={[
-            styles.combatPreview,
-            battleResult.capture && styles.combatCapture,
-          ]}>
-            <Box sx={styles.combatContent}>
-              <img src={'/images/sword.png'} alt='' height={'12px'} />
-              <Typography sx={[
-                styles.combatText,
-                battleResult.capture ? styles.combatTextSuccess : styles.combatTextFailure
-              ]}>
-                {battleResult.capture
-                  ? `${battleResult.healthLeft} HP LEFT`
-                  : `${battleResult.damage} DMG`
-                }
-              </Typography>
+        {
+          battleResult && (
+            <Box sx={[
+              styles.combatPreview,
+              battleResult.capture && styles.combatCapture,
+            ]}>
+              <Box sx={styles.combatContent}>
+                <img src={'/images/sword.png'} alt='' height={'12px'} />
+                <Typography sx={[
+                  styles.combatText,
+                  battleResult.capture ? styles.combatTextSuccess : styles.combatTextFailure
+                ]}>
+                  {battleResult.capture
+                    ? `${battleResult.healthLeft} HP LEFT`
+                    : `${battleResult.damage} DMG`
+                  }
+                </Typography>
+              </Box>
             </Box>
-          </Box>
-        )}
+          )
+        }
 
         {/* Status indicators */}
-        {isSavage && (
-          <Box sx={styles.savageIndicator}>
-            <Typography sx={styles.savageText}>
-              SUMMIT
-            </Typography>
-          </Box>
-        )}
+        {
+          isSavage && (
+            <Box sx={styles.savageIndicator}>
+              <Typography sx={styles.savageText}>
+                SUMMIT
+              </Typography>
+            </Box>
+          )
+        }
 
         {/* Selection order number */}
-        {isSelected && (
-          <Box sx={styles.selectionIndicator}>
-            <Typography sx={styles.selectionNumber}>
-              {selectedBeasts.findIndex(prevBeast => prevBeast.token_id === beast.token_id) + 1}
-            </Typography>
-          </Box>
-        )}
-      </Box>
+        {
+          isSelected && (
+            <Box sx={styles.selectionIndicator}>
+              <Typography sx={styles.selectionNumber}>
+                {selectedBeasts.findIndex(prevBeast => prevBeast.token_id === beast.token_id) + 1}
+              </Typography>
+            </Box>
+          )
+        }
+      </Box >
     )
   }
 
@@ -310,6 +401,17 @@ function BeastCollection() {
                   fontSize: '20px',
                   opacity: hideDeadBeasts ? 1 : 0.6
                 }} />
+              </Box>
+            </Tooltip>
+
+            <Tooltip placement='right' title={
+              <Box sx={styles.tooltipContent}>
+                <Box>Sort Beasts</Box>
+                <Box sx={{ fontSize: '10px', opacity: 0.8, mt: 0.5 }}>Current: {getSortLabel()}</Box>
+              </Box>
+            }>
+              <Box sx={styles.utilityButton} onClick={cycleSortMethod}>
+                {getSortIcon()}
               </Box>
             </Tooltip>
           </Box>
@@ -699,6 +801,13 @@ const styles = {
     overflow: 'hidden',
     background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.black} 100%)`,
     boxShadow: `inset 0 1px 0 ${gameColors.darkGreen}, inset 0 -1px 0 ${gameColors.black}`,
+  },
+  upgradeIconsContainer: {
+    position: 'absolute',
+    top: '2px',
+    right: '0px',
+    display: 'flex',
+    flexDirection: 'column',
   },
   beastImage: {
     maxWidth: '90%',

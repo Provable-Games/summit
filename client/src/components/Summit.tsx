@@ -1,5 +1,5 @@
 import { useGameStore } from '@/stores/gameStore'
-import { Box, Typography } from '@mui/material'
+import { Box, LinearProgress, Tooltip, Typography } from '@mui/material'
 import { motion, useAnimationControls } from 'framer-motion'
 import { useLottie } from 'lottie-react'
 import { useEffect, useState } from 'react'
@@ -8,15 +8,18 @@ import heart from '../assets/images/heart.png'
 import { fetchBeastSummitImage, normaliseHealth } from '../utils/beasts'
 import { gameColors } from '../utils/themes'
 import { lookupAddresses } from '@cartridge/controller'
-import { useStarkProfile } from '@starknet-react/core'
+import EnergyIcon from '@mui/icons-material/ElectricBolt'
+import CasinoIcon from '@mui/icons-material/Casino'
+import StarIcon from '@mui/icons-material/Star'
 
 function Summit() {
-  const { collection, summit, attackInProgress, selectedBeasts, lastAttack, totalDamage } = useGameStore()
+  const { collection, summit, attackInProgress, selectedBeasts, totalDamage } = useGameStore()
   const controls = useAnimationControls()
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
 
-  // Use StarkProfile hook for StarkNet ID
-  const { data: profile } = useStarkProfile({ address: summit?.owner as `0x${string}` })
+  const originalExperience = Math.pow(summit.beast.level, 2);
+  const currentExperience = originalExperience + summit.beast.bonus_xp;
+  const nextLevelExperience = Math.pow(summit.beast.current_level + 1, 2);
 
   const strike = useLottie({
     animationData: strikeAnim,
@@ -29,13 +32,6 @@ function Summit() {
   });
 
   useEffect(() => {
-    if (lastAttack && lastAttack > 0) {
-      strike.play();
-    }
-  }, [lastAttack]);
-
-  useEffect(() => {
-    // Fetch Cartridge name when summit changes
     const fetchCartridgeName = async () => {
       if (summit?.owner) {
         try {
@@ -80,11 +76,13 @@ function Summit() {
       <Box sx={styles.statsSection}>
         {/* Name and Owner */}
         <Box sx={styles.nameSection}>
-          <Typography sx={styles.beastName}>
-            {name}
-          </Typography>
+          <Box sx={styles.nameRow}>
+            <Typography sx={styles.beastName}>
+              {name}
+            </Typography>
+          </Box>
           <Typography sx={styles.ownerText}>
-            Owned by {cartridgeName || profile?.name?.replace('.stark', '') || 'Unknown'}
+            Owned by {cartridgeName || 'Unknown'}
           </Typography>
         </Box>
 
@@ -111,13 +109,23 @@ function Summit() {
               </Box>
             )}
           </Box>
+
+          {/* XP Progress Bar */}
+          <Box sx={{ position: 'relative' }}>
+            <LinearProgress
+              variant="determinate"
+              value={normaliseHealth(currentExperience - originalExperience, nextLevelExperience - originalExperience)}
+              sx={styles.xpBar}
+            />
+            <Typography sx={styles.xpText}>XP</Typography>
+          </Box>
         </Box>
 
         {/* Stats Row */}
         <Box sx={styles.statsRow}>
           <Box sx={styles.statBox}>
             <Typography sx={styles.statLabel}>LEVEL</Typography>
-            <Typography sx={styles.levelValue}>{summit.beast.level}</Typography>
+            <Typography sx={styles.levelValue}>{summit.beast.current_level}</Typography>
           </Box>
           <Box sx={styles.statBox}>
             <Typography sx={styles.statLabel}>POWER</Typography>
@@ -125,17 +133,56 @@ function Summit() {
               <Typography sx={styles.powerValue}>{summit.beast.power}</Typography>
             </Box>
           </Box>
-          <Box sx={styles.statBox}>
-            <Typography sx={styles.statLabel}>TYPE</Typography>
-            <Box sx={styles.powerValueContainer}>
-              <Typography sx={styles.typeValue}>{summit.beast.type}</Typography>
+          {(summit.beast.stats.spirit || summit.beast.stats.luck || summit.beast.stats.specials) ? (<Box sx={[styles.statBox, { minWidth: '0px' }]}>
+            {/* Stats Upgrades Badge */}
+            <Box sx={styles.statsBadge}>
+              {summit.beast.stats.luck && (
+                <Tooltip title={<Box sx={styles.tooltipContent}>This beast has 50% crit chance</Box>} placement="bottom">
+                  <Box sx={{ color: '#ff69b4', display: 'flex' }}>
+                    <CasinoIcon sx={{ fontSize: '20px' }} />
+                  </Box>
+                </Tooltip>
+              )}
+              {summit.beast.stats.spirit && (
+                <Tooltip title={<Box sx={styles.tooltipContent}>This beast revives 50% faster</Box>} placement="bottom">
+                  <Box sx={{ color: '#00ffff', display: 'flex' }}>
+                    <EnergyIcon sx={{ fontSize: '20px' }} />
+                  </Box>
+                </Tooltip>
+              )}
+              {summit.beast.stats.specials && (
+                <Tooltip title={<Box sx={styles.tooltipContent}>This beast has name match bonus</Box>} placement="bottom">
+                  <Box sx={{ color: '#ffd700', display: 'flex' }}>
+                    <StarIcon sx={{ fontSize: '20px' }} />
+                  </Box>
+                </Tooltip>
+              )}
             </Box>
           </Box>
+          ) : null}
         </Box>
       </Box>
 
       {/* Beast Image */}
       <Box sx={styles.beastImageContainer}>
+        {/* Orbiting Light Behind Image - for animated beasts */}
+        {summit.beast.animated ?
+          <Box
+            component={motion.div}
+            sx={styles.orbitingLightBehind}
+            animate={{
+              rotate: 360,
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+          >
+            <Box sx={styles.glowingOrb} />
+          </Box>
+          : null}
+
         <motion.img
           key={summit.beast.token_id}
           style={{ ...styles.beastImage, opacity: showAttack && totalDamage >= summitHealthRemaining ? 0.7 : showAttack ? 0.9 : 1 }}
@@ -143,6 +190,24 @@ function Summit() {
           alt=''
           animate={controls}
         />
+
+        {/* Orbiting Light In Front of Image - for animated beasts */}
+        {summit.beast.animated ?
+          <Box
+            component={motion.div}
+            sx={styles.orbitingLightFront}
+            animate={{
+              rotate: 360,
+            }}
+            transition={{
+              duration: 4,
+              repeat: Infinity,
+              ease: "linear",
+            }}
+          >
+            <Box sx={styles.glowingOrb} />
+          </Box>
+          : null}
 
         {/* Attack Effects */}
         {showAttack && (
@@ -195,13 +260,24 @@ const styles = {
     textAlign: 'center',
     marginBottom: '8px',
   },
+  nameRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    marginBottom: '4px',
+  },
+  statsBadge: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '4px'
+  },
   beastName: {
     fontSize: '18px',
     fontWeight: 'bold',
     color: '#ffedbb',
     textTransform: 'uppercase',
     letterSpacing: '1px',
-    marginBottom: '4px',
     textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
   },
   ownerText: {
@@ -222,7 +298,36 @@ const styles = {
     height: '100%',
     maxWidth: '100%',
     transition: 'all 0.3s ease',
+    zIndex: 2,
+  },
+  orbitingLightBehind: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    top: 0,
+    left: 0,
     zIndex: 1,
+    clipPath: 'polygon(0 0, 100% 0, 100% 50%, 0 50%)',
+  },
+  orbitingLightFront: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    top: 0,
+    left: 0,
+    zIndex: 3,
+    clipPath: 'polygon(0 50%, 100% 50%, 100% 100%, 0 100%)',
+  },
+  glowingOrb: {
+    position: 'absolute',
+    width: '20px',
+    height: '20px',
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, #00ff88 0%, #00cc66 40%, transparent 70%)',
+    top: '0',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    animation: 'pulse 1s ease-in-out infinite',
   },
   statsSection: {
     width: '100%',
@@ -240,7 +345,7 @@ const styles = {
     background: `${gameColors.darkGreen}70`,
     borderRadius: '4px',
     border: `1px solid ${gameColors.accentGreen}40`,
-    padding: '4px 12px',
+    padding: '4px 8px',
     minWidth: '60px',
     textAlign: 'center',
     display: 'flex',
@@ -336,6 +441,31 @@ const styles = {
     height: '14px',
     filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))',
   },
+  xpBar: {
+    height: '6px',
+    borderRadius: '2px',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    marginTop: '4px',
+    position: 'relative',
+    overflow: 'hidden',
+    '& .MuiLinearProgress-bar': {
+      backgroundColor: '#9C27B0',
+      boxShadow: '0 0 8px rgba(156, 39, 176, 0.5)',
+    },
+  },
+  xpText: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    fontSize: '8px',
+    color: '#ffedbb',
+    fontWeight: 'bold',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    letterSpacing: '0.5px',
+    zIndex: 2,
+    lineHeight: '1',
+  },
   damageIndicator: {
     position: 'absolute',
     top: '20px',
@@ -371,5 +501,20 @@ const styles = {
     color: gameColors.yellow,
     fontWeight: 'bold',
     textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
+  },
+  tooltipContent: {
+    background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    padding: '6px 10px',
+    borderRadius: '4px',
+    border: `1px solid ${gameColors.accentGreen}60`,
+    color: gameColors.brightGreen,
+    fontSize: '12px',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textShadow: `0 1px 2px ${gameColors.darkGreen}`,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.accentGreen}40,
+      0 2px 4px rgba(0, 0, 0, 0.3)
+    `,
   },
 }

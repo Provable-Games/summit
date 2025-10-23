@@ -6,6 +6,7 @@ use summit::models::beast::LiveBeastStats;
 pub struct SummitConfig {
     #[key]
     pub summit_id: u8,
+    pub start_timestamp: u64,
     pub adventurer_address: ContractAddress,
     pub denshokan_address: ContractAddress,
     pub dungeon_address: ContractAddress,
@@ -15,7 +16,6 @@ pub struct SummitConfig {
     pub attack_potion_address: ContractAddress,
     pub revive_potion_address: ContractAddress,
     pub extra_life_potion_address: ContractAddress,
-    pub prev_summit_address: ContractAddress,
 }
 
 #[derive(Copy, Drop, Serde, IntrospectPacked)]
@@ -36,57 +36,35 @@ pub struct SummitHistory {
     pub taken_at: u64,
 }
 
-// ------------------------------------------ //
-// ------------ Events ---------------------- //
-// ------------------------------------------ //
 #[derive(Introspect, Copy, Drop, Serde)]
 #[dojo::event]
-pub struct GameEvent {
+pub struct BattleEvent {
     #[key]
-    pub summit_id: u8,
-    pub details: GameEventDetails,
-}
-
-#[derive(Introspect, Copy, Drop, Serde)]
-pub enum GameEventDetails {
-    summit: SummitEvent,
-    attack: AttackEvent,
-    feed: FeedEvent,
-    update_beast: UpdateBeastEvent,
-}
-
-#[derive(Introspect, Copy, Drop, Serde)]
-pub struct UpdateBeastEvent {
-    pub live_stats: LiveBeastStats,
-}
-
-#[derive(Introspect, Copy, Drop, Serde)]
-pub struct SummitEvent {
-    pub beast: BeastEvent,
-    pub live_stats: LiveBeastStats,
-    pub owner: ContractAddress,
-    pub timestamp: u64,
-}
-
-#[derive(Introspect, Copy, Drop, Serde)]
-pub struct AttackEvent {
-    pub beast: BeastEvent,
-    pub live_stats: LiveBeastStats,
-    pub summit_live_stats: LiveBeastStats,
+    pub attacking_beast_token_id: u32,
+    pub defending_beast_token_id: u32,
+    pub attacks: Span<u16>,
+    pub counter_attacks: Span<u16>,
     pub attack_potions: u8,
-    pub damage: u32,
-    pub owner: ContractAddress,
-    pub timestamp: u64,
+    pub xp_gained: u8,
 }
 
 #[derive(Introspect, Copy, Drop, Serde)]
-pub struct FeedEvent {
+#[dojo::event]
+pub struct RewardEvent {
+    #[key]
+    pub block_number: u64,
+    pub owner: ContractAddress,
+    pub amount: u32,
+}
+
+#[derive(Introspect, Copy, Drop, Serde)]
+#[dojo::event]
+pub struct SummitEvent {
+    #[key]
+    pub taken_at: u64,
     pub beast: BeastEvent,
     pub live_stats: LiveBeastStats,
-    pub health_increase: u16,
-    pub adventurer_count: u32,
     pub owner: ContractAddress,
-    pub timestamp: u64,
 }
 
 #[derive(Introspect, Copy, Drop, Serde)]

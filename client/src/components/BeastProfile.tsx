@@ -1,6 +1,7 @@
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
+import revivePotionIcon from '../assets/images/revive-potion.png';
 import { Box, LinearProgress, Typography } from "@mui/material";
 import { fetchBeastImage, normaliseHealth } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
@@ -16,7 +17,7 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
   const { summit } = useGameStore()
   const originalExperience = Math.pow(beast.level, 2);
   const currentExperience = originalExperience + beast.bonus_xp;
-  const nextLevelExperience = Math.pow(beast.level + 1, 2);
+  const nextLevelExperience = Math.pow(beast.current_level + 1, 2);
   const bonusLevels = Math.floor(Math.sqrt(currentExperience)) - beast.level;
 
   const diff = ((beast.last_death_timestamp * 1000) + 46 * 60 * 60 * 1000) - Date.now();
@@ -27,13 +28,13 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
   // Calculate revival time for dead beasts
   const isDead = beast.current_health === 0;
   let revivalTime = null;
-  if (isDead && beast.last_death_timestamp) {
-    const revivalTimestamp = (beast.last_death_timestamp * 1000) + (23 * 60 * 60 * 1000);
-    const timeRemaining = revivalTimestamp - Date.now();
 
-    if (timeRemaining > 0) {
-      const hours = Math.floor(timeRemaining / (60 * 60 * 1000));
-      const minutes = Math.floor((timeRemaining % (60 * 60 * 1000)) / (60 * 1000));
+  if (isDead && beast.last_death_timestamp) {
+    const revivalTimeRemaining = (1000 * beast.last_death_timestamp + beast.revival_time) - Date.now();
+
+    if (revivalTimeRemaining > 0) {
+      const hours = Math.floor(revivalTimeRemaining / (60 * 60 * 1000));
+      const minutes = Math.floor((revivalTimeRemaining % (60 * 60 * 1000)) / (60 * 1000));
       revivalTime = `${hours}h ${minutes}m`;
     }
   }
@@ -102,7 +103,7 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
               </Box>
               <Box sx={styles.statBox}>
                 <Typography sx={styles.statLabel}>LEVEL</Typography>
-                <Typography sx={styles.statValue}>{beast.level}</Typography>
+                <Typography sx={styles.statValue}>{beast.current_level}</Typography>
               </Box>
               <Box sx={styles.statBox}>
                 <Typography sx={styles.statLabel}>TYPE</Typography>
@@ -227,16 +228,30 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
           </Box>
 
 
-          {/* Revival Cost */}
+          {/* Revival Section */}
           <Box sx={styles.pixelRevivalContainer}>
-            {isDead && revivalTime && (
-              <Typography sx={styles.pixelRevivalTimeText}>
-                REVIVES IN: {revivalTime}
+            <Box sx={styles.pixelRevivalLeft}>
+              <Box sx={styles.pixelRevivalInfo}>
+                {isDead ? (
+                  <Typography sx={styles.pixelRevivalTimeDead}>
+                    Revives in: {revivalTime}
+                  </Typography>
+                ) : (
+                  <Typography sx={styles.pixelRevivalTimeAlive}>
+                    Revival time: {Math.floor(beast.revival_time / (60 * 60 * 1000))}h
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+
+            <Box sx={styles.pixelRevivalRight}>
+              <Typography sx={styles.pixelRevivalCostText}>
+                {beast.revival_count + 1}
               </Typography>
-            )}
-            <Typography sx={styles.pixelRevivalText}>
-              REVIVAL COST: {beast.revival_count + 1} {beast.revival_count + 1 > 1 ? 'POTIONS' : 'POTION'}
-            </Typography>
+              <Box sx={styles.pixelRevivalIcon}>
+                <img src={revivePotionIcon} alt="Revive Potion" width="12" height="12" />
+              </Box>
+            </Box>
           </Box>
         </Box>
       </Box>
@@ -659,25 +674,78 @@ const styles = {
     zIndex: 10,
   },
 
-  // Pixel revival container
+  // Pixel revival container (compact)
   pixelRevivalContainer: {
-    textAlign: 'center',
-    position: 'relative',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    background: '#2a2a2e',
+    borderRadius: '4px',
+    padding: '2px 6px 1px',
+    border: '1px solid #3a3a3e',
   },
 
-  // Pixel revival text
-  pixelRevivalText: {
+  // Pixel revival left side
+  pixelRevivalLeft: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+
+  // Pixel revival right side
+  pixelRevivalRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+
+  // Pixel revival icon (compact)
+  pixelRevivalIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '16px',
+    height: '16px',
+    background: '#1a1a1e',
+    borderRadius: '2px',
+    border: '1px solid #3a3a3e',
+  },
+
+  // Pixel revival info
+  pixelRevivalInfo: {
+    display: 'flex',
+    alignItems: 'center',
+  },
+
+  // Pixel revival time dead
+  pixelRevivalTimeDead: {
     fontSize: '11px',
-    color: '#d0c98d',
-    letterSpacing: '0.5px',
+    color: '#FF4444',
+    textShadow: '1px 1px 0px #000000',
     fontWeight: 'bold',
   },
 
-  // Pixel revival time text
-  pixelRevivalTimeText: {
+  // Pixel revival time alive
+  pixelRevivalTimeAlive: {
+    fontSize: '11px',
+    color: '#4CAF50',
+    textShadow: '1px 1px 0px #000000',
+    fontWeight: 'bold',
+  },
+
+  // Pixel revival cost text
+  pixelRevivalCostText: {
     fontSize: '11px',
     color: gameColors.orange,
-    letterSpacing: '0.5px',
+    textShadow: '1px 1px 0px #000000',
     fontWeight: 'bold',
+  },
+
+  // Pixel revival status dot (compact)
+  pixelRevivalStatusDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    position: 'relative',
   },
 }
