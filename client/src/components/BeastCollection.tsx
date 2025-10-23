@@ -5,6 +5,9 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import EnergyIcon from '@mui/icons-material/ElectricBolt';
 import CasinoIcon from '@mui/icons-material/Casino';
 import StarIcon from '@mui/icons-material/Star';
+import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
+import FlashOnIcon from '@mui/icons-material/FlashOn';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import { Box, Link, Popover, Tooltip, Typography } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
 import { useEffect, useMemo, useState } from 'react';
@@ -13,10 +16,16 @@ import { gameColors } from '../utils/themes';
 import BeastProfile from './BeastProfile';
 import { isMobile } from 'react-device-detect';
 
+type SortMethod = 'recommended' | 'power' | 'health';
+
 function BeastCollection() {
   const { loadingCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit, appliedPotions, setTotalDamage } = useGameStore()
   const { address } = useAccount()
   const [hideDeadBeasts, setHideDeadBeasts] = useState(false)
+  const [sortMethod, setSortMethod] = useState<SortMethod>(() => {
+    const saved = localStorage.getItem('beastSortMethod');
+    return (saved as SortMethod) || 'recommended';
+  })
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
 
@@ -26,22 +35,33 @@ function BeastCollection() {
         ...beast,
         combat: calculateBattleResult(beast, summit.beast, appliedPotions?.attack || 0)
       })).sort((a: Beast, b: Beast) => {
+        // Always keep summit beast at the top
         if (a.token_id === summit.beast.token_id) {
           return -1
         } else if (b.token_id === summit.beast.token_id) {
           return 1
-        } else if (a.combat?.elemental !== b.combat?.elemental) {
-          return b.combat?.elemental - a.combat?.elemental
-        } else if (b.power !== a.power) {
+        }
+
+        // Apply selected sorting method
+        if (sortMethod === 'recommended') {
+          if (a.combat?.elemental !== b.combat?.elemental) {
+            return b.combat?.elemental - a.combat?.elemental
+          } else if (b.power !== a.power) {
+            return b.power - a.power
+          } else {
+            return (b.health + b.bonus_health) - (a.health + a.bonus_health)
+          }
+        } else if (sortMethod === 'power') {
           return b.power - a.power
-        } else {
+        } else if (sortMethod === 'health') {
           return (b.health + b.bonus_health) - (a.health + a.bonus_health)
         }
+        return 0
       })
     }
 
     return collection
-  }, [collection, summit, appliedPotions?.attack]);
+  }, [collection, summit, appliedPotions?.attack, sortMethod]);
 
   useEffect(() => {
     const total = selectedBeasts.reduce((acc, beast) => {
@@ -51,6 +71,10 @@ function BeastCollection() {
 
     setTotalDamage(total);
   }, [selectedBeasts, collectionWithCombat]);
+
+  useEffect(() => {
+    localStorage.setItem('beastSortMethod', sortMethod);
+  }, [sortMethod]);
 
   const selectBeast = (beast: Beast) => {
     if (attackInProgress) return;
@@ -81,6 +105,41 @@ function BeastCollection() {
     if (attackInProgress) return;
 
     setHideDeadBeasts(hide)
+  }
+
+  const cycleSortMethod = () => {
+    if (attackInProgress) return;
+
+    const sortOrder: SortMethod[] = ['recommended', 'power', 'health'];
+    const currentIndex = sortOrder.indexOf(sortMethod);
+    const nextIndex = (currentIndex + 1) % sortOrder.length;
+    setSortMethod(sortOrder[nextIndex]);
+  }
+
+  const getSortIcon = () => {
+    switch (sortMethod) {
+      case 'recommended':
+        return <TipsAndUpdatesIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />;
+      case 'power':
+        return <FlashOnIcon sx={{ color: gameColors.yellow, fontSize: '20px' }} />;
+      case 'health':
+        return <FavoriteIcon sx={{ color: gameColors.red, fontSize: '20px' }} />;
+      default:
+        return <TipsAndUpdatesIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />;
+    }
+  }
+
+  const getSortLabel = () => {
+    switch (sortMethod) {
+      case 'recommended':
+        return 'Recommended';
+      case 'power':
+        return 'Power';
+      case 'health':
+        return 'Health';
+      default:
+        return 'Recommended';
+    }
   }
 
   // Helper to check if max beasts are selected (50 or all if less than 50)
@@ -342,6 +401,17 @@ function BeastCollection() {
                   fontSize: '20px',
                   opacity: hideDeadBeasts ? 1 : 0.6
                 }} />
+              </Box>
+            </Tooltip>
+
+            <Tooltip placement='right' title={
+              <Box sx={styles.tooltipContent}>
+                <Box>Sort Beasts</Box>
+                <Box sx={{ fontSize: '10px', opacity: 0.8, mt: 0.5 }}>Current: {getSortLabel()}</Box>
+              </Box>
+            }>
+              <Box sx={styles.utilityButton} onClick={cycleSortMethod}>
+                {getSortIcon()}
               </Box>
             </Tooltip>
           </Box>

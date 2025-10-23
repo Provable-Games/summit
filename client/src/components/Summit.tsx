@@ -1,5 +1,5 @@
 import { useGameStore } from '@/stores/gameStore'
-import { Box, LinearProgress, Typography } from '@mui/material'
+import { Box, LinearProgress, Tooltip, Typography } from '@mui/material'
 import { motion, useAnimationControls } from 'framer-motion'
 import { useLottie } from 'lottie-react'
 import { useEffect, useState } from 'react'
@@ -8,6 +8,9 @@ import heart from '../assets/images/heart.png'
 import { fetchBeastSummitImage, normaliseHealth } from '../utils/beasts'
 import { gameColors } from '../utils/themes'
 import { lookupAddresses } from '@cartridge/controller'
+import EnergyIcon from '@mui/icons-material/ElectricBolt'
+import CasinoIcon from '@mui/icons-material/Casino'
+import StarIcon from '@mui/icons-material/Star'
 
 function Summit() {
   const { collection, summit, attackInProgress, selectedBeasts, totalDamage } = useGameStore()
@@ -73,9 +76,11 @@ function Summit() {
       <Box sx={styles.statsSection}>
         {/* Name and Owner */}
         <Box sx={styles.nameSection}>
-          <Typography sx={styles.beastName}>
-            {name}
-          </Typography>
+          <Box sx={styles.nameRow}>
+            <Typography sx={styles.beastName}>
+              {name}
+            </Typography>
+          </Box>
           <Typography sx={styles.ownerText}>
             Owned by {cartridgeName || 'Unknown'}
           </Typography>
@@ -128,11 +133,33 @@ function Summit() {
               <Typography sx={styles.powerValue}>{summit.beast.power}</Typography>
             </Box>
           </Box>
-          <Box sx={styles.statBox}>
-            <Typography sx={styles.statLabel}>TYPE</Typography>
-            <Box sx={styles.powerValueContainer}>
-              <Typography sx={styles.typeValue}>{summit.beast.type}</Typography>
-            </Box>
+          <Box sx={[styles.statBox, { minWidth: '0px' }]}>
+            {/* Stats Upgrades Badge */}
+            {(summit.beast.stats.spirit || summit.beast.stats.luck || summit.beast.stats.specials) ? (
+              <Box sx={styles.statsBadge}>
+                {summit.beast.stats.luck && (
+                  <Tooltip title={<Box sx={styles.tooltipContent}>This beast has 50% crit chance</Box>} placement="bottom">
+                    <Box sx={{ color: '#ff69b4', display: 'flex' }}>
+                      <CasinoIcon sx={{ fontSize: '18px' }} />
+                    </Box>
+                  </Tooltip>
+                )}
+                {summit.beast.stats.spirit && (
+                  <Tooltip title={<Box sx={styles.tooltipContent}>This beast revives 50% faster</Box>} placement="bottom">
+                    <Box sx={{ color: '#00ffff', display: 'flex' }}>
+                      <EnergyIcon sx={{ fontSize: '18px' }} />
+                    </Box>
+                  </Tooltip>
+                )}
+                {summit.beast.stats.specials && (
+                  <Tooltip title={<Box sx={styles.tooltipContent}>This beast has name match bonus</Box>} placement="bottom">
+                    <Box sx={{ color: '#ffd700', display: 'flex' }}>
+                      <StarIcon sx={{ fontSize: '18px' }} />
+                    </Box>
+                  </Tooltip>
+                )}
+              </Box>
+            ) : null}
           </Box>
         </Box>
       </Box>
@@ -234,13 +261,24 @@ const styles = {
     textAlign: 'center',
     marginBottom: '8px',
   },
+  nameRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    marginBottom: '4px',
+  },
+  statsBadge: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '2px'
+  },
   beastName: {
     fontSize: '18px',
     fontWeight: 'bold',
     color: '#ffedbb',
     textTransform: 'uppercase',
     letterSpacing: '1px',
-    marginBottom: '4px',
     textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
   },
   ownerText: {
@@ -308,7 +346,7 @@ const styles = {
     background: `${gameColors.darkGreen}70`,
     borderRadius: '4px',
     border: `1px solid ${gameColors.accentGreen}40`,
-    padding: '4px 12px',
+    padding: '4px 8px',
     minWidth: '60px',
     textAlign: 'center',
     display: 'flex',
@@ -464,5 +502,20 @@ const styles = {
     color: gameColors.yellow,
     fontWeight: 'bold',
     textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
+  },
+  tooltipContent: {
+    background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    padding: '6px 10px',
+    borderRadius: '4px',
+    border: `1px solid ${gameColors.accentGreen}60`,
+    color: gameColors.brightGreen,
+    fontSize: '12px',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textShadow: `0 1px 2px ${gameColors.darkGreen}`,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.accentGreen}40,
+      0 2px 4px rgba(0, 0, 0, 0.3)
+    `,
   },
 }

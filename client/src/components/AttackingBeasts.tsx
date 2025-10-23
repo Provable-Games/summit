@@ -129,6 +129,12 @@ function AttackingBeasts() {
             }
           }
 
+          if (prevSummit.beast.current_health <= nextDamage.value) {
+            setTimeout(() => {
+              handleSkip();
+            }, 1000);
+          }
+
           return {
             ...prevSummit,
             beast: {
@@ -179,9 +185,7 @@ function AttackingBeasts() {
                 if (nextBeast) {
                   setActiveBeastTokenId(nextBeast.token_id);
                 } else {
-                  setSelectedBeasts([]);
-                  setPauseUpdates(false);
-                  setAttackInProgress(false);
+                  handleSkip()
                 }
 
                 return newDeadSet;

@@ -43,13 +43,31 @@ function elementalDamage(attacker: any, defender: any): number {
   return multiplier
 }
 
+function nameMatchBonus(attacker: Beast, defender: Beast, elementalDamage: number): number {
+  let damage = 0;
+
+  if (!attacker.stats.specials) return damage;
+
+  if (attacker.prefix === defender.prefix) {
+    damage += elementalDamage * 8
+  }
+
+  if (attacker.suffix === defender.suffix) {
+    damage += elementalDamage * 8
+  }
+
+  return damage;
+}
+
 export const calculateBattleResult = (beast: Beast, summit: Beast, potions: number): Combat => {
   const MINIMUM_DAMAGE = 4
 
   let elemental = elementalDamage(beast, summit);
+  let beastNameMatch = nameMatchBonus(beast, summit, elemental);
+  let summitNameMatch = nameMatchBonus(summit, beast, elemental);
 
-  let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((beast.power * elemental * (1 + 0.1 * potions)) - summit.power))
-  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor((summit.power) * elementalDamage(summit, beast)) - beast.power)
+  let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((beast.power * elemental * (1 + 0.1 * potions) + beastNameMatch) - summit.power))
+  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor((summit.power) * elementalDamage(summit, beast) + summitNameMatch) - beast.power)
 
   let summitHealth = summit.current_health
   let beastHealth = beast.current_health > 0 ? beast.current_health : beast.health + beast.bonus_health

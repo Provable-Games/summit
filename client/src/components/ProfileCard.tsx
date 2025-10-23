@@ -123,7 +123,7 @@ const ProfileCard = () => {
       </Box>}
 
       <ClaimStarterPack open={claimStarterPackDialog} close={() => setClaimStarterPackDialog(false)} />
-      <BeastUpgradeModal open={beastUpgradeDialog} close={() => setBeastUpgradeDialog(false)} />
+      {beastUpgradeDialog && <BeastUpgradeModal open={beastUpgradeDialog} close={() => setBeastUpgradeDialog(false)} />}
     </Box>
   )
 }

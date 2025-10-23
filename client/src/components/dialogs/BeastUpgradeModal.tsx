@@ -20,18 +20,18 @@ interface Upgrade {
 
 const UPGRADES: Upgrade[] = [
   {
-    id: 'luck',
-    name: 'Luck',
-    description: 'Your beast gains 50% crit chance',
-    icon: <CasinoIcon sx={{ fontSize: '32px' }} />,
-    color: '#ff69b4',
-  },
-  {
     id: 'spirit',
     name: 'Spirit',
     description: 'Your beast revives 50% faster',
     icon: <EnergyIcon sx={{ fontSize: '32px' }} />,
     color: '#00ffff',
+  },
+  {
+    id: 'luck',
+    name: 'Luck',
+    description: 'Your beast gains 50% crit chance',
+    icon: <CasinoIcon sx={{ fontSize: '32px' }} />,
+    color: '#ff69b4',
   },
   {
     id: 'specials',
@@ -55,7 +55,7 @@ function BeastUpgradeModal(props) {
 
   const [currentBeastIndex, setCurrentBeastIndex] = useState(0);
   const [upgradeInProgress, setUpgradeInProgress] = useState(false);
-  const [beastUpgrades, setBeastUpgrades] = useState<{ [key: number]: { luck: boolean; spirit: boolean; specials: boolean } }>({});
+  const [beastUpgrades, setBeastUpgrades] = useState<{ [key: number]: { spirit: boolean; luck: boolean; specials: boolean } }>({});
 
   useEffect(() => {
     setUpgradeInProgress(false);
@@ -67,7 +67,7 @@ function BeastUpgradeModal(props) {
   const maxPossibleUpgrades = Math.max(0, totalKills - activeStatsCount);
 
   // Calculate remaining available points after accounting for selected upgrades
-  const currentBeastUpgrades = currentBeast ? (beastUpgrades[currentBeast.token_id] || { luck: false, spirit: false, specials: false }) : { luck: false, spirit: false, specials: false };
+  const currentBeastUpgrades = currentBeast ? (beastUpgrades[currentBeast.token_id] || { spirit: false, luck: false, specials: false }) : { spirit: false, luck: false, specials: false };
   const selectedUpgradesCount = Object.values(currentBeastUpgrades).filter(Boolean).length;
   const availablePoints = Math.max(0, maxPossibleUpgrades - selectedUpgradesCount);
 
@@ -86,7 +86,7 @@ function BeastUpgradeModal(props) {
   const handleSelectUpgrade = (upgradeId: 'luck' | 'spirit' | 'specials') => {
     if (!currentBeast || currentBeast.stats[upgradeId]) return;
 
-    const currentBeastUpgrades = beastUpgrades[currentBeast.token_id] || { luck: false, spirit: false, specials: false };
+    const currentBeastUpgrades = beastUpgrades[currentBeast.token_id] || { spirit: false, luck: false, specials: false };
     const selectedUpgradesCount = Object.values(currentBeastUpgrades).filter(Boolean).length;
 
     // Check if we can add more upgrades (have available points)
@@ -239,7 +239,7 @@ function BeastUpgradeModal(props) {
 
             {UPGRADES.map((upgrade) => {
               const isUnlocked = currentBeast.stats[upgrade.id];
-              const currentBeastUpgrades = beastUpgrades[currentBeast.token_id] || { luck: false, spirit: false, specials: false };
+              const currentBeastUpgrades = beastUpgrades[currentBeast.token_id] || { spirit: false, luck: false, specials: false };
               const isSelected = currentBeastUpgrades[upgrade.id];
               const selectedUpgradesCount = Object.values(currentBeastUpgrades).filter(Boolean).length;
               const canSelect = !isUnlocked && (isSelected || selectedUpgradesCount < maxPossibleUpgrades);
