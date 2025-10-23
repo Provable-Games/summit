@@ -1,3 +1,4 @@
+import { getContractByName } from "@dojoengine/core";
 import manifest_mainnet from "../../manifest.json";
 
 export interface NetworkConfig {
@@ -34,7 +35,7 @@ export enum ChainId {
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_0_0_5_preview_2",
+    namespace: "summit_0_0_5",
     manifest: manifest_mainnet,
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
@@ -51,19 +52,19 @@ export const NETWORKS = {
         {
           name: "ATTACK",
           address:
-            "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
+            "0x054d7e1f1243651039bbba1f03ebe3da91e58bcbee2901b30d1d5df72f5e2a12",
           displayDecimals: 0,
         },
         {
           name: "REVIVE",
           address:
-            "0x068292fdfa280f371fabd1d6e49c346f11b341e1d3fe80d4ac320648ab03539c",
+            "0x01e7b2aa4542e1cbbbbf3bf6c68869e1e04b303172819a6247ca49890491aa51",
           displayDecimals: 0,
         },
         {
           name: "EXTRA LIFE",
           address:
-            "0x0793f1104a3b0d2316abc92039421f7160a7f4caad0ed405b6f8732271717328",
+            "0x0570ae4e4abfa94e5262dafa0844fdccbd31b3a6f0ec184a812e27c77b5443d0",
           displayDecimals: 0,
         },
       ],
@@ -83,9 +84,15 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
   const network = NETWORKS[networkKey as keyof typeof NETWORKS];
   if (!network) throw new Error(`Network ${networkKey} not found`);
 
+  const SUMMIT_ADDRESS = getContractByName(
+    network.manifest,
+    network.namespace,
+    "summit_systems"
+  )?.address;
+
   const policies = {
     "contracts": {
-      "0x31d415735500f9fe24874de1c31f9d8d0771c6b33fe82d7984f8a9284ce5a71": {
+      [SUMMIT_ADDRESS]: {
         "name": "Summit Game",
         "description": "Main game contract for Summit gameplay",
         "methods": [
@@ -121,40 +128,40 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b": {
+      "0x054d7e1f1243651039bbba1f03ebe3da91e58bcbee2901b30d1d5df72f5e2a12": {
         "name": "Attack Potion",
         "description": "ERC 20 token for Attack Potion",
         "methods": [
           {
             "name": "Approve",
             "amount": "50000000000000000000000",
-            "spender": "0xf394d0076fc06a68da5431a0db5376cd38dc862702556a668f82b3c04236ae",
+            "spender": SUMMIT_ADDRESS,
             "description": "Approve Attack Potion",
             "entrypoint": "approve"
           }
         ]
       },
-      "0x068292fdfa280f371fabd1d6e49c346f11b341e1d3fe80d4ac320648ab03539c": {
+      "0x01e7b2aa4542e1cbbbbf3bf6c68869e1e04b303172819a6247ca49890491aa51": {
         "name": "Revive Potion",
         "description": "ERC 20 token for Revive Potion",
         "methods": [
           {
             "name": "Approve",
             "amount": "50000000000000000000000",
-            "spender": "0xf394d0076fc06a68da5431a0db5376cd38dc862702556a668f82b3c04236ae",
+            "spender": SUMMIT_ADDRESS,
             "description": "Approve Revive Potion",
             "entrypoint": "approve"
           }
         ]
       },
-      "0x0793f1104a3b0d2316abc92039421f7160a7f4caad0ed405b6f8732271717328": {
+      "0x0570ae4e4abfa94e5262dafa0844fdccbd31b3a6f0ec184a812e27c77b5443d0": {
         "name": "Extra Life Potion",
         "description": "ERC 20 token for Extra Life Potion",
         "methods": [
           {
             "name": "Approve",
             "amount": "50000000000000000000000",
-            "spender": "0xf394d0076fc06a68da5431a0db5376cd38dc862702556a668f82b3c04236ae",
+            "spender": SUMMIT_ADDRESS,
             "description": "Approve Extra Life Potion",
             "entrypoint": "approve"
           }
