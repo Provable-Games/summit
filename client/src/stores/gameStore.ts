@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { Summit, Beast, Adventurer, AppliedPotions, BattleEvent } from '@/types/game';
+import { Summit, Beast, Adventurer, AppliedPotions, BattleEvent, Leaderboard } from '@/types/game';
 
 interface GameState {
   summit: Summit | null;
+  leaderboard: Leaderboard[];
   battleEvents: BattleEvent[];
   showFeedingGround: boolean;
   killedByAdventurers: number[];
@@ -17,11 +18,12 @@ interface GameState {
   totalDamage: number;
   appliedPotions: AppliedPotions;
 
-  setSummit: (summit: Summit | null) => void;
+  setSummit: (summit: Summit | null | ((prev: Summit | null) => Summit | null)) => void;
+  setLeaderboard: (leaderboard: Leaderboard[]) => void;
   setBattleEvents: (battleEvents: BattleEvent[]) => void;
   setShowFeedingGround: (showFeedingGround: boolean) => void;
   setKilledByAdventurers: (killedByAdventurers: number[]) => void;
-  setCollection: (collection: Beast[]) => void;
+  setCollection: (collection: Beast[] | ((prev: Beast[]) => Beast[])) => void;
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => void;
   setLoadingCollection: (loadingCollection: boolean) => void;
   setAttackInProgress: (attackInProgress: boolean) => void;
@@ -36,6 +38,7 @@ interface GameState {
 
 export const useGameStore = create<GameState>((set, get) => ({
   summit: null,
+  leaderboard: [],
   battleEvents: [],
   showFeedingGround: false,
   killedByAdventurers: [],
@@ -76,11 +79,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     });
   },
 
-  setSummit: (summit: Summit | null) => set({ summit }),
+  setSummit: (summit: Summit | null | ((prev: Summit | null) => Summit | null)) =>
+    set(state => ({ summit: typeof summit === 'function' ? summit(state.summit) : summit })),
+  setLeaderboard: (leaderboard: Leaderboard[]) => set({ leaderboard }),
   setBattleEvents: (battleEvents: BattleEvent[]) => set({ battleEvents }),
   setShowFeedingGround: (showFeedingGround: boolean) => set({ showFeedingGround }),
   setKilledByAdventurers: (killedByAdventurers: number[]) => set({ killedByAdventurers }),
-  setCollection: (collection: Beast[]) => set({ collection }),
+  setCollection: (collection: Beast[] | ((prev: Beast[]) => Beast[])) =>
+    set(state => ({ collection: typeof collection === 'function' ? collection(state.collection) : collection })),
   setLoadingCollection: (loadingCollection: boolean) => set({ loadingCollection }),
   setAttackInProgress: (attackInProgress: boolean) => set({ attackInProgress }),
   setFeedingInProgress: (feedingInProgress: boolean) => set({ feedingInProgress }),

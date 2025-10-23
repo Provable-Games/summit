@@ -58,7 +58,7 @@ export const useStarknetApi = () => {
       });
 
       const data = await response.json();
-      let beast = {
+      let beast: any = {
         id: parseInt(data?.result[0], 16),
         prefix: parseInt(data?.result[1], 16),
         suffix: parseInt(data?.result[2], 16),
@@ -82,11 +82,11 @@ export const useStarknetApi = () => {
           specials: Boolean(parseInt(data?.result[19], 16)),
         }
       }
-      beast.level = getBeastCurrentLevel(beast.level, beast.bonus_xp);
+      beast.current_level = getBeastCurrentLevel(beast.level, beast.bonus_xp);
       return {
         beast: {
           ...beast,
-          ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.level),
+          ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.current_level),
           revival_time: 0,
         },
         taken_at: parseInt(data?.result[22], 16),
@@ -99,8 +99,32 @@ export const useStarknetApi = () => {
     return null;
   }
 
+  const getCurrentBlock = async (): Promise<number> => {
+    try {
+      const response = await fetch(currentNetworkConfig.rpcUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "starknet_blockNumber",
+          params: [],
+          id: 0,
+        }),
+      });
+
+      const data = await response.json();
+      return data?.result || 0;
+    } catch (error) {
+      console.log('error fetching block number', error);
+      return 0;
+    }
+  }
+
   return {
     getSummitData,
     getTokenBalances,
+    getCurrentBlock,
   }
 }

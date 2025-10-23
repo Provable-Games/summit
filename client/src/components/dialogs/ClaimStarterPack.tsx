@@ -57,7 +57,7 @@ function ClaimStarterPack(props) {
       await executeGameAction(
         {
           type: "claim_starter_kit",
-          beastIds: unclaimedBeasts.slice(0, 150)
+          beastIds: unclaimedBeasts.slice(0, 250)
         }
       )
 
@@ -184,7 +184,7 @@ function ClaimStarterPack(props) {
                     <span>Claiming</span>
                     <div className='dotLoader white' />
                   </Box>
-                  : unclaimedBeasts.length > 150 ? 'CLAIM 150' : 'CLAIM ALL'
+                  : unclaimedBeasts.length > 250 ? 'CLAIM 250' : 'CLAIM ALL'
                 }
               </Typography>
             </Button>

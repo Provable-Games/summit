@@ -209,7 +209,7 @@ function BeastUpgradeModal(props) {
                     <Box sx={styles.secondaryStats}>
                       <Box sx={styles.secondaryStatRow}>
                         <Typography sx={styles.secondaryStatLabel}>Level</Typography>
-                        <Typography sx={styles.secondaryStatValue}>{currentBeast.level}</Typography>
+                        <Typography sx={styles.secondaryStatValue}>{currentBeast.current_level}</Typography>
                       </Box>
                       <Box sx={styles.secondaryStatRow}>
                         <Typography sx={styles.secondaryStatLabel}>Kills</Typography>

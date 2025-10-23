@@ -1,24 +1,26 @@
 import { useController } from '@/contexts/controller';
 import { useGameStore } from '@/stores/gameStore';
+import { gameColors } from '@/utils/themes';
 import { ellipseAddress } from '@/utils/utils';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
-import { useAccount, useDisconnect } from '@starknet-react/core';
+import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
 import { useState } from 'react';
-import ClaimStarterPack from './dialogs/ClaimStarterPack';
-import ConnectWallet from './dialogs/ConnectWallet';
-import BeastUpgradeModal from './dialogs/BeastUpgradeModal';
-import { gameColors } from '@/utils/themes';
 import { isMobile } from 'react-device-detect';
+import BeastUpgradeModal from './dialogs/BeastUpgradeModal';
+import ClaimStarterPack from './dialogs/ClaimStarterPack';
+import { addAddressPadding } from 'starknet';
 
 const ProfileCard = () => {
-  const { collection } = useGameStore()
+  const { collection, leaderboard } = useGameStore()
   const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
   const { playerName, tokenBalances, openProfile } = useController()
+  const { connect, connectors } = useConnect();
 
-  const [accountDialog, openAccountDialog] = useState(false)
+  let cartridgeConnector = connectors.find(conn => conn.id === "controller")
+
   const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false)
   const [beastUpgradeDialog, setBeastUpgradeDialog] = useState(false)
 
@@ -39,13 +41,11 @@ const ProfileCard = () => {
 
   if (!address) {
     return <>
-      <Button onClick={() => openAccountDialog(true)} sx={styles.connectButton}>
+      <Button sx={styles.connectButton} onClick={() => connect({ connector: cartridgeConnector })} size='large' startIcon={<SportsEsportsIcon htmlColor='white' />}>
         <Typography sx={styles.connectButtonText}>
           CONNECT WALLET
         </Typography>
       </Button>
-
-      <ConnectWallet open={accountDialog} close={openAccountDialog} />
     </>
   }
 
@@ -76,7 +76,7 @@ const ProfileCard = () => {
 
           <Box display={'flex'} alignItems={'start'}>
             <Typography sx={styles.infoValue}>
-              {collection.reduce((acc, beast) => acc + beast.rewards_earned, 0)}
+              {leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount.toLocaleString() || 0}
             </Typography>
           </Box>
         </Box>

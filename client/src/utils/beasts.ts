@@ -120,6 +120,10 @@ export const getBeastCurrentHealth = (beast: Beast): number => {
   return beast.current_health
 }
 
+export const getExperienceDefending = (attackingBeast: Beast): number => {
+  return Math.floor(attackingBeast.power / 100) + 1;
+}
+
 export const formatBeastName = (beast: Beast): string => {
   return `'${beast.prefix} ${beast.suffix}' ${beast.name}`
 }

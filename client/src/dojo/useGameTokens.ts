@@ -112,7 +112,7 @@ export const useGameTokens = () => {
     let data = await sql.json()
 
     let beasts: Beast[] = data.map((data: any) => {
-      let beast = {
+      let beast: any = {
         id: Number(data["Beast ID"]),
         token_id: Number(data["Token ID"]),
         name: data["Beast"].replace(" ", ""),
@@ -148,7 +148,8 @@ export const useGameTokens = () => {
       }
       beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)
-      beast.level = getBeastCurrentLevel(beast.level, beast.bonus_xp)
+      beast.current_level = getBeastCurrentLevel(beast.level, beast.bonus_xp)
+      beast.power = (6 - beast.tier) * beast.current_level;
       return beast
     })
 
@@ -186,79 +187,22 @@ export const useGameTokens = () => {
     }
   }
 
-  const getBigFive = async () => {
+  const getLeaderboard = async () => {
+    const q = `
+        SELECT owner, SUM(amount) AS amount
+        FROM "${currentNetworkConfig.namespace}-RewardEvent"
+        GROUP BY owner
+        ORDER BY amount DESC
+      `;
+
+    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
     try {
-      // Query 1: Get all beast owners (fast with index on contract_address)
-      const ownersQuery = `
-        SELECT 
-          account_address,
-          token_id
-        FROM token_balances
-        WHERE contract_address = '${addAddressPadding(currentNetworkConfig.beasts.toLowerCase())}'
-          AND balance = '0x0000000000000000000000000000000000000000000000000000000000000001'
-      `;
-
-      // Query 2: Get all beast rewards (fast, no filtering)
-      const rewardsQuery = `
-        SELECT 
-          token_id,
-          rewards_earned
-        FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
-        WHERE rewards_earned IS NOT NULL AND rewards_earned != '0x0'
-      `;
-
-      // Execute both queries in parallel
-      const [ownersResponse, rewardsResponse] = await Promise.all([
-        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(ownersQuery)}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" }
-        }),
-        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(rewardsQuery)}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" }
-        })
-      ]);
-
-      const [owners, rewards] = await Promise.all([
-        ownersResponse.json(),
-        rewardsResponse.json()
-      ]);
-
-      // Build a map of token_id -> rewards for fast lookup
-      const rewardsMap = new Map();
-      rewards.forEach((beast: any) => {
-        const rewardValue = parseInt(beast.rewards_earned, 16) || 0;
-        if (rewardValue > 0) {
-          rewardsMap.set(beast.token_id.toString(), rewardValue);
-        }
-      });
-
-      // Aggregate rewards by player
-      const playerRewards = new Map();
-      owners.forEach((owner: any) => {
-        // Extract token_id from the full token_id string (contract:token_id)
-        const tokenIdPart = owner.token_id.split(':')[1];
-        if (tokenIdPart) {
-          // Convert hex to decimal if needed
-          const tokenIdInt = tokenIdPart.startsWith('0x')
-            ? parseInt(tokenIdPart, 16).toString()
-            : tokenIdPart;
-
-          const beastReward = rewardsMap.get(tokenIdInt) || 0;
-          if (beastReward > 0) {
-            const current = playerRewards.get(owner.account_address) || 0;
-            playerRewards.set(owner.account_address, current + beastReward);
-          }
-        }
-      });
-
-      // Sort and get top 5
-      const sortedPlayers = Array.from(playerRewards.entries())
-        .map(([account_address, total_rewards]) => ({ account_address, total_rewards }))
-        .sort((a, b) => b.total_rewards - a.total_rewards)
-        .slice(0, 5);
-
-      return sortedPlayers;
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      })
+      let data = await sql.json()
+      return data
     } catch (error) {
       console.error("Error getting big five:", error);
       return [];
@@ -343,7 +287,7 @@ export const useGameTokens = () => {
   return {
     getBeastCollection,
     countRegisteredBeasts,
-    getBigFive,
+    getLeaderboard,
     getValidAdventurers,
     getKilledBy,
     getKilledBeasts,

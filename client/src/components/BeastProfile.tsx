@@ -17,7 +17,7 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
   const { summit } = useGameStore()
   const originalExperience = Math.pow(beast.level, 2);
   const currentExperience = originalExperience + beast.bonus_xp;
-  const nextLevelExperience = Math.pow(beast.level + 1, 2);
+  const nextLevelExperience = Math.pow(beast.current_level + 1, 2);
   const bonusLevels = Math.floor(Math.sqrt(currentExperience)) - beast.level;
 
   const diff = ((beast.last_death_timestamp * 1000) + 46 * 60 * 60 * 1000) - Date.now();
@@ -103,7 +103,7 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
               </Box>
               <Box sx={styles.statBox}>
                 <Typography sx={styles.statLabel}>LEVEL</Typography>
-                <Typography sx={styles.statValue}>{beast.level}</Typography>
+                <Typography sx={styles.statValue}>{beast.current_level}</Typography>
               </Box>
               <Box sx={styles.statBox}>
                 <Typography sx={styles.statLabel}>TYPE</Typography>

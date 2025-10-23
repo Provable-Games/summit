@@ -1,70 +1,122 @@
+import { useStarknetApi } from '@/api/starknet';
 import { useStatistics } from '@/contexts/Statistics';
-import { gameColors } from '@/utils/themes';
-import { Box, Typography } from '@mui/material';
 import { useGameTokens } from '@/dojo/useGameTokens';
-import { useEffect, useState } from 'react';
-import { lookupAddresses } from '@cartridge/controller';
-import { useStarkProfile } from '@starknet-react/core';
 import { useGameStore } from '@/stores/gameStore';
+import { gameColors } from '@/utils/themes';
+import { addAddressPadding } from 'starknet';
+import { lookupAddresses } from '@cartridge/controller';
+import { Box, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
 
 function Leaderboard() {
   const { beastsRegistered, beastsAlive } = useStatistics()
-  const { summit } = useGameStore()
-  const { getBigFive } = useGameTokens()
-  const [bigFive, setBigFive] = useState([])
-  const [loadingBigFive, setLoadingBigFive] = useState(true)
+  const { summit, leaderboard, setLeaderboard } = useGameStore()
+  const { getLeaderboard } = useGameTokens()
+  const { getCurrentBlock } = useStarknetApi()
+  const [loadingLeaderboard, setLoadingLeaderboard] = useState(true)
   const [addressNames, setAddressNames] = useState({})
+  const [currentBlock, setCurrentBlock] = useState(0)
+  const [summitOwnerRank, setSummitOwnerRank] = useState(null)
+
+  // Fetch current block every 5 seconds
+  useEffect(() => {
+    const fetchBlock = async () => {
+      const block = await getCurrentBlock()
+      setCurrentBlock(block)
+    }
+
+    fetchBlock()
+    const interval = setInterval(fetchBlock, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
-    const fetchBigFive = async () => {
+    const fetchLeaderboard = async () => {
       try {
-        const data = await getBigFive()
-        setBigFive(data)
+        const data = await getLeaderboard()
+        setLeaderboard(data)
 
-        // Fetch names for all addresses
-        if (data.length > 0) {
-          const addresses = data.map(player => player.account_address.replace(/^0x0+/, "0x").toLowerCase());
+        // Fetch names only for top 5 and summit owner
+        const addressesToLookup = new Set();
+
+        // Add top 5 leaderboard addresses
+        data.slice(0, 5).forEach(player => {
+          addressesToLookup.add(player.owner.replace(/^0x0+/, "0x").toLowerCase());
+        });
+
+        // Add summit owner if exists
+        if (summit?.owner) {
+          addressesToLookup.add(summit.owner.replace(/^0x0+/, "0x").toLowerCase());
+        }
+
+        if (addressesToLookup.size > 0) {
+          const addresses = Array.from(addressesToLookup);
           const addressMap = await lookupAddresses(addresses);
 
           const names = {};
-          data.forEach(player => {
-            const normalizedAddress = player.account_address.replace(/^0x0+/, "0x").toLowerCase();
-            names[player.account_address] = addressMap.get(normalizedAddress) || null;
+          // Map top 5 names
+          data.slice(0, 5).forEach(player => {
+            const normalizedAddress = player.owner.replace(/^0x0+/, "0x").toLowerCase();
+            names[player.owner] = addressMap.get(normalizedAddress) || null;
           });
+
+          // Map summit owner name
+          if (summit?.owner) {
+            const normalizedSummitOwner = summit.owner.replace(/^0x0+/, "0x").toLowerCase();
+            names[summit.owner] = addressMap.get(normalizedSummitOwner) || null;
+          }
+
           setAddressNames(names);
         }
       } catch (error) {
         console.error('Error fetching big five:', error)
       } finally {
-        setLoadingBigFive(false)
+        setLoadingLeaderboard(false)
       }
     }
 
-    fetchBigFive()
-  }, [summit?.beast?.token_id])
+    fetchLeaderboard()
+  }, [summit?.beast?.token_id, summit?.owner])
+
+  // Calculate summit owner's live score and rank
+  useEffect(() => {
+    if (!summit?.owner || !summit?.taken_at || !currentBlock || leaderboard.length === 0) {
+      setSummitOwnerRank(null)
+      return
+    }
+
+    // Calculate bonus points from blocks held (1 point per block)
+    const blocksHeld = currentBlock - summit.taken_at
+
+    // Find summit owner in leaderboard
+    const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summit.owner))
+    const score = (player?.amount || 0) + blocksHeld
+
+    // Find summit owner's rank in the sorted list
+    const liveRank = leaderboard.findIndex(p => p.amount < score) + 1
+
+    setSummitOwnerRank({
+      rank: liveRank || leaderboard.length + 1,
+      score: score,
+    })
+  }, [summit, currentBlock, leaderboard])
 
   const formatRewards = (rewards) => {
-    // rewards is already a number from getBigFive
     return rewards.toLocaleString(undefined, { maximumFractionDigits: 0 })
   }
 
-  const formatAddress = (address) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`
-  }
-
-  // Component to handle individual player display with StarkNet profile
   const PlayerRow = ({ player, index, cartridgeName }) => {
-    const { data: profile } = useStarkProfile({ address: player.account_address })
-    const displayName = cartridgeName || profile?.name?.replace('.stark', '') || formatAddress(player.account_address)
+    const displayName = cartridgeName || 'Warlock'
 
     return (
-      <Box key={player.account_address} sx={styles.bigFiveRow}>
+      <Box key={player.owner} sx={styles.bigFiveRow}>
         <Typography sx={styles.bigFiveRank}>{index + 1}.</Typography>
         <Typography sx={styles.bigFiveCompact}>
           {displayName}
         </Typography>
         <Typography sx={styles.bigFiveRewards}>
-          {formatRewards(player.total_rewards)}
+          {formatRewards(player.amount)}
         </Typography>
       </Box>
     )
@@ -89,20 +141,39 @@ function Leaderboard() {
           </Typography>
         </Box>
 
-        {loadingBigFive ? (
+        {loadingLeaderboard ? (
           <Box sx={styles.loadingContainer}>
             <Typography sx={styles.loadingText}>Loading...</Typography>
           </Box>
-        ) : bigFive.length > 0 ? (
+        ) : leaderboard.length > 0 ? (
           <Box sx={styles.bigFiveContainer}>
-            {bigFive.map((player, index) => (
+            {leaderboard.slice(0, 5).map((player, index) => (
               <PlayerRow
-                key={player.account_address}
+                key={player.owner}
                 player={player}
                 index={index}
-                cartridgeName={addressNames[player.account_address]}
+                cartridgeName={addressNames[player.owner]}
               />
             ))}
+
+
+            {summitOwnerRank && summit?.owner && (
+              <>
+                <Box sx={styles.summitOwnerRow}>
+                  <Typography sx={[
+                    styles.bigFiveRank,
+                  ]}>
+                    {summitOwnerRank.rank}.
+                  </Typography>
+                  <Typography sx={styles.summitOwnerName}>
+                    {addressNames[summit.owner] || 'Warlock'}
+                  </Typography>
+                  <Typography sx={styles.summitOwnerScore}>
+                    {formatRewards(summitOwnerRank.score)}
+                  </Typography>
+                </Box>
+              </>
+            )}
           </Box>
         ) : (
           <Box sx={styles.emptyContainer}>
@@ -118,7 +189,7 @@ function Leaderboard() {
 
         <Box sx={styles.statRow}>
           <Typography sx={styles.statLabel}>
-            Beasts Registered
+            Beasts Playing
           </Typography>
           <Typography sx={styles.statValue}>
             {beastsRegistered}
@@ -295,5 +366,47 @@ const styles = {
     fontSize: '12px',
     color: gameColors.accentGreen,
     opacity: 0.7,
+  },
+  // Summit Owner styles
+  summitOwnerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '4px 6px',
+    mt: 0.5,
+    background: `${gameColors.darkGreen}40`,
+    borderRadius: '4px',
+    border: `1px solid ${gameColors.yellow}40`,
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      background: `${gameColors.darkGreen}60`,
+    },
+  },
+  summitOwnerRank: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: gameColors.brightGreen,
+    minWidth: '24px',
+    transition: 'all 0.3s ease',
+  },
+  summitOwnerRankTop5: {
+    color: gameColors.yellow,
+    textShadow: `0 0 8px ${gameColors.yellow}60`,
+  },
+  summitOwnerName: {
+    flex: 1,
+    fontSize: '12px',
+    color: '#ffedbb',
+    fontWeight: '600',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  summitOwnerScore: {
+    fontSize: '11px',
+    color: gameColors.yellow,
+    fontWeight: '600',
+    textAlign: 'right',
+    minWidth: '60px',
   },
 }

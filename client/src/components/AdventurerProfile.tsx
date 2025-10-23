@@ -11,7 +11,7 @@ interface AdventurerProfileProps {
 }
 
 export default function AdventurerProfile({ adventurer }: AdventurerProfileProps) {
-  const { collection } = useGameStore();
+  const { collection, setSelectedBeasts } = useGameStore();
   const { getKilledBeasts } = useGameTokens();
   const [killedBeasts, setKilledBeasts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,6 +44,7 @@ export default function AdventurerProfile({ adventurer }: AdventurerProfileProps
     );
 
     return {
+      beast,
       name: beastName,
       prefix: prefixName,
       suffix: suffixName,
@@ -73,8 +74,15 @@ export default function AdventurerProfile({ adventurer }: AdventurerProfileProps
                 {killedBeastsWithOwnership.map((beast, index) => (
                   <Box key={index} sx={[
                     styles.beastListItem,
-                    beast.isOwned && styles.ownedBeastItem
-                  ]}>
+                    beast.isOwned && styles.ownedBeastItem,
+                    { cursor: beast.isOwned ? 'pointer' : 'default' }
+                  ]}
+                    onClick={() => {
+                      if (beast.isOwned) {
+                        setSelectedBeasts([beast.beast]);
+                      }
+                    }}
+                  >
                     <Box sx={styles.beastInfo}>
                       <Typography sx={[
                         styles.beastNameText,

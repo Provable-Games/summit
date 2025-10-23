@@ -10,7 +10,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import attackPotionIcon from '../assets/images/attack-potion.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
-import { fetchBeastImage, getBeastCurrentHealth } from '../utils/beasts';
+import { fetchBeastImage, getBeastCurrentHealth, getBeastCurrentLevel, getExperienceDefending } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 
 function AttackingBeasts() {
@@ -18,8 +18,8 @@ function AttackingBeasts() {
   const { setPauseUpdates } = useGameDirector();
   const [isAttacking, setIsAttacking] = useState(false);
   const [deadBeasts, setDeadBeasts] = useState<Set<number>>(new Set());
-  const [damageNumbers, setDamageNumbers] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastIndex: number }>>([]);
-  const [damageQueue, setDamageQueue] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastIndex: number }>>([]);
+  const [damageNumbers, setDamageNumbers] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastIndex: number; critical: boolean }>>([]);
+  const [damageQueue, setDamageQueue] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastIndex: number; critical: boolean }>>([]);
   const [beasts, setBeasts] = useState<Beast[]>([]);
   const [activeBeastTokenId, setActiveBeastTokenId] = useState<number | null>(null);
 
@@ -57,6 +57,14 @@ function AttackingBeasts() {
     const queue = [];
     const maxLength = Math.max(beast.battle.attacks.length, beast.battle.counter_attacks.length);
 
+    const criticalAttack = beast.battle.attacks.every(value => value === beast.battle.attacks[0])
+      ? null
+      : Math.max(...beast.battle.attacks);
+
+    const criticalCounterAttack = beast.battle.counter_attacks.every(value => value === beast.battle.counter_attacks[0])
+      ? null
+      : Math.max(...beast.battle.counter_attacks);
+
     for (let i = 0; i < maxLength; i++) {
       // Add attack if it exists
       if (beast.battle.attacks[i] !== undefined) {
@@ -64,6 +72,7 @@ function AttackingBeasts() {
           id: `${beast.token_id}-${i}-attack`,
           value: beast.battle.attacks[i],
           type: 'attack' as const,
+          critical: criticalAttack === beast.battle.attacks[i],
           beastIndex: beast.token_id // Store token_id instead of index
         });
       }
@@ -74,6 +83,7 @@ function AttackingBeasts() {
           id: `${beast.token_id}-${i}-counter`,
           value: beast.battle.counter_attacks[i],
           type: 'counter' as const,
+          critical: criticalCounterAttack === beast.battle.counter_attacks[i],
           beastIndex: beast.token_id // Store token_id instead of index
         });
       }
@@ -91,25 +101,40 @@ function AttackingBeasts() {
 
     const processNext = () => {
       if (currentIndex >= damageQueue.length) {
+        if (visibleBeasts.length <= 1) {
+          setTimeout(() => {
+            handleSkip();
+          }, 1000);
+        }
+
         return;
       };
 
       const nextDamage = damageQueue[currentIndex];
 
-      // Set attacking state for attack phase
-      if (nextDamage.type === 'attack') {
-        setIsAttacking(true);
-      }
-
       // Show damage number
       setDamageNumbers(current => [...current, nextDamage]);
 
       if (nextDamage.type === 'attack') {
-        setSummit({
-          ...summit,
-          beast: {
-            ...summit.beast,
-            current_health: Math.max(0, summit.beast.current_health - nextDamage.value)
+        setIsAttacking(true);
+        setSummit(prevSummit => {
+          if (prevSummit.beast.current_health <= nextDamage.value && prevSummit.beast.extra_lives > 0) {
+            return {
+              ...prevSummit,
+              beast: {
+                ...prevSummit.beast,
+                current_health: prevSummit.beast.health + prevSummit.beast.bonus_health,
+                extra_lives: prevSummit.beast.extra_lives - 1
+              }
+            }
+          }
+
+          return {
+            ...prevSummit,
+            beast: {
+              ...prevSummit.beast,
+              current_health: Math.max(0, prevSummit.beast.current_health - nextDamage.value)
+            }
           }
         });
       }
@@ -128,31 +153,45 @@ function AttackingBeasts() {
           };
 
           if (newHealth === 0) {
-            const deadTokenId = newBeasts[beastIndex].token_id;
-            setDeadBeasts(dead => {
-              const newDeadSet = new Set([...dead, deadTokenId]);
-              const nextBeast = newBeasts.find(b => !newDeadSet.has(b.token_id));
+            setSummit(prevSummit => {
+              const bonusXp = prevSummit.beast.bonus_xp + getExperienceDefending(newBeasts[beastIndex]);
+              const currentLevel = getBeastCurrentLevel(prevSummit.beast.level, bonusXp);
+              const power = (6 - prevSummit.beast.tier) * currentLevel;
 
-              if (!nextBeast) {
-                setSelectedBeasts([]);
-                setPauseUpdates(false);
+              return {
+                ...prevSummit,
+                beast: {
+                  ...prevSummit.beast,
+                  current_level: currentLevel,
+                  bonus_xp: bonusXp,
+                  power: power,
+                }
               }
+            });
 
-              // Find next alive beast and set as active
-              setTimeout(() => {
+            const deadTokenId = newBeasts[beastIndex].token_id;
+            setTimeout(() => {
+              setDeadBeasts(dead => {
+                const newDeadSet = new Set([...dead, deadTokenId]);
+                const nextBeast = newBeasts.find(b => !newDeadSet.has(b.token_id));
+
+                // Find next alive beast and set as active
                 if (nextBeast) {
                   setActiveBeastTokenId(nextBeast.token_id);
                 } else {
+                  setSelectedBeasts([]);
+                  setPauseUpdates(false);
                   setAttackInProgress(false);
                 }
-              }, 1000);
 
-              return newDeadSet;
-            });
+                return newDeadSet;
+              });
+            }, 1000);
           }
 
           return newBeasts;
         });
+
         setIsAttacking(false);
       }
 
@@ -397,7 +436,7 @@ function AttackingBeasts() {
               styles.damageNumber,
               styles.counterDamage
             ]}>
-              -{damage.value}
+              -{damage.value} {damage.critical ? ' CRIT!' : ''}
             </Typography>
           </motion.div>
         ))}

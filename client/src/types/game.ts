@@ -4,6 +4,11 @@ export interface Summit {
   owner: string;
 }
 
+export interface Leaderboard {
+  owner: string;
+  amount: number;
+}
+
 export interface Beast {
   id: number;
   name: string;
@@ -19,6 +24,7 @@ export interface Beast {
   token_id: number;
   current_health: number;
   bonus_health: number;
+  current_level: number;
   bonus_xp: number;
   attack_streak: number;
   last_death_timestamp: number;

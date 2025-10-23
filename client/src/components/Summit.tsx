@@ -8,20 +8,15 @@ import heart from '../assets/images/heart.png'
 import { fetchBeastSummitImage, normaliseHealth } from '../utils/beasts'
 import { gameColors } from '../utils/themes'
 import { lookupAddresses } from '@cartridge/controller'
-import { useStarkProfile } from '@starknet-react/core'
 
 function Summit() {
   const { collection, summit, attackInProgress, selectedBeasts, totalDamage } = useGameStore()
   const controls = useAnimationControls()
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
 
-  // Calculate experience progress
   const originalExperience = Math.pow(summit.beast.level, 2);
   const currentExperience = originalExperience + summit.beast.bonus_xp;
-  const nextLevelExperience = Math.pow(summit.beast.level + 1, 2);
-
-  // Use StarkProfile hook for StarkNet ID
-  const { data: profile } = useStarkProfile({ address: summit?.owner as `0x${string}` })
+  const nextLevelExperience = Math.pow(summit.beast.current_level + 1, 2);
 
   const strike = useLottie({
     animationData: strikeAnim,
@@ -34,7 +29,6 @@ function Summit() {
   });
 
   useEffect(() => {
-    // Fetch Cartridge name when summit changes
     const fetchCartridgeName = async () => {
       if (summit?.owner) {
         try {
@@ -83,7 +77,7 @@ function Summit() {
             {name}
           </Typography>
           <Typography sx={styles.ownerText}>
-            Owned by {cartridgeName || profile?.name?.replace('.stark', '') || 'Unknown'}
+            Owned by {cartridgeName || 'Unknown'}
           </Typography>
         </Box>
 
@@ -126,7 +120,7 @@ function Summit() {
         <Box sx={styles.statsRow}>
           <Box sx={styles.statBox}>
             <Typography sx={styles.statLabel}>LEVEL</Typography>
-            <Typography sx={styles.levelValue}>{summit.beast.level}</Typography>
+            <Typography sx={styles.levelValue}>{summit.beast.current_level}</Typography>
           </Box>
           <Box sx={styles.statBox}>
             <Typography sx={styles.statLabel}>POWER</Typography>

@@ -69,14 +69,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   const fetchSummitData = useCallback(async () => {
     const summitBeast = await getSummitData();
-    
-    if (summitBeast && (
-      !summit ||
-      (summitBeast.beast.current_health < summit?.beast.current_health && summitBeast.beast.extra_lives <= summit?.beast.extra_lives) ||
-      summitBeast.beast.extra_lives < summit?.beast.extra_lives ||
-      summitBeast.beast.bonus_health > summit?.beast.bonus_health ||
-      summitBeast.beast.token_id !== summit?.beast.token_id
-    )) {
+
+    if (summitBeast) {
       setSummit(summitBeast);
     }
   }, [summit]);
@@ -94,6 +88,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         if (data && data.length > 0) {
           let events = data.filter((entity: any) => Boolean(getEntityModel(entity, "LiveBeastStats")))
             .map((entity: any) => getEntityModel(entity, "LiveBeastStats"))
+
           setEventQueue((prev) => [...prev, ...events]);
         }
       },
@@ -103,26 +98,27 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   };
 
   const processBeastUpdate = (update: any) => {
-    console.log("PROCESSING BEAST UPDATE", update);
     if (update.token_id === summit?.beast.token_id) {
       let updatedBeast = { ...summit?.beast, ...update };
-      updatedBeast.level = getBeastCurrentLevel(updatedBeast.level, updatedBeast.bonus_xp);
+      updatedBeast.current_level = getBeastCurrentLevel(updatedBeast.level, updatedBeast.bonus_xp);
+      updatedBeast.power = (6 - updatedBeast.tier) * updatedBeast.current_level;
 
-      setSummit({
-        ...summit,
+      setSummit(prevSummit => ({
+        ...prevSummit,
         beast: updatedBeast,
-      });
+      }));
     } else if (update.current_health > 0) {
       fetchSummitData();
     }
 
     if (collection.find((beast: Beast) => beast.token_id === update.token_id)) {
-      setCollection(collection.map((beast: Beast) => {
+      setCollection(prevCollection => prevCollection.map((beast: Beast) => {
         if (beast.token_id === update.token_id) {
           let newBeast = { ...beast, ...update };
           newBeast.current_health = getBeastCurrentHealth(newBeast);
           newBeast.revival_time = getBeastRevivalTime(newBeast);
-          newBeast.level = getBeastCurrentLevel(newBeast.level, newBeast.bonus_xp);
+          newBeast.current_level = getBeastCurrentLevel(newBeast.level, newBeast.bonus_xp);
+          newBeast.power = (6 - newBeast.tier) * newBeast.current_level;
           return newBeast;
         }
 
@@ -158,7 +154,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     const events = await executeAction(txs, setActionFailed);
 
-    if (!events || events.length === 0) {
+    if (!events) {
       setActionFailed();
       return false;
     }
@@ -176,7 +172,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         extraLife: 0,
       });
 
-      console.log("BATTLE EVENTS", events);
       setBattleEvents(events);
     } else if (action.type === 'add_extra_life') {
       setTokenBalances({
