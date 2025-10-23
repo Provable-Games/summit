@@ -166,7 +166,18 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "entrypoint": "approve"
           }
         ]
-      }
+      },
+      "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f": {
+        "name": "Cartridge VRF Provider",
+        "description": "Verifiable Random Function contract, allows randomness in the game",
+        "methods": [
+          {
+            "name": "Request Random",
+            "description": "Allows requesting random numbers from the VRF provider",
+            "entrypoint": "request_random"
+          }
+        ]
+      },
     }
   };
 
