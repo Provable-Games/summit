@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x32130447d7d8f68c7cdb491084ee701768c4dc005e7431b9d28492d8c25ee44",
-      "class_hash": "0xfeceebd28ad2cdd545ab5014fcd4a58672e7b471ec399003d9426581899acf",
+      "address": "0x224a29ae7eb8914b434aab687e0fc89aa96b188c4f0837e1c7892afe2284782",
+      "class_hash": "0x1578f5b49b1e5d7150137b1664396e9901566483157b75faf8007f105b42161",
       "abi": [
         {
           "type": "impl",
@@ -1988,12 +1988,12 @@
         "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
         "0x74abc15c0ddef39bdf1ede2a643c07968d3ed5bacb0123db2d5b7154fbb35c7",
         "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
-        "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
-        "0x068292fdfa280f371fabd1d6e49c346f11b341e1d3fe80d4ac320648ab03539c",
-        "0x0793f1104a3b0d2316abc92039421f7160a7f4caad0ed405b6f8732271717328"
+        "0x054d7e1f1243651039bbba1f03ebe3da91e58bcbee2901b30d1d5df72f5e2a12",
+        "0x01e7b2aa4542e1cbbbbf3bf6c68869e1e04b303172819a6247ca49890491aa51",
+        "0x0570ae4e4abfa94e5262dafa0844fdccbd31b3a6f0ec184a812e27c77b5443d0"
       ],
       "tag": "summit_0_0_5-summit_systems",
-      "selector": "0x3cc23fe591d1e19603226ca4256385a01c161e45a422a7581ec586d61701d4f",
+      "selector": "0x31cb78374e334a08dfe686a23ebc55bc6b7edf0c0b9387bbe25bf7863e2a387",
       "systems": [
         "dojo_init",
         "start_summit",
@@ -2013,31 +2013,31 @@
       "members": [],
       "class_hash": "0x110890d83df21f98ec72c0a44cc464a171e905634d20c36f58cb1adb892b165",
       "tag": "summit_0_0_5-AdventurerConsumed",
-      "selector": "0x4ada6a89925bfb8a1256f9aadb87c637b75a547e9c07a2bd2b19435c131b81e"
+      "selector": "0x75ec292dbfcd55dd8f3f03daa022701f34be7f4809a1f21702ff58750054bfc"
     },
     {
       "members": [],
       "class_hash": "0x60bfa3389bf657ba2aaf73b4f6c16615eef0feabe9345c380587c93df53fcac",
       "tag": "summit_0_0_5-LiveBeastStats",
-      "selector": "0x40784d350964063a5e06ecfaebf24904d83f6fe9d8854f297c0d3734405ea60"
+      "selector": "0x3631e6de0c35eca7b749c6329da6e94a15b0f466e276dbcd8929c19458786a"
     },
     {
       "members": [],
       "class_hash": "0x8d25ee5b0ee630d2b82c6da7cf79192d19e185adfde90e6c7904251245e7c",
       "tag": "summit_0_0_5-Summit",
-      "selector": "0x584b53c007678fad0966f5461c38cb17bd008fa5729ffd68a105d6737863efb"
+      "selector": "0x2bf047bbcf4fcac2c027ccf4b32dc5827f588535b67a4762bb3fdc9faf107db"
     },
     {
       "members": [],
       "class_hash": "0x5d4e076829da9baf85d7fe192b29c18e296b76eeaba0799966b331fa4cbcf65",
       "tag": "summit_0_0_5-SummitConfig",
-      "selector": "0x11440bae52c3e81283e0a1990e3ac5f3b3576c3799ade8a61106f13f9403571"
+      "selector": "0x5a9b8630461c2af5d8fc1155b3d98a88fe62f91c95e5f50c2fbfaffc5823f6c"
     },
     {
       "members": [],
       "class_hash": "0x3fc8a6a83cf48f21fa851b62c2b8cac6ce0ce9d0c78a97b6692a0efd29c91a1",
       "tag": "summit_0_0_5-SummitHistory",
-      "selector": "0x2736f8ca28ca00a6442096e419bfdf5ed7c18227497be37163fb3532c20c71b"
+      "selector": "0x7a5570181df35c3f68c8e9ac7fd1476c2b43c79dd76ec68ca779259878f31f5"
     }
   ],
   "events": [
@@ -2045,19 +2045,19 @@
       "members": [],
       "class_hash": "0x4510f2d3ff150ea3d5aab6510e0974cb0845eeb865ffbf7971aad573f6e85f7",
       "tag": "summit_0_0_5-BattleEvent",
-      "selector": "0x51e53e70e4a3f62772a1e7de00140f48f082479e5e3ea8884d9a8297fb8f3a3"
+      "selector": "0x5d872c5702fe5855aba3723701c121899145c706a81c29ca0d2923aefcb458c"
     },
     {
       "members": [],
       "class_hash": "0x2cf01b49e6a0996ecfc2bc879af4c545ee0f96d01db7ee6e39f07f0ea54d0b5",
       "tag": "summit_0_0_5-RewardEvent",
-      "selector": "0x4e1da1786994b629711779809e6073c9eea25d735dd2c8e063c2721ac73ac3e"
+      "selector": "0x20a4d4c87f857bf929c4743ba454a85ae4da189aa6f756da0ba0d3027e7a1b1"
     },
     {
       "members": [],
       "class_hash": "0x6b3cc5a944f6f9aa1f9d551e7187ff4808e59782ab4febffe72f891cf938e1c",
       "tag": "summit_0_0_5-SummitEvent",
-      "selector": "0x588c456d5401b3e56785109c133e3de291aa146d572616dd10047bd2b3aec97"
+      "selector": "0x273ef7d604dd00eb2e7972ab4283996d1730144d7a7a8f3985c5fb20a8adcd"
     }
   ],
   "external_contracts": []
