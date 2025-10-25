@@ -111,7 +111,7 @@ export const calculateBattleResult = (beast: Beast, summit: Beast, potions: numb
 export const getBeastRevivalTime = (beast: Beast): number => {
   let revivalTime = 86400000;
 
-  if (beast.last_dm_death_timestamp < Date.now() - 1209600000) {
+  if ((beast.last_dm_death_timestamp * 1000) < Date.now() - 1209600000) {
     revivalTime -= 28800000;
   }
 
