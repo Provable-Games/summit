@@ -111,7 +111,7 @@ export const useGameTokens = () => {
 
     let data = await sql.json()
 
-    let beasts: Beast[] = data.map((data: any) => {
+    let beasts: Beast[] = data.filter((data: any) => data["Beast"]).map((data: any) => {
       let beast: any = {
         id: Number(data["Beast ID"]),
         token_id: Number(data["Token ID"]),
