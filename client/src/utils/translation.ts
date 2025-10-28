@@ -70,24 +70,40 @@ export const components: any = {
     attack_potions: 'number',
     xp_gained: 'number',
   },
+  'LiveBeastStats': {
+    token_id: 'number',
+    current_health: 'number',
+    bonus_health: 'number',
+    bonus_xp: 'number',
+    attack_streak: 'number',
+    last_death_timestamp: 'number',
+    revival_count: 'number',
+    extra_lives: 'number',
+    has_claimed_starter_kit: 'boolean',
+    rewards_earned: 'number',
+    stats: 'Stats',
+  },
+  'Stats': {
+    spirit: 'boolean',
+    luck: 'boolean',
+    specials: 'boolean',
+  }
 }
 
 export const translateGameEvent = (event: any, manifest: any): any => {
-  const eventDefinition = manifest.events.find((definition: any) => definition.selector === event.keys[1]);
+  const eventDefinition = manifest.events.find((definition: any) => definition.selector === event.keys[1]) || manifest.models.find((model: any) => model.selector === event.keys[1]);
   const name = eventDefinition?.tag?.split('-')[1];
+
+  if (!components[name]) return;
+
   const data = event.data;
-
-  if (name !== 'BattleEvent') {
-    return undefined;
-  }
-
   const keysNumber = parseInt(data[0]);
   let values = [...data.slice(1, 1 + keysNumber), ...data.slice(keysNumber + 2)];
 
   const parsedFields = parseComponent(values, name);
 
   const result = {
-    name,
+    componentName: name,
     ...parsedFields
   }
 

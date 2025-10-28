@@ -83,7 +83,7 @@ function Feeding() {
         ? adventurer.level * 10
         : adventurer.level,
       image: `/images/adventurers/adventurer_${Math.floor(Math.random() * 7) + 1}.png`,
-      delay: index * 0.5 // 0.5 second delay between each
+      delay: index * 0.5 + 2 // 0.5 second delay between each
     }))
 
     setAnimatingAdventurers(adventurersToAnimate)

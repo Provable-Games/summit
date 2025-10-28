@@ -15,8 +15,8 @@ interface GameState {
   selectedBeasts: Beast[];
   adventurerCollection: Adventurer[];
   selectedAdventurers: Adventurer[];
-  totalDamage: number;
   appliedPotions: AppliedPotions;
+  attackMode: 'safe' | 'unsafe' | 'capture';
 
   setSummit: (summit: Summit | null | ((prev: Summit | null) => Summit | null)) => void;
   setLeaderboard: (leaderboard: Leaderboard[]) => void;
@@ -29,10 +29,10 @@ interface GameState {
   setAttackInProgress: (attackInProgress: boolean) => void;
   setFeedingInProgress: (feedingInProgress: boolean) => void;
   setApplyingPotions: (applyingPotions: boolean) => void;
-  setSelectedBeasts: (selectedBeasts: Beast[]) => void;
+  setSelectedBeasts: (selectedBeasts: Beast[] | ((prev: Beast[]) => Beast[])) => void;
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => void;
   setAppliedPotions: (appliedPotions: AppliedPotions) => void;
-  setTotalDamage: (totalDamage: number) => void;
+  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture') => void;
   disconnect: () => void;
 }
 
@@ -50,12 +50,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   applyingPotions: false,
   selectedBeasts: [],
   selectedAdventurers: [],
-  totalDamage: 0,
   appliedPotions: {
     revive: 0,
     attack: 0,
     extraLife: 0,
   },
+  attackMode: 'safe',
 
   disconnect: () => {
     set({
@@ -70,7 +70,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       applyingPotions: false,
       selectedBeasts: [],
       selectedAdventurers: [],
-      totalDamage: 0,
       appliedPotions: {
         revive: 0,
         attack: 0,
@@ -91,9 +90,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   setAttackInProgress: (attackInProgress: boolean) => set({ attackInProgress }),
   setFeedingInProgress: (feedingInProgress: boolean) => set({ feedingInProgress }),
   setApplyingPotions: (applyingPotions: boolean) => set({ applyingPotions }),
-  setSelectedBeasts: (selectedBeasts: Beast[]) => set({ selectedBeasts }),
+  setSelectedBeasts: (selectedBeasts: Beast[] | ((prev: Beast[]) => Beast[])) =>
+    set(state => ({ selectedBeasts: typeof selectedBeasts === 'function' ? selectedBeasts(state.selectedBeasts) : selectedBeasts })),
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => set({ selectedAdventurers }),
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => set({ adventurerCollection }),
   setAppliedPotions: (appliedPotions: AppliedPotions) => set({ appliedPotions }),
-  setTotalDamage: (totalDamage: number) => set({ totalDamage }),
+  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture') => set({ attackMode }),
 }));

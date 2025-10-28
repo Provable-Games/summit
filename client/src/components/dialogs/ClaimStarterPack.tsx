@@ -63,7 +63,7 @@ function ClaimStarterPack(props) {
 
       let retryCount = 0
       const maxRetries = 5
-      const retryDelay = 2000
+      const retryDelay = 1000
 
       while (retryCount < maxRetries) {
         await fetchTokenBalances()

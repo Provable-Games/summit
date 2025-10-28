@@ -6,11 +6,11 @@ import { addAddressPadding } from "starknet";
 export const useQueries = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
-  const gameEventsQuery = (summitId: number) => {
+  const gameEventsQuery = () => {
     return new GameQueryBuilder()
       .withEntityModels([
-        `${currentNetworkConfig.namespace}-RewardEvent`,
         `${currentNetworkConfig.namespace}-SummitEvent`,
+        `${currentNetworkConfig.namespace}-BattleEvent`,
       ])
       .withLimit(1)
   };

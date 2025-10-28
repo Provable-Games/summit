@@ -462,6 +462,7 @@ pub mod summit_systems {
         ) {
             let summit_beast_token_id = Self::_get_summit_beast_token_id(world);
             assert(summit_beast_token_id != 0, 'Summit not started');
+            assert(defending_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
 
             // assert consumable amounts
             assert(attack_potions <= EIGHT_BITS_MAX, errors::MAX_ATTACK_POTION);
@@ -472,13 +473,7 @@ pub mod summit_systems {
             let beast_data = IBeastSystemsDispatcher { contract_address: summit_config.beast_data_address };
 
             let summit_owner = beast_dispatcher.owner_of(summit_beast_token_id.into());
-
-            if defending_beast_token_id != 0 {
-                // assert the provided defending beast is the summit beast
-                assert(defending_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
-                // assert not attacking own beast
-                assert(get_caller_address() != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
-            }
+            assert(get_caller_address() != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
 
             let mut defending_beast = Self::_get_beast(world, summit_beast_token_id);
 
@@ -496,9 +491,6 @@ pub mod summit_systems {
             let mut i = 0;
             while (i < attacking_beast_token_ids.len()) {
                 let attacking_beast_token_id = *attacking_beast_token_ids.at(i);
-
-                // assert the attacking beast is not the summit beast
-                assert(attacking_beast_token_id != summit_beast_token_id, 'Not allowed');
 
                 // assert the caller owns the beast they attacking with
                 let beast_owner = beast_dispatcher.owner_of(attacking_beast_token_id.into());
@@ -518,8 +510,15 @@ pub mod summit_systems {
                 attacking_beast.live.current_health = attacking_beast.fixed.health + attacking_beast.live.bonus_health;
 
                 let mut battle_counter: u32 = 0;
-                let mut attacks = ArrayTrait::<u16>::new();
-                let mut counter_attacks = ArrayTrait::<u16>::new();
+                let mut attack_count = 0;
+                let mut attack_damage = 0;
+                let mut critical_attack_count = 0;
+                let mut critical_attack_damage = 0;
+                let mut counter_attack_count = 0;
+                let mut counter_attack_damage = 0;
+                let mut critical_counter_attack_count = 0;
+                let mut critical_counter_attack_damage = 0;
+
                 // loop until the attacking beast is dead or the summit beast is dead
                 loop {
                     // if either beast is dead, break
@@ -534,7 +533,7 @@ pub mod summit_systems {
                         battle_counter,
                     );
 
-                    let damage = Self::_attack(
+                    let (damage, attacker_crit_hit) = Self::_attack(
                         ref world,
                         attacking_beast,
                         ref defending_beast,
@@ -542,15 +541,28 @@ pub mod summit_systems {
                         attacker_crit_hit_rnd,
                     );
 
-                    attacks.append(damage);
+                    if attacker_crit_hit {
+                        critical_attack_count += 1;
+                        critical_attack_damage = damage;
+                    } else {
+                        attack_count += 1;
+                        attack_damage = damage;
+                    }
 
                     Self::_use_extra_life(ref defending_beast);
 
                     if defending_beast.live.current_health != 0 {
-                        let damage = Self::_attack(
+                        let (damage, defender_crit_hit) = Self::_attack(
                             ref world, defending_beast, ref attacking_beast, 0, defender_crit_hit_rnd,
                         );
-                        counter_attacks.append(damage);
+
+                        if defender_crit_hit {
+                            critical_counter_attack_count += 1;
+                            critical_counter_attack_damage = damage;
+                        } else {
+                            counter_attack_count += 1;
+                            counter_attack_damage = damage;
+                        }
                     }
 
                     battle_counter += 1;
@@ -577,10 +589,17 @@ pub mod summit_systems {
                 world
                     .emit_event(
                         @BattleEvent {
+                            attacking_beast_owner: beast_owner,
                             attacking_beast_token_id,
                             defending_beast_token_id: summit_beast_token_id,
-                            attacks: attacks.span(),
-                            counter_attacks: counter_attacks.span(),
+                            attack_count,
+                            attack_damage,
+                            critical_attack_count,
+                            critical_attack_damage,
+                            counter_attack_count,
+                            counter_attack_damage,
+                            critical_counter_attack_count,
+                            critical_counter_attack_damage,
                             attack_potions: remaining_attack_potions,
                             xp_gained,
                         },
@@ -592,8 +611,7 @@ pub mod summit_systems {
                 if attacking_beast.live.current_health == 0 {
                     // add xp to summit beast
                     defending_beast.live.bonus_xp += ImplCombat::get_attack_hp(attacking_beast.get_combat_spec(false))
-                        / 100
-                        + 1;
+                        / 100;
                     // set death timestamp for prev summit beast
                     attacking_beast.live.last_death_timestamp = current_time;
                     // update the live stats of the attacking beast
@@ -652,7 +670,7 @@ pub mod summit_systems {
         /// @dev this function only mutates the defender
         fn _attack(
             ref world: WorldStorage, attacker: Beast, ref defender: Beast, attack_potions: u8, critical_hit_rnd: u8,
-        ) -> u16 {
+        ) -> (u16, bool) {
             let attacker_combat_spec = attacker.get_combat_spec(attacker.live.stats.specials);
             let defender_combat_spec = defender.get_combat_spec(attacker.live.stats.specials);
             let minimum_damage = MINIMUM_DAMAGE;
@@ -682,7 +700,7 @@ pub mod summit_systems {
                 defender.live.current_health -= combat_result.total_damage;
             }
 
-            combat_result.total_damage
+            (combat_result.total_damage, combat_result.critical_hit_bonus > 0)
         }
 
         fn _burn_consumable(consumable_address: ContractAddress, amount: u8) {

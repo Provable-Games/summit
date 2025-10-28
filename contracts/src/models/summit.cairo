@@ -40,10 +40,17 @@ pub struct SummitHistory {
 #[dojo::event]
 pub struct BattleEvent {
     #[key]
+    pub attacking_beast_owner: ContractAddress,
     pub attacking_beast_token_id: u32,
     pub defending_beast_token_id: u32,
-    pub attacks: Span<u16>,
-    pub counter_attacks: Span<u16>,
+    pub attack_count: u16,
+    pub attack_damage: u16,
+    pub critical_attack_count: u16,
+    pub critical_attack_damage: u16,
+    pub counter_attack_count: u16,
+    pub counter_attack_damage: u16,
+    pub critical_counter_attack_count: u16,
+    pub critical_counter_attack_damage: u16,
     pub attack_potions: u8,
     pub xp_gained: u8,
 }

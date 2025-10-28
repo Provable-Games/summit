@@ -4,7 +4,8 @@ import { useGameStore } from '@/stores/gameStore';
 import AddIcon from '@mui/icons-material/Add';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import RemoveIcon from '@mui/icons-material/Remove';
-import { Box, Checkbox, IconButton, Menu, Slider, Tooltip, Typography } from '@mui/material';
+import { Box, IconButton, Menu, MenuItem, Slider, Tooltip, Typography, Button, ButtonGroup } from '@mui/material';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import React, { useEffect, useState } from 'react';
 import { isBrowser } from 'react-device-detect';
 import cauldronIcon from '../assets/images/cauldron.png';
@@ -22,14 +23,15 @@ function ActionBar(props: ActionBarProps) {
   const { executeGameAction, setPauseUpdates } = useGameDirector();
   const { tokenBalances } = useController();
 
-  const { selectedBeasts, summit, showFeedingGround, setAttackInProgress,
-    selectedAdventurers, attackInProgress, setShowFeedingGround,
-    feedingInProgress, adventurerCollection, appliedPotions, setAppliedPotions,
-    setFeedingInProgress, killedByAdventurers, applyingPotions, setApplyingPotions, setBattleEvents, collection } = useGameStore();
+  const { selectedBeasts, summit, showFeedingGround,
+    selectedAdventurers, attackInProgress, setShowFeedingGround, feedingInProgress,
+    adventurerCollection, appliedPotions, setAppliedPotions, setFeedingInProgress,
+    killedByAdventurers, applyingPotions, setApplyingPotions,
+    collection, setSelectedBeasts, attackMode, setAttackMode } = useGameStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
-  const [safeAttack, setSafeAttack] = useState(true);
+  const [attackDropdownAnchor, setAttackDropdownAnchor] = useState<null | HTMLElement>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>, potion: any) => {
     setAnchorEl(event.currentTarget);
@@ -44,16 +46,21 @@ function ActionBar(props: ActionBarProps) {
   const handleAttack = () => {
     if (!enableAttack) return;
 
-    setBattleEvents([]);
-    setAttackInProgress(true);
-    setPauseUpdates(true);
-
     executeGameAction({
       type: 'attack',
       beastIds: selectedBeasts.map(beast => beast.token_id),
       appliedPotions: appliedPotions,
-      safeAttack: safeAttack,
+      safeAttack: attackMode === 'safe',
       vrf: selectedBeasts.find(beast => beast.stats.luck) ? true : false
+    });
+  }
+
+
+  const handleAttackUntilCapture = () => {
+    if (!enableAttack) return;
+
+    executeGameAction({
+      type: 'attack_until_capture',
     });
   }
 
@@ -98,8 +105,15 @@ function ActionBar(props: ActionBarProps) {
     }
   }, [deadBeasts.length, revivalPotionsRequired, tokenBalances["REVIVE"]]);
 
+  useEffect(() => {
+    if (attackMode === 'capture') {
+      setSelectedBeasts([]);
+      setAppliedPotions({ revive: 0, attack: 0, extraLife: 0 });
+    }
+  }, [attackMode]);
+
   const hasEnoughRevivePotions = tokenBalances["REVIVE"] >= revivalPotionsRequired;
-  const enableAttack = (!isSavage || !safeAttack) && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions;
+  const enableAttack = (attackMode === 'capture' && !attackInProgress) || ((!isSavage || attackMode !== 'safe') && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions);
   const enableFeedingGround = selectedBeasts.length === 1 && adventurerCollection.length > 0;
 
   const enableExtraLifePotion = tokenBalances["EXTRA LIFE"] > 0;
@@ -167,76 +181,60 @@ function ActionBar(props: ActionBarProps) {
           </Box>
         </Box>
 
-        : <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Box sx={[styles.attackButton, enableAttack && styles.attackButtonEnabled]}
-            onClick={handleAttack}>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
-              {attackInProgress
-                ? <Box display={'flex'} alignItems={'baseline'}>
-                  <Typography variant="h5" sx={styles.buttonText}>Attacking</Typography>
-                  <div className='dotLoader green' />
-                </Box>
-                : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                  <Typography sx={[styles.buttonText, !enableAttack && styles.disabledText]} variant="h5">
-                    Attack
-                  </Typography>
-                </Box>
-              }
+        : <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Box sx={styles.attackButtonGroup}>
+            <Box
+              sx={[
+                styles.attackButton,
+                enableAttack && styles.attackButtonEnabled,
+                styles.attackButtonMain
+              ]}
+              onClick={() => {
+                if (attackMode === 'capture') {
+                  handleAttackUntilCapture();
+                } else {
+                  handleAttack();
+                }
+              }}>
+              <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
+                {attackInProgress
+                  ? <Box display={'flex'} alignItems={'baseline'}>
+                    <Typography variant="h5" sx={styles.buttonText}>Attacking</Typography>
+                    <div className='dotLoader green' />
+                  </Box>
+                  : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                    <Typography sx={[styles.buttonText, !enableAttack && styles.disabledText]} variant="h5">
+                      {attackMode === 'safe' ? 'Safe Attack' : attackMode === 'unsafe' ? 'Unsafe Attack' : 'Attack until Capture'}
+                    </Typography>
+                  </Box>
+                }
 
-              {isappliedPotions && isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
-                {appliedPotions.revive > 0 && <Box display={'flex'} alignItems={'center'}>
-                  <Typography sx={styles.potionCount}>{appliedPotions.revive}</Typography>
-                  <img src={revivePotionIcon} alt='' height={'14px'} />
-                </Box>}
-                {appliedPotions.attack > 0 && <Box display={'flex'} alignItems={'center'}>
-                  <Typography sx={styles.potionCount}>{appliedPotions.attack}</Typography>
-                  <img src={attackPotionIcon} alt='' height={'14px'} />
-                </Box>}
-                {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'}>
-                  <Typography sx={styles.potionCount}>{appliedPotions.extraLife}</Typography>
-                  <img src={heart} alt='' height={'12px'} />
-                </Box>}
+                {isappliedPotions && isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  {appliedPotions.revive > 0 && <Box display={'flex'} alignItems={'center'}>
+                    <Typography sx={styles.potionCount}>{appliedPotions.revive}</Typography>
+                    <img src={revivePotionIcon} alt='' height={'14px'} />
+                  </Box>}
+                  {appliedPotions.attack > 0 && <Box display={'flex'} alignItems={'center'}>
+                    <Typography sx={styles.potionCount}>{appliedPotions.attack}</Typography>
+                    <img src={attackPotionIcon} alt='' height={'14px'} />
+                  </Box>}
+                  {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'}>
+                    <Typography sx={styles.potionCount}>{appliedPotions.extraLife}</Typography>
+                    <img src={heart} alt='' height={'12px'} />
+                  </Box>}
+                </Box>
+                }
               </Box>
-              }
+            </Box>
+            <Box
+              sx={[
+                styles.attackDropdownButton,
+              ]}
+              onClick={(event) => setAttackDropdownAnchor(event.currentTarget)}
+            >
+              <ArrowDropDownIcon sx={{ fontSize: '21px', color: gameColors.yellow }} />
             </Box>
           </Box>
-          <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
-            <Typography sx={styles.tooltipTitle}>Safe Attack</Typography>
-            <Typography sx={[styles.tooltipText, { lineHeight: 1.2 }]}>
-              Attack only if Summit beast has not changed
-            </Typography>
-            <Typography sx={styles.tooltipSubtext}>
-              Toggle off to attack no matter what
-            </Typography>
-          </Box>}>
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <Typography
-                sx={{
-                  fontSize: '12px',
-                  color: gameColors.brightGreen,
-                  fontWeight: 'bold',
-                  lineHeight: 1,
-                  textAlign: 'center'
-                }}
-              >Safe
-              </Typography>
-              <Checkbox
-                checked={safeAttack}
-                onChange={(e) => setSafeAttack(e.target.checked)}
-                size="large"
-                sx={{
-                  color: gameColors.lightGreen,
-                  padding: '0px',
-                  '&.Mui-checked': {
-                    color: gameColors.brightGreen,
-                  },
-                  '& .MuiSvgIcon-root': {
-                    fontSize: '26px',
-                  }
-                }}
-              />
-            </Box>
-          </Tooltip>
         </Box>}
 
       {/* Divider 1 */}
@@ -373,6 +371,84 @@ function ActionBar(props: ActionBarProps) {
         </Box>
       </Tooltip>
     </Box>
+
+    {/* Attack Mode Dropdown Menu */}
+    <Menu
+      sx={{
+        zIndex: 10000,
+        '& .MuiPaper-root': {
+          backgroundColor: '#1a1f1a',
+          backdropFilter: 'blur(10px)',
+          border: `1px solid ${gameColors.brightGreen}`,
+          borderRadius: '8px',
+          boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+          overflow: 'visible',
+        }
+      }}
+      anchorEl={attackDropdownAnchor}
+      open={Boolean(attackDropdownAnchor)}
+      onClose={() => setAttackDropdownAnchor(null)}
+      anchorOrigin={{
+        vertical: 'bottom',
+        horizontal: 'right',
+      }}
+      transformOrigin={{
+        vertical: 'top',
+        horizontal: 'right',
+      }}
+    >
+      <MenuItem
+        onClick={() => {
+          setAttackMode('safe');
+          setAttackDropdownAnchor(null);
+        }}
+        sx={{
+          ...styles.menuItem,
+          backgroundColor: attackMode === 'safe' ? `${gameColors.brightGreen}20` : 'transparent',
+        }}
+      >
+        <Box>
+          <Typography sx={styles.menuItemTitle}>Safe Attack</Typography>
+          <Typography sx={styles.menuItemDescription}>
+            Attack only if Summit beast hasn't changed
+          </Typography>
+        </Box>
+      </MenuItem>
+      <MenuItem
+        onClick={() => {
+          setAttackMode('unsafe');
+          setAttackDropdownAnchor(null);
+        }}
+        sx={{
+          ...styles.menuItem,
+          backgroundColor: attackMode === 'unsafe' ? `${gameColors.brightGreen}20` : 'transparent',
+        }}
+      >
+        <Box>
+          <Typography sx={styles.menuItemTitle}>Unsafe Attack</Typography>
+          <Typography sx={styles.menuItemDescription}>
+            Attack no matter what
+          </Typography>
+        </Box>
+      </MenuItem>
+      <MenuItem
+        onClick={() => {
+          setAttackMode('capture');
+          setAttackDropdownAnchor(null);
+        }}
+        sx={{
+          ...styles.menuItem,
+          backgroundColor: attackMode === 'capture' ? `${gameColors.brightGreen}20` : 'transparent',
+        }}
+      >
+        <Box>
+          <Typography sx={styles.menuItemTitle}>Attack until Capture</Typography>
+          <Typography sx={styles.menuItemDescription}>
+            Attack with all your beasts until you capture <br /> the Summit or all your beasts are dead
+          </Typography>
+        </Box>
+      </MenuItem>
+    </Menu>
 
     {potion && <Menu
       sx={{
@@ -583,6 +659,12 @@ const styles = {
     alignItems: 'center',
     gap: 1,
   },
+  attackButtonGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    borderRadius: '8px',
+    overflow: 'hidden',
+  },
   attackButton: {
     padding: '10px',
     borderRadius: '8px',
@@ -596,6 +678,28 @@ const styles = {
     '&:hover': {
       opacity: 0.9,
       boxShadow: `0 2px 6px rgba(0, 0, 0, 0.2)`,
+    }
+  },
+  attackButtonMain: {
+    borderTopRightRadius: '0px',
+    borderBottomRightRadius: '0px',
+    borderRight: 'none',
+  },
+  attackDropdownButton: {
+    padding: '10px 8px',
+    borderRadius: '8px',
+    borderTopLeftRadius: '0px',
+    borderBottomLeftRadius: '0px',
+    cursor: 'pointer',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 1,
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen}30 0%, ${gameColors.darkGreen}50 100%)`,
+    border: `2px solid ${gameColors.brightGreen}`,
+    '&:hover': {
+      background: `linear-gradient(135deg, ${gameColors.lightGreen}40 0%, ${gameColors.mediumGreen}60 100%)`,
     }
   },
   attackButtonEnabled: {
@@ -802,5 +906,23 @@ const styles = {
     fontSize: '11px',
     fontWeight: 'bold',
     mt: 0.5,
+  },
+  menuItem: {
+    padding: '8px',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      backgroundColor: `${gameColors.brightGreen}30`,
+    }
+  },
+  menuItemTitle: {
+    color: gameColors.brightGreen,
+    fontWeight: 'bold',
+    fontSize: '14px',
+    mb: '2px'
+  },
+  menuItemDescription: {
+    color: gameColors.accentGreen,
+    fontSize: '12px',
+    lineHeight: 1.3,
   },
 }

@@ -30,6 +30,7 @@
     "@starknet-io/types-js": "^0.8.4",
     "@starknet-react/chains": "5.0.1",
     "@starknet-react/core": "^5.0.1",
+    "@tanstack/react-virtual": "^3.13.12",
     "@types/uuid": "^10.0.0",
     "@vercel/analytics": "^1.5.0",
     "framer-motion": "^12.7.4",

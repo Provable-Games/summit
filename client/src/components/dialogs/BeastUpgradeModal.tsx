@@ -113,7 +113,7 @@ function BeastUpgradeModal(props) {
     }
   };
 
-  const handleUpgradeAll = async () => {
+  const handleUpgradeAll = async (shouldClose: boolean = true) => {
     setUpgradeInProgress(true);
 
     try {
@@ -153,7 +153,7 @@ function BeastUpgradeModal(props) {
   // Determine button state and text
   const isLastBeast = currentBeastIndex === beastsWithUpgrades.length - 1;
   const allPointsSelected = selectedUpgradesCount >= maxPossibleUpgrades;
-  const shouldShowUpgradeButton = isLastBeast && hasSelectedUpgrades;
+  const shouldShowUpgradeButton = (isLastBeast && hasSelectedUpgrades) || Object.keys(beastUpgrades).length >= 100;
   const shouldShowNextButton = !isLastBeast && allPointsSelected;
   const shouldShowGrayedOutButton = !isLastBeast && !allPointsSelected;
 
@@ -181,7 +181,7 @@ function BeastUpgradeModal(props) {
         }
       }}
     >
-      <Box sx={styles.dialogContainer}>
+      <Box sx={[styles.dialogContainer, (!isLastBeast && currentBeastIndex > 9) && { paddingBottom: 1.5 }]}>
         <Box sx={styles.container}>
           <Box sx={styles.beastSection}>
             <Box sx={styles.navigationContainer}>
@@ -319,7 +319,7 @@ function BeastUpgradeModal(props) {
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
             <Button
               disabled={upgradeInProgress || (!shouldShowUpgradeButton && !shouldShowNextButton)}
-              onClick={shouldShowNextButton ? handleNext : handleUpgradeAll}
+              onClick={shouldShowNextButton ? handleNext : () => handleUpgradeAll(true)}
               sx={[
                 styles.upgradeButton,
                 shouldShowUpgradeButton && styles.upgradeButtonActive
@@ -341,6 +341,19 @@ function BeastUpgradeModal(props) {
                 }
               </Typography>
             </Button>
+
+            {hasSelectedUpgrades && !isLastBeast && currentBeastIndex > 9 && (
+              <Button
+                variant='text'
+                disabled={upgradeInProgress}
+                onClick={() => handleUpgradeAll(false)}
+                sx={styles.textButton}
+              >
+                <Typography sx={styles.textButtonText}>
+                  Upgrade Selected Beasts Now
+                </Typography>
+              </Button>
+            )}
           </Box>
         </Box>
       </Box>
@@ -633,7 +646,7 @@ const styles = {
     borderRadius: '8px',
     width: '200px',
     height: '48px',
-    my: '6px',
+    mt: '6px',
     border: `2px solid ${gameColors.gameYellow}`,
     transition: 'all 0.3s ease',
     opacity: 0.9,
@@ -675,5 +688,26 @@ const styles = {
     color: '#999',
     fontStyle: 'italic',
     letterSpacing: '0.3px',
+  },
+  textButton: {
+    background: 'transparent',
+    border: 'none',
+    textTransform: 'none',
+    '&:hover': {
+      background: `${gameColors.mediumGreen}30`,
+    },
+    '&:disabled': {
+      opacity: 0.4,
+    },
+  },
+  textButtonText: {
+    color: gameColors.accentGreen,
+    fontSize: '12px',
+    fontWeight: '500',
+    letterSpacing: '0.3px',
+    textDecoration: 'underline',
+    '&:hover': {
+      color: gameColors.brightGreen,
+    },
   },
 };

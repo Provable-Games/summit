@@ -14,9 +14,11 @@ import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
 import Countdown from "@/components/Countdown"
 import AttackingBeasts from "@/components/AttackingBeasts"
+import { useGameDirector } from "@/contexts/GameDirector"
 
 function MainPage() {
-  const { summit, showFeedingGround, setShowFeedingGround, attackInProgress } = useGameStore()
+  const { summit, showFeedingGround, setShowFeedingGround, attackInProgress, selectedBeasts } = useGameStore()
+  const { pauseUpdates } = useGameDirector();
 
   return <>
     <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
@@ -64,7 +66,7 @@ function MainPage() {
             <BeastCollection />
           </Box>}
 
-          {attackInProgress &&
+          {(attackInProgress && pauseUpdates && selectedBeasts.length > 0) &&
             <AttackingBeasts />
           }
         </>

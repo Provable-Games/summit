@@ -1,25 +1,27 @@
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
-import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
-import EnergyIcon from '@mui/icons-material/ElectricBolt';
-import CasinoIcon from '@mui/icons-material/Casino';
-import StarIcon from '@mui/icons-material/Star';
-import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
-import FlashOnIcon from '@mui/icons-material/FlashOn';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import FlashOnIcon from '@mui/icons-material/FlashOn';
+import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
+import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
 import { Box, Link, Popover, Tooltip, Typography } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
-import { useEffect, useMemo, useState } from 'react';
-import { calculateBattleResult, fetchBeastImage } from "../utils/beasts";
-import { gameColors } from '../utils/themes';
-import BeastProfile from './BeastProfile';
+import { AnimatePresence, motion } from 'framer-motion';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { isMobile } from 'react-device-detect';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { calculateBattleResult } from "../utils/beasts";
+import { gameColors } from '../utils/themes';
+import BeastCard from './BeastCard';
+import BeastProfile from './BeastProfile';
 
-type SortMethod = 'recommended' | 'power' | 'health';
+type SortMethod = 'recommended' | 'power' | 'attack' | 'health';
+type BeastTypeFilter = 'all' | 'strong';
 
 function BeastCollection() {
-  const { loadingCollection, collection, selectedBeasts, setSelectedBeasts, attackInProgress, summit, appliedPotions, setTotalDamage } = useGameStore()
+  const { loadingCollection, collection, selectedBeasts, setSelectedBeasts,
+    attackInProgress, summit, appliedPotions, attackMode } = useGameStore()
   const { address } = useAccount()
   const [hideDeadBeasts, setHideDeadBeasts] = useState(false)
   const [sortMethod, setSortMethod] = useState<SortMethod>(() => {
@@ -28,13 +30,48 @@ function BeastCollection() {
   })
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
+  const [filterExpanded, setFilterExpanded] = useState(false)
+  const [typeFilter, setTypeFilter] = useState<BeastTypeFilter>('all')
+  const [nameMatchFilter, setNameMatchFilter] = useState(false)
+  const [sortDropdownOpen, setSortDropdownOpen] = useState(false)
 
+  // Helper function to check if attacker is strong against defender
+  const isStrongAgainst = (attackerType: string, defenderType: string): boolean => {
+    return (
+      (attackerType === 'Hunter' && defenderType === 'Magic') ||
+      (attackerType === 'Magic' && defenderType === 'Brute') ||
+      (attackerType === 'Brute' && defenderType === 'Hunter')
+    );
+  };
+
+  // Calculate combat results - lightweight operation (just math)
+  // useMemo prevents recalculation when filters/sorting change
   const collectionWithCombat = useMemo(() => {
     if (summit && collection.length > 0) {
-      return collection.map((beast: Beast) => ({
+      let filtered = collection.map((beast: Beast) => ({
         ...beast,
         combat: calculateBattleResult(beast, summit.beast, appliedPotions?.attack || 0)
-      })).sort((a: Beast, b: Beast) => {
+      }));
+
+      // Apply type filter
+      if (typeFilter === 'strong') {
+        filtered = filtered.filter(beast => isStrongAgainst(beast.type, summit.beast.type));
+      }
+
+      // Apply name match filter
+      if (nameMatchFilter) {
+        filtered = filtered.filter(beast =>
+          beast.prefix === summit.beast.prefix || beast.suffix === summit.beast.suffix
+        );
+      }
+
+      // Apply dead beast filter
+      if (hideDeadBeasts) {
+        filtered = filtered.filter(beast => beast.current_health > 0);
+      }
+
+      // Sort the filtered collection
+      return filtered.sort((a: Beast, b: Beast) => {
         // Always keep summit beast at the top
         if (a.token_id === summit.beast.token_id) {
           return -1
@@ -44,15 +81,17 @@ function BeastCollection() {
 
         // Apply selected sorting method
         if (sortMethod === 'recommended') {
-          if (a.combat?.elemental !== b.combat?.elemental) {
-            return b.combat?.elemental - a.combat?.elemental
-          } else if (b.power !== a.power) {
-            return b.power - a.power
+          if (a.combat?.score !== b.combat?.score) {
+            return b.combat?.score - a.combat?.score
+          } else if (b.combat?.attack !== a.combat?.attack) {
+            return b.combat?.attack - a.combat?.attack
           } else {
             return (b.health + b.bonus_health) - (a.health + a.bonus_health)
           }
         } else if (sortMethod === 'power') {
           return b.power - a.power
+        } else if (sortMethod === 'attack') {
+          return (b.combat?.attack || 0) - (a.combat?.attack || 0)
         } else if (sortMethod === 'health') {
           return (b.health + b.bonus_health) - (a.health + a.bonus_health)
         }
@@ -61,35 +100,26 @@ function BeastCollection() {
     }
 
     return collection
-  }, [collection, summit, appliedPotions?.attack, sortMethod]);
-
-  useEffect(() => {
-    const total = selectedBeasts.reduce((acc, beast) => {
-      const combatBeast = collectionWithCombat.find(cb => cb.token_id === beast.token_id);
-      return acc + (combatBeast?.combat?.damage || 0);
-    }, 0);
-
-    setTotalDamage(total);
-  }, [selectedBeasts, collectionWithCombat]);
+  }, [collection, summit, appliedPotions?.attack, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts]);
 
   useEffect(() => {
     localStorage.setItem('beastSortMethod', sortMethod);
   }, [sortMethod]);
 
-  const selectBeast = (beast: Beast) => {
-    if (attackInProgress) return;
+  const selectBeast = useCallback((beast: Beast) => {
+    if (attackInProgress || attackMode === 'capture') return;
 
     if (selectedBeasts.find(prevBeast => prevBeast.token_id === beast.token_id)) {
-      setSelectedBeasts(selectedBeasts.filter(prevBeast => prevBeast.token_id !== beast.token_id))
+      setSelectedBeasts((prev: Beast[]) => prev.filter(prevBeast => prevBeast.token_id !== beast.token_id));
     } else {
-      setSelectedBeasts([...selectedBeasts, beast])
+      setSelectedBeasts((prev: Beast[]) => [...prev, beast]);
     }
-  }
+  }, [attackInProgress, attackMode, selectedBeasts]);
 
   const selectAllBeasts = () => {
     if (attackInProgress) return;
 
-    const allBeasts = collectionWithCombat.filter(x => hideDeadBeasts ? x.current_health > 0 : true);
+    const allBeasts = collectionWithCombat;
     const maxBeasts = Math.min(50, allBeasts.length);
 
     // If 50 or more beasts are selected, or all alive beasts are selected, deselect all
@@ -107,192 +137,36 @@ function BeastCollection() {
     setHideDeadBeasts(hide)
   }
 
-  const cycleSortMethod = () => {
-    if (attackInProgress) return;
-
-    const sortOrder: SortMethod[] = ['recommended', 'power', 'health'];
-    const currentIndex = sortOrder.indexOf(sortMethod);
-    const nextIndex = (currentIndex + 1) % sortOrder.length;
-    setSortMethod(sortOrder[nextIndex]);
-  }
-
-  const getSortIcon = () => {
-    switch (sortMethod) {
-      case 'recommended':
-        return <TipsAndUpdatesIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />;
-      case 'power':
-        return <FlashOnIcon sx={{ color: gameColors.yellow, fontSize: '20px' }} />;
-      case 'health':
-        return <FavoriteIcon sx={{ color: gameColors.red, fontSize: '20px' }} />;
-      default:
-        return <TipsAndUpdatesIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />;
-    }
-  }
-
-  const getSortLabel = () => {
-    switch (sortMethod) {
-      case 'recommended':
-        return 'Recommended';
-      case 'power':
-        return 'Power';
-      case 'health':
-        return 'Health';
-      default:
-        return 'Recommended';
-    }
-  }
-
   // Helper to check if max beasts are selected (50 or all if less than 50)
   const maxBeastsSelected = useMemo(() => {
-    const allBeasts = collectionWithCombat.filter(x => hideDeadBeasts ? x.current_health > 0 : true);
+    const allBeasts = collectionWithCombat;
     const maxBeasts = Math.min(50, allBeasts.length);
     return allBeasts.length > 0 && selectedBeasts.length >= maxBeasts;
-  }, [collectionWithCombat, selectedBeasts, hideDeadBeasts]);
+  }, [collectionWithCombat, selectedBeasts]);
 
-  const handleHoverEnter = (event: React.MouseEvent<HTMLElement>, beast: Beast) => {
+  const handleHoverEnter = useCallback((event: React.MouseEvent<HTMLElement>, beast: Beast) => {
     setAnchorEl(event.currentTarget);
     setHoveredBeast(beast);
-  };
+  }, []);
 
-  const handleHoverLeave = () => {
+  const handleHoverLeave = useCallback(() => {
     setAnchorEl(null);
     setHoveredBeast(null);
-  };
+  }, []);
 
-  const RenderBeastCard = (beast: Beast) => {
-    const isSelected = selectedBeasts.find(prevBeast => prevBeast.token_id === beast.token_id)
-    const isSavage = summit?.beast.token_id === beast.token_id
-    const isDead = beast.current_health === 0
+  // Virtual scrolling setup for horizontal list
+  const parentRef = useRef<HTMLDivElement>(null);
 
-    // Use pre-calculated combat result
-    const battleResult = summit && !isSavage ? beast.combat : null
+  const ITEM_WIDTH = 148; // 140px card + 8px gap - FIXED SIZE
 
-    if (hideDeadBeasts && isDead) return null;
-
-    return (
-      <Box
-        key={beast.token_id}
-        sx={[
-          styles.beastCard,
-          isSelected && styles.selectedCard,
-          isDead && styles.deadCard
-        ]}
-        onClick={() => selectBeast(beast)}
-        onMouseEnter={(e) => handleHoverEnter(e, beast)}
-        onMouseLeave={handleHoverLeave}
-      >
-        {/* Glow effect for selected cards */}
-        {isSelected && (
-          <Box sx={styles.glowEffect} />
-        )}
-
-        {/* Beast Image */}
-        <Box sx={styles.imageContainer}>
-          <img
-            src={fetchBeastImage(beast)}
-            alt={beast.name}
-            style={{ ...styles.beastImage }}
-          />
-
-          {/* Upgrade Icons */}
-          {(beast.stats.spirit || beast.stats.luck || beast.stats.specials) && (
-            <Box sx={styles.upgradeIconsContainer}>
-              {beast.stats.luck && (
-                <Box sx={{ color: '#ff69b4' }}>
-                  <CasinoIcon sx={{ fontSize: '14px' }} />
-                </Box>
-              )}
-              {beast.stats.spirit && (
-                <Box sx={{ color: '#00ffff' }}>
-                  <EnergyIcon sx={{ fontSize: '14px' }} />
-                </Box>
-              )}
-              {beast.stats.specials && (
-                <Box sx={{ color: '#ffd700' }}>
-                  <StarIcon sx={{ fontSize: '14px' }} />
-                </Box>
-              )
-              }
-            </Box >
-          )
-          }
-        </Box >
-
-        {/* Beast Name */}
-        < Typography sx={styles.beastName} >
-          {beast.name}
-        </Typography >
-
-        {/* Stats Row */}
-        < Box sx={styles.statsRow} >
-          {/* Power */}
-          < Box sx={styles.stat} >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill={gameColors.yellow}>
-              <path d="M7 2v11h3v9l7-12h-4l4-8z" />
-            </svg>
-            <Typography sx={styles.statText}>
-              {beast.power}
-            </Typography>
-          </Box >
-
-          {/* Health */}
-          < Box sx={styles.stat} >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill={gameColors.red}>
-              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-            </svg>
-            <Typography sx={styles.statText}>
-              {isSavage ? summit?.beast.current_health : beast.current_health}
-            </Typography>
-          </Box >
-        </Box >
-
-        {/* Combat Preview */}
-        {
-          battleResult && (
-            <Box sx={[
-              styles.combatPreview,
-              battleResult.capture && styles.combatCapture,
-            ]}>
-              <Box sx={styles.combatContent}>
-                <img src={'/images/sword.png'} alt='' height={'12px'} />
-                <Typography sx={[
-                  styles.combatText,
-                  battleResult.capture ? styles.combatTextSuccess : styles.combatTextFailure
-                ]}>
-                  {battleResult.capture
-                    ? `${battleResult.healthLeft} HP LEFT`
-                    : `${battleResult.damage} DMG`
-                  }
-                </Typography>
-              </Box>
-            </Box>
-          )
-        }
-
-        {/* Status indicators */}
-        {
-          isSavage && (
-            <Box sx={styles.savageIndicator}>
-              <Typography sx={styles.savageText}>
-                SUMMIT
-              </Typography>
-            </Box>
-          )
-        }
-
-        {/* Selection order number */}
-        {
-          isSelected && (
-            <Box sx={styles.selectionIndicator}>
-              <Typography sx={styles.selectionNumber}>
-                {selectedBeasts.findIndex(prevBeast => prevBeast.token_id === beast.token_id) + 1}
-              </Typography>
-            </Box>
-          )
-        }
-      </Box >
-    )
-  }
+  const virtualizer = useVirtualizer({
+    count: collectionWithCombat.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ITEM_WIDTH, // Fixed size, no estimation needed
+    horizontal: true,
+    overscan: 100,
+    // No measureElement - we know exact size, so no re-measurement jumps!
+  });
 
   return (
     <Box sx={styles.container}>
@@ -386,67 +260,220 @@ function BeastCollection() {
       {/* Beast Grid with Utility Buttons */}
       {!loadingCollection && collectionWithCombat.length > 0 && (
         <Box sx={styles.beastGridContainer}>
-          {/* Utility Buttons */}
-          <Box sx={styles.utilityButtonsContainer}>
-            <Tooltip placement='right' title={<Box sx={styles.tooltipContent}>Select 50</Box>}>
-              <Box sx={[styles.utilityButton, maxBeastsSelected && styles.selectedItem]} onClick={() => selectAllBeasts()}>
-                <LibraryAddCheckIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />
-              </Box>
-            </Tooltip>
+          {/* Left side: Utility Buttons and Filter Panel */}
+          <Box sx={styles.leftSideContainer}>
+            {/* Utility Buttons Column */}
+            <Box sx={styles.utilityButtonsContainer}>
+              <Tooltip placement='top' title={<Box sx={styles.tooltipContent}>Filter & Sort</Box>}>
+                <Box
+                  sx={[styles.utilityButton, filterExpanded && styles.selectedItem]}
+                  onClick={() => setFilterExpanded(!filterExpanded)}
+                >
+                  <FilterListIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />
+                </Box>
+              </Tooltip>
 
-            <Tooltip placement='right' title={<Box sx={styles.tooltipContent}>Hide dead</Box>}>
-              <Box sx={[styles.utilityButton, hideDeadBeasts && styles.selectedItem]} onClick={() => hideDead(!hideDeadBeasts)}>
-                <VisibilityOffIcon sx={{
-                  color: gameColors.brightGreen,
-                  fontSize: '20px',
-                  opacity: hideDeadBeasts ? 1 : 0.6
-                }} />
-              </Box>
-            </Tooltip>
+              <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Select 50</Box>}>
+                <Box sx={[styles.utilityButton, maxBeastsSelected && styles.selectedItem]} onClick={() => selectAllBeasts()}>
+                  <LibraryAddCheckIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />
+                </Box>
+              </Tooltip>
+            </Box>
 
-            <Tooltip placement='right' title={
-              <Box sx={styles.tooltipContent}>
-                <Box>Sort Beasts</Box>
-                <Box sx={{ fontSize: '10px', opacity: 0.8, mt: 0.5 }}>Current: {getSortLabel()}</Box>
-              </Box>
-            }>
-              <Box sx={styles.utilityButton} onClick={cycleSortMethod}>
-                {getSortIcon()}
-              </Box>
-            </Tooltip>
+            {/* Filter Panel - Expands to the right */}
+            <AnimatePresence>
+              {filterExpanded && (
+                <motion.div
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: 'auto', opacity: 1 }}
+                  exit={{ width: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <Box sx={styles.filterPanel}>
+                    {/* Sort Dropdown */}
+                    <Box>
+                      <Typography sx={styles.filterHeadline}>SORT BEASTS BY</Typography>
+                      <Box
+                        sx={styles.sortDropdown}
+                        onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+                      >
+                        <Box sx={styles.sortDropdownCurrent}>
+                          <Box sx={styles.sortOptionIcon}>
+                            {sortMethod === 'recommended' && <TipsAndUpdatesIcon sx={{ fontSize: '12px', color: gameColors.gameYellow }} />}
+                            {sortMethod === 'power' && <FlashOnIcon sx={{ fontSize: '12px', color: gameColors.yellow }} />}
+                            {sortMethod === 'health' && <FavoriteIcon sx={{ fontSize: '12px', color: gameColors.red }} />}
+                          </Box>
+                          <Typography sx={styles.sortDropdownText}>
+                            {sortMethod === 'recommended' ? 'Recommended' : sortMethod.charAt(0).toUpperCase() + sortMethod.slice(1)}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <AnimatePresence>
+                        {sortDropdownOpen && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.15 }}
+                            style={{ overflow: 'hidden' }}
+                          >
+                            <Box sx={styles.sortDropdownOptions}>
+                              {(['recommended', 'power', 'health'] as SortMethod[]).map((method) => (
+                                <Box
+                                  key={method}
+                                  sx={[styles.sortDropdownOption, sortMethod === method && styles.sortDropdownOptionActive]}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortMethod(method);
+                                    setSortDropdownOpen(false);
+                                  }}
+                                >
+                                  <Box sx={styles.sortOptionIcon}>
+                                    {method === 'recommended' && <TipsAndUpdatesIcon sx={{ fontSize: '12px', color: gameColors.gameYellow }} />}
+                                    {method === 'power' && <FlashOnIcon sx={{ fontSize: '12px', color: gameColors.yellow }} />}
+                                    {method === 'health' && <FavoriteIcon sx={{ fontSize: '12px', color: gameColors.red }} />}
+                                  </Box>
+                                  <Typography sx={styles.sortDropdownOptionText}>
+                                    {method === 'recommended' ? 'Recommended' : method.charAt(0).toUpperCase() + method.slice(1)}
+                                  </Typography>
+                                </Box>
+                              ))}
+                            </Box>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </Box>
+
+                    {/* Divider */}
+                    <Box sx={styles.filterDivider} />
+
+                    {/* Type Section */}
+                    <Box mb={0.5}>
+                      <Typography sx={styles.filterHeadline}>BEAST TYPE</Typography>
+                      <Box sx={styles.filterButtons}>
+                        {(['all', 'strong'] as BeastTypeFilter[]).map((type) => (
+                          <Box
+                            key={type}
+                            sx={[styles.filterButton, typeFilter === type && styles.filterButtonActive]}
+                            onClick={() => setTypeFilter(type)}
+                          >
+                            <Typography sx={styles.filterButtonText}>
+                              {type === 'all' ? 'All' : 'Strong'}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+
+                    {/* Filters Section */}
+                    <Box>
+                      <Typography sx={styles.filterHeadline}>FILTER</Typography>
+                      <Box sx={styles.compactToggles}>
+                        <Box
+                          sx={[styles.compactToggle, hideDeadBeasts && styles.compactToggleActive]}
+                          onClick={() => hideDead(!hideDeadBeasts)}
+                        >
+                          <Typography sx={styles.compactToggleText}>Hide Dead</Typography>
+                        </Box>
+                        <Box
+                          sx={[styles.compactToggle, nameMatchFilter && styles.compactToggleActive]}
+                          onClick={() => setNameMatchFilter(!nameMatchFilter)}
+                        >
+                          <Typography sx={styles.compactToggleText}>Name Match</Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Box>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </Box>
 
-          {/* Beast Grid */}
-          <Box sx={styles.beastGrid}>
-            {collectionWithCombat.filter(beast => !hideDeadBeasts || beast.current_health > 0).map((beast: Beast) => RenderBeastCard(beast))}
+          {/* Beast Grid - Virtualized horizontal scrolling */}
+          <Box
+            ref={parentRef}
+            sx={{
+              ...styles.beastGrid,
+              contain: 'strict',
+              overflow: 'auto',
+            }}
+          >
+            <div
+              style={{
+                width: `${virtualizer.getTotalSize()}px`,
+                height: '100%',
+                position: 'relative',
+              }}
+            >
+              {virtualizer.getVirtualItems().map((virtualItem) => {
+                const beast = collectionWithCombat[virtualItem.index];
+                const isSelected = selectedBeasts.some(b => b.token_id === beast.token_id);
+                const isSavage = summit?.beast.token_id === beast.token_id;
+                const isDead = beast.current_health === 0;
+                const selectionIndex = selectedBeasts.findIndex(b => b.token_id === beast.token_id) + 1;
+                const combat = summit && !isSavage ? beast.combat : null;
+
+                return (
+                  <div
+                    key={beast.token_id}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      height: '100%',
+                      width: `${ITEM_WIDTH}px`,
+                      transform: `translateX(${virtualItem.start}px)`,
+                    }}
+                  >
+                    <BeastCard
+                      beast={beast}
+                      isSelected={isSelected}
+                      isSavage={isSavage}
+                      isDead={isDead}
+                      combat={combat}
+                      selectionIndex={selectionIndex}
+                      summitHealth={summit?.beast.current_health || 0}
+                      onClick={() => selectBeast(beast)}
+                      onMouseEnter={(e) => handleHoverEnter(e, beast)}
+                      onMouseLeave={handleHoverLeave}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </Box>
         </Box>
       )}
 
-      {/* Beast Profile Popover */}
-      <Popover
-        open={Boolean(anchorEl && hoveredBeast)}
-        anchorEl={anchorEl}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'center',
-        }}
-        transformOrigin={{
-          vertical: 'bottom',
-          horizontal: 'center',
-        }}
-        disableRestoreFocus
-        sx={{
-          pointerEvents: 'none',
-          '& .MuiPopover-paper': {
-            backgroundColor: 'transparent',
-            boxShadow: 'none',
-            mt: -2,
-          }
-        }}
-      >
-        {hoveredBeast && <BeastProfile beast={hoveredBeast} />}
-      </Popover>
+      {/* Beast Profile Popover - only show if anchor still exists */}
+      {anchorEl && document.body.contains(anchorEl) && (
+        <Popover
+          open={Boolean(anchorEl && hoveredBeast)}
+          anchorEl={anchorEl}
+          anchorOrigin={{
+            vertical: 'top',
+            horizontal: 'center',
+          }}
+          transformOrigin={{
+            vertical: 'bottom',
+            horizontal: 'center',
+          }}
+          disableRestoreFocus
+          onClose={handleHoverLeave}
+          sx={{
+            pointerEvents: 'none',
+            '& .MuiPopover-paper': {
+              backgroundColor: 'transparent',
+              boxShadow: 'none',
+              mt: -2,
+            }
+          }}
+        >
+          {hoveredBeast && <BeastProfile beast={hoveredBeast} />}
+        </Popover>
+      )}
     </Box>
   );
 }
@@ -706,219 +733,23 @@ const styles = {
     alignItems: 'flex-start',
     gap: '4px',
   },
+  leftSideContainer: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '4px',
+    flexShrink: 0,
+  },
   beastGrid: {
+    height: '205px',
     display: 'flex',
     gap: 1,
     alignItems: 'flex-start',
     overflowX: 'scroll',
+    overflowY: 'hidden',
     flex: 1,
     px: '4px',
   },
-  beastCard: {
-    position: 'relative',
-    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
-    borderRadius: '6px',
-    padding: '6px',
-    mt: '6px',
-    mb: '4px',
-    boxSizing: 'border-box',
-    cursor: 'pointer',
-    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    overflow: 'hidden',
-    width: '140px',
-    minWidth: '140px',
-    height: '180px',
-    display: 'flex',
-    flexDirection: 'column',
-    flexShrink: 0,
-    boxShadow: `
-      inset 0 1px 0 ${gameColors.accentGreen}40,
-      0 2px 4px rgba(0, 0, 0, 0.3),
-      0 0 0 1px ${gameColors.darkGreen}
-    `,
-    '&:hover': {
-      transform: 'translateY(-4px)',
-      boxShadow: `
-        inset 0 1px 0 ${gameColors.brightGreen}60,
-        0 8px 16px rgba(127, 255, 0, 0.2),
-        0 0 0 2px ${gameColors.accentGreen}
-      `,
-    },
-  },
-  selectedCard: {
-    background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
-    boxShadow: `
-      inset 0 1px 0 ${gameColors.brightGreen}80,
-      0 4px 12px rgba(127, 255, 0, 0.4),
-      0 0 0 2px ${gameColors.brightGreen}
-    `,
-    '&:hover': {
-      boxShadow: `
-        inset 0 1px 0 ${gameColors.brightGreen},
-        0 8px 20px rgba(127, 255, 0, 0.5),
-        0 0 0 2px ${gameColors.brightGreen}
-      `,
-    }
-  },
-  deadCard: {
-    opacity: 0.5,
-    filter: 'grayscale(100%)',
-    '&:hover': {
-      transform: 'translateY(-2px)',
-      boxShadow: `
-        inset 0 1px 0 ${gameColors.darkGray}40,
-        0 2px 4px rgba(0, 0, 0, 0.3),
-        0 0 0 1px ${gameColors.darkGray}
-      `,
-    }
-  },
-  glowEffect: {
-    position: 'absolute',
-    top: '-50%',
-    left: '-50%',
-    width: '200%',
-    height: '200%',
-    background: `radial-gradient(circle, ${gameColors.brightGreen}20 0%, transparent 70%)`,
-    animation: 'pulse 2s ease-in-out infinite',
-    '@keyframes pulse': {
-      '0%, 100%': {
-        opacity: 0.5,
-      },
-      '50%': {
-        opacity: 0.8,
-      }
-    }
-  },
-  imageContainer: {
-    position: 'relative',
-    width: '100%',
-    height: '110px',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: '4px',
-    borderRadius: '8px',
-    overflow: 'hidden',
-    background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.black} 100%)`,
-    boxShadow: `inset 0 1px 0 ${gameColors.darkGreen}, inset 0 -1px 0 ${gameColors.black}`,
-  },
-  upgradeIconsContainer: {
-    position: 'absolute',
-    top: '2px',
-    right: '0px',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  beastImage: {
-    maxWidth: '90%',
-    maxHeight: '90%',
-    filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5))',
-  },
-  typeOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '40%',
-    pointerEvents: 'none',
-  },
-  beastName: {
-    fontSize: '13px',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#FFF',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    marginBottom: '4px',
-    textShadow: `0 1px 2px ${gameColors.darkGreen}`,
-  },
-  statsRow: {
-    display: 'flex',
-    justifyContent: 'center',
-    gap: 1,
-    marginBottom: '6px',
-  },
-  stat: {
-    display: 'flex',
-    alignItems: 'center',
-    flex: 1,
-    gap: '3px',
-    padding: '3px 10px',
-    borderRadius: '4px',
-    background: `${gameColors.darkGreen}80`,
-    backdropFilter: 'blur(4px)',
-  },
-  statText: {
-    fontSize: '14px',
-    color: '#FFF',
-    fontWeight: 'bold',
-    textShadow: `0 1px 1px ${gameColors.darkGreen}`,
-  },
-  savageIndicator: {
-    position: 'absolute',
-    top: '8px',
-    right: '8px',
-    backgroundColor: gameColors.yellow,
-    padding: '2px 6px',
-    borderRadius: '4px',
-    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-  },
-  savageText: {
-    fontSize: '9px',
-    color: gameColors.darkGreen,
-    fontWeight: 'bold',
-    letterSpacing: '0.5px',
-  },
-  selectionIndicator: {
-    position: 'absolute',
-    top: '10px',
-    left: '10px',
-  },
-  selectionNumber: {
-    fontSize: '14px',
-    fontWeight: 'bold',
-    color: '#d0c98d',
-    lineHeight: 1,
-  },
-  combatPreview: {
-    padding: '2px',
-    borderRadius: '4px',
-    background: `${gameColors.darkGreen}90`,
-    backdropFilter: 'blur(4px)',
-    border: `1px solid ${gameColors.red}60`,
-    textAlign: 'center',
-    marginTop: 'auto',
-  },
-  combatCapture: {
-    border: `1px solid ${gameColors.brightGreen}60`,
-  },
-  combatContent: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '4px',
-    justifyContent: 'center',
-  },
-  combatText: {
-    fontSize: '12px',
-    fontWeight: 'bold',
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase',
-    textShadow: `0 1px 1px ${gameColors.darkGreen}`,
-  },
-  combatTextSuccess: {
-    color: gameColors.brightGreen,
-  },
-  combatTextFailure: {
-    color: gameColors.red,
-  },
-  boostIndicator: {
-    fontSize: '10px',
-    color: gameColors.yellow,
-    fontWeight: 'bold',
-    marginLeft: '4px',
-  },
   utilityButton: {
-    position: 'relative',
     width: '32px',
     height: '32px',
     background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
@@ -977,5 +808,167 @@ const styles = {
       inset 0 1px 0 ${gameColors.accentGreen}40,
       0 2px 4px rgba(0, 0, 0, 0.3)
     `,
+  },
+  filterPanel: {
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
+    ml: 0.5,
+    mt: '6px',
+    gap: '3px',
+    borderRadius: '4px',
+    border: `2px solid ${gameColors.accentGreen}60`,
+    width: '150px',
+    height: '180px',
+    boxSizing: 'border-box',
+    padding: '4px 8px',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.accentGreen}40,
+      0 4px 12px rgba(0, 0, 0, 0.5),
+      0 0 0 1px ${gameColors.darkGreen}
+    `,
+    backdropFilter: 'blur(12px)',
+  },
+  filterHeadline: {
+    fontSize: '10px',
+    lineHeight: '18px',
+    fontWeight: 'bold',
+    color: gameColors.accentGreen,
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    textShadow: `0 1px 2px ${gameColors.darkGreen}`,
+  },
+  filterButtons: {
+    display: 'flex',
+    gap: '3px',
+  },
+  filterButton: {
+    flex: 1,
+    padding: '4px 6px',
+    borderRadius: '3px',
+    background: `${gameColors.darkGreen}80`,
+    border: `1px solid ${gameColors.accentGreen}40`,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    textAlign: 'center',
+    '&:hover': {
+      border: `1px solid ${gameColors.accentGreen}60`,
+    },
+  },
+  filterButtonActive: {
+    background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    border: `1px solid ${gameColors.brightGreen}80`,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.brightGreen}40,
+      0 2px 4px rgba(127, 255, 0, 0.3)
+    `,
+  },
+  filterButtonText: {
+    fontSize: '9px',
+    fontWeight: 'bold',
+    color: '#FFF',
+    textTransform: 'uppercase',
+    letterSpacing: '0.4px',
+  },
+  compactToggles: {
+    display: 'flex',
+    gap: '3px',
+  },
+  compactToggle: {
+    flex: 1,
+    padding: '4px 6px',
+    borderRadius: '3px',
+    background: `${gameColors.darkGreen}80`,
+    border: `1px solid ${gameColors.accentGreen}40`,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    textAlign: 'center',
+    '&:hover': {
+      border: `1px solid ${gameColors.accentGreen}60`,
+    },
+  },
+  compactToggleActive: {
+    background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    border: `1px solid ${gameColors.brightGreen}80`,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.brightGreen}40,
+      0 2px 4px rgba(127, 255, 0, 0.3)
+    `,
+  },
+  compactToggleText: {
+    fontSize: '9px',
+    lineHeight: '11px',
+    fontWeight: 'bold',
+    color: '#FFF',
+    textTransform: 'uppercase',
+    letterSpacing: '0.4px',
+  },
+  filterDivider: {
+    height: '1px',
+    background: `linear-gradient(90deg, transparent, ${gameColors.accentGreen}40, transparent)`,
+    margin: '2px 0',
+  },
+  sortDropdown: {
+    background: `${gameColors.darkGreen}80`,
+    border: `1px solid ${gameColors.accentGreen}40`,
+    borderRadius: '3px',
+    padding: '4px 6px',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      background: `${gameColors.darkGreen}`,
+      border: `1px solid ${gameColors.accentGreen}60`,
+    },
+  },
+  sortDropdownCurrent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+  },
+  sortDropdownText: {
+    fontSize: '10px',
+    fontWeight: 'bold',
+    color: '#FFF',
+    textTransform: 'capitalize',
+    letterSpacing: '0.3px',
+    flex: 1,
+  },
+  sortDropdownOptions: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+    marginTop: '3px',
+  },
+  sortDropdownOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    padding: '4px 6px',
+    borderRadius: '3px',
+    background: `${gameColors.darkGreen}60`,
+    border: `1px solid ${gameColors.accentGreen}30`,
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    '&:hover': {
+      background: `${gameColors.darkGreen}80`,
+      border: `1px solid ${gameColors.accentGreen}50`,
+    },
+  },
+  sortDropdownOptionActive: {
+    background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    border: `1px solid ${gameColors.brightGreen}80`,
+  },
+  sortDropdownOptionText: {
+    fontSize: '10px',
+    fontWeight: 'bold',
+    color: '#FFF',
+    textTransform: 'capitalize',
+    letterSpacing: '0.3px',
+  },
+  sortOptionIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: gameColors.brightGreen,
   },
 }

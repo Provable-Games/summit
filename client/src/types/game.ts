@@ -47,12 +47,12 @@ export interface Stats {
   specials: boolean;
 }
 export interface Combat {
-  capture: boolean;
-  damage: number;
-  healthLeft?: number;
-  beastDamage?: number;
-  summitDamage?: number;
-  elemental?: number;
+  attack: number;
+  defense: number;
+  attackCritDamage: number;
+  defenseCritDamage: number;
+  score: number;
+  estimatedDamage: number;
 }
 
 export interface Adventurer {

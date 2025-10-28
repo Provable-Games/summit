@@ -13,7 +13,8 @@ import CasinoIcon from '@mui/icons-material/Casino'
 import StarIcon from '@mui/icons-material/Star'
 
 function Summit() {
-  const { collection, summit, attackInProgress, selectedBeasts, totalDamage } = useGameStore()
+  const { collection, summit, attackInProgress, selectedBeasts } = useGameStore()
+
   const controls = useAnimationControls()
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
 
@@ -50,25 +51,8 @@ function Summit() {
   }, [summit?.owner]);
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit.beast.token_id))
-  const showAttack = !isSavage && !attackInProgress && selectedBeasts.length > 0 && totalDamage > 0
-  const summitHealthRemaining = summit.beast.current_health + (summit.beast.extra_lives * (summit.beast.health + summit.beast.bonus_health))
+  const showAttack = !isSavage && !attackInProgress && selectedBeasts.length > 0
   const name = summit.beast.prefix ? `"${summit.beast.prefix} ${summit.beast.suffix}" ${summit.beast.name}` : summit.beast.name
-
-  const calculateExtraLifeLoss = () => {
-    let loss = 0
-    let damageRemaining = totalDamage
-
-    if (damageRemaining < summit.beast.current_health) {
-      return loss
-    }
-
-    loss = 1
-    damageRemaining -= summit.beast.current_health
-
-    loss += Math.floor(damageRemaining / (summit.beast.health + summit.beast.bonus_health))
-
-    return Math.min(loss, summit.beast.extra_lives)
-  }
 
   return (
     <Box sx={styles.summitContainer}>
@@ -185,7 +169,7 @@ function Summit() {
 
         <motion.img
           key={summit.beast.token_id}
-          style={{ ...styles.beastImage, opacity: showAttack && totalDamage >= summitHealthRemaining ? 0.7 : showAttack ? 0.9 : 1 }}
+          style={{ ...styles.beastImage, opacity: showAttack ? 0.9 : 1 }}
           src={fetchBeastSummitImage(summit.beast)}
           alt=''
           animate={controls}
@@ -212,28 +196,24 @@ function Summit() {
         {/* Attack Effects */}
         {showAttack && (
           <>
-            <Box sx={styles.damageIndicator}>
-              <Typography variant='h3' sx={styles.damageText}>
-                -{totalDamage}
-              </Typography>
-              <img src={'/images/sword.png'} alt='' height={'24px'} />
+            {/* Estimated Damage Display */}
+            <Box sx={styles.estimatedDamageContainer}>
+              <Box sx={styles.damageBox}>
+                <Typography sx={styles.damageLabel}>ESTIMATED DAMAGE</Typography>
+                <Box sx={styles.damageValueContainer}>
+                  <Box sx={styles.swordIcon}>
+                    <img src={'/images/sword.png'} alt='' height={'24px'} />
+                  </Box>
+                  <Typography sx={styles.damageValue}>
+                    {selectedBeasts.reduce((acc, beast) => acc + beast.combat?.estimatedDamage || 0, 0)}
+                  </Typography>
+                </Box>
+              </Box>
             </Box>
 
             <Box sx={styles.effectIcon}>
-              {totalDamage < summitHealthRemaining
-                ? <img src={'/images/explosion.png'} alt='' height={'120px'} style={{ opacity: 0.85 }} />
-                : <img src={'/images/skull.png'} alt='' height={'100px'} style={{ opacity: 0.85 }} />
-              }
+              <img src={'/images/explosion.png'} alt='' height={'120px'} style={{ opacity: 0.85 }} />
             </Box>
-
-            {calculateExtraLifeLoss() > 0 && (
-              <Box sx={styles.heartLossIndicator}>
-                <Typography sx={styles.heartLossText}>
-                  -{calculateExtraLifeLoss()}
-                </Typography>
-                <img src={heart} alt='' height={'16px'} />
-              </Box>
-            )}
           </>
         )}
 
@@ -466,19 +446,54 @@ const styles = {
     zIndex: 2,
     lineHeight: '1',
   },
-  damageIndicator: {
+  estimatedDamageContainer: {
     position: 'absolute',
-    top: '20px',
-    right: '-40px',
+    left: 'calc(50% + 110px)',
+    top: '30px',
+    zIndex: 10,
+    filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5))',
+  },
+  damageBox: {
+    background: `linear-gradient(135deg, ${gameColors.darkGreen}dd 0%, ${gameColors.mediumGreen}dd 100%)`,
+    border: `2px solid ${gameColors.accentGreen}`,
+    borderRadius: '12px',
+    padding: '10px 16px',
     display: 'flex',
+    flexDirection: 'column',
     alignItems: 'center',
     gap: '8px',
-    zIndex: 10,
+    position: 'relative',
   },
-  damageText: {
-    color: gameColors.yellow,
+  damageLabel: {
+    fontSize: '10px',
+    color: gameColors.brightGreen,
     fontWeight: 'bold',
-    textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
+    letterSpacing: '1.5px',
+    textTransform: 'uppercase',
+    textShadow: `0 2px 4px rgba(0, 0, 0, 0.8), 0 0 8px ${gameColors.accentGreen}40`,
+    lineHeight: '1',
+  },
+  damageValueContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+  swordIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6))',
+  },
+  damageValue: {
+    fontSize: '24px',
+    color: '#FFD700',
+    fontWeight: 'bold',
+    textShadow: `
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 10px rgba(255, 215, 0, 0.5),
+      0 0 20px rgba(255, 215, 0, 0.3)
+    `,
+    lineHeight: '1',
+    fontFamily: 'monospace',
   },
   effectIcon: {
     position: 'absolute',

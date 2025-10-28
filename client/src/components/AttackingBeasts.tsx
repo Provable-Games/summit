@@ -10,12 +10,10 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { fetchBeastImage, getBeastCurrentLevel, getExperienceDefending } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
-import { useStarknetApi } from '@/api/starknet';
 
 function AttackingBeasts() {
-  const { selectedBeasts, appliedPotions, setAttackInProgress, setSelectedBeasts, battleEvents, setSummit, summit } = useGameStore();
+  const { selectedBeasts, setAttackInProgress, setSelectedBeasts, battleEvents, setSummit, summit } = useGameStore();
   const { setPauseUpdates } = useGameDirector();
-  const { getBeastData } = useStarknetApi();
   const [isAttacking, setIsAttacking] = useState(false);
   const [deadBeasts, setDeadBeasts] = useState<Set<number>>(new Set());
   const [damageNumbers, setDamageNumbers] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastIndex: number; critical: boolean }>>([]);
@@ -23,23 +21,18 @@ function AttackingBeasts() {
   const [beasts, setBeasts] = useState<Beast[]>([]);
   const [activeBeastTokenId, setActiveBeastTokenId] = useState<number | null>(null);
 
-  async function updateSummitBeastData(tokenId: number) {
-    const beastData = await getBeastData(tokenId);
-
-    if (beastData) {
-      setSummit(prevSummit => ({
-        ...prevSummit,
-        beast: beastData,
-        owner: '0x0000000000000000000000000000000000000000000000000000000000000000'
-      }));
-    }
-  }
-
   // Create enhanced beasts with battle data
   useEffect(() => {
+    if (battleEvents.length > 0 && battleEvents[0].defending_beast_token_id !== summit?.beast.token_id) {
+      handleSkip()
+      return;
+    }
+
     if (selectedBeasts.length > 0) {
       const enhancedBeasts = selectedBeasts.map(beast => {
         const battleEvent = battleEvents.find(event => event.attacking_beast_token_id === beast.token_id);
+
+        if (!battleEvent && battleEvents.length > 0) return null;
 
         return {
           ...beast,
@@ -48,18 +41,9 @@ function AttackingBeasts() {
         }
       });
 
-      setBeasts(enhancedBeasts);
-      setDeadBeasts(new Set());
+      setBeasts(enhancedBeasts.filter(Boolean));
     }
   }, [selectedBeasts, battleEvents]);
-
-  useEffect(() => {
-    if (battleEvents.length > 0) {
-      if (battleEvents[0].defending_beast_token_id !== summit?.beast.token_id) {
-        updateSummitBeastData(battleEvents[0].defending_beast_token_id);
-      }
-    }
-  }, [battleEvents]);
 
   useEffect(() => {
     if (beasts.length > 0 && !activeBeastTokenId && beasts[0]?.battle) {

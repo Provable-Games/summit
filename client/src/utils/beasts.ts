@@ -40,7 +40,7 @@ function elementalDamage(attacker: any, defender: any): number {
     multiplier = 0.5
   }
 
-  return multiplier
+  return attacker.power * multiplier
 }
 
 function nameMatchBonus(attacker: Beast, defender: Beast, elementalDamage: number): number {
@@ -63,48 +63,27 @@ export const calculateBattleResult = (beast: Beast, summit: Beast, potions: numb
   const MINIMUM_DAMAGE = 4
 
   let elemental = elementalDamage(beast, summit);
+  let summitElemental = elementalDamage(summit, beast);
   let beastNameMatch = nameMatchBonus(beast, summit, elemental);
   let summitNameMatch = nameMatchBonus(summit, beast, elemental);
 
-  let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((beast.power * elemental * (1 + 0.1 * potions) + beastNameMatch) - summit.power))
-  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor((summit.power) * elementalDamage(summit, beast) + summitNameMatch) - beast.power)
+  let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((elemental * (1 + 0.1 * potions) + beastNameMatch) - summit.power))
+  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental + summitNameMatch) - beast.power)
 
-  let summitHealth = summit.current_health
-  let beastHealth = beast.current_health > 0 ? beast.current_health : beast.health + beast.bonus_health
+  let beastCritDamage = beast.stats.luck ? Math.max(MINIMUM_DAMAGE, Math.floor(((elemental * 2) * (1 + 0.1 * potions) + beastNameMatch) - summit.power)) : 0;
+  let summitCritDamage = summit.stats.luck ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) + summitNameMatch) - beast.power) : 0;
 
-  let summitExtraLives = summit.extra_lives
+  let beastAverageDamage = beast.stats.luck ? (beastDamage + beastCritDamage) / 2 : beastDamage;
+  let summitAverageDamage = summit.stats.luck ? (summitDamage + summitCritDamage) / 2 : summitDamage;
+  let estimatedDamage = Math.max(MINIMUM_DAMAGE, Math.floor(Math.ceil(beast.current_health / summitAverageDamage) * beastAverageDamage));
 
-  let totalBeastDamage = 0
-
-  while (true) {
-    totalBeastDamage += Math.min(beastDamage, summitHealth)
-    summitHealth -= beastDamage;
-
-    if (summitHealth <= 0) {
-      if (summitExtraLives > 0) {
-        summitExtraLives -= 1
-        summitHealth = summit.health + summit.bonus_health
-      } else {
-        return {
-          capture: true,
-          healthLeft: beastHealth,
-          beastDamage,
-          summitDamage,
-          elemental,
-          damage: totalBeastDamage
-        }
-      }
-    }
-
-    beastHealth -= summitDamage
-
-    if (beastHealth <= 0) {
-      return {
-        capture: false,
-        damage: totalBeastDamage,
-        elemental,
-      }
-    }
+  return {
+    attack: beastDamage,
+    defense: summitDamage,
+    attackCritDamage: beastCritDamage,
+    defenseCritDamage: summitCritDamage,
+    score: beastDamage - summitDamage,
+    estimatedDamage,
   }
 }
 
