@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import { Summit, Beast, Adventurer, AppliedPotions, BattleEvent, Leaderboard } from '@/types/game';
 
+export type SortMethod = 'recommended' | 'power' | 'attack' | 'health';
+export type BeastTypeFilter = 'all' | 'strong';
+
 interface GameState {
   summit: Summit | null;
   leaderboard: Leaderboard[];
@@ -17,6 +20,12 @@ interface GameState {
   selectedAdventurers: Adventurer[];
   appliedPotions: AppliedPotions;
   attackMode: 'safe' | 'unsafe' | 'capture';
+  
+  // Beast Collection Filters
+  hideDeadBeasts: boolean;
+  sortMethod: SortMethod;
+  typeFilter: BeastTypeFilter;
+  nameMatchFilter: boolean;
 
   setSummit: (summit: Summit | null | ((prev: Summit | null) => Summit | null)) => void;
   setLeaderboard: (leaderboard: Leaderboard[]) => void;
@@ -33,6 +42,13 @@ interface GameState {
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => void;
   setAppliedPotions: (appliedPotions: AppliedPotions) => void;
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture') => void;
+  
+  // Beast Collection Filter Setters
+  setHideDeadBeasts: (hideDeadBeasts: boolean) => void;
+  setSortMethod: (sortMethod: SortMethod) => void;
+  setTypeFilter: (typeFilter: BeastTypeFilter) => void;
+  setNameMatchFilter: (nameMatchFilter: boolean) => void;
+  
   disconnect: () => void;
 }
 
@@ -56,6 +72,15 @@ export const useGameStore = create<GameState>((set, get) => ({
     extraLife: 0,
   },
   attackMode: 'safe',
+  
+  // Beast Collection Filters - Default Values
+  hideDeadBeasts: false,
+  sortMethod: (() => {
+    const saved = localStorage.getItem('beastSortMethod');
+    return (saved as SortMethod) || 'recommended';
+  })(),
+  typeFilter: 'all',
+  nameMatchFilter: false,
 
   disconnect: () => {
     set({
@@ -75,6 +100,10 @@ export const useGameStore = create<GameState>((set, get) => ({
         attack: 0,
         extraLife: 0,
       },
+      // Reset filters to defaults
+      hideDeadBeasts: false,
+      typeFilter: 'all',
+      nameMatchFilter: false,
     });
   },
 
@@ -96,4 +125,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => set({ adventurerCollection }),
   setAppliedPotions: (appliedPotions: AppliedPotions) => set({ appliedPotions }),
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture') => set({ attackMode }),
+  
+  // Beast Collection Filter Setters
+  setHideDeadBeasts: (hideDeadBeasts: boolean) => set({ hideDeadBeasts }),
+  setSortMethod: (sortMethod: SortMethod) => {
+    localStorage.setItem('beastSortMethod', sortMethod);
+    set({ sortMethod });
+  },
+  setTypeFilter: (typeFilter: BeastTypeFilter) => set({ typeFilter }),
+  setNameMatchFilter: (nameMatchFilter: boolean) => set({ nameMatchFilter }),
 }));

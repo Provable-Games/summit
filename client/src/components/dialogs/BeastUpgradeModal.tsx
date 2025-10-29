@@ -60,7 +60,8 @@ function BeastUpgradeModal(props) {
   const currentBeast = beastsWithUpgrades[currentBeastIndex];
   const activeStatsCount = currentBeast ? Object.values(currentBeast.stats).filter(Boolean).length : 0;
   const totalKills = currentBeast ? (currentBeast.adventurers_killed || 0) : 0;
-  const maxPossibleUpgrades = Math.max(0, totalKills - activeStatsCount);
+  const availableUpgradeSlots = currentBeast ? UPGRADES.filter(u => !currentBeast.stats[u.id]).length : 0;
+  const maxPossibleUpgrades = Math.min(availableUpgradeSlots, Math.max(0, totalKills - activeStatsCount));
 
   // Calculate remaining available points after accounting for selected upgrades
   const currentBeastUpgrades = currentBeast ? (beastUpgrades[currentBeast.token_id] || { spirit: false, luck: false, specials: false }) : { spirit: false, luck: false, specials: false };

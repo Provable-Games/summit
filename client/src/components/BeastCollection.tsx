@@ -1,4 +1,4 @@
-import { useGameStore } from '@/stores/gameStore';
+import { useGameStore, SortMethod, BeastTypeFilter } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -8,7 +8,7 @@ import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
 import { Box, Link, Popover, Tooltip, Typography } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
 import { AnimatePresence, motion } from 'framer-motion';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { calculateBattleResult } from "../utils/beasts";
@@ -16,23 +16,19 @@ import { gameColors } from '../utils/themes';
 import BeastCard from './BeastCard';
 import BeastProfile from './BeastProfile';
 
-type SortMethod = 'recommended' | 'power' | 'attack' | 'health';
-type BeastTypeFilter = 'all' | 'strong';
-
 function BeastCollection() {
-  const { loadingCollection, collection, selectedBeasts, setSelectedBeasts,
-    attackInProgress, summit, appliedPotions, attackMode } = useGameStore()
+  const { 
+    loadingCollection, collection, selectedBeasts, setSelectedBeasts,
+    attackInProgress, summit, appliedPotions, attackMode,
+    hideDeadBeasts, setHideDeadBeasts,
+    sortMethod, setSortMethod,
+    typeFilter, setTypeFilter,
+    nameMatchFilter, setNameMatchFilter
+  } = useGameStore()
   const { address } = useAccount()
-  const [hideDeadBeasts, setHideDeadBeasts] = useState(false)
-  const [sortMethod, setSortMethod] = useState<SortMethod>(() => {
-    const saved = localStorage.getItem('beastSortMethod');
-    return (saved as SortMethod) || 'recommended';
-  })
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
   const [filterExpanded, setFilterExpanded] = useState(false)
-  const [typeFilter, setTypeFilter] = useState<BeastTypeFilter>('all')
-  const [nameMatchFilter, setNameMatchFilter] = useState(false)
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false)
 
   // Helper function to check if attacker is strong against defender
@@ -103,10 +99,6 @@ function BeastCollection() {
 
     return collection.sort((a, b) => b.power - a.power)
   }, [collection, summit, appliedPotions?.attack, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts]);
-
-  useEffect(() => {
-    localStorage.setItem('beastSortMethod', sortMethod);
-  }, [sortMethod]);
 
   const selectBeast = useCallback((beast: Beast) => {
     if (attackInProgress || attackMode === 'capture') return;

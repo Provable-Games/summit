@@ -1,20 +1,20 @@
 import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useGameStore } from '@/stores/gameStore';
+import { Beast } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import RemoveIcon from '@mui/icons-material/Remove';
-import { Box, IconButton, Menu, MenuItem, Slider, Tooltip, Typography, Button, ButtonGroup } from '@mui/material';
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import { Box, IconButton, Menu, MenuItem, Slider, Tooltip, Typography } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { isBrowser } from 'react-device-detect';
+import attackPotionIcon from '../assets/images/attack-potion.png';
 import cauldronIcon from '../assets/images/cauldron.png';
 import heart from '../assets/images/heart.png';
-import attackPotionIcon from '../assets/images/attack-potion.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import { gameColors } from '../utils/themes';
-import { Beast } from '@/types/game';
 
 interface ActionBarProps {
   [key: string]: any;
@@ -52,7 +52,7 @@ function ActionBar(props: ActionBarProps) {
       beastIds: selectedBeasts.map(beast => beast.token_id),
       appliedPotions: appliedPotions,
       safeAttack: attackMode === 'safe',
-      vrf: selectedBeasts.find(beast => beast.stats.luck) ? true : false
+      vrf: (selectedBeasts.find(beast => beast.stats.luck) || summit?.beast?.stats.luck) ? true : false
     });
   }
 
