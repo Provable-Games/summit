@@ -35,12 +35,12 @@ export enum ChainId {
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_0_0_5",
+    namespace: "summit_0_0_6",
     manifest: manifest_mainnet,
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
-    subscriptionUrl: "https://api.cartridge.gg/x/summit-2/torii",
+    subscriptionUrl: "https://api.cartridge.gg/x/summit-3/torii",
     tokens: {
       erc20: [
         {
@@ -52,19 +52,19 @@ export const NETWORKS = {
         {
           name: "ATTACK",
           address:
-            "0x054d7e1f1243651039bbba1f03ebe3da91e58bcbee2901b30d1d5df72f5e2a12",
+            "0x07c2bdaa20e55fcdb0fcda05dd00117c36a154d18f7541b670cae3cd7aabfbc2",
           displayDecimals: 0,
         },
         {
           name: "REVIVE",
           address:
-            "0x01e7b2aa4542e1cbbbbf3bf6c68869e1e04b303172819a6247ca49890491aa51",
+            "0x004f2484e0aca871fb9b7c34da7f55b2f80cc0cd69b613eabab1ce42262bc634",
           displayDecimals: 0,
         },
         {
           name: "EXTRA LIFE",
           address:
-            "0x0570ae4e4abfa94e5262dafa0844fdccbd31b3a6f0ec184a812e27c77b5443d0",
+            "0x04526165196ad45741442f0cb4713990b8c7bedf85ec26caf0fbbb1799174aa8",
           displayDecimals: 0,
         },
       ],
@@ -128,7 +128,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x054d7e1f1243651039bbba1f03ebe3da91e58bcbee2901b30d1d5df72f5e2a12": {
+      "0x07c2bdaa20e55fcdb0fcda05dd00117c36a154d18f7541b670cae3cd7aabfbc2": {
         "name": "Attack Potion",
         "description": "ERC 20 token for Attack Potion",
         "methods": [
@@ -141,7 +141,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x01e7b2aa4542e1cbbbbf3bf6c68869e1e04b303172819a6247ca49890491aa51": {
+      "0x004f2484e0aca871fb9b7c34da7f55b2f80cc0cd69b613eabab1ce42262bc634": {
         "name": "Revive Potion",
         "description": "ERC 20 token for Revive Potion",
         "methods": [
@@ -154,7 +154,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x0570ae4e4abfa94e5262dafa0844fdccbd31b3a6f0ec184a812e27c77b5443d0": {
+      "0x04526165196ad45741442f0cb4713990b8c7bedf85ec26caf0fbbb1799174aa8": {
         "name": "Extra Life Potion",
         "description": "ERC 20 token for Extra Life Potion",
         "methods": [

@@ -81,10 +81,17 @@ export interface GameAction {
 }
 
 export interface BattleEvent {
+  attacking_beast_owner: string | null;
   attacking_beast_token_id: number;
   defending_beast_token_id: number;
-  attacks: number[];
-  counter_attacks: number[];
+  attack_count: number;
+  attack_damage: number;
+  critical_attack_count: number;
+  critical_attack_damage: number;
+  counter_attack_count: number;
+  counter_attack_damage: number;
+  critical_counter_attack_count: number;
+  critical_counter_attack_damage: number;
   attack_potions: number;
   xp_gained: number;
 }

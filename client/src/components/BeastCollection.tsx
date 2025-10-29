@@ -85,7 +85,9 @@ function BeastCollection() {
             return b.combat?.score - a.combat?.score
           } else if (b.combat?.attack !== a.combat?.attack) {
             return b.combat?.attack - a.combat?.attack
-          } else {
+          } else if (b.power !== a.power) {
+            return b.power - a.power
+          } else if (b.health + b.bonus_health !== a.health + a.bonus_health) {
             return (b.health + b.bonus_health) - (a.health + a.bonus_health)
           }
         } else if (sortMethod === 'power') {
@@ -99,7 +101,7 @@ function BeastCollection() {
       })
     }
 
-    return collection
+    return collection.sort((a, b) => b.power - a.power)
   }, [collection, summit, appliedPotions?.attack, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts]);
 
   useEffect(() => {

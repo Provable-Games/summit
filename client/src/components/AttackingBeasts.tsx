@@ -10,6 +10,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { fetchBeastImage, getBeastCurrentLevel, getExperienceDefending } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
+import { shuffle } from '../utils/utils';
 
 function AttackingBeasts() {
   const { selectedBeasts, setAttackInProgress, setSelectedBeasts, battleEvents, setSummit, summit } = useGameStore();
@@ -58,38 +59,70 @@ function AttackingBeasts() {
     const beast = beasts.find(b => b.token_id === activeBeastTokenId);
     if (!beast || !beast.battle) return;
 
+    // Build attacks array
+    const attacks = [];
+    
+    // Add normal attacks
+    for (let i = 0; i < (beast.battle.attack_count || 0); i++) {
+      attacks.push({
+        id: `${beast.token_id}-attack-${i}`,
+        value: beast.battle.attack_damage || 0,
+        type: 'attack' as const,
+        critical: false,
+        beastIndex: beast.token_id
+      });
+    }
+    
+    // Add critical attacks
+    for (let i = 0; i < (beast.battle.critical_attack_count || 0); i++) {
+      attacks.push({
+        id: `${beast.token_id}-crit-attack-${i}`,
+        value: beast.battle.critical_attack_damage || 0,
+        type: 'attack' as const,
+        critical: true,
+        beastIndex: beast.token_id
+      });
+    }
+
+    // Build counter-attacks array
+    const counterAttacks = [];
+    
+    // Add normal counter-attacks
+    for (let i = 0; i < (beast.battle.counter_attack_count || 0); i++) {
+      counterAttacks.push({
+        id: `${beast.token_id}-counter-${i}`,
+        value: beast.battle.counter_attack_damage || 0,
+        type: 'counter' as const,
+        critical: false,
+        beastIndex: beast.token_id
+      });
+    }
+    
+    // Add critical counter-attacks
+    for (let i = 0; i < (beast.battle.critical_counter_attack_count || 0); i++) {
+      counterAttacks.push({
+        id: `${beast.token_id}-crit-counter-${i}`,
+        value: beast.battle.critical_counter_attack_damage || 0,
+        type: 'counter' as const,
+        critical: true,
+        beastIndex: beast.token_id
+      });
+    }
+
+    // Shuffle attacks and counter-attacks separately to randomize order
+    const shuffledAttacks = shuffle(attacks);
+    const shuffledCounterAttacks = shuffle(counterAttacks);
+
+    // Interleave attacks and counter-attacks
     const queue = [];
-    const maxLength = Math.max(beast.battle.attacks.length, beast.battle.counter_attacks.length);
-
-    const criticalAttack = beast.battle.attacks.every(value => value === beast.battle.attacks[0])
-      ? null
-      : Math.max(...beast.battle.attacks);
-
-    const criticalCounterAttack = beast.battle.counter_attacks.every(value => value === beast.battle.counter_attacks[0])
-      ? null
-      : Math.max(...beast.battle.counter_attacks);
-
+    const maxLength = Math.max(shuffledAttacks.length, shuffledCounterAttacks.length);
+    
     for (let i = 0; i < maxLength; i++) {
-      // Add attack if it exists
-      if (beast.battle.attacks[i] !== undefined) {
-        queue.push({
-          id: `${beast.token_id}-${i}-attack`,
-          value: beast.battle.attacks[i],
-          type: 'attack' as const,
-          critical: criticalAttack === beast.battle.attacks[i],
-          beastIndex: beast.token_id // Store token_id instead of index
-        });
+      if (shuffledAttacks[i]) {
+        queue.push(shuffledAttacks[i]);
       }
-
-      // Add counter-attack if it exists
-      if (beast.battle.counter_attacks[i] !== undefined) {
-        queue.push({
-          id: `${beast.token_id}-${i}-counter`,
-          value: beast.battle.counter_attacks[i],
-          type: 'counter' as const,
-          critical: criticalCounterAttack === beast.battle.counter_attacks[i],
-          beastIndex: beast.token_id // Store token_id instead of index
-        });
+      if (shuffledCounterAttacks[i]) {
+        queue.push(shuffledCounterAttacks[i]);
       }
     }
 

@@ -248,7 +248,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
       setBattleEvents(events.filter((event: any) => event.componentName === 'BattleEvent'));
     } else if (action.type === 'attack_until_capture') {
-      if (!events.filter((event: any) => event.componentName === 'BattleEvent').find((event: BattleEvent) => event.attacks.length > event.counter_attacks.length)) {
+      if (!events.filter((event: any) => event.componentName === 'BattleEvent')
+        .find((event: BattleEvent) => (event.attack_count + event.critical_attack_count) > (event.counter_attack_count + event.critical_counter_attack_count))) {
         executeGameAction({
           type: 'attack_until_capture',
         });

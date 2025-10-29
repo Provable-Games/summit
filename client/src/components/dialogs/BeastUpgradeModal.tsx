@@ -57,10 +57,6 @@ function BeastUpgradeModal(props) {
   const [upgradeInProgress, setUpgradeInProgress] = useState(false);
   const [beastUpgrades, setBeastUpgrades] = useState<{ [key: number]: { spirit: boolean; luck: boolean; specials: boolean } }>({});
 
-  useEffect(() => {
-    setUpgradeInProgress(false);
-  }, [actionFailed]);
-
   const currentBeast = beastsWithUpgrades[currentBeastIndex];
   const activeStatsCount = currentBeast ? Object.values(currentBeast.stats).filter(Boolean).length : 0;
   const totalKills = currentBeast ? (currentBeast.adventurers_killed || 0) : 0;
@@ -70,6 +66,10 @@ function BeastUpgradeModal(props) {
   const currentBeastUpgrades = currentBeast ? (beastUpgrades[currentBeast.token_id] || { spirit: false, luck: false, specials: false }) : { spirit: false, luck: false, specials: false };
   const selectedUpgradesCount = Object.values(currentBeastUpgrades).filter(Boolean).length;
   const availablePoints = Math.max(0, maxPossibleUpgrades - selectedUpgradesCount);
+
+  useEffect(() => {
+    setUpgradeInProgress(false);
+  }, [actionFailed]);
 
   const handleNext = () => {
     if (currentBeastIndex < beastsWithUpgrades.length - 1) {
@@ -102,11 +102,26 @@ function BeastUpgradeModal(props) {
     // Check if all upgrades are false
     const hasAnySelected = Object.values(updatedUpgrades).some(Boolean);
 
+    // Check if this selection completes all available upgrades
+    const newSelectedCount = Object.values(updatedUpgrades).filter(Boolean).length;
+    const isAddingUpgrade = updatedUpgrades[upgradeId] && !currentBeastUpgrades[upgradeId];
+    const completesAllUpgrades = isAddingUpgrade && newSelectedCount >= maxPossibleUpgrades && maxPossibleUpgrades > 0;
+    const isNotLastBeast = currentBeastIndex < beastsWithUpgrades.length - 1;
+
     if (hasAnySelected) {
-      setBeastUpgrades({
+      const newUpgrades = {
         ...beastUpgrades,
         [currentBeast.token_id]: updatedUpgrades
-      });
+      };
+      
+      // Auto-advance to next beast if all upgrades are now selected
+      if (completesAllUpgrades && isNotLastBeast) {
+        // Update both states together to avoid flicker
+        setBeastUpgrades(newUpgrades);
+        setCurrentBeastIndex(currentBeastIndex + 1);
+      } else {
+        setBeastUpgrades(newUpgrades);
+      }
     } else {
       const { [currentBeast.token_id]: removed, ...remainingUpgrades } = beastUpgrades;
       setBeastUpgrades(remainingUpgrades);
@@ -150,12 +165,7 @@ function BeastUpgradeModal(props) {
     Object.values(upgrades).some(Boolean)
   );
 
-  // Determine button state and text
   const isLastBeast = currentBeastIndex === beastsWithUpgrades.length - 1;
-  const allPointsSelected = selectedUpgradesCount >= maxPossibleUpgrades;
-  const shouldShowUpgradeButton = (isLastBeast && hasSelectedUpgrades) || Object.keys(beastUpgrades).length >= 100;
-  const shouldShowNextButton = !isLastBeast && allPointsSelected;
-  const shouldShowGrayedOutButton = !isLastBeast && !allPointsSelected;
 
   if (!currentBeast) {
     return null;
@@ -181,7 +191,7 @@ function BeastUpgradeModal(props) {
         }
       }}
     >
-      <Box sx={[styles.dialogContainer, (!isLastBeast && currentBeastIndex > 9) && { paddingBottom: 1.5 }]}>
+      <Box sx={[styles.dialogContainer]}>
         <Box sx={styles.container}>
           <Box sx={styles.beastSection}>
             <Box sx={styles.navigationContainer}>
@@ -318,11 +328,11 @@ function BeastUpgradeModal(props) {
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
             <Button
-              disabled={upgradeInProgress || (!shouldShowUpgradeButton && !shouldShowNextButton)}
-              onClick={shouldShowNextButton ? handleNext : () => handleUpgradeAll(true)}
+              disabled={upgradeInProgress || !hasSelectedUpgrades}
+              onClick={() => handleUpgradeAll(true)}
               sx={[
                 styles.upgradeButton,
-                shouldShowUpgradeButton && styles.upgradeButtonActive
+                hasSelectedUpgrades && styles.upgradeButtonActive
               ]}
             >
               <Typography sx={styles.upgradeButtonText}>
@@ -331,29 +341,10 @@ function BeastUpgradeModal(props) {
                     <span>Upgrading</span>
                     <div className='dotLoader white' />
                   </Box>
-                  : shouldShowUpgradeButton
-                    ? `UPGRADE ${Object.keys(beastUpgrades).length} BEASTS`
-                    : shouldShowNextButton
-                      ? 'NEXT'
-                      : shouldShowGrayedOutButton
-                        ? 'SELECT UPGRADES'
-                        : 'SELECT UPGRADES'
+                  : `UPGRADE ${Object.keys(beastUpgrades).length} BEASTS`
                 }
               </Typography>
             </Button>
-
-            {hasSelectedUpgrades && !isLastBeast && currentBeastIndex > 9 && (
-              <Button
-                variant='text'
-                disabled={upgradeInProgress}
-                onClick={() => handleUpgradeAll(false)}
-                sx={styles.textButton}
-              >
-                <Typography sx={styles.textButtonText}>
-                  Upgrade Selected Beasts Now
-                </Typography>
-              </Button>
-            )}
           </Box>
         </Box>
       </Box>

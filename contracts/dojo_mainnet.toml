@@ -8,15 +8,15 @@ rpc_url = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_8"
 world_address = "0x02ef591697f0fd9adc0ba9dbe0ca04dabad80cf95f08ba02e435d9cb6698a28a"
 
 [namespace]
-default = "summit_0_0_5"
+default = "summit_0_0_6"
 
 [writers]
-"summit_0_0_5" = [
-    "summit_0_0_5-summit_systems",
+"summit_0_0_6" = [
+    "summit_0_0_6-summit_systems",
 ]
 
 [init_call_args]
-"summit_0_0_5-summit_systems" = [
+"summit_0_0_6-summit_systems" = [
     "1761057539",
     "0x3fc7ecd6d577daa1ee855a9fa13a914d01acda06715c9fc74f1ee1a5e346a01", # adventurer_systems
     "0x036017e69d21d6d8c13e266eabb73ef1f1d02722d86bdcabe5f168f8e549d3cd", # Denshokan
@@ -24,7 +24,7 @@ default = "summit_0_0_5"
     "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4", # Beasts
     "0x74abc15c0ddef39bdf1ede2a643c07968d3ed5bacb0123db2d5b7154fbb35c7", # DM Beast Systems
     "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B", # Survivor
-    "0x054d7e1f1243651039bbba1f03ebe3da91e58bcbee2901b30d1d5df72f5e2a12", # Attack potion
-    "0x01e7b2aa4542e1cbbbbf3bf6c68869e1e04b303172819a6247ca49890491aa51", # Revive potion
-    "0x0570ae4e4abfa94e5262dafa0844fdccbd31b3a6f0ec184a812e27c77b5443d0", # Extra life potion
+    "0x07c2bdaa20e55fcdb0fcda05dd00117c36a154d18f7541b670cae3cd7aabfbc2", # Attack potion
+    "0x004f2484e0aca871fb9b7c34da7f55b2f80cc0cd69b613eabab1ce42262bc634", # Revive potion
+    "0x04526165196ad45741442f0cb4713990b8c7bedf85ec26caf0fbbb1799174aa8", # Extra life potion
 ]
