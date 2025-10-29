@@ -462,7 +462,10 @@ pub mod summit_systems {
         ) {
             let summit_beast_token_id = Self::_get_summit_beast_token_id(world);
             assert(summit_beast_token_id != 0, 'Summit not started');
-            assert(defending_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
+
+            if defending_beast_token_id != 0 {
+                assert(defending_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
+            }
 
             // assert consumable amounts
             assert(attack_potions <= EIGHT_BITS_MAX, errors::MAX_ATTACK_POTION);

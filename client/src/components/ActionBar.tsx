@@ -14,6 +14,7 @@ import attackPotionIcon from '../assets/images/attack-potion.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import { gameColors } from '../utils/themes';
+import { Beast } from '@/types/game';
 
 interface ActionBarProps {
   [key: string]: any;
@@ -61,6 +62,8 @@ function ActionBar(props: ActionBarProps) {
 
     executeGameAction({
       type: 'attack_until_capture',
+      beastIds: collection.filter((beast: Beast) => beast.current_health > 0)
+        .sort((a: Beast, b: Beast) => b.combat?.score - a.combat?.score).map((beast: Beast) => beast.token_id),
     });
   }
 
