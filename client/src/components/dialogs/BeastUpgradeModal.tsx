@@ -51,7 +51,7 @@ function BeastUpgradeModal(props) {
   const beastsWithUpgrades = collection.filter(beast => {
     const totalStats = Object.values(beast.stats).filter(Boolean).length;
     return (beast.adventurers_killed || 0) > totalStats;
-  });
+  }).sort((a, b) => b.power - a.power);
 
   const [currentBeastIndex, setCurrentBeastIndex] = useState(0);
   const [upgradeInProgress, setUpgradeInProgress] = useState(false);
@@ -113,7 +113,7 @@ function BeastUpgradeModal(props) {
         ...beastUpgrades,
         [currentBeast.token_id]: updatedUpgrades
       };
-      
+
       // Auto-advance to next beast if all upgrades are now selected
       if (completesAllUpgrades && isNotLastBeast) {
         // Update both states together to avoid flicker
