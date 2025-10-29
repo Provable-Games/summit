@@ -61,7 +61,7 @@ function MainPage() {
             <ProfileCard />
           </Box>}
 
-          {!attackInProgress && <Box sx={styles.bottomContainer}>
+          {(!attackInProgress || !pauseUpdates) && <Box sx={styles.bottomContainer}>
             <ActionBar />
             <BeastCollection />
           </Box>}
