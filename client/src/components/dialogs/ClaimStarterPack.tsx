@@ -1,5 +1,5 @@
 import InfoIcon from '@mui/icons-material/Info';
-import { Box, Dialog, Tooltip, Typography, Button } from '@mui/material';
+import { Box, Dialog, Tooltip, Typography, Button, TextField } from '@mui/material';
 import React, { useEffect } from 'react';
 import attackPotionIcon from '@/assets/images/attack-potion.png';
 import lifePotionIcon from '@/assets/images/life-potion.png';
@@ -43,21 +43,31 @@ function ClaimStarterPack(props) {
   const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit).map(beast => beast.token_id)
 
   const [claimInProgress, setClaimInProgress] = useState(false)
+  const [claimAmount, setClaimAmount] = useState('')
 
   useEffect(() => {
     setClaimInProgress(false);
   }, [actionFailed]);
+
+  const getClaimCount = () => {
+    const parsedAmount = parseInt(claimAmount)
+    if (!claimAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
+      return unclaimedBeasts.length
+    }
+    return Math.min(parsedAmount, unclaimedBeasts.length)
+  }
 
   const claimAll = async () => {
     setClaimInProgress(true)
 
     try {
       const initialTokenBalances = { ...tokenBalances }
+      const countToClaim = getClaimCount()
 
       await executeGameAction(
         {
           type: "claim_starter_kit",
-          beastIds: unclaimedBeasts.slice(0, 250)
+          beastIds: unclaimedBeasts.slice(0, countToClaim)
         }
       )
 
@@ -123,6 +133,18 @@ function ClaimStarterPack(props) {
             </Typography>
           </Box>
 
+          <Box sx={{ width: '100%', maxWidth: '400px', textAlign: 'center' }}>
+            <Typography sx={styles.inputLabel}>
+              How many do you want to claim?
+            </Typography>
+            <TextField
+              value={claimAmount}
+              onChange={(e) => setClaimAmount(e.target.value)}
+              sx={styles.input}
+              fullWidth
+            />
+          </Box>
+
           <Box sx={styles.itemsContainer}>
             {React.Children.toArray(
               POTIONS.map(potion => {
@@ -161,7 +183,7 @@ function ClaimStarterPack(props) {
                       x
                     </Typography>
                     <Typography sx={styles.amountValue}>
-                      {unclaimedBeasts.length * potion.packAmount}
+                      {getClaimCount() * potion.packAmount}
                     </Typography>
                   </Box>
                 </Box>
@@ -184,7 +206,7 @@ function ClaimStarterPack(props) {
                     <span>Claiming</span>
                     <div className='dotLoader white' />
                   </Box>
-                  : unclaimedBeasts.length > 250 ? 'CLAIM 250' : 'CLAIM ALL'
+                  : `CLAIM ${getClaimCount()}`
                 }
               </Typography>
             </Button>
@@ -235,6 +257,47 @@ const styles = {
     color: '#ffedbb',
     letterSpacing: '0.5px',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  inputLabel: {
+    fontSize: '14px',
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    marginBottom: '8px',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  input: {
+    '& .MuiOutlinedInput-root': {
+      color: '#ffedbb',
+      background: `${gameColors.mediumGreen}60`,
+      borderRadius: '8px',
+      '& fieldset': {
+        borderColor: `${gameColors.accentGreen}60`,
+        borderWidth: '2px',
+      },
+      '&:hover fieldset': {
+        borderColor: `${gameColors.accentGreen}80`,
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: gameColors.brightGreen,
+      },
+    },
+    '& .MuiOutlinedInput-input': {
+      fontSize: '18px',
+      fontWeight: 'bold',
+      padding: '12px',
+      '&::placeholder': {
+        color: '#ffedbb80',
+        opacity: 1,
+      },
+    },
+  },
+  inputHelper: {
+    fontSize: '12px',
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    marginTop: '6px',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    opacity: 0.8,
   },
   itemsContainer: {
     height: '100%',
