@@ -17,7 +17,7 @@ import BeastCard from './BeastCard';
 import BeastProfile from './BeastProfile';
 
 function BeastCollection() {
-  const { 
+  const {
     loadingCollection, collection, selectedBeasts, setSelectedBeasts,
     attackInProgress, summit, appliedPotions, attackMode,
     hideDeadBeasts, setHideDeadBeasts,
@@ -252,7 +252,7 @@ function BeastCollection() {
       )}
 
       {/* Beast Grid with Utility Buttons */}
-      {!loadingCollection && collectionWithCombat.length > 0 && (
+      {!loadingCollection && (
         <Box sx={styles.beastGridContainer}>
           {/* Left side: Utility Buttons and Filter Panel */}
           <Box sx={styles.leftSideContainer}>
@@ -386,58 +386,69 @@ function BeastCollection() {
           </Box>
 
           {/* Beast Grid - Virtualized horizontal scrolling */}
-          <Box
-            ref={parentRef}
-            sx={{
-              ...styles.beastGrid,
-              contain: 'strict',
-              overflow: 'auto',
-            }}
-          >
-            <div
-              style={{
-                width: `${virtualizer.getTotalSize()}px`,
-                height: '100%',
-                position: 'relative',
+          {collectionWithCombat.length > 0 && (
+            <Box
+              ref={parentRef}
+              sx={{
+                ...styles.beastGrid,
+                contain: 'strict',
+                overflow: 'auto',
               }}
             >
-              {virtualizer.getVirtualItems().map((virtualItem) => {
-                const beast = collectionWithCombat[virtualItem.index];
-                const isSelected = selectedBeasts.some(b => b.token_id === beast.token_id);
-                const isSavage = summit?.beast.token_id === beast.token_id;
-                const isDead = beast.current_health === 0;
-                const selectionIndex = selectedBeasts.findIndex(b => b.token_id === beast.token_id) + 1;
-                const combat = summit && !isSavage ? beast.combat : null;
+              <div
+                style={{
+                  width: `${virtualizer.getTotalSize()}px`,
+                  height: '100%',
+                  position: 'relative',
+                }}
+              >
+                {virtualizer.getVirtualItems().map((virtualItem) => {
+                  const beast = collectionWithCombat[virtualItem.index];
+                  const isSelected = selectedBeasts.some(b => b.token_id === beast.token_id);
+                  const isSavage = summit?.beast.token_id === beast.token_id;
+                  const isDead = beast.current_health === 0;
+                  const selectionIndex = selectedBeasts.findIndex(b => b.token_id === beast.token_id) + 1;
+                  const combat = summit && !isSavage ? beast.combat : null;
 
-                return (
-                  <div
-                    key={beast.token_id}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: 0,
-                      height: '100%',
-                      width: `${ITEM_WIDTH}px`,
-                      transform: `translateX(${virtualItem.start}px)`,
-                    }}
-                  >
-                    <BeastCard
-                      beast={beast}
-                      isSelected={isSelected}
-                      isSavage={isSavage}
-                      isDead={isDead}
-                      combat={combat}
-                      selectionIndex={selectionIndex}
-                      summitHealth={summit?.beast.current_health || 0}
-                      onClick={() => selectBeast(beast)}
-                      onMouseEnter={(e) => handleHoverEnter(e, beast)}
-                      onMouseLeave={handleHoverLeave}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </Box>
+                  return (
+                    <div
+                      key={beast.token_id}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        height: '100%',
+                        width: `${ITEM_WIDTH}px`,
+                        transform: `translateX(${virtualItem.start}px)`,
+                      }}
+                    >
+                      <BeastCard
+                        beast={beast}
+                        isSelected={isSelected}
+                        isSavage={isSavage}
+                        isDead={isDead}
+                        combat={combat}
+                        selectionIndex={selectionIndex}
+                        summitHealth={summit?.beast.current_health || 0}
+                        onClick={() => selectBeast(beast)}
+                        onMouseEnter={(e) => handleHoverEnter(e, beast)}
+                        onMouseLeave={handleHoverLeave}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </Box>
+          )}
+
+          {/* No beasts found after filtering */}
+          {collectionWithCombat.length === 0 && address && collection.length > 0 && (
+            <Box sx={styles.noFilterResults}>
+              <Typography sx={styles.noFilterResultsText}>
+                No beasts available
+              </Typography>
+            </Box>
+          )}
         </Box>
       )}
 
@@ -964,5 +975,20 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     color: gameColors.brightGreen,
+  },
+  noFilterResults: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '205px',
+    flex: 1,
+  },
+  noFilterResultsText: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: gameColors.accentGreen,
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.6)`,
   },
 }

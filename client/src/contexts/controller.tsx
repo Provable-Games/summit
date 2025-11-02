@@ -13,6 +13,11 @@ import {
 } from "react";
 import { addAddressPadding } from "starknet";
 import { useDynamicConnector } from "./starknet";
+import { 
+  loadBeastCollectionFromCache, 
+  saveBeastCollectionToCache, 
+  mergeBeastData
+} from "@/utils/beastCache";
 
 export interface ControllerContext {
   playerName: string | undefined;
@@ -39,7 +44,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { account, isConnecting } = useAccount();
   const { connector, connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
-  const { setCollection, setAdventurerCollection, setLoadingCollection } = useGameStore();
+  const { collection, setCollection, setAdventurerCollection, setLoadingCollection } = useGameStore();
   const { getTokenBalances } = useStarknetApi();
   const { getBeastCollection, getValidAdventurers } = useGameTokens();
   const [userName, setUserName] = useState<string>();
@@ -82,6 +87,13 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     }
   }, [adventurers]);
 
+  // Persist collection changes to localStorage
+  useEffect(() => {
+    if (account?.address && collection.length > 0) {
+      saveBeastCollectionToCache(collection, account.address);
+    }
+  }, [collection, account?.address]);
+
   useEffect(() => {
     if (account) {
       fetchBeastCollection();
@@ -114,10 +126,35 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   }, [connector]);
 
   async function fetchBeastCollection() {
-    setLoadingCollection(true);
-    let collection = await getBeastCollection(account!.address);
-    setCollection(collection);
-    setLoadingCollection(false);
+    if (!account?.address) return;
+
+    // Load from cache immediately
+    const cachedCollection = loadBeastCollectionFromCache(account.address);
+    if (cachedCollection && cachedCollection.length > 0) {
+      setCollection(cachedCollection);
+      setLoadingCollection(false);
+    } else {
+      setLoadingCollection(true);
+    }
+
+    // Fetch fresh data in the background
+    try {
+      const freshCollection = await getBeastCollection(account.address, cachedCollection);
+      
+      // Update state with fresh/merged data
+      setCollection(freshCollection);
+      
+      // Save to cache
+      saveBeastCollectionToCache(freshCollection, account.address);
+    } catch (error) {
+      console.error('Error fetching beast collection:', error);
+      // If fetch fails and we have cached data, keep using it
+      if (!cachedCollection || cachedCollection.length === 0) {
+        setCollection([]);
+      }
+    } finally {
+      setLoadingCollection(false);
+    }
   }
 
   async function fetchTokenBalances() {

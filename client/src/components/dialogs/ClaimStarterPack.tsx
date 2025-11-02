@@ -30,7 +30,7 @@ const POTIONS = [
     id: 3,
     name: 'Extra life potion',
     icon: lifePotionIcon,
-    description: 'Beast revives to full health instead of dying. Max 127 extra lives.',
+    description: 'Beast revives to full health instead of dying. Max 255 extra lives.',
     packAmount: 1
   },
 ]

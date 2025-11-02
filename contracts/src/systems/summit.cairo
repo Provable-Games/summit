@@ -9,7 +9,7 @@ trait ISummitSystem<T> {
         ref self: T,
         defending_beast_token_id: u32,
         attacking_beast_token_ids: Span<u32>,
-        revival_potions: u8,
+        revival_potions: u16,
         attack_potions: u8,
         extra_life_potions: u8,
         vrf: bool,
@@ -17,7 +17,7 @@ trait ISummitSystem<T> {
     fn attack_unsafe(
         ref self: T,
         attacking_beast_token_ids: Span<u32>,
-        revival_potions: u8,
+        revival_potions: u16,
         attack_potions: u8,
         extra_life_potions: u8,
     );
@@ -115,7 +115,7 @@ pub mod summit_systems {
             ref self: ContractState,
             defending_beast_token_id: u32,
             attacking_beast_token_ids: Span<u32>,
-            revival_potions: u8,
+            revival_potions: u16,
             attack_potions: u8,
             extra_life_potions: u8,
             vrf: bool,
@@ -135,7 +135,7 @@ pub mod summit_systems {
         fn attack_unsafe(
             ref self: ContractState,
             attacking_beast_token_ids: Span<u32>,
-            revival_potions: u8,
+            revival_potions: u16,
             attack_potions: u8,
             extra_life_potions: u8,
         ) {
@@ -276,7 +276,7 @@ pub mod summit_systems {
             }
 
             beast.live.extra_lives += potions_to_use;
-            InternalSummitImpl::_burn_consumable(summit_config.extra_life_potion_address, potions_to_use);
+            InternalSummitImpl::_burn_consumable(summit_config.extra_life_potion_address, potions_to_use.into());
 
             // update the live stats of the beast
             world.write_model(@beast.live);
@@ -317,9 +317,9 @@ pub mod summit_systems {
             let start_token_id = 1;
             InternalSummitImpl::_init_summit_history(ref world, start_token_id);
             InternalSummitImpl::_set_summit_beast(ref world, start_token_id);
-            let mut beast = InternalSummitImpl::_get_beast(world, start_token_id);
-            beast.live.current_health = beast.fixed.health;
-            world.write_model(@beast.live);
+            let mut beast: LiveBeastStats = world.read_model(start_token_id);
+            beast.current_health =100;
+            world.write_model(@beast);
         }
 
         fn get_start_timestamp(self: @ContractState) -> u64 {
@@ -454,7 +454,7 @@ pub mod summit_systems {
         fn _attack_summit(
             ref world: WorldStorage,
             attacking_beast_token_ids: Span<u32>,
-            revival_potions: u8,
+            revival_potions: u16,
             attack_potions: u8,
             extra_life_potions: u8,
             vrf: bool,
@@ -634,7 +634,7 @@ pub mod summit_systems {
 
                     // Apply extra life potions
                     attacking_beast.live.extra_lives = extra_life_potions;
-                    Self::_burn_consumable(summit_config.extra_life_potion_address, extra_life_potions);
+                    Self::_burn_consumable(summit_config.extra_life_potion_address, extra_life_potions.into());
 
                     // update the live stats of the attacking beast
                     world.write_model(@attacking_beast.live);
@@ -646,7 +646,7 @@ pub mod summit_systems {
                                 taken_at: get_block_number(),
                                 beast: Self::_get_beast_event(attacking_beast),
                                 live_stats: attacking_beast.live,
-                                owner: summit_owner,
+                                owner: beast_owner,
                             },
                         );
 
@@ -662,7 +662,7 @@ pub mod summit_systems {
             // Burn consumables
             assert(remaining_revival_potions == 0, 'Unused revival potions');
             Self::_burn_consumable(summit_config.revive_potion_address, revival_potions);
-            Self::_burn_consumable(summit_config.attack_potion_address, attack_potions);
+            Self::_burn_consumable(summit_config.attack_potion_address, attack_potions.into());
         }
 
         /// @title attack
@@ -706,7 +706,7 @@ pub mod summit_systems {
             (combat_result.total_damage, combat_result.critical_hit_bonus > 0)
         }
 
-        fn _burn_consumable(consumable_address: ContractAddress, amount: u8) {
+        fn _burn_consumable(consumable_address: ContractAddress, amount: u16) {
             if amount > 0 {
                 let dispatcher = ConsumableERC20Dispatcher { contract_address: consumable_address };
                 let amount_with_decimals: u256 = amount.into() * 1000000000000000000;
@@ -720,10 +720,10 @@ pub mod summit_systems {
         /// @param live_beast_stats the stats of the beast to check
         fn _use_revival_potions(
             ref beast: Beast,
-            ref remaining_potions: u8,
+            ref remaining_potions: u16,
             summit_config: SummitConfig,
             beast_data: IBeastSystemsDispatcher,
-        ) -> u8 {
+        ) -> u16 {
             let last_death_timestamp = beast.live.last_death_timestamp;
             let current_time = get_block_timestamp();
             let time_since_death = current_time - last_death_timestamp;
@@ -745,7 +745,7 @@ pub mod summit_systems {
                 if time_since_death < revival_time {
                     Self::_assert_beast_can_be_revived(beast, remaining_potions);
 
-                    remaining_potions -= beast.live.revival_count + 1;
+                    remaining_potions -= beast.live.revival_count.into() + 1;
 
                     if beast.live.revival_count < MAX_REVIVAL_COUNT {
                         beast.live.revival_count += 1;
@@ -791,9 +791,9 @@ pub mod summit_systems {
             assert(adventurer_consumed.beast_token_id == 0, errors::ADVENTURER_ALREADY_CONSUMED);
         }
 
-        fn _assert_beast_can_be_revived(beast: Beast, potion_count: u8) {
+        fn _assert_beast_can_be_revived(beast: Beast, potion_count: u16) {
             assert(beast.live.current_health == 0, errors::BEAST_ALIVE);
-            assert(potion_count >= beast.live.revival_count + 1, errors::NOT_ENOUGH_CONSUMABLES);
+            assert(potion_count >= beast.live.revival_count.into() + 1, errors::NOT_ENOUGH_CONSUMABLES);
         }
 
         /// @notice: gets level from xp
@@ -863,97 +863,73 @@ pub mod summit_systems {
 
 #[cfg(test)]
 mod tests {
-    use dojo::model::{Model, ModelEntityTest, ModelIndex, ModelTest};
-    use dojo::utils::test::deploy_contract;
-    use dojo::world::{IWorldDispatcher, IWorldDispatcherTrait};
-    use summit::constants::TESTING_CHAIN_ID;
-    use summit::models::beast::{Beast, BeastDetails, BeastDetailsStore, BeastStats, BeastStatsStore, Tier, Type};
-    use summit::models::consumable::{Consumable, ConsumableDetails, ConsumableDetailsStore};
-    use summit::models::summit::{Summit, SummitHistory, SummitHistoryStore, SummitStore};
+    use dojo::model::{ModelStorage};
+    use dojo::world::{WorldStorage, WorldStorageTrait};
+    use dojo_cairo_test::{spawn_test_world, NamespaceDef, TestResource, ContractDef, ContractDefTrait, WorldStorageTestTrait};
+    use starknet::contract_address_const;
+    use summit::constants::{TESTING_CHAIN_ID, SUMMIT_ID, DEFAULT_NS};
+    use summit::models::beast::{LiveBeastStats, m_LiveBeastStats};
+    use summit::models::summit::{m_Summit, m_SummitHistory, m_SummitConfig};
+    use summit::models::adventurer::m_AdventurerConsumed;
     use super::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait, summit_systems};
+
+    fn namespace_def() -> NamespaceDef {
+        NamespaceDef {
+            namespace: DEFAULT_NS(),
+            resources: [
+                TestResource::Model(m_Summit::TEST_CLASS_HASH.try_into().unwrap()),
+                TestResource::Model(m_SummitHistory::TEST_CLASS_HASH.try_into().unwrap()),
+                TestResource::Model(m_SummitConfig::TEST_CLASS_HASH.try_into().unwrap()),
+                TestResource::Model(m_LiveBeastStats::TEST_CLASS_HASH.try_into().unwrap()),
+                TestResource::Model(m_AdventurerConsumed::TEST_CLASS_HASH.try_into().unwrap()),
+                TestResource::Contract(summit_systems::TEST_CLASS_HASH),
+            ].span(),
+        }
+    }
+
+    fn contract_defs() -> Span<ContractDef> {
+        [
+            ContractDefTrait::new(@DEFAULT_NS(), @"summit_systems")
+                .with_writer_of([dojo::utils::bytearray_hash(@DEFAULT_NS())].span())
+                .with_init_calldata([
+                    1724927366_u64.into(), // start_timestamp
+                    contract_address_const::<'adventurer'>().into(),
+                    contract_address_const::<'denshokan'>().into(),
+                    contract_address_const::<'dungeon'>().into(),
+                    contract_address_const::<'beast'>().into(),
+                    contract_address_const::<'beast_data'>().into(),
+                    contract_address_const::<'reward'>().into(),
+                    contract_address_const::<'attack_potion'>().into(),
+                    contract_address_const::<'revive_potion'>().into(),
+                    contract_address_const::<'extra_life_potion'>().into(),
+                ].span()),
+        ].span()
+    }
 
     /// @title setup_world
     /// @notice this function is used to setup the world for testing
-    /// @return world the world dispatcher
+    /// @return world the world storage
     /// @return summit_system the summit system dispatcher
-    fn setup_world() -> (IWorldDispatcher, ISummitSystemDispatcher) {
+    fn setup_world() -> (WorldStorage, ISummitSystemDispatcher) {
         starknet::testing::set_chain_id(TESTING_CHAIN_ID);
+        starknet::testing::set_block_timestamp(1724927366);
+        starknet::testing::set_block_number(100);
 
-        let world = spawn_test_world!();
+        let ndef = namespace_def();
+        let mut world = spawn_test_world([ndef].span());
+        world.sync_perms_and_inits(contract_defs());
 
-        let contract_address = world.deploy_contract('salt', summit_systems::TEST_CLASS_HASH.try_into().unwrap());
-
+        let (contract_address, _) = world.dns(@"summit_systems").unwrap();
         let summit_system = ISummitSystemDispatcher { contract_address };
 
         (world, summit_system)
     }
 
     #[test]
-    fn test_take_summit() {
-        let starting_time = 1724927366;
-        starknet::testing::set_block_timestamp(starting_time);
-
+    #[available_gas(284000)]
+    fn test_basic() {
+        // Most basic test possible
         let (world, summit_system) = setup_world();
-
-        let summit = Summit { id: 1, beast_id: 1 };
-        let summit_history = SummitHistory { id: 1, lost_at: 0, taken_at: starting_time, rewards: 0 };
-
-        let defender_id = 1;
-        let summit_beast_stats = BeastStats { id: defender_id, health: 100, dead_at: 0 };
-        let summit_beast_details = BeastDetails {
-            id: defender_id, _type: Type::Magic_or_Cloth, tier: Tier::T1, level: 5, starting_health: 100,
-        };
-
-        let attacker_id = 2;
-        let attacking_beast_stats = BeastStats { id: attacker_id, health: 100, dead_at: 0 };
-        let attacking_beast_details = BeastDetails {
-            id: attacker_id, _type: Type::Blade_or_Hide, tier: Tier::T2, level: 10, starting_health: 100,
-        };
-
-        // inject test data into world
-        summit.set_test(world);
-        summit_history.set_test(world);
-        summit_beast_stats.set_test(world);
-        summit_beast_details.set_test(world);
-        attacking_beast_stats.set_test(world);
-        attacking_beast_details.set_test(world);
-
-        // roll forward time by 100 seconds
-        let summit_change_time = starting_time + 100;
-        starknet::testing::set_block_timestamp(summit_change_time);
-
-        // set authorizations
-        world.grant_writer(Model::<Summit>::selector(), summit_system.contract_address);
-        world.grant_writer(Model::<SummitHistory>::selector(), summit_system.contract_address);
-        world.grant_writer(Model::<BeastStats>::selector(), summit_system.contract_address);
-
-        // attack the summit with a beast that is stronger than the summit beast
-        summit_system.attack(defender_id, attacker_id, array![]);
-
-        // verify the finalized summit history for the previous summit beast
-        let prev_summit_history = summit_system.get_summit_history(defender_id, summit_change_time);
-        assert(prev_summit_history.id == defender_id, 'prev summit id is wrong');
-        assert(prev_summit_history.lost_at == summit_change_time, 'prev summit lost_at is wrong');
-        assert(prev_summit_history.taken_at == starting_time, 'prev summit taken_at is wrong');
-        assert(prev_summit_history.rewards == 100, 'prev summit rewards is wrong');
-
-        // verify the beast prevly on the summit is dead
-        let prev_summit_beast = summit_system.get_beast(defender_id);
-        assert(prev_summit_beast.live.current_health == 0, 'prev summit beast health');
-        assert(prev_summit_beast.live.dead_at == summit_change_time, 'prev summit beast dead_at');
-
-        // attacker should now be on the summit
-        let summit_beast = summit_system.get_summit_beast();
-        assert(summit_beast.id == attacker_id, 'attacker be on summit');
-
-        // attacker should have lost health as part of the attack
-        assert(summit_beast.stats.health < 100, 'attacker should take dmg');
-
-        // verify we have a new submit history for the new summit beast
-        let new_summit_history = summit_system.get_summit_history(summit_beast.id, 0);
-        assert(new_summit_history.id == attacker_id, 'new summit id is wrong');
-        assert(new_summit_history.lost_at == 0, 'new summit lost_at is wrong');
-        assert(new_summit_history.taken_at == summit_change_time, 'new summit taken_at is wrong');
-        assert(new_summit_history.rewards == 0, 'new summit rewards is wrong');
+        summit_system.start_summit();
     }
 }

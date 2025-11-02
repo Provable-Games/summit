@@ -49,7 +49,7 @@ function nameMatchBonus(attacker: Beast, defender: Beast, elementalDamage: numbe
   if (!attacker.stats.specials) return damage;
 
   if (attacker.prefix === defender.prefix) {
-    damage += elementalDamage * 8
+    damage += elementalDamage * 2
   }
 
   if (attacker.suffix === defender.suffix) {

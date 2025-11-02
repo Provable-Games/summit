@@ -7,7 +7,7 @@ import { addAddressPadding } from "starknet";
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
-  const getBeastCollection = async (accountAddress: string) => {
+  const getBeastCollection = async (accountAddress: string, cachedCollection: Beast[]) => {
     let q = `
       WITH tbf AS (
         SELECT tb.token_id, tb.account_address, tb.contract_address, tb.balance
@@ -112,6 +112,7 @@ export const useGameTokens = () => {
     let data = await sql.json()
 
     let beasts: Beast[] = data.filter((data: any) => data["Beast"]).map((data: any) => {
+      let cachedBeast = cachedCollection.find((beast: Beast) => beast.token_id === Number(data["Token ID"]));
       let beast: any = {
         id: Number(data["Beast ID"]),
         token_id: Number(data["Token ID"]),
@@ -129,21 +130,19 @@ export const useGameTokens = () => {
         adventurers_killed: Number(data["Adventurers Killed"]),
         last_dm_death_timestamp: Number(data["Last Death Timestamp"]),
         attack_streak: data.attack_streak || 0,
-        bonus_health: data.bonus_health || 0,
-        bonus_xp: data.bonus_xp || 0,
+        bonus_health: Math.max(cachedBeast?.bonus_health || 0, data.bonus_health),
+        bonus_xp: Math.max(cachedBeast?.bonus_xp || 0, data.bonus_xp),
         current_health: data.current_health,
         extra_lives: data.extra_lives || 0,
         has_claimed_starter_kit: data.has_claimed_starter_kit || 0,
-        last_death_timestamp: parseInt(data.last_death_timestamp, 16) || 0,
-        last_killed_by: data.last_killed_by || 0,
-        num_deaths: data.num_deaths || 0,
-        revival_count: data.revival_count || 0,
+        last_death_timestamp: Math.max(cachedBeast?.last_death_timestamp || 0, parseInt(data.last_death_timestamp, 16)),
+        revival_count: Math.max(cachedBeast?.revival_count || 0, data.revival_count),
         rewards_earned: parseInt(data.rewards_earned, 16) || 0,
         revival_time: 0,
         stats: {
-          spirit: Boolean(data["stats.spirit"]),
-          luck: Boolean(data["stats.luck"]),
-          specials: Boolean(data["stats.specials"]),
+          spirit: cachedBeast?.stats.spirit || Boolean(data["stats.spirit"]),
+          luck: cachedBeast?.stats.luck || Boolean(data["stats.luck"]),
+          specials: cachedBeast?.stats.specials || Boolean(data["stats.specials"]),
         }
       }
       beast.revival_time = getBeastRevivalTime(beast);
@@ -250,7 +249,7 @@ export const useGameTokens = () => {
     let q = `
       SELECT killed_by
       FROM "ls_0_0_9-CollectableEntity"
-      WHERE dungeon = '${currentNetworkConfig.dungeon}'
+      WHERE dungeon = '${currentNetworkConfig.dungeon}' AND killed_by != "0x0000000000000000"
       AND id = ${beast.id} AND suffix = ${suffix} AND prefix = ${prefix}
       LIMIT 1000;
     `
