@@ -4,7 +4,7 @@ import { useGameTokens } from '@/dojo/useGameTokens';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { addAddressPadding } from 'starknet';
-import { lookupAddresses } from '@cartridge/controller';
+import { lookupAddressNames } from '@/utils/addressNameCache';
 import { Box, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 
@@ -37,35 +37,29 @@ function Leaderboard() {
         const data = await getLeaderboard()
         setLeaderboard(data)
 
-        // Fetch names only for top 5 and summit owner
-        const addressesToLookup = new Set();
+        // Fetch names only for top 5 and summit owner (with caching)
+        const addressesToLookup = [];
 
         // Add top 5 leaderboard addresses
         data.slice(0, 5).forEach(player => {
-          addressesToLookup.add(player.owner.replace(/^0x0+/, "0x").toLowerCase());
+          addressesToLookup.push(player.owner);
         });
 
         // Add summit owner if exists
         if (summit?.owner) {
-          addressesToLookup.add(summit.owner.replace(/^0x0+/, "0x").toLowerCase());
+          addressesToLookup.push(summit.owner);
         }
 
-        if (addressesToLookup.size > 0) {
-          const addresses = Array.from(addressesToLookup);
-          const addressMap = await lookupAddresses(addresses);
+        if (addressesToLookup.length > 0) {
+          // Use cached lookup function
+          const addressMap = await lookupAddressNames(addressesToLookup);
 
           const names = {};
-          // Map top 5 names
-          data.slice(0, 5).forEach(player => {
-            const normalizedAddress = player.owner.replace(/^0x0+/, "0x").toLowerCase();
-            names[player.owner] = addressMap.get(normalizedAddress) || null;
+          // Map all names using original addresses as keys
+          addressesToLookup.forEach(address => {
+            const normalized = address.replace(/^0x0+/, "0x").toLowerCase();
+            names[address] = addressMap.get(normalized) || null;
           });
-
-          // Map summit owner name
-          if (summit?.owner) {
-            const normalizedSummitOwner = summit.owner.replace(/^0x0+/, "0x").toLowerCase();
-            names[summit.owner] = addressMap.get(normalizedSummitOwner) || null;
-          }
 
           setAddressNames(names);
         }

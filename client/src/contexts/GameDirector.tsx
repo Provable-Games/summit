@@ -33,7 +33,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
   const { summit, setSummit, setAttackInProgress, setFeedingInProgress,
     collection, setCollection, setAppliedPotions, appliedPotions,
-    setBattleEvents, setApplyingPotions } = useGameStore();
+    setBattleEvents, setSpectatorBattleEvents, setApplyingPotions } = useGameStore();
   const { gameModelsQuery, gameEventsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimStarterKit, addExtraLife, selectUpgrades } = useSystemCalls();
@@ -103,6 +103,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
           let battleEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "BattleEvent")))
             .map((entity: any) => getEntityModel(entity, "BattleEvent"))
+
+          if (battleEvent.length > 0) {
+            setSpectatorBattleEvents(prev => [...prev, ...battleEvent]);
+          }
 
           if (summitEvent.length > 0) {
             let summit = summitEvent[0];

@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x27954612a4a745f9dd608c6ee8b2c7a523a51befcb9b36f2de662feecefe7cb",
-      "class_hash": "0x1ca1fdbd39916085b7824df91db05f92125f57ce1b2c90b3cb9615972526e0e",
+      "class_hash": "0x5b9d36584541828f1f8777e0227e261ac4d2fa873350f6ecb685455e8ae983f",
       "abi": [
         {
           "type": "impl",
@@ -1677,7 +1677,7 @@
                 },
                 {
                   "name": "revival_potions",
-                  "type": "core::integer::u8"
+                  "type": "core::integer::u16"
                 },
                 {
                   "name": "attack_potions",
@@ -1705,7 +1705,7 @@
                 },
                 {
                   "name": "revival_potions",
-                  "type": "core::integer::u8"
+                  "type": "core::integer::u16"
                 },
                 {
                   "name": "attack_potions",
