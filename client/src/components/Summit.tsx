@@ -1,22 +1,26 @@
 import { useGameStore } from '@/stores/gameStore'
+import CasinoIcon from '@mui/icons-material/Casino'
+import EnergyIcon from '@mui/icons-material/ElectricBolt'
+import StarIcon from '@mui/icons-material/Star'
 import { Box, LinearProgress, Tooltip, Typography } from '@mui/material'
-import { motion, useAnimationControls } from 'framer-motion'
+import { AnimatePresence, motion, useAnimationControls } from 'framer-motion'
 import { useLottie } from 'lottie-react'
 import { useEffect, useState } from 'react'
 import strikeAnim from '../assets/animations/strike.json'
 import heart from '../assets/images/heart.png'
+import { lookupAddressName } from '../utils/addressNameCache'
 import { fetchBeastSummitImage, normaliseHealth } from '../utils/beasts'
 import { gameColors } from '../utils/themes'
-import { lookupAddresses } from '@cartridge/controller'
-import EnergyIcon from '@mui/icons-material/ElectricBolt'
-import CasinoIcon from '@mui/icons-material/Casino'
-import StarIcon from '@mui/icons-material/Star'
+import { useGameDirector } from '@/contexts/GameDirector'
 
 function Summit() {
-  const { collection, summit, attackInProgress, selectedBeasts } = useGameStore()
+  const { collection, summit, attackInProgress, selectedBeasts, spectatorBattleEvents } = useGameStore()
+  const { pauseUpdates } = useGameDirector()
 
   const controls = useAnimationControls()
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
+  const [spectatorDamage, setSpectatorDamage] = useState<Array<{ id: string; damage: number; attackerName: string }>>([])
+  const [processedEventIds, setProcessedEventIds] = useState<Set<string>>(new Set())
 
   const originalExperience = Math.pow(summit.beast.level, 2);
   const currentExperience = originalExperience + summit.beast.bonus_xp;
@@ -36,9 +40,8 @@ function Summit() {
     const fetchCartridgeName = async () => {
       if (summit?.owner) {
         try {
-          let owner = summit.owner.replace(/^0x0+/, "0x").toLowerCase();
-          const addressMap = await lookupAddresses([owner]);
-          setCartridgeName(addressMap.get(owner) || null);
+          const name = await lookupAddressName(summit.owner);
+          setCartridgeName(name);
         } catch (error) {
           setCartridgeName(null);
         }
@@ -49,6 +52,51 @@ function Summit() {
 
     fetchCartridgeName();
   }, [summit?.owner]);
+
+  // Process incoming battle events for spectators - rapid fire style!
+  useEffect(() => {
+    if (!summit || spectatorBattleEvents.length === 0 || pauseUpdates) return;
+
+    spectatorBattleEvents.forEach(async (event, index) => {
+      // Only show events for the current summit beast
+      if (event.defending_beast_token_id !== summit.beast.token_id) return;
+
+      // Create unique ID for this event
+      const eventId = `${event.attacking_beast_token_id}-${Date.now()}`;
+
+      // Skip if already processed
+      if (processedEventIds.has(eventId)) return;
+
+      // Calculate total damage
+      const totalDamage =
+        (event.attack_damage * event.attack_count) +
+        (event.critical_attack_damage * event.critical_attack_count);
+
+      // Wait for attacker name lookup
+      let attackerName = 'Unknown';
+      if (event.attacking_beast_owner) {
+        try {
+          attackerName = await lookupAddressName(event.attacking_beast_owner);
+        } catch (error) {
+          attackerName = 'Unknown';
+        }
+      }
+
+      setTimeout(() => {
+        setSpectatorDamage(prev => [...prev, { id: eventId, damage: totalDamage, attackerName }]);
+        setProcessedEventIds(prev => new Set([...prev, eventId]));
+
+        setTimeout(() => {
+          setSpectatorDamage(prev => prev.filter(d => d.id !== eventId));
+          setProcessedEventIds(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(eventId);
+            return newSet;
+          });
+        }, 1200);
+      }, index * 120);
+    });
+  }, [spectatorBattleEvents, summit?.beast.token_id]);
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit.beast.token_id))
   const showAttack = !isSavage && !attackInProgress && selectedBeasts.length > 0
@@ -219,6 +267,49 @@ function Summit() {
 
         {strike.View}
       </Box>
+
+      {/* Spectator damage numbers - rapid fire style! */}
+      <AnimatePresence>
+        {spectatorDamage.map((damage) => {
+          // Add random offset for variety
+          const randomX = (Math.random() - 0.5) * 260; // -130 to 130px
+
+          return (
+            <motion.div
+              key={damage.id}
+              initial={{ opacity: 0, y: 0, scale: 0.5, x: randomX }}
+              animate={{
+                opacity: [0, 1, 1, 0],
+                y: [0, -30, -70, -100],
+                scale: [0.5, 1.3, 1, 0.8],
+              }}
+              exit={{ opacity: 0, scale: 0.3 }}
+              transition={{
+                duration: 1.2,
+                ease: "easeOut",
+                times: [0, 0.15, 0.7, 1]
+              }}
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 100,
+                pointerEvents: 'none',
+              }}
+            >
+              <Box sx={styles.spectatorDamageContainer}>
+                <Typography sx={styles.spectatorDamageValue}>
+                  -{damage.damage}
+                </Typography>
+                <Typography sx={styles.spectatorAttackerName}>
+                  {damage.attackerName}
+                </Typography>
+              </Box>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
     </Box>
   );
 }
@@ -531,5 +622,29 @@ const styles = {
       inset 0 1px 0 ${gameColors.accentGreen}40,
       0 2px 4px rgba(0, 0, 0, 0.3)
     `,
+  },
+  spectatorDamageContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '4px',
+  },
+  spectatorDamageValue: {
+    fontSize: '30px',
+    fontWeight: 'bold',
+    color: gameColors.red,
+    textShadow: `
+      0 2px 8px rgba(0, 0, 0, 0.8),
+      0 0 20px ${gameColors.red}60
+    `,
+    lineHeight: '1',
+  },
+  spectatorAttackerName: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: gameColors.accentGreen,
+    textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
   },
 }

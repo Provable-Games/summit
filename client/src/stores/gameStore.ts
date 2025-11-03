@@ -8,6 +8,7 @@ interface GameState {
   summit: Summit | null;
   leaderboard: Leaderboard[];
   battleEvents: BattleEvent[];
+  spectatorBattleEvents: BattleEvent[];
   showFeedingGround: boolean;
   killedByAdventurers: number[];
   collection: Beast[];
@@ -30,6 +31,7 @@ interface GameState {
   setSummit: (summit: Summit | null | ((prev: Summit | null) => Summit | null)) => void;
   setLeaderboard: (leaderboard: Leaderboard[]) => void;
   setBattleEvents: (battleEvents: BattleEvent[]) => void;
+  setSpectatorBattleEvents: (spectatorBattleEvents: BattleEvent[] | ((prev: BattleEvent[]) => BattleEvent[])) => void;
   setShowFeedingGround: (showFeedingGround: boolean) => void;
   setKilledByAdventurers: (killedByAdventurers: number[]) => void;
   setCollection: (collection: Beast[] | ((prev: Beast[]) => Beast[])) => void;
@@ -56,6 +58,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   summit: null,
   leaderboard: [],
   battleEvents: [],
+  spectatorBattleEvents: [],
   showFeedingGround: false,
   killedByAdventurers: [],
   collection: [],
@@ -85,6 +88,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   disconnect: () => {
     set({
       battleEvents: [],
+      spectatorBattleEvents: [],
       showFeedingGround: false,
       killedByAdventurers: [],
       collection: [],
@@ -111,6 +115,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     set(state => ({ summit: typeof summit === 'function' ? summit(state.summit) : summit })),
   setLeaderboard: (leaderboard: Leaderboard[]) => set({ leaderboard }),
   setBattleEvents: (battleEvents: BattleEvent[]) => set({ battleEvents }),
+  setSpectatorBattleEvents: (spectatorBattleEvents: BattleEvent[] | ((prev: BattleEvent[]) => BattleEvent[])) =>
+    set(state => ({ spectatorBattleEvents: typeof spectatorBattleEvents === 'function' ? spectatorBattleEvents(state.spectatorBattleEvents) : spectatorBattleEvents })),
   setShowFeedingGround: (showFeedingGround: boolean) => set({ showFeedingGround }),
   setKilledByAdventurers: (killedByAdventurers: number[]) => set({ killedByAdventurers }),
   setCollection: (collection: Beast[] | ((prev: Beast[]) => Beast[])) =>
