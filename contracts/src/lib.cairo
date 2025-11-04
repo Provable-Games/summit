@@ -1,6 +1,5 @@
 mod constants;
 mod models {
-    pub mod adventurer;
     pub mod beast;
     pub mod summit;
 }
