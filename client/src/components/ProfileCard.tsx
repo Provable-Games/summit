@@ -16,7 +16,7 @@ const ProfileCard = () => {
   const { collection, leaderboard } = useGameStore()
   const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
-  const { playerName, tokenBalances, openProfile } = useController()
+  const { playerName, openProfile } = useController()
   const { connect, connectors } = useConnect();
 
   let cartridgeConnector = connectors.find(conn => conn.id === "controller")
@@ -27,7 +27,7 @@ const ProfileCard = () => {
   const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit)
   const beastsWithUpgrades = collection.filter(beast => {
     const totalStats = Object.values(beast.stats).filter(Boolean).length;
-    return (beast.adventurers_killed || 0) > totalStats;
+    return Math.min(beast.adventurers_killed || 0, 3) > totalStats;
   })
   const isCartridge = connector?.id === 'controller'
 
