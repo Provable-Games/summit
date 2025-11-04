@@ -10,9 +10,10 @@ pub struct LiveBeastStats {
     pub last_death_timestamp: u64, // 64 bits
     pub revival_count: u8, // 5 bits
     pub extra_lives: u8, // 8 bits
-    pub has_claimed_starter_kit: u8, // 1 bit
+    pub has_claimed_potions: u8, // 1 bit
     pub rewards_earned: u32, // 17 bits
     pub stats: Stats,
+    pub kills_claimed: u8,
 }
 
 #[derive(Introspect, Copy, Drop, Serde)]
@@ -21,7 +22,7 @@ pub struct Stats {
     pub luck: u8, // 8 bits
     pub specials: u8, // 1 bit
     pub wisdom: u8, // 1 bit
-    pub diplomacy: u8, // 1 bit
+    pub diplomacy: u8,
 }
 
 #[derive(Copy, Drop, Serde)]
@@ -52,6 +53,7 @@ mod pow {
     pub const TWO_POW_172: u256 = 0x100000000000007C9D6C04E749D8475D543000000000;
     pub const TWO_POW_173: u256 = 0x2000000000000038A3098E058C9ADB6F095000000000;
     pub const TWO_POW_174: u256 = 0x3FFFFFFFFFFFFFB0AE44A04212200392739000000000;
+    pub const TWO_POW_182: u256 = 0x40000000000001AA3CC2A531C4B8FA38F51A0000000000;
 }
 
 // Storage packing implementation for PackableBeast
@@ -66,13 +68,14 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
             + value.last_death_timestamp.into() * pow::TWO_POW_61
             + value.revival_count.into() * pow::TWO_POW_125
             + value.extra_lives.into() * pow::TWO_POW_130
-            + value.has_claimed_starter_kit.into() * pow::TWO_POW_138
+            + value.has_claimed_potions.into() * pow::TWO_POW_138
             + value.rewards_earned.into() * pow::TWO_POW_139
             + value.stats.spirit.into() * pow::TWO_POW_156
             + value.stats.luck.into() * pow::TWO_POW_164
             + value.stats.specials.into() * pow::TWO_POW_172
             + value.stats.wisdom.into() * pow::TWO_POW_173
-            + value.stats.diplomacy.into() * pow::TWO_POW_174)
+            + value.stats.diplomacy.into() * pow::TWO_POW_174
+            + value.kills_claimed.into() * pow::TWO_POW_182)
             .try_into()
             .expect('pack beast overflow')
     }
@@ -112,8 +115,8 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
         let extra_lives = (packed % pow::TWO_POW_8).try_into().expect('unpack extra_lives');
         packed = packed / pow::TWO_POW_8;
 
-        // Extract has_claimed_starter_kit (1 bit)
-        let has_claimed_starter_kit = (packed % 2_u256).try_into().expect('unpack has_claimed_starter_kit');
+        // Extract has_claimed_potions (1 bit)
+        let has_claimed_potions = (packed % 2_u256).try_into().expect('unpack has_claimed_potions');
         packed = packed / 2_u256;
 
         // Extract rewards_earned (17 bits)
@@ -135,6 +138,9 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
         let diplomacy = (packed % 2_u256).try_into().expect('unpack diplomacy');
         packed = packed / 2_u256;
 
+        let kills_claimed = (packed % pow::TWO_POW_8).try_into().expect('unpack kills_claimed');
+        packed = packed / pow::TWO_POW_8;
+
         let stats = Stats { spirit, luck, specials, wisdom, diplomacy };
 
         LiveBeastStats {
@@ -146,9 +152,10 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
             last_death_timestamp,
             revival_count,
             extra_lives,
-            has_claimed_starter_kit,
+            has_claimed_potions,
             rewards_earned,
             stats,
+            kills_claimed,
         }
     }
 }

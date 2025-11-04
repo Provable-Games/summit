@@ -21,9 +21,11 @@ trait ISummitSystem<T> {
         extra_life_potions: u8,
     );
     fn feed(ref self: T, beast_token_id: u32, adventurer_ids: Span<u64>);
-    fn claim_starter_kit(ref self: T, beast_token_ids: Span<u32>);
+    fn claim_beast_reward(ref self: T, beast_token_ids: Span<u32>);
     fn add_extra_life(ref self: T, beast_token_id: u32, extra_life_potions: u8);
     fn select_upgrades(ref self: T, beast_token_id: u32, stats: Stats);
+    fn apply_poison(ref self: T, beast_token_id: u32);
+    fn revive_beast(ref self: T, beast_token_id: u32);
 
     fn get_start_timestamp(self: @T) -> u64;
     fn get_summit_data(self: @T) -> (Beast, u64, ContractAddress);
@@ -55,15 +57,11 @@ pub mod summit_systems {
 
     use summit::constants::{
         BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS, DAY_SECONDS, DEFAULT_NS,
-        EIGHT_BITS_MAX, MAX_REVIVAL_COUNT, MINIMUM_DAMAGE, errors,
+        EIGHT_BITS_MAX, MAX_REVIVAL_COUNT, MINIMUM_DAMAGE, errors, TOKEN_DECIMALS
     };
-    use summit::erc20::interface::{
-        ConsumableERC20Dispatcher, ConsumableERC20DispatcherTrait,
-    };
+    use summit::erc20::interface::{ConsumableERC20Dispatcher, ConsumableERC20DispatcherTrait};
     use summit::models::beast::{Beast, LiveBeastStats, Stats};
-    use summit::models::summit::{
-        BattleEvent, BeastEvent, RewardEvent, SummitEvent,
-    };
+    use summit::models::summit::{BattleEvent, BeastEvent, RewardEvent, SummitEvent};
     use summit::vrf::VRFImpl;
 
     #[storage]
@@ -82,6 +80,9 @@ pub mod summit_systems {
         attack_potion_address: ContractAddress,
         revive_potion_address: ContractAddress,
         extra_life_potion_address: ContractAddress,
+        poison_potion_address: ContractAddress,
+        kill_token_address: ContractAddress,
+        corpse_token_address: ContractAddress,
     }
 
     /// @title Dojo Init
@@ -102,6 +103,9 @@ pub mod summit_systems {
         attack_potion_address: ContractAddress,
         revive_potion_address: ContractAddress,
         extra_life_potion_address: ContractAddress,
+        poison_potion_address: ContractAddress,
+        kill_token_address: ContractAddress,
+        corpse_token_address: ContractAddress,
     ) {
         self.start_timestamp.write(start_timestamp);
         self.adventurer_address.write(adventurer_address);
@@ -113,6 +117,9 @@ pub mod summit_systems {
         self.attack_potion_address.write(attack_potion_address);
         self.revive_potion_address.write(revive_potion_address);
         self.extra_life_potion_address.write(extra_life_potion_address);
+        self.poison_potion_address.write(poison_potion_address);
+        self.kill_token_address.write(kill_token_address);
+        self.corpse_token_address.write(corpse_token_address);
     }
 
     #[abi(embed_v0)]
@@ -201,52 +208,79 @@ pub mod summit_systems {
             self.live_beast_stats.entry(beast_token_id).write(beast.live);
         }
 
-        fn claim_starter_kit(ref self: ContractState, beast_token_ids: Span<u32>) {
-            let mut unclaimed_revive_potions = array![];
-            let mut unclaimed_attack_potions = array![];
-            let mut unclaimed_extra_life_potions = array![];
-
+        fn claim_beast_reward(ref self: ContractState, beast_token_ids: Span<u32>) {
+            let beast_dispatcher = IERC721Dispatcher { contract_address: self.beast_address.read() };
             let revive_dispatcher = ConsumableERC20Dispatcher { contract_address: self.revive_potion_address.read() };
             let attack_dispatcher = ConsumableERC20Dispatcher { contract_address: self.attack_potion_address.read() };
             let extra_life_dispatcher = ConsumableERC20Dispatcher {
                 contract_address: self.extra_life_potion_address.read(),
             };
+            let beast_data = IBeastSystemsDispatcher { contract_address: self.beast_data_address.read() };
+
+            let mut revive_potions = 0;
+            let mut attack_potions = 0;
+            let mut extra_life_potions = 0;
+            let mut kills_rewards = 0;
 
             let mut i = 0;
             while (i < beast_token_ids.len()) {
                 let beast_token_id = *beast_token_ids.at(i);
+                assert(
+                    beast_dispatcher.owner_of(beast_token_id.into()) == get_caller_address(), errors::NOT_TOKEN_OWNER,
+                );
+
                 let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
+                if beast.live.has_claimed_potions == 0 {
+                    let potion_amount = InternalSummitImpl::get_potion_amount(beast.fixed.id);
+                    revive_potions += potion_amount;
+                    attack_potions += potion_amount;
+                    extra_life_potions += potion_amount;
 
-                if beast.live.has_claimed_starter_kit == 0 {
-                    if !revive_dispatcher.claimed_starter_kit(beast_token_id) {
-                        unclaimed_revive_potions.append(beast_token_id);
-                    }
-
-                    if !attack_dispatcher.claimed_starter_kit(beast_token_id) {
-                        unclaimed_attack_potions.append(beast_token_id);
-                    }
-
-                    if !extra_life_dispatcher.claimed_starter_kit(beast_token_id) {
-                        unclaimed_extra_life_potions.append(beast_token_id);
-                    }
-
-                    beast.live.has_claimed_starter_kit = 1;
-                    self.live_beast_stats.entry(beast_token_id).write(beast.live);
+                    beast.live.has_claimed_potions = 1;
                 }
 
+                let beast_hash = ImplBeast::get_beast_hash(beast.fixed.id, beast.fixed.prefix, beast.fixed.suffix);
+                let kill_count = beast_data.get_entity_stats(self.dungeon_address.read(), beast_hash).adventurers_killed;
+
+                if kill_count > beast.live.kills_claimed.into() {
+                    kills_rewards += kill_count.into() - beast.live.kills_claimed.into();
+                    beast.live.kills_claimed = kill_count.try_into().unwrap();
+                }
+
+                self.live_beast_stats.entry(beast_token_id).write(beast.live);
                 i += 1;
             };
 
-            if unclaimed_revive_potions.len() > 0 {
-                revive_dispatcher.claim_starter_kits_for_owner(get_caller_address(), unclaimed_revive_potions);
+            assert(attack_potions + revive_potions + extra_life_potions + kills_rewards > 0, 'No rewards to claim');
+            attack_potions *= 3;
+            revive_potions *= 2;
+
+            if revive_potions > 0 {
+                revive_dispatcher
+                    .transfer_from(
+                        self.revive_potion_address.read(), get_caller_address(), revive_potions * TOKEN_DECIMALS,
+                    );
             }
 
-            if unclaimed_attack_potions.len() > 0 {
-                attack_dispatcher.claim_starter_kits_for_owner(get_caller_address(), unclaimed_attack_potions);
+            if attack_potions > 0 {
+                attack_dispatcher
+                    .transfer_from(
+                        self.attack_potion_address.read(), get_caller_address(), attack_potions * TOKEN_DECIMALS,
+                    );
             }
 
-            if unclaimed_extra_life_potions.len() > 0 {
-                extra_life_dispatcher.claim_starter_kits_for_owner(get_caller_address(), unclaimed_extra_life_potions);
+            if extra_life_potions > 0 {
+                extra_life_dispatcher
+                    .transfer_from(
+                        self.extra_life_potion_address.read(),
+                        get_caller_address(),
+                        extra_life_potions * TOKEN_DECIMALS,
+                    );
+            }
+
+            if kills_rewards > 0 {
+                extra_life_dispatcher
+                    .transfer_from(self.extra_life_potion_address.read(), get_caller_address(), kills_rewards * TOKEN_DECIMALS);
             }
         }
 
@@ -298,6 +332,12 @@ pub mod summit_systems {
 
             beast.live.stats = stats;
             self.live_beast_stats.entry(beast_token_id).write(beast.live);
+        }
+
+        fn apply_poison(ref self: ContractState, beast_token_id: u32) {
+        }
+
+        fn revive_beast(ref self: ContractState, beast_token_id: u32) {
         }
 
         fn start_summit(ref self: ContractState) {
@@ -490,9 +530,8 @@ pub mod summit_systems {
                         battle_counter,
                     );
 
-                    let (damage, attacker_crit_hit) = self._attack(
-                        attacking_beast, ref defending_beast, remaining_attack_potions, attacker_crit_hit_rnd,
-                    );
+                    let (damage, attacker_crit_hit) = self
+                        ._attack(attacking_beast, ref defending_beast, remaining_attack_potions, attacker_crit_hit_rnd);
 
                     if attacker_crit_hit {
                         critical_attack_count += 1;
@@ -505,9 +544,8 @@ pub mod summit_systems {
                     defending_beast._use_extra_life();
 
                     if defending_beast.live.current_health != 0 {
-                        let (damage, defender_crit_hit) = self._attack(
-                            defending_beast, ref attacking_beast, 0, defender_crit_hit_rnd,
-                        );
+                        let (damage, defender_crit_hit) = self
+                            ._attack(defending_beast, ref attacking_beast, 0, defender_crit_hit_rnd);
 
                         if defender_crit_hit {
                             critical_counter_attack_count += 1;
@@ -801,6 +839,20 @@ pub mod summit_systems {
                 health: beast.fixed.health,
                 shiny: beast.fixed.shiny,
                 animated: beast.fixed.animated,
+            }
+        }
+
+        fn get_potion_amount(id: u8) -> u256 {
+            if (id >= 1 && id <= 5) || (id >= 26 && id < 31) || (id >= 51 && id < 56) {
+                5
+            } else if (id >= 6 && id < 11) || (id >= 31 && id < 36) || (id >= 56 && id < 61) {
+                4
+            } else if (id >= 11 && id < 16) || (id >= 36 && id < 41) || (id >= 61 && id < 66) {
+                3
+            } else if (id >= 16 && id < 21) || (id >= 41 && id < 46) || (id >= 66 && id < 71) {
+                2
+            } else {
+                1
             }
         }
     }

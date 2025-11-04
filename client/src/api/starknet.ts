@@ -75,7 +75,7 @@ export const useStarknetApi = () => {
         last_death_timestamp: parseInt(data?.result[12], 16),
         revival_count: parseInt(data?.result[13], 16),
         extra_lives: parseInt(data?.result[14], 16),
-        has_claimed_starter_kit: Boolean(parseInt(data?.result[15], 16)),
+        has_claimed_potions: Boolean(parseInt(data?.result[15], 16)),
         rewards_earned: parseInt(data?.result[16], 16),
         stats: {
           spirit: Boolean(parseInt(data?.result[17], 16)),
@@ -139,7 +139,7 @@ export const useStarknetApi = () => {
         last_death_timestamp: parseInt(data?.result[12], 16),
         revival_count: parseInt(data?.result[13], 16),
         extra_lives: parseInt(data?.result[14], 16),
-        has_claimed_starter_kit: Boolean(parseInt(data?.result[15], 16)),
+        has_claimed_potions: Boolean(parseInt(data?.result[15], 16)),
         rewards_earned: parseInt(data?.result[16], 16),
         stats: {
           spirit: Boolean(parseInt(data?.result[17], 16)),

@@ -86,7 +86,7 @@ export const components: any = {
     last_death_timestamp: 'number',
     revival_count: 'number',
     extra_lives: 'number',
-    has_claimed_starter_kit: 'boolean',
+    has_claimed_potions: 'boolean',
     rewards_earned: 'number',
     stats: 'Stats',
   },

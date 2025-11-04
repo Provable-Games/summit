@@ -40,7 +40,7 @@ function ClaimStarterPack(props) {
   const { executeGameAction, actionFailed } = useGameDirector()
   const { collection } = useGameStore()
   const { fetchTokenBalances, tokenBalances } = useController()
-  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit).map(beast => beast.token_id)
+  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions).map(beast => beast.token_id)
 
   const [claimInProgress, setClaimInProgress] = useState(false)
   const [claimAmount, setClaimAmount] = useState('')

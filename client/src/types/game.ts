@@ -31,7 +31,7 @@ export interface Beast {
   revival_count: number;
   revival_time: number;
   extra_lives: number;
-  has_claimed_starter_kit: boolean;
+  has_claimed_potions: boolean;
   rewards_earned: number;
   stats: Stats;
   rank?: number;

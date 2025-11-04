@@ -60,7 +60,7 @@ export const useGameTokens = () => {
         SELECT
           LOWER(printf('%064x', CAST(token_id AS INTEGER))) AS token_hex64,
           attack_streak, bonus_health, bonus_xp, current_health, extra_lives,
-          has_claimed_starter_kit, last_death_timestamp, "stats.luck", "stats.spirit", "stats.specials",
+          has_claimed_potions, last_death_timestamp, "stats.luck", "stats.spirit", "stats.specials",
           revival_count, rewards_earned
         FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
       )
@@ -89,7 +89,7 @@ export const useGameTokens = () => {
         s.bonus_xp,
         s.current_health,
         s.extra_lives,
-        s.has_claimed_starter_kit,
+        s.has_claimed_potions,
         s.last_death_timestamp,
         s.revival_count,
         s.rewards_earned,
@@ -134,7 +134,7 @@ export const useGameTokens = () => {
         bonus_xp: Math.max(cachedBeast?.bonus_xp || 0, data.bonus_xp),
         current_health: data.current_health,
         extra_lives: data.extra_lives || 0,
-        has_claimed_starter_kit: data.has_claimed_starter_kit || 0,
+        has_claimed_potions: data.has_claimed_potions || 0,
         last_death_timestamp: Math.max(cachedBeast?.last_death_timestamp || 0, parseInt(data.last_death_timestamp, 16)),
         revival_count: Math.max(cachedBeast?.revival_count || 0, data.revival_count),
         rewards_earned: parseInt(data.rewards_earned, 16) || 0,

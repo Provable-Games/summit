@@ -24,7 +24,7 @@ const ProfileCard = () => {
   const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false)
   const [beastUpgradeDialog, setBeastUpgradeDialog] = useState(false)
 
-  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit)
+  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions)
   const beastsWithUpgrades = collection.filter(beast => {
     const totalStats = Object.values(beast.stats).filter(Boolean).length;
     return (beast.adventurers_killed || 0) > totalStats;
