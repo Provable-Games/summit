@@ -224,7 +224,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       txs.push(...addExtraLife(action.beastId, appliedPotions.extraLife));
     }
 
-    if (action.type === 'select_upgrades') {
+    if (action.type === 'apply_stat_points') {
       txs.push(...selectUpgrades(action.upgrades));
     }
 

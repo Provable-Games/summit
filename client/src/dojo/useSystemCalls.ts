@@ -155,7 +155,7 @@ export const useSystemCalls = () => {
     const txs = Object.entries(upgrades).map(([beastId, stats]) => {
       return {
         contractAddress: SUMMIT_ADDRESS,
-        entrypoint: "select_upgrades",
+        entrypoint: "apply_stat_points",
         calldata: CallData.compile([beastId, stats]),
       };
     });

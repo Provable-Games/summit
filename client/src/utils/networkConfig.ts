@@ -124,7 +124,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           {
             "name": "Select Upgrades",
             "description": "Select upgrades for beast",
-            "entrypoint": "select_upgrades"
+            "entrypoint": "apply_stat_points"
           }
         ]
       },

@@ -159,3 +159,60 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
         }
     }
 }
+
+#[generate_trait]
+pub impl BeastUtilsImpl of BeastUtilsTrait {
+    fn crit_chance(self: Beast) -> u8 {
+        let points: u16 = self.live.stats.luck.into();
+        let total_bp: u16 = match points {
+            0 => 0,
+            1 => 1200,
+            2 => 2100,
+            3 => 2775,
+            4 => 3281,
+            5 => 3660,
+            6 => 3944,
+            7 => 4157,
+            8 => 4316,
+            9 => 4435,
+            10 => 4524,
+            11 => 4590,
+            12 => 4639,
+            13 => 4675,
+            14 => 4702,
+            15 => 4722,
+            _ => {
+                let extra = (points - 15) * 20;
+                4722 + extra
+            },
+        };
+
+        let percent = total_bp / 100;
+        percent.try_into().unwrap()
+    }
+
+    fn spirit_reduction(self: Beast) -> u64 {
+        let points: u64 = self.live.stats.spirit.into();
+        let reduction: u64 = match points {
+            0 => 0,
+            1 => 10_800,
+            2 => 18_900,
+            3 => 24_975,
+            4 => 29_531,
+            5 => 32_948,
+            6 => 35_511,
+            7 => 37_433,
+            8 => 38_874,
+            9 => 39_954,
+            10 => 40_764,
+            11 => 41_372,
+            12 => 41_828,
+            13 => 42_170,
+            14 => 42_427,
+            15 => 42_620,
+            _ => 42_620 + ((points - 15) * 120),
+        };
+
+        reduction
+    }
+}

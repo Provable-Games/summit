@@ -1765,7 +1765,7 @@
             },
             {
               "type": "function",
-              "name": "select_upgrades",
+              "name": "apply_stat_points",
               "inputs": [
                 {
                   "name": "beast_token_id",
@@ -2002,7 +2002,7 @@
         "feed",
         "claim_starter_kit",
         "add_extra_life",
-        "select_upgrades",
+        "apply_stat_points",
         "upgrade"
       ]
     }

@@ -148,7 +148,7 @@ function BeastUpgradeModal(props) {
       }, {} as { [key: number]: { spirit: boolean; luck: boolean; specials: boolean } });
 
       let result = await executeGameAction({
-        type: 'select_upgrades',
+        type: 'apply_stat_points',
         upgrades: upgradesWithActiveStats
       });
 

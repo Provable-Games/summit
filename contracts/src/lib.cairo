@@ -6,7 +6,6 @@ mod models {
 mod systems {
     pub mod summit;
 }
-mod utils;
 pub mod erc20 {
     pub mod interface;
 }
