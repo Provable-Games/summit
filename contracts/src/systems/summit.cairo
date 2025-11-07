@@ -73,6 +73,7 @@ pub mod summit_systems {
         poison_count: u16,
         summit_history: Map<u32, u64>,
         adventurer_consumed: Map<u64, u32>,
+        diplomacy_beast: Map<u16, u32>, // (prefix-suffix index) -> beast token id
         start_timestamp: u64,
         adventurer_address: ContractAddress,
         denshokan_address: ContractAddress,
@@ -314,6 +315,8 @@ pub mod summit_systems {
 
             if stats.diplomacy == 1 {
                 assert(beast.live.stats.diplomacy == 0, 'Diplomacy already unlocked');
+                let special_name_index: u16 = (beast.fixed.prefix.into() - 1) * 69 + beast.fixed.suffix.into();
+                self.diplomacy_beast.entry(special_name_index).write(beast_token_id);
                 beast.live.stats.diplomacy = 1;
                 tokens_required += 1;
             }
@@ -340,7 +343,6 @@ pub mod summit_systems {
 
             InternalSummitImpl::_burn_consumable(self.poison_potion_address.read(), count);
             self.poison_count.write(current_poison_count + count);
-            self.poison_timestamp.write(get_block_timestamp());
         }
 
         fn start_summit(ref self: ContractState) {
@@ -478,6 +480,9 @@ pub mod summit_systems {
             assert(get_caller_address() != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
 
             let mut defending_beast = Self::_get_beast(@self, summit_beast_token_id);
+            if self.poison_count.read() > 0 {
+                self._apply_poison_damage(ref defending_beast);
+            }
 
             let mut remaining_attack_potions = attack_potions;
             let mut remaining_revival_potions = revival_potions;
@@ -633,6 +638,9 @@ pub mod summit_systems {
 
                     // update the live stats of the attacking beast
                     self.live_beast_stats.entry(attacking_beast_token_id).write(attacking_beast.live);
+
+                    // remove poison count
+                    self.poison_count.write(0);
 
                     // emit summit event
                     world
@@ -873,6 +881,8 @@ pub mod summit_systems {
                     }
                 }
             }
+
+            self.poison_timestamp.write(get_block_timestamp());
         }
     }
 }
