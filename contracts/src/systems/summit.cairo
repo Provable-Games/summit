@@ -27,9 +27,9 @@ trait ISummitSystem<T> {
     fn add_extra_life(ref self: T, beast_token_id: u32, extra_life_potions: u8);
     fn apply_stat_points(ref self: T, beast_token_id: u32, stats: Stats);
     fn apply_poison(ref self: T, beast_token_id: u32, count: u16);
+    fn get_summit_data(ref self: T) -> (Beast, u64, ContractAddress, u8);
 
     fn get_start_timestamp(self: @T) -> u64;
-    fn get_summit_data(self: @T) -> (Beast, u64, ContractAddress);
     fn get_summit_beast_token_id(self: @T) -> u32;
     fn get_summit_beast(self: @T) -> Beast;
     fn get_beast(self: @T, beast_token_id: u32) -> Beast;
@@ -62,7 +62,9 @@ pub mod summit_systems {
     };
     use summit::erc20::interface::{ConsumableERC20Dispatcher, ConsumableERC20DispatcherTrait};
     use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, Stats};
-    use summit::models::summit::{BattleEvent, BeastEvent, RewardEvent, SummitEvent};
+    use summit::models::summit::{
+        BattleEvent, BeastEvent, DiplomacyEvent, LiveBeastStatsEvent, PoisonEvent, RewardEvent, SummitEvent,
+    };
     use summit::vrf::VRFImpl;
 
     #[storage]
@@ -73,7 +75,8 @@ pub mod summit_systems {
         poison_count: u16,
         summit_history: Map<u32, u64>,
         adventurer_consumed: Map<u64, u32>,
-        diplomacy_beast: Map<u16, u32>, // (prefix-suffix index) -> beast token id
+        diplomacy_beast: Map<felt252, Map<u8, u32>>, // (prefix-suffix hash) -> (index) -> beast token id
+        diplomacy_count: Map<felt252, u8>,
         start_timestamp: u64,
         adventurer_address: ContractAddress,
         denshokan_address: ContractAddress,
@@ -176,7 +179,7 @@ pub mod summit_systems {
             }
 
             InternalSummitImpl::_burn_consumable(self.corpse_token_address.read(), amount);
-            self.live_beast_stats.entry(beast_token_id).write(beast.live);
+            self._save_beast(beast.live);
         }
 
         fn claim_beast_reward(ref self: ContractState, beast_token_ids: Span<u32>) {
@@ -186,12 +189,13 @@ pub mod summit_systems {
             let extra_life_dispatcher = ConsumableERC20Dispatcher {
                 contract_address: self.extra_life_potion_address.read(),
             };
+            let poison_dispatcher = ConsumableERC20Dispatcher { contract_address: self.poison_potion_address.read() };
             let kill_token_dispatcher = ConsumableERC20Dispatcher { contract_address: self.kill_token_address.read() };
             let beast_data = IBeastSystemsDispatcher { contract_address: self.beast_data_address.read() };
-
             let mut revive_potions = 0;
             let mut attack_potions = 0;
             let mut extra_life_potions = 0;
+            let mut poison_potions = 0;
             let mut kills_rewards = 0;
 
             let mut i = 0;
@@ -204,10 +208,10 @@ pub mod summit_systems {
                 let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
                 if beast.live.has_claimed_potions == 0 {
                     let potion_amount = InternalSummitImpl::get_potion_amount(beast.fixed.id);
-                    revive_potions += potion_amount;
                     attack_potions += potion_amount;
+                    poison_potions += potion_amount;
+                    revive_potions += potion_amount;
                     extra_life_potions += potion_amount;
-
                     beast.live.has_claimed_potions = 1;
                 }
 
@@ -221,12 +225,13 @@ pub mod summit_systems {
                     beast.live.kills_claimed = kill_count.try_into().unwrap();
                 }
 
-                self.live_beast_stats.entry(beast_token_id).write(beast.live);
+                self._save_beast(beast.live);
                 i += 1;
             };
 
-            assert(attack_potions + revive_potions + extra_life_potions + kills_rewards > 0, 'No rewards to claim');
+            assert(attack_potions + kills_rewards > 0, 'No rewards to claim');
             attack_potions *= 3;
+            poison_potions *= 3;
             revive_potions *= 2;
 
             if revive_potions > 0 {
@@ -239,6 +244,10 @@ pub mod summit_systems {
 
             if extra_life_potions > 0 {
                 extra_life_dispatcher.mint(get_caller_address(), extra_life_potions * TOKEN_DECIMALS);
+            }
+
+            if poison_potions > 0 {
+                poison_dispatcher.mint(get_caller_address(), poison_potions * TOKEN_DECIMALS);
             }
 
             if kills_rewards > 0 {
@@ -290,7 +299,7 @@ pub mod summit_systems {
             InternalSummitImpl::_burn_consumable(self.extra_life_potion_address.read(), potions_to_use.into());
 
             // update the live stats of the beast
-            self.live_beast_stats.entry(beast_token_id).write(beast.live);
+            self._save_beast(beast.live);
         }
 
 
@@ -310,15 +319,21 @@ pub mod summit_systems {
             if stats.wisdom == 1 {
                 assert(beast.live.stats.wisdom == 0, 'Wisdom already unlocked');
                 beast.live.stats.wisdom = 1;
-                tokens_required += 1;
+                tokens_required += 10;
             }
 
             if stats.diplomacy == 1 {
                 assert(beast.live.stats.diplomacy == 0, 'Diplomacy already unlocked');
-                let special_name_index: u16 = (beast.fixed.prefix.into() - 1) * 69 + beast.fixed.suffix.into();
-                self.diplomacy_beast.entry(special_name_index).write(beast_token_id);
+                let specials_hash = InternalSummitImpl::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
+
+                let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
+                self.diplomacy_beast.entry(specials_hash).entry(diplomacy_count).write(beast_token_id);
+                self.diplomacy_count.entry(specials_hash).write(diplomacy_count + 1);
                 beast.live.stats.diplomacy = 1;
-                tokens_required += 1;
+                tokens_required += 5;
+
+                let mut world: WorldStorage = self.world(@DEFAULT_NS());
+                world.emit_event(@DiplomacyEvent { beast_token_id, specials_hash, owner: get_caller_address() });
             }
 
             beast.live.stats.spirit += stats.spirit;
@@ -326,7 +341,7 @@ pub mod summit_systems {
             tokens_required += (stats.spirit + stats.luck).into();
 
             InternalSummitImpl::_burn_consumable(self.kill_token_address.read(), tokens_required);
-            self.live_beast_stats.entry(beast_token_id).write(beast.live);
+            self._save_beast(beast.live);
         }
 
         fn apply_poison(ref self: ContractState, beast_token_id: u32, count: u16) {
@@ -336,9 +351,15 @@ pub mod summit_systems {
             let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
 
             let current_poison_count = self.poison_count.read();
-            if current_poison_count > 0 {
-                self._apply_poison_damage(ref beast);
-                self.live_beast_stats.entry(beast.live.token_id).write(beast.live);
+            let damage = self._apply_poison_damage(ref beast);
+
+            if damage > 0 {
+                self._save_beast(beast.live);
+                let mut world: WorldStorage = self.world(@DEFAULT_NS());
+                world
+                    .emit_event(
+                        @PoisonEvent { block_timestamp: get_block_timestamp(), count: current_poison_count + count },
+                    );
             }
 
             InternalSummitImpl::_burn_consumable(self.poison_potion_address.read(), count);
@@ -352,22 +373,23 @@ pub mod summit_systems {
             let start_token_id = 1;
             self.summit_history.entry(start_token_id).write(get_block_number());
             self.summit_beast_token_id.write(start_token_id);
-            let mut beast: LiveBeastStats = self.live_beast_stats.entry(start_token_id).read();
-            beast.current_health = 100;
-            self.live_beast_stats.entry(start_token_id).write(beast);
+            let mut live_stats: LiveBeastStats = self.live_beast_stats.entry(start_token_id).read();
+            live_stats.current_health = 100;
+            self._save_beast(live_stats);
         }
 
         fn get_start_timestamp(self: @ContractState) -> u64 {
             self.start_timestamp.read()
         }
 
-        fn get_summit_data(self: @ContractState) -> (Beast, u64, ContractAddress) {
+        fn get_summit_data(ref self: ContractState) -> (Beast, u64, ContractAddress, u8) {
             let token_id = self.summit_beast_token_id.read();
-            let beast = InternalSummitImpl::_get_beast(self, token_id);
+            let beast = InternalSummitImpl::_get_beast(@self, token_id);
+            let diplomacy_bonus = InternalSummitImpl::_get_diplomacy_bonus(@self, beast);
             let taken_at: u64 = self.summit_history.entry(token_id).read();
             let beast_dispatcher = IERC721Dispatcher { contract_address: self.beast_address.read() };
             let summit_owner = beast_dispatcher.owner_of(token_id.into());
-            (beast, taken_at, summit_owner)
+            (beast, taken_at, summit_owner, diplomacy_bonus)
         }
 
         fn get_summit_beast_token_id(self: @ContractState) -> u32 {
@@ -396,6 +418,13 @@ pub mod summit_systems {
                 .get_beast(token_id.into());
             let live: LiveBeastStats = self.live_beast_stats.entry(token_id).read();
             Beast { fixed, live }
+        }
+
+        fn _save_beast(ref self: ContractState, live_beast_stats: LiveBeastStats) {
+            self.live_beast_stats.entry(live_beast_stats.token_id).write(live_beast_stats);
+            let mut world: WorldStorage = self.world(@DEFAULT_NS());
+            world
+                .emit_event(@LiveBeastStatsEvent { token_id: live_beast_stats.token_id, live_stats: live_beast_stats });
         }
 
         fn get_combat_spec(self: Beast, include_specials: bool) -> CombatSpec {
@@ -433,6 +462,7 @@ pub mod summit_systems {
         ///     beast's summit if the beast takes the hill again, it'll have a different key pair
         /// @param token_id the id of the beast
         fn _finalize_summit_history(ref self: ContractState, ref beast: Beast, summit_owner: ContractAddress) {
+            let mut world: WorldStorage = self.world(@DEFAULT_NS());
             let mut taken_at: u64 = self.summit_history.entry(beast.live.token_id).read();
             let current_block = get_block_number();
             let blocks_on_summit = current_block - taken_at;
@@ -442,12 +472,46 @@ pub mod summit_systems {
                 // let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
                 // let reward_dispatcher = RewardERC20Dispatcher { contract_address: summit_config.reward_address };
                 // reward_dispatcher.mint(summit_owner, reward_amount * TOKEN_DECIMALS);
-                let reward_amount = blocks_on_summit.try_into().unwrap();
-                beast.live.rewards_earned += reward_amount;
-                let mut world: WorldStorage = self.world(@DEFAULT_NS());
+                let beast_dispatcher = IERC721Dispatcher { contract_address: self.beast_address.read() };
+                let total_reward_amount = blocks_on_summit.try_into().unwrap() * 100;
+                let diplomacy_reward_amount = total_reward_amount / 100;
+
+                let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
+                let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
+                if diplomacy_count > 1 {
+                    let mut index = 0;
+                    loop {
+                        if index >= diplomacy_count {
+                            break;
+                        }
+
+                        let diplomacy_beast_token_id = self.diplomacy_beast.entry(specials_hash).entry(index).read();
+                        let mut diplomacy_beast = Self::_get_beast(@self, diplomacy_beast_token_id);
+                        let diplomacy_beast_owner = beast_dispatcher.owner_of(diplomacy_beast_token_id.into());
+                        diplomacy_beast.live.rewards_earned += diplomacy_reward_amount;
+                        world
+                            .emit_event(
+                                @RewardEvent {
+                                    block_number: current_block,
+                                    beast_token_id: diplomacy_beast_token_id,
+                                    owner: diplomacy_beast_owner,
+                                    amount: diplomacy_reward_amount,
+                                },
+                            );
+                        index += 1;
+                    }
+                }
+
+                let summit_reward_amount = total_reward_amount - (diplomacy_reward_amount * diplomacy_count.into());
+                beast.live.rewards_earned += summit_reward_amount;
                 world
                     .emit_event(
-                        @RewardEvent { block_number: current_block, owner: summit_owner, amount: reward_amount },
+                        @RewardEvent {
+                            block_number: current_block,
+                            beast_token_id: beast.live.token_id,
+                            owner: summit_owner,
+                            amount: summit_reward_amount,
+                        },
                     );
             }
         }
@@ -480,9 +544,15 @@ pub mod summit_systems {
             assert(get_caller_address() != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
 
             let mut defending_beast = Self::_get_beast(@self, summit_beast_token_id);
-            if self.poison_count.read() > 0 {
-                self._apply_poison_damage(ref defending_beast);
+            let damage = self._apply_poison_damage(ref defending_beast);
+            if damage > 0 {
+                world
+                    .emit_event(
+                        @PoisonEvent { block_timestamp: get_block_timestamp(), count: self.poison_count.read() },
+                    );
             }
+
+            let diplomacy_bonus = Self::_get_diplomacy_bonus(@self, defending_beast);
 
             let mut remaining_attack_potions = attack_potions;
             let mut remaining_revival_potions = revival_potions;
@@ -553,7 +623,7 @@ pub mod summit_systems {
 
                     if defending_beast.live.current_health != 0 {
                         let (damage, defender_crit_hit) = self
-                            ._attack(defending_beast, ref attacking_beast, 0, defender_crit_hit_rnd);
+                            ._attack(defending_beast, ref attacking_beast, diplomacy_bonus, defender_crit_hit_rnd);
 
                         if defender_crit_hit {
                             critical_counter_attack_count += 1;
@@ -618,7 +688,7 @@ pub mod summit_systems {
                     // set death timestamp for prev summit beast
                     attacking_beast.live.last_death_timestamp = current_time;
                     // update the live stats of the attacking beast
-                    self.live_beast_stats.entry(attacking_beast_token_id).write(attacking_beast.live);
+                    self._save_beast(attacking_beast.live);
                 } else if defending_beast.live.current_health == 0 {
                     // finalize the summit history for prev summit beast
                     self._finalize_summit_history(ref defending_beast, summit_owner);
@@ -637,7 +707,7 @@ pub mod summit_systems {
                     Self::_burn_consumable(self.extra_life_potion_address.read(), extra_life_potions.into());
 
                     // update the live stats of the attacking beast
-                    self.live_beast_stats.entry(attacking_beast_token_id).write(attacking_beast.live);
+                    self._save_beast(attacking_beast.live);
 
                     // remove poison count
                     self.poison_count.write(0);
@@ -649,6 +719,7 @@ pub mod summit_systems {
                                 taken_at: get_block_number(),
                                 beast: Self::_get_beast_event(attacking_beast),
                                 live_stats: attacking_beast.live,
+                                diplomacy_bonus: Self::_get_diplomacy_bonus(@self, attacking_beast),
                                 owner: beast_owner,
                             },
                         );
@@ -660,7 +731,7 @@ pub mod summit_systems {
             };
 
             // update the live stats of the defending beast after all attacks
-            self.live_beast_stats.entry(defending_beast_token_id).write(defending_beast.live);
+            self._save_beast(defending_beast.live);
 
             // Burn consumables
             assert(remaining_revival_potions == 0, 'Unused revival potions');
@@ -809,6 +880,13 @@ pub mod summit_systems {
             }
         }
 
+        fn _get_specials_hash(prefix: u8, suffix: u8) -> felt252 {
+            let mut hash_span = ArrayTrait::<felt252>::new();
+            hash_span.append(prefix.into());
+            hash_span.append(suffix.into());
+            poseidon_hash_span(hash_span.span()).into()
+        }
+
         fn _get_battle_randomness(
             token_id: u32, seed: felt252, last_death_timestamp: u64, battle_counter: u32,
         ) -> (u8, u8, u8, u8) {
@@ -852,9 +930,14 @@ pub mod summit_systems {
             }
         }
 
-        fn _apply_poison_damage(ref self: ContractState, ref beast: Beast) {
+        fn _apply_poison_damage(ref self: ContractState, ref beast: Beast) -> u64 {
+            let poison_count = self.poison_count.read();
             let time_since_poison = get_block_timestamp() - self.poison_timestamp.read();
-            let damage: u64 = time_since_poison * self.poison_count.read().into() * 10;
+            let damage: u64 = time_since_poison * poison_count.into();
+
+            if damage == 0 {
+                return 0;
+            }
 
             let current_health: u64 = beast.live.current_health.into();
             let full_health: u64 = (beast.fixed.health + beast.live.bonus_health).into();
@@ -883,6 +966,38 @@ pub mod summit_systems {
             }
 
             self.poison_timestamp.write(get_block_timestamp());
+
+            damage
+        }
+
+        fn _get_diplomacy_bonus(self: @ContractState, beast: Beast) -> u8 {
+            let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
+            let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
+
+            if diplomacy_count <= 1 {
+                return 0;
+            }
+
+            let mut index = 0;
+            let mut bonus: u16 = 0;
+            loop {
+                if index >= diplomacy_count {
+                    break;
+                }
+
+                let diplomacy_beast_token_id = self.diplomacy_beast.entry(specials_hash).entry(index).read();
+
+                if diplomacy_beast_token_id != beast.live.token_id {
+                    let diplomacy_beast = Self::_get_beast(self, diplomacy_beast_token_id);
+                    let power = ImplCombat::get_attack_hp(diplomacy_beast.get_combat_spec(false));
+
+                    bonus += power;
+                }
+
+                index += 1;
+            };
+
+            (bonus / 500).try_into().unwrap()
         }
     }
 }
