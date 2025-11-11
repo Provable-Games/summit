@@ -1992,7 +1992,7 @@
         "0x004f2484e0aca871fb9b7c34da7f55b2f80cc0cd69b613eabab1ce42262bc634",
         "0x04526165196ad45741442f0cb4713990b8c7bedf85ec26caf0fbbb1799174aa8"
       ],
-      "tag": "summit_0_0_6-summit_systems",
+      "tag": "summit_0_0_7-summit_systems",
       "selector": "0x672630647d778e316179c266dbdc9d43d4be8da61fd88f05885c976afd288c4",
       "systems": [
         "dojo_init",
@@ -2012,31 +2012,31 @@
     {
       "members": [],
       "class_hash": "0x110890d83df21f98ec72c0a44cc464a171e905634d20c36f58cb1adb892b165",
-      "tag": "summit_0_0_6-AdventurerConsumed",
+      "tag": "summit_0_0_7-AdventurerConsumed",
       "selector": "0x72d933d8937b359592d164489d94cd6d44c6442b844ece43796d4d3c7754569"
     },
     {
       "members": [],
       "class_hash": "0x60bfa3389bf657ba2aaf73b4f6c16615eef0feabe9345c380587c93df53fcac",
-      "tag": "summit_0_0_6-LiveBeastStats",
+      "tag": "summit_0_0_7-LiveBeastStats",
       "selector": "0x54e760f630315f43b4f3623229a93f0697c550c02dee750840f2a121c35075"
     },
     {
       "members": [],
       "class_hash": "0x8d25ee5b0ee630d2b82c6da7cf79192d19e185adfde90e6c7904251245e7c",
-      "tag": "summit_0_0_6-Summit",
+      "tag": "summit_0_0_7-Summit",
       "selector": "0x11b3f496239eef26ad2a1b4806e70336901a2554f44a213604d1943f58ec810"
     },
     {
       "members": [],
       "class_hash": "0x5d4e076829da9baf85d7fe192b29c18e296b76eeaba0799966b331fa4cbcf65",
-      "tag": "summit_0_0_6-SummitConfig",
+      "tag": "summit_0_0_7-SummitConfig",
       "selector": "0x3dd3c42e72d3fbd6105b597f00b13b79c7b3fad8a3f7ccb5a3ba07fc71c2b55"
     },
     {
       "members": [],
       "class_hash": "0x3fc8a6a83cf48f21fa851b62c2b8cac6ce0ce9d0c78a97b6692a0efd29c91a1",
-      "tag": "summit_0_0_6-SummitHistory",
+      "tag": "summit_0_0_7-SummitHistory",
       "selector": "0x31b9568b2b8c140fd1287694abafdf81ed35d4552e2e0aa0cc030bcd4a17458"
     }
   ],
@@ -2044,19 +2044,19 @@
     {
       "members": [],
       "class_hash": "0x7e0d0bfb66c9dc12a957970765d82ab040045c1781d399fd78368c16c579bbf",
-      "tag": "summit_0_0_6-BattleEvent",
+      "tag": "summit_0_0_7-BattleEvent",
       "selector": "0x691a24641d97d46b4137a96c942e9443ef1d103993913b7b707f7939ffd3ba9"
     },
     {
       "members": [],
       "class_hash": "0x2cf01b49e6a0996ecfc2bc879af4c545ee0f96d01db7ee6e39f07f0ea54d0b5",
-      "tag": "summit_0_0_6-RewardEvent",
+      "tag": "summit_0_0_7-RewardEvent",
       "selector": "0x44ab25b82ccc9fd17579f4014c4d04939bdd964f12924e832344b06d657798a"
     },
     {
       "members": [],
       "class_hash": "0x6b3cc5a944f6f9aa1f9d551e7187ff4808e59782ab4febffe72f891cf938e1c",
-      "tag": "summit_0_0_6-SummitEvent",
+      "tag": "summit_0_0_7-SummitEvent",
       "selector": "0x3dc4443beab0b79e24441a4f7b4de4c08a61ea003854f435c6e3a87b9033797"
     }
   ],

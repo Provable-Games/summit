@@ -16,6 +16,9 @@ pub struct BattleEvent {
     #[key]
     pub attacking_beast_token_id: u32,
     pub attacking_beast_owner: ContractAddress,
+    pub attacking_beast_id: u8,
+    pub shiny: u8,
+    pub animated: u8,
     pub defending_beast_token_id: u32,
     pub attack_count: u16,
     pub attack_damage: u16,

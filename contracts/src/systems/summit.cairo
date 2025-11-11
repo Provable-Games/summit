@@ -27,7 +27,7 @@ trait ISummitSystem<T> {
     fn add_extra_life(ref self: T, beast_token_id: u32, extra_life_potions: u8);
     fn apply_stat_points(ref self: T, beast_token_id: u32, stats: Stats);
     fn apply_poison(ref self: T, beast_token_id: u32, count: u16);
-    fn get_summit_data(ref self: T) -> (Beast, u64, ContractAddress, u8);
+    fn get_summit_data(ref self: T) -> (Beast, u64, ContractAddress, u8, u16, u64);
 
     fn get_start_timestamp(self: @T) -> u64;
     fn get_summit_beast_token_id(self: @T) -> u32;
@@ -345,6 +345,8 @@ pub mod summit_systems {
         }
 
         fn apply_poison(ref self: ContractState, beast_token_id: u32, count: u16) {
+            assert(count > 0, 'No poison to apply');
+
             let summit_beast_token_id = self.summit_beast_token_id.read();
             assert(beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
 
@@ -355,15 +357,16 @@ pub mod summit_systems {
 
             if damage > 0 {
                 self._save_beast(beast.live);
-                let mut world: WorldStorage = self.world(@DEFAULT_NS());
-                world
-                    .emit_event(
-                        @PoisonEvent { block_timestamp: get_block_timestamp(), count: current_poison_count + count },
-                    );
             }
 
             InternalSummitImpl::_burn_consumable(self.poison_potion_address.read(), count);
             self.poison_count.write(current_poison_count + count);
+
+            let mut world: WorldStorage = self.world(@DEFAULT_NS());
+            world
+                .emit_event(
+                    @PoisonEvent { block_timestamp: get_block_timestamp(), count: current_poison_count + count },
+                );
         }
 
         fn start_summit(ref self: ContractState) {
@@ -382,14 +385,18 @@ pub mod summit_systems {
             self.start_timestamp.read()
         }
 
-        fn get_summit_data(ref self: ContractState) -> (Beast, u64, ContractAddress, u8) {
+        fn get_summit_data(ref self: ContractState) -> (Beast, u64, ContractAddress, u8, u16, u64) {
             let token_id = self.summit_beast_token_id.read();
             let beast = InternalSummitImpl::_get_beast(@self, token_id);
-            let diplomacy_bonus = InternalSummitImpl::_get_diplomacy_bonus(@self, beast);
             let taken_at: u64 = self.summit_history.entry(token_id).read();
             let beast_dispatcher = IERC721Dispatcher { contract_address: self.beast_address.read() };
             let summit_owner = beast_dispatcher.owner_of(token_id.into());
-            (beast, taken_at, summit_owner, diplomacy_bonus)
+
+            let diplomacy_bonus = InternalSummitImpl::_get_diplomacy_bonus(@self, beast);
+            let poison_count = self.poison_count.read();
+            let poison_timestamp = self.poison_timestamp.read();
+
+            (beast, taken_at, summit_owner, diplomacy_bonus, poison_count, poison_timestamp)
         }
 
         fn get_summit_beast_token_id(self: @ContractState) -> u32 {
@@ -660,6 +667,9 @@ pub mod summit_systems {
                         @BattleEvent {
                             attacking_beast_owner: beast_owner,
                             attacking_beast_token_id,
+                            attacking_beast_id: attacking_beast.fixed.id,
+                            shiny: attacking_beast.fixed.shiny,
+                            animated: attacking_beast.fixed.animated,
                             defending_beast_token_id: summit_beast_token_id,
                             attack_count,
                             attack_damage,
