@@ -59,10 +59,10 @@ export const useGameTokens = () => {
       stats AS (
         SELECT
           LOWER(printf('%064x', CAST(token_id AS INTEGER))) AS token_hex64,
-          attack_streak, bonus_health, bonus_xp, current_health, extra_lives,
-          has_claimed_potions, last_death_timestamp, "stats.luck", "stats.spirit", "stats.specials",
-          revival_count, rewards_earned
-        FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
+          "live_stats.attack_streak", "live_stats.bonus_health", "live_stats.bonus_xp", "live_stats.current_health", "live_stats.extra_lives",
+          "live_stats.has_claimed_potions", "live_stats.last_death_timestamp", "live_stats.stats.luck", "live_stats.stats.spirit", "live_stats.stats.specials",
+          "live_stats.revival_count", "live_stats.rewards_earned", "live_stats.stats.wisdom", "live_stats.stats.diplomacy", "live_stats.kills_claimed"
+        FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
       )
       SELECT
         tbn.token_id,
@@ -84,18 +84,21 @@ export const useGameTokens = () => {
         a."Last Death Timestamp",
         a."Shiny",
         a."Animated",
-        s.attack_streak,
-        s.bonus_health,
-        s.bonus_xp,
-        s.current_health,
-        s.extra_lives,
-        s.has_claimed_potions,
-        s.last_death_timestamp,
-        s.revival_count,
-        s.rewards_earned,
-        s."stats.luck",
-        s."stats.spirit",
-        s."stats.specials"
+        s."live_stats.attack_streak",
+        s."live_stats.bonus_health",
+        s."live_stats.bonus_xp",
+        s."live_stats.current_health",
+        s."live_stats.extra_lives",
+        s."live_stats.has_claimed_potions",
+        s."live_stats.last_death_timestamp",
+        s."live_stats.revival_count",
+        s."live_stats.rewards_earned",
+        s."live_stats.stats.luck",
+        s."live_stats.stats.spirit",
+        s."live_stats.stats.specials",
+        s."live_stats.stats.wisdom",
+        s."live_stats.stats.diplomacy",
+        s."live_stats.kills_claimed"
       FROM tbn
       LEFT JOIN attrs a  ON a.token_id    = tbn.token_id
       LEFT JOIN stats s  ON s.token_hex64 = tbn.token_hex64;
@@ -129,21 +132,24 @@ export const useGameTokens = () => {
         rank: Number(data["Rank"]),
         adventurers_killed: Number(data["Adventurers Killed"]),
         last_dm_death_timestamp: Number(data["Last Death Timestamp"]),
-        attack_streak: data.attack_streak || 0,
-        bonus_health: Math.max(cachedBeast?.bonus_health || 0, data.bonus_health),
-        bonus_xp: Math.max(cachedBeast?.bonus_xp || 0, data.bonus_xp),
-        current_health: data.current_health,
-        extra_lives: data.extra_lives || 0,
-        has_claimed_potions: data.has_claimed_potions || 0,
-        last_death_timestamp: Math.max(cachedBeast?.last_death_timestamp || 0, parseInt(data.last_death_timestamp, 16)),
-        revival_count: Math.max(cachedBeast?.revival_count || 0, data.revival_count),
-        rewards_earned: parseInt(data.rewards_earned, 16) || 0,
+        attack_streak: data["live_stats.attack_streak"] || 0,
+        bonus_health: Math.max(cachedBeast?.bonus_health || 0, data["live_stats.bonus_health"]),
+        bonus_xp: Math.max(cachedBeast?.bonus_xp || 0, data["live_stats.bonus_xp"]),
+        current_health: data["live_stats.current_health"],
+        extra_lives: data["live_stats.extra_lives"] || 0,
+        has_claimed_potions: data["live_stats.has_claimed_potions"] || 0,
+        last_death_timestamp: Math.max(cachedBeast?.last_death_timestamp || 0, parseInt(data["live_stats.last_death_timestamp"], 16)),
+        revival_count: Math.max(cachedBeast?.revival_count || 0, data["live_stats.revival_count"]),
+        rewards_earned: parseInt(data["live_stats.rewards_earned"], 16) || 0,
         revival_time: 0,
         stats: {
-          spirit: cachedBeast?.stats.spirit || Boolean(data["stats.spirit"]),
-          luck: cachedBeast?.stats.luck || Boolean(data["stats.luck"]),
-          specials: cachedBeast?.stats.specials || Boolean(data["stats.specials"]),
-        }
+          spirit: cachedBeast?.stats.spirit || data["live_stats.stats.spirit"],
+          luck: cachedBeast?.stats.luck || data["live_stats.stats.luck"],
+          specials: cachedBeast?.stats.specials || Boolean(data["live_stats.stats.specials"]),
+          wisdom: cachedBeast?.stats.wisdom || Boolean(data["live_stats.stats.wisdom"]),
+          diplomacy: cachedBeast?.stats.diplomacy || Boolean(data["live_stats.stats.diplomacy"]),
+        },
+        kills_claimed: cachedBeast?.kills_claimed || data["live_stats.kills_claimed"] || 0,
       }
       beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)

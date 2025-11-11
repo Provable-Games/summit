@@ -47,8 +47,11 @@ pub struct RewardEvent {
 #[dojo::event]
 pub struct PoisonEvent {
     #[key]
+    pub beast_token_id: u32,
+    #[key]
     pub block_timestamp: u64,
     pub count: u16,
+    pub player: ContractAddress,
 }
 
 #[derive(Copy, Drop, Serde)]
@@ -57,6 +60,7 @@ pub struct DiplomacyEvent {
     #[key]
     pub beast_token_id: u32,
     pub specials_hash: felt252,
+    pub power: u16,
     pub owner: ContractAddress,
 }
 

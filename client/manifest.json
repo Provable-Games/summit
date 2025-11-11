@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x27954612a4a745f9dd608c6ee8b2c7a523a51befcb9b36f2de662feecefe7cb",
-      "class_hash": "0x5b9d36584541828f1f8777e0227e261ac4d2fa873350f6ecb685455e8ae983f",
+      "address": "0x678c49ded74c7abbe9e22b3577e6de4d96d77be33c710159465f49eb3b07551",
+      "class_hash": "0x4646ec6dec8e5d71f116350a21699fdf315f3caf15a6a09e19b852af6d42197",
       "abi": [
         {
           "type": "impl",
@@ -1424,6 +1424,18 @@
             {
               "name": "extra_life_potion_address",
               "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "poison_potion_address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "kill_token_address",
+              "type": "core::starknet::contract_address::ContractAddress"
+            },
+            {
+              "name": "corpse_token_address",
+              "type": "core::starknet::contract_address::ContractAddress"
             }
           ],
           "outputs": [],
@@ -1474,15 +1486,23 @@
           "members": [
             {
               "name": "spirit",
-              "type": "core::bool"
+              "type": "core::integer::u8"
             },
             {
               "name": "luck",
-              "type": "core::bool"
+              "type": "core::integer::u8"
             },
             {
               "name": "specials",
-              "type": "core::bool"
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "wisdom",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "diplomacy",
+              "type": "core::integer::u8"
             }
           ]
         },
@@ -1558,7 +1578,7 @@
             },
             {
               "name": "has_claimed_potions",
-              "type": "core::bool"
+              "type": "core::integer::u8"
             },
             {
               "name": "rewards_earned",
@@ -1567,6 +1587,10 @@
             {
               "name": "stats",
               "type": "summit::models::beast::Stats"
+            },
+            {
+              "name": "kills_claimed",
+              "type": "core::integer::u8"
             }
           ]
         },
@@ -1581,74 +1605,6 @@
             {
               "name": "live",
               "type": "summit::models::beast::LiveBeastStats"
-            }
-          ]
-        },
-        {
-          "type": "struct",
-          "name": "summit::models::summit::SummitHistory",
-          "members": [
-            {
-              "name": "beast_token_id",
-              "type": "core::integer::u32"
-            },
-            {
-              "name": "lost_at",
-              "type": "core::integer::u64"
-            },
-            {
-              "name": "taken_at",
-              "type": "core::integer::u64"
-            }
-          ]
-        },
-        {
-          "type": "struct",
-          "name": "summit::models::summit::SummitConfig",
-          "members": [
-            {
-              "name": "summit_id",
-              "type": "core::integer::u8"
-            },
-            {
-              "name": "start_timestamp",
-              "type": "core::integer::u64"
-            },
-            {
-              "name": "adventurer_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "denshokan_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "dungeon_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "beast_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "beast_data_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "reward_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "attack_potion_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "revive_potion_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "extra_life_potion_address",
-              "type": "core::starknet::contract_address::ContractAddress"
             }
           ]
         },
@@ -1728,8 +1684,8 @@
                   "type": "core::integer::u32"
                 },
                 {
-                  "name": "adventurer_ids",
-                  "type": "core::array::Span::<core::integer::u64>"
+                  "name": "amount",
+                  "type": "core::integer::u16"
                 }
               ],
               "outputs": [],
@@ -1737,11 +1693,23 @@
             },
             {
               "type": "function",
-              "name": "claim_starter_kit",
+              "name": "claim_beast_reward",
               "inputs": [
                 {
                   "name": "beast_token_ids",
                   "type": "core::array::Span::<core::integer::u32>"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "claim_corpse_reward",
+              "inputs": [
+                {
+                  "name": "adventurer_ids",
+                  "type": "core::array::Span::<core::integer::u64>"
                 }
               ],
               "outputs": [],
@@ -1781,14 +1749,19 @@
             },
             {
               "type": "function",
-              "name": "get_start_timestamp",
-              "inputs": [],
-              "outputs": [
+              "name": "apply_poison",
+              "inputs": [
                 {
-                  "type": "core::integer::u64"
+                  "name": "beast_token_id",
+                  "type": "core::integer::u32"
+                },
+                {
+                  "name": "count",
+                  "type": "core::integer::u16"
                 }
               ],
-              "state_mutability": "view"
+              "outputs": [],
+              "state_mutability": "external"
             },
             {
               "type": "function",
@@ -1796,38 +1769,18 @@
               "inputs": [],
               "outputs": [
                 {
-                  "type": "(summit::models::beast::Beast, summit::models::summit::SummitHistory, core::starknet::contract_address::ContractAddress)"
+                  "type": "(summit::models::beast::Beast, core::integer::u64, core::starknet::contract_address::ContractAddress, core::integer::u8, core::integer::u16, core::integer::u64)"
                 }
               ],
-              "state_mutability": "view"
+              "state_mutability": "external"
             },
             {
               "type": "function",
-              "name": "get_summit_config",
+              "name": "get_start_timestamp",
               "inputs": [],
               "outputs": [
                 {
-                  "type": "summit::models::summit::SummitConfig"
-                }
-              ],
-              "state_mutability": "view"
-            },
-            {
-              "type": "function",
-              "name": "get_summit_history",
-              "inputs": [
-                {
-                  "name": "beast_token_id",
-                  "type": "core::integer::u32"
-                },
-                {
-                  "name": "lost_at",
                   "type": "core::integer::u64"
-                }
-              ],
-              "outputs": [
-                {
-                  "type": "summit::models::summit::SummitHistory"
                 }
               ],
               "state_mutability": "view"
@@ -1988,76 +1941,75 @@
         "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
         "0x74abc15c0ddef39bdf1ede2a643c07968d3ed5bacb0123db2d5b7154fbb35c7",
         "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
-        "0x07c2bdaa20e55fcdb0fcda05dd00117c36a154d18f7541b670cae3cd7aabfbc2",
-        "0x004f2484e0aca871fb9b7c34da7f55b2f80cc0cd69b613eabab1ce42262bc634",
-        "0x04526165196ad45741442f0cb4713990b8c7bedf85ec26caf0fbbb1799174aa8"
+        "0x075bbe6a4a4c744ad2da8da0cc7562623d4181418359d62909a02b4abf5be651",
+        "0x003561384b4c4502f87fd728332f8cf4e604a1215185d9d997be33769ba32fc3",
+        "0x07af033bf4a3f2cae7f871ca015c7021f97846217733d72665aaf6ad735d4359",
+        "0x047314b2b569360da4623035d2d81479a90a677beae8518e221960b07afb960f",
+        "0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd",
+        "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c"
       ],
-      "tag": "summit_0_0_7-summit_systems",
-      "selector": "0x672630647d778e316179c266dbdc9d43d4be8da61fd88f05885c976afd288c4",
+      "tag": "summit_0_0_8-summit_systems",
+      "selector": "0x3509de489a260ecdefc96b88ea4b75aca6692b34bc348d6cebffcb0bd782185",
       "systems": [
         "dojo_init",
         "start_summit",
         "attack",
         "attack_unsafe",
         "feed",
-        "claim_starter_kit",
+        "claim_beast_reward",
+        "claim_corpse_reward",
         "add_extra_life",
         "apply_stat_points",
+        "apply_poison",
+        "get_summit_data",
         "upgrade"
       ]
     }
   ],
   "libraries": [],
-  "models": [
-    {
-      "members": [],
-      "class_hash": "0x110890d83df21f98ec72c0a44cc464a171e905634d20c36f58cb1adb892b165",
-      "tag": "summit_0_0_7-AdventurerConsumed",
-      "selector": "0x72d933d8937b359592d164489d94cd6d44c6442b844ece43796d4d3c7754569"
-    },
-    {
-      "members": [],
-      "class_hash": "0x60bfa3389bf657ba2aaf73b4f6c16615eef0feabe9345c380587c93df53fcac",
-      "tag": "summit_0_0_7-LiveBeastStats",
-      "selector": "0x54e760f630315f43b4f3623229a93f0697c550c02dee750840f2a121c35075"
-    },
-    {
-      "members": [],
-      "class_hash": "0x8d25ee5b0ee630d2b82c6da7cf79192d19e185adfde90e6c7904251245e7c",
-      "tag": "summit_0_0_7-Summit",
-      "selector": "0x11b3f496239eef26ad2a1b4806e70336901a2554f44a213604d1943f58ec810"
-    },
-    {
-      "members": [],
-      "class_hash": "0x5d4e076829da9baf85d7fe192b29c18e296b76eeaba0799966b331fa4cbcf65",
-      "tag": "summit_0_0_7-SummitConfig",
-      "selector": "0x3dd3c42e72d3fbd6105b597f00b13b79c7b3fad8a3f7ccb5a3ba07fc71c2b55"
-    },
-    {
-      "members": [],
-      "class_hash": "0x3fc8a6a83cf48f21fa851b62c2b8cac6ce0ce9d0c78a97b6692a0efd29c91a1",
-      "tag": "summit_0_0_7-SummitHistory",
-      "selector": "0x31b9568b2b8c140fd1287694abafdf81ed35d4552e2e0aa0cc030bcd4a17458"
-    }
-  ],
+  "models": [],
   "events": [
     {
       "members": [],
-      "class_hash": "0x7e0d0bfb66c9dc12a957970765d82ab040045c1781d399fd78368c16c579bbf",
-      "tag": "summit_0_0_7-BattleEvent",
-      "selector": "0x691a24641d97d46b4137a96c942e9443ef1d103993913b7b707f7939ffd3ba9"
+      "class_hash": "0x3ce76a36f1f379fb0400dd7a19ab62ad8c246b2f14445f8f6b16ebeb28ad79b",
+      "tag": "summit_0_0_8-BattleEvent",
+      "selector": "0x13666b2ebdf748d95cdce4a951cb8bbd0f1f8a3206580c404db09108980fb69"
     },
     {
       "members": [],
-      "class_hash": "0x2cf01b49e6a0996ecfc2bc879af4c545ee0f96d01db7ee6e39f07f0ea54d0b5",
-      "tag": "summit_0_0_7-RewardEvent",
-      "selector": "0x44ab25b82ccc9fd17579f4014c4d04939bdd964f12924e832344b06d657798a"
+      "class_hash": "0x458a0aa50aa35cd22da110441adf58fdaf991dc9b39a3ef42b9fa4ff161beaa",
+      "tag": "summit_0_0_8-BeastEvent",
+      "selector": "0x1cd660c8a323d17434852c0a55f738434aba711e7e5d46fdee21ceafdddab2f"
     },
     {
       "members": [],
-      "class_hash": "0x6b3cc5a944f6f9aa1f9d551e7187ff4808e59782ab4febffe72f891cf938e1c",
-      "tag": "summit_0_0_7-SummitEvent",
-      "selector": "0x3dc4443beab0b79e24441a4f7b4de4c08a61ea003854f435c6e3a87b9033797"
+      "class_hash": "0x2ab15ef89292a2740c0b3e7fa559422bf6c68bc4834e1c10c0d77cdb4b88b53",
+      "tag": "summit_0_0_8-DiplomacyEvent",
+      "selector": "0x439537a71ebc81f567513ccd29c02d567ca4829e9e4b82dab9d1eb999c946bc"
+    },
+    {
+      "members": [],
+      "class_hash": "0x2de68d3a6116869a4b486f90af2cf529de6f0798e12ff52ffdde5ee7ffa380a",
+      "tag": "summit_0_0_8-LiveBeastStatsEvent",
+      "selector": "0x726c6889c1d8ad3e35be70b1ed43e9e86268c054a48e4cc07cbc7f28d3483e4"
+    },
+    {
+      "members": [],
+      "class_hash": "0x6a7cf92394b22e25c2cbb9707b15ba9bdcbb12fd1d2448b02117252e52480e8",
+      "tag": "summit_0_0_8-PoisonEvent",
+      "selector": "0x6052285202620b9befc0f9e22734aca847b17d8e7ac36729ba1b93ce7dee4f"
+    },
+    {
+      "members": [],
+      "class_hash": "0xf71e3c006ea105f8f33c85967ce7944be526d63baef0879647f6b23cad0584",
+      "tag": "summit_0_0_8-RewardEvent",
+      "selector": "0x799e27856e7424345100c58e3357c7b9f37e75a87e4098fc8244c38d5ef1e9c"
+    },
+    {
+      "members": [],
+      "class_hash": "0x17ed8f22a570ec362538623a2085ae2add92d41efb770c40f78af55136e4e59",
+      "tag": "summit_0_0_8-SummitEvent",
+      "selector": "0x7c3a1e02b8ccc3bded758e9f85219006e6e5c68ed0b375a160b7a283f86b986"
     }
   ],
   "external_contracts": []

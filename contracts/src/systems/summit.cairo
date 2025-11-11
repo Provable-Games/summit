@@ -333,7 +333,8 @@ pub mod summit_systems {
                 tokens_required += 5;
 
                 let mut world: WorldStorage = self.world(@DEFAULT_NS());
-                world.emit_event(@DiplomacyEvent { beast_token_id, specials_hash, owner: get_caller_address() });
+                let power = ImplCombat::get_attack_hp(beast.get_combat_spec(false));
+                world.emit_event(@DiplomacyEvent { beast_token_id, specials_hash, power, owner: get_caller_address() });
             }
 
             beast.live.stats.spirit += stats.spirit;
@@ -365,7 +366,12 @@ pub mod summit_systems {
             let mut world: WorldStorage = self.world(@DEFAULT_NS());
             world
                 .emit_event(
-                    @PoisonEvent { block_timestamp: get_block_timestamp(), count: current_poison_count + count },
+                    @PoisonEvent {
+                        beast_token_id,
+                        block_timestamp: get_block_timestamp(),
+                        count: current_poison_count + count,
+                        player: get_caller_address(),
+                    },
                 );
         }
 
@@ -376,9 +382,10 @@ pub mod summit_systems {
             let start_token_id = 1;
             self.summit_history.entry(start_token_id).write(get_block_number());
             self.summit_beast_token_id.write(start_token_id);
-            let mut live_stats: LiveBeastStats = self.live_beast_stats.entry(start_token_id).read();
-            live_stats.current_health = 100;
-            self._save_beast(live_stats);
+
+            let mut beast: Beast = InternalSummitImpl::_get_beast(@self, start_token_id);
+            beast.live.current_health = 100;
+            self._save_beast(beast.live);
         }
 
         fn get_start_timestamp(self: @ContractState) -> u64 {
@@ -423,7 +430,8 @@ pub mod summit_systems {
         fn _get_beast(self: @ContractState, token_id: u32) -> Beast {
             let fixed: PackableBeast = IBeastsDispatcher { contract_address: self.beast_address.read() }
                 .get_beast(token_id.into());
-            let live: LiveBeastStats = self.live_beast_stats.entry(token_id).read();
+            let mut live: LiveBeastStats = self.live_beast_stats.entry(token_id).read();
+            live.token_id = token_id;
             Beast { fixed, live }
         }
 
@@ -555,7 +563,12 @@ pub mod summit_systems {
             if damage > 0 {
                 world
                     .emit_event(
-                        @PoisonEvent { block_timestamp: get_block_timestamp(), count: self.poison_count.read() },
+                        @PoisonEvent {
+                            beast_token_id: summit_beast_token_id,
+                            block_timestamp: get_block_timestamp(),
+                            count: self.poison_count.read(),
+                            player: 0,
+                        },
                     );
             }
 

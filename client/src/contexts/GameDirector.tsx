@@ -120,6 +120,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
               },
               taken_at: summit.taken_at,
               owner: summit.owner,
+              diplomacy_bonus: summit.diplomacy_bonus,
+              poison_count: 0,
+              poison_timestamp: 0,
             })
           }
         }

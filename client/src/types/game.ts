@@ -2,6 +2,9 @@ export interface Summit {
   beast: Beast;
   taken_at: number;
   owner: string;
+  diplomacy_bonus: number;
+  poison_count: number;
+  poison_timestamp: number;
 }
 
 export interface Leaderboard {
@@ -34,6 +37,7 @@ export interface Beast {
   has_claimed_potions: boolean;
   rewards_earned: number;
   stats: Stats;
+  kills_claimed: number;
   rank?: number;
   last_dm_death_timestamp?: number;
   adventurers_killed?: number;
@@ -42,9 +46,11 @@ export interface Beast {
 }
 
 export interface Stats {
-  spirit: boolean;
-  luck: boolean;
+  spirit: number;
+  luck: number;
   specials: boolean;
+  wisdom: boolean;
+  diplomacy: boolean;
 }
 export interface Combat {
   attack: number;
