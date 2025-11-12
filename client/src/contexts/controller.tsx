@@ -13,11 +13,12 @@ import {
 } from "react";
 import { addAddressPadding } from "starknet";
 import { useDynamicConnector } from "./starknet";
-import { 
-  loadBeastCollectionFromCache, 
-  saveBeastCollectionToCache, 
+import {
+  loadBeastCollectionFromCache,
+  saveBeastCollectionToCache,
   mergeBeastData
 } from "@/utils/beastCache";
+import { Beast } from "@/types/game";
 
 export interface ControllerContext {
   playerName: string | undefined;
@@ -44,9 +45,9 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { account, isConnecting } = useAccount();
   const { connector, connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
-  const { collection, setCollection, setAdventurerCollection, setLoadingCollection } = useGameStore();
+  const { collection, setCollection, setAdventurerCollection, setLoadingCollection, setOnboarding } = useGameStore();
   const { getTokenBalances } = useStarknetApi();
-  const { getBeastCollection, getValidAdventurers } = useGameTokens();
+  const { getBeastCollection } = useGameTokens();
   const [userName, setUserName] = useState<string>();
   const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({});
 
@@ -64,26 +65,13 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     if (adventurers) {
-      const filterValidAdventurers = async () => {
-        const adventurerIds = adventurers.map(adventurer => adventurer.token_id);
-        const validIds = await getValidAdventurers(adventurerIds);
-
-        const validAdventurers = adventurers.filter(adventurer =>
-          validIds.includes(adventurer.token_id)
-        );
-
-        setAdventurerCollection(
-          validAdventurers.map((adventurer) => ({
-            id: adventurer.token_id,
-            name: adventurer.player_name,
-            level: Math.floor(Math.sqrt(adventurer.score)),
-            metadata: JSON.parse(adventurer.metadata || "{}"),
-            soulbound: adventurer.soulbound,
-          }))
-        );
-      };
-
-      filterValidAdventurers();
+      setAdventurerCollection(adventurers.map(adventurer => ({
+        id: adventurer.token_id,
+        name: adventurer.player_name,
+        level: Math.floor(Math.sqrt(adventurer.score)),
+        metadata: JSON.parse(adventurer.metadata || "{}"),
+        soulbound: adventurer.soulbound,
+      })));
     }
   }, [adventurers]);
 
@@ -140,10 +128,14 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     // Fetch fresh data in the background
     try {
       const freshCollection = await getBeastCollection(account.address, cachedCollection);
-      
+
+      if (freshCollection.length > 0 && freshCollection.every((beast: Beast) => !beast.has_claimed_potions)) {
+        setOnboarding(true);
+      }
+
       // Update state with fresh/merged data
       setCollection(freshCollection);
-      
+
       // Save to cache
       saveBeastCollectionToCache(freshCollection, account.address);
     } catch (error) {

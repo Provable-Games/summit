@@ -31,12 +31,12 @@ const GameDirectorContext = createContext<GameDirectorContext>(
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
-  const { summit, setSummit, setAttackInProgress, setFeedingInProgress,
-    collection, setCollection, setAppliedPotions, appliedPotions,
+  const { summit, setSummit, setAttackInProgress,
+    setCollection, setAppliedPotions, appliedPotions,
     setBattleEvents, setSpectatorBattleEvents, setApplyingPotions } = useGameStore();
   const { gameModelsQuery, gameEventsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
-  const { executeAction, attack, feed, claimStarterKit, addExtraLife, selectUpgrades } = useSystemCalls();
+  const { executeAction, attack, feed, claimStarterKit, claimCorpseReward, addExtraLife, selectUpgrades } = useSystemCalls();
   const { tokenBalances, setTokenBalances } = useController();
 
   const [nextSummit, setNextSummit] = useState<Summit | null>(null);
@@ -54,7 +54,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     setAttackInProgress(false);
-    setFeedingInProgress(false);
     setApplyingPotions(false);
   }, [actionFailed]);
 
@@ -221,6 +220,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     if (action.type === 'claim_starter_kit') {
       txs.push(claimStarterKit(action.beastIds));
+    }
+
+    if (action.type === 'claim_corpse_reward') {
+      txs.push(claimCorpseReward(action.adventurerIds));
     }
 
     if (action.type === 'add_extra_life') {

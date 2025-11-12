@@ -6,21 +6,21 @@ export type BeastTypeFilter = 'all' | 'strong';
 
 interface GameState {
   summit: Summit | null;
+  onboarding: boolean;
   leaderboard: Leaderboard[];
   battleEvents: BattleEvent[];
   spectatorBattleEvents: BattleEvent[];
-  showFeedingGround: boolean;
   killedByAdventurers: number[];
   collection: Beast[];
   loadingCollection: boolean;
   attackInProgress: boolean;
-  feedingInProgress: boolean;
   applyingPotions: boolean;
   selectedBeasts: Beast[];
   adventurerCollection: Adventurer[];
   selectedAdventurers: Adventurer[];
   appliedPotions: AppliedPotions;
   attackMode: 'safe' | 'unsafe' | 'capture';
+  waitingForBeastUpgradeSelection: boolean;
   
   // Beast Collection Filters
   hideDeadBeasts: boolean;
@@ -29,21 +29,21 @@ interface GameState {
   nameMatchFilter: boolean;
 
   setSummit: (summit: Summit | null | ((prev: Summit | null) => Summit | null)) => void;
+  setOnboarding: (onboarding: boolean) => void;
   setLeaderboard: (leaderboard: Leaderboard[]) => void;
   setBattleEvents: (battleEvents: BattleEvent[]) => void;
   setSpectatorBattleEvents: (spectatorBattleEvents: BattleEvent[] | ((prev: BattleEvent[]) => BattleEvent[])) => void;
-  setShowFeedingGround: (showFeedingGround: boolean) => void;
   setKilledByAdventurers: (killedByAdventurers: number[]) => void;
   setCollection: (collection: Beast[] | ((prev: Beast[]) => Beast[])) => void;
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => void;
   setLoadingCollection: (loadingCollection: boolean) => void;
   setAttackInProgress: (attackInProgress: boolean) => void;
-  setFeedingInProgress: (feedingInProgress: boolean) => void;
   setApplyingPotions: (applyingPotions: boolean) => void;
   setSelectedBeasts: (selectedBeasts: Beast[] | ((prev: Beast[]) => Beast[])) => void;
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => void;
   setAppliedPotions: (appliedPotions: AppliedPotions) => void;
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture') => void;
+  setWaitingForBeastUpgradeSelection: (waiting: boolean) => void;
   
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => void;
@@ -56,16 +56,15 @@ interface GameState {
 
 export const useGameStore = create<GameState>((set, get) => ({
   summit: null,
+  onboarding: false,
   leaderboard: [],
   battleEvents: [],
   spectatorBattleEvents: [],
-  showFeedingGround: false,
   killedByAdventurers: [],
   collection: [],
   adventurerCollection: [],
   loadingCollection: false,
   attackInProgress: false,
-  feedingInProgress: false,
   applyingPotions: false,
   selectedBeasts: [],
   selectedAdventurers: [],
@@ -73,8 +72,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     revive: 0,
     attack: 0,
     extraLife: 0,
+    poison: 0,
   },
   attackMode: 'safe',
+  waitingForBeastUpgradeSelection: false,
   
   // Beast Collection Filters - Default Values
   hideDeadBeasts: false,
@@ -87,15 +88,14 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   disconnect: () => {
     set({
+      onboarding: false,
       battleEvents: [],
       spectatorBattleEvents: [],
-      showFeedingGround: false,
       killedByAdventurers: [],
       collection: [],
       adventurerCollection: [],
       loadingCollection: false,
       attackInProgress: false,
-      feedingInProgress: false,
       applyingPotions: false,
       selectedBeasts: [],
       selectedAdventurers: [],
@@ -103,7 +103,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         revive: 0,
         attack: 0,
         extraLife: 0,
+        poison: 0,
       },
+      waitingForBeastUpgradeSelection: false,
       // Reset filters to defaults
       hideDeadBeasts: false,
       typeFilter: 'all',
@@ -113,17 +115,16 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setSummit: (summit: Summit | null | ((prev: Summit | null) => Summit | null)) =>
     set(state => ({ summit: typeof summit === 'function' ? summit(state.summit) : summit })),
+  setOnboarding: (onboarding: boolean) => set({ onboarding }),
   setLeaderboard: (leaderboard: Leaderboard[]) => set({ leaderboard }),
   setBattleEvents: (battleEvents: BattleEvent[]) => set({ battleEvents }),
   setSpectatorBattleEvents: (spectatorBattleEvents: BattleEvent[] | ((prev: BattleEvent[]) => BattleEvent[])) =>
     set(state => ({ spectatorBattleEvents: typeof spectatorBattleEvents === 'function' ? spectatorBattleEvents(state.spectatorBattleEvents) : spectatorBattleEvents })),
-  setShowFeedingGround: (showFeedingGround: boolean) => set({ showFeedingGround }),
   setKilledByAdventurers: (killedByAdventurers: number[]) => set({ killedByAdventurers }),
   setCollection: (collection: Beast[] | ((prev: Beast[]) => Beast[])) =>
     set(state => ({ collection: typeof collection === 'function' ? collection(state.collection) : collection })),
   setLoadingCollection: (loadingCollection: boolean) => set({ loadingCollection }),
   setAttackInProgress: (attackInProgress: boolean) => set({ attackInProgress }),
-  setFeedingInProgress: (feedingInProgress: boolean) => set({ feedingInProgress }),
   setApplyingPotions: (applyingPotions: boolean) => set({ applyingPotions }),
   setSelectedBeasts: (selectedBeasts: Beast[] | ((prev: Beast[]) => Beast[])) =>
     set(state => ({ selectedBeasts: typeof selectedBeasts === 'function' ? selectedBeasts(state.selectedBeasts) : selectedBeasts })),
@@ -131,6 +132,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => set({ adventurerCollection }),
   setAppliedPotions: (appliedPotions: AppliedPotions) => set({ appliedPotions }),
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture') => set({ attackMode }),
+  setWaitingForBeastUpgradeSelection: (waiting: boolean) => set({ waitingForBeastUpgradeSelection: waiting }),
   
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => set({ hideDeadBeasts }),

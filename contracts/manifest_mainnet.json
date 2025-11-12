@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x678c49ded74c7abbe9e22b3577e6de4d96d77be33c710159465f49eb3b07551",
-      "class_hash": "0x4646ec6dec8e5d71f116350a21699fdf315f3caf15a6a09e19b852af6d42197",
+      "address": "0x15b5bb74485886e935f5503a5252925d07ed0fa8fdc6f2fab73340c18c9f625",
+      "class_hash": "0x5378d6e91bf46b52d6898f9eb7e2f30b74bc3c0ea1267a7a47ff78ec8e9e2a7",
       "abi": [
         {
           "type": "impl",
@@ -1949,7 +1949,7 @@
         "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c"
       ],
       "tag": "summit_0_0_8-summit_systems",
-      "selector": "0x3509de489a260ecdefc96b88ea4b75aca6692b34bc348d6cebffcb0bd782185",
+      "selector": "0x53233c2302c095a9165f77ec5d009f6a171a2bfc79e52a6b25aa2b458299703",
       "systems": [
         "dojo_init",
         "start_summit",
@@ -1973,43 +1973,43 @@
       "members": [],
       "class_hash": "0x3ce76a36f1f379fb0400dd7a19ab62ad8c246b2f14445f8f6b16ebeb28ad79b",
       "tag": "summit_0_0_8-BattleEvent",
-      "selector": "0x13666b2ebdf748d95cdce4a951cb8bbd0f1f8a3206580c404db09108980fb69"
+      "selector": "0x7f4a9cd16502ba8521fec2d71a319822e07ab7bbef5a15878ec5ce67a68b3f5"
     },
     {
       "members": [],
       "class_hash": "0x458a0aa50aa35cd22da110441adf58fdaf991dc9b39a3ef42b9fa4ff161beaa",
       "tag": "summit_0_0_8-BeastEvent",
-      "selector": "0x1cd660c8a323d17434852c0a55f738434aba711e7e5d46fdee21ceafdddab2f"
+      "selector": "0xe12698d8f8ce9a4381f0e438dd3b8a410797461158a7591100c4f175062f35"
     },
     {
       "members": [],
-      "class_hash": "0x2ab15ef89292a2740c0b3e7fa559422bf6c68bc4834e1c10c0d77cdb4b88b53",
+      "class_hash": "0x98009d5c0eff1b1c6bff1b583c280ceabf0d86fdd160fe474d899822c22d6b",
       "tag": "summit_0_0_8-DiplomacyEvent",
-      "selector": "0x439537a71ebc81f567513ccd29c02d567ca4829e9e4b82dab9d1eb999c946bc"
+      "selector": "0xf1880063d8d875f7140097e0e0e334195a88afed50d653af6b6159c2dfa37"
     },
     {
       "members": [],
       "class_hash": "0x2de68d3a6116869a4b486f90af2cf529de6f0798e12ff52ffdde5ee7ffa380a",
       "tag": "summit_0_0_8-LiveBeastStatsEvent",
-      "selector": "0x726c6889c1d8ad3e35be70b1ed43e9e86268c054a48e4cc07cbc7f28d3483e4"
+      "selector": "0x28f2bbb2a5d493eeb397e2caca0787e3aa9ea62ea7924bbf93ac6015bc95b12"
     },
     {
       "members": [],
-      "class_hash": "0x6a7cf92394b22e25c2cbb9707b15ba9bdcbb12fd1d2448b02117252e52480e8",
+      "class_hash": "0x2113a0250bda87df1c499705a0bcbfcbd08af16d4c6659565b64f6539a36280",
       "tag": "summit_0_0_8-PoisonEvent",
-      "selector": "0x6052285202620b9befc0f9e22734aca847b17d8e7ac36729ba1b93ce7dee4f"
+      "selector": "0x225fdecfbb36c1caa6a9c305005a28815d0d89406a4ced0e8e8a4e579bd4605"
     },
     {
       "members": [],
       "class_hash": "0xf71e3c006ea105f8f33c85967ce7944be526d63baef0879647f6b23cad0584",
       "tag": "summit_0_0_8-RewardEvent",
-      "selector": "0x799e27856e7424345100c58e3357c7b9f37e75a87e4098fc8244c38d5ef1e9c"
+      "selector": "0x1c7d15a1de4a4cc9b99d721aa4ce6b6d34c7b38d018d44d81317f5e0d946b6a"
     },
     {
       "members": [],
       "class_hash": "0x17ed8f22a570ec362538623a2085ae2add92d41efb770c40f78af55136e4e59",
       "tag": "summit_0_0_8-SummitEvent",
-      "selector": "0x7c3a1e02b8ccc3bded758e9f85219006e6e5c68ed0b375a160b7a283f86b986"
+      "selector": "0x49df7716e626e3595dd33c3b0aa7b2cda4c24e0545a64af3a4f97fb5b86c9d9"
     }
   ],
   "external_contracts": []

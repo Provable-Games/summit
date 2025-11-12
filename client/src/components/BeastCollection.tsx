@@ -23,7 +23,7 @@ function BeastCollection() {
     hideDeadBeasts, setHideDeadBeasts,
     sortMethod, setSortMethod,
     typeFilter, setTypeFilter,
-    nameMatchFilter, setNameMatchFilter
+    nameMatchFilter, setNameMatchFilter,
   } = useGameStore()
   const { address } = useAccount()
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)

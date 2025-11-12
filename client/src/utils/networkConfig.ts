@@ -67,6 +67,12 @@ export const NETWORKS = {
             "0x04526165196ad45741442f0cb4713990b8c7bedf85ec26caf0fbbb1799174aa8",
           displayDecimals: 0,
         },
+        {
+          name: "POISON",
+          address:
+            "0x04526165196ad45741442f0cb4713990b8c7bedf85ec26caf0fbbb1799174aa8",
+          displayDecimals: 0,
+        },
       ],
     },
     denshokan:

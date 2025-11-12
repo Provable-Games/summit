@@ -11,9 +11,10 @@ import { isMobile } from 'react-device-detect';
 import BeastUpgradeModal from './dialogs/BeastUpgradeModal';
 import ClaimStarterPack from './dialogs/ClaimStarterPack';
 import { addAddressPadding } from 'starknet';
+import ClaimCorpseReward from './dialogs/ClaimCorpseReward';
 
 const ProfileCard = () => {
-  const { collection, leaderboard } = useGameStore()
+  const { collection, adventurerCollection, leaderboard } = useGameStore()
   const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
   const { playerName, tokenBalances, openProfile } = useController()
@@ -23,12 +24,9 @@ const ProfileCard = () => {
 
   const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false)
   const [beastUpgradeDialog, setBeastUpgradeDialog] = useState(false)
-
-  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions)
-  const beastsWithUpgrades = collection.filter(beast => {
-    const totalStats = Object.values(beast.stats).filter(Boolean).length;
-    return (beast.adventurers_killed || 0) > totalStats;
-  })
+  const [claimCorpseRewardDialog, setClaimCorpseRewardDialog] = useState(false)
+  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions || beast.adventurers_killed > beast.kills_claimed)
+  const unclaimedCorpseTokens = adventurerCollection.reduce((sum, adventurer) => sum + adventurer.level, 0)
   const isCartridge = connector?.id === 'controller'
 
   const handleProfileClick = async () => {
@@ -92,7 +90,7 @@ const ProfileCard = () => {
 
       {unclaimedBeasts.length > 0 && <Box sx={styles.starterPackSection}>
         <Typography sx={styles.starterPackTitle}>
-          BEAST STARTER PACK
+          BEAST REWARD
         </Typography>
 
         <Typography sx={styles.starterPackSubtitle}>
@@ -106,24 +104,25 @@ const ProfileCard = () => {
         </Button>
       </Box>}
 
-      {beastsWithUpgrades.length > 0 && <Box sx={styles.upgradeSection}>
-        <Typography sx={styles.upgradeTitle}>
-          BEAST UPGRADES
+      {unclaimedCorpseTokens > 0 && <Box sx={styles.upgradeSection}>
+        <Typography sx={styles.starterPackTitle}>
+          CORPSE TOKEN
         </Typography>
 
         <Typography sx={styles.starterPackSubtitle}>
-          {beastsWithUpgrades.length} available
+          {unclaimedCorpseTokens} available
         </Typography>
 
-        <Button sx={styles.upgradeButton} onClick={() => setBeastUpgradeDialog(true)}>
+        <Button sx={styles.upgradeButton} onClick={() => setClaimCorpseRewardDialog(true)}>
           <Typography sx={styles.upgradeButtonText}>
-            CHOOSE
+            CLAIM
           </Typography>
         </Button>
       </Box>}
 
       <ClaimStarterPack open={claimStarterPackDialog} close={() => setClaimStarterPackDialog(false)} />
       {beastUpgradeDialog && <BeastUpgradeModal open={beastUpgradeDialog} close={() => setBeastUpgradeDialog(false)} />}
+      {claimCorpseRewardDialog && <ClaimCorpseReward open={claimCorpseRewardDialog} close={() => setClaimCorpseRewardDialog(false)} />}
     </Box>
   )
 }

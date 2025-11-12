@@ -214,34 +214,6 @@ export const useGameTokens = () => {
     }
   }
 
-  const getValidAdventurers = async (adventurerIds: number[]) => {
-    // Convert integer IDs to hex format for database query
-    const hexIds = adventurerIds.map(id => `0x${id.toString(16).padStart(16, '0')}`)
-
-    let q = `
-      SELECT adventurer_id
-      FROM "${currentNetworkConfig.namespace}-AdventurerConsumed"
-      WHERE adventurer_id IN (${hexIds.map(id => `'${id}'`).join(',')})
-      LIMIT 1000;
-    `
-
-    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-    const sql = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json"
-      }
-    })
-
-    let data = await sql.json()
-    const eatenHexIds = data.map((row: any) => row.adventurer_id)
-    const validIds = adventurerIds.filter(id => {
-      const hexId = `0x${id.toString(16).padStart(16, '0')}`
-      return !eatenHexIds.includes(hexId)
-    })
-    return validIds
-  }
-
   const getKilledBy = async (beast: Beast) => {
     let prefix =
       Object.keys(ITEM_NAME_PREFIXES).find(
@@ -293,7 +265,6 @@ export const useGameTokens = () => {
     getBeastCollection,
     countRegisteredBeasts,
     getLeaderboard,
-    getValidAdventurers,
     getKilledBy,
     getKilledBeasts,
   };

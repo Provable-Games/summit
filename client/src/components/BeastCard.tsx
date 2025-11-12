@@ -39,7 +39,7 @@ const BeastCard = memo(({
       sx={[
         styles.beastCard,
         isSelected && styles.selectedCard,
-        isDead && styles.deadCard
+        isDead && styles.deadCard,
       ]}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
@@ -261,6 +261,9 @@ const styles = {
         opacity: 0.8,
       }
     }
+  },
+  waitingForUpgradeCard: {
+    border: `2px solid ${gameColors.yellow}`,
   },
   imageContainer: {
     position: 'relative',

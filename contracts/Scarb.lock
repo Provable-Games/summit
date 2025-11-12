@@ -63,7 +63,7 @@ dependencies = [
 [[package]]
 name = "death_mountain"
 version = "0.1.0"
-source = "git+https://github.com/Provable-Games/death-mountain.git#c63d22551a027a5587bebc16fc082d6f1dd35448"
+source = "git+https://github.com/Provable-Games/death-mountain.git#59004828d59818635bd9c440bd9242c3a322c9dd"
 dependencies = [
  "alexandria_encoding",
  "dojo",

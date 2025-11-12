@@ -43,11 +43,13 @@ export interface Beast {
   adventurers_killed?: number;
   combat?: Combat;
   battle?: BattleEvent;
+  kill_tokens?: number; // New: tokens for upgrades
+  corpse_tokens?: number; // New: tokens for bonus health
 }
 
 export interface Stats {
-  spirit: number;
-  luck: number;
+  spirit: number; // 0-255
+  luck: number; // 0-255
   specials: boolean;
   wisdom: boolean;
   diplomacy: boolean;
@@ -73,6 +75,7 @@ export interface AppliedPotions {
   revive: number;
   attack: number;
   extraLife: number;
+  poison: number;
 }
 
 export interface GameAction {
@@ -83,7 +86,9 @@ export interface GameAction {
   appliedPotions?: AppliedPotions;
   safeAttack?: boolean;
   vrf?: boolean;
-  upgrades?: { [beastId: number]: Stats }
+  upgrades?: { [beastId: number]: Stats };
+  bonusHealth?: number;
+  count?: number;
 }
 
 export interface BattleEvent {

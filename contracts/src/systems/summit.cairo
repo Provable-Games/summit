@@ -260,9 +260,14 @@ pub mod summit_systems {
             let mut i = 0;
             while (i < adventurer_ids.len()) {
                 let adventurer_id = *adventurer_ids.at(i);
+                let adventurer_consumed: u32 = self.adventurer_consumed.entry(adventurer_id).read();
+                assert(adventurer_consumed == 0, errors::ADVENTURER_ALREADY_CONSUMED);
+
                 let adventurer = InternalSummitImpl::_get_adventurer(@self, adventurer_id);
                 let mut level: u16 = adventurer.get_level().into();
                 corpse_tokens += level.into();
+
+                self.adventurer_consumed.entry(adventurer_id).write(1);
                 i += 1;
             };
 
@@ -567,7 +572,7 @@ pub mod summit_systems {
                             beast_token_id: summit_beast_token_id,
                             block_timestamp: get_block_timestamp(),
                             count: self.poison_count.read(),
-                            player: 0,
+                            player: 0.try_into().unwrap(),
                         },
                     );
             }
@@ -865,19 +870,6 @@ pub mod summit_systems {
             let max_xp = (beast.fixed.level + BEAST_MAX_BONUS_LVLS) * (beast.fixed.level + BEAST_MAX_BONUS_LVLS);
 
             beast.live.bonus_xp < max_xp - base_xp
-        }
-
-        /// @title assert_beast_can_consume
-        /// @notice this function is used to assert that a beast can consume an adventurer
-        /// @param beast the beast to check
-        /// @param adventurer_id the id of the adventurer to check
-        /// @param health the health of the adventurer to check
-        fn _assert_beast_can_consume(ref self: ContractState, beast: Beast, adventurer_id: u64, health: u16) {
-            assert(beast.live.bonus_health < BEAST_MAX_BONUS_HEALTH, errors::BEAST_MAX_BONUS_HEALTH);
-            assert(health == 0, errors::ADVENTURER_ALIVE);
-
-            let adventurer_consumed: u32 = self.adventurer_consumed.entry(adventurer_id).read();
-            assert(adventurer_consumed == 0, errors::ADVENTURER_ALREADY_CONSUMED);
         }
 
         fn _assert_beast_can_be_revived(beast: Beast, potion_count: u16) {

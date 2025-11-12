@@ -179,6 +179,14 @@ export const useSystemCalls = () => {
     };
   };
 
+  const claimCorpseReward = (adventurerIds: number[]) => {
+    return {
+      contractAddress: SUMMIT_ADDRESS,
+      entrypoint: "claim_corpse_reward",
+      calldata: CallData.compile([adventurerIds]),
+    };
+  };
+
   const requestRandom = () => {
     return {
       contractAddress: VRF_PROVIDER_ADDRESS,
@@ -194,6 +202,7 @@ export const useSystemCalls = () => {
     feed,
     attack,
     claimStarterKit,
+    claimCorpseReward,
     executeAction,
     addExtraLife,
     selectUpgrades,
