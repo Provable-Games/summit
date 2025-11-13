@@ -135,3 +135,56 @@ export const getBeastDetails = (id: number, prefix: number, suffix: number, leve
     power: (6 - BEAST_TIERS[id]) * level
   }
 }
+
+// Luck crit chance percent calculation mirrored from contracts/src/models/beast.cairo
+export const getLuckCritChancePercent = (points: number): number => {
+  const p = Math.max(0, Math.floor(points));
+  let totalBp = 0; // basis points
+  switch (p) {
+    case 0: totalBp = 0; break;
+    case 1: totalBp = 1200; break;
+    case 2: totalBp = 2100; break;
+    case 3: totalBp = 2775; break;
+    case 4: totalBp = 3281; break;
+    case 5: totalBp = 3660; break;
+    case 6: totalBp = 3944; break;
+    case 7: totalBp = 4157; break;
+    case 8: totalBp = 4316; break;
+    case 9: totalBp = 4435; break;
+    case 10: totalBp = 4524; break;
+    case 11: totalBp = 4590; break;
+    case 12: totalBp = 4639; break;
+    case 13: totalBp = 4675; break;
+    case 14: totalBp = 4702; break;
+    case 15: totalBp = 4722; break;
+    default:
+      totalBp = 4722 + (p - 15) * 20;
+  }
+  // integer division like Cairo
+  return Math.floor(totalBp / 100);
+}
+
+// Spirit revival time reduction in seconds mirrored from contracts/src/models/beast.cairo
+export const getSpiritRevivalReductionSeconds = (points: number): number => {
+  const p = Math.max(0, Math.floor(points));
+  switch (p) {
+    case 0: return 0;
+    case 1: return 10800;
+    case 2: return 18900;
+    case 3: return 24975;
+    case 4: return 29531;
+    case 5: return 32948;
+    case 6: return 35511;
+    case 7: return 37433;
+    case 8: return 38874;
+    case 9: return 39954;
+    case 10: return 40764;
+    case 11: return 41372;
+    case 12: return 41828;
+    case 13: return 42170;
+    case 14: return 42427;
+    case 15: return 42620;
+    default:
+      return 42620 + (p - 15) * 120;
+  }
+}

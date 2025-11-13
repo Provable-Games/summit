@@ -1,28 +1,29 @@
 import corpseTokenImg from '@/assets/images/corpse-token.png';
 import killTokenImg from '@/assets/images/kill-token.png';
 import { useGameDirector } from '@/contexts/GameDirector';
-import { fetchBeastImage } from '@/utils/beasts';
+import { fetchBeastImage, getLuckCritChancePercent, getSpiritRevivalReductionSeconds } from '@/utils/beasts';
 import { gameColors } from '@/utils/themes';
 import AddIcon from '@mui/icons-material/Add';
 import CasinoIcon from '@mui/icons-material/Casino';
 import CloseIcon from '@mui/icons-material/Close';
 import EnergyIcon from '@mui/icons-material/ElectricBolt';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import FlashOnIcon from '@mui/icons-material/FlashOn';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import RemoveIcon from '@mui/icons-material/Remove';
 import StarIcon from '@mui/icons-material/Star';
-import { Box, Button, Dialog, IconButton, Typography } from '@mui/material';
+import { Box, Button, Dialog, IconButton, Typography, InputBase } from '@mui/material';
 import { useEffect, useState } from 'react';
 
 // DUMMY VALUES FOR COSTS
 const UPGRADE_COSTS = {
-  luck_per_level: 5,
-  spirit_per_level: 5,
-  diplomacy: 100,
-  specials: 150,
-  wisdom: 200,
-  health_per_point: 2,
+  luck_per_level: 1,
+  spirit_per_level: 1,
+  diplomacy: 15,
+  specials: 10,
+  wisdom: 20,
+  health_per_point: 1,
 };
 
 interface BeastUpgradeModalProps {
@@ -89,6 +90,10 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   const hasAnyUpgrade = luckUpgrade > 0 || spiritUpgrade > 0 ||
     diplomacySelected || specialsSelected || wisdomSelected ||
     bonusHealthUpgrade > 0;
+  const remainingKillTokens = killTokens - killTokenCost;
+  const remainingCorpseTokens = corpseTokens - corpseTokenCost;
+  const insufficientKill = remainingKillTokens < 0;
+  const insufficientCorpse = remainingCorpseTokens < 0;
 
   const handleUpgrade = async () => {
     if (!canAfford || !hasAnyUpgrade) return;
@@ -138,6 +143,63 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   const currentLuck = currentBeast.stats?.luck || 0;
   const currentSpirit = currentBeast.stats?.spirit || 0;
 
+  const formatShortDuration = (seconds: number): string => {
+    const s = Math.max(0, Math.floor(seconds));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const remS = s % 60;
+    if (h > 0) {
+      return `${h}h${m > 0 ? ` ${m}m` : ''}`;
+    }
+    if (m > 0) {
+      return `${m}m${remS > 0 ? ` ${remS}s` : ''}`;
+    }
+    return `${remS}s`;
+  };
+
+  const currentLuckCrit = getLuckCritChancePercent(currentLuck);
+  const nextLuckCrit = getLuckCritChancePercent(currentLuck + luckUpgrade);
+  const currentSpiritReductionSec = getSpiritRevivalReductionSeconds(currentSpirit);
+  const nextSpiritReductionSec = getSpiritRevivalReductionSeconds(currentSpirit + spiritUpgrade);
+
+  // Vitality/Health visuals (Bonus-only, max 1023)
+  const MAX_BONUS_HEALTH = 1023;
+  const currentBonusHealth = currentBeast.bonus_health || 0;
+  const plannedBonusHealth = bonusHealthUpgrade || 0;
+  const plannedTotalBonus = Math.min(MAX_BONUS_HEALTH, currentBonusHealth + plannedBonusHealth);
+  const currentBonusPct = Math.min(100, (currentBonusHealth * 100) / MAX_BONUS_HEALTH);
+  const plannedTotalPct = Math.min(100, (plannedTotalBonus * 100) / MAX_BONUS_HEALTH);
+  const plannedAddPct = Math.max(0, plannedTotalPct - currentBonusPct);
+
+  const onLuckInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const num = raw === '' ? 0 : parseInt(raw, 10);
+    const max = Math.max(0, 255 - currentLuck);
+    setLuckUpgrade(Math.max(0, Math.min(max, isNaN(num) ? 0 : num)));
+  };
+
+  const onSpiritInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const num = raw === '' ? 0 : parseInt(raw, 10);
+    const max = Math.max(0, 255 - currentSpirit);
+    setSpiritUpgrade(Math.max(0, Math.min(max, isNaN(num) ? 0 : num)));
+  };
+
+  const onBonusHealthInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const num = raw === '' ? 0 : parseInt(raw, 10);
+    const maxAdd = Math.max(0, MAX_BONUS_HEALTH - currentBonusHealth);
+    setBonusHealthUpgrade(Math.max(0, Math.min(maxAdd, isNaN(num) ? 0 : num)));
+  };
+
+  const formatNumber = (n: number) => {
+    try {
+      return n.toLocaleString();
+    } catch {
+      return `${n}`;
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -146,15 +208,13 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
       slotProps={{
         paper: {
           sx: {
-            background: `radial-gradient(ellipse at top, ${gameColors.darkGreen}f8 0%, #000000f5 100%)`,
-            backdropFilter: 'blur(10px)',
-            border: `3px solid`,
-            borderImage: `linear-gradient(135deg, ${gameColors.accentGreen}, ${gameColors.brightGreen}, ${gameColors.accentGreen}) 1`,
-            borderRadius: 0,
+            background: `${gameColors.darkGreen}95`,
+            backdropFilter: 'blur(12px) saturate(1.2)',
+            border: `2px solid ${gameColors.accentGreen}60`,
+            borderRadius: '12px',
             boxShadow: `
-              0 0 60px ${gameColors.brightGreen}40,
-              inset 0 0 40px ${gameColors.darkGreen}60,
-              0 20px 60px rgba(0, 0, 0, 0.9)
+              0 8px 24px rgba(0, 0, 0, 0.6),
+              0 0 16px ${gameColors.accentGreen}30
             `,
             width: '900px',
             maxWidth: '95vw',
@@ -188,7 +248,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
               <img
                 src={fetchBeastImage(currentBeast)}
                 alt={currentBeast.name}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                style={{ width: '90%', height: '90%', objectFit: 'contain' }}
               />
               <Box sx={styles.portraitBorder} />
             </Box>
@@ -205,34 +265,53 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
               </Box>
               <Box sx={styles.statRow}>
                 <Typography sx={styles.statLabel}>Power</Typography>
-                <Typography sx={[styles.statValue, { color: gameColors.yellow }]}>{currentBeast.power}</Typography>
+                <Box display={'flex'} alignItems={'center'}>
+                  <FlashOnIcon sx={{ fontSize: '14px', color: gameColors.yellow }} />
+                  <Typography sx={styles.statValue}>
+                    {currentBeast.power}
+                  </Typography>
+                </Box>
               </Box>
               <Box sx={styles.statRow}>
                 <Typography sx={styles.statLabel}>Health</Typography>
-                <Typography sx={[styles.statValue, { color: gameColors.red }]}>
-                  {currentBeast.health}
+                <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+                  <FavoriteIcon sx={{ fontSize: '14px', color: gameColors.red }} />
+                  <Typography sx={styles.statValue}>
+                    {currentBeast.health}
+                  </Typography>
                   {(currentBeast.bonus_health || 0) > 0 && (
                     <span style={{ color: '#4ade80', marginLeft: '4px' }}>
                       +{currentBeast.bonus_health}
                     </span>
                   )}
-                </Typography>
-              </Box>
-              <Box sx={styles.statRow}>
-                <Typography sx={styles.statLabel}>Kills</Typography>
-                <Typography sx={styles.statValue}>{currentBeast.adventurers_killed || 0}</Typography>
+                </Box>
               </Box>
             </Box>
 
             {/* Resources */}
+            <Typography sx={styles.resourceHeadline}>Tokens Remaining</Typography>
             <Box sx={styles.resources}>
               <Box sx={styles.resourceItem}>
-                <img src={killTokenImg} alt="Kill" style={{ width: '20px', height: '20px' }} />
-                <Typography sx={styles.resourceValue}>{killTokens}</Typography>
+                <img src={killTokenImg} alt="Kill" style={{ width: '32px', height: '32px' }} />
+                <Box sx={styles.resourceTexts}>
+                  <Typography sx={styles.resourceLabel}>Kill</Typography>
+                  <Box sx={styles.resourceRow}>
+                    <Typography sx={[styles.resourceValue, insufficientKill && styles.resourceInsufficient]}>
+                      {formatNumber(remainingKillTokens)}
+                    </Typography>
+                  </Box>
+                </Box>
               </Box>
               <Box sx={styles.resourceItem}>
-                <img src={corpseTokenImg} alt="Corpse" style={{ width: '20px', height: '20px' }} />
-                <Typography sx={styles.resourceValue}>{corpseTokens}</Typography>
+                <img src={corpseTokenImg} alt="Corpse" style={{ width: '32px', height: '32px' }} />
+                <Box sx={styles.resourceTexts}>
+                  <Typography sx={styles.resourceLabel}>Corpse</Typography>
+                  <Box sx={styles.resourceRow}>
+                    <Typography sx={[styles.resourceValue, insufficientCorpse && styles.resourceInsufficient]}>
+                      {formatNumber(remainingCorpseTokens)}
+                    </Typography>
+                  </Box>
+                </Box>
               </Box>
             </Box>
           </Box>
@@ -245,14 +324,22 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
 
               <Box sx={styles.attributeRow}>
                 <Box sx={styles.attributeIcon}>
-                  <CasinoIcon sx={{ fontSize: '20px', color: '#ff69b4' }} />
+                  <CasinoIcon sx={{ fontSize: '24px', color: '#ff69b4' }} />
                 </Box>
                 <Box sx={styles.attributeInfo}>
                   <Typography sx={styles.attributeName}>Luck</Typography>
                   <Typography sx={styles.attributeLevel}>
                     {currentLuck}
                     {luckUpgrade > 0 && <span style={{ color: '#4ade80' }}> → {currentLuck + luckUpgrade}</span>}
-                    <span style={{ color: '#666' }}> / 255</span>
+                    <span style={{ color: '#bbb' }}> / 255</span>
+                  </Typography>
+                  <Typography sx={styles.attributeEffect}>
+                    Critical hit chance: {currentLuckCrit}%
+                    {luckUpgrade > 0 && (
+                      <span style={{ color: '#4ade80' }}>
+                        {' '}→ {nextLuckCrit}% (+{Math.max(0, nextLuckCrit - currentLuckCrit)}%)
+                      </span>
+                    )}
                   </Typography>
                 </Box>
                 <Box sx={styles.attributeControls}>
@@ -265,7 +352,16 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                     <RemoveIcon sx={{ fontSize: '16px' }} />
                   </IconButton>
                   <Box sx={styles.statInput}>
-                    <Typography sx={styles.statInputValue}>{luckUpgrade}</Typography>
+                    <InputBase
+                      value={luckUpgrade}
+                      onChange={onLuckInputChange}
+                      inputProps={{
+                        inputMode: 'numeric',
+                        pattern: '[0-9]*',
+                        style: { textAlign: 'center' }
+                      }}
+                      sx={styles.statInputField}
+                    />
                   </Box>
                   <IconButton
                     size="small"
@@ -276,24 +372,26 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                     <AddIcon sx={{ fontSize: '16px' }} />
                   </IconButton>
                 </Box>
-                {luckUpgrade > 0 && (
-                  <Box sx={styles.attributeCost}>
-                    <img src={killTokenImg} alt="" style={{ width: '14px', height: '14px' }} />
-                    <Typography sx={styles.costValue}>{luckUpgrade * UPGRADE_COSTS.luck_per_level}</Typography>
-                  </Box>
-                )}
               </Box>
 
               <Box sx={styles.attributeRow}>
                 <Box sx={styles.attributeIcon}>
-                  <EnergyIcon sx={{ fontSize: '20px', color: '#00ffff' }} />
+                  <EnergyIcon sx={{ fontSize: '24px', color: '#00ffff' }} />
                 </Box>
                 <Box sx={styles.attributeInfo}>
                   <Typography sx={styles.attributeName}>Spirit</Typography>
                   <Typography sx={styles.attributeLevel}>
                     {currentSpirit}
                     {spiritUpgrade > 0 && <span style={{ color: '#4ade80' }}> → {currentSpirit + spiritUpgrade}</span>}
-                    <span style={{ color: '#666' }}> / 255</span>
+                    <span style={{ color: '#bbb' }}> / 255</span>
+                  </Typography>
+                  <Typography sx={styles.attributeEffect}>
+                    Revival time reduction: {formatShortDuration(currentSpiritReductionSec)}
+                    {spiritUpgrade > 0 && (
+                      <span style={{ color: '#4ade80' }}>
+                        {' '}→ {formatShortDuration(nextSpiritReductionSec)} (+{formatShortDuration(Math.max(0, nextSpiritReductionSec - currentSpiritReductionSec))})
+                      </span>
+                    )}
                   </Typography>
                 </Box>
                 <Box sx={styles.attributeControls}>
@@ -306,7 +404,16 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                     <RemoveIcon sx={{ fontSize: '16px' }} />
                   </IconButton>
                   <Box sx={styles.statInput}>
-                    <Typography sx={styles.statInputValue}>{spiritUpgrade}</Typography>
+                    <InputBase
+                      value={spiritUpgrade}
+                      onChange={onSpiritInputChange}
+                      inputProps={{
+                        inputMode: 'numeric',
+                        pattern: '[0-9]*',
+                        style: { textAlign: 'center' }
+                      }}
+                      sx={styles.statInputField}
+                    />
                   </Box>
                   <IconButton
                     size="small"
@@ -317,12 +424,6 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                     <AddIcon sx={{ fontSize: '16px' }} />
                   </IconButton>
                 </Box>
-                {spiritUpgrade > 0 && (
-                  <Box sx={styles.attributeCost}>
-                    <img src={killTokenImg} alt="" style={{ width: '14px', height: '14px' }} />
-                    <Typography sx={styles.costValue}>{spiritUpgrade * UPGRADE_COSTS.spirit_per_level}</Typography>
-                  </Box>
-                )}
               </Box>
             </Box>
 
@@ -334,22 +435,24 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                 <Box
                   sx={[
                     styles.abilitySlot,
-                    currentBeast.stats?.diplomacy && styles.abilityUnlocked,
-                    !currentBeast.stats?.diplomacy && diplomacySelected && styles.abilitySelected,
+                    currentBeast.stats?.specials && styles.abilityUnlocked,
+                    !currentBeast.stats?.specials && specialsSelected && styles.abilitySelected,
                   ]}
-                  onClick={() => !currentBeast.stats?.diplomacy && setDiplomacySelected(!diplomacySelected)}
+                  onClick={() => !currentBeast.stats?.specials && setSpecialsSelected(!specialsSelected)}
                 >
-                  <HandshakeIcon sx={{ fontSize: '28px', color: '#a78bfa' }} />
-                  <Typography sx={styles.abilityName}>Diplomacy</Typography>
-                  <Typography sx={styles.abilityDescription}>
-                    Get a share of rewards from other "{currentBeast.prefix} {currentBeast.suffix}" beasts.
+                  <Box sx={styles.abilityIconHolder}>
+                    <StarIcon sx={{ fontSize: '28px', color: '#ffd700' }} />
+                  </Box>
+                  <Typography sx={styles.abilityName}>Specials</Typography>
+                  <Typography sx={[styles.abilityDescription, styles.abilityDescriptionArea]}>
+                    Unlocks name match bonus damage
                   </Typography>
-                  {currentBeast.stats?.diplomacy ? (
+                  {currentBeast.stats?.specials ? (
                     <Box sx={styles.abilityCheck}>✓</Box>
                   ) : (
                     <Box sx={styles.abilityCost}>
-                      <img src={killTokenImg} alt="" style={{ width: '12px', height: '12px' }} />
-                      <Typography sx={styles.abilityCostText}>{UPGRADE_COSTS.diplomacy}</Typography>
+                      <img src={killTokenImg} alt="" style={{ width: '20px', height: '20px' }} />
+                      <Typography sx={styles.abilityCostText}>{UPGRADE_COSTS.specials}</Typography>
                     </Box>
                   )}
                 </Box>
@@ -357,22 +460,24 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                 <Box
                   sx={[
                     styles.abilitySlot,
-                    currentBeast.stats?.specials && styles.abilityUnlocked,
-                    !currentBeast.stats?.specials && specialsSelected && styles.abilitySelected,
+                    currentBeast.stats?.diplomacy && styles.abilityUnlocked,
+                    !currentBeast.stats?.diplomacy && diplomacySelected && styles.abilitySelected,
                   ]}
-                  onClick={() => !currentBeast.stats?.specials && setSpecialsSelected(!specialsSelected)}
+                  onClick={() => !currentBeast.stats?.diplomacy && setDiplomacySelected(!diplomacySelected)}
                 >
-                  <StarIcon sx={{ fontSize: '28px', color: '#ffd700' }} />
-                  <Typography sx={styles.abilityName}>Specials</Typography>
-                  <Typography sx={styles.abilityDescription}>
-                    Unlocks name match bonus damage
+                  <Box sx={styles.abilityIconHolder}>
+                    <HandshakeIcon sx={{ fontSize: '28px', color: '#a78bfa' }} />
+                  </Box>
+                  <Typography sx={styles.abilityName}>Diplomacy</Typography>
+                  <Typography sx={[styles.abilityDescription, styles.abilityDescriptionArea]}>
+                    Empower and share rewards of other "{currentBeast.prefix} {currentBeast.suffix}" beasts.
                   </Typography>
-                  {currentBeast.stats?.specials ? (
+                  {currentBeast.stats?.diplomacy ? (
                     <Box sx={styles.abilityCheck}>✓</Box>
                   ) : (
                     <Box sx={styles.abilityCost}>
-                      <img src={killTokenImg} alt="" style={{ width: '12px', height: '12px' }} />
-                      <Typography sx={styles.abilityCostText}>{UPGRADE_COSTS.specials}</Typography>
+                      <img src={killTokenImg} alt="" style={{ width: '20px', height: '20px' }} />
+                      <Typography sx={styles.abilityCostText}>{UPGRADE_COSTS.diplomacy}</Typography>
                     </Box>
                   )}
                 </Box>
@@ -385,16 +490,18 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                   ]}
                   onClick={() => !currentBeast.stats?.wisdom && setWisdomSelected(!wisdomSelected)}
                 >
-                  <PsychologyIcon sx={{ fontSize: '28px', color: '#60a5fa' }} />
+                  <Box sx={styles.abilityIconHolder}>
+                    <PsychologyIcon sx={{ fontSize: '28px', color: '#60a5fa' }} />
+                  </Box>
                   <Typography sx={styles.abilityName}>Wisdom</Typography>
-                  <Typography sx={styles.abilityDescription}>
+                  <Typography sx={[styles.abilityDescription, styles.abilityDescriptionArea]}>
                     Gain XP when successfully defending attacks on the Summit.
                   </Typography>
                   {currentBeast.stats?.wisdom ? (
                     <Box sx={styles.abilityCheck}>✓</Box>
                   ) : (
                     <Box sx={styles.abilityCost}>
-                      <img src={killTokenImg} alt="" style={{ width: '12px', height: '12px' }} />
+                      <img src={killTokenImg} alt="" style={{ width: '20px', height: '20px' }} />
                       <Typography sx={styles.abilityCostText}>{UPGRADE_COSTS.wisdom}</Typography>
                     </Box>
                   )}
@@ -408,16 +515,23 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
 
               <Box sx={styles.vitalityRow}>
                 <Box sx={styles.vitalityIcon}>
-                  <FavoriteIcon sx={{ fontSize: '20px', color: gameColors.red }} />
+                  <FavoriteIcon sx={{ fontSize: '24px', color: gameColors.red }} />
                 </Box>
                 <Box sx={styles.vitalityInfo}>
                   <Typography sx={styles.attributeName}>Bonus Health</Typography>
                   <Typography sx={styles.attributeLevel}>
-                    Current: +{currentBeast.bonus_health || 0} HP
+                    {currentBeast.bonus_health || 0}
                     {bonusHealthUpgrade > 0 && (
-                      <span style={{ color: '#4ade80' }}> → +{(currentBeast.bonus_health || 0) + bonusHealthUpgrade} HP</span>
+                      <span style={{ color: '#4ade80' }}> → +{(currentBeast.bonus_health || 0) + bonusHealthUpgrade}</span>
                     )}
+                    <span style={{ color: '#bbb' }}> / {MAX_BONUS_HEALTH}</span>
                   </Typography>
+                  <Box sx={styles.healthBar}>
+                    <Box sx={[styles.healthBarSegment, styles.healthBarBonus]} style={{ width: `${currentBonusPct}%` }} />
+                    {plannedBonusHealth > 0 && plannedAddPct > 0 && (
+                      <Box sx={[styles.healthBarSegment, styles.healthBarPlanned]} style={{ width: `${plannedAddPct}%` }} />
+                    )}
+                  </Box>
                 </Box>
                 <Box sx={styles.attributeControls}>
                   <IconButton
@@ -429,22 +543,28 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                     <RemoveIcon sx={{ fontSize: '16px' }} />
                   </IconButton>
                   <Box sx={styles.statInput}>
-                    <Typography sx={styles.statInputValue}>{bonusHealthUpgrade}</Typography>
+                    <InputBase
+                      value={bonusHealthUpgrade}
+                      onChange={onBonusHealthInputChange}
+                      inputProps={{
+                        inputMode: 'numeric',
+                        pattern: '[0-9]*',
+                        style: { textAlign: 'center' }
+                      }}
+                      sx={styles.statInputField}
+                    />
                   </Box>
                   <IconButton
                     size="small"
-                    onClick={() => setBonusHealthUpgrade(bonusHealthUpgrade + 10)}
+                    onClick={() => {
+                      const maxAdd = Math.max(0, MAX_BONUS_HEALTH - currentBonusHealth);
+                      setBonusHealthUpgrade(Math.min(maxAdd, bonusHealthUpgrade + 10))
+                    }}
                     sx={styles.statButton}
                   >
                     <AddIcon sx={{ fontSize: '16px' }} />
                   </IconButton>
                 </Box>
-                {bonusHealthUpgrade > 0 && (
-                  <Box sx={styles.attributeCost}>
-                    <img src={corpseTokenImg} alt="" style={{ width: '14px', height: '14px' }} />
-                    <Typography sx={styles.costValue}>{bonusHealthUpgrade * UPGRADE_COSTS.health_per_point}</Typography>
-                  </Box>
-                )}
               </Box>
             </Box>
           </Box>
@@ -452,44 +572,48 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
 
         {/* Footer */}
         <Box sx={styles.footer}>
-          <Box sx={styles.totalCost}>
-            {killTokenCost > 0 && (
-              <Box sx={styles.totalCostItem}>
-                <img src={killTokenImg} alt="" style={{ width: '20px', height: '20px' }} />
-                <Typography sx={[styles.totalCostText, killTokenCost > killTokens && styles.totalCostError]}>
-                  {killTokenCost} / {killTokens}
-                </Typography>
-              </Box>
-            )}
-            {corpseTokenCost > 0 && (
-              <Box sx={styles.totalCostItem}>
-                <img src={corpseTokenImg} alt="" style={{ width: '20px', height: '20px' }} />
-                <Typography sx={[styles.totalCostText, corpseTokenCost > corpseTokens && styles.totalCostError]}>
-                  {corpseTokenCost} / {corpseTokens}
-                </Typography>
-              </Box>
-            )}
-          </Box>
+          {hasAnyUpgrade && (killTokenCost > 0 || corpseTokenCost > 0) && (
+            <Box sx={styles.tokenSummary}>
+              <Typography sx={styles.tokenSummaryLabel}>You are about to spend</Typography>
+              {killTokenCost > 0 && (
+                <Box sx={styles.tokenCard}>
+                  <Box sx={styles.tokenIcon}>
+                    <img src={killTokenImg} alt="Kill" style={{ width: '24px', height: '24px' }} />
+                  </Box>
+                  <Typography sx={styles.tokenUseValue}>{killTokenCost}</Typography>
+                </Box>
+              )}
+              {corpseTokenCost > 0 && (
+                <Box sx={styles.tokenCard}>
+                  <Box sx={styles.tokenIcon}>
+                    <img src={corpseTokenImg} alt="Corpse" style={{ width: '24px', height: '24px' }} />
+                  </Box>
+                  <Typography sx={styles.tokenUseValue}>{corpseTokenCost}</Typography>
+                </Box>
+              )}
+            </Box>
+          )}
 
           <Button
             disabled={upgradeInProgress || !hasAnyUpgrade || !canAfford}
             onClick={handleUpgrade}
             sx={[
               styles.applyButton,
-              hasAnyUpgrade && canAfford && styles.applyButtonActive
+              hasAnyUpgrade && canAfford && styles.applyButtonActive,
+              { ml: 'auto' }
             ]}
           >
             {upgradeInProgress ? (
               <Box display={'flex'} alignItems={'baseline'} gap={1}>
-                <span>APPLYING</span>
+                <Typography sx={styles.applyButtonText}>APPLYING</Typography>
                 <div className='dotLoader white' />
               </Box>
             ) : !canAfford ? (
-              'INSUFFICIENT RESOURCES'
+              <Typography sx={styles.applyButtonText}>INSUFFICIENT Tokens</Typography>
             ) : !hasAnyUpgrade ? (
-              'SELECT UPGRADES'
+              <Typography sx={styles.applyButtonText}>SELECT UPGRADES</Typography>
             ) : (
-              'APPLY UPGRADES'
+              <Typography sx={styles.applyButtonText}>APPLY UPGRADES</Typography>
             )}
           </Button>
         </Box>
@@ -521,23 +645,22 @@ const styles = {
     pb: 1.5,
   },
   title: {
-    fontSize: '20px',
+    fontSize: '24px',
+    lineHeight: '24px',
     fontWeight: 'bold',
-    color: gameColors.brightGreen,
-    letterSpacing: '3px',
+    color: gameColors.yellow,
+    letterSpacing: '1.5px',
     textAlign: 'center',
     textTransform: 'uppercase',
     textShadow: `
-      0 0 20px ${gameColors.brightGreen},
-      0 0 10px ${gameColors.brightGreen},
-      0 2px 4px rgba(0, 0, 0, 0.8)
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 12px ${gameColors.yellow}40
     `,
   },
   divider: {
     height: '2px',
-    background: `linear-gradient(90deg, transparent, ${gameColors.brightGreen}, transparent)`,
-    mt: 1.5,
-    boxShadow: `0 0 8px ${gameColors.brightGreen}`,
+    background: `linear-gradient(90deg, transparent, ${gameColors.yellow}, transparent)`,
+    mt: 1,
   },
   content: {
     display: 'flex',
@@ -556,12 +679,8 @@ const styles = {
     position: 'relative',
     width: '200px',
     height: '200px',
-    background: `radial-gradient(circle, ${gameColors.darkGreen}40, #000)`,
-    border: `3px solid ${gameColors.accentGreen}`,
-    boxShadow: `
-      0 0 20px ${gameColors.accentGreen}60,
-      inset 0 0 30px rgba(0, 0, 0, 0.8)
-    `,
+    background: `#000`,
+    border: `2px solid ${gameColors.accentGreen}60`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -598,6 +717,7 @@ const styles = {
     borderRadius: '4px',
     p: 1,
     mt: 0.5,
+    boxSizing: 'border-box',
   },
   statRow: {
     display: 'flex',
@@ -624,23 +744,58 @@ const styles = {
     display: 'flex',
     gap: 1,
     width: '100%',
+  },
+  resourceHeadline: {
+    fontSize: '11px',
+    color: gameColors.accentGreen,
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
     mt: 1,
   },
   resourceItem: {
     flex: 1,
     display: 'flex',
     alignItems: 'center',
-    gap: 0.5,
+    gap: 1,
     background: `${gameColors.darkGreen}60`,
     border: `1px solid ${gameColors.accentGreen}40`,
     borderRadius: '4px',
     p: 0.75,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
   },
   resourceValue: {
     fontSize: '14px',
     fontWeight: 'bold',
     color: '#fff',
+  },
+  resourceTexts: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0.25,
+  },
+  resourceLabel: {
+    fontSize: '10px',
+    color: '#bbb',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    lineHeight: '10px',
+  },
+  resourceRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 0.5,
+  },
+  resourceSub: {
+    fontSize: '11px',
+    color: '#9aa',
+  },
+  resourceRemaining: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  resourceInsufficient: {
+    color: gameColors.red,
   },
   rightPanel: {
     flex: 1,
@@ -649,10 +804,7 @@ const styles = {
     gap: 1.5,
   },
   section: {
-    background: `linear-gradient(135deg, ${gameColors.darkGreen}30, transparent)`,
-    border: `1px solid ${gameColors.accentGreen}30`,
-    borderRadius: '4px',
-    p: 1.5,
+    px: 1.5,
   },
   sectionTitle: {
     fontSize: '12px',
@@ -660,15 +812,14 @@ const styles = {
     color: gameColors.brightGreen,
     letterSpacing: '2px',
     textTransform: 'uppercase',
-    mb: 1.5,
+    mb: 1,
     pb: 0.5,
     borderBottom: `1px solid ${gameColors.accentGreen}30`,
-    textShadow: `0 0 8px ${gameColors.brightGreen}60`,
   },
   attributeRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: 1,
+    gap: 1.5,
     mb: 1,
     p: 0.75,
     background: `${gameColors.darkGreen}40`,
@@ -704,9 +855,12 @@ const styles = {
     textTransform: 'uppercase',
   },
   attributeLevel: {
-    fontSize: '11px',
+    fontSize: '12px',
     color: '#bbb',
-    mt: 0.25,
+  },
+  attributeEffect: {
+    fontSize: '12px',
+    color: '#9aa',
   },
   attributeControls: {
     display: 'flex',
@@ -743,6 +897,17 @@ const styles = {
     fontSize: '13px',
     fontWeight: 'bold',
     color: '#fff',
+  },
+  statInputField: {
+    color: '#fff',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    px: 0.5,
+    '& input': {
+      textAlign: 'center',
+      padding: 0,
+    }
   },
   attributeCost: {
     display: 'flex',
@@ -785,6 +950,12 @@ const styles = {
       boxShadow: `0 4px 12px ${gameColors.accentGreen}30`,
     },
   },
+  abilityIconHolder: {
+    height: '36px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   abilityUnlocked: {
     opacity: 0.6,
     cursor: 'not-allowed',
@@ -818,17 +989,24 @@ const styles = {
     letterSpacing: '0.3px',
     mb: 0.5,
   },
+  abilityDescriptionArea: {
+    minHeight: '28px',
+  },
   abilityCost: {
     display: 'flex',
     alignItems: 'center',
-    gap: 0.25,
-    background: `${gameColors.darkGreen}80`,
-    borderRadius: '3px',
+    gap: 0.5,
     px: 0.5,
     py: 0.25,
   },
-  abilityCostText: {
+  abilityCostLabel: {
     fontSize: '10px',
+    color: '#bbb',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+  },
+  abilityCostText: {
+    fontSize: '13px',
     fontWeight: 'bold',
     color: gameColors.yellow,
   },
@@ -846,12 +1024,11 @@ const styles = {
     justifyContent: 'center',
     fontSize: '12px',
     fontWeight: 'bold',
-    boxShadow: `0 0 8px ${gameColors.brightGreen}`,
   },
   vitalityRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: 1,
+    gap: 1.5,
     p: 0.75,
     background: `${gameColors.darkGreen}40`,
     border: `1px solid ${gameColors.accentGreen}20`,
@@ -870,13 +1047,56 @@ const styles = {
   vitalityInfo: {
     flex: 1,
   },
+  healthBar: {
+    height: '10px',
+    background: 'rgba(0,0,0,0.3)',
+    borderRadius: '6px',
+    overflow: 'hidden',
+    display: 'flex',
+    mt: 0.5,
+  },
+  healthBarSegment: {
+    height: '100%',
+  },
+  healthBarBase: {
+    background: `${gameColors.red}AA`,
+  },
+  healthBarBonus: {
+    background: '#58b000',
+  },
+  healthBarPlanned: {
+    background: '#58b00099',
+  },
+  healthLegend: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+    mt: 0.5,
+  },
+  legendItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+  },
+  legendSwatch: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '2px',
+    border: `1px solid ${gameColors.accentGreen}40`,
+  },
+  legendText: {
+    fontSize: '10px',
+    color: '#bbb',
+    letterSpacing: '0.3px',
+    textTransform: 'uppercase',
+  },
   footer: {
     display: 'flex',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     gap: 2,
-    p: 2,
-    pt: 1.5,
+    p: 1,
+    px: 2,
     borderTop: `2px solid ${gameColors.accentGreen}30`,
     background: `linear-gradient(0deg, ${gameColors.darkGreen}40, transparent)`,
   },
@@ -884,6 +1104,72 @@ const styles = {
     display: 'flex',
     gap: 2,
     alignItems: 'center',
+  },
+  tokenSummary: {
+    display: 'flex',
+    gap: 1,
+    alignItems: 'center',
+  },
+  tokenCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    background: `${gameColors.darkGreen}40`,
+    border: `1px solid ${gameColors.accentGreen}20`,
+    borderRadius: '12px',
+    padding: '2px 6px',
+    minWidth: 'auto',
+  },
+  tokenSummaryLabel: {
+    fontSize: '11px',
+    color: '#999',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  tokenCardError: {
+    border: `1px solid ${gameColors.red}`,
+    boxShadow: `0 0 8px ${gameColors.red}50`,
+  },
+  tokenIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '24px',
+    height: '24px',
+  },
+  tokenTexts: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0.25,
+  },
+  tokenLabel: {
+    fontSize: '10px',
+    color: '#bbb',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    lineHeight: '10px',
+  },
+  tokenEquation: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    lineHeight: '14px',
+  },
+  tokenEquationValue: {
+    color: '#fff',
+  },
+  tokenEquationOp: {
+    color: '#bbb',
+  },
+  tokenUseValue: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#fff',
   },
   totalCostItem: {
     display: 'flex',
@@ -904,40 +1190,47 @@ const styles = {
     color: gameColors.red,
   },
   applyButton: {
-    background: `linear-gradient(135deg, ${gameColors.mediumGreen}60, ${gameColors.darkGreen}80)`,
+    background: `${gameColors.mediumGreen}60`,
+    borderRadius: '8px',
+    height: '48px',
+    my: '6px',
     border: `2px solid ${gameColors.accentGreen}60`,
-    color: '#999',
-    fontSize: '13px',
+    transition: 'all 0.3s ease',
+    opacity: 0.7,
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    fontSize: '14px',
     fontWeight: 'bold',
-    letterSpacing: '2px',
     textTransform: 'uppercase',
-    px: 4,
-    py: 1,
-    borderRadius: '4px',
-    transition: 'all 0.3s',
-    '&:hover': {
-      background: `linear-gradient(135deg, ${gameColors.mediumGreen}80, ${gameColors.darkGreen})`,
-    },
     '&:disabled': {
-      opacity: 0.5,
+      opacity: 0.4,
       cursor: 'not-allowed',
     },
   },
   applyButtonActive: {
-    background: `linear-gradient(135deg, ${gameColors.brightGreen}, ${gameColors.accentGreen})`,
+    background: `linear-gradient(135deg, ${gameColors.brightGreen} 0%, ${gameColors.accentGreen} 100%)`,
     border: `2px solid ${gameColors.brightGreen}`,
-    color: '#000',
+    opacity: 1,
     boxShadow: `
-      0 0 30px ${gameColors.brightGreen}60,
-      0 4px 12px rgba(0, 0, 0, 0.6)
+      0 0 12px ${gameColors.brightGreen}40,
+      0 2px 4px rgba(0, 0, 0, 0.3)
     `,
     '&:hover': {
-      background: `linear-gradient(135deg, ${gameColors.lightGreen}, ${gameColors.brightGreen})`,
+      background: `linear-gradient(135deg, ${gameColors.brightGreen} 20%, ${gameColors.lightGreen} 100%)`,
       boxShadow: `
-        0 0 40px ${gameColors.brightGreen}80,
-        0 6px 16px rgba(0, 0, 0, 0.8)
+        0 0 16px ${gameColors.brightGreen}60,
+        0 4px 8px rgba(0, 0, 0, 0.4)
       `,
-      transform: 'translateY(-2px)',
+      transform: 'translateY(-1px)',
     },
+  },
+  applyButtonText: {
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    textWrap: 'nowrap',
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
   },
 };
