@@ -30,7 +30,7 @@ function MainPage() {
 
         {summit && <Summit />}
 
-        {!onboarding
+        {onboarding
           ? <Onboarding />
           : <>
             {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>

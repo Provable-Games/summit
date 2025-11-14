@@ -75,7 +75,6 @@ export interface AppliedPotions {
   revive: number;
   attack: number;
   extraLife: number;
-  poison: number;
 }
 
 export interface GameAction {
@@ -92,8 +91,11 @@ export interface GameAction {
 }
 
 export interface BattleEvent {
-  attacking_beast_owner: string | null;
   attacking_beast_token_id: number;
+  attacking_beast_owner: string | null;
+  attacking_beast_id: number;
+  attacking_beast_shiny: number;
+  attacking_beast_animated: number;
   defending_beast_token_id: number;
   attack_count: number;
   attack_damage: number;
@@ -105,6 +107,20 @@ export interface BattleEvent {
   critical_counter_attack_damage: number;
   attack_potions: number;
   xp_gained: number;
+}
+
+export interface PoisonEvent {
+  beast_token_id: number;
+  block_timestamp: number;
+  count: number;
+  player: string | null;
+}
+
+export interface DiplomacyEvent {
+  beast_token_id: number;
+  specials_hash: string;
+  power: number;
+  owner: string | null;
 }
 
 import { NETWORKS } from '@/utils/networkConfig';

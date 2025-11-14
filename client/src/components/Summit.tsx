@@ -2,6 +2,7 @@ import { useGameStore } from '@/stores/gameStore'
 import CasinoIcon from '@mui/icons-material/Casino'
 import EnergyIcon from '@mui/icons-material/ElectricBolt'
 import StarIcon from '@mui/icons-material/Star'
+import HandshakeIcon from '@mui/icons-material/Handshake'
 import { Box, LinearProgress, Tooltip, Typography } from '@mui/material'
 import { AnimatePresence, motion, useAnimationControls } from 'framer-motion'
 import { useLottie } from 'lottie-react'
@@ -9,18 +10,31 @@ import { useEffect, useState } from 'react'
 import strikeAnim from '../assets/animations/strike.json'
 import heart from '../assets/images/heart.png'
 import { lookupAddressName } from '../utils/addressNameCache'
-import { fetchBeastSummitImage, normaliseHealth } from '../utils/beasts'
+import { fetchBeastSummitImage, fetchBeastImage, normaliseHealth, getLuckCritChancePercent, getSpiritRevivalReductionSeconds } from '../utils/beasts'
 import { gameColors } from '../utils/themes'
 import { useGameDirector } from '@/contexts/GameDirector'
+import { BEAST_NAMES } from '../utils/BeastData'
 
 function Summit() {
-  const { collection, summit, attackInProgress, selectedBeasts, spectatorBattleEvents } = useGameStore()
+  const { collection, summit, attackInProgress, selectedBeasts, spectatorBattleEvents, poisonEvent } = useGameStore()
   const { pauseUpdates } = useGameDirector()
 
   const controls = useAnimationControls()
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
-  const [spectatorDamage, setSpectatorDamage] = useState<Array<{ id: string; damage: number; attackerName: string }>>([])
+  const [spectatorDamage, setSpectatorDamage] = useState<Array<{ id: string; damage: number; attackerName: string; imageSrc: string }>>([])
   const [processedEventIds, setProcessedEventIds] = useState<Set<string>>(new Set())
+  const [poisonNotices, setPoisonNotices] = useState<Array<{ id: string; count: number; playerName: string }>>([])
+  const formatShortDuration = (seconds: number): string => {
+    const s = Math.max(0, Math.floor(seconds));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const remS = s % 60;
+    if (h > 0) return `${h}h${m > 0 ? ` ${m}m` : ''}`;
+    if (m > 0) return `${m}m${remS > 0 ? ` ${remS}s` : ''}`;
+    return `${remS}s`;
+  };
+  const [displayHealth, setDisplayHealth] = useState<number>(summit.beast.current_health)
+  const [displayExtraLives, setDisplayExtraLives] = useState<number>(summit.beast.extra_lives)
 
   const originalExperience = Math.pow(summit.beast.level, 2);
   const currentExperience = originalExperience + summit.beast.bonus_xp;
@@ -53,6 +67,113 @@ function Summit() {
     fetchCartridgeName();
   }, [summit?.owner]);
 
+  useEffect(() => {
+    if (!summit || poisonEvent === null || pauseUpdates) return;
+
+    if (poisonEvent.beast_token_id === summit.beast.token_id) {
+      let cancelled = false;
+      const run = async () => {
+        let playerName = 'Unknown';
+        if (poisonEvent.player) {
+          try {
+            playerName = await lookupAddressName(poisonEvent.player);
+          } catch {
+            playerName = 'Unknown';
+          }
+        }
+        if (cancelled) return;
+        const id = `poison-${poisonEvent.beast_token_id}-${poisonEvent.block_timestamp}-${poisonEvent.count}-${Date.now()}`;
+        setPoisonNotices(prev => [...prev, { id, count: poisonEvent.count, playerName }]);
+        setTimeout(() => {
+          setPoisonNotices(prev => prev.filter(p => p.id !== id));
+        }, 1600);
+      };
+      run();
+      return () => { cancelled = true; };
+    }
+  }, [poisonEvent]);
+
+  // Derive initial poison damage on load and when summit/poison values change
+  useEffect(() => {
+    if (!summit) return;
+    const maxHealth = summit.beast.health + summit.beast.bonus_health;
+    const count = summit.poison_count || 0;
+    const ts = summit.poison_timestamp || 0;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const elapsedSeconds = Math.max(0, nowSec - ts);
+    const totalDamage = count * elapsedSeconds;
+
+    // Helper: apply damage across lives while clamping to 1 HP per life
+    const applyDamage = (currentHealth: number, extraLives: number, damage: number) => {
+      let h = Math.max(1, currentHealth);
+      let lives = extraLives;
+      let remaining = damage;
+      while (remaining > 0) {
+        const canLose = Math.max(0, h - 1);
+        if (remaining <= canLose) {
+          h = h - remaining;
+          remaining = 0;
+          break;
+        }
+        // drop to 1 on this life
+        remaining -= canLose;
+        h = 1;
+        if (remaining > 0 && lives > 0) {
+          // consume a life and continue on next life at full health
+          lives -= 1;
+          h = maxHealth;
+        } else {
+          break;
+        }
+      }
+      return { h, lives };
+    };
+
+    const { h, lives } = applyDamage(summit.beast.current_health, summit.beast.extra_lives, totalDamage);
+    setDisplayHealth(h);
+    setDisplayExtraLives(lives);
+  }, [summit?.beast.token_id, summit?.beast.current_health, summit?.beast.extra_lives, summit?.beast.health, summit?.beast.bonus_health, summit?.poison_count, summit?.poison_timestamp]);
+
+  // Per-second poison ticker
+  useEffect(() => {
+    if (!summit) return;
+    const count = summit.poison_count || 0;
+    if (count <= 0) return;
+    if (pauseUpdates) return;
+
+    const maxHealth = summit.beast.health + summit.beast.bonus_health;
+    const tick = () => {
+      setDisplayHealth(prevHealth => {
+        let newHealth = prevHealth;
+        let newLives = displayExtraLives;
+        let remaining = count;
+        while (remaining > 0) {
+          const canLose = Math.max(0, newHealth - 1);
+          if (remaining <= canLose) {
+            newHealth = newHealth - remaining;
+            remaining = 0;
+            break;
+          }
+          remaining -= canLose;
+          newHealth = 1;
+          if (remaining > 0 && newLives > 0) {
+            newLives -= 1;
+            newHealth = maxHealth;
+          } else {
+            break;
+          }
+        }
+        // sync lives state if changed
+        if (newLives !== displayExtraLives) {
+          setDisplayExtraLives(newLives);
+        }
+        return newHealth;
+      });
+    };
+
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [summit?.beast.health, summit?.beast.bonus_health, summit?.poison_count, pauseUpdates, displayExtraLives]);
   // Process incoming battle events for spectators - rapid fire style!
   useEffect(() => {
     if (!summit || spectatorBattleEvents.length === 0 || pauseUpdates) return;
@@ -83,7 +204,13 @@ function Summit() {
       }
 
       setTimeout(() => {
-        setSpectatorDamage(prev => [...prev, { id: eventId, damage: totalDamage, attackerName }]);
+        const attackerBeastName = BEAST_NAMES[event.attacking_beast_id] || 'Unknown'
+        const imageSrc = fetchBeastImage({
+          name: attackerBeastName,
+          shiny: event.attacking_beast_shiny,
+          animated: event.attacking_beast_animated,
+        } as any)
+        setSpectatorDamage(prev => [...prev, { id: eventId, damage: totalDamage, attackerName, imageSrc }]);
         setProcessedEventIds(prev => new Set([...prev, eventId]));
 
         setTimeout(() => {
@@ -122,19 +249,19 @@ function Summit() {
         <Box sx={styles.healthContainer}>
           <Box sx={styles.healthBar}>
             <Box sx={[styles.healthFill, {
-              width: `${normaliseHealth(summit.beast.current_health, summit.beast.health + summit.beast.bonus_health)}%`
+              width: `${normaliseHealth(displayHealth, summit.beast.health + summit.beast.bonus_health)}%`
             }]} />
 
             <Typography sx={styles.healthText}>
-              {summit.beast.current_health} / {summit.beast.health + summit.beast.bonus_health}
+              {displayHealth} / {summit.beast.health + summit.beast.bonus_health}
             </Typography>
 
             {/* Extra Lives Indicator */}
-            {summit.beast.extra_lives > 0 && (
+            {displayExtraLives > 0 && (
               <Box sx={styles.extraLivesContainer}>
-                {summit.beast.extra_lives > 1 && (
+                {displayExtraLives > 1 && (
                   <Typography sx={styles.extraLivesNumber}>
-                    {summit.beast.extra_lives}
+                    {displayExtraLives}
                   </Typography>
                 )}
                 <img src={heart} alt='Extra Life' style={styles.extraLivesHeart} />
@@ -165,33 +292,54 @@ function Summit() {
               <Typography sx={styles.powerValue}>{summit.beast.power}</Typography>
             </Box>
           </Box>
-          {(summit.beast.stats.spirit || summit.beast.stats.luck || summit.beast.stats.specials) ? (<Box sx={[styles.statBox, { minWidth: '0px' }]}>
-            {/* Stats Upgrades Badge */}
-            <Box sx={styles.statsBadge}>
-              {summit.beast.stats.luck && (
-                <Tooltip title={<Box sx={styles.tooltipContent}>This beast has 50% crit chance</Box>} placement="bottom">
-                  <Box sx={{ color: '#ff69b4', display: 'flex' }}>
-                    <CasinoIcon sx={{ fontSize: '20px' }} />
-                  </Box>
-                </Tooltip>
-              )}
-              {summit.beast.stats.spirit && (
-                <Tooltip title={<Box sx={styles.tooltipContent}>This beast revives 50% faster</Box>} placement="bottom">
-                  <Box sx={{ color: '#00ffff', display: 'flex' }}>
-                    <EnergyIcon sx={{ fontSize: '20px' }} />
-                  </Box>
-                </Tooltip>
-              )}
-              {summit.beast.stats.specials && (
-                <Tooltip title={<Box sx={styles.tooltipContent}>This beast has name match bonus</Box>} placement="bottom">
-                  <Box sx={{ color: '#ffd700', display: 'flex' }}>
-                    <StarIcon sx={{ fontSize: '20px' }} />
-                  </Box>
-                </Tooltip>
-              )}
+          <Tooltip
+            title={
+              <Box sx={styles.tooltipContent}>
+                Critical hit chance: {getLuckCritChancePercent(summit.beast.stats.luck)}%
+              </Box>
+            }
+            placement="bottom"
+          >
+            <Box sx={styles.statBox}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                <CasinoIcon sx={{ fontSize: '16px', color: '#ff69b4' }} />
+                <Typography sx={styles.statLabel}>LUCK</Typography>
+              </Box>
+              <Typography sx={styles.levelValue}>{Math.max(0, Math.floor(summit.beast.stats.luck))}</Typography>
             </Box>
-          </Box>
-          ) : null}
+          </Tooltip>
+          <Tooltip
+            title={
+              <Box sx={styles.tooltipContent}>
+                Revival time reduction: {formatShortDuration(getSpiritRevivalReductionSeconds(summit.beast.stats.spirit))}
+              </Box>
+            }
+            placement="bottom"
+          >
+            <Box sx={styles.statBox}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                <EnergyIcon sx={{ fontSize: '16px', color: '#00ffff' }} />
+                <Typography sx={styles.statLabel}>SPIRIT</Typography>
+              </Box>
+              <Typography sx={styles.levelValue}>{Math.max(0, Math.floor(summit.beast.stats.spirit))}</Typography>
+            </Box>
+          </Tooltip>
+          <Tooltip
+            title={
+              <Box sx={styles.tooltipContent}>
+                Diplomacy bonus: {summit.diplomacy_bonus}
+              </Box>
+            }
+            placement="bottom"
+          >
+            <Box sx={styles.statBox}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa' }} />
+                <Typography sx={styles.statLabel}>DIPLOMACY</Typography>
+              </Box>
+              <Typography sx={styles.levelValue}>{summit.diplomacy_bonus}</Typography>
+            </Box>
+          </Tooltip>
         </Box>
       </Box>
 
@@ -222,6 +370,21 @@ function Summit() {
           alt=''
           animate={controls}
         />
+        {/* Poison green overlay and count badge */}
+        {summit.poison_count > 0 && (
+          <>
+            <Box
+              component={motion.div}
+              sx={styles.poisonImageOverlay}
+              animate={{ opacity: [0.25, 0.45, 0.25] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <Box sx={styles.poisonCountBadge}>
+              <Box sx={styles.poisonCountDot} />
+              <Typography sx={styles.poisonCountText}>x{summit.poison_count}</Typography>
+            </Box>
+          </>
+        )}
 
         {/* Orbiting Light In Front of Image - for animated beasts */}
         {summit.beast.animated ?
@@ -268,6 +431,34 @@ function Summit() {
         {strike.View}
       </Box>
 
+      {/* Poison indicator over summit */}
+      <AnimatePresence>
+        {poisonNotices.map((p) => (
+          <motion.div
+            key={p.id}
+            initial={{ opacity: 0, scale: 0.7, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.6, y: -10 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            style={{
+              position: 'absolute',
+              top: '24%',
+              right: '8%',
+              zIndex: 110,
+              pointerEvents: 'none',
+            }}
+          >
+            <Box sx={styles.poisonBadge}>
+              <Box sx={styles.poisonIcon} />
+              <Box sx={styles.poisonTextCol}>
+                <Typography sx={styles.poisonTitle}>POISON x{p.count}</Typography>
+                <Typography sx={styles.poisonPlayer}>{p.playerName}</Typography>
+              </Box>
+            </Box>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
       {/* Spectator damage numbers - rapid fire style! */}
       <AnimatePresence>
         {spectatorDamage.map((damage) => {
@@ -299,9 +490,12 @@ function Summit() {
               }}
             >
               <Box sx={styles.spectatorDamageContainer}>
-                <Typography sx={styles.spectatorDamageValue}>
-                  -{damage.damage}
-                </Typography>
+            <Box sx={styles.spectatorDamageRow}>
+              <img src={damage.imageSrc} alt={damage.attackerName} style={styles.spectatorAttackerImage} />
+              <Typography sx={styles.spectatorDamageValue}>
+                -{damage.damage}
+              </Typography>
+            </Box>
                 <Typography sx={styles.spectatorAttackerName}>
                   {damage.attackerName}
                 </Typography>
@@ -629,6 +823,11 @@ const styles = {
     alignItems: 'center',
     gap: '4px',
   },
+  spectatorDamageRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
   spectatorDamageValue: {
     fontSize: '30px',
     fontWeight: 'bold',
@@ -639,6 +838,11 @@ const styles = {
     `,
     lineHeight: '1',
   },
+  spectatorAttackerImage: {
+    width: '28px',
+    height: '28px',
+    filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6))',
+  },
   spectatorAttackerName: {
     fontSize: '12px',
     fontWeight: 'bold',
@@ -646,5 +850,83 @@ const styles = {
     textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
+  },
+  poisonImageOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    background: 'radial-gradient(circle at 50% 60%, rgba(0,255,136,0.18), rgba(0,255,136,0.08) 40%, transparent 70%)',
+    zIndex: 2,
+    pointerEvents: 'none',
+    mixBlendMode: 'screen',
+    borderRadius: '8px',
+  },
+  poisonCountBadge: {
+    position: 'absolute',
+    top: '6px',
+    left: '6px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    background: `${gameColors.darkGreen}b0`,
+    border: `1px solid ${gameColors.accentGreen}70`,
+    borderRadius: '10px',
+    padding: '4px 8px',
+    zIndex: 4,
+    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))',
+  },
+  poisonCountDot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, #00ff88 10%, #00cc66 60%, transparent 70%)',
+    boxShadow: '0 0 8px rgba(0,255,136,0.7)',
+  },
+  poisonCountText: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: gameColors.brightGreen,
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    letterSpacing: '0.5px',
+  },
+  poisonBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '8px 10px',
+    borderRadius: '12px',
+    background: `linear-gradient(135deg, ${gameColors.darkGreen}dd 0%, ${gameColors.mediumGreen}dd 100%)`,
+    border: `2px solid ${gameColors.accentGreen}`,
+    boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+    filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6))',
+  },
+  poisonIcon: {
+    width: '18px',
+    height: '18px',
+    borderRadius: '50%',
+    background: 'radial-gradient(circle, #00ff88 0%, #00cc66 40%, rgba(0,0,0,0) 70%)',
+    boxShadow: '0 0 12px rgba(0,255,136,0.6)',
+  },
+  poisonTextCol: {
+    display: 'flex',
+    flexDirection: 'column',
+    lineHeight: '1',
+  },
+  poisonTitle: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: gameColors.brightGreen,
+    letterSpacing: '0.5px',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  poisonPlayer: {
+    fontSize: '10px',
+    fontWeight: 'bold',
+    color: gameColors.accentGreen,
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
   },
 }

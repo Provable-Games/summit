@@ -33,7 +33,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
   const { summit, setSummit, setAttackInProgress,
     setCollection, setAppliedPotions, appliedPotions,
-    setBattleEvents, setSpectatorBattleEvents, setApplyingPotions } = useGameStore();
+    setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent } = useGameStore();
   const { gameModelsQuery, gameEventsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimStarterKit, claimCorpseReward, addExtraLife, selectUpgrades } = useSystemCalls();
@@ -56,6 +56,24 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     setAttackInProgress(false);
     setApplyingPotions(false);
   }, [actionFailed]);
+
+  useEffect(() => {
+    if (poisonEvent) {
+      if (poisonEvent.beast_token_id === summit?.beast.token_id) {
+        setSummit(prevSummit => ({
+          ...prevSummit,
+          poison_count: poisonEvent.count,
+          poison_timestamp: poisonEvent.block_timestamp,
+        }));
+      } else if (poisonEvent.beast_token_id === nextSummit?.beast.token_id) {
+        setNextSummit(prevSummit => ({
+          ...prevSummit,
+          poison_count: poisonEvent.count,
+          poison_timestamp: poisonEvent.block_timestamp,
+        }));
+      }
+    }
+  }, [poisonEvent]);
 
   useEffect(() => {
     const processNextEvent = async () => {
@@ -103,6 +121,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           let battleEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "BattleEvent")))
             .map((entity: any) => getEntityModel(entity, "BattleEvent"))
 
+          let poison_event = data.filter((entity: any) => Boolean(getEntityModel(entity, "PoisonEvent")))
+            .map((entity: any) => getEntityModel(entity, "PoisonEvent"))
+
+          if (poison_event.length > 0) {
+            setPoisonEvent(poison_event[0]);
+          }
+
           if (battleEvent.length > 0) {
             setSpectatorBattleEvents(prev => [...prev, ...battleEvent]);
           }
@@ -111,6 +136,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
             let summit = summitEvent[0];
             let newSummitBeast = { ...summit.beast, ...summit.live_stats };
             newSummitBeast.current_level = getBeastCurrentLevel(newSummitBeast.level, newSummitBeast.bonus_xp);
+
             setNextSummit({
               beast: {
                 ...newSummitBeast,
