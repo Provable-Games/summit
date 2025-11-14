@@ -50,9 +50,9 @@ export interface Beast {
 export interface Stats {
   spirit: number; // 0-255
   luck: number; // 0-255
-  specials: boolean;
-  wisdom: boolean;
-  diplomacy: boolean;
+  specials: number;
+  wisdom: number;
+  diplomacy: number;
 }
 export interface Combat {
   attack: number;
@@ -85,9 +85,11 @@ export interface GameAction {
   appliedPotions?: AppliedPotions;
   safeAttack?: boolean;
   vrf?: boolean;
-  upgrades?: { [beastId: number]: Stats };
-  bonusHealth?: number;
+  stats?: Stats;
   count?: number;
+  bonusHealth?: number;
+  killTokens?: number;
+  corpseTokens?: number;
 }
 
 export interface BattleEvent {

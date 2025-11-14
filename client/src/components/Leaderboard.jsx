@@ -126,7 +126,7 @@ function Leaderboard() {
         </Typography>
 
         <Typography sx={[styles.title, { fontSize: '14px', lineHeight: '14px', opacity: 0.9 }]}>
-          Test Alpha
+          Alpha
         </Typography>
 
         <Box sx={styles.sectionHeader}>

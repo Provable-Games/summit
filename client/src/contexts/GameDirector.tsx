@@ -36,7 +36,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent } = useGameStore();
   const { gameModelsQuery, gameEventsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
-  const { executeAction, attack, feed, claimStarterKit, claimCorpseReward, addExtraLife, selectUpgrades } = useSystemCalls();
+  const { executeAction, attack, feed, claimBeastReward, claimCorpseReward, addExtraLife, applyStatPoints, applyPoison } = useSystemCalls();
   const { tokenBalances, setTokenBalances } = useController();
 
   const [nextSummit, setNextSummit] = useState<Summit | null>(null);
@@ -214,10 +214,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const executeGameAction = async (action: GameAction) => {
     let txs: any[] = [];
 
-    if (action.type === 'feed') {
-      txs.push(feed(action.beastId, action.adventurerIds));
-    }
-
     if (action.type === 'attack') {
       setBattleEvents([]);
       setAttackInProgress(true);
@@ -244,8 +240,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       );
     }
 
-    if (action.type === 'claim_starter_kit') {
-      txs.push(claimStarterKit(action.beastIds));
+    if (action.type === 'claim_beast_reward') {
+      txs.push(claimBeastReward(action.beastIds));
     }
 
     if (action.type === 'claim_corpse_reward') {
@@ -256,8 +252,17 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       txs.push(...addExtraLife(action.beastId, appliedPotions.extraLife));
     }
 
-    if (action.type === 'apply_stat_points') {
-      txs.push(...selectUpgrades(action.upgrades));
+    if (action.type === 'upgrade_beast') {
+      if (action.bonusHealth > 0) {
+        txs.push(...feed(action.beastId, action.bonusHealth, action.corpseTokens));
+      }
+      if (action.killTokens > 0) {
+        txs.push(...applyStatPoints(action.beastId, action.stats, action.killTokens));
+      }
+    }
+
+    if (action.type === 'apply_poison') {
+      txs.push(...applyPoison(action.beastId, action.count));
     }
 
     const events = await executeAction(txs, setActionFailed);
@@ -303,6 +308,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         attack: 0,
         extraLife: 0,
       });
+      setApplyingPotions(false);
+    } else if (action.type === 'apply_poison') {
       setApplyingPotions(false);
     }
 

@@ -31,6 +31,7 @@ function ActionBar() {
   const [attackDropdownAnchor, setAttackDropdownAnchor] = useState<null | HTMLElement>(null);
   const [beastUpgradeModal, setBeastUpgradeModal] = useState(false);
   const [beastToUpgrade, setBeastToUpgrade] = useState<Beast | null>(null);
+  const [appliedPoisonCount, setAppliedPoisonCount] = useState(0);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>, potion: any) => {
     setAnchorEl(event.currentTarget);
@@ -77,14 +78,14 @@ function ActionBar() {
   }
 
   const handleApplyPoison = () => {
-    if (!summit?.beast || applyingPotions || appliedPotions.poison === 0) return;
+    if (!summit?.beast || applyingPotions || appliedPoisonCount === 0) return;
 
     setApplyingPotions(true);
 
     executeGameAction({
       type: 'apply_poison',
       beastId: summit.beast.token_id,
-      count: appliedPotions.poison,
+      count: appliedPoisonCount,
     });
   }
 
@@ -119,7 +120,7 @@ function ActionBar() {
   useEffect(() => {
     if (attackMode === 'capture') {
       setSelectedBeasts([]);
-      setAppliedPotions({ revive: 0, attack: 0, extraLife: 0, poison: 0 });
+      setAppliedPotions({ revive: 0, attack: 0, extraLife: 0 });
     }
   }, [attackMode]);
 
@@ -139,8 +140,8 @@ function ActionBar() {
   const enableExtraLifePotion = tokenBalances["EXTRA LIFE"] > 0;
   const enableAttackPotion = tokenBalances["ATTACK"] > 0;
   const enablePoisonPotion = tokenBalances["POISON"] > 0;
-  const enableApplyPoison = summit?.beast && !applyingPotions && appliedPotions.poison > 0;
-  const isappliedPotions = appliedPotions.revive + appliedPotions.attack + appliedPotions.extraLife + appliedPotions.poison > 0
+  const enableApplyPoison = summit?.beast && !applyingPotions && appliedPoisonCount > 0;
+  const isappliedPotions = appliedPotions.revive + appliedPotions.attack + appliedPotions.extraLife + appliedPoisonCount > 0
 
   if (collection.length === 0) {
     return <Box sx={styles.container}>
@@ -152,7 +153,7 @@ function ActionBar() {
     <Box sx={styles.buttonGroup}>
       {/* Section 1: Attack Button */}
       <Box sx={{ minWidth: isBrowser ? '265px' : '120px' }}>
-        {appliedPotions.poison > 0
+        {appliedPoisonCount > 0
           ? <Box sx={[styles.attackButton, enableApplyPoison && styles.attackButtonEnabled]}
             onClick={handleApplyPoison}>
             <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
@@ -169,8 +170,8 @@ function ActionBar() {
               }
 
               {isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
-                {appliedPotions.poison > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
-                  <Typography sx={styles.potionCount}>{appliedPotions.poison}</Typography>
+                {appliedPoisonCount > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+                  <Typography sx={styles.potionCount}>{appliedPoisonCount}</Typography>
                   <img src={poisonPotionIcon} alt='' height={'14px'} />
                 </Box>}
               </Box>
@@ -244,8 +245,8 @@ function ActionBar() {
                         <Typography sx={styles.potionCount}>{appliedPotions.extraLife}</Typography>
                         <img src={heart} alt='' height={'12px'} />
                       </Box>}
-                      {appliedPotions.poison > 0 && <Box display={'flex'} alignItems={'center'}>
-                        <Typography sx={styles.potionCount}>{appliedPotions.poison}</Typography>
+                      {appliedPoisonCount > 0 && <Box display={'flex'} alignItems={'center'}>
+                        <Typography sx={styles.potionCount}>{appliedPoisonCount}</Typography>
                         <img src={poisonPotionIcon} alt='' height={'14px'} />
                       </Box>}
                     </Box>
@@ -379,8 +380,8 @@ function ActionBar() {
         <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
           <Typography sx={styles.tooltipTitle}>Poison</Typography>
           <Typography sx={styles.tooltipText}>
-            {appliedPotions.poison > 0
-              ? `${appliedPotions.poison} poison potions applied`
+            {appliedPoisonCount > 0
+              ? `${appliedPoisonCount} poison potions applied`
               : 'Poison the summit'}
           </Typography>
           <Typography sx={styles.tooltipSubtext}>
@@ -390,17 +391,17 @@ function ActionBar() {
           <Box sx={[
             styles.potionButton,
             enablePoisonPotion && styles.potionButtonActive,
-            appliedPotions.poison > 0 && styles.potionButtonApplied
+            appliedPoisonCount > 0 && styles.potionButtonApplied
           ]}
             onClick={(event) => {
               if (!enablePoisonPotion) return;
               handleClick(event, 'poison');
             }}>
             <img src={poisonPotionIcon} alt='' height={'24px'} />
-            {appliedPotions.poison > 0 && (
+            {appliedPoisonCount > 0 && (
               <Box sx={styles.appliedIndicator}>
                 <Typography sx={styles.appliedText}>
-                  {appliedPotions.poison}
+                  {appliedPoisonCount}
                 </Typography>
               </Box>
             )}
@@ -578,10 +579,16 @@ function ActionBar() {
                 borderColor: gameColors.gameYellow,
               }
             }}
-            onClick={() => setAppliedPotions({
-              ...appliedPotions,
-              [potion]: Math.max(0, appliedPotions[potion] - 1)
-            })}>
+            onClick={() => {
+              if (potion === 'poison') {
+                setAppliedPoisonCount(Math.max(0, appliedPoisonCount - 1));
+              } else {
+                setAppliedPotions({
+                  ...appliedPotions,
+                  [potion]: Math.max(0, appliedPotions[potion] - 1)
+                });
+              }
+            }}>
             <RemoveIcon fontSize="small" />
           </IconButton>
 
@@ -595,7 +602,7 @@ function ActionBar() {
               mx: 1,
             }}
           >
-            {potion === 'attack' ? appliedPotions.attack : potion === 'extraLife' ? appliedPotions.extraLife : appliedPotions.poison}
+            {potion === 'attack' ? appliedPotions.attack : potion === 'extraLife' ? appliedPotions.extraLife : appliedPoisonCount}
           </Typography>
 
           <IconButton
@@ -612,24 +619,36 @@ function ActionBar() {
                 borderColor: gameColors.gameYellow,
               }
             }}
-            onClick={() => setAppliedPotions({
-              ...appliedPotions,
-              [potion]: Math.min(appliedPotions[potion] + 1, Math.min(potion === 'attack' ? tokenBalances["ATTACK"] : potion === 'extraLife' ? tokenBalances["EXTRA LIFE"] : tokenBalances["POISON"], 255))
-            })}>
+            onClick={() => {
+              if (potion === 'poison') {
+                setAppliedPoisonCount(Math.min(appliedPoisonCount + 1, Math.min(tokenBalances["POISON"], 65535)));
+              } else {
+                setAppliedPotions({
+                  ...appliedPotions,
+                  [potion]: Math.min(appliedPotions[potion] + 1, Math.min(potion === 'attack' ? tokenBalances["ATTACK"] : potion === 'extraLife' ? tokenBalances["EXTRA LIFE"] : 255))
+                })
+              }
+            }}>
             <AddIcon fontSize="small" />
           </IconButton>
         </Box>
 
         <Box sx={{ width: '100%', px: 0.5 }}>
           <Slider
-            value={potion === 'attack' ? appliedPotions.attack : potion === 'extraLife' ? appliedPotions.extraLife : appliedPotions.poison}
+            value={potion === 'attack' ? appliedPotions.attack : potion === 'extraLife' ? appliedPotions.extraLife : appliedPoisonCount}
             step={1}
             min={0}
             max={Math.min(potion === 'attack' ? tokenBalances["ATTACK"] : potion === 'extraLife' ? tokenBalances["EXTRA LIFE"] : tokenBalances["POISON"], 255)}
-            onChange={(e, value) => setAppliedPotions({
-              ...appliedPotions,
-              [potion]: value
-            })}
+            onChange={(e, value) => {
+              if (potion === 'poison') {
+                setAppliedPoisonCount(value);
+              } else {
+                setAppliedPotions({
+                  ...appliedPotions,
+                  [potion]: value
+                })
+              }
+            }}
             size='small'
             sx={{
               color: gameColors.gameYellow,

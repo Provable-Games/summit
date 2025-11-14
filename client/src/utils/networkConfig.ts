@@ -37,10 +37,10 @@ export const NETWORKS = {
     chainId: ChainId.SN_MAIN,
     namespace: "summit_0_0_8",
     manifest: manifest_mainnet,
-    slot: "pg-mainnet-10",
+    slot: "pg-mainnet-11",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
-    torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
-    subscriptionUrl: "https://api.cartridge.gg/x/summit-3/torii",
+    torii: "https://api.cartridge.gg/x/pg-mainnet-11/torii",
+    subscriptionUrl: "https://api.cartridge.gg/x/pg-mainnet-11/torii",
     tokens: {
       erc20: [
         {
@@ -70,9 +70,21 @@ export const NETWORKS = {
         {
           name: "POISON",
           address:
-            "0x04526165196ad45741442f0cb4713990b8c7bedf85ec26caf0fbbb1799174aa8",
+            "0x047314b2b569360da4623035d2d81479a90a677beae8518e221960b07afb960f",
           displayDecimals: 0,
         },
+        {
+          name: "KILL",
+          address:
+            "0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd",
+          displayDecimals: 0,
+        },
+        {
+          name: "CORPSE",
+          address:
+            "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c",
+          displayDecimals: 0,
+        }
       ],
     },
     denshokan:
@@ -118,9 +130,14 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "entrypoint": "feed"
           },
           {
-            "name": "Claim Starter Kit",
-            "description": "Claim beast starter kit",
-            "entrypoint": "claim_starter_kit"
+            "name": "Claim Beast Reward",
+            "description": "Claim beast rewards",
+            "entrypoint": "claim_beast_reward"
+          },
+          {
+            "name": "Claim Corpse Reward",
+            "description": "Claim corpse rewards",
+            "entrypoint": "claim_corpse_reward"
           },
           {
             "name": "Add Extra Life",
@@ -128,9 +145,14 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "entrypoint": "add_extra_life"
           },
           {
-            "name": "Select Upgrades",
-            "description": "Select upgrades for beast",
+            "name": "Apply Stat Points",
+            "description": "Apply stat points to beast",
             "entrypoint": "apply_stat_points"
+          },
+          {
+            "name": "Apply Poison",
+            "description": "Apply poison to beast",
+            "entrypoint": "apply_poison"
           }
         ]
       },
@@ -169,6 +191,45 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "amount": "50000000000000000000000",
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Extra Life Potion",
+            "entrypoint": "approve"
+          }
+        ]
+      },
+      "0x047314b2b569360da4623035d2d81479a90a677beae8518e221960b07afb960f": {
+        "name": "Poison Potion",
+        "description": "ERC 20 token for Poison Potion",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": SUMMIT_ADDRESS,
+            "description": "Approve Poison Potion",
+            "entrypoint": "approve"
+          }
+        ]
+      },
+      "0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd": {
+        "name": "Kill Token",
+        "description": "ERC 20 token for Kill Token",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": SUMMIT_ADDRESS,
+            "description": "Approve Kill Token",
+            "entrypoint": "approve"
+          }
+        ]
+      },
+      "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c": {
+        "name": "Corpse Token",
+        "description": "ERC 20 token for Corpse Token",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": SUMMIT_ADDRESS,
+            "description": "Approve Corpse Token",
             "entrypoint": "approve"
           }
         ]

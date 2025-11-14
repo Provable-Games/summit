@@ -15,13 +15,14 @@ function Onboarding() {
   // Determine which step to show
   useEffect(() => {
     if (unclaimedBeasts.length > 0) {
-      setCurrentStep('corpse_reward');
+      setCurrentStep('starter_pack');
     } else if (hasAdventurers) {
       setCurrentStep('corpse_reward');
     } else {
       setCurrentStep('complete');
+      setOnboarding(false);
     }
-  }, [unclaimedBeasts.length, hasAdventurers]);
+  }, [unclaimedBeasts, hasAdventurers]);
 
   if (currentStep === 'complete') {
     return null;

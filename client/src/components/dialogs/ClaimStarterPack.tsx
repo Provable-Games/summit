@@ -82,7 +82,7 @@ function ClaimStarterPack(props) {
 
       await executeGameAction(
         {
-          type: "claim_starter_kit",
+          type: "claim_beast_reward",
           beastIds: beastIds.slice(0, 900)
         }
       )

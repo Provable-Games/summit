@@ -2,13 +2,14 @@ import { useController } from '@/contexts/controller';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { ellipseAddress } from '@/utils/utils';
+import killTokenImg from '@/assets/images/kill-token.png';
+import corpseTokenImg from '@/assets/images/corpse-token.png';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
 import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import BeastUpgradeModal from './dialogs/BeastUpgradeModal';
 import ClaimStarterPack from './dialogs/ClaimStarterPack';
 import { addAddressPadding } from 'starknet';
 import ClaimCorpseReward from './dialogs/ClaimCorpseReward';
@@ -23,11 +24,12 @@ const ProfileCard = () => {
   let cartridgeConnector = connectors.find(conn => conn.id === "controller")
 
   const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false)
-  const [beastUpgradeDialog, setBeastUpgradeDialog] = useState(false)
   const [claimCorpseRewardDialog, setClaimCorpseRewardDialog] = useState(false)
   const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions || beast.adventurers_killed > beast.kills_claimed)
   const unclaimedCorpseTokens = adventurerCollection.reduce((sum, adventurer) => sum + adventurer.level, 0)
   const isCartridge = connector?.id === 'controller'
+  const killTokens = tokenBalances["KILL"] || 0
+  const corpseTokens = tokenBalances["CORPSE"] || 0
 
   const handleProfileClick = async () => {
     if (address && isCartridge) {
@@ -88,6 +90,23 @@ const ProfileCard = () => {
         </Box>
       </Box>
 
+      <Box sx={styles.tokensSection}>
+        <Box sx={styles.tokens}>
+          <Box sx={styles.tokenItem} borderRight={`1px solid ${gameColors.accentGreen}40`}>
+            <img src={killTokenImg} alt="Kill" style={{ width: '18px', height: '18px' }} />
+            <Box sx={styles.tokenTexts}>
+              <Typography sx={styles.tokenValue}>{killTokens.toLocaleString()}</Typography>
+            </Box>
+          </Box>
+          <Box sx={styles.tokenItem} borderRight={`1px solid ${gameColors.accentGreen}00`}>
+            <img src={corpseTokenImg} alt="Corpse" style={{ width: '18px', height: '18px' }} />
+            <Box sx={styles.tokenTexts}>
+              <Typography sx={styles.tokenValue}>{corpseTokens.toLocaleString()}</Typography>
+            </Box>
+          </Box>
+        </Box>
+      </Box>
+
       {unclaimedBeasts.length > 0 && <Box sx={styles.starterPackSection}>
         <Typography sx={styles.starterPackTitle}>
           BEAST REWARD
@@ -121,7 +140,6 @@ const ProfileCard = () => {
       </Box>}
 
       <ClaimStarterPack open={claimStarterPackDialog} close={() => setClaimStarterPackDialog(false)} />
-      {beastUpgradeDialog && <BeastUpgradeModal open={beastUpgradeDialog} close={() => setBeastUpgradeDialog(false)} />}
       {claimCorpseRewardDialog && <ClaimCorpseReward open={claimCorpseRewardDialog} close={() => setClaimCorpseRewardDialog(false)} />}
     </Box>
   )
@@ -354,6 +372,41 @@ const styles = {
     fontSize: '12px',
     fontWeight: 'bold',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  tokensSection: {
+    width: '100%',
+    borderTop: `1px solid ${gameColors.accentGreen}40`,
+    pt: 0.5,
+  },
+  tokens: {
+    display: 'flex',
+    width: '100%',
+    py: 0.5,
+  },
+  tokenItem: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    justifyContent: 'center',
+  },
+  tokenTexts: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0.25,
+  },
+  tokenLabel: {
+    fontSize: '10px',
+    color: '#bbb',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    lineHeight: '10px',
+  },
+  tokenValue: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#FFD700',
+    lineHeight: '14px',
   },
   upgradeSection: {
     width: '100%',

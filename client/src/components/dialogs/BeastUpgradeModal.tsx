@@ -1,6 +1,7 @@
 import corpseTokenImg from '@/assets/images/corpse-token.png';
 import killTokenImg from '@/assets/images/kill-token.png';
 import { useGameDirector } from '@/contexts/GameDirector';
+import { useController } from '@/contexts/controller';
 import { fetchBeastImage, getLuckCritChancePercent, getSpiritRevivalReductionSeconds } from '@/utils/beasts';
 import { gameColors } from '@/utils/themes';
 import AddIcon from '@mui/icons-material/Add';
@@ -13,7 +14,7 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import RemoveIcon from '@mui/icons-material/Remove';
 import StarIcon from '@mui/icons-material/Star';
-import { Box, Button, Dialog, IconButton, Typography, InputBase } from '@mui/material';
+import { Box, Button, Dialog, IconButton, InputBase, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 
 // DUMMY VALUES FOR COSTS
@@ -35,6 +36,7 @@ interface BeastUpgradeModalProps {
 function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   const { open, close, beast } = props;
   const { executeGameAction, actionFailed } = useGameDirector();
+  const { tokenBalances } = useController();
 
   const [upgradeInProgress, setUpgradeInProgress] = useState(false);
   const [luckUpgrade, setLuckUpgrade] = useState(0);
@@ -44,8 +46,8 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   const [wisdomSelected, setWisdomSelected] = useState(false);
   const [bonusHealthUpgrade, setBonusHealthUpgrade] = useState(0);
 
-  const killTokens = beast?.kill_tokens || 1000;
-  const corpseTokens = beast?.corpse_tokens || 500;
+  const killTokens = tokenBalances["KILL"] || 0;
+  const corpseTokens = tokenBalances["CORPSE"] || 0;
   const currentBeast = beast;
 
   useEffect(() => {
@@ -102,19 +104,20 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
 
     try {
       const newStats = {
-        [currentBeast.token_id]: {
-          spirit: (currentBeast.stats.spirit || 0) + spiritUpgrade,
-          luck: (currentBeast.stats.luck || 0) + luckUpgrade,
-          specials: currentBeast.stats.specials || specialsSelected,
-          wisdom: currentBeast.stats.wisdom || wisdomSelected,
-          diplomacy: currentBeast.stats.diplomacy || diplomacySelected,
-        }
+        spirit: spiritUpgrade,
+        luck: luckUpgrade,
+        specials: specialsSelected ? 1 : 0,
+        wisdom: wisdomSelected ? 1 : 0,
+        diplomacy: diplomacySelected ? 1 : 0,
       };
 
       let result = await executeGameAction({
-        type: 'apply_stat_points',
-        upgrades: newStats,
+        type: 'upgrade_beast',
+        beastId: currentBeast.token_id,
+        stats: newStats,
         bonusHealth: bonusHealthUpgrade,
+        killTokens: killTokenCost,
+        corpseTokens: corpseTokenCost,
       });
 
       if (result) {
@@ -972,6 +975,14 @@ const styles = {
       0 0 20px ${gameColors.brightGreen}40,
       inset 0 0 20px ${gameColors.brightGreen}10
     `,
+    '&:hover': {
+      borderColor: gameColors.brightGreen,
+      background: `${gameColors.mediumGreen}60`,
+      boxShadow: `
+        0 0 20px ${gameColors.brightGreen}40,
+        inset 0 0 20px ${gameColors.brightGreen}10
+      `,
+    },
   },
   abilityName: {
     fontSize: '11px',

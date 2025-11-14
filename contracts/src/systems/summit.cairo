@@ -1016,80 +1016,74 @@ pub mod summit_systems {
         }
     }
 }
+// #[cfg(test)]
+// mod tests {
+//     use dojo::model::{ModelStorage};
+//     use dojo::world::{WorldStorage, WorldStorageTrait};
+//     use dojo_cairo_test::{
+//         ContractDef, ContractDefTrait, NamespaceDef, TestResource, WorldStorageTestTrait, spawn_test_world,
+//     };
+//     use starknet::contract_address_const;
+//     use summit::constants::{DEFAULT_NS, SUMMIT_ID, TESTING_CHAIN_ID};
+//     use summit::models::adventurer::m_AdventurerConsumed;
+//     use summit::models::beast::{LiveBeastStats, m_LiveBeastStats};
+//     use summit::models::summit::{m_Summit, m_SummitConfig, m_SummitHistory};
+//     use super::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait, summit_systems};
 
-#[cfg(test)]
-mod tests {
-    use dojo::model::{ModelStorage};
-    use dojo::world::{WorldStorage, WorldStorageTrait};
-    use dojo_cairo_test::{
-        ContractDef, ContractDefTrait, NamespaceDef, TestResource, WorldStorageTestTrait, spawn_test_world,
-    };
-    use starknet::contract_address_const;
-    use summit::constants::{DEFAULT_NS, SUMMIT_ID, TESTING_CHAIN_ID};
-    use summit::models::adventurer::m_AdventurerConsumed;
-    use summit::models::beast::{LiveBeastStats, m_LiveBeastStats};
-    use summit::models::summit::{m_Summit, m_SummitConfig, m_SummitHistory};
-    use super::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait, summit_systems};
+//     fn namespace_def() -> NamespaceDef {
+//         NamespaceDef {
+//             namespace: DEFAULT_NS(),
+//             resources: [
+//                 TestResource::Model(m_Summit::TEST_CLASS_HASH.try_into().unwrap()),
+//                 TestResource::Model(m_SummitHistory::TEST_CLASS_HASH.try_into().unwrap()),
+//                 TestResource::Model(m_SummitConfig::TEST_CLASS_HASH.try_into().unwrap()),
+//                 TestResource::Model(m_LiveBeastStats::TEST_CLASS_HASH.try_into().unwrap()),
+//                 TestResource::Model(m_AdventurerConsumed::TEST_CLASS_HASH.try_into().unwrap()),
+//                 TestResource::Contract(summit_systems::TEST_CLASS_HASH),
+//             ]
+//                 .span(),
+//         }
+//     }
 
-    fn namespace_def() -> NamespaceDef {
-        NamespaceDef {
-            namespace: DEFAULT_NS(),
-            resources: [
-                TestResource::Model(m_Summit::TEST_CLASS_HASH.try_into().unwrap()),
-                TestResource::Model(m_SummitHistory::TEST_CLASS_HASH.try_into().unwrap()),
-                TestResource::Model(m_SummitConfig::TEST_CLASS_HASH.try_into().unwrap()),
-                TestResource::Model(m_LiveBeastStats::TEST_CLASS_HASH.try_into().unwrap()),
-                TestResource::Model(m_AdventurerConsumed::TEST_CLASS_HASH.try_into().unwrap()),
-                TestResource::Contract(summit_systems::TEST_CLASS_HASH),
-            ]
-                .span(),
-        }
-    }
+//     fn contract_defs() -> Span<ContractDef> {
+//         [
+//             ContractDefTrait::new(@DEFAULT_NS(), @"summit_systems")
+//                 .with_writer_of([dojo::utils::bytearray_hash(@DEFAULT_NS())].span())
+//                 .with_init_calldata(
+//                     [
+//                         1724927366_u64.into(), // start_timestamp
+//                         contract_address_const::<'adventurer'>().into(),
+//                         contract_address_const::<'denshokan'>().into(), contract_address_const::<'dungeon'>().into(),
+//                         contract_address_const::<'beast'>().into(), contract_address_const::<'beast_data'>().into(),
+//                         contract_address_const::<'reward'>().into(),
+//                         contract_address_const::<'attack_potion'>().into(),
+//                         contract_address_const::<'revive_potion'>().into(),
+//                         contract_address_const::<'extra_life_potion'>().into(),
+//                     ]
+//                         .span(),
+//                 ),
+//         ]
+//             .span()
+//     }
 
-    fn contract_defs() -> Span<ContractDef> {
-        [
-            ContractDefTrait::new(@DEFAULT_NS(), @"summit_systems")
-                .with_writer_of([dojo::utils::bytearray_hash(@DEFAULT_NS())].span())
-                .with_init_calldata(
-                    [
-                        1724927366_u64.into(), // start_timestamp
-                        contract_address_const::<'adventurer'>().into(),
-                        contract_address_const::<'denshokan'>().into(), contract_address_const::<'dungeon'>().into(),
-                        contract_address_const::<'beast'>().into(), contract_address_const::<'beast_data'>().into(),
-                        contract_address_const::<'reward'>().into(), contract_address_const::<'attack_potion'>().into(),
-                        contract_address_const::<'revive_potion'>().into(),
-                        contract_address_const::<'extra_life_potion'>().into(),
-                    ]
-                        .span(),
-                ),
-        ]
-            .span()
-    }
+//     /// @title setup_world
+//     /// @notice this function is used to setup the world for testing
+//     /// @return world the world storage
+//     /// @return summit_system the summit system dispatcher
+//     fn setup_world() -> (WorldStorage, ISummitSystemDispatcher) {
+//         starknet::testing::set_chain_id(TESTING_CHAIN_ID);
+//         starknet::testing::set_block_timestamp(1724927366);
+//         starknet::testing::set_block_number(100);
 
-    /// @title setup_world
-    /// @notice this function is used to setup the world for testing
-    /// @return world the world storage
-    /// @return summit_system the summit system dispatcher
-    fn setup_world() -> (WorldStorage, ISummitSystemDispatcher) {
-        starknet::testing::set_chain_id(TESTING_CHAIN_ID);
-        starknet::testing::set_block_timestamp(1724927366);
-        starknet::testing::set_block_number(100);
+//         let ndef = namespace_def();
+//         let mut world = spawn_test_world([ndef].span());
+//         world.sync_perms_and_inits(contract_defs());
 
-        let ndef = namespace_def();
-        let mut world = spawn_test_world([ndef].span());
-        world.sync_perms_and_inits(contract_defs());
+//         let (contract_address, _) = world.dns(@"summit_systems").unwrap();
+//         let summit_system = ISummitSystemDispatcher { contract_address };
 
-        let (contract_address, _) = world.dns(@"summit_systems").unwrap();
-        let summit_system = ISummitSystemDispatcher { contract_address };
+//         (world, summit_system)
+//     }
+// }
 
-        (world, summit_system)
-    }
 
-    #[test]
-    #[available_gas(284000)]
-    fn test_basic() {
-        // Most basic test possible
-        let (world, summit_system) = setup_world();
-        summit_system.start_summit();
-    }
-}

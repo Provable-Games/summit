@@ -1,8 +1,10 @@
 import { useGameStore } from '@/stores/gameStore'
 import CasinoIcon from '@mui/icons-material/Casino'
 import EnergyIcon from '@mui/icons-material/ElectricBolt'
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import HandshakeIcon from '@mui/icons-material/Handshake';
 import StarIcon from '@mui/icons-material/Star'
-import HandshakeIcon from '@mui/icons-material/Handshake'
+import poisonPotionIcon from '../assets/images/poison-potion.png';
 import { Box, LinearProgress, Tooltip, Typography } from '@mui/material'
 import { AnimatePresence, motion, useAnimationControls } from 'framer-motion'
 import { useLottie } from 'lottie-react'
@@ -24,15 +26,6 @@ function Summit() {
   const [spectatorDamage, setSpectatorDamage] = useState<Array<{ id: string; damage: number; attackerName: string; imageSrc: string }>>([])
   const [processedEventIds, setProcessedEventIds] = useState<Set<string>>(new Set())
   const [poisonNotices, setPoisonNotices] = useState<Array<{ id: string; count: number; playerName: string }>>([])
-  const formatShortDuration = (seconds: number): string => {
-    const s = Math.max(0, Math.floor(seconds));
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    const remS = s % 60;
-    if (h > 0) return `${h}h${m > 0 ? ` ${m}m` : ''}`;
-    if (m > 0) return `${m}m${remS > 0 ? ` ${remS}s` : ''}`;
-    return `${remS}s`;
-  };
   const [displayHealth, setDisplayHealth] = useState<number>(summit.beast.current_health)
   const [displayExtraLives, setDisplayExtraLives] = useState<number>(summit.beast.extra_lives)
 
@@ -261,12 +254,28 @@ function Summit() {
               <Box sx={styles.extraLivesContainer}>
                 {displayExtraLives > 1 && (
                   <Typography sx={styles.extraLivesNumber}>
-                    {displayExtraLives}
+                    255
                   </Typography>
                 )}
                 <img src={heart} alt='Extra Life' style={styles.extraLivesHeart} />
               </Box>
             )}
+
+            {/* Poison Indicator */}
+            {summit.poison_count > 0 && (
+              <Box sx={[styles.poisonContainer, { right: displayExtraLives > 0 ? '45px' : '4px' }]}>
+                {summit.poison_count > 1 && (
+                  <Typography sx={styles.extraLivesNumber}>{summit.poison_count}</Typography>
+                )}
+                <img src={poisonPotionIcon} alt='' style={styles.extraLivesHeart} />
+              </Box>
+            )}
+
+            <Box sx={styles.abilitiesContainer}>
+              {summit.beast.stats.specials && <StarIcon sx={{ fontSize: '16px', color: '#ffd700', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {summit.beast.stats.wisdom && <PsychologyIcon sx={{ fontSize: '16px', color: '#60a5fa', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {summit.beast.stats.diplomacy && <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+            </Box>
           </Box>
 
           {/* XP Progress Bar */}
@@ -295,47 +304,40 @@ function Summit() {
           <Tooltip
             title={
               <Box sx={styles.tooltipContent}>
-                Critical hit chance: {getLuckCritChancePercent(summit.beast.stats.luck)}%
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                  <Typography sx={[styles.statLabel, { fontSize: '12px' }]}>LUCK</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                    <CasinoIcon sx={{ fontSize: '16px', color: '#ff69b4' }} />
+                    <Typography sx={styles.levelValue}>{Math.max(0, Math.floor(summit.beast.stats.luck))}</Typography>
+                  </Box>
+                </Box>
               </Box>
             }
             placement="bottom"
           >
             <Box sx={styles.statBox}>
+              <Typography sx={styles.statLabel}>CRIT</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <CasinoIcon sx={{ fontSize: '16px', color: '#ff69b4' }} />
-                <Typography sx={styles.statLabel}>LUCK</Typography>
+                <Typography sx={styles.levelValue}>
+                  {getLuckCritChancePercent(summit.beast.stats.luck)}%
+                </Typography>
               </Box>
-              <Typography sx={styles.levelValue}>{Math.max(0, Math.floor(summit.beast.stats.luck))}</Typography>
             </Box>
           </Tooltip>
           <Tooltip
             title={
               <Box sx={styles.tooltipContent}>
-                Revival time reduction: {formatShortDuration(getSpiritRevivalReductionSeconds(summit.beast.stats.spirit))}
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                  <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa' }} />
+                  <Typography sx={[styles.statLabel, { fontSize: '12px' }]}>DIPLOMACY BOOST</Typography>
+                </Box>
               </Box>
             }
             placement="bottom"
           >
             <Box sx={styles.statBox}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <EnergyIcon sx={{ fontSize: '16px', color: '#00ffff' }} />
-                <Typography sx={styles.statLabel}>SPIRIT</Typography>
-              </Box>
-              <Typography sx={styles.levelValue}>{Math.max(0, Math.floor(summit.beast.stats.spirit))}</Typography>
-            </Box>
-          </Tooltip>
-          <Tooltip
-            title={
-              <Box sx={styles.tooltipContent}>
-                Diplomacy bonus: {summit.diplomacy_bonus}
-              </Box>
-            }
-            placement="bottom"
-          >
-            <Box sx={styles.statBox}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa' }} />
-                <Typography sx={styles.statLabel}>DIPLOMACY</Typography>
+                <Typography sx={styles.statLabel}>STR</Typography>
               </Box>
               <Typography sx={styles.levelValue}>{summit.diplomacy_bonus}</Typography>
             </Box>
@@ -379,10 +381,6 @@ function Summit() {
               animate={{ opacity: [0.25, 0.45, 0.25] }}
               transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
             />
-            <Box sx={styles.poisonCountBadge}>
-              <Box sx={styles.poisonCountDot} />
-              <Typography sx={styles.poisonCountText}>x{summit.poison_count}</Typography>
-            </Box>
           </>
         )}
 
@@ -490,12 +488,12 @@ function Summit() {
               }}
             >
               <Box sx={styles.spectatorDamageContainer}>
-            <Box sx={styles.spectatorDamageRow}>
-              <img src={damage.imageSrc} alt={damage.attackerName} style={styles.spectatorAttackerImage} />
-              <Typography sx={styles.spectatorDamageValue}>
-                -{damage.damage}
-              </Typography>
-            </Box>
+                <Box sx={styles.spectatorDamageRow}>
+                  <img src={damage.imageSrc} alt={damage.attackerName} style={styles.spectatorAttackerImage} />
+                  <Typography sx={styles.spectatorDamageValue}>
+                    -{damage.damage}
+                  </Typography>
+                </Box>
                 <Typography sx={styles.spectatorAttackerName}>
                   {damage.attackerName}
                 </Typography>
@@ -605,13 +603,14 @@ const styles = {
     gap: '8px',
     marginTop: '2px',
     justifyContent: 'center',
+    zIndex: 999,
   },
   statBox: {
     background: `${gameColors.darkGreen}70`,
     borderRadius: '4px',
     border: `1px solid ${gameColors.accentGreen}40`,
     padding: '4px 8px',
-    minWidth: '60px',
+    minWidth: '55px',
     textAlign: 'center',
     display: 'flex',
     flexDirection: 'column',
@@ -694,6 +693,24 @@ const styles = {
     gap: '2px',
     zIndex: 3,
   },
+  poisonContainer: {
+    position: 'absolute',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    display: 'flex',
+    alignItems: 'center',
+    zIndex: 3,
+  },
+  abilitiesContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: '4px',
+    transform: 'translateY(-50%)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px',
+    zIndex: 3,
+  },
   extraLivesNumber: {
     fontSize: '12px',
     color: '#ffedbb',
@@ -708,8 +725,9 @@ const styles = {
   },
   xpBar: {
     height: '6px',
-    borderRadius: '2px',
+    borderRadius: '8px',
     backgroundColor: 'rgba(0,0,0,0.3)',
+    mx: '2px',
     marginTop: '4px',
     position: 'relative',
     overflow: 'hidden',
@@ -857,7 +875,7 @@ const styles = {
     left: 0,
     width: '100%',
     height: '100%',
-    background: 'radial-gradient(circle at 50% 60%, rgba(0,255,136,0.18), rgba(0,255,136,0.08) 40%, transparent 70%)',
+    background: 'radial-gradient(circle at 50% 50%, rgba(12, 236, 0, 0.5), rgba(0,255,136,0.08) 55%, transparent 70%)',
     zIndex: 2,
     pointerEvents: 'none',
     mixBlendMode: 'screen',
@@ -869,7 +887,7 @@ const styles = {
     left: '6px',
     display: 'flex',
     alignItems: 'center',
-    gap: '6px',
+    gap: '2px',
     background: `${gameColors.darkGreen}b0`,
     border: `1px solid ${gameColors.accentGreen}70`,
     borderRadius: '10px',
@@ -887,7 +905,7 @@ const styles = {
   poisonCountText: {
     fontSize: '12px',
     fontWeight: 'bold',
-    color: gameColors.brightGreen,
+    color: '#FFF',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
     letterSpacing: '0.5px',
   },
