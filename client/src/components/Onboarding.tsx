@@ -9,7 +9,8 @@ function Onboarding() {
   const { collection, adventurerCollection, setOnboarding } = useGameStore();
   const [currentStep, setCurrentStep] = useState<OnboardingStep>('starter_pack');
 
-  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions);
+  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions
+    && beast.adventurers_killed > beast.kills_claimed);
   const hasAdventurers = adventurerCollection.length > 0;
 
   // Determine which step to show

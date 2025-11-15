@@ -16,7 +16,6 @@ import { useDynamicConnector } from "./starknet";
 import {
   loadBeastCollectionFromCache,
   saveBeastCollectionToCache,
-  mergeBeastData
 } from "@/utils/beastCache";
 import { Beast } from "@/types/game";
 
@@ -131,6 +130,8 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
       if (freshCollection.length > 0 && freshCollection.every((beast: Beast) => !beast.has_claimed_potions)) {
         setOnboarding(true);
+      } else {
+        setOnboarding(false);
       }
 
       // Update state with fresh/merged data

@@ -90,7 +90,6 @@ export const useSystemCalls = () => {
       txs.push(approveTokens(corpseTokenAddress, corpseRequired));
     }
 
-    console.log(amount)
     txs.push({
       contractAddress: SUMMIT_ADDRESS,
       entrypoint: "feed",

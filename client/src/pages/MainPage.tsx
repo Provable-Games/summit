@@ -30,13 +30,13 @@ function MainPage() {
 
         {summit && <Summit />}
 
+        {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
+          <ProfileCard />
+        </Box>}
+
         {onboarding
           ? <Onboarding />
           : <>
-            {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
-              <ProfileCard />
-            </Box>}
-
             {(!attackInProgress || !pauseUpdates) && <Box sx={styles.bottomContainer}>
               <ActionBar />
               <BeastCollection />

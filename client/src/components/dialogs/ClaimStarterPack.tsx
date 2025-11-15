@@ -44,12 +44,16 @@ const POTIONS = [
   },
 ]
 
+const LIMIT = 200;
+
 function ClaimStarterPack(props) {
   const { open, close, isOnboarding = false } = props
   const { executeGameAction, actionFailed } = useGameDirector()
-  const { collection, setOnboarding } = useGameStore()
-  const { fetchTokenBalances, tokenBalances } = useController()
+  const { collection } = useGameStore()
+  const { tokenBalances, setTokenBalances } = useController()
   const [claimInProgress, setClaimInProgress] = useState(false)
+  const [potionsClaimed, setPotionsClaimed] = useState(0)
+  const [killTokensClaimed, setKillTokensClaimed] = useState(0)
 
   const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions)
   const unclaimedKillTokens = collection.filter((beast: Beast) => beast.adventurers_killed > beast.kills_claimed)
@@ -58,13 +62,20 @@ function ClaimStarterPack(props) {
     setClaimInProgress(false);
   }, [actionFailed]);
 
-  // Auto-complete onboarding when all beasts claimed
+  // When all unclaimed beasts are claimed, refresh balances and close modal
   useEffect(() => {
-    if (isOnboarding && collection.length > 0 && unclaimedBeasts.length === 0) {
-      setOnboarding(false);
-      close(false);
+    if (collection.length > 0 && unclaimedBeasts.length === 0 && unclaimedKillTokens.length === 0) {
+      setTokenBalances(({
+        "REVIVE": tokenBalances["REVIVE"] + potionsClaimed * 2,
+        "ATTACK": tokenBalances["ATTACK"] + potionsClaimed * 3,
+        "EXTRA LIFE": tokenBalances["EXTRA LIFE"] + potionsClaimed * 1,
+        "POISON": tokenBalances["POISON"] + potionsClaimed * 3,
+        "KILL": tokenBalances["KILL"] + killTokensClaimed,
+      }))
+
+      close()
     }
-  }, [unclaimedBeasts]);
+  }, [unclaimedBeasts.length, unclaimedKillTokens.length]);
 
   const getPotionsToClaim = (potion: typeof POTIONS[number]) => {
     return unclaimedBeasts.reduce((sum: number, beast: Beast) => sum + (6 - beast.tier) * potion.packMultiplier, 0)
@@ -76,45 +87,28 @@ function ClaimStarterPack(props) {
   const claimAll = async () => {
     setClaimInProgress(true)
 
+    setPotionsClaimed(unclaimedBeasts.reduce((sum: number, beast: Beast) => sum + (6 - beast.tier), 0))
+    setKillTokensClaimed(unclaimedKillTokens.reduce((sum: number, beast: Beast) => sum + (beast.adventurers_killed - beast.kills_claimed), 0))
+
     try {
-      const initialTokenBalances = { ...tokenBalances }
-      let beastIds = Array.from(new Set([...unclaimedBeasts.map(beast => beast.token_id), ...unclaimedKillTokens.map(beast => beast.token_id)]))
+      const beastIds = Array.from(new Set([
+        ...unclaimedBeasts.map(beast => beast.token_id),
+        ...unclaimedKillTokens.map(beast => beast.token_id)
+      ]))
 
-      await executeGameAction(
-        {
+      for (let i = 0; i < beastIds.length; i += LIMIT) {
+        const batch = beastIds.slice(i, i + LIMIT)
+        executeGameAction({
           type: "claim_beast_reward",
-          beastIds: beastIds.slice(0, 900)
-        }
-      )
-
-      let retryCount = 0
-      const maxRetries = 5
-      const retryDelay = 1000
-
-      while (retryCount < maxRetries) {
-        await fetchTokenBalances()
-
-        const hasTokenIncrease = Object.keys(tokenBalances).some(tokenId => {
-          const currentBalance = tokenBalances[tokenId] || 0
-          const initialBalance = initialTokenBalances[tokenId] || 0
-          return currentBalance > initialBalance
+          beastIds: batch
         })
 
-        if (hasTokenIncrease) {
-          break
+        if (i + LIMIT < beastIds.length) {
+          await delay(2000)
         }
-
-        await delay(retryDelay)
-        retryCount++
-      }
-
-      if (!isOnboarding) {
-        close(false)
       }
     } catch (ex) {
       console.log(ex)
-    } finally {
-      setClaimInProgress(false)
     }
   }
 
@@ -243,13 +237,13 @@ function ClaimStarterPack(props) {
                     <span>Claiming</span>
                     <div className='dotLoader white' />
                   </Box>
-                  : `CLAIM ${unclaimedBeasts.length > 900 ? 900 : 'ALL'}`
+                  : `CLAIM ${unclaimedBeasts.length > LIMIT ? LIMIT : 'ALL'}`
                 }
               </Typography>
             </Button>
 
-            {unclaimedBeasts.length > 900 && <Typography sx={styles.helperText}>
-              Claiming in batches of 900 beasts.
+            {unclaimedBeasts.length > LIMIT && <Typography sx={styles.helperText}>
+              Claiming in batches of {LIMIT} beasts.
             </Typography>}
           </Box>
         </Box>

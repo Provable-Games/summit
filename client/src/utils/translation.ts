@@ -77,7 +77,8 @@ export const components: any = {
     attack_potions: 'number',
     xp_gained: 'number',
   },
-  'LiveBeastStats': {
+  'LiveBeastStatsEvent': {
+    event_id: 'number',
     token_id: 'number',
     current_health: 'number',
     bonus_health: 'number',
@@ -88,13 +89,13 @@ export const components: any = {
     extra_lives: 'number',
     has_claimed_potions: 'boolean',
     rewards_earned: 'number',
-    stats: 'Stats',
-  },
-  'Stats': {
-    spirit: 'boolean',
-    luck: 'boolean',
+    spirit: 'number',
+    luck: 'number',
     specials: 'boolean',
-  }
+    wisdom: 'boolean',
+    diplomacy: 'boolean',
+    kills_claimed: 'number',
+  },
 }
 
 export const translateGameEvent = (event: any, manifest: any): any => {
