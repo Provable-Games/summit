@@ -21,7 +21,6 @@ interface GameState {
   selectedAdventurers: Adventurer[];
   appliedPotions: AppliedPotions;
   attackMode: 'safe' | 'unsafe' | 'capture';
-  waitingForBeastUpgradeSelection: boolean;
 
   // Beast Collection Filters
   hideDeadBeasts: boolean;
@@ -45,7 +44,6 @@ interface GameState {
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => void;
   setAppliedPotions: (appliedPotions: AppliedPotions) => void;
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture') => void;
-  setWaitingForBeastUpgradeSelection: (waiting: boolean) => void;
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => void;
@@ -77,7 +75,6 @@ export const useGameStore = create<GameState>((set, get) => ({
     extraLife: 0,
   },
   attackMode: 'safe',
-  waitingForBeastUpgradeSelection: false,
 
   // Beast Collection Filters - Default Values
   hideDeadBeasts: false,
@@ -107,7 +104,6 @@ export const useGameStore = create<GameState>((set, get) => ({
         attack: 0,
         extraLife: 0,
       },
-      waitingForBeastUpgradeSelection: false,
       // Reset filters to defaults
       hideDeadBeasts: false,
       typeFilter: 'all',
@@ -135,7 +131,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => set({ adventurerCollection }),
   setAppliedPotions: (appliedPotions: AppliedPotions) => set({ appliedPotions }),
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture') => set({ attackMode }),
-  setWaitingForBeastUpgradeSelection: (waiting: boolean) => set({ waitingForBeastUpgradeSelection: waiting }),
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => set({ hideDeadBeasts }),

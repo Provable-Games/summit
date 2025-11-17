@@ -1,19 +1,19 @@
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
-import { fetchBeastImage, getBeastCurrentHealth } from '@/utils/beasts';
+import { fetchBeastImage } from '@/utils/beasts';
 import { gameColors } from '@/utils/themes';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import CasinoIcon from '@mui/icons-material/Casino';
 import CloseIcon from '@mui/icons-material/Close';
+import EnergyIcon from '@mui/icons-material/ElectricBolt';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
-import BarChartIcon from '@mui/icons-material/BarChart';
-import SortByAlphaIcon from '@mui/icons-material/SortByAlpha';
-import SearchIcon from '@mui/icons-material/Search';
-import StarIcon from '@mui/icons-material/Star';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import PsychologyIcon from '@mui/icons-material/Psychology';
-import CasinoIcon from '@mui/icons-material/Casino';
-import EnergyIcon from '@mui/icons-material/ElectricBolt';
-import { Box, Dialog, IconButton, InputBase, Tooltip, Typography, Pagination, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
+import SortByAlphaIcon from '@mui/icons-material/SortByAlpha';
+import StarIcon from '@mui/icons-material/Star';
+import { Box, Dialog, FormControl, IconButton, InputBase, InputLabel, MenuItem, Pagination, Select, Tooltip, Typography } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import BeastUpgradeModal from './BeastUpgradeModal';
 
@@ -23,6 +23,7 @@ interface BeastDexModalProps {
 }
 
 type SortKey = 'power' | 'level' | 'health' | 'name';
+type TypeKey = 'all' | 'Brute' | 'Hunter' | 'Magic';
 
 export default function BeastDexModal(props: BeastDexModalProps) {
   const { open, close } = props;
@@ -32,6 +33,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
   const [suffixQuery, setSuffixQuery] = useState('');
   const [nameQuery, setNameQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('power');
+  const [typeFilter, setTypeFilter] = useState<TypeKey>('all');
   const [selectedBeast, setSelectedBeast] = useState<Beast | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 24;
@@ -54,6 +56,9 @@ export default function BeastDexModal(props: BeastDexModalProps) {
         || (b.type || '').toLowerCase().includes(q)
       );
     }
+    if (typeFilter !== 'all') {
+      list = list.filter(b => (b.type || '') === typeFilter);
+    }
     switch (sortBy) {
       case 'power':
         list.sort((a, b) => b.power - a.power);
@@ -72,7 +77,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
         break;
     }
     return list;
-  }, [collection, prefixQuery, suffixQuery, nameQuery, sortBy]);
+  }, [collection, prefixQuery, suffixQuery, nameQuery, sortBy, typeFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pagedItems = useMemo(() => {
@@ -82,7 +87,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
 
   useEffect(() => {
     setPage(1);
-  }, [prefixQuery, suffixQuery, nameQuery, sortBy, collection.length]);
+  }, [prefixQuery, suffixQuery, nameQuery, sortBy, typeFilter, collection.length]);
 
   const handleSelect = (beast: Beast) => {
     setSelectedBeast(beast);
@@ -174,10 +179,36 @@ export default function BeastDexModal(props: BeastDexModalProps) {
                 </MenuItem>
               </Select>
             </FormControl>
+            <FormControl size="small" sx={styles.selectControl}>
+              <InputLabel id="type-select-label" sx={styles.inputLabel}>Type</InputLabel>
+              <Select
+                labelId="type-select-label"
+                id="type-select"
+                label="Type"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value as TypeKey)}
+                sx={styles.sortSelect}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      background: `${gameColors.darkGreen}`,
+                      border: `1px solid ${gameColors.accentGreen}40`,
+                      boxShadow: `0 8px 24px rgba(0,0,0,0.6)`,
+                      '& .MuiMenuItem-root': { color: '#fff' },
+                    }
+                  }
+                }}
+              >
+                <MenuItem value="all">All</MenuItem>
+                <MenuItem value="Brute">Brute</MenuItem>
+                <MenuItem value="Hunter">Hunter</MenuItem>
+                <MenuItem value="Magic">Magic</MenuItem>
+              </Select>
+            </FormControl>
             <Box sx={styles.input}>
               <SearchIcon sx={styles.inputIcon} />
               <InputBase
-                placeholder="Name or Type"
+                placeholder="Name"
                 value={nameQuery}
                 onChange={(e) => setNameQuery(e.target.value)}
                 sx={styles.inputField}
@@ -206,8 +237,6 @@ export default function BeastDexModal(props: BeastDexModalProps) {
 
         <Box sx={styles.grid}>
           {pagedItems.map((beast) => {
-            const aliveHealth = getBeastCurrentHealth(beast);
-            const isDead = aliveHealth <= 0;
             const MAX_BONUS_HEALTH = 1023;
             const bonusPctOnly = Math.min(100, Math.max(0, Math.round((beast.bonus_health * 100) / MAX_BONUS_HEALTH)));
             return (
@@ -225,21 +254,15 @@ export default function BeastDexModal(props: BeastDexModalProps) {
                     <Typography sx={styles.beastName}>{beast.name}</Typography>
 
                     <Box sx={styles.badgesRow}>
-                      <Tooltip title="Specials">
-                        <Box sx={[styles.abilityIcon, beast.stats?.specials ? styles.abilityIconOn : styles.abilityIconOff]}>
-                          <StarIcon sx={{ fontSize: '18px' }} />
-                        </Box>
-                      </Tooltip>
-                      <Tooltip title="Diplomacy">
-                        <Box sx={[styles.abilityIcon, beast.stats?.diplomacy ? styles.abilityIconOn : styles.abilityIconOff]}>
-                          <HandshakeIcon sx={{ fontSize: '18px' }} />
-                        </Box>
-                      </Tooltip>
-                      <Tooltip title="Wisdom">
-                        <Box sx={[styles.abilityIcon, beast.stats?.wisdom ? styles.abilityIconOn : styles.abilityIconOff]}>
-                          <PsychologyIcon sx={{ fontSize: '18px' }} />
-                        </Box>
-                      </Tooltip>
+                      <Box sx={[styles.abilityIcon, beast.stats?.specials ? styles.abilityIconOn : styles.abilityIconOff]}>
+                        <StarIcon sx={{ fontSize: '18px', color: beast.stats?.specials ? '#ffd700' : '#888'}} />
+                      </Box>
+                      <Box sx={[styles.abilityIcon, beast.stats?.diplomacy ? styles.abilityIconOn : styles.abilityIconOff]}>
+                        <HandshakeIcon sx={{ fontSize: '18px', color: beast.stats?.diplomacy ? '#a78bfa' : '#888'}} />
+                      </Box>
+                      <Box sx={[styles.abilityIcon, beast.stats?.wisdom ? styles.abilityIconOn : styles.abilityIconOff]}>
+                        <PsychologyIcon sx={{ fontSize: '18px', color: beast.stats?.wisdom ? '#60a5fa' : '#888'}} />
+                      </Box>
                     </Box>
 
                     <Box sx={styles.badgesRow}>
@@ -267,8 +290,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
                   <Box sx={styles.statChip}>
                     <FavoriteIcon sx={{ fontSize: '14px', color: gameColors.red }} />
                     <Typography sx={styles.statValue}>
-                      {beast.health}
-                      {beast.bonus_health > 0 && <span style={{ color: '#4ade80', marginLeft: 4 }}>+{beast.bonus_health}</span>}
+                      {beast.health + beast.bonus_health}
                     </Typography>
                   </Box>
                 </Box>
@@ -603,10 +625,7 @@ const styles = {
     color: '#bbb',
   },
   abilityIconOn: {
-    background: `${gameColors.mediumGreen}70`,
-    color: '#fff',
-    border: `1px solid ${gameColors.brightGreen}70`,
-    boxShadow: `0 0 8px ${gameColors.brightGreen}40`,
+    border: `1px solid ${gameColors.brightGreen}80`,
   },
   abilityIconOff: {
     background: `${gameColors.darkGreen}60`,

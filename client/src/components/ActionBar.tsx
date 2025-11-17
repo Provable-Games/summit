@@ -14,7 +14,6 @@ import lifePotionIcon from '../assets/images/life-potion.png';
 import poisonPotionIcon from '../assets/images/poison-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import { gameColors } from '../utils/themes';
-import BeastUpgradeModal from './dialogs/BeastUpgradeModal';
 
 function ActionBar() {
   const { executeGameAction } = useGameDirector();
@@ -23,14 +22,11 @@ function ActionBar() {
   const { selectedBeasts, summit,
     attackInProgress, appliedPotions, setAppliedPotions,
     applyingPotions, setApplyingPotions,
-    collection, setSelectedBeasts, attackMode, setAttackMode,
-    waitingForBeastUpgradeSelection, setWaitingForBeastUpgradeSelection } = useGameStore();
+    collection, setSelectedBeasts, attackMode, setAttackMode } = useGameStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
   const [attackDropdownAnchor, setAttackDropdownAnchor] = useState<null | HTMLElement>(null);
-  const [beastUpgradeModal, setBeastUpgradeModal] = useState(false);
-  const [beastToUpgrade, setBeastToUpgrade] = useState<Beast | null>(null);
   const [appliedPoisonCount, setAppliedPoisonCount] = useState(0);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>, potion: any) => {
@@ -89,17 +85,6 @@ function ActionBar() {
     });
   }
 
-  const handleUpgradeBeastClick = () => {
-    if (selectedBeasts.length > 0 && selectedBeasts[0]) {
-      // If a beast is selected, open modal with that beast
-      setBeastToUpgrade(selectedBeasts[0]);
-      setBeastUpgradeModal(true);
-    } else {
-      // Toggle upgrade selection mode
-      setWaitingForBeastUpgradeSelection(!waitingForBeastUpgradeSelection);
-    }
-  }
-
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit?.beast?.token_id))
   const isSavageSelected = Boolean(selectedBeasts.find((beast: any) => beast.token_id === summit?.beast?.token_id))
   const deadBeasts = selectedBeasts.filter((beast: any) => beast.current_health === 0);
@@ -123,16 +108,6 @@ function ActionBar() {
       setAppliedPotions({ revive: 0, attack: 0, extraLife: 0 });
     }
   }, [attackMode]);
-
-  // Watch for beast selection when waiting for upgrade selection
-  useEffect(() => {
-    if (waitingForBeastUpgradeSelection && selectedBeasts.length > 0 && selectedBeasts[0]) {
-      // A beast was selected while waiting, open the modal
-      setBeastToUpgrade(selectedBeasts[0]);
-      setBeastUpgradeModal(true);
-      setWaitingForBeastUpgradeSelection(false);
-    }
-  }, [selectedBeasts, waitingForBeastUpgradeSelection]);
 
   const hasEnoughRevivePotions = tokenBalances["REVIVE"] >= revivalPotionsRequired;
   const enableAttack = (attackMode === 'capture' && !attackInProgress) || ((!isSavage || attackMode !== 'safe') && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions);
@@ -413,35 +388,6 @@ function ActionBar() {
           </Box>
         </Tooltip>
       </Box>
-
-      {/* Divider 1 */}
-      <Box sx={styles.divider} />
-
-      {/* Section 3: Beast Upgrade Button */}
-      <Box sx={styles.beastUpgradeSubGroup}>
-        <Button sx={[
-          styles.attackButton,
-          styles.beastUpgradeButton,
-          waitingForBeastUpgradeSelection && styles.beastUpgradeButtonActive
-        ]} onClick={handleUpgradeBeastClick}>
-          <Typography sx={styles.buttonText}>
-            {waitingForBeastUpgradeSelection ? 'Select Beast' : 'Upgrade Beast'}
-          </Typography>
-        </Button>
-      </Box>
-
-      {/* Beast Upgrade Modal */}
-      {beastUpgradeModal && beastToUpgrade && (
-        <BeastUpgradeModal
-          open={beastUpgradeModal}
-          beast={beastToUpgrade}
-          close={() => {
-            setBeastUpgradeModal(false);
-            setBeastToUpgrade(null);
-          }}
-        />
-      )}
-
     </Box>
 
     {/* Attack Mode Dropdown Menu */}
@@ -748,48 +694,6 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: 1,
-  },
-  beastUpgradeSubGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    minWidth: isBrowser ? '140px' : '100px',
-  },
-  beastUpgradeButton: {
-    opacity: 1,
-    background: `linear-gradient(135deg, ${gameColors.mediumGreen}30 0%, ${gameColors.darkGreen}50 100%)`,
-    border: `2px solid ${gameColors.brightGreen}`,
-    minWidth: isBrowser ? '160px' : '100px',
-    boxShadow: `
-      0 0 16px ${gameColors.brightGreen}40,
-      0 4px 8px rgba(0, 0, 0, 0.3),
-      inset 0 1px 0 ${gameColors.accentGreen}30
-    `,
-    '&:hover': {
-      opacity: 1,
-      background: `linear-gradient(135deg, ${gameColors.lightGreen}40 0%, ${gameColors.mediumGreen}60 100%)`,
-      boxShadow: `
-        0 0 20px ${gameColors.brightGreen}60,
-        0 6px 12px rgba(0, 0, 0, 0.4),
-        inset 0 1px 0 ${gameColors.brightGreen}40
-      `,
-    }
-  },
-  beastUpgradeButtonActive: {
-    background: `linear-gradient(135deg, ${gameColors.yellow}20 0%, ${gameColors.gameYellow}30 100%)`,
-    border: `2px solid ${gameColors.yellow}`,
-    boxShadow: `
-      0 0 20px ${gameColors.yellow}50,
-      0 4px 12px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 ${gameColors.yellow}40
-    `,
-    '&:hover': {
-      background: `linear-gradient(135deg, ${gameColors.yellow}30 0%, ${gameColors.gameYellow}40 100%)`,
-      boxShadow: `
-        0 0 25px ${gameColors.yellow}60,
-        0 6px 16px rgba(0, 0, 0, 0.5),
-        inset 0 1px 0 ${gameColors.yellow}50
-      `,
-    }
   },
   attackButtonGroup: {
     display: 'flex',

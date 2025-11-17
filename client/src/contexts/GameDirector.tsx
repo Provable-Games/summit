@@ -195,8 +195,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const updateLiveStats = (beastLiveStats: any[]) => {
     if (beastLiveStats.length === 0) return;
 
+    beastLiveStats = beastLiveStats.reverse();
+
     setCollection(prevCollection => prevCollection.map((beast: Beast) => {
       let beastLiveStat = beastLiveStats.find((liveStat: any) => liveStat.token_id === beast.token_id);
+      console.log('BEAST LIVE STAT', beastLiveStat);
 
       if (beastLiveStat) {
         let newBeast = { ...beast, ...beastLiveStat };

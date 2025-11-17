@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x15b5bb74485886e935f5503a5252925d07ed0fa8fdc6f2fab73340c18c9f625",
-      "class_hash": "0x9d5082afba95d59ed4d3b4c63de8c4ccd619cf4b0c92c1c964e134e62a5c67",
+      "address": "0x2d8381823bddd1285ac306e7879e1bd7e10fc0a1608cb854249a2b07559e0f0",
+      "class_hash": "0x21147f30b1d2fe09c09a72e78e0cd95f062212eccbbb8623f107fb048e74b85",
       "abi": [
         {
           "type": "impl",
@@ -1948,8 +1948,8 @@
         "0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd",
         "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c"
       ],
-      "tag": "summit_0_0_8-summit_systems",
-      "selector": "0x53233c2302c095a9165f77ec5d009f6a171a2bfc79e52a6b25aa2b458299703",
+      "tag": "summit_0_0_9_preview-summit_systems",
+      "selector": "0x7e488fba3b21c472b6a9084df13912380c706e3a2039e78d3a8f55e448149d",
       "systems": [
         "dojo_init",
         "start_summit",
@@ -1972,44 +1972,50 @@
     {
       "members": [],
       "class_hash": "0x3ce76a36f1f379fb0400dd7a19ab62ad8c246b2f14445f8f6b16ebeb28ad79b",
-      "tag": "summit_0_0_8-BattleEvent",
-      "selector": "0x7f4a9cd16502ba8521fec2d71a319822e07ab7bbef5a15878ec5ce67a68b3f5"
+      "tag": "summit_0_0_9_preview-BattleEvent",
+      "selector": "0x7d8e4e0cbab7890e2cd9dc89f71f209210b6b19e3aa7ace9f353074a47f9e31"
     },
     {
       "members": [],
       "class_hash": "0x458a0aa50aa35cd22da110441adf58fdaf991dc9b39a3ef42b9fa4ff161beaa",
-      "tag": "summit_0_0_8-BeastEvent",
-      "selector": "0xe12698d8f8ce9a4381f0e438dd3b8a410797461158a7591100c4f175062f35"
+      "tag": "summit_0_0_9_preview-BeastEvent",
+      "selector": "0x939ccc67083adaada32aa20e64c95c5d38bb87daf07bc7c54dc686f4952146"
+    },
+    {
+      "members": [],
+      "class_hash": "0x3de7d695555f8c85be9a1795c872edb02a93bfa656ec52112d0e0dbb1070ece",
+      "tag": "summit_0_0_9_preview-CorpseRewardEvent",
+      "selector": "0x4afbdeda8d20f314ca7f95fb5c2d481a53fc0d2947c2015e54bacc054c9c9aa"
     },
     {
       "members": [],
       "class_hash": "0x98009d5c0eff1b1c6bff1b583c280ceabf0d86fdd160fe474d899822c22d6b",
-      "tag": "summit_0_0_8-DiplomacyEvent",
-      "selector": "0xf1880063d8d875f7140097e0e0e334195a88afed50d653af6b6159c2dfa37"
+      "tag": "summit_0_0_9_preview-DiplomacyEvent",
+      "selector": "0x33999c3ec7b03c9ea65c72d9cdb59f18fbe408db59097d55daa74da21e447d4"
     },
     {
       "members": [],
       "class_hash": "0x2de68d3a6116869a4b486f90af2cf529de6f0798e12ff52ffdde5ee7ffa380a",
-      "tag": "summit_0_0_8-LiveBeastStatsEvent",
-      "selector": "0x28f2bbb2a5d493eeb397e2caca0787e3aa9ea62ea7924bbf93ac6015bc95b12"
+      "tag": "summit_0_0_9_preview-LiveBeastStatsEvent",
+      "selector": "0x482caa3724519a71a0a9f16cd8016286c55ad3507d2003190e962049a3ef676"
     },
     {
       "members": [],
       "class_hash": "0x2113a0250bda87df1c499705a0bcbfcbd08af16d4c6659565b64f6539a36280",
-      "tag": "summit_0_0_8-PoisonEvent",
-      "selector": "0x225fdecfbb36c1caa6a9c305005a28815d0d89406a4ced0e8e8a4e579bd4605"
+      "tag": "summit_0_0_9_preview-PoisonEvent",
+      "selector": "0x157f5b1c6ba1ef25bf683ea99a18df8e46497a6bd0123bf2fbe536d3faa8c40"
     },
     {
       "members": [],
       "class_hash": "0xf71e3c006ea105f8f33c85967ce7944be526d63baef0879647f6b23cad0584",
-      "tag": "summit_0_0_8-RewardEvent",
-      "selector": "0x1c7d15a1de4a4cc9b99d721aa4ce6b6d34c7b38d018d44d81317f5e0d946b6a"
+      "tag": "summit_0_0_9_preview-RewardEvent",
+      "selector": "0x8f66df965df0d82f111258921f8d58c882e6c51045202532ad0e4b9915a0ce"
     },
     {
       "members": [],
       "class_hash": "0x17ed8f22a570ec362538623a2085ae2add92d41efb770c40f78af55136e4e59",
-      "tag": "summit_0_0_8-SummitEvent",
-      "selector": "0x49df7716e626e3595dd33c3b0aa7b2cda4c24e0545a64af3a4f97fb5b86c9d9"
+      "tag": "summit_0_0_9_preview-SummitEvent",
+      "selector": "0x7b4010b041d056e64e96076665579360fb54c9244a9fecd4ac4e0cd62f38ae8"
     }
   ],
   "external_contracts": []

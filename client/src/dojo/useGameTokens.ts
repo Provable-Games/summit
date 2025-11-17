@@ -143,13 +143,13 @@ export const useGameTokens = () => {
         rewards_earned: parseInt(data["live_stats.rewards_earned"], 16) || 0,
         revival_time: 0,
         stats: {
-          spirit: cachedBeast?.stats.spirit || data["live_stats.stats.spirit"],
-          luck: cachedBeast?.stats.luck || data["live_stats.stats.luck"],
+          spirit: Math.max(cachedBeast?.stats.spirit || 0, data["live_stats.stats.spirit"]),
+          luck: Math.max(cachedBeast?.stats.luck || 0, data["live_stats.stats.luck"]),
           specials: cachedBeast?.stats.specials || Boolean(data["live_stats.stats.specials"]),
           wisdom: cachedBeast?.stats.wisdom || Boolean(data["live_stats.stats.wisdom"]),
           diplomacy: cachedBeast?.stats.diplomacy || Boolean(data["live_stats.stats.diplomacy"]),
         },
-        kills_claimed: cachedBeast?.kills_claimed || data["live_stats.kills_claimed"] || 0,
+        kills_claimed: Math.max(cachedBeast?.kills_claimed || 0, data["live_stats.kills_claimed"]),
       }
       beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)
@@ -261,11 +261,29 @@ export const useGameTokens = () => {
     return data
   }
 
+  const getValidAdventurers = async (adventurerIds: number[]) => {
+    let q = `
+      SELECT adventurer_id
+      FROM "summit_0_0_9_preview-CorpseRewardEvent"
+      WHERE adventurer_id IN (${adventurerIds.join(',')})
+    `
+
+    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+    const sql = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    })
+
+    let data = await sql.json()
+    return adventurerIds.filter((id: number) => !data.some((row: any) => parseInt(row.adventurer_id, 16) === id))
+  }
+
   return {
     getBeastCollection,
     countRegisteredBeasts,
     getLeaderboard,
     getKilledBy,
     getKilledBeasts,
+    getValidAdventurers,
   };
 };

@@ -111,15 +111,9 @@ const ProfileCard = () => {
         </Box>
 
         <Box sx={styles.upgradeSection}>
-          <Typography sx={styles.upgradeTitle}>
-            UPGRADE BEASTS
-          </Typography>
-          <Typography sx={styles.upgradeSubtitle}>
-            Spend tokens to enhance attributes
-          </Typography>
-          <Button sx={styles.upgradeButton} onClick={() => setBeastDexOpen(true)}>
+          <Button sx={[styles.upgradeButton, { animation: 'none', width: isMobile ? '100%' : '145px' }]} onClick={() => setBeastDexOpen(true)}>
             <Typography sx={styles.upgradeButtonText}>
-              OPEN DEX
+              UPGRADE BEASTS
             </Typography>
           </Button>
         </Box>
@@ -431,7 +425,6 @@ const styles = {
     width: '100%',
     borderTop: `1px solid ${gameColors.accentGreen}40`,
     mt: 0.5,
-    pt: 0.5,
     textAlign: 'center',
   },
   upgradeTitle: {

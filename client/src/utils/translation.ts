@@ -89,13 +89,16 @@ export const components: any = {
     extra_lives: 'number',
     has_claimed_potions: 'boolean',
     rewards_earned: 'number',
+    stats: 'Stats',
+    kills_claimed: 'number',
+  },
+  'Stats': {
     spirit: 'number',
     luck: 'number',
     specials: 'boolean',
     wisdom: 'boolean',
     diplomacy: 'boolean',
-    kills_claimed: 'number',
-  },
+  }
 }
 
 export const translateGameEvent = (event: any, manifest: any): any => {

@@ -63,7 +63,8 @@ pub mod summit_systems {
     use summit::erc20::interface::{ConsumableERC20Dispatcher, ConsumableERC20DispatcherTrait};
     use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, Stats};
     use summit::models::summit::{
-        BattleEvent, BeastEvent, DiplomacyEvent, LiveBeastStatsEvent, PoisonEvent, RewardEvent, SummitEvent,
+        BattleEvent, BeastEvent, CorpseRewardEvent, DiplomacyEvent, LiveBeastStatsEvent, PoisonEvent, RewardEvent,
+        SummitEvent,
     };
     use summit::vrf::VRFImpl;
 
@@ -74,7 +75,7 @@ pub mod summit_systems {
         poison_timestamp: u64,
         poison_count: u16,
         summit_history: Map<u32, u64>,
-        adventurer_consumed: Map<u64, u32>,
+        adventurer_consumed: Map<u64, bool>,
         diplomacy_beast: Map<felt252, Map<u8, u32>>, // (prefix-suffix hash) -> (index) -> beast token id
         diplomacy_count: Map<felt252, u8>,
         start_timestamp: u64,
@@ -256,18 +257,21 @@ pub mod summit_systems {
         }
 
         fn claim_corpse_reward(ref self: ContractState, adventurer_ids: Span<u64>) {
+            let mut world: WorldStorage = self.world(@DEFAULT_NS());
+
             let mut corpse_tokens = 0;
             let mut i = 0;
             while (i < adventurer_ids.len()) {
                 let adventurer_id = *adventurer_ids.at(i);
-                let adventurer_consumed: u32 = self.adventurer_consumed.entry(adventurer_id).read();
-                assert(adventurer_consumed == 0, errors::ADVENTURER_ALREADY_CONSUMED);
+                let adventurer_consumed = self.adventurer_consumed.entry(adventurer_id).read();
+                assert(!adventurer_consumed, errors::ADVENTURER_ALREADY_CONSUMED);
 
                 let adventurer = InternalSummitImpl::_get_adventurer(@self, adventurer_id);
                 let mut level: u16 = adventurer.get_level().into();
                 corpse_tokens += level.into();
 
-                self.adventurer_consumed.entry(adventurer_id).write(1);
+                self.adventurer_consumed.entry(adventurer_id).write(true);
+                world.emit_event(@CorpseRewardEvent { adventurer_id, player: get_caller_address() });
                 i += 1;
             };
 

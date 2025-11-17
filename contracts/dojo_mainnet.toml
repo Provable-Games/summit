@@ -10,15 +10,15 @@ world_block = 2125240
 max_block_range = 10000
 
 [namespace]
-default = "summit_0_0_8"
+default = "summit_0_0_9_preview"
 
 [writers]
-"summit_0_0_8" = [
-    "summit_0_0_8-summit_systems",
+"summit_0_0_9_preview" = [
+    "summit_0_0_9_preview-summit_systems",
 ]
 
 [init_call_args]
-"summit_0_0_8-summit_systems" = [
+"summit_0_0_9_preview-summit_systems" = [
     "1761057539",
     "0x3fc7ecd6d577daa1ee855a9fa13a914d01acda06715c9fc74f1ee1a5e346a01", # adventurer_systems
     "0x036017e69d21d6d8c13e266eabb73ef1f1d02722d86bdcabe5f168f8e549d3cd", # Denshokan
