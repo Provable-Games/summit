@@ -106,9 +106,9 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
       const newStats = {
         spirit: spiritUpgrade,
         luck: luckUpgrade,
-        specials: specialsSelected ? 1 : 0,
-        wisdom: wisdomSelected ? 1 : 0,
-        diplomacy: diplomacySelected ? 1 : 0,
+        specials: specialsSelected,
+        wisdom: wisdomSelected,
+        diplomacy: diplomacySelected,
       };
 
       let result = await executeGameAction({
