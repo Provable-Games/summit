@@ -27,7 +27,7 @@ trait ISummitSystem<T> {
     fn add_extra_life(ref self: T, beast_token_id: u32, extra_life_potions: u8);
     fn apply_stat_points(ref self: T, beast_token_id: u32, stats: Stats);
     fn apply_poison(ref self: T, beast_token_id: u32, count: u16);
-    fn get_summit_data(ref self: T) -> (Beast, u64, ContractAddress, u8, u16, u64);
+    fn get_summit_data(ref self: T) -> (Beast, u64, ContractAddress, u8, u8, u16, u64);
 
     fn get_start_timestamp(self: @T) -> u64;
     fn get_summit_beast_token_id(self: @T) -> u32;
@@ -304,6 +304,9 @@ pub mod summit_systems {
                 potions_to_use = EIGHT_BITS_MAX - beast.live.extra_lives;
             }
 
+            // apply poison damage before adding extra lives
+            self._apply_poison_damage(ref beast);
+
             beast.live.extra_lives += potions_to_use;
             InternalSummitImpl::_burn_consumable(self.extra_life_potion_address.read(), potions_to_use.into());
 
@@ -378,7 +381,7 @@ pub mod summit_systems {
                     @PoisonEvent {
                         beast_token_id,
                         block_timestamp: get_block_timestamp(),
-                        count: current_poison_count + count,
+                        count: count,
                         player: get_caller_address(),
                     },
                 );
@@ -401,18 +404,19 @@ pub mod summit_systems {
             self.start_timestamp.read()
         }
 
-        fn get_summit_data(ref self: ContractState) -> (Beast, u64, ContractAddress, u8, u16, u64) {
+        fn get_summit_data(ref self: ContractState) -> (Beast, u64, ContractAddress, u8, u8, u16, u64) {
             let token_id = self.summit_beast_token_id.read();
             let beast = InternalSummitImpl::_get_beast(@self, token_id);
             let taken_at: u64 = self.summit_history.entry(token_id).read();
             let beast_dispatcher = IERC721Dispatcher { contract_address: self.beast_address.read() };
             let summit_owner = beast_dispatcher.owner_of(token_id.into());
 
-            let diplomacy_bonus = InternalSummitImpl::_get_diplomacy_bonus(@self, beast);
+            let (diplomacy_bonus, diplomacy_count) = InternalSummitImpl::_get_diplomacy_bonus(@self, beast);
+
             let poison_count = self.poison_count.read();
             let poison_timestamp = self.poison_timestamp.read();
 
-            (beast, taken_at, summit_owner, diplomacy_bonus, poison_count, poison_timestamp)
+            (beast, taken_at, summit_owner, diplomacy_bonus, diplomacy_count, poison_count, poison_timestamp)
         }
 
         fn get_summit_beast_token_id(self: @ContractState) -> u32 {
@@ -568,20 +572,9 @@ pub mod summit_systems {
             assert(get_caller_address() != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
 
             let mut defending_beast = Self::_get_beast(@self, summit_beast_token_id);
-            let damage = self._apply_poison_damage(ref defending_beast);
-            if damage > 0 {
-                world
-                    .emit_event(
-                        @PoisonEvent {
-                            beast_token_id: summit_beast_token_id,
-                            block_timestamp: get_block_timestamp(),
-                            count: self.poison_count.read(),
-                            player: 0.try_into().unwrap(),
-                        },
-                    );
-            }
+            self._apply_poison_damage(ref defending_beast);
 
-            let diplomacy_bonus = Self::_get_diplomacy_bonus(@self, defending_beast);
+            let (diplomacy_bonus, _) = Self::_get_diplomacy_bonus(@self, defending_beast);
 
             let mut remaining_attack_potions = attack_potions;
             let mut remaining_revival_potions = revival_potions;
@@ -744,6 +737,8 @@ pub mod summit_systems {
                     // remove poison count
                     self.poison_count.write(0);
 
+                    let (diplomacy_bonus, diplomacy_count) = Self::_get_diplomacy_bonus(@self, attacking_beast);
+
                     // emit summit event
                     world
                         .emit_event(
@@ -751,7 +746,8 @@ pub mod summit_systems {
                                 taken_at: get_block_number(),
                                 beast: Self::_get_beast_event(attacking_beast),
                                 live_stats: attacking_beast.live,
-                                diplomacy_bonus: Self::_get_diplomacy_bonus(@self, attacking_beast),
+                                diplomacy_bonus: diplomacy_bonus,
+                                diplomacy_count: diplomacy_count,
                                 owner: beast_owner,
                             },
                         );
@@ -833,10 +829,10 @@ pub mod summit_systems {
             let mut revival_time = BASE_REVIVAL_TIME_SECONDS;
 
             if time_since_death < revival_time {
-                // if the beast has not been killed in the last 14 days, reduce the revival time by 8 hours
+                // if the beast has not been killed in the last 14 days, reduce the revival time by 4 hours
                 let last_killed_timestamp = Self::_get_last_killed_timestamp(self, beast, beast_data);
                 if last_killed_timestamp < current_time - (DAY_SECONDS * 14) {
-                    revival_time -= 28800;
+                    revival_time -= 14400;
                 }
 
                 // spirit reduction
@@ -989,12 +985,12 @@ pub mod summit_systems {
             damage
         }
 
-        fn _get_diplomacy_bonus(self: @ContractState, beast: Beast) -> u8 {
+        fn _get_diplomacy_bonus(self: @ContractState, beast: Beast) -> (u8, u8) {
             let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
             let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
 
             if diplomacy_count <= 1 {
-                return 0;
+                return (0, diplomacy_count);
             }
 
             let mut index = 0;
@@ -1016,7 +1012,7 @@ pub mod summit_systems {
                 index += 1;
             };
 
-            (bonus / 500).try_into().unwrap()
+            ((bonus / 500).try_into().unwrap(), diplomacy_count)
         }
     }
 }

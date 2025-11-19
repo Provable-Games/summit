@@ -1,7 +1,5 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { GameQueryBuilder } from "@/types/game";
-import { ClauseBuilder } from "@dojoengine/sdk";
-import { addAddressPadding } from "starknet";
 
 export const useQueries = () => {
   const { currentNetworkConfig } = useDynamicConnector();
@@ -11,17 +9,11 @@ export const useQueries = () => {
       .withEntityModels([
         `${currentNetworkConfig.namespace}-SummitEvent`,
         `${currentNetworkConfig.namespace}-BattleEvent`,
+        `${currentNetworkConfig.namespace}-PoisonEvent`,
+        `${currentNetworkConfig.namespace}-LiveBeastStatsEvent`,
       ])
       .withLimit(1)
   };
 
-  const gameModelsQuery = () => {
-    return new GameQueryBuilder()
-      .withEntityModels([
-        `${currentNetworkConfig.namespace}-LiveBeastStats`,
-      ])
-      .withLimit(1)
-  };
-
-  return { gameEventsQuery, gameModelsQuery };
+  return { gameEventsQuery };
 };

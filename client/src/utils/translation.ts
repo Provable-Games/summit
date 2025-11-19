@@ -63,8 +63,11 @@ const parseComponent = (values: string[], componentType: string): any => {
 
 export const components: any = {
   'BattleEvent': {
-    attacking_beast_owner: null,
     attacking_beast_token_id: 'number',
+    attacking_beast_owner: null,
+    attacking_beast_id: 'number',
+    shiny: 'number',
+    animated: 'number',
     defending_beast_token_id: 'number',
     attack_count: 'number',
     attack_damage: 'number',

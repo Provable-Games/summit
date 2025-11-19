@@ -1,5 +1,6 @@
-import { Beast, Combat } from '@/types/game';
+import { Beast, Combat, Summit } from '@/types/game';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
+import { SoundName } from '@/contexts/sound';
 
 export const fetchBeastTypeImage = (type: string): string => {
   try {
@@ -12,6 +13,16 @@ export const fetchBeastTypeImage = (type: string): string => {
 export const fetchBeastSummitImage = (beast: Beast) => {
   return `/images/beasts/${beast.name.toLowerCase()}.png`;
 };
+
+export const fetchBeastSound = (beastId: number): SoundName => {
+  if (beastId <= 25) {
+    return "wand";
+  } else if (beastId <= 50) {
+    return "blade";
+  } else if (beastId <= 75) {
+    return "bludgeon";
+  }
+}
 
 export const fetchBeastImage = (beast: Beast) => {
   if (beast.shiny && beast.animated) {
@@ -187,4 +198,52 @@ export const getSpiritRevivalReductionSeconds = (points: number): number => {
     default:
       return 42620 + (p - 15) * 120;
   }
+}
+
+/**
+ * Apply poison damage to a beast given poison stacks and timestamp.
+ * Returns updated current health and extra lives without mutating inputs.
+ *
+ * Damage model: 1 damage per second per poison stack since poisonTimestamp.
+ * Damage rolls over extra lives in a pooled-health fashion.
+ */
+export function applyPoisonDamage(
+  summit: Summit,
+): { currentHealth: number; extraLives: number } {
+  const count = Math.max(0, summit.poison_count || 0);
+  const ts = Math.max(0, summit.poison_timestamp || 0);
+  if (count === 0 || ts === 0) {
+    return {
+      currentHealth: Math.max(0, summit.beast.current_health ?? 0),
+      extraLives: Math.max(0, summit.beast.extra_lives ?? 0),
+    };
+  }
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const elapsedSeconds = Math.max(0, nowSec - ts);
+  const poisonDamage = count * elapsedSeconds;
+  console.log(ts, nowSec, elapsedSeconds, poisonDamage);
+
+  if (poisonDamage <= 0) {
+    return {
+      currentHealth: summit.beast.current_health,
+      extraLives: summit.beast.extra_lives,
+    };
+  }
+
+  const maxHealth = summit.beast.health + summit.beast.bonus_health;
+  const totalPoolBefore = summit.beast.extra_lives * maxHealth + summit.beast.current_health;
+  const totalPoolAfter = totalPoolBefore - poisonDamage;
+
+  if (totalPoolAfter <= 0) {
+    return { currentHealth: 1, extraLives: 0 };
+  }
+
+  const extraLivesAfter = Math.floor((totalPoolAfter - 1) / maxHealth);
+  const currentHealthAfter = totalPoolAfter - (extraLivesAfter * maxHealth);
+
+  return {
+    currentHealth: currentHealthAfter,
+    extraLives: extraLivesAfter,
+  };
 }

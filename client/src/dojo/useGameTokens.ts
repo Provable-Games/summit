@@ -137,7 +137,7 @@ export const useGameTokens = () => {
         bonus_xp: Math.max(cachedBeast?.bonus_xp || 0, data["live_stats.bonus_xp"]),
         current_health: data["live_stats.current_health"],
         extra_lives: data["live_stats.extra_lives"] || 0,
-        has_claimed_potions: data["live_stats.has_claimed_potions"] || 0,
+        has_claimed_potions: cachedBeast?.has_claimed_potions || Boolean(data["live_stats.has_claimed_potions"]),
         last_death_timestamp: Math.max(cachedBeast?.last_death_timestamp || 0, parseInt(data["live_stats.last_death_timestamp"], 16)),
         revival_count: Math.max(cachedBeast?.revival_count || 0, data["live_stats.revival_count"]),
         rewards_earned: parseInt(data["live_stats.rewards_earned"], 16) || 0,
@@ -207,7 +207,7 @@ export const useGameTokens = () => {
         headers: { "Content-Type": "application/json" }
       })
       let data = await sql.json()
-      return data
+      return data.length > 0 ? data : []
     } catch (error) {
       console.error("Error getting big five:", error);
       return [];
@@ -265,9 +265,8 @@ export const useGameTokens = () => {
     let q = `
       SELECT adventurer_id
       FROM "summit_0_0_9_preview-CorpseRewardEvent"
-      WHERE adventurer_id IN (${adventurerIds.join(',')})
+      WHERE adventurer_id IN (${adventurerIds.map((id: number) => `'0x${id.toString(16).padStart(16, '0')}'`).join(',')})
     `
-
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
     const sql = await fetch(url, {
       method: "GET",

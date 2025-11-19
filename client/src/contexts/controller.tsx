@@ -26,6 +26,7 @@ export interface ControllerContext {
   setTokenBalances: (tokenBalances: Record<string, number>) => void;
   fetchTokenBalances: () => void;
   fetchBeastCollection: () => void;
+  filterValidAdventurers: () => void;
   openProfile: () => void;
   login: () => void;
   logout: () => void;
@@ -62,27 +63,27 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     limit: 10000,
   });
 
+  const filterValidAdventurers = async () => {
+    const adventurerIds = adventurers.map(adventurer => adventurer.token_id);
+    const validIds = await getValidAdventurers(adventurerIds);
+
+    const validAdventurers = adventurers.filter(adventurer =>
+      validIds.includes(adventurer.token_id)
+    );
+
+    setAdventurerCollection(
+      validAdventurers.map((adventurer) => ({
+        id: adventurer.token_id,
+        name: adventurer.player_name,
+        level: Math.floor(Math.sqrt(adventurer.score)),
+        metadata: JSON.parse(adventurer.metadata || "{}"),
+        soulbound: adventurer.soulbound,
+      }))
+    );
+  };
+
   useEffect(() => {
     if (adventurers) {
-      const filterValidAdventurers = async () => {
-        const adventurerIds = adventurers.map(adventurer => adventurer.token_id);
-        const validIds = await getValidAdventurers(adventurerIds);
-
-        const validAdventurers = adventurers.filter(adventurer =>
-          validIds.includes(adventurer.token_id)
-        );
-
-        setAdventurerCollection(
-          validAdventurers.map((adventurer) => ({
-            id: adventurer.token_id,
-            name: adventurer.player_name,
-            level: Math.floor(Math.sqrt(adventurer.score)),
-            metadata: JSON.parse(adventurer.metadata || "{}"),
-            soulbound: adventurer.soulbound,
-          }))
-        );
-      };
-
       filterValidAdventurers();
     }
   }, [adventurers]);
@@ -133,6 +134,12 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     if (cachedCollection && cachedCollection.length > 0) {
       setCollection(cachedCollection);
       setLoadingCollection(false);
+
+      if (cachedCollection.length > 0 && cachedCollection.every((beast: Beast) => !beast.has_claimed_potions)) {
+        setOnboarding(true);
+      } else {
+        setOnboarding(false);
+      }
     } else {
       setLoadingCollection(true);
     }
@@ -181,6 +188,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         tokenBalances,
         fetchTokenBalances,
         fetchBeastCollection,
+        filterValidAdventurers,
         showTermsOfService,
         acceptTermsOfService,
 

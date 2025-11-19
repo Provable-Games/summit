@@ -239,7 +239,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
 
         {/* Header */}
         <Box sx={styles.header}>
-          <Typography sx={styles.title}>BEAST UPGRADES</Typography>
+          <Typography sx={styles.title}>UPGRADE BEAST</Typography>
           <Box sx={styles.divider} />
         </Box>
 

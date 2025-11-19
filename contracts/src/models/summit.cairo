@@ -72,6 +72,7 @@ pub struct SummitEvent {
     pub beast: BeastEvent,
     pub live_stats: LiveBeastStats,
     pub diplomacy_bonus: u8,
+    pub diplomacy_count: u8,
     pub owner: ContractAddress,
 }
 

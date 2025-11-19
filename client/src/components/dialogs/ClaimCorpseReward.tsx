@@ -2,7 +2,6 @@ import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
-import { delay } from '@/utils/utils';
 import { Box, Button, Dialog, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
@@ -10,11 +9,10 @@ import corpseTokenIcon from '@/assets/images/corpse-token.png';
 function ClaimCorpseReward(props) {
   const { open, close, isOnboarding = false } = props
   const { executeGameAction, actionFailed } = useGameDirector()
-  const { adventurerCollection, setOnboarding } = useGameStore()
-  const { fetchTokenBalances, tokenBalances } = useController()
+  const { adventurerCollection } = useGameStore()
+  const { tokenBalances, setTokenBalances, filterValidAdventurers } = useController()
 
   const [claimInProgress, setClaimInProgress] = useState(false)
-  const [claimed, setClaimed] = useState(false)
 
   useEffect(() => {
     setClaimInProgress(false);
@@ -22,11 +20,10 @@ function ClaimCorpseReward(props) {
 
   // Auto-complete onboarding when claimed
   useEffect(() => {
-    if (isOnboarding && claimed) {
-      setOnboarding(false);
-      close(false);
+    if (adventurerCollection.length === 0) {
+      close();
     }
-  }, [claimed]);
+  }, [adventurerCollection.length]);
 
   const getTotalCorpseTokens = () => {
     return adventurerCollection.reduce((sum, adventurer) => sum + adventurer.level, 0)
@@ -36,40 +33,23 @@ function ClaimCorpseReward(props) {
     setClaimInProgress(true)
 
     try {
-      const initialTokenBalances = { ...tokenBalances }
+      const tokenAmount = getTotalCorpseTokens();
       const adventurerIds = adventurerCollection.map(adv => adv.id)
 
-      await executeGameAction(
+      let result = await executeGameAction(
         {
           type: "claim_corpse_reward",
           adventurerIds: adventurerIds.slice(0, 1995)
         }
       )
 
-      let retryCount = 0
-      const maxRetries = 5
-      const retryDelay = 1000
-
-      while (retryCount < maxRetries) {
-        await fetchTokenBalances()
-
-        const hasTokenIncrease = Object.keys(tokenBalances).some(tokenId => {
-          const currentBalance = tokenBalances[tokenId] || 0
-          const initialBalance = initialTokenBalances[tokenId] || 0
-          return currentBalance > initialBalance
+      if (result) {
+        setTokenBalances({
+          ...tokenBalances,
+          CORPSE: tokenBalances.CORPSE + tokenAmount,
         })
-
-        if (hasTokenIncrease) {
-          break
-        }
-
-        await delay(retryDelay)
-        retryCount++
+        filterValidAdventurers()
       }
-
-      setClaimed(true)
-
-      close(false)
     } catch (ex) {
       console.log(ex)
     } finally {
@@ -142,11 +122,11 @@ function ClaimCorpseReward(props) {
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
             <Button
-              disabled={claimInProgress || adventurerCollection.length === 0 || claimed}
+              disabled={claimInProgress || adventurerCollection.length === 0}
               onClick={claimCorpse}
               sx={[
                 styles.claimButton,
-                (!claimInProgress && !claimed && adventurerCollection.length > 0) && styles.claimButtonActive
+                (!claimInProgress && adventurerCollection.length > 0) && styles.claimButtonActive
               ]}
             >
               <Typography sx={styles.claimButtonText}>
@@ -155,9 +135,7 @@ function ClaimCorpseReward(props) {
                     <span>Extracting</span>
                     <div className='dotLoader white' />
                   </Box>
-                  : claimed
-                    ? 'EXTRACTED'
-                    : `EXTRACT ALL`
+                  : `EXTRACT ALL`
                 }
               </Typography>
             </Button>

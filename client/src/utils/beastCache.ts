@@ -1,6 +1,7 @@
 import { Beast } from "@/types/game";
 
 const BEAST_COLLECTION_KEY_PREFIX = 'summit_beast_collection_';
+const VERSION_TIMESTAMP = 1763381010385;
 
 const getCacheKey = (address: string): string => {
   const normalizedAddress = address.toLowerCase();
@@ -29,6 +30,10 @@ export const loadBeastCollectionFromCache = (address: string): Beast[] => {
     if (!cached) return [];
 
     const cacheData = JSON.parse(cached);
+    if (cacheData.timestamp < VERSION_TIMESTAMP) {
+      localStorage.removeItem(cacheKey);
+      return [];
+    }
 
     // Verify the cached data is for the current address
     if (cacheData.address?.toLowerCase() !== address.toLowerCase()) {

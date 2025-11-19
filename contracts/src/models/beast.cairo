@@ -210,7 +210,7 @@ pub impl BeastUtilsImpl of BeastUtilsTrait {
             13 => 42170,
             14 => 42427,
             15 => 42620,
-            _ => 42620 + ((points - 15) * 120),
+            _ => 42620 + ((points - 15) * 100),
         };
 
         reduction

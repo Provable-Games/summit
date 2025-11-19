@@ -24,6 +24,8 @@ function AttackingBeasts() {
 
   // Create enhanced beasts with battle data
   useEffect(() => {
+    console.log('battleEvents', battleEvents);
+
     if (battleEvents.length > 0 && battleEvents[0].defending_beast_token_id !== summit?.beast.token_id) {
       handleSkip()
       return;
@@ -61,7 +63,7 @@ function AttackingBeasts() {
 
     // Build attacks array
     const attacks = [];
-    
+
     // Add normal attacks
     for (let i = 0; i < (beast.battle.attack_count || 0); i++) {
       attacks.push({
@@ -72,7 +74,7 @@ function AttackingBeasts() {
         beastIndex: beast.token_id
       });
     }
-    
+
     // Add critical attacks
     for (let i = 0; i < (beast.battle.critical_attack_count || 0); i++) {
       attacks.push({
@@ -86,7 +88,7 @@ function AttackingBeasts() {
 
     // Build counter-attacks array
     const counterAttacks = [];
-    
+
     // Add normal counter-attacks
     for (let i = 0; i < (beast.battle.counter_attack_count || 0); i++) {
       counterAttacks.push({
@@ -97,7 +99,7 @@ function AttackingBeasts() {
         beastIndex: beast.token_id
       });
     }
-    
+
     // Add critical counter-attacks
     for (let i = 0; i < (beast.battle.critical_counter_attack_count || 0); i++) {
       counterAttacks.push({
@@ -116,7 +118,7 @@ function AttackingBeasts() {
     // Interleave attacks and counter-attacks
     const queue = [];
     const maxLength = Math.max(shuffledAttacks.length, shuffledCounterAttacks.length);
-    
+
     for (let i = 0; i < maxLength; i++) {
       if (shuffledAttacks[i]) {
         queue.push(shuffledAttacks[i]);
@@ -140,6 +142,7 @@ function AttackingBeasts() {
       if (currentIndex >= damageQueue.length) {
         if (visibleBeasts.length <= 1) {
           setTimeout(() => {
+            console.log('no more beasts in queue, skipping');
             handleSkip();
           }, 1000);
         }
@@ -168,6 +171,7 @@ function AttackingBeasts() {
 
           if (prevSummit.beast.current_health <= nextDamage.value) {
             setTimeout(() => {
+              console.log('changing summit, skipping');
               handleSkip();
             }, 1000);
           }
@@ -222,6 +226,7 @@ function AttackingBeasts() {
                 if (nextBeast) {
                   setActiveBeastTokenId(nextBeast.token_id);
                 } else {
+                  console.log('no next beast, skipping');
                   handleSkip()
                 }
 

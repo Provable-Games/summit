@@ -2,9 +2,8 @@ import { useStarknetApi } from "@/api/starknet";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useGameStore } from "@/stores/gameStore";
 import { BattleEvent, Beast, GameAction, getEntityModel, Summit } from "@/types/game";
-import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastDetails, getBeastRevivalTime } from "@/utils/beasts";
+import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastDetails, getBeastRevivalTime, applyPoisonDamage } from "@/utils/beasts";
 import { useQueries } from '@/utils/queries';
-import { delay } from "@/utils/utils";
 import { useDojoSDK } from '@dojoengine/sdk/react';
 import {
   createContext,
@@ -15,6 +14,7 @@ import {
   useState
 } from "react";
 import { useController } from "./controller";
+import { useSound } from "@/contexts/sound";
 
 export interface GameDirectorContext {
   executeGameAction: (action: GameAction) => Promise<boolean>;
@@ -34,13 +34,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const { summit, setSummit, setAttackInProgress,
     setCollection, setAppliedPotions, appliedPotions,
     setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent } = useGameStore();
-  const { gameModelsQuery, gameEventsQuery } = useQueries();
+  const { gameEventsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimBeastReward, claimCorpseReward, addExtraLife, applyStatPoints, applyPoison } = useSystemCalls();
   const { tokenBalances, setTokenBalances } = useController();
+  const { play } = useSound();
 
   const [nextSummit, setNextSummit] = useState<Summit | null>(null);
-  const [subscription, setSubscription] = useState<any>(null);
   const [summitSubscription, setSummitSubscription] = useState<any>(null);
   const [actionFailed, setActionFailed] = useReducer((x) => x + 1, 0);
   const [eventQueue, setEventQueue] = useState<any[]>([]);
@@ -48,7 +48,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     fetchSummitData();
-    subscribeBeastUpdates();
     subscribeSummitUpdates();
   }, []);
 
@@ -62,13 +61,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       if (poisonEvent.beast_token_id === summit?.beast.token_id) {
         setSummit(prevSummit => ({
           ...prevSummit,
-          poison_count: poisonEvent.count,
+          poison_count: (prevSummit?.poison_count || 0) + poisonEvent.count,
           poison_timestamp: poisonEvent.block_timestamp,
         }));
       } else if (poisonEvent.beast_token_id === nextSummit?.beast.token_id) {
         setNextSummit(prevSummit => ({
           ...prevSummit,
-          poison_count: poisonEvent.count,
+          poison_count: (prevSummit?.poison_count || 0) + poisonEvent.count,
           poison_timestamp: poisonEvent.block_timestamp,
         }));
       }
@@ -89,17 +88,22 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     if (nextSummit && !pauseUpdates) {
-      setSummit(nextSummit);
+      let newSummit = { ...nextSummit };
+      const { currentHealth, extraLives } = applyPoisonDamage(newSummit);
+      newSummit.beast.current_health = currentHealth;
+      newSummit.beast.extra_lives = extraLives;
+      setSummit(newSummit);
+      play("roar");
     }
   }, [nextSummit, pauseUpdates]);
 
   const fetchSummitData = async () => {
     const summitBeast = await getSummitData();
 
-    if (!summitBeast) {
-      await delay(1000);
-      return fetchSummitData();
-    } else {
+    if (summitBeast) {
+      const { currentHealth, extraLives } = applyPoisonDamage(summitBeast);
+      summitBeast.beast.current_health = currentHealth;
+      summitBeast.beast.extra_lives = extraLives;
       setSummit(summitBeast);
     }
   };
@@ -115,6 +119,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       query: gameEventsQuery(),
       callback: ({ data, error }: { data?: any[]; error?: Error }) => {
         if (data && data.length > 0) {
+          let liveBeastStatsEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "LiveBeastStatsEvent")))
+            .map((entity: any) => getEntityModel(entity, "LiveBeastStatsEvent"))
+
           let summitEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "SummitEvent")))
             .map((entity: any) => getEntityModel(entity, "SummitEvent"))
 
@@ -123,6 +130,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
           let poison_event = data.filter((entity: any) => Boolean(getEntityModel(entity, "PoisonEvent")))
             .map((entity: any) => getEntityModel(entity, "PoisonEvent"))
+
+          if (liveBeastStatsEvent.length > 0) {
+            setEventQueue((prev) => [...prev, ...liveBeastStatsEvent.map(liveStatEvent => liveStatEvent.live_stats)]);
+          }
 
           if (poison_event.length > 0) {
             setPoisonEvent(poison_event[0]);
@@ -146,6 +157,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
               taken_at: summit.taken_at,
               owner: summit.owner,
               diplomacy_bonus: summit.diplomacy_bonus,
+              diplomacy_count: summit.diplomacy_count,
               poison_count: 0,
               poison_timestamp: 0,
             })
@@ -155,28 +167,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     });
 
     setSummitSubscription(sub);
-  };
-
-  const subscribeBeastUpdates = async () => {
-    if (subscription) {
-      try {
-        subscription.cancel();
-      } catch (error) { }
-    }
-
-    const [_, sub] = await sdk.subscribeEntityQuery({
-      query: gameModelsQuery(),
-      callback: ({ data, error }: { data?: any[]; error?: Error }) => {
-        if (data && data.length > 0) {
-          let events = data.filter((entity: any) => Boolean(getEntityModel(entity, "LiveBeastStats")))
-            .map((entity: any) => getEntityModel(entity, "LiveBeastStats"))
-
-          setEventQueue((prev) => [...prev, ...events]);
-        }
-      },
-    });
-
-    setSubscription(sub);
   };
 
   const processSummitUpdate = (update: any) => {
@@ -199,7 +189,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     setCollection(prevCollection => prevCollection.map((beast: Beast) => {
       let beastLiveStat = beastLiveStats.find((liveStat: any) => liveStat.token_id === beast.token_id);
-      console.log('BEAST LIVE STAT', beastLiveStat);
 
       if (beastLiveStat) {
         let newBeast = { ...beast, ...beastLiveStat };

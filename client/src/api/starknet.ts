@@ -95,8 +95,9 @@ export const useStarknetApi = () => {
         taken_at: parseInt(data?.result[23], 16),
         owner: data?.result[24],
         diplomacy_bonus: parseInt(data?.result[25], 16),
-        poison_count: parseInt(data?.result[26], 16),
-        poison_timestamp: parseInt(data?.result[27], 16),
+        diplomacy_count: parseInt(data?.result[26], 16),
+        poison_count: parseInt(data?.result[27], 16),
+        poison_timestamp: parseInt(data?.result[28], 16),
       }
     } catch (error) {
       console.log('error', error)

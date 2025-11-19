@@ -3,6 +3,7 @@ export interface Summit {
   taken_at: number;
   owner: string;
   diplomacy_bonus: number;
+  diplomacy_count: number;
   poison_count: number;
   poison_timestamp: number;
 }
@@ -50,9 +51,9 @@ export interface Beast {
 export interface Stats {
   spirit: number; // 0-255
   luck: number; // 0-255
-  specials: number;
-  wisdom: number;
-  diplomacy: number;
+  specials: boolean;
+  wisdom: boolean;
+  diplomacy: boolean;
 }
 export interface Combat {
   attack: number;

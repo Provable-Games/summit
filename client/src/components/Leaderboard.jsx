@@ -81,11 +81,11 @@ function Leaderboard() {
     }
 
     // Calculate bonus points from blocks held (1 point per block)
-    const blocksHeld = currentBlock - summit.taken_at
+    const blocksHeld = (currentBlock - summit.taken_at)
 
     // Find summit owner in leaderboard
     const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summit.owner))
-    const score = (player?.amount || 0) + blocksHeld
+    const score = (player?.amount || 0) + (blocksHeld * (100 - summit.diplomacy_count))
 
     // Find summit owner's rank in the sorted list
     const liveRank = leaderboard.findIndex(p => p.amount < score) + 1

@@ -44,7 +44,7 @@ const POTIONS = [
   },
 ]
 
-const LIMIT = 200;
+const LIMIT = 100;
 
 function ClaimStarterPack(props) {
   const { open, close, isOnboarding = false } = props
@@ -98,17 +98,19 @@ function ClaimStarterPack(props) {
 
       for (let i = 0; i < beastIds.length; i += LIMIT) {
         const batch = beastIds.slice(i, i + LIMIT)
-        executeGameAction({
+        const res = await executeGameAction({
           type: "claim_beast_reward",
           beastIds: batch
         })
 
-        if (i + LIMIT < beastIds.length) {
-          await delay(2000)
+        if (!res) {
+          break
         }
       }
     } catch (ex) {
       console.log(ex)
+    } finally {
+      setClaimInProgress(false)
     }
   }
 
@@ -237,13 +239,13 @@ function ClaimStarterPack(props) {
                     <span>Claiming</span>
                     <div className='dotLoader white' />
                   </Box>
-                  : `CLAIM ${unclaimedBeasts.length > LIMIT ? LIMIT : 'ALL'}`
+                  : `CLAIM ALL`
                 }
               </Typography>
             </Button>
 
             {unclaimedBeasts.length > LIMIT && <Typography sx={styles.helperText}>
-              Claiming in batches of {LIMIT} beasts.
+              Claiming in batches of {LIMIT}.
             </Typography>}
           </Box>
         </Box>
