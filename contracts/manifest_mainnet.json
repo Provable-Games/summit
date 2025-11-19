@@ -1948,7 +1948,7 @@
         "0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd",
         "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c"
       ],
-      "tag": "summit_0_0_9_preview-summit_systems",
+      "tag": "summit_0_0_9-summit_systems",
       "selector": "0x7e488fba3b21c472b6a9084df13912380c706e3a2039e78d3a8f55e448149d",
       "systems": [
         "dojo_init",
@@ -1972,49 +1972,49 @@
     {
       "members": [],
       "class_hash": "0x3ce76a36f1f379fb0400dd7a19ab62ad8c246b2f14445f8f6b16ebeb28ad79b",
-      "tag": "summit_0_0_9_preview-BattleEvent",
+      "tag": "summit_0_0_9-BattleEvent",
       "selector": "0x7d8e4e0cbab7890e2cd9dc89f71f209210b6b19e3aa7ace9f353074a47f9e31"
     },
     {
       "members": [],
       "class_hash": "0x458a0aa50aa35cd22da110441adf58fdaf991dc9b39a3ef42b9fa4ff161beaa",
-      "tag": "summit_0_0_9_preview-BeastEvent",
+      "tag": "summit_0_0_9-BeastEvent",
       "selector": "0x939ccc67083adaada32aa20e64c95c5d38bb87daf07bc7c54dc686f4952146"
     },
     {
       "members": [],
       "class_hash": "0x3de7d695555f8c85be9a1795c872edb02a93bfa656ec52112d0e0dbb1070ece",
-      "tag": "summit_0_0_9_preview-CorpseRewardEvent",
+      "tag": "summit_0_0_9-CorpseRewardEvent",
       "selector": "0x4afbdeda8d20f314ca7f95fb5c2d481a53fc0d2947c2015e54bacc054c9c9aa"
     },
     {
       "members": [],
       "class_hash": "0x98009d5c0eff1b1c6bff1b583c280ceabf0d86fdd160fe474d899822c22d6b",
-      "tag": "summit_0_0_9_preview-DiplomacyEvent",
+      "tag": "summit_0_0_9-DiplomacyEvent",
       "selector": "0x33999c3ec7b03c9ea65c72d9cdb59f18fbe408db59097d55daa74da21e447d4"
     },
     {
       "members": [],
       "class_hash": "0x2de68d3a6116869a4b486f90af2cf529de6f0798e12ff52ffdde5ee7ffa380a",
-      "tag": "summit_0_0_9_preview-LiveBeastStatsEvent",
+      "tag": "summit_0_0_9-LiveBeastStatsEvent",
       "selector": "0x482caa3724519a71a0a9f16cd8016286c55ad3507d2003190e962049a3ef676"
     },
     {
       "members": [],
       "class_hash": "0x2113a0250bda87df1c499705a0bcbfcbd08af16d4c6659565b64f6539a36280",
-      "tag": "summit_0_0_9_preview-PoisonEvent",
+      "tag": "summit_0_0_9-PoisonEvent",
       "selector": "0x157f5b1c6ba1ef25bf683ea99a18df8e46497a6bd0123bf2fbe536d3faa8c40"
     },
     {
       "members": [],
       "class_hash": "0xf71e3c006ea105f8f33c85967ce7944be526d63baef0879647f6b23cad0584",
-      "tag": "summit_0_0_9_preview-RewardEvent",
+      "tag": "summit_0_0_9-RewardEvent",
       "selector": "0x8f66df965df0d82f111258921f8d58c882e6c51045202532ad0e4b9915a0ce"
     },
     {
       "members": [],
       "class_hash": "0x17ed8f22a570ec362538623a2085ae2add92d41efb770c40f78af55136e4e59",
-      "tag": "summit_0_0_9_preview-SummitEvent",
+      "tag": "summit_0_0_9-SummitEvent",
       "selector": "0x7b4010b041d056e64e96076665579360fb54c9244a9fecd4ac4e0cd62f38ae8"
     }
   ],

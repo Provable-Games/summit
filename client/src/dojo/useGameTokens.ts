@@ -264,7 +264,7 @@ export const useGameTokens = () => {
   const getValidAdventurers = async (adventurerIds: number[]) => {
     let q = `
       SELECT adventurer_id
-      FROM "summit_0_0_9_preview-CorpseRewardEvent"
+      FROM "summit_0_0_9-CorpseRewardEvent"
       WHERE adventurer_id IN (${adventurerIds.map((id: number) => `'0x${id.toString(16).padStart(16, '0')}'`).join(',')})
     `
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
