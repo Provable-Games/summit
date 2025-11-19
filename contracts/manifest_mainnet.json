@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x2d8381823bddd1285ac306e7879e1bd7e10fc0a1608cb854249a2b07559e0f0",
-      "class_hash": "0x21147f30b1d2fe09c09a72e78e0cd95f062212eccbbb8623f107fb048e74b85",
+      "address": "0x75d886f3c53ff8f9ef413d88d9e0c8ee56216fed8c32d64b767b9fa271aa0dd",
+      "class_hash": "0x7c06ac3a31ff488f1c36c46336be483b064f5a684436ebb6bfdbfaf1b93235c",
       "abi": [
         {
           "type": "impl",
@@ -1769,7 +1769,7 @@
               "inputs": [],
               "outputs": [
                 {
-                  "type": "(summit::models::beast::Beast, core::integer::u64, core::starknet::contract_address::ContractAddress, core::integer::u8, core::integer::u16, core::integer::u64)"
+                  "type": "(summit::models::beast::Beast, core::integer::u64, core::starknet::contract_address::ContractAddress, core::integer::u8, core::integer::u8, core::integer::u16, core::integer::u64)"
                 }
               ],
               "state_mutability": "external"
@@ -1949,7 +1949,7 @@
         "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c"
       ],
       "tag": "summit_0_0_9-summit_systems",
-      "selector": "0x7e488fba3b21c472b6a9084df13912380c706e3a2039e78d3a8f55e448149d",
+      "selector": "0x224495b335b6e4f643c5a7db86d1085d3e4e9fe00e2a4e7f583f0b41c4fd616",
       "systems": [
         "dojo_init",
         "start_summit",
@@ -1973,49 +1973,49 @@
       "members": [],
       "class_hash": "0x3ce76a36f1f379fb0400dd7a19ab62ad8c246b2f14445f8f6b16ebeb28ad79b",
       "tag": "summit_0_0_9-BattleEvent",
-      "selector": "0x7d8e4e0cbab7890e2cd9dc89f71f209210b6b19e3aa7ace9f353074a47f9e31"
+      "selector": "0x2d7cacc9f9d50cd26336363690eb4efec2012ce552dfb2573140835a9df448b"
     },
     {
       "members": [],
       "class_hash": "0x458a0aa50aa35cd22da110441adf58fdaf991dc9b39a3ef42b9fa4ff161beaa",
       "tag": "summit_0_0_9-BeastEvent",
-      "selector": "0x939ccc67083adaada32aa20e64c95c5d38bb87daf07bc7c54dc686f4952146"
+      "selector": "0x48846bf4a64ddcc39a8e161b0dc74ebe2e36cb7709a359684f9535649415d4a"
     },
     {
       "members": [],
       "class_hash": "0x3de7d695555f8c85be9a1795c872edb02a93bfa656ec52112d0e0dbb1070ece",
       "tag": "summit_0_0_9-CorpseRewardEvent",
-      "selector": "0x4afbdeda8d20f314ca7f95fb5c2d481a53fc0d2947c2015e54bacc054c9c9aa"
+      "selector": "0x37496e8e9dd52d4eac3538d96501065f009b58b0d848354553dba3d137d394e"
     },
     {
       "members": [],
       "class_hash": "0x98009d5c0eff1b1c6bff1b583c280ceabf0d86fdd160fe474d899822c22d6b",
       "tag": "summit_0_0_9-DiplomacyEvent",
-      "selector": "0x33999c3ec7b03c9ea65c72d9cdb59f18fbe408db59097d55daa74da21e447d4"
+      "selector": "0x3a518698624286f2996566681b19ac5c8d0a415da13a25a10bacf26f82f6c43"
     },
     {
       "members": [],
       "class_hash": "0x2de68d3a6116869a4b486f90af2cf529de6f0798e12ff52ffdde5ee7ffa380a",
       "tag": "summit_0_0_9-LiveBeastStatsEvent",
-      "selector": "0x482caa3724519a71a0a9f16cd8016286c55ad3507d2003190e962049a3ef676"
+      "selector": "0x2eda3e9913e888526ba161571c320ab92dea936a2108699000c1662a7ea9122"
     },
     {
       "members": [],
       "class_hash": "0x2113a0250bda87df1c499705a0bcbfcbd08af16d4c6659565b64f6539a36280",
       "tag": "summit_0_0_9-PoisonEvent",
-      "selector": "0x157f5b1c6ba1ef25bf683ea99a18df8e46497a6bd0123bf2fbe536d3faa8c40"
+      "selector": "0x7d805148ab5dcbf4ee4ac1bd27a5069f595223a814d0975014c8ae5c7d50984"
     },
     {
       "members": [],
       "class_hash": "0xf71e3c006ea105f8f33c85967ce7944be526d63baef0879647f6b23cad0584",
       "tag": "summit_0_0_9-RewardEvent",
-      "selector": "0x8f66df965df0d82f111258921f8d58c882e6c51045202532ad0e4b9915a0ce"
+      "selector": "0x5cd63bd49eb20ae49cfd490004ddd6b8b047a4856a476f403fa4e175616fa6b"
     },
     {
       "members": [],
-      "class_hash": "0x17ed8f22a570ec362538623a2085ae2add92d41efb770c40f78af55136e4e59",
+      "class_hash": "0x78ad2a3e125ca30ae83796fe9db0623359ab9abec31dc4e7a21c0a3fc2c2646",
       "tag": "summit_0_0_9-SummitEvent",
-      "selector": "0x7b4010b041d056e64e96076665579360fb54c9244a9fecd4ac4e0cd62f38ae8"
+      "selector": "0x52e0729547da7cdfb0804ae70c6a95d2ee50f34329dc1bcba309b1b3831b1c9"
     }
   ],
   "external_contracts": []
