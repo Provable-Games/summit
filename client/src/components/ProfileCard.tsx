@@ -135,7 +135,7 @@ const ProfileCard = () => {
         </Box>}
 
         {unclaimedCorpseTokens > 0 && <Box sx={styles.upgradeSection}>
-          <Typography sx={styles.starterPackTitle}>
+          <Typography sx={styles.starterPackTitle} pt={0.5}>
             CORPSE TOKEN
           </Typography>
 

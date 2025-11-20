@@ -161,16 +161,13 @@ export const useGameTokens = () => {
     return beasts
   }
 
-  const countRegisteredBeasts = async () => {
-    // Calculate timestamp for 24 hours ago (in seconds)
-    const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - (24 * 60 * 60);
-
+  const countAliveBeasts = async () => {
     let q = `
-      SELECT 
-        COUNT(*) as total_count,
-        COUNT(CASE WHEN CAST(last_death_timestamp AS INTEGER) < ${twentyFourHoursAgo} THEN 1 END) as alive_count
-      FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
+      SELECT COUNT(DISTINCT attacking_beast_id) as count
+      FROM "summit_0_0_9-BattleEvent"
+      WHERE internal_created_at > datetime('now', '-20 hours');
     `
+
     let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
 
     try {
@@ -182,13 +179,34 @@ export const useGameTokens = () => {
       })
 
       let data = await sql.json()
-      return {
-        total: data[0].total_count,
-        alive: data[0].alive_count
-      }
+      return data[0].count || 0;
     } catch (error) {
       console.error("Error counting beasts:", error);
-      return { total: 0, alive: 0 };
+      return 0;
+    }
+  }
+
+  const countRegisteredBeasts = async () => {
+    let q = `
+      SELECT COUNT(*) as count
+      FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+    `
+    console.log("q", q);
+    let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+
+    try {
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+
+      let data = await sql.json()
+      return data[0].count || 0;
+    } catch (error) {
+      console.error("Error counting beasts:", error);
+      return 0;
     }
   }
 
@@ -284,5 +302,6 @@ export const useGameTokens = () => {
     getKilledBy,
     getKilledBeasts,
     getValidAdventurers,
+    countAliveBeasts
   };
 };

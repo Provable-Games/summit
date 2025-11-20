@@ -631,7 +631,9 @@ pub mod summit_systems {
                     );
 
                     let (damage, attacker_crit_hit) = self
-                        ._attack(attacking_beast, ref defending_beast, remaining_attack_potions, attacker_crit_hit_rnd, vrf);
+                        ._attack(
+                            attacking_beast, ref defending_beast, remaining_attack_potions, attacker_crit_hit_rnd, vrf,
+                        );
 
                     if attacker_crit_hit {
                         critical_attack_count += 1;
@@ -774,7 +776,12 @@ pub mod summit_systems {
         /// @return a tuple containing the combat result and a bool indicating if the defender died
         /// @dev this function only mutates the defender
         fn _attack(
-            ref self: ContractState, attacker: Beast, ref defender: Beast, attack_potions: u8, critical_hit_rnd: u8, vrf: bool,
+            ref self: ContractState,
+            attacker: Beast,
+            ref defender: Beast,
+            attack_potions: u8,
+            critical_hit_rnd: u8,
+            vrf: bool,
         ) -> (u16, bool) {
             let attacker_combat_spec = attacker.get_combat_spec(attacker.live.stats.specials == 1);
             let defender_combat_spec = defender.get_combat_spec(attacker.live.stats.specials == 1);

@@ -19,19 +19,23 @@ const StatisticsContext = createContext<StatisticsContext>(
 
 // Create a provider component
 export const StatisticsProvider = ({ children }: PropsWithChildren) => {
-  const { countRegisteredBeasts } = useGameTokens();
-
+  const { countRegisteredBeasts, countAliveBeasts } = useGameTokens();
   const [beastsRegistered, setBeastsRegistered] = useState(0);
   const [beastsAlive, setBeastsAlive] = useState(0);
 
   const fetchCollectedBeasts = async () => {
     const result = await countRegisteredBeasts();
-    setBeastsRegistered(result.total);
-    setBeastsAlive(result.alive);
+    setBeastsRegistered(result);
+  };
+
+  const fetchAliveBeasts = async () => {
+    const result = await countAliveBeasts();
+    setBeastsAlive(result);
   };
 
   useEffect(() => {
     fetchCollectedBeasts();
+    fetchAliveBeasts();
   }, []);
 
   return (
