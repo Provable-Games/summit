@@ -1,14 +1,13 @@
 import attackPotionIcon from '@/assets/images/attack-potion.png';
-import lifePotionIcon from '@/assets/images/life-potion.png';
-import revivePotionIcon from '@/assets/images/revive-potion.png';
-import poisonPotionIcon from '@/assets/images/poison-potion.png';
 import killTokenIcon from '@/assets/images/kill-token.png';
+import lifePotionIcon from '@/assets/images/life-potion.png';
+import poisonPotionIcon from '@/assets/images/poison-potion.png';
+import revivePotionIcon from '@/assets/images/revive-potion.png';
 import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import { gameColors } from '@/utils/themes';
-import { delay } from '@/utils/utils';
 import InfoIcon from '@mui/icons-material/Info';
 import { Box, Button, Dialog, Tooltip, Typography } from '@mui/material';
 import React, { useEffect, useState } from 'react';
@@ -44,7 +43,7 @@ const POTIONS = [
   },
 ]
 
-const LIMIT = 100;
+const LIMIT = 500;
 
 function ClaimStarterPack(props) {
   const { open, close, isOnboarding = false } = props
