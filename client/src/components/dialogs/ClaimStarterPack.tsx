@@ -43,7 +43,7 @@ const POTIONS = [
   },
 ]
 
-const LIMIT = 500;
+const LIMIT = 300;
 
 function ClaimStarterPack(props) {
   const { open, close, isOnboarding = false } = props
