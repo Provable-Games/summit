@@ -65,6 +65,7 @@ function ClaimStarterPack(props) {
   useEffect(() => {
     if (collection.length > 0 && unclaimedBeasts.length === 0 && unclaimedKillTokens.length === 0) {
       setTokenBalances(({
+        ...tokenBalances,
         "REVIVE": tokenBalances["REVIVE"] + potionsClaimed * 2,
         "ATTACK": tokenBalances["ATTACK"] + potionsClaimed * 3,
         "EXTRA LIFE": tokenBalances["EXTRA LIFE"] + potionsClaimed * 1,

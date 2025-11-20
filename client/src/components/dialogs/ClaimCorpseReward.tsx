@@ -46,7 +46,7 @@ function ClaimCorpseReward(props) {
       if (result) {
         setTokenBalances({
           ...tokenBalances,
-          CORPSE: tokenBalances.CORPSE + tokenAmount,
+          "CORPSE": (tokenBalances["CORPSE"] || 0) + tokenAmount,
         })
         setAdventurerCollection([])
       }
