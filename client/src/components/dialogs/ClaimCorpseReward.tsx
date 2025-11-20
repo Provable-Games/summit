@@ -9,8 +9,8 @@ import corpseTokenIcon from '@/assets/images/corpse-token.png';
 function ClaimCorpseReward(props) {
   const { open, close, isOnboarding = false } = props
   const { executeGameAction, actionFailed } = useGameDirector()
-  const { adventurerCollection } = useGameStore()
-  const { tokenBalances, setTokenBalances, filterValidAdventurers } = useController()
+  const { adventurerCollection, setAdventurerCollection } = useGameStore()
+  const { tokenBalances, setTokenBalances } = useController()
 
   const [claimInProgress, setClaimInProgress] = useState(false)
 
@@ -48,7 +48,7 @@ function ClaimCorpseReward(props) {
           ...tokenBalances,
           CORPSE: tokenBalances.CORPSE + tokenAmount,
         })
-        filterValidAdventurers()
+        setAdventurerCollection([])
       }
     } catch (ex) {
       console.log(ex)
