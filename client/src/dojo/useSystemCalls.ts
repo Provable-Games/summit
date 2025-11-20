@@ -181,7 +181,7 @@ export const useSystemCalls = () => {
     return {
       contractAddress: address,
       entrypoint: "approve",
-      calldata: CallData.compile([SUMMIT_ADDRESS, amount * 1e18, "0"]),
+      calldata: CallData.compile([SUMMIT_ADDRESS, BigInt(amount * 1e18), "0"]),
     };
   };
 

@@ -351,7 +351,7 @@ pub mod summit_systems {
 
             beast.live.stats.spirit += stats.spirit;
             beast.live.stats.luck += stats.luck;
-            tokens_required += (stats.spirit + stats.luck).into();
+            tokens_required += stats.spirit.into() + stats.luck.into();
 
             InternalSummitImpl::_burn_consumable(self.kill_token_address.read(), tokens_required);
             self._save_beast(beast.live);
@@ -631,7 +631,7 @@ pub mod summit_systems {
                     );
 
                     let (damage, attacker_crit_hit) = self
-                        ._attack(attacking_beast, ref defending_beast, remaining_attack_potions, attacker_crit_hit_rnd);
+                        ._attack(attacking_beast, ref defending_beast, remaining_attack_potions, attacker_crit_hit_rnd, vrf);
 
                     if attacker_crit_hit {
                         critical_attack_count += 1;
@@ -645,7 +645,7 @@ pub mod summit_systems {
 
                     if defending_beast.live.current_health != 0 {
                         let (damage, defender_crit_hit) = self
-                            ._attack(defending_beast, ref attacking_beast, diplomacy_bonus, defender_crit_hit_rnd);
+                            ._attack(defending_beast, ref attacking_beast, diplomacy_bonus, defender_crit_hit_rnd, vrf);
 
                         if defender_crit_hit {
                             critical_counter_attack_count += 1;
@@ -774,7 +774,7 @@ pub mod summit_systems {
         /// @return a tuple containing the combat result and a bool indicating if the defender died
         /// @dev this function only mutates the defender
         fn _attack(
-            ref self: ContractState, attacker: Beast, ref defender: Beast, attack_potions: u8, critical_hit_rnd: u8,
+            ref self: ContractState, attacker: Beast, ref defender: Beast, attack_potions: u8, critical_hit_rnd: u8, vrf: bool,
         ) -> (u16, bool) {
             let attacker_combat_spec = attacker.get_combat_spec(attacker.live.stats.specials == 1);
             let defender_combat_spec = defender.get_combat_spec(attacker.live.stats.specials == 1);
@@ -785,7 +785,7 @@ pub mod summit_systems {
 
             let critical_hit_chance = attacker.crit_chance();
             if (critical_hit_chance > 0) {
-                assert(critical_hit_rnd > 0, 'missing VRF seed');
+                assert(vrf, 'missing VRF seed');
             }
 
             let combat_result = ImplCombat::calculate_damage(
