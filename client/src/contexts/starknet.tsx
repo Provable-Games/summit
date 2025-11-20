@@ -35,7 +35,7 @@ const cartridgeController =
       chains: controllerConfig.chains,
       defaultChainId: stringToFelt(controllerConfig.chainId).toString(),
       tokens: {
-        erc20: controllerConfig.tokens.erc20.map(token => token.address),
+        erc20: []
       },
     })
     : null;
