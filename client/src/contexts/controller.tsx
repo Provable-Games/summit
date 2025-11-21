@@ -13,11 +13,11 @@ import {
 } from "react";
 import { addAddressPadding } from "starknet";
 import { useDynamicConnector } from "./starknet";
-import { 
-  loadBeastCollectionFromCache, 
-  saveBeastCollectionToCache, 
-  mergeBeastData
+import {
+  loadBeastCollectionFromCache,
+  saveBeastCollectionToCache,
 } from "@/utils/beastCache";
+import { Beast } from "@/types/game";
 
 export interface ControllerContext {
   playerName: string | undefined;
@@ -26,6 +26,7 @@ export interface ControllerContext {
   setTokenBalances: (tokenBalances: Record<string, number>) => void;
   fetchTokenBalances: () => void;
   fetchBeastCollection: () => void;
+  filterValidAdventurers: () => void;
   openProfile: () => void;
   login: () => void;
   logout: () => void;
@@ -44,7 +45,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { account, isConnecting } = useAccount();
   const { connector, connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
-  const { collection, setCollection, setAdventurerCollection, setLoadingCollection } = useGameStore();
+  const { collection, setCollection, setAdventurerCollection, setLoadingCollection, setOnboarding } = useGameStore();
   const { getTokenBalances } = useStarknetApi();
   const { getBeastCollection, getValidAdventurers } = useGameTokens();
   const [userName, setUserName] = useState<string>();
@@ -62,27 +63,27 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     limit: 10000,
   });
 
+  const filterValidAdventurers = async () => {
+    const adventurerIds = adventurers.map(adventurer => adventurer.token_id);
+    const validIds = await getValidAdventurers(adventurerIds);
+
+    const validAdventurers = adventurers.filter(adventurer =>
+      validIds.includes(adventurer.token_id)
+    );
+
+    setAdventurerCollection(
+      validAdventurers.map((adventurer) => ({
+        id: adventurer.token_id,
+        name: adventurer.player_name,
+        level: Math.floor(Math.sqrt(adventurer.score)),
+        metadata: JSON.parse(adventurer.metadata || "{}"),
+        soulbound: adventurer.soulbound,
+      }))
+    );
+  };
+
   useEffect(() => {
     if (adventurers) {
-      const filterValidAdventurers = async () => {
-        const adventurerIds = adventurers.map(adventurer => adventurer.token_id);
-        const validIds = await getValidAdventurers(adventurerIds);
-
-        const validAdventurers = adventurers.filter(adventurer =>
-          validIds.includes(adventurer.token_id)
-        );
-
-        setAdventurerCollection(
-          validAdventurers.map((adventurer) => ({
-            id: adventurer.token_id,
-            name: adventurer.player_name,
-            level: Math.floor(Math.sqrt(adventurer.score)),
-            metadata: JSON.parse(adventurer.metadata || "{}"),
-            soulbound: adventurer.soulbound,
-          }))
-        );
-      };
-
       filterValidAdventurers();
     }
   }, [adventurers]);
@@ -133,6 +134,12 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     if (cachedCollection && cachedCollection.length > 0) {
       setCollection(cachedCollection);
       setLoadingCollection(false);
+
+      if (cachedCollection.length > 0 && cachedCollection.every((beast: Beast) => !beast.has_claimed_potions)) {
+        setOnboarding(true);
+      } else {
+        setOnboarding(false);
+      }
     } else {
       setLoadingCollection(true);
     }
@@ -140,10 +147,16 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     // Fetch fresh data in the background
     try {
       const freshCollection = await getBeastCollection(account.address, cachedCollection);
-      
+
+      if (freshCollection.length > 0 && freshCollection.every((beast: Beast) => !beast.has_claimed_potions)) {
+        setOnboarding(true);
+      } else {
+        setOnboarding(false);
+      }
+
       // Update state with fresh/merged data
       setCollection(freshCollection);
-      
+
       // Save to cache
       saveBeastCollectionToCache(freshCollection, account.address);
     } catch (error) {
@@ -175,6 +188,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         tokenBalances,
         fetchTokenBalances,
         fetchBeastCollection,
+        filterValidAdventurers,
         showTermsOfService,
         acceptTermsOfService,
 

@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import "./index.css";
 import { PostHogProvider } from "posthog-js/react";
+import { SoundProvider } from "@/contexts/sound";
 
 const options = {
   api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
@@ -58,7 +59,9 @@ function DojoApp() {
       clientFn={() => { }}
     >
       <MetagameProvider>
-        <App />
+        <SoundProvider>
+          <App />
+        </SoundProvider>
       </MetagameProvider>
     </DojoSdkProvider>
   );

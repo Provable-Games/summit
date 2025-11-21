@@ -1,23 +1,20 @@
+import AttackingBeasts from "@/components/AttackingBeasts"
+import Countdown from "@/components/Countdown"
+import { useGameDirector } from "@/contexts/GameDirector"
 import { useGameStore } from "@/stores/gameStore"
-import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import { Box, IconButton, Typography } from '@mui/material'
+import { Box, Typography } from '@mui/material'
 import { isBrowser, isMobile } from 'react-device-detect'
 import ActionBar from '../components/ActionBar'
-import AdventurerCollection from '../components/AdventurerCollection'
 import BeastCollection from '../components/BeastCollection'
 import BurgerMenu from '../components/BurgerMenu'
-import Feeding from '../components/Feeding'
-import KilledByAdventurers from '../components/KilledByAdventurers'
 import Leaderboard from '../components/Leaderboard'
+import Onboarding from '../components/Onboarding'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
-import Countdown from "@/components/Countdown"
-import AttackingBeasts from "@/components/AttackingBeasts"
-import { useGameDirector } from "@/contexts/GameDirector"
 
 function MainPage() {
-  const { summit, showFeedingGround, setShowFeedingGround, attackInProgress, selectedBeasts } = useGameStore()
+  const { summit, attackInProgress, selectedBeasts, onboarding } = useGameStore()
   const { pauseUpdates } = useGameDirector();
 
   return <>
@@ -26,68 +23,35 @@ function MainPage() {
         <img src="/images/shiny.png" alt="shiny" />
       </Box> : null}
 
-      {showFeedingGround ? <>
-        {isBrowser && <Box sx={[styles.sideContainer, { justifyContent: 'flex-start' }]}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, marginBottom: 2 }}>
-            <IconButton size='large' onClick={() => setShowFeedingGround(false)}>
-              <ArrowBackIcon fontSize='large' htmlColor={gameColors.gameYellow} />
-            </IconButton>
-            <Typography variant='h3' color={gameColors.gameYellow} fontWeight={'600'} mt={'4px'}>
-              Feeding Ground
-            </Typography>
-          </Box>
-          <KilledByAdventurers />
+      <>
+        {isBrowser && <Box sx={styles.sideContainer}>
+          <Leaderboard />
         </Box>}
 
-        <Feeding />
+        {summit && <Summit />}
 
         {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
           <ProfileCard />
         </Box>}
 
-        <Box sx={styles.bottomContainer}>
-          <ActionBar />
-          <AdventurerCollection />
-        </Box>
+        {onboarding
+          ? <Onboarding />
+          : <>
+            {(!attackInProgress || !pauseUpdates) && <Box sx={styles.bottomContainer}>
+              <ActionBar />
+              <BeastCollection />
+            </Box>}
+
+            {(attackInProgress && pauseUpdates && selectedBeasts.length > 0) &&
+              <AttackingBeasts />
+            }
+          </>}
       </>
-        : <>
-          {isBrowser && <Box sx={styles.sideContainer}>
-            <Leaderboard />
-          </Box>}
-
-          {summit && <Summit />}
-
-          {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
-            <ProfileCard />
-          </Box>}
-
-          {(!attackInProgress || !pauseUpdates) && <Box sx={styles.bottomContainer}>
-            <ActionBar />
-            <BeastCollection />
-          </Box>}
-
-          {(attackInProgress && pauseUpdates && selectedBeasts.length > 0) &&
-            <AttackingBeasts />
-          }
-        </>
-      }
 
       {isMobile && <Box sx={{ position: 'absolute', top: '10px', width: '100%', boxSizing: 'border-box', px: 1, display: 'flex', justifyContent: 'center' }}>
-        {showFeedingGround
-          ? <Box sx={{ display: 'flex', alignItems: 'start', justifyContent: 'space-between', width: '100%' }}>
-            <IconButton size='medium' onClick={() => setShowFeedingGround(false)}>
-              <ArrowBackIcon fontSize='medium' htmlColor={gameColors.gameYellow} />
-            </IconButton>
-            <Typography variant='h4' color={gameColors.gameYellow} fontWeight={'600'} mt={'10px'}>
-              Feeding Ground
-            </Typography>
-
-            <Box width={'60px'} />
-          </Box>
-          : <Box pt={'12px'}>
-            <Typography sx={styles.title}>SUMMIT</Typography>
-          </Box>
-        }
+        <Box pt={'12px'}>
+          <Typography sx={styles.title}>SUMMIT</Typography>
+        </Box>
       </Box>
       }
 

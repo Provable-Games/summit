@@ -63,8 +63,11 @@ const parseComponent = (values: string[], componentType: string): any => {
 
 export const components: any = {
   'BattleEvent': {
-    attacking_beast_owner: null,
     attacking_beast_token_id: 'number',
+    attacking_beast_owner: null,
+    attacking_beast_id: 'number',
+    shiny: 'number',
+    animated: 'number',
     defending_beast_token_id: 'number',
     attack_count: 'number',
     attack_damage: 'number',
@@ -77,7 +80,8 @@ export const components: any = {
     attack_potions: 'number',
     xp_gained: 'number',
   },
-  'LiveBeastStats': {
+  'LiveBeastStatsEvent': {
+    event_id: 'number',
     token_id: 'number',
     current_health: 'number',
     bonus_health: 'number',
@@ -86,14 +90,17 @@ export const components: any = {
     last_death_timestamp: 'number',
     revival_count: 'number',
     extra_lives: 'number',
-    has_claimed_starter_kit: 'boolean',
+    has_claimed_potions: 'boolean',
     rewards_earned: 'number',
     stats: 'Stats',
+    kills_claimed: 'number',
   },
   'Stats': {
-    spirit: 'boolean',
-    luck: 'boolean',
+    spirit: 'number',
+    luck: 'number',
     specials: 'boolean',
+    wisdom: 'boolean',
+    diplomacy: 'boolean',
   }
 }
 

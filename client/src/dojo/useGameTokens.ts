@@ -59,10 +59,10 @@ export const useGameTokens = () => {
       stats AS (
         SELECT
           LOWER(printf('%064x', CAST(token_id AS INTEGER))) AS token_hex64,
-          attack_streak, bonus_health, bonus_xp, current_health, extra_lives,
-          has_claimed_starter_kit, last_death_timestamp, "stats.luck", "stats.spirit", "stats.specials",
-          revival_count, rewards_earned
-        FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
+          "live_stats.attack_streak", "live_stats.bonus_health", "live_stats.bonus_xp", "live_stats.current_health", "live_stats.extra_lives",
+          "live_stats.has_claimed_potions", "live_stats.last_death_timestamp", "live_stats.stats.luck", "live_stats.stats.spirit", "live_stats.stats.specials",
+          "live_stats.revival_count", "live_stats.rewards_earned", "live_stats.stats.wisdom", "live_stats.stats.diplomacy", "live_stats.kills_claimed"
+        FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
       )
       SELECT
         tbn.token_id,
@@ -84,18 +84,21 @@ export const useGameTokens = () => {
         a."Last Death Timestamp",
         a."Shiny",
         a."Animated",
-        s.attack_streak,
-        s.bonus_health,
-        s.bonus_xp,
-        s.current_health,
-        s.extra_lives,
-        s.has_claimed_starter_kit,
-        s.last_death_timestamp,
-        s.revival_count,
-        s.rewards_earned,
-        s."stats.luck",
-        s."stats.spirit",
-        s."stats.specials"
+        s."live_stats.attack_streak",
+        s."live_stats.bonus_health",
+        s."live_stats.bonus_xp",
+        s."live_stats.current_health",
+        s."live_stats.extra_lives",
+        s."live_stats.has_claimed_potions",
+        s."live_stats.last_death_timestamp",
+        s."live_stats.revival_count",
+        s."live_stats.rewards_earned",
+        s."live_stats.stats.luck",
+        s."live_stats.stats.spirit",
+        s."live_stats.stats.specials",
+        s."live_stats.stats.wisdom",
+        s."live_stats.stats.diplomacy",
+        s."live_stats.kills_claimed"
       FROM tbn
       LEFT JOIN attrs a  ON a.token_id    = tbn.token_id
       LEFT JOIN stats s  ON s.token_hex64 = tbn.token_hex64;
@@ -129,21 +132,24 @@ export const useGameTokens = () => {
         rank: Number(data["Rank"]),
         adventurers_killed: Number(data["Adventurers Killed"]),
         last_dm_death_timestamp: Number(data["Last Death Timestamp"]),
-        attack_streak: data.attack_streak || 0,
-        bonus_health: Math.max(cachedBeast?.bonus_health || 0, data.bonus_health),
-        bonus_xp: Math.max(cachedBeast?.bonus_xp || 0, data.bonus_xp),
-        current_health: data.current_health,
-        extra_lives: data.extra_lives || 0,
-        has_claimed_starter_kit: data.has_claimed_starter_kit || 0,
-        last_death_timestamp: Math.max(cachedBeast?.last_death_timestamp || 0, parseInt(data.last_death_timestamp, 16)),
-        revival_count: Math.max(cachedBeast?.revival_count || 0, data.revival_count),
-        rewards_earned: parseInt(data.rewards_earned, 16) || 0,
+        attack_streak: data["live_stats.attack_streak"] || 0,
+        bonus_health: Math.max(cachedBeast?.bonus_health || 0, data["live_stats.bonus_health"]),
+        bonus_xp: Math.max(cachedBeast?.bonus_xp || 0, data["live_stats.bonus_xp"]),
+        current_health: data["live_stats.current_health"],
+        extra_lives: data["live_stats.extra_lives"] || 0,
+        has_claimed_potions: cachedBeast?.has_claimed_potions || Boolean(data["live_stats.has_claimed_potions"]),
+        last_death_timestamp: Math.max(cachedBeast?.last_death_timestamp || 0, parseInt(data["live_stats.last_death_timestamp"], 16)),
+        revival_count: Math.max(cachedBeast?.revival_count || 0, data["live_stats.revival_count"]),
+        rewards_earned: parseInt(data["live_stats.rewards_earned"], 16) || 0,
         revival_time: 0,
         stats: {
-          spirit: cachedBeast?.stats.spirit || Boolean(data["stats.spirit"]),
-          luck: cachedBeast?.stats.luck || Boolean(data["stats.luck"]),
-          specials: cachedBeast?.stats.specials || Boolean(data["stats.specials"]),
-        }
+          spirit: Math.max(cachedBeast?.stats.spirit || 0, data["live_stats.stats.spirit"]),
+          luck: Math.max(cachedBeast?.stats.luck || 0, data["live_stats.stats.luck"]),
+          specials: cachedBeast?.stats.specials || Boolean(data["live_stats.stats.specials"]),
+          wisdom: cachedBeast?.stats.wisdom || Boolean(data["live_stats.stats.wisdom"]),
+          diplomacy: cachedBeast?.stats.diplomacy || Boolean(data["live_stats.stats.diplomacy"]),
+        },
+        kills_claimed: Math.max(cachedBeast?.kills_claimed || 0, data["live_stats.kills_claimed"]),
       }
       beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)
@@ -155,16 +161,13 @@ export const useGameTokens = () => {
     return beasts
   }
 
-  const countRegisteredBeasts = async () => {
-    // Calculate timestamp for 24 hours ago (in seconds)
-    const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - (24 * 60 * 60);
-
+  const countAliveBeasts = async () => {
     let q = `
-      SELECT 
-        COUNT(*) as total_count,
-        COUNT(CASE WHEN CAST(last_death_timestamp AS INTEGER) < ${twentyFourHoursAgo} THEN 1 END) as alive_count
-      FROM "${currentNetworkConfig.namespace}-LiveBeastStats"
+      SELECT COUNT(DISTINCT attacking_beast_id) as count
+      FROM "summit_0_0_9-BattleEvent"
+      WHERE internal_created_at > datetime('now', '-20 hours');
     `
+
     let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
 
     try {
@@ -176,13 +179,34 @@ export const useGameTokens = () => {
       })
 
       let data = await sql.json()
-      return {
-        total: data[0].total_count,
-        alive: data[0].alive_count
-      }
+      return data[0].count || 0;
     } catch (error) {
       console.error("Error counting beasts:", error);
-      return { total: 0, alive: 0 };
+      return 0;
+    }
+  }
+
+  const countRegisteredBeasts = async () => {
+    let q = `
+      SELECT COUNT(*) as count
+      FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+    `
+    console.log("q", q);
+    let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+
+    try {
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+
+      let data = await sql.json()
+      return data[0].count || 0;
+    } catch (error) {
+      console.error("Error counting beasts:", error);
+      return 0;
     }
   }
 
@@ -190,6 +214,7 @@ export const useGameTokens = () => {
     const q = `
         SELECT owner, SUM(amount) AS amount
         FROM "${currentNetworkConfig.namespace}-RewardEvent"
+        WHERE internal_created_at > '2025-11-21 16:20:00'
         GROUP BY owner
         ORDER BY amount DESC
       `;
@@ -201,39 +226,11 @@ export const useGameTokens = () => {
         headers: { "Content-Type": "application/json" }
       })
       let data = await sql.json()
-      return data
+      return data.length > 0 ? data : []
     } catch (error) {
       console.error("Error getting big five:", error);
       return [];
     }
-  }
-
-  const getValidAdventurers = async (adventurerIds: number[]) => {
-    // Convert integer IDs to hex format for database query
-    const hexIds = adventurerIds.map(id => `0x${id.toString(16).padStart(16, '0')}`)
-
-    let q = `
-      SELECT adventurer_id
-      FROM "${currentNetworkConfig.namespace}-AdventurerConsumed"
-      WHERE adventurer_id IN (${hexIds.map(id => `'${id}'`).join(',')})
-      LIMIT 1000;
-    `
-
-    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-    const sql = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json"
-      }
-    })
-
-    let data = await sql.json()
-    const eatenHexIds = data.map((row: any) => row.adventurer_id)
-    const validIds = adventurerIds.filter(id => {
-      const hexId = `0x${id.toString(16).padStart(16, '0')}`
-      return !eatenHexIds.includes(hexId)
-    })
-    return validIds
   }
 
   const getKilledBy = async (beast: Beast) => {
@@ -283,12 +280,29 @@ export const useGameTokens = () => {
     return data
   }
 
+  const getValidAdventurers = async (adventurerIds: number[]) => {
+    let q = `
+      SELECT adventurer_id
+      FROM "summit_0_0_9-CorpseRewardEvent"
+      WHERE adventurer_id IN (${adventurerIds.map((id: number) => `'0x${id.toString(16).padStart(16, '0')}'`).join(',')})
+    `
+    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+    const sql = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    })
+
+    let data = await sql.json()
+    return adventurerIds.filter((id: number) => !data.some((row: any) => parseInt(row.adventurer_id, 16) === id))
+  }
+
   return {
     getBeastCollection,
     countRegisteredBeasts,
     getLeaderboard,
-    getValidAdventurers,
     getKilledBy,
     getKilledBeasts,
+    getValidAdventurers,
+    countAliveBeasts
   };
 };

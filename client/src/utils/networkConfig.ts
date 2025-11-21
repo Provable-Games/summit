@@ -35,12 +35,12 @@ export enum ChainId {
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_0_0_6",
+    namespace: "summit_0_0_9",
     manifest: manifest_mainnet,
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
-    subscriptionUrl: "https://api.cartridge.gg/x/summit-3/torii",
+    subscriptionUrl: "https://api.cartridge.gg/x/summit-4/torii",
     tokens: {
       erc20: [
         {
@@ -52,21 +52,39 @@ export const NETWORKS = {
         {
           name: "ATTACK",
           address:
-            "0x07c2bdaa20e55fcdb0fcda05dd00117c36a154d18f7541b670cae3cd7aabfbc2",
+            "0x075bbe6a4a4c744ad2da8da0cc7562623d4181418359d62909a02b4abf5be651",
           displayDecimals: 0,
         },
         {
           name: "REVIVE",
           address:
-            "0x004f2484e0aca871fb9b7c34da7f55b2f80cc0cd69b613eabab1ce42262bc634",
+            "0x003561384b4c4502f87fd728332f8cf4e604a1215185d9d997be33769ba32fc3",
           displayDecimals: 0,
         },
         {
           name: "EXTRA LIFE",
           address:
-            "0x04526165196ad45741442f0cb4713990b8c7bedf85ec26caf0fbbb1799174aa8",
+            "0x07af033bf4a3f2cae7f871ca015c7021f97846217733d72665aaf6ad735d4359",
           displayDecimals: 0,
         },
+        {
+          name: "POISON",
+          address:
+            "0x047314b2b569360da4623035d2d81479a90a677beae8518e221960b07afb960f",
+          displayDecimals: 0,
+        },
+        {
+          name: "KILL",
+          address:
+            "0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd",
+          displayDecimals: 0,
+        },
+        {
+          name: "CORPSE",
+          address:
+            "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c",
+          displayDecimals: 0,
+        }
       ],
     },
     denshokan:
@@ -112,9 +130,14 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "entrypoint": "feed"
           },
           {
-            "name": "Claim Starter Kit",
-            "description": "Claim beast starter kit",
-            "entrypoint": "claim_starter_kit"
+            "name": "Claim Beast Reward",
+            "description": "Claim beast rewards",
+            "entrypoint": "claim_beast_reward"
+          },
+          {
+            "name": "Claim Corpse Reward",
+            "description": "Claim corpse rewards",
+            "entrypoint": "claim_corpse_reward"
           },
           {
             "name": "Add Extra Life",
@@ -122,13 +145,18 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "entrypoint": "add_extra_life"
           },
           {
-            "name": "Select Upgrades",
-            "description": "Select upgrades for beast",
-            "entrypoint": "select_upgrades"
+            "name": "Apply Stat Points",
+            "description": "Apply stat points to beast",
+            "entrypoint": "apply_stat_points"
+          },
+          {
+            "name": "Apply Poison",
+            "description": "Apply poison to beast",
+            "entrypoint": "apply_poison"
           }
         ]
       },
-      "0x07c2bdaa20e55fcdb0fcda05dd00117c36a154d18f7541b670cae3cd7aabfbc2": {
+      "0x075bbe6a4a4c744ad2da8da0cc7562623d4181418359d62909a02b4abf5be651": {
         "name": "Attack Potion",
         "description": "ERC 20 token for Attack Potion",
         "methods": [
@@ -141,7 +169,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x004f2484e0aca871fb9b7c34da7f55b2f80cc0cd69b613eabab1ce42262bc634": {
+      "0x003561384b4c4502f87fd728332f8cf4e604a1215185d9d997be33769ba32fc3": {
         "name": "Revive Potion",
         "description": "ERC 20 token for Revive Potion",
         "methods": [
@@ -154,7 +182,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x04526165196ad45741442f0cb4713990b8c7bedf85ec26caf0fbbb1799174aa8": {
+      "0x07af033bf4a3f2cae7f871ca015c7021f97846217733d72665aaf6ad735d4359": {
         "name": "Extra Life Potion",
         "description": "ERC 20 token for Extra Life Potion",
         "methods": [
@@ -163,6 +191,45 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "amount": "50000000000000000000000",
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Extra Life Potion",
+            "entrypoint": "approve"
+          }
+        ]
+      },
+      "0x047314b2b569360da4623035d2d81479a90a677beae8518e221960b07afb960f": {
+        "name": "Poison Potion",
+        "description": "ERC 20 token for Poison Potion",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": SUMMIT_ADDRESS,
+            "description": "Approve Poison Potion",
+            "entrypoint": "approve"
+          }
+        ]
+      },
+      "0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd": {
+        "name": "Kill Token",
+        "description": "ERC 20 token for Kill Token",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": SUMMIT_ADDRESS,
+            "description": "Approve Kill Token",
+            "entrypoint": "approve"
+          }
+        ]
+      },
+      "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c": {
+        "name": "Corpse Token",
+        "description": "ERC 20 token for Corpse Token",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": SUMMIT_ADDRESS,
+            "description": "Approve Corpse Token",
             "entrypoint": "approve"
           }
         ]
@@ -187,7 +254,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     manifest: network.manifest,
     slot: network.slot,
     preset: "savage-summit",
-    policies: policies as any,
+    policies: undefined,
     rpcUrl: network.rpcUrl,
     toriiUrl: network.torii,
     subscriptionUrl: network.subscriptionUrl,

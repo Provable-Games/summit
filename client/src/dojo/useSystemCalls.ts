@@ -66,7 +66,7 @@ export const useSystemCalls = () => {
     try {
       const receipt: any = await account!.waitForTransaction(
         txHash,
-        { retryInterval: 275, successStates: ["PRE_CONFIRMED", "ACCEPTED_ON_L2", "ACCEPTED_ON_L1"] }
+        { retryInterval: 500, successStates: ["PRE_CONFIRMED", "ACCEPTED_ON_L2", "ACCEPTED_ON_L1"] }
       );
 
       return receipt;
@@ -82,12 +82,21 @@ export const useSystemCalls = () => {
    * @param beastId The ID of the beast
    * @param tillBeast Whether to explore until encountering a beast
    */
-  const feed = (beastId: number, adventurerIds: number[]) => {
-    return {
+  const feed = (beastId: number, amount: number, corpseRequired: number) => {
+    let txs: any[] = [];
+
+    if (corpseRequired > 0) {
+      let corpseTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE")?.address;
+      txs.push(approveTokens(corpseTokenAddress, corpseRequired));
+    }
+
+    txs.push({
       contractAddress: SUMMIT_ADDRESS,
       entrypoint: "feed",
-      calldata: CallData.compile([beastId, adventurerIds]),
-    };
+      calldata: CallData.compile([beastId, amount]),
+    });
+
+    return txs;
   };
 
   /**
@@ -100,17 +109,17 @@ export const useSystemCalls = () => {
 
     if (appliedPotions.revive > 0) {
       let reviveAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "REVIVE")?.address;
-      txs.push(approvePotions(reviveAddress, appliedPotions.revive));
+      txs.push(approveTokens(reviveAddress, appliedPotions.revive));
     }
 
     if (appliedPotions.attack > 0) {
       let attackAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "ATTACK")?.address;
-      txs.push(approvePotions(attackAddress, appliedPotions.attack));
+      txs.push(approveTokens(attackAddress, appliedPotions.attack));
     }
 
     if (appliedPotions.extraLife > 0) {
       let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
-      txs.push(approvePotions(extraLifeAddress, appliedPotions.extraLife));
+      txs.push(approveTokens(extraLifeAddress, appliedPotions.extraLife));
     }
 
     if (vrf || !safeAttack) {
@@ -139,7 +148,7 @@ export const useSystemCalls = () => {
 
     if (extraLifePotions > 0) {
       let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
-      txs.push(approvePotions(extraLifeAddress, extraLifePotions));
+      txs.push(approveTokens(extraLifeAddress, extraLifePotions));
     }
 
     txs.push({
@@ -151,32 +160,62 @@ export const useSystemCalls = () => {
     return txs;
   };
 
-  const selectUpgrades = (upgrades: { [beastId: number]: Stats }) => {
-    const txs = Object.entries(upgrades).map(([beastId, stats]) => {
-      return {
-        contractAddress: SUMMIT_ADDRESS,
-        entrypoint: "select_upgrades",
-        calldata: CallData.compile([beastId, stats]),
-      };
+  const applyStatPoints = (beastId: number, stats: Stats, killRequired: number) => {
+    let txs: any[] = [];
+
+    if (killRequired > 0) {
+      let killTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "KILL")?.address;
+      txs.push(approveTokens(killTokenAddress, killRequired));
+    }
+
+    txs.push({
+      contractAddress: SUMMIT_ADDRESS,
+      entrypoint: "apply_stat_points",
+      calldata: CallData.compile([beastId, stats]),
     });
 
     return txs;
   };
 
-  const approvePotions = (address: string, amount: number) => {
+  const approveTokens = (address: string, amount: number) => {
     return {
       contractAddress: address,
       entrypoint: "approve",
-      calldata: CallData.compile([SUMMIT_ADDRESS, amount * 1e18, "0"]),
+      calldata: CallData.compile([SUMMIT_ADDRESS, BigInt(amount * 1e18), "0"]),
     };
   };
 
-  const claimStarterKit = (beastIds: number[]) => {
+  const claimBeastReward = (beastIds: number[]) => {
     return {
       contractAddress: SUMMIT_ADDRESS,
-      entrypoint: "claim_starter_kit",
+      entrypoint: "claim_beast_reward",
       calldata: CallData.compile([beastIds]),
     };
+  };
+
+  const claimCorpseReward = (adventurerIds: number[]) => {
+    return {
+      contractAddress: SUMMIT_ADDRESS,
+      entrypoint: "claim_corpse_reward",
+      calldata: CallData.compile([adventurerIds]),
+    };
+  };
+
+  const applyPoison = (beastId: number, count: number) => {
+    let txs: any[] = [];
+
+    if (count > 0) {
+      let poisonAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "POISON")?.address;
+      txs.push(approveTokens(poisonAddress, count));
+    }
+
+    txs.push({
+      contractAddress: SUMMIT_ADDRESS,
+      entrypoint: "apply_poison",
+      calldata: CallData.compile([beastId, count]),
+    });
+
+    return txs;
   };
 
   const requestRandom = () => {
@@ -193,10 +232,12 @@ export const useSystemCalls = () => {
   return {
     feed,
     attack,
-    claimStarterKit,
+    claimBeastReward,
+    claimCorpseReward,
     executeAction,
     addExtraLife,
-    selectUpgrades,
+    applyStatPoints,
+    applyPoison,
     requestRandom,
   };
 };

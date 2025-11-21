@@ -2,6 +2,10 @@ export interface Summit {
   beast: Beast;
   taken_at: number;
   owner: string;
+  diplomacy_bonus: number;
+  diplomacy_count: number;
+  poison_count: number;
+  poison_timestamp: number;
 }
 
 export interface Leaderboard {
@@ -31,20 +35,25 @@ export interface Beast {
   revival_count: number;
   revival_time: number;
   extra_lives: number;
-  has_claimed_starter_kit: boolean;
+  has_claimed_potions: boolean;
   rewards_earned: number;
   stats: Stats;
+  kills_claimed: number;
   rank?: number;
   last_dm_death_timestamp?: number;
   adventurers_killed?: number;
   combat?: Combat;
   battle?: BattleEvent;
+  kill_tokens?: number; // New: tokens for upgrades
+  corpse_tokens?: number; // New: tokens for bonus health
 }
 
 export interface Stats {
-  spirit: boolean;
-  luck: boolean;
+  spirit: number; // 0-255
+  luck: number; // 0-255
   specials: boolean;
+  wisdom: boolean;
+  diplomacy: boolean;
 }
 export interface Combat {
   attack: number;
@@ -77,12 +86,19 @@ export interface GameAction {
   appliedPotions?: AppliedPotions;
   safeAttack?: boolean;
   vrf?: boolean;
-  upgrades?: { [beastId: number]: Stats }
+  stats?: Stats;
+  count?: number;
+  bonusHealth?: number;
+  killTokens?: number;
+  corpseTokens?: number;
 }
 
 export interface BattleEvent {
-  attacking_beast_owner: string | null;
   attacking_beast_token_id: number;
+  attacking_beast_owner: string | null;
+  attacking_beast_id: number;
+  attacking_beast_shiny: number;
+  attacking_beast_animated: number;
   defending_beast_token_id: number;
   attack_count: number;
   attack_damage: number;
@@ -94,6 +110,20 @@ export interface BattleEvent {
   critical_counter_attack_damage: number;
   attack_potions: number;
   xp_gained: number;
+}
+
+export interface PoisonEvent {
+  beast_token_id: number;
+  block_timestamp: number;
+  count: number;
+  player: string | null;
+}
+
+export interface DiplomacyEvent {
+  beast_token_id: number;
+  specials_hash: string;
+  power: number;
+  owner: string | null;
 }
 
 import { NETWORKS } from '@/utils/networkConfig';

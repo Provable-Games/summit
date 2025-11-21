@@ -10,6 +10,7 @@ import {
 export interface StatisticsContext {
   beastsRegistered: number;
   beastsAlive: number;
+  refreshBeastsAlive: () => void;
 }
 
 // Create a context
@@ -19,19 +20,28 @@ const StatisticsContext = createContext<StatisticsContext>(
 
 // Create a provider component
 export const StatisticsProvider = ({ children }: PropsWithChildren) => {
-  const { countRegisteredBeasts } = useGameTokens();
-
+  const { countRegisteredBeasts, countAliveBeasts } = useGameTokens();
   const [beastsRegistered, setBeastsRegistered] = useState(0);
   const [beastsAlive, setBeastsAlive] = useState(0);
 
   const fetchCollectedBeasts = async () => {
     const result = await countRegisteredBeasts();
-    setBeastsRegistered(result.total);
-    setBeastsAlive(result.alive);
+    setBeastsRegistered(result);
+  };
+
+  const fetchAliveBeasts = async () => {
+    const result = await countAliveBeasts();
+    setBeastsAlive(result);
+  };
+
+  const refreshBeastsAlive = () => {
+    // fire and forget; UI doesn't need to await
+    fetchCollectedBeasts();
+    fetchAliveBeasts();
   };
 
   useEffect(() => {
-    fetchCollectedBeasts();
+    refreshBeastsAlive();
   }, []);
 
   return (
@@ -39,6 +49,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
       value={{
         beastsRegistered,
         beastsAlive,
+        refreshBeastsAlive,
       }}
     >
       {children}

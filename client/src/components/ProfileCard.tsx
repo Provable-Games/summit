@@ -1,35 +1,37 @@
 import { useController } from '@/contexts/controller';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
-import { ellipseAddress } from '@/utils/utils';
+import { ellipseAddress, formatRewardNumber } from '@/utils/utils';
+import killTokenImg from '@/assets/images/kill-token.png';
+import corpseTokenImg from '@/assets/images/corpse-token.png';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
 import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import BeastUpgradeModal from './dialogs/BeastUpgradeModal';
 import ClaimStarterPack from './dialogs/ClaimStarterPack';
 import { addAddressPadding } from 'starknet';
+import ClaimCorpseReward from './dialogs/ClaimCorpseReward';
+import BeastDexModal from './dialogs/BeastDexModal';
 
 const ProfileCard = () => {
-  const { collection, leaderboard } = useGameStore()
+  const { collection, adventurerCollection, leaderboard, onboarding, loadingCollection } = useGameStore()
   const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
-  const { playerName, openProfile } = useController()
+  const { playerName, tokenBalances, openProfile } = useController()
   const { connect, connectors } = useConnect();
 
   let cartridgeConnector = connectors.find(conn => conn.id === "controller")
 
   const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false)
-  const [beastUpgradeDialog, setBeastUpgradeDialog] = useState(false)
-
-  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit)
-  const beastsWithUpgrades = collection.filter(beast => {
-    const totalStats = Object.values(beast.stats).filter(Boolean).length;
-    return Math.min(beast.adventurers_killed || 0, 3) > totalStats;
-  })
+  const [claimCorpseRewardDialog, setClaimCorpseRewardDialog] = useState(false)
+  const [beastDexOpen, setBeastDexOpen] = useState(false)
+  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions || beast.adventurers_killed > beast.kills_claimed)
+  const unclaimedCorpseTokens = adventurerCollection.reduce((sum, adventurer) => sum + adventurer.level, 0)
   const isCartridge = connector?.id === 'controller'
+  const killTokens = tokenBalances["KILL"] || 0
+  const corpseTokens = tokenBalances["CORPSE"] || 0
 
   const handleProfileClick = async () => {
     if (address && isCartridge) {
@@ -70,60 +72,88 @@ const ProfileCard = () => {
         </Box>
       </Box>
 
-      <Box display={'flex'} width={'100%'}>
-        <Box sx={[styles.infoSection, styles.leftSection]}>
-          <Typography sx={styles.infoLabel}>SCORE</Typography>
+      {!onboarding && !loadingCollection && <>
+        <Box display={'flex'} width={'100%'}>
+          <Box sx={[styles.infoSection, styles.leftSection]}>
+            <Typography sx={styles.infoLabel}>SCORE</Typography>
 
-          <Box display={'flex'} alignItems={'start'}>
-            <Typography sx={styles.infoValue}>
-              {leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount.toLocaleString() || 0}
+            <Box display={'flex'} alignItems={'start'}>
+              <Typography sx={styles.infoValue}>
+                {formatRewardNumber((leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount || 0) / 100)}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Box sx={[styles.infoSection, styles.rightSection]}>
+            <Typography sx={styles.infoLabel}>BEASTS</Typography>
+
+            <Box display={'flex'} alignItems={'start'}>
+              <Typography sx={styles.infoValue}>{collection.length}</Typography>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box sx={styles.tokensSection}>
+          <Box sx={styles.tokens}>
+            <Box sx={styles.tokenItem} borderRight={`1px solid ${gameColors.accentGreen}40`}>
+              <img src={killTokenImg} alt="Kill" style={{ width: '18px', height: '18px' }} />
+              <Box sx={styles.tokenTexts}>
+                <Typography sx={styles.tokenValue}>{killTokens.toLocaleString()}</Typography>
+              </Box>
+            </Box>
+            <Box sx={styles.tokenItem} borderRight={`1px solid ${gameColors.accentGreen}00`}>
+              <img src={corpseTokenImg} alt="Corpse" style={{ width: '18px', height: '18px' }} />
+              <Box sx={styles.tokenTexts}>
+                <Typography sx={styles.tokenValue}>{corpseTokens.toLocaleString()}</Typography>
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+
+        <Box sx={styles.upgradeSection}>
+          <Button sx={[styles.upgradeButton, { animation: 'none', width: isMobile ? '100%' : '145px' }]} onClick={() => setBeastDexOpen(true)}>
+            <Typography sx={styles.upgradeButtonText}>
+              UPGRADE BEASTS
             </Typography>
-          </Box>
+          </Button>
         </Box>
 
-        <Box sx={[styles.infoSection, styles.rightSection]}>
-          <Typography sx={styles.infoLabel}>BEASTS</Typography>
-
-          <Box display={'flex'} alignItems={'start'}>
-            <Typography sx={styles.infoValue}>{collection.length}</Typography>
-          </Box>
-        </Box>
-      </Box>
-
-      {unclaimedBeasts.length > 0 && <Box sx={styles.starterPackSection}>
-        <Typography sx={styles.starterPackTitle}>
-          BEAST STARTER PACK
-        </Typography>
-
-        <Typography sx={styles.starterPackSubtitle}>
-          {unclaimedBeasts.length} available
-        </Typography>
-
-        <Button sx={styles.claimButton} onClick={() => setClaimStarterPackDialog(true)}>
-          <Typography sx={styles.claimButtonText}>
-            CLAIM
+        {unclaimedBeasts.length > 0 && <Box sx={styles.starterPackSection}>
+          <Typography sx={styles.starterPackTitle}>
+            BEAST REWARD
           </Typography>
-        </Button>
-      </Box>}
 
-      {beastsWithUpgrades.length > 0 && <Box sx={styles.upgradeSection}>
-        <Typography sx={styles.upgradeTitle}>
-          BEAST UPGRADES
-        </Typography>
-
-        <Typography sx={styles.starterPackSubtitle}>
-          {beastsWithUpgrades.length} available
-        </Typography>
-
-        <Button sx={styles.upgradeButton} onClick={() => setBeastUpgradeDialog(true)}>
-          <Typography sx={styles.upgradeButtonText}>
-            CHOOSE
+          <Typography sx={styles.starterPackSubtitle}>
+            {unclaimedBeasts.length} available
           </Typography>
-        </Button>
-      </Box>}
 
-      <ClaimStarterPack open={claimStarterPackDialog} close={() => setClaimStarterPackDialog(false)} />
-      {beastUpgradeDialog && <BeastUpgradeModal open={beastUpgradeDialog} close={() => setBeastUpgradeDialog(false)} />}
+          <Button sx={styles.claimButton} onClick={() => setClaimStarterPackDialog(true)}>
+            <Typography sx={styles.claimButtonText}>
+              CLAIM
+            </Typography>
+          </Button>
+        </Box>}
+
+        {unclaimedCorpseTokens > 0 && <Box sx={styles.upgradeSection}>
+          <Typography sx={styles.starterPackTitle} pt={0.5}>
+            CORPSE TOKEN
+          </Typography>
+
+          <Typography sx={styles.starterPackSubtitle}>
+            {unclaimedCorpseTokens} available
+          </Typography>
+
+          <Button sx={styles.upgradeButton} onClick={() => setClaimCorpseRewardDialog(true)}>
+            <Typography sx={styles.upgradeButtonText}>
+              CLAIM
+            </Typography>
+          </Button>
+        </Box>}
+
+        {claimStarterPackDialog && <ClaimStarterPack open={claimStarterPackDialog} close={() => setClaimStarterPackDialog(false)} />}
+        {claimCorpseRewardDialog && <ClaimCorpseReward open={claimCorpseRewardDialog} close={() => setClaimCorpseRewardDialog(false)} />}
+        {beastDexOpen && <BeastDexModal open={beastDexOpen} close={() => setBeastDexOpen(false)} />}
+      </>}
     </Box>
   )
 }
@@ -356,11 +386,45 @@ const styles = {
     fontWeight: 'bold',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
   },
+  tokensSection: {
+    width: '100%',
+    borderTop: `1px solid ${gameColors.accentGreen}40`,
+    pt: 0.5,
+  },
+  tokens: {
+    display: 'flex',
+    width: '100%',
+    py: 0.5,
+  },
+  tokenItem: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    justifyContent: 'center',
+  },
+  tokenTexts: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0.25,
+  },
+  tokenLabel: {
+    fontSize: '10px',
+    color: '#bbb',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    lineHeight: '10px',
+  },
+  tokenValue: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#FFD700',
+    lineHeight: '14px',
+  },
   upgradeSection: {
     width: '100%',
     borderTop: `1px solid ${gameColors.accentGreen}40`,
     mt: 0.5,
-    pt: 0.5,
     textAlign: 'center',
   },
   upgradeTitle: {

@@ -1,13 +1,15 @@
 import { Beast, Combat } from '@/types/game';
 import CasinoIcon from '@mui/icons-material/Casino';
-import StarIcon from '@mui/icons-material/Star';
 import EnergyIcon from '@mui/icons-material/ElectricBolt';
+import HandshakeIcon from '@mui/icons-material/Handshake';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
+import StarIcon from '@mui/icons-material/Star';
 import { Box, Typography } from "@mui/material";
 import { memo } from 'react';
+import swordIcon from '../assets/images/sword.png';
 import { fetchBeastImage } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
-import swordIcon from '../assets/images/sword.png';
 
 interface BeastCardProps {
   beast: Beast;
@@ -39,7 +41,7 @@ const BeastCard = memo(({
       sx={[
         styles.beastCard,
         isSelected && styles.selectedCard,
-        isDead && styles.deadCard
+        isDead && styles.deadCard,
       ]}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
@@ -61,19 +63,24 @@ const BeastCard = memo(({
         {/* Upgrade Icons */}
         {(beast.stats.spirit || beast.stats.luck || beast.stats.specials) && (
           <Box sx={styles.upgradeIconsContainer}>
-            {beast.stats.luck && (
+            {beast.stats.luck > 0 && (
               <Box sx={{ color: '#ff69b4' }}>
                 <CasinoIcon sx={{ fontSize: '14px' }} />
               </Box>
             )}
-            {beast.stats.spirit && (
-              <Box sx={{ color: '#00ffff' }}>
-                <EnergyIcon sx={{ fontSize: '14px' }} />
-              </Box>
-            )}
-            {beast.stats.specials && (
+            {beast.stats.specials === true && (
               <Box sx={{ color: '#ffd700' }}>
                 <StarIcon sx={{ fontSize: '14px' }} />
+              </Box>
+            )}
+            {beast.stats.wisdom === true && (
+              <Box sx={{ color: '#60a5fa' }}>
+                <PsychologyIcon sx={{ fontSize: '14px' }} />
+              </Box>
+            )}
+            {beast.stats.diplomacy === true && (
+              <Box sx={{ color: '#a78bfa' }}>
+                <HandshakeIcon sx={{ fontSize: '14px' }} />
               </Box>
             )}
           </Box>
@@ -133,6 +140,7 @@ const BeastCard = memo(({
           {/* Critical damage row */}
           <Box sx={styles.combatCritRow}>
             <Box sx={styles.combatCritStatLeft}>
+              <CasinoIcon sx={{ fontSize: '12px', mr: '1px' }} htmlColor={gameColors.yellow} />
               <Typography sx={styles.combatCritValue}>
                 {combat.attackCritDamage > 0 ? combat.attackCritDamage : '-'}
               </Typography>
@@ -141,6 +149,7 @@ const BeastCard = memo(({
               <Typography sx={styles.combatCritValue}>
                 {combat.defenseCritDamage > 0 ? combat.defenseCritDamage : '-'}
               </Typography>
+              <CasinoIcon sx={{ fontSize: '12px', ml: '1px' }} htmlColor={gameColors.yellow} />
             </Box>
           </Box>
         </Box>
@@ -262,6 +271,9 @@ const styles = {
       }
     }
   },
+  waitingForUpgradeCard: {
+    border: `2px solid ${gameColors.yellow}`,
+  },
   imageContainer: {
     position: 'relative',
     width: '100%',
@@ -322,7 +334,7 @@ const styles = {
   savageIndicator: {
     position: 'absolute',
     top: '8px',
-    right: '8px',
+    left: '8px',
     backgroundColor: gameColors.yellow,
     padding: '2px 6px',
     borderRadius: '4px',

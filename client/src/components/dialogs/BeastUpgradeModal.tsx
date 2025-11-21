@@ -1,159 +1,128 @@
+import corpseTokenImg from '@/assets/images/corpse-token.png';
+import killTokenImg from '@/assets/images/kill-token.png';
 import { useGameDirector } from '@/contexts/GameDirector';
-import { useGameStore } from '@/stores/gameStore';
-import { fetchBeastImage } from '@/utils/beasts';
+import { useController } from '@/contexts/controller';
+import { fetchBeastImage, getLuckCritChancePercent, getSpiritRevivalReductionSeconds } from '@/utils/beasts';
 import { gameColors } from '@/utils/themes';
+import AddIcon from '@mui/icons-material/Add';
 import CasinoIcon from '@mui/icons-material/Casino';
+import CloseIcon from '@mui/icons-material/Close';
 import EnergyIcon from '@mui/icons-material/ElectricBolt';
-import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
-import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import FlashOnIcon from '@mui/icons-material/FlashOn';
+import HandshakeIcon from '@mui/icons-material/Handshake';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import RemoveIcon from '@mui/icons-material/Remove';
 import StarIcon from '@mui/icons-material/Star';
-import { Box, Button, Dialog, IconButton, Typography } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import { Box, Button, Dialog, IconButton, InputBase, Typography } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { isMobile } from 'react-device-detect';
 
-interface Upgrade {
-  id: 'spirit' | 'luck' | 'specials';
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  color: string;
+// DUMMY VALUES FOR COSTS
+const UPGRADE_COSTS = {
+  luck_per_level: 1,
+  spirit_per_level: 1,
+  diplomacy: 15,
+  specials: 10,
+  wisdom: 20,
+  health_per_point: 1,
+};
+
+interface BeastUpgradeModalProps {
+  open: boolean;
+  beast: any;
+  close: () => void;
 }
 
-const UPGRADES: Upgrade[] = [
-  {
-    id: 'spirit',
-    name: 'Spirit',
-    description: 'Your beast revives 50% faster',
-    icon: <EnergyIcon sx={{ fontSize: '32px' }} />,
-    color: '#00ffff',
-  },
-  {
-    id: 'luck',
-    name: 'Luck',
-    description: 'Your beast gains 50% crit chance',
-    icon: <CasinoIcon sx={{ fontSize: '32px' }} />,
-    color: '#ff69b4',
-  },
-  {
-    id: 'specials',
-    name: 'Specials',
-    description: 'Your beast unlocks name match bonus',
-    icon: <StarIcon sx={{ fontSize: '32px' }} />,
-    color: '#ffd700',
-  },
-];
-
-function BeastUpgradeModal(props) {
-  const { open, close } = props;
+function BeastUpgradeModal(props: BeastUpgradeModalProps) {
+  const { open, close, beast } = props;
   const { executeGameAction, actionFailed } = useGameDirector();
-  const { collection } = useGameStore();
+  const { tokenBalances } = useController();
 
-  // Filter beasts that have available upgrades
-  const beastsWithUpgrades = collection.filter(beast => {
-    const totalStats = Object.values(beast.stats).filter(Boolean).length;
-    return (beast.adventurers_killed || 0) > totalStats;
-  }).sort((a, b) => b.power - a.power);
-
-  const [currentBeastIndex, setCurrentBeastIndex] = useState(0);
   const [upgradeInProgress, setUpgradeInProgress] = useState(false);
-  const [beastUpgrades, setBeastUpgrades] = useState<{ [key: number]: { spirit: boolean; luck: boolean; specials: boolean } }>({});
+  const [luckUpgrade, setLuckUpgrade] = useState(0);
+  const [spiritUpgrade, setSpiritUpgrade] = useState(0);
+  const [diplomacySelected, setDiplomacySelected] = useState(false);
+  const [specialsSelected, setSpecialsSelected] = useState(false);
+  const [wisdomSelected, setWisdomSelected] = useState(false);
+  const [bonusHealthUpgrade, setBonusHealthUpgrade] = useState(0);
 
-  const currentBeast = beastsWithUpgrades[currentBeastIndex];
-  const activeStatsCount = currentBeast ? Object.values(currentBeast.stats).filter(Boolean).length : 0;
-  const totalKills = currentBeast ? (currentBeast.adventurers_killed || 0) : 0;
-  const availableUpgradeSlots = currentBeast ? UPGRADES.filter(u => !currentBeast.stats[u.id]).length : 0;
-  const maxPossibleUpgrades = Math.min(availableUpgradeSlots, Math.max(0, totalKills - activeStatsCount));
-
-  // Calculate remaining available points after accounting for selected upgrades
-  const currentBeastUpgrades = currentBeast ? (beastUpgrades[currentBeast.token_id] || { spirit: false, luck: false, specials: false }) : { spirit: false, luck: false, specials: false };
-  const selectedUpgradesCount = Object.values(currentBeastUpgrades).filter(Boolean).length;
-  const availablePoints = Math.max(0, maxPossibleUpgrades - selectedUpgradesCount);
+  const killTokens = tokenBalances["KILL"] || 0;
+  const corpseTokens = tokenBalances["CORPSE"] || 0;
+  const currentBeast = beast;
 
   useEffect(() => {
     setUpgradeInProgress(false);
   }, [actionFailed]);
 
-  const handleNext = () => {
-    if (currentBeastIndex < beastsWithUpgrades.length - 1) {
-      setCurrentBeastIndex(currentBeastIndex + 1);
+  useEffect(() => {
+    if (open) {
+      setLuckUpgrade(0);
+      setSpiritUpgrade(0);
+      setDiplomacySelected(false);
+      setSpecialsSelected(false);
+      setWisdomSelected(false);
+      setBonusHealthUpgrade(0);
     }
+  }, [open, beast?.token_id]);
+
+  const calculateTotalCost = () => {
+    let killTokenCost = 0;
+    let corpseTokenCost = 0;
+
+    killTokenCost += luckUpgrade * UPGRADE_COSTS.luck_per_level;
+    killTokenCost += spiritUpgrade * UPGRADE_COSTS.spirit_per_level;
+
+    if (diplomacySelected && !currentBeast?.stats?.diplomacy) {
+      killTokenCost += UPGRADE_COSTS.diplomacy;
+    }
+    if (specialsSelected && !currentBeast?.stats?.specials) {
+      killTokenCost += UPGRADE_COSTS.specials;
+    }
+    if (wisdomSelected && !currentBeast?.stats?.wisdom) {
+      killTokenCost += UPGRADE_COSTS.wisdom;
+    }
+
+    corpseTokenCost += bonusHealthUpgrade * UPGRADE_COSTS.health_per_point;
+
+    return { killTokenCost, corpseTokenCost };
   };
 
-  const handlePrevious = () => {
-    if (currentBeastIndex > 0) {
-      setCurrentBeastIndex(currentBeastIndex - 1);
-    }
-  };
+  const { killTokenCost, corpseTokenCost } = calculateTotalCost();
+  const canAfford = killTokenCost <= killTokens && corpseTokenCost <= corpseTokens;
+  const hasAnyUpgrade = luckUpgrade > 0 || spiritUpgrade > 0 ||
+    diplomacySelected || specialsSelected || wisdomSelected ||
+    bonusHealthUpgrade > 0;
+  const remainingKillTokens = killTokens - killTokenCost;
+  const remainingCorpseTokens = corpseTokens - corpseTokenCost;
+  const insufficientKill = remainingKillTokens < 0;
+  const insufficientCorpse = remainingCorpseTokens < 0;
 
-  const handleSelectUpgrade = (upgradeId: 'luck' | 'spirit' | 'specials') => {
-    if (!currentBeast || currentBeast.stats[upgradeId]) return;
+  const handleUpgrade = async () => {
+    if (!canAfford || !hasAnyUpgrade) return;
 
-    const currentBeastUpgrades = beastUpgrades[currentBeast.token_id] || { spirit: false, luck: false, specials: false };
-    const selectedUpgradesCount = Object.values(currentBeastUpgrades).filter(Boolean).length;
-
-    // Check if we can add more upgrades (have available points)
-    if (!currentBeastUpgrades[upgradeId] && selectedUpgradesCount >= maxPossibleUpgrades) {
-      return; // Can't select more upgrades than max possible
-    }
-
-    const updatedUpgrades = {
-      ...currentBeastUpgrades,
-      [upgradeId]: !currentBeastUpgrades[upgradeId] // Toggle the upgrade
-    };
-
-    // Check if all upgrades are false
-    const hasAnySelected = Object.values(updatedUpgrades).some(Boolean);
-
-    // Check if this selection completes all available upgrades
-    const newSelectedCount = Object.values(updatedUpgrades).filter(Boolean).length;
-    const isAddingUpgrade = updatedUpgrades[upgradeId] && !currentBeastUpgrades[upgradeId];
-    const completesAllUpgrades = isAddingUpgrade && newSelectedCount >= maxPossibleUpgrades && maxPossibleUpgrades > 0;
-    const isNotLastBeast = currentBeastIndex < beastsWithUpgrades.length - 1;
-
-    if (hasAnySelected) {
-      const newUpgrades = {
-        ...beastUpgrades,
-        [currentBeast.token_id]: updatedUpgrades
-      };
-
-      // Auto-advance to next beast if all upgrades are now selected
-      if (completesAllUpgrades && isNotLastBeast) {
-        // Update both states together to avoid flicker
-        setBeastUpgrades(newUpgrades);
-        setCurrentBeastIndex(currentBeastIndex + 1);
-      } else {
-        setBeastUpgrades(newUpgrades);
-      }
-    } else {
-      const { [currentBeast.token_id]: removed, ...remainingUpgrades } = beastUpgrades;
-      setBeastUpgrades(remainingUpgrades);
-    }
-  };
-
-  const handleUpgradeAll = async (shouldClose: boolean = true) => {
     setUpgradeInProgress(true);
 
     try {
-      // Merge active stats with selected upgrades
-      const upgradesWithActiveStats = Object.entries(beastUpgrades).reduce((acc, [tokenId, selectedUpgrades]) => {
-        const beast = collection.find(b => b.token_id.toString() === tokenId);
-        if (beast) {
-          // Combine active stats with newly selected upgrades
-          acc[tokenId] = {
-            spirit: beast.stats.spirit || selectedUpgrades.spirit || false,
-            luck: beast.stats.luck || selectedUpgrades.luck || false,
-            specials: beast.stats.specials || selectedUpgrades.specials || false,
-          };
-        }
-        return acc;
-      }, {} as { [key: number]: { spirit: boolean; luck: boolean; specials: boolean } });
+      const newStats = {
+        spirit: spiritUpgrade,
+        luck: luckUpgrade,
+        specials: specialsSelected,
+        wisdom: wisdomSelected,
+        diplomacy: diplomacySelected,
+      };
 
       let result = await executeGameAction({
-        type: 'select_upgrades',
-        upgrades: upgradesWithActiveStats
+        type: 'upgrade_beast',
+        beastId: currentBeast.token_id,
+        stats: newStats,
+        bonusHealth: bonusHealthUpgrade,
+        killTokens: killTokenCost,
+        corpseTokens: corpseTokenCost,
       });
 
       if (result) {
-        close(false);
+        close();
       }
     } catch (ex) {
       console.log(ex);
@@ -162,21 +131,84 @@ function BeastUpgradeModal(props) {
     }
   };
 
-  const hasSelectedUpgrades = Object.values(beastUpgrades).some(upgrades =>
-    Object.values(upgrades).some(Boolean)
-  );
+  const adjustStat = (stat: 'luck' | 'spirit', delta: number) => {
+    const currentValue = stat === 'luck' ? currentBeast.stats?.luck || 0 : currentBeast.stats?.spirit || 0;
+    const currentUpgrade = stat === 'luck' ? luckUpgrade : spiritUpgrade;
+    const setter = stat === 'luck' ? setLuckUpgrade : setSpiritUpgrade;
 
-  const isLastBeast = currentBeastIndex === beastsWithUpgrades.length - 1;
+    const newValue = Math.max(0, Math.min(255 - currentValue, currentUpgrade + delta));
+    setter(newValue);
+  };
 
   if (!currentBeast) {
     return null;
   }
 
+  const currentLuck = currentBeast.stats?.luck || 0;
+  const currentSpirit = currentBeast.stats?.spirit || 0;
+
+  const formatShortDuration = (seconds: number): string => {
+    const s = Math.max(0, Math.floor(seconds));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const remS = s % 60;
+    if (h > 0) {
+      return `${h}h${m > 0 ? ` ${m}m` : ''}`;
+    }
+    if (m > 0) {
+      return `${m}m${remS > 0 ? ` ${remS}s` : ''}`;
+    }
+    return `${remS}s`;
+  };
+
+  const currentLuckCrit = getLuckCritChancePercent(currentLuck);
+  const nextLuckCrit = getLuckCritChancePercent(currentLuck + luckUpgrade);
+  const currentSpiritReductionSec = getSpiritRevivalReductionSeconds(currentSpirit);
+  const nextSpiritReductionSec = getSpiritRevivalReductionSeconds(currentSpirit + spiritUpgrade);
+
+  // Vitality/Health visuals (Bonus-only, max 1023)
+  const MAX_BONUS_HEALTH = 1023;
+  const currentBonusHealth = currentBeast.bonus_health || 0;
+  const plannedBonusHealth = bonusHealthUpgrade || 0;
+  const plannedTotalBonus = Math.min(MAX_BONUS_HEALTH, currentBonusHealth + plannedBonusHealth);
+  const currentBonusPct = Math.min(100, (currentBonusHealth * 100) / MAX_BONUS_HEALTH);
+  const plannedTotalPct = Math.min(100, (plannedTotalBonus * 100) / MAX_BONUS_HEALTH);
+  const plannedAddPct = Math.max(0, plannedTotalPct - currentBonusPct);
+
+  const onLuckInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const num = raw === '' ? 0 : parseInt(raw, 10);
+    const max = Math.max(0, 255 - currentLuck);
+    setLuckUpgrade(Math.max(0, Math.min(max, isNaN(num) ? 0 : num)));
+  };
+
+  const onSpiritInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const num = raw === '' ? 0 : parseInt(raw, 10);
+    const max = Math.max(0, 255 - currentSpirit);
+    setSpiritUpgrade(Math.max(0, Math.min(max, isNaN(num) ? 0 : num)));
+  };
+
+  const onBonusHealthInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    const num = raw === '' ? 0 : parseInt(raw, 10);
+    const maxAdd = Math.max(0, MAX_BONUS_HEALTH - currentBonusHealth);
+    setBonusHealthUpgrade(Math.max(0, Math.min(maxAdd, isNaN(num) ? 0 : num)));
+  };
+
+  const formatNumber = (n: number) => {
+    try {
+      return n.toLocaleString();
+    } catch {
+      return `${n}`;
+    }
+  };
+
   return (
     <Dialog
       open={open}
-      onClose={() => { close(false) }}
-      maxWidth={'md'}
+      onClose={close}
+      maxWidth={false}
       slotProps={{
         paper: {
           sx: {
@@ -187,166 +219,407 @@ function BeastUpgradeModal(props) {
             boxShadow: `
               0 8px 24px rgba(0, 0, 0, 0.6),
               0 0 16px ${gameColors.accentGreen}30
-            `
+            `,
+            width: '900px',
+            maxWidth: '95vw',
+            position: 'relative',
+          }
+        },
+        backdrop: {
+          sx: {
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
           }
         }
       }}
     >
-      <Box sx={[styles.dialogContainer]}>
-        <Box sx={styles.container}>
-          <Box sx={styles.beastSection}>
-            <Box sx={styles.navigationContainer}>
-              <IconButton
-                onClick={handlePrevious}
-                disabled={currentBeastIndex === 0}
-                sx={styles.navButton}
-              >
-                <NavigateBeforeIcon />
-              </IconButton>
+      <Box sx={styles.container}>
+        {/* Close Button */}
+        <IconButton onClick={close} sx={styles.closeButton}>
+          <CloseIcon />
+        </IconButton>
 
-              <Box sx={styles.beastInfo}>
-                <Typography sx={styles.beastName}>
-                  "{currentBeast.prefix} {currentBeast.suffix}" {currentBeast.name}
-                </Typography>
-                <Box sx={styles.beastDetailsRow}>
-                  <Box sx={styles.beastImageContainer}>
-                    <img src={fetchBeastImage(currentBeast)} alt={currentBeast.name} style={{ height: '90%' }} />
-                  </Box>
-                  <Box sx={styles.beastStatsColumn}>
-                    <Box sx={styles.statsGrid}>
-                      {/* Power */}
-                      <Box sx={styles.statBox}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill={gameColors.yellow}>
-                          <path d="M7 2v11h3v9l7-12h-4l4-8z" />
-                        </svg>
-                        <Typography sx={styles.statValue}>{currentBeast.power}</Typography>
-                      </Box>
+        {/* Header */}
+        <Box sx={styles.header}>
+          <Typography sx={styles.title}>UPGRADE BEAST</Typography>
+          <Box sx={styles.divider} />
+        </Box>
 
-                      {/* Health */}
-                      <Box sx={styles.statBox}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill={gameColors.red}>
-                          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                        </svg>
-                        <Typography sx={styles.statValue}>{currentBeast.health}</Typography>
-                      </Box>
-                    </Box>
+        {/* Main Content */}
+        <Box sx={styles.content}>
+          {/* Left Panel - Beast Display */}
+          <Box sx={styles.leftPanel}>
+            <Box sx={styles.beastPortrait}>
+              <img
+                src={fetchBeastImage(currentBeast)}
+                alt={currentBeast.name}
+                style={{ width: '90%', height: '90%', objectFit: 'contain' }}
+              />
+              <Box sx={styles.portraitBorder} />
+            </Box>
 
-                    <Box sx={styles.secondaryStats}>
-                      <Box sx={styles.secondaryStatRow}>
-                        <Typography sx={styles.secondaryStatLabel}>Level</Typography>
-                        <Typography sx={styles.secondaryStatValue}>{currentBeast.current_level}</Typography>
-                      </Box>
-                      <Box sx={styles.secondaryStatRow}>
-                        <Typography sx={styles.secondaryStatLabel}>Kills</Typography>
-                        <Typography sx={styles.secondaryStatValue}>{currentBeast.adventurers_killed || 0}</Typography>
-                      </Box>
-                    </Box>
+            <Typography sx={styles.beastName}>
+              "{currentBeast.prefix} {currentBeast.suffix}"
+            </Typography>
+            <Typography sx={styles.beastType}>{currentBeast.name}</Typography>
+
+            <Box sx={styles.beastStats}>
+              <Box sx={styles.statRow}>
+                <Typography sx={styles.statLabel}>Level</Typography>
+                <Typography sx={styles.statValue}>{currentBeast.current_level}</Typography>
+              </Box>
+              <Box sx={styles.statRow}>
+                <Typography sx={styles.statLabel}>Power</Typography>
+                <Box display={'flex'} alignItems={'center'}>
+                  <FlashOnIcon sx={{ fontSize: '14px', color: gameColors.yellow }} />
+                  <Typography sx={styles.statValue}>
+                    {currentBeast.power}
+                  </Typography>
+                </Box>
+              </Box>
+              <Box sx={styles.statRow}>
+                <Typography sx={styles.statLabel}>Health</Typography>
+                <Box display={'flex'} alignItems={'center'} gap={'2px'}>
+                  <FavoriteIcon sx={{ fontSize: '14px', color: gameColors.red }} />
+                  <Typography sx={styles.statValue}>
+                    {currentBeast.health}
+                  </Typography>
+                  {(currentBeast.bonus_health || 0) > 0 && (
+                    <span style={{ color: '#4ade80', marginLeft: '4px' }}>
+                      +{currentBeast.bonus_health}
+                    </span>
+                  )}
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Resources */}
+            <Typography sx={styles.resourceHeadline}>Tokens Remaining</Typography>
+            <Box sx={styles.resources}>
+              <Box sx={styles.resourceItem}>
+                <img src={killTokenImg} alt="Kill" style={{ width: '32px', height: '32px' }} />
+                <Box sx={styles.resourceTexts}>
+                  <Typography sx={styles.resourceLabel}>Kill</Typography>
+                  <Box sx={styles.resourceRow}>
+                    <Typography sx={[styles.resourceValue, insufficientKill && styles.resourceInsufficient]}>
+                      {formatNumber(remainingKillTokens)}
+                    </Typography>
                   </Box>
                 </Box>
               </Box>
+              <Box sx={styles.resourceItem}>
+                <img src={corpseTokenImg} alt="Corpse" style={{ width: '32px', height: '32px' }} />
+                <Box sx={styles.resourceTexts}>
+                  <Typography sx={styles.resourceLabel}>Corpse</Typography>
+                  <Box sx={styles.resourceRow}>
+                    <Typography sx={[styles.resourceValue, insufficientCorpse && styles.resourceInsufficient]}>
+                      {formatNumber(remainingCorpseTokens)}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
 
-              <IconButton
-                onClick={handleNext}
-                disabled={currentBeastIndex === beastsWithUpgrades.length - 1}
-                sx={styles.navButton}
-              >
-                <NavigateNextIcon />
-              </IconButton>
+          {/* Right Panel - Upgrades */}
+          <Box sx={styles.rightPanel}>
+            {/* Incremental Stats */}
+            <Box sx={styles.section}>
+              <Typography sx={styles.sectionTitle}>ATTRIBUTES</Typography>
+
+              <Box sx={styles.attributeRow}>
+                <Box sx={styles.attributeIcon}>
+                  <CasinoIcon sx={{ fontSize: '24px', color: '#ff69b4' }} />
+                </Box>
+                <Box sx={styles.attributeInfo}>
+                  <Typography sx={styles.attributeName}>Luck</Typography>
+                  <Typography sx={styles.attributeLevel}>
+                    {currentLuck}
+                    {luckUpgrade > 0 && <span style={{ color: '#4ade80' }}> → {currentLuck + luckUpgrade}</span>}
+                    <span style={{ color: '#bbb' }}> / 255</span>
+                  </Typography>
+                  <Typography sx={styles.attributeEffect}>
+                    Critical hit chance: {currentLuckCrit}%
+                    {luckUpgrade > 0 && (
+                      <span style={{ color: '#4ade80' }}>
+                        {' '}→ {nextLuckCrit}% (+{Math.max(0, nextLuckCrit - currentLuckCrit)}%)
+                      </span>
+                    )}
+                  </Typography>
+                </Box>
+                <Box sx={styles.attributeControls}>
+                  <IconButton
+                    size="small"
+                    onClick={() => adjustStat('luck', -1)}
+                    disabled={luckUpgrade === 0}
+                    sx={styles.statButton}
+                  >
+                    <RemoveIcon sx={{ fontSize: '16px' }} />
+                  </IconButton>
+                  <Box sx={styles.statInput}>
+                    <InputBase
+                      value={luckUpgrade}
+                      onChange={onLuckInputChange}
+                      inputProps={{
+                        inputMode: 'numeric',
+                        pattern: '[0-9]*',
+                        style: { textAlign: 'center' }
+                      }}
+                      sx={styles.statInputField}
+                    />
+                  </Box>
+                  <IconButton
+                    size="small"
+                    onClick={() => adjustStat('luck', 1)}
+                    disabled={currentLuck + luckUpgrade >= 255}
+                    sx={styles.statButton}
+                  >
+                    <AddIcon sx={{ fontSize: '16px' }} />
+                  </IconButton>
+                </Box>
+              </Box>
+
+              <Box sx={styles.attributeRow}>
+                <Box sx={styles.attributeIcon}>
+                  <EnergyIcon sx={{ fontSize: '24px', color: '#00ffff' }} />
+                </Box>
+                <Box sx={styles.attributeInfo}>
+                  <Typography sx={styles.attributeName}>Spirit</Typography>
+                  <Typography sx={styles.attributeLevel}>
+                    {currentSpirit}
+                    {spiritUpgrade > 0 && <span style={{ color: '#4ade80' }}> → {currentSpirit + spiritUpgrade}</span>}
+                    <span style={{ color: '#bbb' }}> / 255</span>
+                  </Typography>
+                  <Typography sx={styles.attributeEffect}>
+                    Revival time reduction: {formatShortDuration(currentSpiritReductionSec)}
+                    {spiritUpgrade > 0 && (
+                      <span style={{ color: '#4ade80' }}>
+                        {' '}→ {formatShortDuration(nextSpiritReductionSec)} (+{formatShortDuration(Math.max(0, nextSpiritReductionSec - currentSpiritReductionSec))})
+                      </span>
+                    )}
+                  </Typography>
+                </Box>
+                <Box sx={styles.attributeControls}>
+                  <IconButton
+                    size="small"
+                    onClick={() => adjustStat('spirit', -1)}
+                    disabled={spiritUpgrade === 0}
+                    sx={styles.statButton}
+                  >
+                    <RemoveIcon sx={{ fontSize: '16px' }} />
+                  </IconButton>
+                  <Box sx={styles.statInput}>
+                    <InputBase
+                      value={spiritUpgrade}
+                      onChange={onSpiritInputChange}
+                      inputProps={{
+                        inputMode: 'numeric',
+                        pattern: '[0-9]*',
+                        style: { textAlign: 'center' }
+                      }}
+                      sx={styles.statInputField}
+                    />
+                  </Box>
+                  <IconButton
+                    size="small"
+                    onClick={() => adjustStat('spirit', 1)}
+                    disabled={currentSpirit + spiritUpgrade >= 255}
+                    sx={styles.statButton}
+                  >
+                    <AddIcon sx={{ fontSize: '16px' }} />
+                  </IconButton>
+                </Box>
+              </Box>
             </Box>
 
-          </Box>
+            {/* Abilities */}
+            <Box sx={styles.section}>
+              <Typography sx={styles.sectionTitle}>ABILITIES</Typography>
 
-          <Typography sx={styles.availablePoints}>
-            {availablePoints} upgrade{availablePoints !== 1 ? 's' : ''} available
-          </Typography>
-
-          <Box sx={styles.upgradesContainer}>
-
-            {UPGRADES.map((upgrade) => {
-              const isUnlocked = currentBeast.stats[upgrade.id];
-              const currentBeastUpgrades = beastUpgrades[currentBeast.token_id] || { spirit: false, luck: false, specials: false };
-              const isSelected = currentBeastUpgrades[upgrade.id];
-              const selectedUpgradesCount = Object.values(currentBeastUpgrades).filter(Boolean).length;
-              const canSelect = !isUnlocked && (isSelected || selectedUpgradesCount < maxPossibleUpgrades);
-
-              return (
+              <Box sx={styles.abilitiesGrid}>
                 <Box
-                  key={upgrade.id}
                   sx={[
-                    styles.upgradeCard,
-                    isSelected && styles.upgradeCardSelected,
-                    !canSelect && !isUnlocked && styles.upgradeCardUnavailable,
-                    {
-                      borderColor: isSelected ? upgrade.color :
-                        isUnlocked ? upgrade.color :
-                          canSelect ? `${gameColors.accentGreen}60` : '#444'
-                    }
+                    styles.abilitySlot,
+                    currentBeast.stats?.specials && styles.abilityUnlocked,
+                    !currentBeast.stats?.specials && specialsSelected && styles.abilitySelected,
                   ]}
-                  onClick={() => canSelect && handleSelectUpgrade(upgrade.id)}
+                  onClick={() => !currentBeast.stats?.specials && setSpecialsSelected(!specialsSelected)}
                 >
-                  <Box sx={[styles.upgradeIcon, { color: upgrade.color }]}>
-                    {upgrade.icon}
+                  <Box sx={styles.abilityIconHolder}>
+                    <StarIcon sx={{ fontSize: '28px', color: '#ffd700' }} />
                   </Box>
-
-                  <Typography sx={[
-                    styles.upgradeName,
-                    { color: upgrade.color }
-                  ]}>
-                    {upgrade.name}
+                  <Typography sx={styles.abilityName}>Specials</Typography>
+                  <Typography sx={[styles.abilityDescription, styles.abilityDescriptionArea]}>
+                    Unlocks name match bonus damage
                   </Typography>
-
-                  <Typography sx={styles.upgradeDescription}>
-                    {upgrade.description}
-                  </Typography>
-
-                  {isUnlocked ? (
-                    <Box sx={styles.statusContainer}>
-                      <Box sx={[styles.unlockedBadge, { borderColor: upgrade.color + '60' }]}>
-                        <Typography sx={[styles.unlockedText, { color: upgrade.color }]}>
-                          ACTIVE
-                        </Typography>
-                      </Box>
+                  {currentBeast.stats?.specials ? (
+                    <Box sx={styles.abilityCheck}>✓</Box>
+                  ) : (
+                    <Box sx={styles.abilityCost}>
+                      <img src={killTokenImg} alt="" style={{ width: '20px', height: '20px' }} />
+                      <Typography sx={styles.abilityCostText}>{UPGRADE_COSTS.specials}</Typography>
                     </Box>
-                  ) : isSelected ? (
-                    <Box sx={styles.statusContainer}>
-                      <Box sx={[styles.selectedBadge, { backgroundColor: upgrade.color + '20', borderColor: upgrade.color }]}>
-                        <Typography sx={[styles.selectedText, { color: upgrade.color }]}>
-                          SELECTED
-                        </Typography>
-                      </Box>
-                    </Box>
-                  ) : null}
+                  )}
                 </Box>
-              );
-            })}
-          </Box>
 
-          <Box sx={styles.beastCounter}>
-            <Typography sx={styles.beastCounterText}>
-              Beast {currentBeastIndex + 1} of {beastsWithUpgrades.length}
-            </Typography>
-          </Box>
-
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-            <Button
-              disabled={upgradeInProgress || !hasSelectedUpgrades}
-              onClick={() => handleUpgradeAll(true)}
-              sx={[
-                styles.upgradeButton,
-                hasSelectedUpgrades && styles.upgradeButtonActive
-              ]}
-            >
-              <Typography sx={styles.upgradeButtonText}>
-                {upgradeInProgress
-                  ? <Box display={'flex'} alignItems={'baseline'}>
-                    <span>Upgrading</span>
-                    <div className='dotLoader white' />
+                <Box
+                  sx={[
+                    styles.abilitySlot,
+                    currentBeast.stats?.diplomacy && styles.abilityUnlocked,
+                    !currentBeast.stats?.diplomacy && diplomacySelected && styles.abilitySelected,
+                  ]}
+                  onClick={() => !currentBeast.stats?.diplomacy && setDiplomacySelected(!diplomacySelected)}
+                >
+                  <Box sx={styles.abilityIconHolder}>
+                    <HandshakeIcon sx={{ fontSize: '28px', color: '#a78bfa' }} />
                   </Box>
-                  : `UPGRADE ${Object.keys(beastUpgrades).length} BEASTS`
-                }
-              </Typography>
-            </Button>
+                  <Typography sx={styles.abilityName}>Diplomacy</Typography>
+                  <Typography sx={[styles.abilityDescription, styles.abilityDescriptionArea]}>
+                    Empower and share rewards of other "{currentBeast.prefix} {currentBeast.suffix}" beasts.
+                  </Typography>
+                  {currentBeast.stats?.diplomacy ? (
+                    <Box sx={styles.abilityCheck}>✓</Box>
+                  ) : (
+                    <Box sx={styles.abilityCost}>
+                      <img src={killTokenImg} alt="" style={{ width: '20px', height: '20px' }} />
+                      <Typography sx={styles.abilityCostText}>{UPGRADE_COSTS.diplomacy}</Typography>
+                    </Box>
+                  )}
+                </Box>
+
+                <Box
+                  sx={[
+                    styles.abilitySlot,
+                    currentBeast.stats?.wisdom && styles.abilityUnlocked,
+                    !currentBeast.stats?.wisdom && wisdomSelected && styles.abilitySelected,
+                  ]}
+                  onClick={() => !currentBeast.stats?.wisdom && setWisdomSelected(!wisdomSelected)}
+                >
+                  <Box sx={styles.abilityIconHolder}>
+                    <PsychologyIcon sx={{ fontSize: '28px', color: '#60a5fa' }} />
+                  </Box>
+                  <Typography sx={styles.abilityName}>Wisdom</Typography>
+                  <Typography sx={[styles.abilityDescription, styles.abilityDescriptionArea]}>
+                    Gain XP when successfully defending attacks on the Summit.
+                  </Typography>
+                  {currentBeast.stats?.wisdom ? (
+                    <Box sx={styles.abilityCheck}>✓</Box>
+                  ) : (
+                    <Box sx={styles.abilityCost}>
+                      <img src={killTokenImg} alt="" style={{ width: '20px', height: '20px' }} />
+                      <Typography sx={styles.abilityCostText}>{UPGRADE_COSTS.wisdom}</Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            </Box>
+
+            {/* Bonus Health */}
+            <Box sx={styles.section}>
+              <Typography sx={styles.sectionTitle}>VITALITY</Typography>
+
+              <Box sx={styles.vitalityRow}>
+                <Box sx={styles.vitalityIcon}>
+                  <FavoriteIcon sx={{ fontSize: '24px', color: gameColors.red }} />
+                </Box>
+                <Box sx={styles.vitalityInfo}>
+                  <Typography sx={styles.attributeName}>Bonus Health</Typography>
+                  <Typography sx={styles.attributeLevel}>
+                    {currentBeast.bonus_health || 0}
+                    {bonusHealthUpgrade > 0 && (
+                      <span style={{ color: '#4ade80' }}> → +{(currentBeast.bonus_health || 0) + bonusHealthUpgrade}</span>
+                    )}
+                    <span style={{ color: '#bbb' }}> / {MAX_BONUS_HEALTH}</span>
+                  </Typography>
+                  <Box sx={styles.healthBar}>
+                    <Box sx={[styles.healthBarSegment, styles.healthBarBonus]} style={{ width: `${currentBonusPct}%` }} />
+                    {plannedBonusHealth > 0 && plannedAddPct > 0 && (
+                      <Box sx={[styles.healthBarSegment, styles.healthBarPlanned]} style={{ width: `${plannedAddPct}%` }} />
+                    )}
+                  </Box>
+                </Box>
+                <Box sx={styles.attributeControls}>
+                  <IconButton
+                    size="small"
+                    onClick={() => setBonusHealthUpgrade(Math.max(0, bonusHealthUpgrade - 10))}
+                    disabled={bonusHealthUpgrade === 0}
+                    sx={styles.statButton}
+                  >
+                    <RemoveIcon sx={{ fontSize: '16px' }} />
+                  </IconButton>
+                  <Box sx={styles.statInput}>
+                    <InputBase
+                      value={bonusHealthUpgrade}
+                      onChange={onBonusHealthInputChange}
+                      inputProps={{
+                        inputMode: 'numeric',
+                        pattern: '[0-9]*',
+                        style: { textAlign: 'center' }
+                      }}
+                      sx={styles.statInputField}
+                    />
+                  </Box>
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      const maxAdd = Math.max(0, MAX_BONUS_HEALTH - currentBonusHealth);
+                      setBonusHealthUpgrade(Math.min(maxAdd, bonusHealthUpgrade + 10))
+                    }}
+                    sx={styles.statButton}
+                  >
+                    <AddIcon sx={{ fontSize: '16px' }} />
+                  </IconButton>
+                </Box>
+              </Box>
+            </Box>
           </Box>
+        </Box>
+
+        {/* Footer */}
+        <Box sx={styles.footer}>
+          {hasAnyUpgrade && (killTokenCost > 0 || corpseTokenCost > 0) && (
+            <Box sx={styles.tokenSummary}>
+              <Typography sx={styles.tokenSummaryLabel}>You are about to spend</Typography>
+              {killTokenCost > 0 && (
+                <Box sx={styles.tokenCard}>
+                  <Box sx={styles.tokenIcon}>
+                    <img src={killTokenImg} alt="Kill" style={{ width: '24px', height: '24px' }} />
+                  </Box>
+                  <Typography sx={styles.tokenUseValue}>{killTokenCost}</Typography>
+                </Box>
+              )}
+              {corpseTokenCost > 0 && (
+                <Box sx={styles.tokenCard}>
+                  <Box sx={styles.tokenIcon}>
+                    <img src={corpseTokenImg} alt="Corpse" style={{ width: '24px', height: '24px' }} />
+                  </Box>
+                  <Typography sx={styles.tokenUseValue}>{corpseTokenCost}</Typography>
+                </Box>
+              )}
+            </Box>
+          )}
+
+          <Button
+            disabled={upgradeInProgress || !hasAnyUpgrade || !canAfford}
+            onClick={handleUpgrade}
+            sx={[
+              styles.applyButton,
+              hasAnyUpgrade && canAfford && styles.applyButtonActive,
+              { ml: 'auto' }
+            ]}
+          >
+            {upgradeInProgress ? (
+              <Box display={'flex'} alignItems={'baseline'} gap={1}>
+                <Typography sx={styles.applyButtonText}>APPLYING</Typography>
+                <div className='dotLoader white' />
+              </Box>
+            ) : !canAfford ? (
+              <Typography sx={styles.applyButtonText}>INSUFFICIENT Tokens</Typography>
+            ) : !hasAnyUpgrade ? (
+              <Typography sx={styles.applyButtonText}>SELECT UPGRADES</Typography>
+            ) : (
+              <Typography sx={styles.applyButtonText}>APPLY UPGRADES</Typography>
+            )}
+          </Button>
         </Box>
       </Box>
     </Dialog>
@@ -356,350 +629,624 @@ function BeastUpgradeModal(props) {
 export default BeastUpgradeModal;
 
 const styles = {
-  dialogContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    boxSizing: 'border-box',
-    maxWidth: '98dvw',
-    maxHeight: '85dvh',
-    overflowX: 'hidden',
-    p: 3,
-  },
   container: {
-    width: '100%',
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 2
+    position: 'relative',
+    color: '#fff',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: '8px',
+    right: '8px',
+    color: '#999',
+    zIndex: 10,
+    '&:hover': {
+      color: gameColors.red,
+      background: 'rgba(255, 0, 0, 0.1)',
+    },
+  },
+  header: {
+    p: 2,
+    pb: 1.5,
   },
   title: {
-    fontSize: '22px',
-    fontWeight: 'bold',
+    fontSize: '24px',
     lineHeight: '24px',
-    color: gameColors.gameYellow,
-    letterSpacing: '0.5px',
+    fontWeight: 'bold',
+    color: gameColors.yellow,
+    letterSpacing: '1.5px',
+    textAlign: 'center',
     textTransform: 'uppercase',
-    marginBottom: '8px',
     textShadow: `
       0 2px 4px rgba(0, 0, 0, 0.8),
       0 0 12px ${gameColors.yellow}40
     `,
   },
-  subtitle: {
-    fontSize: '16px',
-    color: '#ffedbb',
-    letterSpacing: '0.5px',
-    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  divider: {
+    height: '2px',
+    background: `linear-gradient(90deg, transparent, ${gameColors.yellow}, transparent)`,
+    mt: 1,
   },
-  beastSection: {
-    width: '100%',
+  content: {
+    display: 'flex',
+    gap: 2,
+    p: 2,
+    pt: 1,
+    flexDirection: { xs: 'column', md: 'row' },
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    alignItems: 'center',
+  },
+  leftPanel: {
+    width: '240px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 2,
+    gap: 1,
   },
-  navigationContainer: {
+  beastPortrait: {
+    position: 'relative',
+    width: '200px',
+    height: '200px',
+    background: `#000`,
+    border: `2px solid ${gameColors.accentGreen}60`,
     display: 'flex',
     alignItems: 'center',
-    gap: 2,
-    width: '100%',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  navButton: {
-    color: '#ffedbb',
-    border: `1px solid ${gameColors.gameYellow}`,
+  portraitBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    border: `1px solid ${gameColors.brightGreen}40`,
+    pointerEvents: 'none',
+  },
+  beastName: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#FFD700',
+    textAlign: 'center',
+    textTransform: 'capitalize',
+    textShadow: '0 1px 3px rgba(0, 0, 0, 0.8)',
+    letterSpacing: '0.5px',
+  },
+  beastType: {
+    fontSize: '13px',
+    color: gameColors.accentGreen,
+    textAlign: 'center',
+    mt: -0.5,
+  },
+  beastStats: {
+    width: '100%',
+    background: `linear-gradient(180deg, ${gameColors.darkGreen}40, transparent)`,
+    border: `1px solid ${gameColors.accentGreen}30`,
+    borderRadius: '4px',
+    p: 1,
+    mt: 0.5,
+    boxSizing: 'border-box',
+  },
+  statRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    py: 0.3,
+    borderBottom: `1px solid ${gameColors.darkGreen}60`,
+    '&:last-child': {
+      borderBottom: 'none',
+    },
+  },
+  statLabel: {
+    fontSize: '11px',
+    color: '#999',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+  },
+  statValue: {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  resources: {
+    display: 'flex',
+    gap: 1,
+    width: '100%',
+  },
+  resourceHeadline: {
+    fontSize: '11px',
+    color: gameColors.accentGreen,
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    mt: 1,
+  },
+  resourceItem: {
+    flex: 1,
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+    background: `${gameColors.darkGreen}60`,
+    border: `1px solid ${gameColors.accentGreen}40`,
+    borderRadius: '4px',
+    p: 0.75,
+    justifyContent: 'flex-start',
+  },
+  resourceValue: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  resourceTexts: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0.25,
+  },
+  resourceLabel: {
+    fontSize: '10px',
+    color: '#bbb',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    lineHeight: '10px',
+  },
+  resourceRow: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 0.5,
+  },
+  resourceSub: {
+    fontSize: '11px',
+    color: '#9aa',
+  },
+  resourceRemaining: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  resourceInsufficient: {
+    color: gameColors.red,
+  },
+  rightPanel: {
+    flex: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1.5,
+  },
+  section: {
+    px: 1.5,
+  },
+  sectionTitle: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: gameColors.brightGreen,
+    letterSpacing: '2px',
+    textTransform: 'uppercase',
+    mb: 1,
+    pb: 0.5,
+    borderBottom: `1px solid ${gameColors.accentGreen}30`,
+  },
+  attributeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1.5,
+    mb: 1,
+    p: 0.75,
+    background: `${gameColors.darkGreen}40`,
+    border: `1px solid ${gameColors.accentGreen}20`,
+    borderRadius: '4px',
+    transition: 'all 0.2s',
     '&:hover': {
-      backgroundColor: `${gameColors.mediumGreen}80`,
-      border: `1px solid ${gameColors.gameYellow}`,
+      background: `${gameColors.darkGreen}60`,
+      borderColor: `${gameColors.accentGreen}40`,
+    },
+    '&:last-child': {
+      mb: 0,
+    },
+  },
+  attributeIcon: {
+    width: '32px',
+    height: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: `${gameColors.darkGreen}80`,
+    border: `1px solid ${gameColors.accentGreen}30`,
+    borderRadius: '4px',
+  },
+  attributeInfo: {
+    flex: 1,
+  },
+  attributeName: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#fff',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+  },
+  attributeLevel: {
+    fontSize: '12px',
+    color: '#bbb',
+  },
+  attributeEffect: {
+    fontSize: '12px',
+    color: '#9aa',
+  },
+  attributeControls: {
+    display: 'flex',
+    gap: 0.5,
+    alignItems: 'center',
+  },
+  statButton: {
+    width: '24px',
+    height: '24px',
+    minWidth: '24px',
+    background: `${gameColors.mediumGreen}60`,
+    border: `1px solid ${gameColors.accentGreen}40`,
+    color: '#fff',
+    '&:hover': {
+      background: gameColors.mediumGreen,
+      borderColor: gameColors.accentGreen,
     },
     '&:disabled': {
       opacity: 0.3,
       cursor: 'not-allowed',
     },
   },
-  beastInfo: {
-    my: 1,
-    textAlign: 'center',
-    width: '100%',
-  },
-  beastName: {
-    fontSize: '20px',
-    fontWeight: 'bold',
-    color: '#FFD700',
-    letterSpacing: '0.5px',
-    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
-    textTransform: 'capitalize',
-    mb: 2,
-  },
-  beastDetailsRow: {
-    display: 'flex',
-    gap: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  beastImageContainer: {
-    background: '#000',
-    borderRadius: '8px',
-    width: '125px',
-    maxWidth: '28dvw',
-    height: '100px',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    border: `2px solid ${gameColors.accentGreen}60`,
-    boxShadow: `
-      inset 0 2px 4px rgba(0, 0, 0, 0.5),
-      0 2px 8px rgba(0, 0, 0, 0.3)
-    `,
-  },
-  beastStatsColumn: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 0.5,
-    justifyContent: 'center',
-  },
-  statsGrid: {
-    display: 'flex',
-    gap: 1,
-  },
-  statBox: {
+  statInput: {
+    width: '40px',
+    height: '28px',
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
-    padding: '6px 12px',
-    borderRadius: '4px',
+    justifyContent: 'center',
     background: `${gameColors.darkGreen}80`,
-    backdropFilter: 'blur(4px)',
     border: `1px solid ${gameColors.accentGreen}40`,
+    borderRadius: '2px',
   },
-  statValue: {
-    fontSize: '16px',
-    color: '#FFF',
+  statInputValue: {
+    fontSize: '13px',
     fontWeight: 'bold',
-    textShadow: `0 1px 1px ${gameColors.darkGreen}`,
+    color: '#fff',
   },
-  secondaryStats: {
+  statInputField: {
+    color: '#fff',
+    fontSize: '13px',
+    fontWeight: 'bold',
+    textAlign: 'center',
+    px: 0.5,
+    '& input': {
+      textAlign: 'center',
+      padding: 0,
+    }
+  },
+  attributeCost: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    background: `${gameColors.darkGreen}80`,
+    border: `1px solid ${gameColors.yellow}40`,
+    borderRadius: '3px',
+    px: 0.75,
+    py: 0.25,
+  },
+  costValue: {
+    fontSize: '11px',
+    fontWeight: 'bold',
+    color: gameColors.yellow,
+  },
+  abilitiesGrid: {
+    display: 'grid',
+    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+    gap: 1,
+  },
+  abilitySlot: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 0.5,
-  },
-  secondaryStatRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 0.5,
     background: `${gameColors.darkGreen}60`,
-    padding: '4px 12px',
-    borderRadius: '4px',
-    border: `1px solid ${gameColors.accentGreen}20`,
+    border: `2px solid ${gameColors.accentGreen}30`,
+    borderRadius: '6px',
+    cursor: 'pointer',
+    position: 'relative',
+    transition: 'all 0.2s',
+    p: 1.5,
+    minHeight: '120px',
+    '&:hover': {
+      borderColor: gameColors.accentGreen,
+      background: `${gameColors.darkGreen}80`,
+      transform: 'translateY(-2px)',
+      boxShadow: `0 4px 12px ${gameColors.accentGreen}30`,
+    },
   },
-  secondaryStatLabel: {
-    fontSize: '13px',
-    color: gameColors.accentGreen,
-    letterSpacing: '0.5px',
+  abilityIconHolder: {
+    height: '36px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  secondaryStatValue: {
-    fontSize: '14px',
-    color: '#ffedbb',
+  abilityUnlocked: {
+    opacity: 0.6,
+    cursor: 'not-allowed',
+    '&:hover': {
+      transform: 'none',
+      boxShadow: 'none',
+      borderColor: `${gameColors.accentGreen}30`,
+    },
+  },
+  abilitySelected: {
+    borderColor: gameColors.brightGreen,
+    background: `${gameColors.mediumGreen}60`,
+    boxShadow: `
+      0 0 20px ${gameColors.brightGreen}40,
+      inset 0 0 20px ${gameColors.brightGreen}10
+    `,
+    '&:hover': {
+      borderColor: gameColors.brightGreen,
+      background: `${gameColors.mediumGreen}60`,
+      boxShadow: `
+        0 0 20px ${gameColors.brightGreen}40,
+        inset 0 0 20px ${gameColors.brightGreen}10
+      `,
+    },
+  },
+  abilityName: {
+    fontSize: '11px',
     fontWeight: 'bold',
+    color: '#fff',
     letterSpacing: '0.5px',
-  },
-  beastKills: {
-    fontSize: '15px',
-    color: gameColors.gameYellow,
-    fontWeight: 'bold',
-    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
     mt: 0.5,
   },
-  availablePoints: {
-    fontSize: '15px',
+  abilityDescription: {
+    fontSize: '11px',
+    color: '#999',
+    textAlign: 'center',
+    lineHeight: '12px',
+    letterSpacing: '0.3px',
+    mb: 0.5,
+  },
+  abilityDescriptionArea: {
+    minHeight: '28px',
+  },
+  abilityCost: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    px: 0.5,
+    py: 0.25,
+  },
+  abilityCostLabel: {
+    fontSize: '10px',
+    color: '#bbb',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+  },
+  abilityCostText: {
+    fontSize: '13px',
+    fontWeight: 'bold',
     color: gameColors.yellow,
-    fontWeight: '600',
-    textShadow: `0 0 8px ${gameColors.brightGreen}40`,
   },
-  upgradesContainer: {
+  abilityCheck: {
+    position: 'absolute',
+    top: '4px',
+    right: '4px',
+    width: '20px',
+    height: '20px',
+    borderRadius: '50%',
+    background: gameColors.brightGreen,
+    color: '#000',
     display: 'flex',
-    gap: 2,
-    width: '100%',
+    alignItems: 'center',
     justifyContent: 'center',
-    flexWrap: 'wrap',
-    '@media (min-width: 600px)': {
-      flexWrap: 'nowrap',
-    },
+    fontSize: '12px',
+    fontWeight: 'bold',
   },
-  upgradeCard: {
-    flex: '1 1 200px',
-    width: '180px',
-    maxWidth: '220px',
-    minHeight: '160px',
+  vitalityRow: {
     display: 'flex',
-    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 1.5,
+    p: 0.75,
+    background: `${gameColors.darkGreen}40`,
+    border: `1px solid ${gameColors.accentGreen}20`,
+    borderRadius: '4px',
+  },
+  vitalityIcon: {
+    width: '32px',
+    height: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: `${gameColors.darkGreen}80`,
+    border: `1px solid ${gameColors.accentGreen}30`,
+    borderRadius: '4px',
+  },
+  vitalityInfo: {
+    flex: 1,
+  },
+  healthBar: {
+    height: '10px',
+    background: 'rgba(0,0,0,0.3)',
+    borderRadius: '6px',
+    overflow: 'hidden',
+    display: 'flex',
+    mt: 0.5,
+  },
+  healthBarSegment: {
+    height: '100%',
+  },
+  healthBarBase: {
+    background: `${gameColors.red}AA`,
+  },
+  healthBarBonus: {
+    background: '#58b000',
+  },
+  healthBarPlanned: {
+    background: '#58b00099',
+  },
+  healthLegend: {
+    display: 'flex',
     alignItems: 'center',
     gap: 1,
-    p: 1.5,
-    background: `${gameColors.mediumGreen}60`,
-    border: `2px solid`,
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-    position: 'relative',
-    '@media (max-width: 600px)': {
-      minWidth: '150px',
-      flex: '1 1 150px',
-    },
-    '&:hover': {
-      transform: 'translateY(-2px)',
-      boxShadow: `0 4px 12px rgba(0, 0, 0, 0.4)`,
-    },
+    mt: 0.5,
   },
-  upgradeCardDisabled: {
-    opacity: 0.7,
-    '&:hover': {
-      transform: 'none',
-      boxShadow: 'none',
-    },
+  legendItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
   },
-  upgradeCardSelected: {
-    background: `${gameColors.mediumGreen}80`,
-    transform: 'translateY(-2px)',
-    boxShadow: `0 4px 12px rgba(0, 0, 0, 0.4)`,
+  legendSwatch: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '2px',
+    border: `1px solid ${gameColors.accentGreen}40`,
   },
-  upgradeCardUnavailable: {
-    opacity: 0.4,
-    '&:hover': {
-      transform: 'none',
-      boxShadow: 'none',
-    },
+  legendText: {
+    fontSize: '10px',
+    color: '#bbb',
+    letterSpacing: '0.3px',
+    textTransform: 'uppercase',
   },
-  upgradeIcon: {
-    height: '40px',
+  footer: {
+    display: 'flex',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    gap: 2,
+    p: 1,
+    px: 2,
+    borderTop: `2px solid ${gameColors.accentGreen}30`,
+    background: `linear-gradient(0deg, ${gameColors.darkGreen}40, transparent)`,
+  },
+  totalCost: {
+    display: 'flex',
+    gap: 2,
+    alignItems: 'center',
+  },
+  tokenSummary: {
+    display: 'flex',
+    gap: 1,
+    alignItems: 'center',
+  },
+  tokenCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    background: `${gameColors.darkGreen}40`,
+    border: `1px solid ${gameColors.accentGreen}20`,
+    borderRadius: '12px',
+    padding: '2px 6px',
+    minWidth: 'auto',
+  },
+  tokenSummaryLabel: {
+    fontSize: '11px',
+    color: '#999',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
     display: 'flex',
     alignItems: 'center',
   },
-  upgradeName: {
-    fontSize: '18px',
-    fontWeight: 'bold',
-    letterSpacing: '0.5px',
-    textTransform: 'uppercase',
+  tokenCardError: {
+    border: `1px solid ${gameColors.red}`,
+    boxShadow: `0 0 8px ${gameColors.red}50`,
   },
-  upgradeNameDisabled: {
-    textDecoration: 'line-through',
-  },
-  upgradeDescription: {
-    fontSize: '13px',
-    color: '#ffedbb',
-    textAlign: 'center',
-    lineHeight: '16px',
-    letterSpacing: '0.3px',
-  },
-  statusContainer: {
-    marginTop: 'auto',
-    width: '100%',
+  tokenIcon: {
     display: 'flex',
+    alignItems: 'center',
     justifyContent: 'center',
-    pt: 1,
+    width: '24px',
+    height: '24px',
   },
-  unlockedBadge: {
-    background: `${gameColors.darkGreen}90`,
-    border: `2px solid`,
-    borderRadius: '6px',
-    px: 1.5,
-    py: 0.5,
+  tokenTexts: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0.25,
   },
-  unlockedText: {
-    fontSize: '11px',
-    fontWeight: 'bold',
+  tokenLabel: {
+    fontSize: '10px',
+    color: '#bbb',
     letterSpacing: '1px',
     textTransform: 'uppercase',
+    lineHeight: '10px',
   },
-  selectedBadge: {
-    border: `2px solid`,
-    borderRadius: '6px',
-    px: 1.5,
-    py: 0.5,
-  },
-  selectedText: {
-    fontSize: '11px',
-    fontWeight: 'bold',
-    letterSpacing: '1px',
-    textTransform: 'uppercase',
-  },
-  beastCounter: {
-    mt: -1,
-  },
-  beastCounterText: {
+  tokenEquation: {
     fontSize: '14px',
-    color: '#999',
-    letterSpacing: '0.5px',
+    fontWeight: 'bold',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    lineHeight: '14px',
   },
-  upgradeButton: {
+  tokenEquationValue: {
+    color: '#fff',
+  },
+  tokenEquationOp: {
+    color: '#bbb',
+  },
+  tokenUseValue: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  totalCostItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.75,
+    background: `${gameColors.darkGreen}60`,
+    border: `1px solid ${gameColors.accentGreen}40`,
+    borderRadius: '4px',
+    px: 1.5,
+    py: 0.75,
+  },
+  totalCostText: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  totalCostError: {
+    color: gameColors.red,
+  },
+  applyButton: {
     background: `${gameColors.mediumGreen}60`,
     borderRadius: '8px',
-    width: '200px',
     height: '48px',
-    mt: '6px',
-    border: `2px solid ${gameColors.gameYellow}`,
+    my: '6px',
+    border: `2px solid ${gameColors.accentGreen}60`,
     transition: 'all 0.3s ease',
-    opacity: 0.9,
-    '&:hover': {
-      background: `${gameColors.mediumGreen}90`,
-    },
+    opacity: 0.7,
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
     '&:disabled': {
       opacity: 0.4,
       cursor: 'not-allowed',
-      border: `2px solid ${gameColors.gameYellow}40`,
     },
   },
-  upgradeButtonActive: {
+  applyButtonActive: {
     background: `linear-gradient(135deg, ${gameColors.brightGreen} 0%, ${gameColors.accentGreen} 100%)`,
     border: `2px solid ${gameColors.brightGreen}`,
     opacity: 1,
     boxShadow: `
-      0 0 20px ${gameColors.brightGreen}50,
+      0 0 12px ${gameColors.brightGreen}40,
       0 2px 4px rgba(0, 0, 0, 0.3)
     `,
     '&:hover': {
       background: `linear-gradient(135deg, ${gameColors.brightGreen} 20%, ${gameColors.lightGreen} 100%)`,
       boxShadow: `
-        0 0 30px ${gameColors.brightGreen}80,
+        0 0 16px ${gameColors.brightGreen}60,
         0 4px 8px rgba(0, 0, 0, 0.4)
       `,
+      transform: 'translateY(-1px)',
     },
   },
-  upgradeButtonText: {
+  applyButtonText: {
     color: '#ffedbb',
     letterSpacing: '0.5px',
     fontSize: '14px',
     fontWeight: 'bold',
-    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
     textTransform: 'uppercase',
-  },
-  multiUpgradeHint: {
-    fontSize: '12px',
-    color: '#999',
-    fontStyle: 'italic',
-    letterSpacing: '0.3px',
-  },
-  textButton: {
-    background: 'transparent',
-    border: 'none',
-    textTransform: 'none',
-    '&:hover': {
-      background: `${gameColors.mediumGreen}30`,
-    },
-    '&:disabled': {
-      opacity: 0.4,
-    },
-  },
-  textButtonText: {
-    color: gameColors.accentGreen,
-    fontSize: '12px',
-    fontWeight: '500',
-    letterSpacing: '0.3px',
-    textDecoration: 'underline',
-    '&:hover': {
-      color: gameColors.brightGreen,
-    },
+    textWrap: 'nowrap',
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
   },
 };

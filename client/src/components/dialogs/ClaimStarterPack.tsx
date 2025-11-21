@@ -1,15 +1,16 @@
-import InfoIcon from '@mui/icons-material/Info';
-import { Box, Dialog, Tooltip, Typography, Button } from '@mui/material';
-import React, { useEffect } from 'react';
 import attackPotionIcon from '@/assets/images/attack-potion.png';
+import killTokenIcon from '@/assets/images/kill-token.png';
 import lifePotionIcon from '@/assets/images/life-potion.png';
+import poisonPotionIcon from '@/assets/images/poison-potion.png';
 import revivePotionIcon from '@/assets/images/revive-potion.png';
-import { useGameStore } from '@/stores/gameStore';
-import { useState } from 'react';
-import { useGameDirector } from '@/contexts/GameDirector';
-import { gameColors } from '@/utils/themes';
 import { useController } from '@/contexts/controller';
-import { delay } from '@/utils/utils';
+import { useGameDirector } from '@/contexts/GameDirector';
+import { useGameStore } from '@/stores/gameStore';
+import { Beast } from '@/types/game';
+import { gameColors } from '@/utils/themes';
+import InfoIcon from '@mui/icons-material/Info';
+import { Box, Button, Dialog, Tooltip, Typography } from '@mui/material';
+import React, { useEffect, useState } from 'react';
 
 const POTIONS = [
   {
@@ -17,94 +18,126 @@ const POTIONS = [
     name: 'revive potion',
     icon: revivePotionIcon,
     description: 'Revives a dead beast. Amount required increases with each revival.',
-    packAmount: 5
+    packMultiplier: 2
   },
   {
     id: 2,
     name: 'attack potion',
     icon: attackPotionIcon,
     description: 'Adds 10% damage to a beast\'s next attack. Can be stacked.',
-    packAmount: 10
+    packMultiplier: 3
   },
   {
     id: 3,
     name: 'Extra life potion',
     icon: lifePotionIcon,
     description: 'Beast revives to full health instead of dying. Max 255 extra lives.',
-    packAmount: 1
+    packMultiplier: 1
+  },
+  {
+    id: 4,
+    name: 'Poison potion',
+    icon: poisonPotionIcon,
+    description: 'Poison the summit, dealing 1 damage per second.',
+    packMultiplier: 3
   },
 ]
 
+const LIMIT = 300;
+
 function ClaimStarterPack(props) {
-  const { open, close } = props
+  const { open, close, isOnboarding = false } = props
   const { executeGameAction, actionFailed } = useGameDirector()
   const { collection } = useGameStore()
-  const { fetchTokenBalances, tokenBalances } = useController()
-  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_starter_kit).map(beast => beast.token_id)
-
+  const { tokenBalances, setTokenBalances } = useController()
   const [claimInProgress, setClaimInProgress] = useState(false)
+  const [potionsClaimed, setPotionsClaimed] = useState(0)
+  const [killTokensClaimed, setKillTokensClaimed] = useState(0)
+
+  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions)
+  const unclaimedKillTokens = collection.filter((beast: Beast) => beast.adventurers_killed > beast.kills_claimed)
 
   useEffect(() => {
     setClaimInProgress(false);
   }, [actionFailed]);
 
+  // When all unclaimed beasts are claimed, refresh balances and close modal
+  useEffect(() => {
+    if (collection.length > 0 && unclaimedBeasts.length === 0 && unclaimedKillTokens.length === 0) {
+      setTokenBalances(({
+        ...tokenBalances,
+        "REVIVE": tokenBalances["REVIVE"] + potionsClaimed * 2,
+        "ATTACK": tokenBalances["ATTACK"] + potionsClaimed * 3,
+        "EXTRA LIFE": tokenBalances["EXTRA LIFE"] + potionsClaimed * 1,
+        "POISON": tokenBalances["POISON"] + potionsClaimed * 3,
+        "KILL": tokenBalances["KILL"] + killTokensClaimed,
+      }))
+
+      close()
+    }
+  }, [unclaimedBeasts.length, unclaimedKillTokens.length]);
+
+  const getPotionsToClaim = (potion: typeof POTIONS[number]) => {
+    return unclaimedBeasts.reduce((sum: number, beast: Beast) => sum + (6 - beast.tier) * potion.packMultiplier, 0)
+  }
+  const getTokensToClaim = () => {
+    return unclaimedKillTokens.reduce((sum: number, beast: Beast) => sum + (beast.adventurers_killed - beast.kills_claimed), 0)
+  }
+
   const claimAll = async () => {
     setClaimInProgress(true)
 
+    setPotionsClaimed(unclaimedBeasts.reduce((sum: number, beast: Beast) => sum + (6 - beast.tier), 0))
+    setKillTokensClaimed(unclaimedKillTokens.reduce((sum: number, beast: Beast) => sum + (beast.adventurers_killed - beast.kills_claimed), 0))
+
     try {
-      const initialTokenBalances = { ...tokenBalances }
+      const beastIds = Array.from(new Set([
+        ...unclaimedBeasts.map(beast => beast.token_id),
+        ...unclaimedKillTokens.map(beast => beast.token_id)
+      ]))
 
-      await executeGameAction(
-        {
-          type: "claim_starter_kit",
-          beastIds: unclaimedBeasts.slice(0, 250)
-        }
-      )
-
-      let retryCount = 0
-      const maxRetries = 5
-      const retryDelay = 1000
-
-      while (retryCount < maxRetries) {
-        await fetchTokenBalances()
-
-        const hasTokenIncrease = Object.keys(tokenBalances).some(tokenId => {
-          const currentBalance = tokenBalances[tokenId] || 0
-          const initialBalance = initialTokenBalances[tokenId] || 0
-          return currentBalance > initialBalance
+      for (let i = 0; i < beastIds.length; i += LIMIT) {
+        const batch = beastIds.slice(i, i + LIMIT)
+        const res = await executeGameAction({
+          type: "claim_beast_reward",
+          beastIds: batch
         })
 
-        if (hasTokenIncrease) {
+        if (!res) {
           break
         }
-
-        await delay(retryDelay)
-        retryCount++
       }
     } catch (ex) {
       console.log(ex)
     } finally {
       setClaimInProgress(false)
-      close(false)
     }
   }
 
   return (
     <Dialog
       open={open}
-      onClose={() => { close(false) }}
+      onClose={isOnboarding ? undefined : () => { close(false) }}
       maxWidth={'lg'}
       slotProps={{
         paper: {
           sx: {
             background: `${gameColors.darkGreen}95`,
             backdropFilter: 'blur(12px) saturate(1.2)',
-            border: `2px solid ${gameColors.accentGreen}60`,
+            border: isOnboarding
+              ? `3px solid ${gameColors.accentGreen}80`
+              : `2px solid ${gameColors.accentGreen}60`,
             borderRadius: '12px',
-            boxShadow: `
-              0 8px 24px rgba(0, 0, 0, 0.6),
-              0 0 16px ${gameColors.accentGreen}30
-            `
+            boxShadow: isOnboarding
+              ? `
+                0 12px 32px rgba(0, 0, 0, 0.8),
+                0 0 24px ${gameColors.accentGreen}40,
+                inset 0 0 60px ${gameColors.accentGreen}10
+              `
+              : `
+                0 8px 24px rgba(0, 0, 0, 0.6),
+                0 0 16px ${gameColors.accentGreen}30
+              `
           }
         }
       }}
@@ -115,15 +148,19 @@ function ClaimStarterPack(props) {
 
           <Box sx={{ textAlign: 'center' }}>
             <Typography sx={styles.title}>
-              Beast Starter Pack
+              {isOnboarding ? 'Welcome to Summit!' : 'Beast Rewards'}
             </Typography>
 
-            <Typography sx={styles.subtitle}>
-              You have {unclaimedBeasts.length} unclaimed starter packs.
-            </Typography>
+            {isOnboarding && <Typography sx={styles.subtitle}>
+              Claim your Beast Rewards
+            </Typography>}
+
+            {unclaimedBeasts.length > 0 && <Typography sx={styles.subtitle}>
+              You have {unclaimedBeasts.length} unclaimed starter pack{unclaimedBeasts.length !== 1 ? 's' : ''}.
+            </Typography>}
           </Box>
 
-          <Box sx={styles.itemsContainer}>
+          {unclaimedBeasts.length > 0 && <Box sx={styles.itemsContainer}>
             {React.Children.toArray(
               POTIONS.map(potion => {
                 return <Box sx={styles.itemContainer}>
@@ -161,13 +198,31 @@ function ClaimStarterPack(props) {
                       x
                     </Typography>
                     <Typography sx={styles.amountValue}>
-                      {unclaimedBeasts.length * potion.packAmount}
+                      {getPotionsToClaim(potion)}
                     </Typography>
                   </Box>
                 </Box>
               })
             )}
-          </Box>
+          </Box>}
+
+          {getTokensToClaim() > 0 && (
+            <Box sx={styles.killTokensSection}>
+              <img src={killTokenIcon} alt='' width={'70px'} />
+
+              <Box sx={styles.killTokensContent}>
+                <Typography sx={styles.killTokensTitle}>
+                  {getTokensToClaim()} $KILL
+                </Typography>
+              </Box>
+              <Typography sx={styles.killTokensDescription}>
+                Earned from your beasts that have killed adventurers.
+              </Typography>
+              <Typography sx={styles.killTokensDescription}>
+                Used to upgrade your beasts.
+              </Typography>
+            </Box>
+          )}
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
             <Button
@@ -184,10 +239,14 @@ function ClaimStarterPack(props) {
                     <span>Claiming</span>
                     <div className='dotLoader white' />
                   </Box>
-                  : unclaimedBeasts.length > 250 ? 'CLAIM 250' : 'CLAIM ALL'
+                  : `CLAIM ALL`
                 }
               </Typography>
             </Button>
+
+            {unclaimedBeasts.length > LIMIT && <Typography sx={styles.helperText}>
+              Claiming in batches of {LIMIT}.
+            </Typography>}
           </Box>
         </Box>
 
@@ -205,9 +264,9 @@ const styles = {
     flexDirection: 'column',
     alignItems: 'center',
     boxSizing: 'border-box',
-    width: '800px',
+    width: '900px',
     maxWidth: '98vw',
-    p: 4,
+    p: 3,
   },
   container: {
     width: '100%',
@@ -215,7 +274,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 3
+    gap: 1.5
   },
   title: {
     fontSize: '28px',
@@ -230,11 +289,59 @@ const styles = {
       0 0 12px ${gameColors.yellow}40
     `,
   },
+  welcomeText: {
+    fontSize: '18px',
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    marginBottom: '12px',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
   subtitle: {
     fontSize: '16px',
     color: '#ffedbb',
     letterSpacing: '0.5px',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  inputLabel: {
+    fontSize: '14px',
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    marginBottom: '8px',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+  },
+  input: {
+    '& .MuiOutlinedInput-root': {
+      color: '#ffedbb',
+      background: `${gameColors.mediumGreen}60`,
+      borderRadius: '8px',
+      '& fieldset': {
+        borderColor: `${gameColors.accentGreen}60`,
+        borderWidth: '2px',
+      },
+      '&:hover fieldset': {
+        borderColor: `${gameColors.accentGreen}80`,
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: gameColors.brightGreen,
+      },
+    },
+    '& .MuiOutlinedInput-input': {
+      fontSize: '18px',
+      fontWeight: 'bold',
+      padding: '12px',
+      '&::placeholder': {
+        color: '#ffedbb80',
+        opacity: 1,
+      },
+    },
+  },
+  inputHelper: {
+    fontSize: '12px',
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    marginTop: '6px',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    opacity: 0.8,
   },
   itemsContainer: {
     height: '100%',
@@ -295,7 +402,7 @@ const styles = {
     border: `1px solid ${gameColors.accentGreen}40`,
     borderRadius: '4px',
     width: '100px',
-    minHeight: '100px',
+    minHeight: '75px',
     background: `${gameColors.darkGreen}40`,
   },
   descriptionText: {
@@ -379,5 +486,61 @@ const styles = {
     fontWeight: 'bold',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
     textTransform: 'uppercase',
+  },
+  helperText: {
+    fontSize: '13px',
+    color: gameColors.yellow,
+    letterSpacing: '0.5px',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    fontStyle: 'italic',
+    marginTop: '4px',
+  },
+  killTokensSection: {
+    width: '100%',
+    maxWidth: '400px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 0.5,
+    background: `${gameColors.mediumGreen}60`,
+    border: `2px solid ${gameColors.accentGreen}60`,
+    borderRadius: '8px',
+    padding: '12px',
+  },
+  killTokensTitle: {
+    fontSize: '20px',
+    fontWeight: 'bold',
+    color: gameColors.yellow,
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    mb: '4px',
+  },
+  killTokensContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+    mt: 1,
+  },
+  killTokensAmount: {
+    fontSize: '26px',
+    fontWeight: 'bold',
+    color: '#FFD700',
+    letterSpacing: '1px',
+    textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
+  },
+  killTokensLabel: {
+    fontSize: '16px',
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+  },
+  killTokensDescription: {
+    fontSize: '12px',
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    textAlign: 'center',
+    opacity: 0.8,
+    fontStyle: 'italic',
+    lineHeight: '12px',
   },
 }

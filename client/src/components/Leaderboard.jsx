@@ -5,11 +5,12 @@ import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { addAddressPadding } from 'starknet';
 import { lookupAddressNames } from '@/utils/addressNameCache';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, IconButton } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useEffect, useState } from 'react';
 
 function Leaderboard() {
-  const { beastsRegistered, beastsAlive } = useStatistics()
+  const { beastsRegistered, beastsAlive, refreshBeastsAlive } = useStatistics()
   const { summit, leaderboard, setLeaderboard } = useGameStore()
   const { getLeaderboard } = useGameTokens()
   const { getCurrentBlock } = useStarknetApi()
@@ -81,11 +82,11 @@ function Leaderboard() {
     }
 
     // Calculate bonus points from blocks held (1 point per block)
-    const blocksHeld = currentBlock - summit.taken_at
+    const blocksHeld = (currentBlock - summit.taken_at)
 
     // Find summit owner in leaderboard
     const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summit.owner))
-    const score = (player?.amount || 0) + blocksHeld
+    const score = (player?.amount || 0) + (blocksHeld * (100 - summit.diplomacy_count))
 
     // Find summit owner's rank in the sorted list
     const liveRank = leaderboard.findIndex(p => p.amount < score) + 1
@@ -100,6 +101,16 @@ function Leaderboard() {
     return rewards.toLocaleString(undefined, { maximumFractionDigits: 0 })
   }
 
+  // Derived "Current Summit" metrics
+  const blocksHeld = summit?.taken_at && currentBlock ? Math.max(0, currentBlock - summit.taken_at) : 0
+  const diplomacyCount = summit?.diplomacy_count || 0
+  const perBlockToOwner = Math.max(0, 100 - diplomacyCount)
+  const summitOwnerPlayer = summit?.owner
+    ? leaderboard.find(p => addAddressPadding(p.owner) === addAddressPadding(summit.owner))
+    : null
+  const beforeAmount = summitOwnerPlayer?.amount || 0
+  const gainedSince = blocksHeld * perBlockToOwner
+
   const PlayerRow = ({ player, index, cartridgeName }) => {
     const displayName = cartridgeName || 'Warlock'
 
@@ -110,7 +121,7 @@ function Leaderboard() {
           {displayName}
         </Typography>
         <Typography sx={styles.bigFiveRewards}>
-          {formatRewards(player.amount)}
+          {formatRewards(player.amount / 100)}
         </Typography>
       </Box>
     )
@@ -122,11 +133,7 @@ function Leaderboard() {
       <Box sx={styles.content}>
 
         <Typography sx={styles.title}>
-          SUMMIT
-        </Typography>
-
-        <Typography sx={[styles.title, { fontSize: '14px', lineHeight: '14px', opacity: 0.9 }]}>
-          Test Alpha
+          SUMMIT ALPHA
         </Typography>
 
         <Box sx={styles.sectionHeader}>
@@ -163,9 +170,16 @@ function Leaderboard() {
                     {addressNames[summit.owner] || 'Warlock'}
                   </Typography>
                   <Typography sx={styles.summitOwnerScore}>
-                    {formatRewards(summitOwnerRank.score)}
+                    {formatRewards(beforeAmount / 100)} <span style={{ color: gameColors.brightGreen }}>+{formatRewards(gainedSince / 100)}</span>
                   </Typography>
                 </Box>
+                {diplomacyCount > 0 && (
+                  <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
+                    <Typography sx={styles.summitOwnerSub}>
+                      +{diplomacyCount} Diplomacy
+                    </Typography>
+                  </Box>
+                )}
               </>
             )}
           </Box>
@@ -175,29 +189,28 @@ function Leaderboard() {
           </Box>
         )}
 
-        <Box sx={styles.sectionHeader}>
+        <Box sx={[styles.sectionHeader, { pt: 0, position: 'relative' }]}>
           <Typography sx={styles.sectionTitle}>
             STATS
           </Typography>
+          <IconButton
+            aria-label="Refresh beasts alive"
+            size="small"
+            onClick={refreshBeastsAlive}
+            sx={styles.refreshButton}
+          >
+            <RefreshIcon sx={{ color: gameColors.accentGreen, fontSize: '16px' }} />
+          </IconButton>
         </Box>
 
         <Box sx={styles.statRow}>
           <Typography sx={styles.statLabel}>
-            Beasts Playing
-          </Typography>
-          <Typography sx={styles.statValue}>
-            {beastsRegistered}
-          </Typography>
-        </Box>
-
-        {/* <Box sx={styles.statRow}>
-          <Typography sx={styles.statLabel}>
             Beasts Alive
           </Typography>
           <Typography sx={styles.statValue}>
-            {beastsAlive}
+            {beastsRegistered - beastsAlive} / {beastsRegistered}
           </Typography>
-        </Box> */}
+        </Box>
       </Box>
 
     </Box>
@@ -228,7 +241,7 @@ const styles = {
     minHeight: '100%',
     display: 'flex',
     flexDirection: 'column',
-    gap: 1,
+    gap: '6px',
   },
   title: {
     fontSize: '18px',
@@ -260,6 +273,12 @@ const styles = {
     justifyContent: 'space-between',
     alignItems: 'center',
     width: '100%',
+    gap: '6px',
+  },
+  refreshButton: {
+    position: 'absolute',
+    right: 0,
+    top: '-5px'
   },
   statLabel: {
     fontSize: '12px',
@@ -361,6 +380,113 @@ const styles = {
     color: gameColors.accentGreen,
     opacity: 0.7,
   },
+  // Current Summit compact
+  currentSummitCompact: {
+    width: '100%',
+    mb: 1,
+  },
+  currentSummitLine: {
+    fontSize: '11px',
+    color: '#ffedbb',
+    lineHeight: '14px',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  // Current Summit section
+  currentSummitContainer: {
+    width: '100%',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    borderRadius: '8px',
+    background: `${gameColors.darkGreen}30`,
+    p: 1,
+    mb: 1,
+  },
+  currentSummitHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '8px',
+    mb: 0.5,
+  },
+  currentSummitHolder: {
+    fontSize: '12px',
+    color: '#ffedbb',
+    fontWeight: 700,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  chipRow: {
+    display: 'flex',
+    gap: '6px',
+    alignItems: 'center',
+  },
+  chip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    borderRadius: '999px',
+    padding: '2px 8px',
+    fontSize: '10px',
+    color: gameColors.yellow,
+    background: `${gameColors.yellow}10`,
+    border: `1px solid ${gameColors.yellow}40`,
+  },
+  chipMuted: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    borderRadius: '999px',
+    padding: '2px 8px',
+    fontSize: '10px',
+    color: gameColors.accentGreen,
+    background: `${gameColors.accentGreen}10`,
+    border: `1px solid ${gameColors.accentGreen}30`,
+  },
+  chipDot: {
+    display: 'inline-block',
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: gameColors.yellow,
+  },
+  currentSummitMetaRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    mb: 0.5,
+  },
+  metaLabel: {
+    fontSize: '11px',
+    color: gameColors.accentGreen,
+  },
+  metaValue: {
+    fontSize: '11px',
+    color: '#ffedbb',
+    fontWeight: 600,
+  },
+  currentSummitStats: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr 1fr',
+    gap: '6px',
+  },
+  statCard: {
+    border: `1px solid ${gameColors.accentGreen}30`,
+    background: `${gameColors.darkGreen}40`,
+    borderRadius: '6px',
+    padding: '6px',
+    textAlign: 'center',
+  },
+  statCardLabel: {
+    fontSize: '10px',
+    color: gameColors.accentGreen,
+    marginBottom: '2px',
+  },
+  statCardValue: {
+    fontSize: '12px',
+    color: '#ffedbb',
+    fontWeight: 700,
+  },
   // Summit Owner styles
   summitOwnerRow: {
     display: 'flex',
@@ -402,5 +528,10 @@ const styles = {
     fontWeight: '600',
     textAlign: 'right',
     minWidth: '60px',
+  },
+  summitOwnerSub: {
+    fontSize: '10px',
+    color: gameColors.accentGreen,
+    mr: '2px'
   },
 }
