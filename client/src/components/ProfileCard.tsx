@@ -19,7 +19,7 @@ const ProfileCard = () => {
   const { collection, adventurerCollection, leaderboard, onboarding, loadingCollection } = useGameStore()
   const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
-  const { playerName, openProfile } = useController()
+  const { playerName, tokenBalances, openProfile } = useController()
   const { connect, connectors } = useConnect();
 
   let cartridgeConnector = connectors.find(conn => conn.id === "controller")
