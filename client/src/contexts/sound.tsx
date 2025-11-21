@@ -37,11 +37,7 @@ export function SoundProvider({ children }: PropsWithChildren) {
     const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.muted) : null;
     return stored ? stored === "1" : false;
   });
-  const [volume, setVolumeState] = useState<number>(() => {
-    const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.volume) : null;
-    const v = stored ? Number(stored) : 0.7;
-    return Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0.7;
-  });
+  const [volume, setVolumeState] = useState<number>(0.5);
 
   const [unlocked, setUnlocked] = useState(false);
   useEffect(() => {
