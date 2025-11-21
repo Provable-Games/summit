@@ -215,6 +215,7 @@ export const getSpiritRevivalReductionSeconds = (points: number): number => {
 export function applyPoisonDamage(
   summit: Summit,
 ): { currentHealth: number; extraLives: number } {
+  console.log('SUMMIT', summit);
   const count = Math.max(0, summit.poison_count || 0);
   const ts = Math.max(0, summit.poison_timestamp || 0);
   if (count === 0 || ts === 0) {

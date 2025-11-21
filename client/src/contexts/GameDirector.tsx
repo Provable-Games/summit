@@ -264,7 +264,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       return false;
     }
 
-    console.log('EVENTS RETURNED', events)
     updateLiveStats(events.filter((event: any) => event.componentName === 'LiveBeastStatsEvent'));
 
     if (action.type === 'attack') {

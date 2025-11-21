@@ -958,6 +958,7 @@ pub mod summit_systems {
             let damage: u64 = time_since_poison * poison_count.into();
 
             if damage == 0 {
+                self.poison_timestamp.write(get_block_timestamp());
                 return 0;
             }
 

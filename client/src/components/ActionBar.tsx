@@ -84,6 +84,8 @@ function ActionBar() {
       beastId: summit.beast.token_id,
       count: appliedPoisonCount,
     });
+
+    setAppliedPoisonCount(0);
   }
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit?.beast?.token_id))
