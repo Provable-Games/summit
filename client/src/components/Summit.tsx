@@ -252,7 +252,7 @@ function Summit() {
               <Box sx={styles.extraLivesContainer}>
                 {summit.beast.extra_lives > 1 && (
                   <Typography sx={styles.extraLivesNumber}>
-                    255
+                    {summit.beast.extra_lives}
                   </Typography>
                 )}
                 <img src={heart} alt='Extra Life' style={styles.extraLivesHeart} />
@@ -270,9 +270,9 @@ function Summit() {
             )}
 
             <Box sx={styles.abilitiesContainer}>
-              {summit.beast.stats.specials === true && <StarIcon sx={{ fontSize: '16px', color: '#ffd700', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
-              {summit.beast.stats.wisdom === true && <PsychologyIcon sx={{ fontSize: '16px', color: '#60a5fa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
-              {summit.beast.stats.diplomacy === true && <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {Boolean(summit.beast.stats.specials) && <StarIcon sx={{ fontSize: '16px', color: '#ffd700', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {Boolean(summit.beast.stats.wisdom) && <PsychologyIcon sx={{ fontSize: '16px', color: '#60a5fa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {Boolean(summit.beast.stats.diplomacy) && <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
             </Box>
           </Box>
 

@@ -31,7 +31,7 @@ const GameDirectorContext = createContext<GameDirectorContext>(
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
-  const { summit, setSummit, setAttackInProgress,
+  const { summit, setSummit, setAttackInProgress, collection,
     setCollection, setAppliedPotions, appliedPotions,
     setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent } = useGameStore();
   const { gameEventsQuery } = useQueries();
@@ -179,6 +179,16 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         ...prevSummit,
         beast: updatedBeast,
       }));
+    }
+
+    let myBeast = collection.find((beast: Beast) => beast.token_id === update.token_id);
+    if (myBeast) {
+      let newBeast = { ...myBeast, ...update };
+      newBeast.current_health = getBeastCurrentHealth(newBeast);
+      newBeast.revival_time = getBeastRevivalTime(newBeast);
+      newBeast.current_level = getBeastCurrentLevel(newBeast.level, newBeast.bonus_xp);
+      newBeast.power = (6 - newBeast.tier) * newBeast.current_level;
+      setCollection(prevCollection => prevCollection.map((beast: Beast) => beast.token_id === update.token_id ? newBeast : beast));
     }
   }
 
