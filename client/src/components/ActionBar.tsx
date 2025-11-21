@@ -5,7 +5,7 @@ import { Beast } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import RemoveIcon from '@mui/icons-material/Remove';
-import { Box, Button, IconButton, Menu, MenuItem, Slider, Tooltip, Typography } from '@mui/material';
+import { Box, Button, IconButton, Menu, MenuItem, Slider, Tooltip, Typography, TextField } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { isBrowser } from 'react-device-detect';
 import attackPotionIcon from '../assets/images/attack-potion.png';
@@ -14,6 +14,7 @@ import lifePotionIcon from '../assets/images/life-potion.png';
 import poisonPotionIcon from '../assets/images/poison-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import { gameColors } from '../utils/themes';
+import { calculateBattleResult } from '../utils/beasts';
 
 function ActionBar() {
   const { executeGameAction } = useGameDirector();
@@ -492,22 +493,24 @@ function ActionBar() {
         horizontal: 'center',
       }}
     >
-      <Box width={'160px'} display={'flex'} alignItems={'center'} flexDirection={'column'} p={1}>
+      <Box width={'160px'} display={'flex'} alignItems={'center'} flexDirection={'column'} p={1} gap={0.5}>
         <Typography
           variant='body1'
           sx={{
             color: gameColors.gameYellow,
             fontWeight: 500,
-            mb: 2,
+            mb: 1,
             fontSize: '14px',
           }}
         >
-          {potion === 'attack' ? 'Attack Boost' : potion === 'extraLife' ? 'Extra Life' : 'Poison Potion'}
+          {potion === 'attack' ? 'Attack Potion' : potion === 'extraLife' ? 'Extra Life' : 'Poison Potion'}
         </Typography>
 
         <Box
           display={'flex'}
           alignItems={'center'}
+          justifyContent={'space-between'}
+          width={'100%'}
           gap={1}
           mb={1}
         >
@@ -539,16 +542,71 @@ function ActionBar() {
           </IconButton>
 
           <Typography
-            variant='h5'
-            sx={{
-              color: gameColors.gameYellow,
-              fontWeight: 500,
-              minWidth: '40px',
-              textAlign: 'center',
-              mx: 1,
-            }}
+            component={'div'}
+            sx={{ mx: 1, display: 'flex', alignItems: 'center' }}
           >
-            {potion === 'attack' ? appliedPotions.attack : potion === 'extraLife' ? appliedPotions.extraLife : appliedPoisonCount}
+            <TextField
+              type="text"
+              size="small"
+              variant="outlined"
+              value={potion === 'attack' ? appliedPotions.attack : potion === 'extraLife' ? appliedPotions.extraLife : appliedPoisonCount}
+              onChange={(e) => {
+                const raw = e.target.value;
+                let next = parseInt(raw, 10);
+                if (isNaN(next)) next = 0;
+                next = Math.max(0, next);
+                const maxCap =
+                  potion === 'attack'
+                    ? Math.min(tokenBalances["ATTACK"] || 0, 255)
+                    : potion === 'extraLife'
+                      ? Math.min(
+                        tokenBalances["EXTRA LIFE"] || 0,
+                        Math.max(0, 255 - ((selectedBeasts[0]?.extra_lives as number) || 0))
+                      )
+                      : Math.min(tokenBalances["POISON"] || 0, 2050);
+                next = Math.min(next, maxCap);
+                if (potion === 'poison') {
+                  setAppliedPoisonCount(next);
+                } else {
+                  setAppliedPotions({
+                    ...appliedPotions,
+                    [potion]: next
+                  });
+                }
+              }}
+              inputProps={{
+                min: 0,
+                max:
+                  potion === 'attack'
+                    ? Math.min(tokenBalances["ATTACK"] || 0, 255)
+                    : potion === 'extraLife'
+                      ? Math.min(
+                        tokenBalances["EXTRA LIFE"] || 0,
+                        Math.max(0, 255 - ((selectedBeasts[0]?.extra_lives as number) || 0))
+                      )
+                      : Math.min(tokenBalances["POISON"] || 0, 2050),
+                inputMode: 'numeric',
+              }}
+              sx={{
+                width: 64,
+                '& .MuiInputBase-input': {
+                  color: gameColors.gameYellow,
+                  textAlign: 'center',
+                  padding: '4px 6px',
+                  fontWeight: 500,
+                  fontSize: '14px',
+                },
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: `${gameColors.gameYellow}30`,
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: gameColors.gameYellow,
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: gameColors.gameYellow,
+                },
+              }}
+            />
           </Typography>
 
           <IconButton
@@ -567,11 +625,21 @@ function ActionBar() {
             }}
             onClick={() => {
               if (potion === 'poison') {
-                setAppliedPoisonCount(Math.min(appliedPoisonCount + 1, Math.min(tokenBalances["POISON"], 65535)));
+                setAppliedPoisonCount(Math.min(appliedPoisonCount + 1, Math.min(tokenBalances["POISON"], 2050)));
               } else {
                 setAppliedPotions({
                   ...appliedPotions,
-                  [potion]: Math.min(appliedPotions[potion] + 1, Math.min(potion === 'attack' ? tokenBalances["ATTACK"] : potion === 'extraLife' ? tokenBalances["EXTRA LIFE"] : 255))
+                  [potion]: Math.min(
+                    appliedPotions[potion] + 1,
+                    potion === 'attack'
+                      ? Math.min(tokenBalances["ATTACK"] || 0, 255)
+                      : potion === 'extraLife'
+                        ? Math.min(
+                          tokenBalances["EXTRA LIFE"] || 0,
+                          Math.max(0, 255 - ((selectedBeasts[0]?.extra_lives as number) || 0))
+                        )
+                        : 255
+                  )
                 })
               }
             }}>
@@ -579,12 +647,119 @@ function ActionBar() {
           </IconButton>
         </Box>
 
+        {potion === 'attack' && summit?.beast && selectedBeasts.length > 0 && (
+          <Box
+            display={'flex'}
+            alignItems={'center'}
+            justifyContent={'center'}
+            gap={1}
+            width={'100%'}
+          >
+            <Button
+              size="small"
+              variant="outlined"
+              sx={{
+                flex: 1,
+                color: gameColors.gameYellow,
+                borderColor: `${gameColors.gameYellow}80`,
+                textTransform: 'none',
+                fontSize: '11px',
+                padding: '2px 8px',
+                minWidth: 0,
+                '&:hover': {
+                  color: gameColors.gameYellow,
+                  borderColor: gameColors.gameYellow,
+                  backgroundColor: `${gameColors.gameYellow}15`,
+                }
+              }}
+              onClick={() => {
+                const target = (summit.beast.extra_lives > 0)
+                  ? (summit.beast.health + summit.beast.bonus_health)
+                  : Math.max(1, summit.beast.current_health || 0);
+                const maxAllowed = Math.min(tokenBalances["ATTACK"] || 0, 255);
+                let bestRequired = Number.POSITIVE_INFINITY;
+                const beast = selectedBeasts[0] as Beast | undefined;
+                if (beast && beast.current_health > 0) {
+                  for (let n = 0; n <= maxAllowed; n++) {
+                    const combat = calculateBattleResult(beast, summit, n);
+                    if (combat.estimatedDamage >= target) {
+                      bestRequired = n;
+                      break;
+                    }
+                  }
+                }
+                const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
+                setAppliedPotions({
+                  ...appliedPotions,
+                  attack: value
+                });
+              }}
+            >
+              Optimal
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              sx={{
+                flex: 1,
+                color: gameColors.gameYellow,
+                borderColor: `${gameColors.gameYellow}80`,
+                textTransform: 'none',
+                fontSize: '11px',
+                padding: '2px 8px',
+                minWidth: 0,
+                '&:hover': {
+                  color: gameColors.gameYellow,
+                  borderColor: gameColors.gameYellow,
+                  backgroundColor: `${gameColors.gameYellow}15`,
+                }
+              }}
+              onClick={() => {
+                const target = (summit.beast.extra_lives > 0)
+                  ? (summit.beast.health + summit.beast.bonus_health)
+                  : Math.max(1, summit.beast.current_health || 0);
+                const maxAllowed = Math.min(tokenBalances["ATTACK"] || 0, 255);
+                let bestRequired = Number.POSITIVE_INFINITY;
+                const beast = selectedBeasts[0] as Beast | undefined;
+                if (beast && beast.current_health > 0) {
+                  for (let n = 0; n <= maxAllowed; n++) {
+                    const combat = calculateBattleResult(beast, summit, n);
+                    if (combat.attack >= target) {
+                      bestRequired = n;
+                      break;
+                    }
+                  }
+                }
+                const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
+                setAppliedPotions({
+                  ...appliedPotions,
+                  attack: value
+                });
+              }}
+            >
+              MAX
+            </Button>
+          </Box>
+        )}
+
         <Box sx={{ width: '100%', px: 0.5 }}>
           <Slider
             value={potion === 'attack' ? appliedPotions.attack : potion === 'extraLife' ? appliedPotions.extraLife : appliedPoisonCount}
             step={1}
             min={0}
-            max={Math.min(potion === 'attack' ? tokenBalances["ATTACK"] : potion === 'extraLife' ? tokenBalances["EXTRA LIFE"] : tokenBalances["POISON"], 255)}
+            max={
+              Math.min(
+                potion === 'attack'
+                  ? (tokenBalances["ATTACK"] || 0)
+                  : potion === 'extraLife'
+                    ? Math.min(
+                      (tokenBalances["EXTRA LIFE"] || 0),
+                      Math.max(0, 255 - ((selectedBeasts[0]?.extra_lives as number) || 0))
+                    )
+                    : (tokenBalances["POISON"] || 0),
+                (potion === 'poison' ? 2050 : 255)
+              )
+            }
             onChange={(e, value) => {
               if (potion === 'poison') {
                 setAppliedPoisonCount(value);
@@ -646,7 +821,19 @@ function ActionBar() {
             0
           </Typography>
           <Typography sx={{ fontSize: '11px', color: gameColors.gameYellow, opacity: 0.6 }}>
-            {Math.min(potion === 'attack' ? tokenBalances["ATTACK"] : potion === 'extraLife' ? tokenBalances["EXTRA LIFE"] : tokenBalances["POISON"], 255)}
+            {
+              Math.min(
+                potion === 'attack'
+                  ? (tokenBalances["ATTACK"] || 0)
+                  : potion === 'extraLife'
+                    ? Math.min(
+                      (tokenBalances["EXTRA LIFE"] || 0),
+                      Math.max(0, 255 - ((selectedBeasts[0]?.extra_lives as number) || 0))
+                    )
+                    : (tokenBalances["POISON"] || 0),
+                (potion === 'poison' ? 2050 : 255)
+              )
+            }
           </Typography>
         </Box>
       </Box>

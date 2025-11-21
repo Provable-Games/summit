@@ -46,7 +46,7 @@ function BeastCollection() {
     if (summit && collection.length > 0) {
       let filtered = collection.map((beast: Beast) => ({
         ...beast,
-        combat: calculateBattleResult(beast, summit.beast, appliedPotions?.attack || 0)
+        combat: calculateBattleResult(beast, summit, appliedPotions?.attack || 0)
       }));
 
       // Apply type filter

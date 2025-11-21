@@ -1,7 +1,7 @@
 import { useController } from '@/contexts/controller';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
-import { ellipseAddress } from '@/utils/utils';
+import { ellipseAddress, formatRewardNumber } from '@/utils/utils';
 import killTokenImg from '@/assets/images/kill-token.png';
 import corpseTokenImg from '@/assets/images/corpse-token.png';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -79,7 +79,7 @@ const ProfileCard = () => {
 
             <Box display={'flex'} alignItems={'start'}>
               <Typography sx={styles.infoValue}>
-                {leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount.toLocaleString() || 0}
+                {formatRewardNumber((leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount || 0) / 100)}
               </Typography>
             </Box>
           </Box>

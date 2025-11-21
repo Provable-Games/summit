@@ -10,6 +10,7 @@ import {
 export interface StatisticsContext {
   beastsRegistered: number;
   beastsAlive: number;
+  refreshBeastsAlive: () => void;
 }
 
 // Create a context
@@ -33,9 +34,14 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     setBeastsAlive(result);
   };
 
-  useEffect(() => {
+  const refreshBeastsAlive = () => {
+    // fire and forget; UI doesn't need to await
     fetchCollectedBeasts();
     fetchAliveBeasts();
+  };
+
+  useEffect(() => {
+    refreshBeastsAlive();
   }, []);
 
   return (
@@ -43,6 +49,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
       value={{
         beastsRegistered,
         beastsAlive,
+        refreshBeastsAlive,
       }}
     >
       {children}

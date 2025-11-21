@@ -70,7 +70,8 @@ function nameMatchBonus(attacker: Beast, defender: Beast, elementalDamage: numbe
   return damage;
 }
 
-export const calculateBattleResult = (beast: Beast, summit: Beast, potions: number): Combat => {
+export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: number): Combat => {
+  const summit = _summit.beast;
   const MINIMUM_DAMAGE = 4
 
   let elemental = elementalDamage(beast, summit);
@@ -79,13 +80,17 @@ export const calculateBattleResult = (beast: Beast, summit: Beast, potions: numb
   let summitNameMatch = nameMatchBonus(summit, beast, elemental);
 
   let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((elemental * (1 + 0.1 * potions) + beastNameMatch) - summit.power))
-  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental + summitNameMatch) - beast.power)
+  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental * (1 + 0.1 * _summit.diplomacy_bonus) + summitNameMatch) - beast.power)
 
-  let beastCritDamage = beast.stats.luck ? Math.max(MINIMUM_DAMAGE, Math.floor(((elemental * 2) * (1 + 0.1 * potions) + beastNameMatch) - summit.power)) : 0;
-  let summitCritDamage = summit.stats.luck ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) + summitNameMatch) - beast.power) : 0;
+  let beastCritChance = getLuckCritChancePercent(beast.stats.luck);
+  let summitCritChance = getLuckCritChancePercent(summit.stats.luck);
 
-  let beastAverageDamage = beast.stats.luck ? (beastDamage + beastCritDamage) / 2 : beastDamage;
-  let summitAverageDamage = summit.stats.luck ? (summitDamage + summitCritDamage) / 2 : summitDamage;
+  let beastCritDamage = beastCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor(((elemental * 2) * (1 + 0.1 * potions) + beastNameMatch) - summit.power)) : 0;
+  let summitCritDamage = summitCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) * (1 + 0.1 * _summit.diplomacy_bonus) + summitNameMatch) - beast.power) : 0;
+
+  let beastAverageDamage = beastCritChance > 0 ? (beastDamage * (100 - beastCritChance) + beastCritDamage * beastCritChance) / 100 : beastDamage;
+  let summitAverageDamage = summitCritChance > 0 ? (summitDamage * (100 - summitCritChance) + summitCritDamage * summitCritChance) / 100 : summitDamage;
+
   let estimatedDamage = Math.max(MINIMUM_DAMAGE, Math.floor(Math.ceil(beast.current_health / summitAverageDamage) * beastAverageDamage));
 
   return {
@@ -102,11 +107,11 @@ export const getBeastRevivalTime = (beast: Beast): number => {
   let revivalTime = 86400000;
 
   if ((beast.last_dm_death_timestamp * 1000) < Date.now() - 1209600000) {
-    revivalTime -= 28800000;
+    revivalTime -= 14400000;
   }
 
-  if (beast.stats.spirit) {
-    revivalTime -= 43200000;
+  if (beast.stats.spirit > 0) {
+    revivalTime -= getSpiritRevivalReductionSeconds(beast.stats.spirit) * 1000;
   }
 
   return revivalTime;
@@ -196,7 +201,7 @@ export const getSpiritRevivalReductionSeconds = (points: number): number => {
     case 14: return 42427;
     case 15: return 42620;
     default:
-      return 42620 + (p - 15) * 120;
+      return 42620 + (p - 15) * 100;
   }
 }
 
@@ -222,7 +227,6 @@ export function applyPoisonDamage(
   const nowSec = Math.floor(Date.now() / 1000);
   const elapsedSeconds = Math.max(0, nowSec - ts);
   const poisonDamage = count * elapsedSeconds;
-  console.log(ts, nowSec, elapsedSeconds, poisonDamage);
 
   if (poisonDamage <= 0) {
     return {

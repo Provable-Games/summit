@@ -5,11 +5,12 @@ import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { addAddressPadding } from 'starknet';
 import { lookupAddressNames } from '@/utils/addressNameCache';
-import { Box, Typography } from '@mui/material';
+import { Box, Typography, IconButton } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import { useEffect, useState } from 'react';
 
 function Leaderboard() {
-  const { beastsRegistered, beastsAlive } = useStatistics()
+  const { beastsRegistered, beastsAlive, refreshBeastsAlive } = useStatistics()
   const { summit, leaderboard, setLeaderboard } = useGameStore()
   const { getLeaderboard } = useGameTokens()
   const { getCurrentBlock } = useStarknetApi()
@@ -109,7 +110,6 @@ function Leaderboard() {
     : null
   const beforeAmount = summitOwnerPlayer?.amount || 0
   const gainedSince = blocksHeld * perBlockToOwner
-  const liveTotal = beforeAmount + gainedSince
 
   const PlayerRow = ({ player, index, cartridgeName }) => {
     const displayName = cartridgeName || 'Warlock'
@@ -121,7 +121,7 @@ function Leaderboard() {
           {displayName}
         </Typography>
         <Typography sx={styles.bigFiveRewards}>
-          {formatRewards(player.amount)}
+          {formatRewards(player.amount / 100)}
         </Typography>
       </Box>
     )
@@ -135,18 +135,6 @@ function Leaderboard() {
         <Typography sx={styles.title}>
           SUMMIT ALPHA
         </Typography>
-
-        {/* Current Summit - compact (max 2 lines) */}
-        {false && summit?.owner && (
-          <Box sx={styles.currentSummitCompact}>
-            <Typography sx={styles.currentSummitLine}>
-              Summit: {addressNames[summit.owner] || 'Warlock'} · D{diplomacyCount} · {perBlockToOwner}/blk · {blocksHeld.toLocaleString()} blk
-            </Typography>
-            <Typography sx={styles.currentSummitLine}>
-              {formatRewards(beforeAmount)} → +{formatRewards(gainedSince)} = <span style={{ color: gameColors.yellow }}>{formatRewards(liveTotal)}</span>
-            </Typography>
-          </Box>
-        )}
 
         <Box sx={styles.sectionHeader}>
           <Typography sx={styles.sectionTitle}>
@@ -182,10 +170,10 @@ function Leaderboard() {
                     {addressNames[summit.owner] || 'Warlock'}
                   </Typography>
                   <Typography sx={styles.summitOwnerScore}>
-                    {formatRewards(beforeAmount)} <span style={{ color: gameColors.brightGreen }}>+{formatRewards(gainedSince)}</span>
+                    {formatRewards(beforeAmount / 100)} <span style={{ color: gameColors.brightGreen }}>+{formatRewards(gainedSince / 100)}</span>
                   </Typography>
                 </Box>
-                {diplomacyCount >= 0 && (
+                {diplomacyCount > 0 && (
                   <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
                     <Typography sx={styles.summitOwnerSub}>
                       +{diplomacyCount} Diplomacy
@@ -201,10 +189,18 @@ function Leaderboard() {
           </Box>
         )}
 
-        <Box sx={[styles.sectionHeader, { pt: 0 }]}>
+        <Box sx={[styles.sectionHeader, { pt: 0, position: 'relative' }]}>
           <Typography sx={styles.sectionTitle}>
             STATS
           </Typography>
+          <IconButton
+            aria-label="Refresh beasts alive"
+            size="small"
+            onClick={refreshBeastsAlive}
+            sx={styles.refreshButton}
+          >
+            <RefreshIcon sx={{ color: gameColors.accentGreen, fontSize: '16px' }} />
+          </IconButton>
         </Box>
 
         <Box sx={styles.statRow}>
@@ -278,6 +274,11 @@ const styles = {
     alignItems: 'center',
     width: '100%',
     gap: '6px',
+  },
+  refreshButton: {
+    position: 'absolute',
+    right: 0,
+    top: '-5px'
   },
   statLabel: {
     fontSize: '12px',

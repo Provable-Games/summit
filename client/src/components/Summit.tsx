@@ -14,19 +14,21 @@ import heart from '../assets/images/heart.png';
 import poisonPotionIcon from '../assets/images/poison-potion.png';
 import { lookupAddressName } from '../utils/addressNameCache';
 import { BEAST_NAMES } from '../utils/BeastData';
-import { fetchBeastImage, fetchBeastSound, fetchBeastSummitImage, getLuckCritChancePercent, normaliseHealth } from '../utils/beasts';
+import { calculateBattleResult, fetchBeastImage, fetchBeastSound, fetchBeastSummitImage, getLuckCritChancePercent, normaliseHealth } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 
 function Summit() {
   const { collection, summit, attackInProgress, selectedBeasts, spectatorBattleEvents,
-    poisonEvent, setSpectatorBattleEvents, setSummit, setPoisonEvent } = useGameStore()
+    poisonEvent, setSpectatorBattleEvents, setSummit, setPoisonEvent, appliedPotions } = useGameStore()
   const { pauseUpdates } = useGameDirector()
+  const { play } = useSound()
 
   const controls = useAnimationControls()
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
   const [spectatorDamage, setSpectatorDamage] = useState<Array<{ id: string; damage: number; attackerName: string; imageSrc: string }>>([])
   const [poisonNotices, setPoisonNotices] = useState<Array<{ id: string; count: number; playerName: string }>>([])
-  const { play } = useSound()
+  const [estimatedDamage, setEstimatedDamage] = useState<number>(0)
+
   // Queue and dedup for spectator battle events
   const spectatorQueueRef = useRef<any[]>([])
   const processingSpectatorRef = useRef<boolean>(false)
@@ -128,6 +130,13 @@ function Summit() {
     return () => clearInterval(id);
   }, [summit?.poison_count]);
 
+  useEffect(() => {
+    if (summit) {
+      setEstimatedDamage(
+        selectedBeasts.reduce((acc, beast) => acc + calculateBattleResult(beast, summit, appliedPotions.attack).estimatedDamage, 0)
+      )
+    }
+  }, [selectedBeasts, summit, appliedPotions.attack])
 
   const processSpectatorQueue = async () => {
     if (processingSpectatorRef.current) return;
@@ -261,9 +270,9 @@ function Summit() {
             )}
 
             <Box sx={styles.abilitiesContainer}>
-              {summit.beast.stats.specials === true && <StarIcon sx={{ fontSize: '16px', color: '#ffd700', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
-              {summit.beast.stats.wisdom === true && <PsychologyIcon sx={{ fontSize: '16px', color: '#60a5fa', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
-              {summit.beast.stats.diplomacy === true && <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {summit.beast.stats.specials === true && <StarIcon sx={{ fontSize: '16px', color: '#ffd700', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {summit.beast.stats.wisdom === true && <PsychologyIcon sx={{ fontSize: '16px', color: '#60a5fa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {summit.beast.stats.diplomacy === true && <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
             </Box>
           </Box>
 
@@ -313,7 +322,7 @@ function Summit() {
               </Box>
             </Box>
           </Tooltip>
-          <Tooltip
+          {summit.diplomacy_bonus > 0 && <Tooltip
             title={
               <Box sx={styles.tooltipContent}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
@@ -330,7 +339,7 @@ function Summit() {
               </Box>
               <Typography sx={styles.levelValue}>{summit.diplomacy_bonus}</Typography>
             </Box>
-          </Tooltip>
+          </Tooltip>}
         </Box>
       </Box>
 
@@ -392,7 +401,7 @@ function Summit() {
           : null}
 
         {/* Attack Effects */}
-        {showAttack && (
+        {showAttack && estimatedDamage > 0 && (
           <>
             {/* Estimated Damage Display */}
             <Box sx={styles.estimatedDamageContainer}>
@@ -403,7 +412,7 @@ function Summit() {
                     <img src={'/images/sword.png'} alt='' height={'24px'} />
                   </Box>
                   <Typography sx={styles.damageValue}>
-                    {selectedBeasts.reduce((acc, beast) => acc + beast.combat?.estimatedDamage || 0, 0)}
+                    {estimatedDamage}
                   </Typography>
                 </Box>
               </Box>

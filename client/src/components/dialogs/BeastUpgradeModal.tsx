@@ -16,6 +16,7 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import StarIcon from '@mui/icons-material/Star';
 import { Box, Button, Dialog, IconButton, InputBase, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { isMobile } from 'react-device-detect';
 
 // DUMMY VALUES FOR COSTS
 const UPGRADE_COSTS = {
@@ -670,6 +671,10 @@ const styles = {
     gap: 2,
     p: 2,
     pt: 1,
+    flexDirection: { xs: 'column', md: 'row' },
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    alignItems: 'center',
   },
   leftPanel: {
     width: '240px',
@@ -929,7 +934,7 @@ const styles = {
   },
   abilitiesGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, 1fr)',
+    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
     gap: 1,
   },
   abilitySlot: {
