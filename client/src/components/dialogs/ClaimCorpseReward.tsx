@@ -6,6 +6,8 @@ import { Box, Button, Dialog, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
 
+const LIMIT = 300;
+
 function ClaimCorpseReward(props) {
   const { open, close, isOnboarding = false } = props
   const { executeGameAction, actionFailed } = useGameDirector()
@@ -36,14 +38,20 @@ function ClaimCorpseReward(props) {
       const tokenAmount = getTotalCorpseTokens();
       const adventurerIds = adventurerCollection.map(adv => adv.id)
 
-      let result = await executeGameAction(
-        {
+      let allSucceeded = true;
+      for (let i = 0; i < adventurerIds.length; i += LIMIT) {
+        const batch = adventurerIds.slice(i, i + LIMIT);
+        const res = await executeGameAction({
           type: "claim_corpse_reward",
-          adventurerIds: adventurerIds.slice(0, 1995)
+          adventurerIds: batch
+        });
+        if (!res) {
+          allSucceeded = false;
+          break;
         }
-      )
+      }
 
-      if (result) {
+      if (allSucceeded) {
         setTokenBalances({
           ...tokenBalances,
           "CORPSE": (tokenBalances["CORPSE"] || 0) + tokenAmount,
@@ -139,6 +147,11 @@ function ClaimCorpseReward(props) {
                 }
               </Typography>
             </Button>
+            {adventurerCollection.length > LIMIT && (
+              <Typography sx={styles.helperText}>
+                Extracting in batches of {LIMIT}
+              </Typography>
+            )}
           </Box>
         </Box>
 
