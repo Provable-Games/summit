@@ -226,7 +226,7 @@ function ClaimStarterPack(props) {
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
             <Button
-              disabled={claimInProgress || unclaimedBeasts.length === 0}
+              disabled={claimInProgress}
               onClick={claimAll}
               sx={[
                 styles.claimButton,

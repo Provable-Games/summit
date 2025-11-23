@@ -86,7 +86,7 @@ export const useStarknetApi = () => {
         kills_claimed: parseInt(data?.result[22], 16),
       }
       beast.current_level = getBeastCurrentLevel(beast.level, beast.bonus_xp);
-      console.log("summit data", data)
+      
       return {
         beast: {
           ...beast,
