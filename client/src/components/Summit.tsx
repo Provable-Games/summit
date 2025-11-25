@@ -104,15 +104,29 @@ function Summit() {
 
     const tick = () => {
       setSummit(prevSummit => {
-        let tickDamage = prevSummit.poison_count;
-        let newHealth = prevSummit.beast.current_health - tickDamage;
-        let extraLives = prevSummit.beast.extra_lives;
+        if (!prevSummit) return prevSummit;
 
-        if (newHealth <= 0 && extraLives > 0) {
-          extraLives -= 1;
-          newHealth = prevSummit.beast.health + prevSummit.beast.bonus_health - (tickDamage - prevSummit.beast.current_health);
-        } else if (newHealth <= 0) {
+        const damage = prevSummit.poison_count;
+        if (damage <= 0) return prevSummit;
+
+        const maxHealth = prevSummit.beast.health + prevSummit.beast.bonus_health;
+        const tickDamage = prevSummit.poison_count;
+
+        // Treat current health and extra lives as one pooled health bar,
+        // mirroring `applyPoisonDamage` so that if tickDamage > current_health,
+        // at least one life is always consumed.
+        const totalPoolBefore = (prevSummit.beast.extra_lives || 0) * maxHealth + prevSummit.beast.current_health;
+        const totalPoolAfter = totalPoolBefore - tickDamage;
+
+        let newHealth: number;
+        let extraLives: number;
+
+        if (totalPoolAfter <= 0) {
           newHealth = 1;
+          extraLives = 0;
+        } else {
+          extraLives = Math.floor((totalPoolAfter - 1) / maxHealth);
+          newHealth = totalPoolAfter - extraLives * maxHealth;
         }
 
         return {

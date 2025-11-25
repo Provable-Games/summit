@@ -20,6 +20,7 @@ interface GameState {
   adventurerCollection: Adventurer[];
   selectedAdventurers: Adventurer[];
   appliedPotions: AppliedPotions;
+  appliedPoisonCount: number;
   attackMode: 'safe' | 'unsafe' | 'capture';
 
   // Beast Collection Filters
@@ -43,6 +44,7 @@ interface GameState {
   setSelectedBeasts: (selectedBeasts: Beast[] | ((prev: Beast[]) => Beast[])) => void;
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => void;
   setAppliedPotions: (appliedPotions: AppliedPotions) => void;
+  setAppliedPoisonCount: (appliedPoisonCount: number) => void;
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture') => void;
 
   // Beast Collection Filter Setters
@@ -74,6 +76,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     attack: 0,
     extraLife: 0,
   },
+  appliedPoisonCount: 0,
   attackMode: 'safe',
 
   // Beast Collection Filters - Default Values
@@ -104,6 +107,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         attack: 0,
         extraLife: 0,
       },
+      appliedPoisonCount: 0,
       // Reset filters to defaults
       hideDeadBeasts: false,
       typeFilter: 'all',
@@ -130,6 +134,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => set({ selectedAdventurers }),
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => set({ adventurerCollection }),
   setAppliedPotions: (appliedPotions: AppliedPotions) => set({ appliedPotions }),
+  setAppliedPoisonCount: (appliedPoisonCount: number) => set({ appliedPoisonCount }),
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture') => set({ attackMode }),
 
   // Beast Collection Filter Setters

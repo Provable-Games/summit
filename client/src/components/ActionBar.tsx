@@ -22,13 +22,12 @@ function ActionBar() {
 
   const { selectedBeasts, summit,
     attackInProgress, appliedPotions, setAppliedPotions,
-    applyingPotions, setApplyingPotions,
+    applyingPotions, setApplyingPotions, appliedPoisonCount, setAppliedPoisonCount,
     collection, setSelectedBeasts, attackMode, setAttackMode } = useGameStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
   const [attackDropdownAnchor, setAttackDropdownAnchor] = useState<null | HTMLElement>(null);
-  const [appliedPoisonCount, setAppliedPoisonCount] = useState(0);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>, potion: any) => {
     setAnchorEl(event.currentTarget);
@@ -84,8 +83,6 @@ function ActionBar() {
       beastId: summit.beast.token_id,
       count: appliedPoisonCount,
     });
-
-    setAppliedPoisonCount(0);
   }
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit?.beast?.token_id))

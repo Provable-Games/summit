@@ -31,9 +31,8 @@ const GameDirectorContext = createContext<GameDirectorContext>(
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
-  const { summit, setSummit, setAttackInProgress, collection,
-    setCollection, setAppliedPotions, appliedPotions,
-    setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent } = useGameStore();
+  const { summit, setSummit, setAttackInProgress, collection, setCollection, setAppliedPotions, appliedPotions,
+    setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent, setAppliedPoisonCount } = useGameStore();
   const { gameEventsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimBeastReward, claimCorpseReward, addExtraLife, applyStatPoints, applyPoison } = useSystemCalls();
@@ -312,6 +311,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       });
       setApplyingPotions(false);
     } else if (action.type === 'apply_poison') {
+      setAppliedPoisonCount(0);
       setApplyingPotions(false);
     }
 
