@@ -27,8 +27,10 @@ trait ISummitSystem<T> {
     fn add_extra_life(ref self: T, beast_token_id: u32, extra_life_potions: u8);
     fn apply_stat_points(ref self: T, beast_token_id: u32, stats: Stats);
     fn apply_poison(ref self: T, beast_token_id: u32, count: u16);
-    fn get_summit_data(ref self: T) -> (Beast, u64, ContractAddress, u16, u64, felt252);
 
+    fn claim_summit(ref self: T);
+
+    fn get_summit_data(ref self: T) -> (Beast, u64, ContractAddress, u16, u64, felt252);
     fn get_start_timestamp(self: @T) -> u64;
     fn get_summit_beast_token_id(self: @T) -> u32;
     fn get_summit_beast(self: @T) -> Beast;
@@ -80,6 +82,8 @@ pub mod summit_systems {
         diplomacy_beast: Map<felt252, Map<u8, u32>>, // (prefix-suffix hash) -> (index) -> beast token id
         diplomacy_count: Map<felt252, u8>,
         start_timestamp: u64,
+        terminal_block: u64,
+        summit_claimed: bool,
         adventurer_address: ContractAddress,
         denshokan_address: ContractAddress,
         dungeon_address: ContractAddress,
@@ -133,6 +137,19 @@ pub mod summit_systems {
 
     #[abi(embed_v0)]
     impl SummitSystemImpl of super::ISummitSystem<ContractState> {
+        fn claim_summit(ref self: ContractState) {
+            assert(!self.summit_claimed.read(), 'Summit already claimed');
+            assert(!InternalSummitImpl::_summit_playable(@self), 'Summit not over');
+            
+            let token_id = self.summit_beast_token_id.read();
+
+            let beast_dispatcher = IERC721Dispatcher { contract_address: self.beast_address.read() };
+            let summit_owner = beast_dispatcher.owner_of(token_id.into());
+            assert(summit_owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
+
+            self.summit_claimed.write(true);
+        }
+
         fn attack(
             ref self: ContractState,
             defending_beast_token_id: u32,
@@ -166,6 +183,8 @@ pub mod summit_systems {
         }
 
         fn feed(ref self: ContractState, beast_token_id: u32, amount: u16) {
+            assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
+
             // assert the caller owns the beast they are feeding
             let beast_dispatcher = IERC721Dispatcher { contract_address: self.beast_address.read() };
             assert(beast_dispatcher.owner_of(beast_token_id.into()) == get_caller_address(), errors::NOT_TOKEN_OWNER);
@@ -185,10 +204,12 @@ pub mod summit_systems {
         }
 
         fn claim_beast_reward(ref self: ContractState, beast_token_ids: Span<u32>) {
+            assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
+
             let beast_dispatcher = IERC721Dispatcher { contract_address: self.beast_address.read() };
             let kill_token_dispatcher = SummitERC20Dispatcher { contract_address: self.kill_token_address.read() };
             let beast_data = IBeastSystemsDispatcher { contract_address: self.beast_data_address.read() };
-            
+
             let mut potion_rewards = 0;
             let mut kills_rewards = 0;
 
@@ -247,6 +268,8 @@ pub mod summit_systems {
         }
 
         fn claim_corpse_reward(ref self: ContractState, adventurer_ids: Span<u64>) {
+            assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
+
             let mut world: WorldStorage = self.world(@DEFAULT_NS());
 
             let mut corpse_tokens = 0;
@@ -272,6 +295,9 @@ pub mod summit_systems {
         }
 
         fn add_extra_life(ref self: ContractState, beast_token_id: u32, extra_life_potions: u8) {
+            assert(extra_life_potions > 0, 'No extra lives');
+            assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
+
             let summit_beast_token_id = self.summit_beast_token_id.read();
             assert(beast_token_id == summit_beast_token_id, 'Not summit beast');
 
@@ -304,6 +330,8 @@ pub mod summit_systems {
 
 
         fn apply_stat_points(ref self: ContractState, beast_token_id: u32, stats: Stats) {
+            assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
+
             let beast_dispatcher = IERC721Dispatcher { contract_address: self.beast_address.read() };
             assert(beast_dispatcher.owner_of(beast_token_id.into()) == get_caller_address(), errors::NOT_TOKEN_OWNER);
 
@@ -343,6 +371,7 @@ pub mod summit_systems {
 
         fn apply_poison(ref self: ContractState, beast_token_id: u32, count: u16) {
             assert(count > 0, 'No poison to apply');
+            assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
 
             let summit_beast_token_id = self.summit_beast_token_id.read();
             assert(beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
@@ -374,6 +403,9 @@ pub mod summit_systems {
         fn start_summit(ref self: ContractState) {
             assert(get_block_timestamp() >= self.start_timestamp.read(), 'Summit not open yet');
             assert(self.summit_beast_token_id.read() == 0, 'Summit already started');
+
+            let current_block = get_block_number();
+            self.terminal_block.write(current_block + 1_000_000);
 
             let start_token_id = 1;
             self.summit_history.entry(start_token_id).write(get_block_number());
@@ -419,6 +451,20 @@ pub mod summit_systems {
 
     #[generate_trait]
     pub impl InternalSummitImpl of InternalSummitUtils {
+        fn _summit_playable(self: @ContractState) -> bool {
+            let current_block = get_block_number();
+            let summit_beast_token_id = self.summit_beast_token_id.read();
+
+            if current_block > self.terminal_block.read() {
+                let mut taken_at: u64 = self.summit_history.entry(summit_beast_token_id).read();
+                if current_block - taken_at >= 75 {
+                    return false;
+                }
+            }
+
+            true
+        }
+        
         /// @title get_beast
         /// @notice this function is used to get a beast from the contract
         /// @param token_id the id of the beast
@@ -480,11 +526,15 @@ pub mod summit_systems {
         fn _finalize_summit_history(ref self: ContractState, ref beast: Beast, summit_owner: ContractAddress) {
             let mut world: WorldStorage = self.world(@DEFAULT_NS());
             let mut taken_at: u64 = self.summit_history.entry(beast.live.token_id).read();
+            
+            if taken_at >= self.terminal_block.read() {
+                return;
+            }
+            
             let current_block = get_block_number();
             let blocks_on_summit = current_block - taken_at;
-
             // Mint reward
-            if (blocks_on_summit > 0) {
+            if (blocks_on_summit > 0 && current_block < self.terminal_block.read()) {
                 // let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
                 // let reward_dispatcher = RewardERC20Dispatcher { contract_address: summit_config.reward_address };
                 // reward_dispatcher.mint(summit_owner, reward_amount * TOKEN_DECIMALS);
@@ -543,7 +593,9 @@ pub mod summit_systems {
         ) {
             let mut world: WorldStorage = self.world(@DEFAULT_NS());
             let summit_beast_token_id = self.summit_beast_token_id.read();
+
             assert(summit_beast_token_id != 0, 'Summit not started');
+            Self::_assert_summit_not_ended(@self);
 
             if defending_beast_token_id != 0 {
                 assert(defending_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
