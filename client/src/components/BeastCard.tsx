@@ -61,26 +61,31 @@ const BeastCard = memo(({
         />
 
         {/* Upgrade Icons */}
-        {(beast.stats.spirit || beast.stats.luck || beast.stats.specials) && (
+        {(beast.stats.spirit || beast.stats.luck || beast.stats.specials || beast.stats.wisdom || beast.stats.diplomacy) && (
           <Box sx={styles.upgradeIconsContainer}>
             {beast.stats.luck > 0 && (
               <Box sx={{ color: '#ff69b4' }}>
                 <CasinoIcon sx={{ fontSize: '14px' }} />
               </Box>
             )}
-            {beast.stats.specials === true && (
+            {beast.stats.specials ? (
               <Box sx={{ color: '#ffd700' }}>
                 <StarIcon sx={{ fontSize: '14px' }} />
               </Box>
-            )}
-            {beast.stats.wisdom === true && (
+            ) : null}
+            {beast.stats.wisdom ? (
               <Box sx={{ color: '#60a5fa' }}>
                 <PsychologyIcon sx={{ fontSize: '14px' }} />
               </Box>
-            )}
-            {beast.stats.diplomacy === true && (
+            ) : null}
+            {beast.stats.diplomacy ? (
               <Box sx={{ color: '#a78bfa' }}>
                 <HandshakeIcon sx={{ fontSize: '14px' }} />
+              </Box>
+            ) : null}
+            {beast.stats.spirit > 0 && (
+              <Box sx={{ color: '#00ffff' }}>
+                <EnergyIcon sx={{ fontSize: '14px' }} />
               </Box>
             )}
           </Box>

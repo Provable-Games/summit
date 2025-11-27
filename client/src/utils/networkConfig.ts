@@ -24,6 +24,7 @@ export interface NetworkConfig {
   ekuboRouter: string;
   beasts: string;
   dungeon: string;
+  paymentTokens: any[];
 }
 
 export enum ChainId {
@@ -95,6 +96,39 @@ export const NETWORKS = {
       "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
     ekuboRouter:
       "0x0199741822c2dc722f6f605204f35e56dbc23bceed54818168c4c49e4fb8737e",
+    paymentTokens: [
+      {
+        name: "LORDS",
+        address:
+          "0x0124aeb495b947201f5fac96fd1138e326ad86195b98df6dec9009158a533b49",
+        displayDecimals: 0,
+      },
+      {
+        name: "ETH",
+        address:
+          "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+        displayDecimals: 4,
+      },
+      {
+        name: "STRK",
+        address:
+          "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+        displayDecimals: 2,
+      },
+      {
+        name: "USDC",
+        address:
+          "0x053c91253bc9682c04929ca02ed00b3e423f6710d2ee7e0d5ebb06f3ecf368a8",
+        displayDecimals: 2,
+        decimals: 6,
+      },
+      {
+        name: "SURVIVOR",
+        address:
+          "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
+        displayDecimals: 0,
+      },
+    ],
   },
 };
 
@@ -264,6 +298,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     ekuboRouter: network.ekuboRouter,
     beasts: network.beasts,
     dungeon: network.dungeon,
+    paymentTokens: network.paymentTokens,
   };
 }
 

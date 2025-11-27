@@ -7,7 +7,9 @@ import { isBrowser, isMobile } from 'react-device-detect'
 import ActionBar from '../components/ActionBar'
 import BeastCollection from '../components/BeastCollection'
 import BurgerMenu from '../components/BurgerMenu'
+import ClaimRewardsButton from '../components/ClaimRewardsButton'
 import Leaderboard from '../components/Leaderboard'
+import LeaderboardButton from '../components/LeaderboardButton'
 import Onboarding from '../components/Onboarding'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
@@ -25,13 +27,19 @@ function MainPage() {
 
       <>
         {isBrowser && <Box sx={styles.sideContainer}>
-          <Leaderboard />
+          <Box sx={styles.leaderboardSection}>
+            <Leaderboard />
+            <LeaderboardButton onClick={() => console.log('Leaderboard clicked')} />
+          </Box>
         </Box>}
 
         {summit && <Summit />}
 
         {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
-          <ProfileCard />
+          <Box sx={styles.profileSection}>
+            <ClaimRewardsButton />
+            <ProfileCard />
+          </Box>
         </Box>}
 
         {onboarding
@@ -109,5 +117,15 @@ const styles = {
       0 2px 4px rgba(0, 0, 0, 0.8),
       0 0 12px ${gameColors.yellow}40
     `,
+  },
+  profileSection: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 1,
+  },
+  leaderboardSection: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 1,
   },
 }

@@ -8,6 +8,8 @@ import { lookupAddressNames } from '@/utils/addressNameCache';
 import { Box, Typography, IconButton } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useEffect, useState } from 'react';
+import { TERMINAL_BLOCK } from '@/contexts/GameDirector';
+import FinalShowdown from './FinalShowdown';
 
 function Leaderboard() {
   const { beastsRegistered, beastsAlive, refreshBeastsAlive } = useStatistics()
@@ -19,7 +21,10 @@ function Leaderboard() {
   const [currentBlock, setCurrentBlock] = useState(0)
   const [summitOwnerRank, setSummitOwnerRank] = useState(null)
 
-  // Fetch current block every 5 seconds
+  // Check if we're in the final showdown phase
+  const isFinalShowdown = currentBlock >= TERMINAL_BLOCK;
+
+  // Fetch current block - every 2 seconds during Final Showdown, every 5 seconds otherwise
   useEffect(() => {
     const fetchBlock = async () => {
       const block = await getCurrentBlock()
@@ -27,10 +32,10 @@ function Leaderboard() {
     }
 
     fetchBlock()
-    const interval = setInterval(fetchBlock, 5000)
+    const interval = setInterval(fetchBlock, isFinalShowdown ? 2000 : 5000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [isFinalShowdown])
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -125,6 +130,10 @@ function Leaderboard() {
         </Typography>
       </Box>
     )
+  }
+
+  if (isFinalShowdown) {
+    return <FinalShowdown summit={summit} currentBlock={currentBlock} />;
   }
 
   return <Box sx={styles.container}>

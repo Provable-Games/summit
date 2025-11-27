@@ -27,7 +27,7 @@ type TypeKey = 'all' | 'Brute' | 'Hunter' | 'Magic';
 
 export default function BeastDexModal(props: BeastDexModalProps) {
   const { open, close } = props;
-  const { collection } = useGameStore();
+  const { collection, summit } = useGameStore();
 
   const [prefixQuery, setPrefixQuery] = useState('');
   const [suffixQuery, setSuffixQuery] = useState('');
@@ -76,8 +76,18 @@ export default function BeastDexModal(props: BeastDexModalProps) {
         list.sort((a, b) => b.power - a.power);
         break;
     }
+    // Always keep summit beast at the top if it's in the list
+    if (summit?.beast?.token_id != null) {
+      const summitTokenId = summit.beast.token_id;
+      const index = list.findIndex(b => b.token_id === summitTokenId);
+      if (index > 0) {
+        const [summitBeast] = list.splice(index, 1);
+        list.unshift(summitBeast);
+      }
+    }
+
     return list;
-  }, [collection, prefixQuery, suffixQuery, nameQuery, sortBy, typeFilter]);
+  }, [collection, prefixQuery, suffixQuery, nameQuery, sortBy, typeFilter, summit]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pagedItems = useMemo(() => {
@@ -247,6 +257,11 @@ export default function BeastDexModal(props: BeastDexModalProps) {
               >
                 <Box sx={styles.cardTop}>
                   <Box sx={styles.imageHolder}>
+                    {summit?.beast?.token_id === beast.token_id && (
+                      <Box sx={styles.ribbon}>
+                        <Typography sx={styles.ribbonText}>SUMMIT</Typography>
+                      </Box>
+                    )}
                     <img src={fetchBeastImage(beast)} alt={beast.name} style={{ width: '90%', height: '90%', objectFit: 'contain' }} />
                   </Box>
                   <Box sx={styles.nameArea}>
@@ -573,10 +588,10 @@ const styles = {
   },
   ribbon: {
     position: 'absolute',
-    top: '6px',
-    left: '6px',
-    background: '#ff4d4d',
-    color: '#000',
+    top: '2px',
+    left: '2px',
+    background: gameColors.yellow,
+    color: gameColors.darkGreen,
     borderRadius: '3px',
     padding: '0 6px',
     lineHeight: '16px',
@@ -589,6 +604,7 @@ const styles = {
   ribbonText: {
     fontSize: '10px',
     fontWeight: 'bold',
+    color: gameColors.darkGreen,
     letterSpacing: '0.6px',
   },
   nameArea: {

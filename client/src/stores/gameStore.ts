@@ -6,6 +6,7 @@ export type BeastTypeFilter = 'all' | 'strong';
 
 interface GameState {
   summit: Summit | null;
+  summitEnded: boolean;
   onboarding: boolean;
   leaderboard: Leaderboard[];
   battleEvents: BattleEvent[];
@@ -30,6 +31,7 @@ interface GameState {
   nameMatchFilter: boolean;
 
   setSummit: (summit: Summit | null | ((prev: Summit | null) => Summit | null)) => void;
+  setSummitEnded: (summitEnded: boolean) => void;
   setOnboarding: (onboarding: boolean) => void;
   setLeaderboard: (leaderboard: Leaderboard[]) => void;
   setBattleEvents: (battleEvents: BattleEvent[]) => void;
@@ -58,6 +60,7 @@ interface GameState {
 
 export const useGameStore = create<GameState>((set, get) => ({
   summit: null,
+  summitEnded: false,
   onboarding: false,
   leaderboard: [],
   battleEvents: [],
@@ -117,6 +120,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setSummit: (summit: Summit | null | ((prev: Summit | null) => Summit | null)) =>
     set(state => ({ summit: typeof summit === 'function' ? summit(state.summit) : summit })),
+  setSummitEnded: (summitEnded: boolean) => set({ summitEnded }),
   setOnboarding: (onboarding: boolean) => set({ onboarding }),
   setLeaderboard: (leaderboard: Leaderboard[]) => set({ leaderboard }),
   setBattleEvents: (battleEvents: BattleEvent[]) => set({ battleEvents }),

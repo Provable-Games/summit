@@ -171,7 +171,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   }
 
   async function fetchTokenBalances() {
-    let balances = await getTokenBalances(currentNetworkConfig.tokens.erc20);
+    let balances = await getTokenBalances(currentNetworkConfig.paymentTokens);
     setTokenBalances(balances);
   }
 

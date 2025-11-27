@@ -24,6 +24,7 @@ export interface GameDirectorContext {
 }
 
 export const START_TIMESTAMP = 1760947200;
+export const TERMINAL_BLOCK = 5000000;
 
 const GameDirectorContext = createContext<GameDirectorContext>(
   {} as GameDirectorContext
