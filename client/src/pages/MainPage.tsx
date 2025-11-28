@@ -4,12 +4,15 @@ import { useGameDirector } from "@/contexts/GameDirector"
 import { useGameStore } from "@/stores/gameStore"
 import { Box, Typography } from '@mui/material'
 import { isBrowser, isMobile } from 'react-device-detect'
+import { useState } from 'react'
 import ActionBar from '../components/ActionBar'
 import BeastCollection from '../components/BeastCollection'
 import BurgerMenu from '../components/BurgerMenu'
 import ClaimRewardsButton from '../components/ClaimRewardsButton'
 import Leaderboard from '../components/Leaderboard'
 import LeaderboardButton from '../components/LeaderboardButton'
+import BeastBoard from '../components/BeastBoard'
+import Top5000BeastsModal from '../components/dialogs/Top5000BeastsModal'
 import Onboarding from '../components/Onboarding'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
@@ -18,6 +21,7 @@ import { gameColors } from '../utils/themes'
 function MainPage() {
   const { summit, attackInProgress, selectedBeasts, onboarding } = useGameStore()
   const { pauseUpdates } = useGameDirector();
+  const [top5000ModalOpen, setTop5000ModalOpen] = useState(false);
 
   return <>
     <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
@@ -29,7 +33,7 @@ function MainPage() {
         {isBrowser && <Box sx={styles.sideContainer}>
           <Box sx={styles.leaderboardSection}>
             <Leaderboard />
-            <LeaderboardButton onClick={() => console.log('Leaderboard clicked')} />
+            <LeaderboardButton />
           </Box>
         </Box>}
 
@@ -38,6 +42,7 @@ function MainPage() {
         {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
           <Box sx={styles.profileSection}>
             <ClaimRewardsButton />
+            <BeastBoard onClick={() => setTop5000ModalOpen(true)} />
             <ProfileCard />
           </Box>
         </Box>}
@@ -67,6 +72,12 @@ function MainPage() {
 
       <Countdown />
     </Box >
+
+    {top5000ModalOpen && <Top5000BeastsModal
+      open={top5000ModalOpen}
+      onClose={() => setTop5000ModalOpen(false)}
+    />
+    }
   </>
 }
 

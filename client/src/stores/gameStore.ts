@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Summit, Beast, Adventurer, AppliedPotions, BattleEvent, Leaderboard, PoisonEvent } from '@/types/game';
 
-export type SortMethod = 'recommended' | 'power' | 'attack' | 'health';
+export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'rewards earned';
 export type BeastTypeFilter = 'all' | 'strong';
 
 interface GameState {
@@ -26,6 +26,7 @@ interface GameState {
 
   // Beast Collection Filters
   hideDeadBeasts: boolean;
+  hideTop5000: boolean;
   sortMethod: SortMethod;
   typeFilter: BeastTypeFilter;
   nameMatchFilter: boolean;
@@ -51,6 +52,7 @@ interface GameState {
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => void;
+  setHideTop5000: (hideTop5000: boolean) => void;
   setSortMethod: (sortMethod: SortMethod) => void;
   setTypeFilter: (typeFilter: BeastTypeFilter) => void;
   setNameMatchFilter: (nameMatchFilter: boolean) => void;
@@ -84,6 +86,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   // Beast Collection Filters - Default Values
   hideDeadBeasts: false,
+  hideTop5000: false,
   sortMethod: (() => {
     const saved = localStorage.getItem('beastSortMethod');
     return (saved as SortMethod) || 'recommended';
@@ -143,6 +146,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => set({ hideDeadBeasts }),
+  setHideTop5000: (hideTop5000: boolean) => set({ hideTop5000 }),
   setSortMethod: (sortMethod: SortMethod) => {
     localStorage.setItem('beastSortMethod', sortMethod);
     set({ sortMethod });

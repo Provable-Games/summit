@@ -19,7 +19,7 @@ import BeastDexModal from './dialogs/BeastDexModal';
 import MarketplaceModal from './dialogs/MarketplaceModal';
 
 const ProfileCard = () => {
-  const { collection, adventurerCollection, leaderboard, onboarding, loadingCollection, summitEnded } = useGameStore()
+  const { collection, leaderboard, onboarding, loadingCollection, summitEnded } = useGameStore()
   const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
   const { playerName, tokenBalances, openProfile } = useController()

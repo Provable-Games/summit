@@ -4,6 +4,12 @@ import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime } from "@/utils/beasts";
 import { addAddressPadding } from "starknet";
 
+export interface Top5000Cutoff {
+  rewards_earned: number;
+  power: number;
+  health: number;
+}
+
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
@@ -296,6 +302,48 @@ export const useGameTokens = () => {
     return adventurerIds.filter((id: number) => !data.some((row: any) => parseInt(row.adventurer_id, 16) === id))
   }
 
+  const getTop5000Cutoff = async (): Promise<Top5000Cutoff | null> => {
+    try {
+      // Query 1: Get rewards_earned sorted DESC (fast, no joins)
+      const statsQuery = `
+        SELECT 
+          "live_stats.rewards_earned" as rewards_earned
+        FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+        WHERE "live_stats.rewards_earned" > 0
+        ORDER BY "live_stats.rewards_earned" DESC
+        LIMIT 5000
+      `;
+
+      const statsUrl = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(statsQuery)}`;
+      const statsResponse = await fetch(statsUrl, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+      const statsData = await statsResponse.json();
+
+      if (!statsData || statsData.length < 5000) {
+        return {
+          rewards_earned: 0,
+          power: 0,
+          health: 0,
+        }
+      }
+
+      // Get the 5000th beast's rewards_earned
+      const cutoffRewards = statsData[4999].rewards_earned;
+
+      return {
+        rewards_earned: cutoffRewards,
+        power: 0,
+        health: 0,
+      }
+
+    } catch (error) {
+      console.error("Error getting top 5000 cutoff:", error);
+      return null;
+    }
+  }
+
   return {
     getBeastCollection,
     countRegisteredBeasts,
@@ -303,6 +351,7 @@ export const useGameTokens = () => {
     getKilledBy,
     getKilledBeasts,
     getValidAdventurers,
-    countAliveBeasts
+    countAliveBeasts,
+    getTop5000Cutoff
   };
 };
