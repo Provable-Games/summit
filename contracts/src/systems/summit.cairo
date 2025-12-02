@@ -32,6 +32,7 @@ trait ISummitSystem<T> {
     fn add_beast_to_leaderboard(ref self: T, beast_token_id: u32, position: u16);
     fn distribute_beast_tokens(ref self: T, limit: u16);
 
+    fn set_start_timestamp(ref self: T, start_timestamp: u64);
     fn set_event_address(ref self: T, event_address: ContractAddress);
     fn set_attack_potion_address(ref self: T, attack_potion_address: ContractAddress);
     fn set_revive_potion_address(ref self: T, revive_potion_address: ContractAddress);
@@ -163,12 +164,6 @@ pub mod summit_systems {
         beast_address: ContractAddress,
         beast_data_address: ContractAddress,
         reward_address: ContractAddress,
-        attack_potion_address: ContractAddress,
-        revive_potion_address: ContractAddress,
-        extra_life_potion_address: ContractAddress,
-        poison_potion_address: ContractAddress,
-        kill_token_address: ContractAddress,
-        corpse_token_address: ContractAddress,
     ) {
         self.ownable.initializer(owner);
         self.start_timestamp.write(start_timestamp);
@@ -179,18 +174,10 @@ pub mod summit_systems {
         self.beast_dispatcher.write(IERC721Dispatcher { contract_address: beast_address });
         self.beast_nft_dispatcher.write(IBeastsDispatcher { contract_address: beast_address });
         self.beast_data_dispatcher.write(IBeastSystemsDispatcher { contract_address: beast_data_address });
-
         self.reward_dispatcher.write(IERC20Dispatcher { contract_address: reward_address });
-        self.attack_potion_dispatcher.write(SummitERC20Dispatcher { contract_address: attack_potion_address });
-        self.revive_potion_dispatcher.write(SummitERC20Dispatcher { contract_address: revive_potion_address });
-        self.extra_life_potion_dispatcher.write(SummitERC20Dispatcher { contract_address: extra_life_potion_address });
-        self.poison_potion_dispatcher.write(SummitERC20Dispatcher { contract_address: poison_potion_address });
-
-        self.kill_token_dispatcher.write(SummitERC20Dispatcher { contract_address: kill_token_address });
-        self.corpse_token_dispatcher.write(SummitERC20Dispatcher { contract_address: corpse_token_address });
     }
 
-    #[abi(embed_v0)]
+    #[abi(embed_v0)] 
     impl SummitSystemImpl of super::ISummitSystem<ContractState> {
         fn claim_summit(ref self: ContractState) {
             assert(!self.summit_claimed.read(), 'Summit already claimed');
@@ -523,6 +510,12 @@ pub mod summit_systems {
             }
 
             self.beast_tokens_distributed.write(current_position);
+        }
+
+        fn set_start_timestamp(ref self: ContractState, start_timestamp: u64) {
+            self.ownable.assert_only_owner();
+            assert(self.start_timestamp.read() > get_block_timestamp(), 'Summit already started');
+            self.start_timestamp.write(start_timestamp);
         }
 
         fn set_event_address(ref self: ContractState, event_address: ContractAddress) {

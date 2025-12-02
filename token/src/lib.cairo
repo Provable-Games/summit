@@ -1,25 +1,26 @@
 use starknet::ContractAddress;
 
 #[starknet::interface]
-pub trait ISavageERC20<TContractState> {
+pub trait ISummitERC20<TContractState> {
     fn mint(ref self: TContractState, recipient: ContractAddress, amount: u256);
+    fn burn_from(ref self: TContractState, from: ContractAddress, amount: u256);
     fn is_terminal(self: @TContractState) -> bool;
     fn get_terminal_timestamp(self: @TContractState) -> u64;
 }
 
 #[starknet::contract]
-mod SavageERC20 {
-    use openzeppelin_access::ownable::OwnableComponent;
+mod SummitERC20 {
     use openzeppelin_token::erc20::ERC20Component::ComponentState;
     use openzeppelin_token::erc20::{ERC20Component};
-    use starknet::{ContractAddress, get_block_timestamp};
+    use openzeppelin_access::ownable::OwnableComponent;
 
-    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    use starknet::{ContractAddress, get_caller_address, get_block_timestamp};
+
     component!(path: ERC20Component, storage: erc20, event: ERC20Event);
+    component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
 
-    // Ownable Mixin
     #[abi(embed_v0)]
-    impl OwnableMixinImpl = OwnableComponent::OwnableMixinImpl<ContractState>;
+    impl OwnableImpl = OwnableComponent::OwnableImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
 
     // ERC20 Mixin
@@ -30,9 +31,10 @@ mod SavageERC20 {
     #[storage]
     struct Storage {
         #[substorage(v0)]
-        ownable: OwnableComponent::Storage,
-        #[substorage(v0)]
         erc20: ERC20Component::Storage,
+        #[substorage(v0)]
+        ownable: OwnableComponent::Storage,
+        summit_address: ContractAddress,
         terminal_timestamp: u64,
     }
 
@@ -40,41 +42,47 @@ mod SavageERC20 {
     #[derive(Drop, starknet::Event)]
     enum Event {
         #[flat]
-        OwnableEvent: OwnableComponent::Event,
-        #[flat]
         ERC20Event: ERC20Component::Event,
+        #[flat]
+        OwnableEvent: OwnableComponent::Event,
     }
 
     #[constructor]
     fn constructor(
         ref self: ContractState,
+        owner: ContractAddress,
         name: ByteArray,
         symbol: ByteArray,
+        terminal_timestamp: u64,
         summit_address: ContractAddress,
-        terminal_timestamp: u64
     ) {
+        self.ownable.initializer(owner);
         self.erc20.initializer(name, symbol);
-        self.ownable.initializer(summit_address);
         self.terminal_timestamp.write(terminal_timestamp);
+        self.summit_address.write(summit_address);
     }
 
-    #[external(v0)]
-    fn mint(
-        ref self: ContractState,
-        recipient: ContractAddress,
-        amount: u256
-    ) {
-        self.ownable.assert_only_owner();
-        self.erc20.mint(recipient, amount);
-    }
+    #[abi(embed_v0)]
+    impl SummitERC20Impl of super::ISummitERC20<ContractState> {
+        fn burn_from(ref self: ContractState, from: ContractAddress, amount: u256) {
+            self.erc20.burn(from, amount);
+        }
 
-    fn is_terminal(self: @ContractState) -> bool {
-        let current_timestamp = get_block_timestamp();
-        current_timestamp >= self.terminal_timestamp.read()
-    }
+        fn mint(ref self: ContractState, recipient: ContractAddress, amount: u256) {
+            assert(
+                get_caller_address() == self.summit_address.read(), 'Not summit contract',
+            );
+            self.erc20.mint(recipient, amount);
+        }
 
-    fn get_terminal_timestamp(self: @ContractState) -> u64 {
-        self.terminal_timestamp.read()
+        fn is_terminal(self: @ContractState) -> bool {
+            let current_timestamp = get_block_timestamp();
+            current_timestamp >= self.terminal_timestamp.read()
+        }
+
+        fn get_terminal_timestamp(self: @ContractState) -> u64 {
+            self.terminal_timestamp.read()
+        }
     }
 
     #[generate_trait]
@@ -91,7 +99,7 @@ mod SavageERC20 {
             ref self: ComponentState<ContractState>,
             from: ContractAddress,
             recipient: ContractAddress,
-            amount: u256
+            amount: u256,
         ) {
             let contract = self.get_contract();
             InternalFunctions::assert_not_terminal(contract);
@@ -101,8 +109,8 @@ mod SavageERC20 {
             ref self: ComponentState<ContractState>,
             from: ContractAddress,
             recipient: ContractAddress,
-            amount: u256
-        ) {// Your code here (if needed)
+            amount: u256,
+        ) { // Your code here (if needed)
         }
     }
 }

@@ -13,3 +13,4 @@ contracts/manifests/*
 .env
 contracts/deploy/mainnet.sh
 contracts/savage-summit.code-workspace
+accounts/

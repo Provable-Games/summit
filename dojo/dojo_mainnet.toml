@@ -10,14 +10,14 @@ world_block = 2125240
 max_block_range = 10000
 
 [namespace]
-default = "summit_relayer_0_1"
+default = "summit_relayer_1"
 
 [writers]
-"summit_relayer_0_1" = [
-    "summit_relayer_0_1-summit_systems",
+"summit_relayer_1" = [
+    "summit_relayer_1-summit_systems",
 ]
 
 [init_call_args]
-"summit_relayer_0_1-summit_systems" = [
+"summit_relayer_1-summit_systems" = [
     "0x3fc7ecd6d577daa1ee855a9fa13a914d01acda06715c9fc74f1ee1a5e346a01", # summit_address
 ]
