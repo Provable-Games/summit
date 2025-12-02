@@ -1,7 +1,7 @@
 use starknet::ContractAddress;
-use summit::models::beast::{LiveBeastStats};
+use summit::models::beast::LiveBeastStats;
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Drop, Serde)]
 #[dojo::event]
 pub struct LiveBeastStatsEvent {
     #[key]
@@ -10,7 +10,7 @@ pub struct LiveBeastStatsEvent {
 }
 
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Drop, Serde)]
 #[dojo::event]
 pub struct BattleEvent {
     #[key]
@@ -32,7 +32,7 @@ pub struct BattleEvent {
     pub xp_gained: u8,
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Drop, Serde)]
 #[dojo::event]
 pub struct RewardEvent {
     #[key]
@@ -43,7 +43,7 @@ pub struct RewardEvent {
     pub amount: u32,
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Drop, Serde)]
 #[dojo::event]
 pub struct PoisonEvent {
     #[key]
@@ -54,7 +54,7 @@ pub struct PoisonEvent {
     pub player: ContractAddress,
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Drop, Serde)]
 #[dojo::event]
 pub struct DiplomacyEvent {
     #[key]
@@ -63,7 +63,7 @@ pub struct DiplomacyEvent {
     pub total_power: u16,
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Drop, Serde)]
 #[dojo::event]
 pub struct SummitEvent {
     #[key]
@@ -73,7 +73,7 @@ pub struct SummitEvent {
     pub owner: ContractAddress,
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Drop, Serde)]
 #[dojo::event]
 pub struct CorpseRewardEvent {
     #[key]
@@ -81,7 +81,7 @@ pub struct CorpseRewardEvent {
     pub player: ContractAddress,
 }
 
-#[derive(Copy, Drop, Serde)]
+#[derive(Drop, Serde)]
 #[dojo::event]
 pub struct BeastEvent {
     #[key]

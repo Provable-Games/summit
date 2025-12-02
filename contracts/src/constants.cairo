@@ -11,7 +11,7 @@ pub const MAX_U16: u16 = 0xffff;
 pub const MINIMUM_DAMAGE: u8 = 4;
 pub const BEAST_MAX_BONUS_HEALTH: u16 = 1023;
 pub const BEAST_MAX_BONUS_LVLS: u16 = 40;
-pub const MAX_REVIVAL_COUNT: u8 = 15;
+pub const MAX_REVIVAL_COUNT: u8 = 31;
 pub const EIGHT_BITS_MAX: u8 = 255;
 pub const TOKEN_DECIMALS: u256 = 1_000_000_000_000_000_000;
 

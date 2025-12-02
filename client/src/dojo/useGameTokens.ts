@@ -19,7 +19,7 @@ export const useGameTokens = () => {
         SELECT tb.token_id, tb.account_address, tb.contract_address, tb.balance
         FROM token_balances tb
         WHERE tb.account_address = '${addAddressPadding(accountAddress.toLowerCase())}'
-          AND tb.contract_address = '${addAddressPadding(currentNetworkConfig.beasts.toLowerCase())}'
+          AND tb.contract_address = '0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4'
           AND tb.balance = '0x0000000000000000000000000000000000000000000000000000000000000001'
         LIMIT 10000
       ),

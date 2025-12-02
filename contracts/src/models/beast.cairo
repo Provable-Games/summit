@@ -1,6 +1,6 @@
 use beasts_nft::pack::PackableBeast;
 
-#[derive(Introspect, Drop, Copy, Serde)]
+#[derive(Drop, Copy, Serde)]
 pub struct LiveBeastStats {
     pub token_id: u32, // 17 bits
     pub current_health: u16, // 12 bits
@@ -16,7 +16,7 @@ pub struct LiveBeastStats {
     pub kills_claimed: u8,
 }
 
-#[derive(Introspect, Copy, Drop, Serde)]
+#[derive(Copy, Drop, Serde)]
 pub struct Stats {
     pub spirit: u8, // 8 bits
     pub luck: u8, // 8 bits

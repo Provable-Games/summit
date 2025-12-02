@@ -1,0 +1,23 @@
+[world]
+name = "Provable Games"
+description = "DNC"
+seed = "DNC"
+
+[env]
+rpc_url = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_8"
+world_address = "0x02ef591697f0fd9adc0ba9dbe0ca04dabad80cf95f08ba02e435d9cb6698a28a"
+world_block = 2125240
+max_block_range = 10000
+
+[namespace]
+default = "summit_relayer_0_1"
+
+[writers]
+"summit_relayer_0_1" = [
+    "summit_relayer_0_1-summit_systems",
+]
+
+[init_call_args]
+"summit_relayer_0_1-summit_systems" = [
+    "0x3fc7ecd6d577daa1ee855a9fa13a914d01acda06715c9fc74f1ee1a5e346a01", # summit_address
+]

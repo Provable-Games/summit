@@ -1,4 +1,4 @@
-use starknet::{ContractAddress, contract_address_const, get_caller_address};
+use starknet::{ContractAddress, get_caller_address};
 
 #[starknet::interface]
 pub trait IVrfProvider<TContractState> {
@@ -15,7 +15,7 @@ pub enum Source {
 #[generate_trait]
 pub impl VRFImpl of VRFTrait {
     fn vrf_address() -> ContractAddress {
-        contract_address_const::<0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f>()
+        0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f.try_into().unwrap()
     }
 
     fn seed() -> felt252 {
