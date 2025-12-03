@@ -264,7 +264,7 @@ export const getSpecialsHash = (prefix: number, suffix: number): bigint => {
 }
 
 export const isBeastInTop5000 = (beast: Beast, top5000Cutoff: Top5000Cutoff): boolean => {
-  if (!top5000Cutoff) return false;
+  if (!top5000Cutoff || beast.blocks_held === 0) return false;
 
   return beast.blocks_held > top5000Cutoff.blocks_held
     || (beast.blocks_held === top5000Cutoff.blocks_held && beast.bonus_xp > top5000Cutoff.bonus_xp)

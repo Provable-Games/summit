@@ -118,7 +118,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (summit?.beast) {
       fetchDiplomacy();
     }
-  }, [summit.beast.token_id]);
+  }, [summit?.beast.token_id]);
 
   useEffect(() => {
     if (diplomacyEvent && diplomacyEvent.specials_hash === summit?.beast.specials_hash) {

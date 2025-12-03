@@ -73,8 +73,8 @@ export default function Top5000BeastsModal({ open, onClose }: Top5000BeastsModal
         <Box sx={styles.statsGrid}>
           <Box sx={styles.statCard}>
             <WhatshotIcon sx={styles.statIcon} />
-            <Typography sx={styles.statLabel}>Blocks Needed</Typography>
-            <Typography sx={styles.statValue}>{top5000Cutoff?.blocks_held || 0}</Typography>
+            <Typography sx={styles.statLabel}>Required Blocks</Typography>
+            <Typography sx={styles.statValue}>{Math.max(top5000Cutoff?.blocks_held || 0, 1)}</Typography>
           </Box>
 
           <Box sx={styles.statCard}>
@@ -118,7 +118,7 @@ export default function Top5000BeastsModal({ open, onClose }: Top5000BeastsModal
 
         <Box sx={styles.footer}>
           <Typography sx={styles.hint}>
-            Tiebreaker: In case of a tie, lower power beasts rank higher
+            Tiebreaker: In case of a tie, beast with more bonus XP rank higher
           </Typography>
         </Box>
       </Box>
