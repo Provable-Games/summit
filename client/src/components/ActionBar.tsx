@@ -109,7 +109,7 @@ function ActionBar() {
     }
   }, [attackMode]);
 
-  const hasEnoughRevivePotions = tokenBalances["REVIVE"] >= revivalPotionsRequired;
+  const hasEnoughRevivePotions = (tokenBalances["REVIVE"] || 0) >= revivalPotionsRequired;
   const enableAttack = (attackMode === 'capture' && !attackInProgress) || ((!isSavage || attackMode !== 'safe') && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions);
 
   const enableExtraLifePotion = tokenBalances["EXTRA LIFE"] > 0;
