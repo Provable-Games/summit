@@ -10,7 +10,7 @@ if [ -z "$STARKNET_ACCOUNT" ] || [ -z "$STARKNET_PRIVATE_KEY" ]; then
 fi
 
 OWNER="0x418ed348930686c844fda4556173457d3f71ae547262406d271de534af6b35e"
-summit_address="0x036017e69d21d6d8c13e266eabb73ef1f1d02722d86bdcabe5f168f8e549d3cd"
+summit_address="0x029a44584d62472018da0d428420f31ea0cf26ed29c21a9d60cc08164b8058fd"
 
 kill_token_name="0 0x546573744b696c6c546f6b656e 13"
 kill_token_symbol="0 0x5453544B54 5"

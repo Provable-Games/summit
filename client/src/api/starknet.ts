@@ -2,7 +2,6 @@ import { useDynamicConnector } from "@/contexts/starknet";
 import { Summit } from "@/types/game";
 import { getBeastCurrentLevel, getBeastDetails } from "@/utils/beasts";
 import { parseBalances } from "@/utils/utils";
-import { getContractByName } from "@dojoengine/core";
 import { useAccount } from "@starknet-react/core";
 
 export const useStarknetApi = () => {
@@ -47,7 +46,7 @@ export const useStarknetApi = () => {
           method: "starknet_call",
           params: [
             {
-              contract_address: getContractByName(currentNetworkConfig.manifest, currentNetworkConfig.namespace, "summit_systems")?.address,
+              contract_address: import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS,
               entry_point_selector: "0x00fcd0b0b7e39516dcbf65e688512d37b784f66a37624adad7349669bd7db496",
               calldata: [],
             },
@@ -75,7 +74,7 @@ export const useStarknetApi = () => {
         revival_count: parseInt(data?.result[13], 16),
         extra_lives: parseInt(data?.result[14], 16),
         has_claimed_potions: Boolean(parseInt(data?.result[15], 16)),
-        rewards_earned: parseInt(data?.result[16], 16),
+        blocks_held: parseInt(data?.result[16], 16),
         stats: {
           spirit: parseInt(data?.result[17], 16),
           luck: parseInt(data?.result[18], 16),
@@ -95,10 +94,8 @@ export const useStarknetApi = () => {
         },
         taken_at: parseInt(data?.result[23], 16),
         owner: data?.result[24],
-        diplomacy_bonus: parseInt(data?.result[25], 16),
-        diplomacy_count: parseInt(data?.result[26], 16),
-        poison_count: parseInt(data?.result[27], 16),
-        poison_timestamp: parseInt(data?.result[28], 16),
+        poison_count: parseInt(data?.result[25], 16),
+        poison_timestamp: parseInt(data?.result[26], 16),
       }
     } catch (error) {
       console.log('error', error)

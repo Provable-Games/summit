@@ -23,7 +23,7 @@ export default function Top5000BeastsModal({ open, onClose }: Top5000BeastsModal
   const [playerBeastsInTop5000, setPlayerBeastsInTop5000] = useState(0);
 
   useEffect(() => {
-    setPlayerBeastsInTop5000(collection.filter(beast => beast.rewards_earned > top5000Cutoff?.rewards_earned || 0).length);
+    setPlayerBeastsInTop5000(collection.filter(beast => beast.blocks_held > top5000Cutoff?.blocks_held || 0).length);
   }, [collection, top5000Cutoff]);
 
   const progressPercent = (playerBeastsInTop5000 / collection.length) * 100;
@@ -73,7 +73,7 @@ export default function Top5000BeastsModal({ open, onClose }: Top5000BeastsModal
           <Box sx={styles.statCard}>
             <WhatshotIcon sx={styles.statIcon} />
             <Typography sx={styles.statLabel}>Current Cutoff</Typography>
-            <Typography sx={styles.statValue}>{Math.max(top5000Cutoff?.rewards_earned || 0, 0.01)}</Typography>
+            <Typography sx={styles.statValue}>{Math.max(top5000Cutoff?.blocks_held || 0, 0.01)}</Typography>
           </Box>
 
           <Box sx={styles.statCard}>

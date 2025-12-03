@@ -91,7 +91,7 @@ function Leaderboard() {
 
     // Find summit owner in leaderboard
     const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summit.owner))
-    const score = (player?.amount || 0) + (blocksHeld * (100 - summit.diplomacy_count))
+    const score = (player?.amount || 0) + (blocksHeld * (100 - (summit.diplomacy?.beast_token_ids.length || 0)))
 
     // Find summit owner's rank in the sorted list
     const liveRank = leaderboard.findIndex(p => p.amount < score) + 1
@@ -108,7 +108,7 @@ function Leaderboard() {
 
   // Derived "Current Summit" metrics
   const blocksHeld = summit?.taken_at && currentBlock ? Math.max(0, currentBlock - summit.taken_at) : 0
-  const diplomacyCount = summit?.diplomacy_count || 0
+  const diplomacyCount = summit?.diplomacy?.beast_token_ids.length || 0
   const perBlockToOwner = Math.max(0, 100 - diplomacyCount)
   const summitOwnerPlayer = summit?.owner
     ? leaderboard.find(p => addAddressPadding(p.owner) === addAddressPadding(summit.owner))

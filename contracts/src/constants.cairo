@@ -33,7 +33,3 @@ pub mod errors {
     pub const NOT_ENOUGH_CONSUMABLES: felt252 = 'not enough consumables';
     pub const POTION_NOT_ALLOWED_ON_SUMMIT: felt252 = 'Potion not allowed on summit';
 }
-
-pub fn DEFAULT_NS() -> ByteArray {
-    "summit_0_0_9"
-}

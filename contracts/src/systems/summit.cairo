@@ -177,7 +177,7 @@ pub mod summit_systems {
         self.reward_dispatcher.write(IERC20Dispatcher { contract_address: reward_address });
     }
 
-    #[abi(embed_v0)] 
+    #[abi(embed_v0)]
     impl SummitSystemImpl of super::ISummitSystem<ContractState> {
         fn claim_summit(ref self: ContractState) {
             assert(!self.summit_claimed.read(), 'Summit already claimed');
@@ -464,7 +464,7 @@ pub mod summit_systems {
             assert(position > 0 && position <= 5000, 'Invalid position');
 
             let new_beast: Beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
-            assert!(new_beast.live.rewards_earned > 0, "Beast has no rewards earned");
+            assert!(new_beast.live.blocks_held > 0, "Beast has no rewards earned");
 
             if position > 1 {
                 let previous_position_id = self.beast_leaderboard.entry(position - 1).read();
@@ -736,6 +736,7 @@ pub mod summit_systems {
             let blocks_on_summit = current_block - taken_at;
             // Mint reward
             if (blocks_on_summit > 0 && current_block < self.terminal_block.read()) {
+                beast.live.blocks_held += blocks_on_summit.try_into().unwrap();
                 // let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
                 // let reward_dispatcher = RewardERC20Dispatcher { contract_address: summit_config.reward_address };
                 // reward_dispatcher.mint(summit_owner, reward_amount * TOKEN_DECIMALS);
@@ -752,12 +753,10 @@ pub mod summit_systems {
                         }
 
                         let diplomacy_beast_token_id = self.diplomacy_beast.entry(specials_hash).entry(index).read();
-                        let mut diplomacy_beast = Self::_get_beast(@self, diplomacy_beast_token_id);
                         let diplomacy_beast_owner = self
                             .beast_dispatcher
                             .read()
                             .owner_of(diplomacy_beast_token_id.into());
-                        diplomacy_beast.live.rewards_earned += diplomacy_reward_amount;
                         self
                             .summit_events_dispatcher
                             .read()
@@ -769,7 +768,6 @@ pub mod summit_systems {
                 }
 
                 let summit_reward_amount = total_reward_amount - (diplomacy_reward_amount * diplomacy_count.into());
-                beast.live.rewards_earned += summit_reward_amount;
                 self
                     .summit_events_dispatcher
                     .read()
@@ -1144,11 +1142,15 @@ pub mod summit_systems {
         }
 
         fn _is_beast_stronger(beast1: Beast, beast2: Beast) -> bool {
-            if beast1.live.rewards_earned == beast2.live.rewards_earned {
+            if beast1.live.blocks_held == beast2.live.blocks_held {
+                if beast1.live.bonus_xp == beast2.live.bonus_xp {
+                    return beast1.live.last_death_timestamp > beast2.live.last_death_timestamp;
+                }
+
                 return beast1.live.bonus_xp > beast2.live.bonus_xp;
             }
 
-            beast1.live.rewards_earned > beast2.live.rewards_earned
+            beast1.live.blocks_held > beast2.live.blocks_held
         }
 
         fn _get_battle_randomness(

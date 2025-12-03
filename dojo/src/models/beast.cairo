@@ -9,7 +9,7 @@ pub struct LiveBeastStats {
     pub revival_count: u8, // 5 bits
     pub extra_lives: u8, // 8 bits
     pub has_claimed_potions: u8, // 1 bit
-    pub rewards_earned: u32, // 17 bits
+    pub blocks_held: u32, // 17 bits
     pub stats: Stats,
     pub kills_claimed: u8,
 }

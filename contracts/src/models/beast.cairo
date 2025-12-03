@@ -11,7 +11,7 @@ pub struct LiveBeastStats {
     pub revival_count: u8, // 5 bits
     pub extra_lives: u8, // 8 bits
     pub has_claimed_potions: u8, // 1 bit
-    pub rewards_earned: u32, // 17 bits
+    pub blocks_held: u32, // 17 bits
     pub stats: Stats,
     pub kills_claimed: u8,
 }
@@ -69,7 +69,7 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
             + value.revival_count.into() * pow::TWO_POW_125
             + value.extra_lives.into() * pow::TWO_POW_130
             + value.has_claimed_potions.into() * pow::TWO_POW_138
-            + value.rewards_earned.into() * pow::TWO_POW_139
+            + value.blocks_held.into() * pow::TWO_POW_139
             + value.stats.spirit.into() * pow::TWO_POW_156
             + value.stats.luck.into() * pow::TWO_POW_164
             + value.stats.specials.into() * pow::TWO_POW_172
@@ -119,8 +119,8 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
         let has_claimed_potions = (packed % 2_u256).try_into().expect('unpack has_claimed_potions');
         packed = packed / 2_u256;
 
-        // Extract rewards_earned (17 bits)
-        let rewards_earned = (packed % pow::TWO_POW_17).try_into().expect('unpack rewards_earned');
+        // Extract blocks_held (17 bits)
+        let blocks_held = (packed % pow::TWO_POW_17).try_into().expect('unpack blocks_held');
         packed = packed / pow::TWO_POW_17;
 
         let spirit = (packed % pow::TWO_POW_8).try_into().expect('unpack spirit');
@@ -153,7 +153,7 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
             revival_count,
             extra_lives,
             has_claimed_potions,
-            rewards_earned,
+            blocks_held,
             stats,
             kills_claimed,
         }
@@ -231,7 +231,7 @@ mod tests {
         revival_count: u8,
         extra_lives: u8,
         has_claimed_potions: u8,
-        rewards_earned: u32,
+        blocks_held: u32,
         spirit: u8,
         luck: u8,
         specials: u8,
@@ -249,7 +249,7 @@ mod tests {
             revival_count,
             extra_lives,
             has_claimed_potions,
-            rewards_earned,
+            blocks_held,
             stats: Stats { spirit, luck, specials, wisdom, diplomacy },
             kills_claimed,
         }
@@ -267,7 +267,7 @@ mod tests {
             0_u8, // revival_count
             0_u8, // extra_lives
             0_u8, // has_claimed_potions
-            0_u32, // rewards_earned
+            0_u32, // blocks_held
             0_u8, // spirit
             0_u8, // luck
             0_u8, // specials
@@ -286,7 +286,7 @@ mod tests {
         assert(unpacked.revival_count == 0, 'zero revival_count');
         assert(unpacked.extra_lives == 0, 'zero extra_lives');
         assert(unpacked.has_claimed_potions == 0, 'zero has_claimed_potions');
-        assert(unpacked.rewards_earned == 0, 'zero rewards_earned');
+        assert(unpacked.blocks_held == 0, 'zero blocks_held');
         assert(unpacked.stats.spirit == 0, 'zero spirit');
         assert(unpacked.stats.luck == 0, 'zero luck');
         assert(unpacked.stats.specials == 0, 'zero specials');
@@ -307,7 +307,7 @@ mod tests {
         // revival_count: 5 bits → 2^5 - 1
         // extra_lives: 8 bits → 2^8 - 1
         // has_claimed_potions: 1 bit → 1
-        // rewards_earned: 17 bits → 2^17 - 1
+        // blocks_held: 17 bits → 2^17 - 1
         // spirit, luck: 8 bits → 255
         // specials, wisdom, diplomacy: 1 bit → 1
         // kills_claimed: 8 bits → 255
@@ -340,7 +340,7 @@ mod tests {
         assert(unpacked.revival_count == 30_u8, 'max revival_count');
         assert(unpacked.extra_lives == 254_u8, 'max extra_lives');
         assert(unpacked.has_claimed_potions == 1_u8, 'max has_claimed_potions');
-        assert(unpacked.rewards_earned == 131070_u32, 'max rewards_earned');
+        assert(unpacked.blocks_held == 131070_u32, 'max blocks_held');
         assert(unpacked.stats.spirit == 254_u8, 'max spirit');
         assert(unpacked.stats.luck == 254_u8, 'max luck');
         assert(unpacked.stats.specials == 1_u8, 'max specials');
@@ -364,7 +364,7 @@ mod tests {
         assert(unpacked.revival_count == 7_u8, 'mixed revival_count');
         assert(unpacked.extra_lives == 42_u8, 'mixed extra_lives');
         assert(unpacked.has_claimed_potions == 1_u8, 'mixed has_claimed_potions');
-        assert(unpacked.rewards_earned == 54321_u32, 'mixed rewards_earned');
+        assert(unpacked.blocks_held == 54321_u32, 'mixed blocks_held');
         assert(unpacked.stats.spirit == 17_u8, 'mixed spirit');
         assert(unpacked.stats.luck == 200_u8, 'mixed luck');
         assert(unpacked.stats.specials == 0_u8, 'mixed specials');

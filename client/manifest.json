@@ -1328,12 +1328,12 @@
   },
   "contracts": [
     {
-      "address": "0x75d886f3c53ff8f9ef413d88d9e0c8ee56216fed8c32d64b767b9fa271aa0dd",
-      "class_hash": "0x5c19948f136a7bca7446841663fe33f3f2987c348716112886d8e59fe76b128",
+      "address": "0x3a768bf13b4511e459c85e3ce8ddfb1cfccfa02fe4506446716459c8c5d3789",
+      "class_hash": "0x2309f5423dfdd0d8947f1d2c262c33aede8b571aa9a35a51032992d3ec78ceb",
       "abi": [
         {
           "type": "impl",
-          "name": "summit_systems__ContractImpl",
+          "name": "summit_events__ContractImpl",
           "interface_name": "dojo::contract::interface::IContract"
         },
         {
@@ -1343,7 +1343,7 @@
         },
         {
           "type": "impl",
-          "name": "summit_systems__DeployedContractImpl",
+          "name": "summit_events__DeployedContractImpl",
           "interface_name": "dojo::meta::interface::IDeployedResource"
         },
         {
@@ -1386,55 +1386,7 @@
           "name": "dojo_init",
           "inputs": [
             {
-              "name": "start_timestamp",
-              "type": "core::integer::u64"
-            },
-            {
-              "name": "adventurer_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "denshokan_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "dungeon_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "beast_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "beast_data_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "reward_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "attack_potion_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "revive_potion_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "extra_life_potion_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "poison_potion_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "kill_token_address",
-              "type": "core::starknet::contract_address::ContractAddress"
-            },
-            {
-              "name": "corpse_token_address",
+              "name": "summit_address",
               "type": "core::starknet::contract_address::ContractAddress"
             }
           ],
@@ -1443,42 +1395,8 @@
         },
         {
           "type": "impl",
-          "name": "SummitSystemImpl",
-          "interface_name": "summit::systems::summit::ISummitSystem"
-        },
-        {
-          "type": "struct",
-          "name": "core::array::Span::<core::integer::u32>",
-          "members": [
-            {
-              "name": "snapshot",
-              "type": "@core::array::Array::<core::integer::u32>"
-            }
-          ]
-        },
-        {
-          "type": "enum",
-          "name": "core::bool",
-          "variants": [
-            {
-              "name": "False",
-              "type": "()"
-            },
-            {
-              "name": "True",
-              "type": "()"
-            }
-          ]
-        },
-        {
-          "type": "struct",
-          "name": "core::array::Span::<core::integer::u64>",
-          "members": [
-            {
-              "name": "snapshot",
-              "type": "@core::array::Array::<core::integer::u64>"
-            }
-          ]
+          "name": "SummitEventsImpl",
+          "interface_name": "summit::systems::summit::ISummitEvents"
         },
         {
           "type": "struct",
@@ -1502,40 +1420,6 @@
             },
             {
               "name": "diplomacy",
-              "type": "core::integer::u8"
-            }
-          ]
-        },
-        {
-          "type": "struct",
-          "name": "beasts_nft::pack::PackableBeast",
-          "members": [
-            {
-              "name": "id",
-              "type": "core::integer::u8"
-            },
-            {
-              "name": "prefix",
-              "type": "core::integer::u8"
-            },
-            {
-              "name": "suffix",
-              "type": "core::integer::u8"
-            },
-            {
-              "name": "level",
-              "type": "core::integer::u16"
-            },
-            {
-              "name": "health",
-              "type": "core::integer::u16"
-            },
-            {
-              "name": "shiny",
-              "type": "core::integer::u8"
-            },
-            {
-              "name": "animated",
               "type": "core::integer::u8"
             }
           ]
@@ -1581,7 +1465,7 @@
               "type": "core::integer::u8"
             },
             {
-              "name": "rewards_earned",
+              "name": "blocks_held",
               "type": "core::integer::u32"
             },
             {
@@ -1596,43 +1480,122 @@
         },
         {
           "type": "struct",
-          "name": "summit::models::beast::Beast",
+          "name": "core::array::Span::<core::integer::u32>",
           "members": [
             {
-              "name": "fixed",
-              "type": "beasts_nft::pack::PackableBeast"
+              "name": "snapshot",
+              "type": "@core::array::Array::<core::integer::u32>"
+            }
+          ]
+        },
+        {
+          "type": "struct",
+          "name": "summit::models::summit::BeastEvent",
+          "members": [
+            {
+              "name": "id",
+              "type": "core::integer::u8"
             },
             {
-              "name": "live",
-              "type": "summit::models::beast::LiveBeastStats"
+              "name": "prefix",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "suffix",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "level",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "health",
+              "type": "core::integer::u16"
+            },
+            {
+              "name": "shiny",
+              "type": "core::integer::u8"
+            },
+            {
+              "name": "animated",
+              "type": "core::integer::u8"
             }
           ]
         },
         {
           "type": "interface",
-          "name": "summit::systems::summit::ISummitSystem",
+          "name": "summit::systems::summit::ISummitEvents",
           "items": [
             {
               "type": "function",
-              "name": "start_summit",
-              "inputs": [],
+              "name": "emit_beast_event",
+              "inputs": [
+                {
+                  "name": "live_stats",
+                  "type": "summit::models::beast::LiveBeastStats"
+                }
+              ],
               "outputs": [],
               "state_mutability": "external"
             },
             {
               "type": "function",
-              "name": "attack",
+              "name": "emit_battle_event",
               "inputs": [
+                {
+                  "name": "attacking_beast_owner",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                },
+                {
+                  "name": "attacking_beast_token_id",
+                  "type": "core::integer::u32"
+                },
+                {
+                  "name": "attacking_beast_id",
+                  "type": "core::integer::u8"
+                },
+                {
+                  "name": "shiny",
+                  "type": "core::integer::u8"
+                },
+                {
+                  "name": "animated",
+                  "type": "core::integer::u8"
+                },
                 {
                   "name": "defending_beast_token_id",
                   "type": "core::integer::u32"
                 },
                 {
-                  "name": "attacking_beast_token_ids",
-                  "type": "core::array::Span::<core::integer::u32>"
+                  "name": "attack_count",
+                  "type": "core::integer::u16"
                 },
                 {
-                  "name": "revival_potions",
+                  "name": "attack_damage",
+                  "type": "core::integer::u16"
+                },
+                {
+                  "name": "critical_attack_count",
+                  "type": "core::integer::u16"
+                },
+                {
+                  "name": "critical_attack_damage",
+                  "type": "core::integer::u16"
+                },
+                {
+                  "name": "counter_attack_count",
+                  "type": "core::integer::u16"
+                },
+                {
+                  "name": "counter_attack_damage",
+                  "type": "core::integer::u16"
+                },
+                {
+                  "name": "critical_counter_attack_count",
+                  "type": "core::integer::u16"
+                },
+                {
+                  "name": "critical_counter_attack_damage",
                   "type": "core::integer::u16"
                 },
                 {
@@ -1640,35 +1603,7 @@
                   "type": "core::integer::u8"
                 },
                 {
-                  "name": "extra_life_potions",
-                  "type": "core::integer::u8"
-                },
-                {
-                  "name": "vrf",
-                  "type": "core::bool"
-                }
-              ],
-              "outputs": [],
-              "state_mutability": "external"
-            },
-            {
-              "type": "function",
-              "name": "attack_unsafe",
-              "inputs": [
-                {
-                  "name": "attacking_beast_token_ids",
-                  "type": "core::array::Span::<core::integer::u32>"
-                },
-                {
-                  "name": "revival_potions",
-                  "type": "core::integer::u16"
-                },
-                {
-                  "name": "attack_potions",
-                  "type": "core::integer::u8"
-                },
-                {
-                  "name": "extra_life_potions",
+                  "name": "xp_gained",
                   "type": "core::integer::u8"
                 }
               ],
@@ -1677,55 +1612,19 @@
             },
             {
               "type": "function",
-              "name": "feed",
+              "name": "emit_reward_event",
               "inputs": [
                 {
                   "name": "beast_token_id",
                   "type": "core::integer::u32"
+                },
+                {
+                  "name": "owner",
+                  "type": "core::starknet::contract_address::ContractAddress"
                 },
                 {
                   "name": "amount",
-                  "type": "core::integer::u16"
-                }
-              ],
-              "outputs": [],
-              "state_mutability": "external"
-            },
-            {
-              "type": "function",
-              "name": "claim_beast_reward",
-              "inputs": [
-                {
-                  "name": "beast_token_ids",
-                  "type": "core::array::Span::<core::integer::u32>"
-                }
-              ],
-              "outputs": [],
-              "state_mutability": "external"
-            },
-            {
-              "type": "function",
-              "name": "claim_corpse_reward",
-              "inputs": [
-                {
-                  "name": "adventurer_ids",
-                  "type": "core::array::Span::<core::integer::u64>"
-                }
-              ],
-              "outputs": [],
-              "state_mutability": "external"
-            },
-            {
-              "type": "function",
-              "name": "add_extra_life",
-              "inputs": [
-                {
-                  "name": "beast_token_id",
                   "type": "core::integer::u32"
-                },
-                {
-                  "name": "extra_life_potions",
-                  "type": "core::integer::u8"
                 }
               ],
               "outputs": [],
@@ -1733,23 +1632,7 @@
             },
             {
               "type": "function",
-              "name": "apply_stat_points",
-              "inputs": [
-                {
-                  "name": "beast_token_id",
-                  "type": "core::integer::u32"
-                },
-                {
-                  "name": "stats",
-                  "type": "summit::models::beast::Stats"
-                }
-              ],
-              "outputs": [],
-              "state_mutability": "external"
-            },
-            {
-              "type": "function",
-              "name": "apply_poison",
+              "name": "emit_poison_event",
               "inputs": [
                 {
                   "name": "beast_token_id",
@@ -1758,6 +1641,10 @@
                 {
                   "name": "count",
                   "type": "core::integer::u16"
+                },
+                {
+                  "name": "player",
+                  "type": "core::starknet::contract_address::ContractAddress"
                 }
               ],
               "outputs": [],
@@ -1765,63 +1652,59 @@
             },
             {
               "type": "function",
-              "name": "get_summit_data",
-              "inputs": [],
-              "outputs": [
+              "name": "emit_diplomacy_event",
+              "inputs": [
                 {
-                  "type": "(summit::models::beast::Beast, core::integer::u64, core::starknet::contract_address::ContractAddress, core::integer::u8, core::integer::u8, core::integer::u16, core::integer::u64)"
+                  "name": "specials_hash",
+                  "type": "core::felt252"
+                },
+                {
+                  "name": "beast_token_ids",
+                  "type": "core::array::Span::<core::integer::u32>"
+                },
+                {
+                  "name": "total_power",
+                  "type": "core::integer::u16"
                 }
               ],
+              "outputs": [],
               "state_mutability": "external"
             },
             {
               "type": "function",
-              "name": "get_start_timestamp",
-              "inputs": [],
-              "outputs": [
-                {
-                  "type": "core::integer::u64"
-                }
-              ],
-              "state_mutability": "view"
-            },
-            {
-              "type": "function",
-              "name": "get_summit_beast_token_id",
-              "inputs": [],
-              "outputs": [
-                {
-                  "type": "core::integer::u32"
-                }
-              ],
-              "state_mutability": "view"
-            },
-            {
-              "type": "function",
-              "name": "get_summit_beast",
-              "inputs": [],
-              "outputs": [
-                {
-                  "type": "summit::models::beast::Beast"
-                }
-              ],
-              "state_mutability": "view"
-            },
-            {
-              "type": "function",
-              "name": "get_beast",
+              "name": "emit_summit_event",
               "inputs": [
                 {
-                  "name": "beast_token_id",
-                  "type": "core::integer::u32"
-                }
-              ],
-              "outputs": [
+                  "name": "beast",
+                  "type": "summit::models::summit::BeastEvent"
+                },
                 {
-                  "type": "summit::models::beast::Beast"
+                  "name": "live_stats",
+                  "type": "summit::models::beast::LiveBeastStats"
+                },
+                {
+                  "name": "owner",
+                  "type": "core::starknet::contract_address::ContractAddress"
                 }
               ],
-              "state_mutability": "view"
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "emit_corpse_reward_event",
+              "inputs": [
+                {
+                  "name": "adventurer_id",
+                  "type": "core::integer::u64"
+                },
+                {
+                  "name": "player",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
             }
           ]
         },
@@ -1917,7 +1800,7 @@
         },
         {
           "type": "event",
-          "name": "summit::systems::summit::summit_systems::Event",
+          "name": "summit::systems::summit::summit_events::Event",
           "kind": "enum",
           "variants": [
             {
@@ -1934,34 +1817,19 @@
         }
       ],
       "init_calldata": [
-        "1761057539",
-        "0x3fc7ecd6d577daa1ee855a9fa13a914d01acda06715c9fc74f1ee1a5e346a01",
-        "0x036017e69d21d6d8c13e266eabb73ef1f1d02722d86bdcabe5f168f8e549d3cd",
-        "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42",
-        "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
-        "0x74abc15c0ddef39bdf1ede2a643c07968d3ed5bacb0123db2d5b7154fbb35c7",
-        "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
-        "0x075bbe6a4a4c744ad2da8da0cc7562623d4181418359d62909a02b4abf5be651",
-        "0x003561384b4c4502f87fd728332f8cf4e604a1215185d9d997be33769ba32fc3",
-        "0x07af033bf4a3f2cae7f871ca015c7021f97846217733d72665aaf6ad735d4359",
-        "0x047314b2b569360da4623035d2d81479a90a677beae8518e221960b07afb960f",
-        "0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd",
-        "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c"
+        "0x029a44584d62472018da0d428420f31ea0cf26ed29c21a9d60cc08164b8058fd"
       ],
-      "tag": "summit_0_0_9-summit_systems",
-      "selector": "0x224495b335b6e4f643c5a7db86d1085d3e4e9fe00e2a4e7f583f0b41c4fd616",
+      "tag": "summit_relayer_1-summit_events",
+      "selector": "0x7ecf52905cbc9d2f54e6b90f920a46e741d01eba00b40d79e38597240a0cd58",
       "systems": [
         "dojo_init",
-        "start_summit",
-        "attack",
-        "attack_unsafe",
-        "feed",
-        "claim_beast_reward",
-        "claim_corpse_reward",
-        "add_extra_life",
-        "apply_stat_points",
-        "apply_poison",
-        "get_summit_data",
+        "emit_beast_event",
+        "emit_battle_event",
+        "emit_reward_event",
+        "emit_poison_event",
+        "emit_diplomacy_event",
+        "emit_summit_event",
+        "emit_corpse_reward_event",
         "upgrade"
       ]
     }
@@ -1972,50 +1840,50 @@
     {
       "members": [],
       "class_hash": "0x3ce76a36f1f379fb0400dd7a19ab62ad8c246b2f14445f8f6b16ebeb28ad79b",
-      "tag": "summit_0_0_9-BattleEvent",
-      "selector": "0x2d7cacc9f9d50cd26336363690eb4efec2012ce552dfb2573140835a9df448b"
+      "tag": "summit_relayer_1-BattleEvent",
+      "selector": "0x6ec6cdc43225b1c427f57e466090299c6c3a1ac54c43538f7baef7c597322c2"
     },
     {
       "members": [],
       "class_hash": "0x458a0aa50aa35cd22da110441adf58fdaf991dc9b39a3ef42b9fa4ff161beaa",
-      "tag": "summit_0_0_9-BeastEvent",
-      "selector": "0x48846bf4a64ddcc39a8e161b0dc74ebe2e36cb7709a359684f9535649415d4a"
+      "tag": "summit_relayer_1-BeastEvent",
+      "selector": "0x1209ef34cb1550462ccdf3bdfc9eb57e91a45d2d6100de7cfd4c9fc33391686"
     },
     {
       "members": [],
       "class_hash": "0x3de7d695555f8c85be9a1795c872edb02a93bfa656ec52112d0e0dbb1070ece",
-      "tag": "summit_0_0_9-CorpseRewardEvent",
-      "selector": "0x37496e8e9dd52d4eac3538d96501065f009b58b0d848354553dba3d137d394e"
+      "tag": "summit_relayer_1-CorpseRewardEvent",
+      "selector": "0x246fa345e96abe99be04f39d790ce37f51a6acb71841045d94a8d4f6cc48dc6"
     },
     {
       "members": [],
-      "class_hash": "0x98009d5c0eff1b1c6bff1b583c280ceabf0d86fdd160fe474d899822c22d6b",
-      "tag": "summit_0_0_9-DiplomacyEvent",
-      "selector": "0x3a518698624286f2996566681b19ac5c8d0a415da13a25a10bacf26f82f6c43"
+      "class_hash": "0x6493118ec20e23c677cbc1a70c5dafcd7073f3ce992fc8903e000e0685a9dcc",
+      "tag": "summit_relayer_1-DiplomacyEvent",
+      "selector": "0x779991c6f951ee07d9a888570229f86de769e64930e9d1858bce060acb9a31e"
     },
     {
       "members": [],
-      "class_hash": "0x2de68d3a6116869a4b486f90af2cf529de6f0798e12ff52ffdde5ee7ffa380a",
-      "tag": "summit_0_0_9-LiveBeastStatsEvent",
-      "selector": "0x2eda3e9913e888526ba161571c320ab92dea936a2108699000c1662a7ea9122"
+      "class_hash": "0x3e28ac8f4569c8543069aae570d55e71f8d2d04f7c226efb88886513f4450e6",
+      "tag": "summit_relayer_1-LiveBeastStatsEvent",
+      "selector": "0x44403099777e231f60d450046fae7dc049522f53fd52d7bd378385734b8c76a"
     },
     {
       "members": [],
       "class_hash": "0x2113a0250bda87df1c499705a0bcbfcbd08af16d4c6659565b64f6539a36280",
-      "tag": "summit_0_0_9-PoisonEvent",
-      "selector": "0x7d805148ab5dcbf4ee4ac1bd27a5069f595223a814d0975014c8ae5c7d50984"
+      "tag": "summit_relayer_1-PoisonEvent",
+      "selector": "0x4d830edea5ade8e1a40d23a69584ae5ca7b7debb90b7da1813dbc17da73fc5"
     },
     {
       "members": [],
       "class_hash": "0xf71e3c006ea105f8f33c85967ce7944be526d63baef0879647f6b23cad0584",
-      "tag": "summit_0_0_9-RewardEvent",
-      "selector": "0x5cd63bd49eb20ae49cfd490004ddd6b8b047a4856a476f403fa4e175616fa6b"
+      "tag": "summit_relayer_1-RewardEvent",
+      "selector": "0x4201b24ba387333894f660a1e88ba1fc007235b0f7c8f6ba8a95d7fa0f429a1"
     },
     {
       "members": [],
-      "class_hash": "0x78ad2a3e125ca30ae83796fe9db0623359ab9abec31dc4e7a21c0a3fc2c2646",
-      "tag": "summit_0_0_9-SummitEvent",
-      "selector": "0x52e0729547da7cdfb0804ae70c6a95d2ee50f34329dc1bcba309b1b3831b1c9"
+      "class_hash": "0x2001ddb0a05e1e254ec24a910b06a256005d8ad6c9fa5fa21c8da5d20247b38",
+      "tag": "summit_relayer_1-SummitEvent",
+      "selector": "0x1383f12cd6eaeb3bfe5173208d6bb06de0b40e0ed704a5ca932e3efcfb7975e"
     }
   ],
   "external_contracts": []

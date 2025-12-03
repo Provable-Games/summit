@@ -8,7 +8,7 @@ import {
 } from "react";
 
 export interface Top5000Cutoff {
-  rewards_earned: number;
+  blocks_held: number;
   power: number;
   health: number;
 }

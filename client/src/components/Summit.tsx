@@ -336,7 +336,7 @@ function Summit() {
               </Box>
             </Box>
           </Tooltip>
-          {summit.diplomacy_bonus > 0 && <Tooltip
+          {summit.diplomacy && summit.diplomacy.bonus > 0 && <Tooltip
             title={
               <Box sx={styles.tooltipContent}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
@@ -351,7 +351,7 @@ function Summit() {
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                 <Typography sx={styles.statLabel}>STR</Typography>
               </Box>
-              <Typography sx={styles.levelValue}>{summit.diplomacy_bonus}</Typography>
+              <Typography sx={styles.levelValue}>{summit.diplomacy.bonus}</Typography>
             </Box>
           </Tooltip>}
         </Box>

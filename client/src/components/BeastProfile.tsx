@@ -24,7 +24,7 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
   const bonusLevels = Math.floor(Math.sqrt(currentExperience)) - beast.level;
 
   // Calculate if beast is in top 5000
-  const isInTop5000 = beast.rewards_earned >= Math.max(top5000Cutoff?.rewards_earned || 0, 0.01);
+  const isInTop5000 = beast.blocks_held >= Math.max(top5000Cutoff?.blocks_held || 0, 0.01);
 
   const diff = ((beast.last_death_timestamp * 1000) + 46 * 60 * 60 * 1000) - Date.now();
   const timeLeft = diff > 3600000 ? `${Math.floor(diff / 3600000)}h` : `${Math.floor((diff % 3600000) / 60000)}m`;
@@ -270,7 +270,7 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
                 <Box sx={styles.rewardsEarnedSection}>
                   <img src="/images/survivor_token.png" alt="" style={{ width: '20px', height: '20px' }} />
                   <Typography sx={styles.rewardsEarnedValue}>
-                    {beast.rewards_earned.toLocaleString()}
+                    {beast.blocks_held.toLocaleString()}
                   </Typography>
                 </Box>
               </Box>

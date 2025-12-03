@@ -1,6 +1,7 @@
 import { Beast, Combat, Summit } from '@/types/game';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
 import { SoundName } from '@/contexts/sound';
+import * as starknet from "@scure/starknet";
 
 export const fetchBeastTypeImage = (type: string): string => {
   try {
@@ -80,13 +81,13 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
   let summitNameMatch = nameMatchBonus(summit, beast, elemental);
 
   let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((elemental * (1 + 0.1 * potions) + beastNameMatch) - summit.power))
-  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental * (1 + 0.1 * _summit.diplomacy_bonus) + summitNameMatch) - beast.power)
+  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental * (1 + 0.1 * _summit.diplomacy?.bonus) + summitNameMatch) - beast.power)
 
   let beastCritChance = getLuckCritChancePercent(beast.stats.luck);
   let summitCritChance = getLuckCritChancePercent(summit.stats.luck);
 
   let beastCritDamage = beastCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor(((elemental * 2) * (1 + 0.1 * potions) + beastNameMatch) - summit.power)) : 0;
-  let summitCritDamage = summitCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) * (1 + 0.1 * _summit.diplomacy_bonus) + summitNameMatch) - beast.power) : 0;
+  let summitCritDamage = summitCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) * (1 + 0.1 * _summit.diplomacy?.bonus) + summitNameMatch) - beast.power) : 0;
 
   let beastAverageDamage = beastCritChance > 0 ? (beastDamage * (100 - beastCritChance) + beastCritDamage * beastCritChance) / 100 : beastDamage;
   let summitAverageDamage = summitCritChance > 0 ? (summitDamage * (100 - summitCritChance) + summitCritDamage * summitCritChance) / 100 : summitDamage;
@@ -142,13 +143,16 @@ export const formatBeastName = (beast: Beast): string => {
 }
 
 export const getBeastDetails = (id: number, prefix: number, suffix: number, level: number) => {
+  const specialsHash = getSpecialsHash(prefix, suffix);
+  
   return {
     name: BEAST_NAMES[id],
     prefix: ITEM_NAME_PREFIXES[prefix],
     suffix: ITEM_NAME_SUFFIXES[suffix],
     tier: BEAST_TIERS[id],
     type: BEAST_TYPES[id],
-    power: (6 - BEAST_TIERS[id]) * level
+    power: (6 - BEAST_TIERS[id]) * level,
+    specials_hash: specialsHash,
   }
 }
 
@@ -252,3 +256,8 @@ export function applyPoisonDamage(
     extraLives: extraLivesAfter,
   };
 }
+
+export const getSpecialsHash = (prefix: number, suffix: number): bigint => {
+  const params = [BigInt(prefix), BigInt(suffix)];
+  return starknet.poseidonHashMany(params);
+} 

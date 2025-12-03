@@ -3,7 +3,6 @@ import { useGameStore } from "@/stores/gameStore";
 import { AppliedPotions, Stats } from "@/types/game";
 import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
-import { getContractByName } from "@dojoengine/core";
 import { useAccount } from "@starknet-react/core";
 import { useSnackbar } from "notistack";
 import { CallData } from "starknet";
@@ -14,13 +13,8 @@ export const useSystemCalls = () => {
   const { account } = useAccount();
   const { currentNetworkConfig } = useDynamicConnector();
 
-  const namespace = currentNetworkConfig.namespace;
   const VRF_PROVIDER_ADDRESS = "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f"
-  const SUMMIT_ADDRESS = getContractByName(
-    currentNetworkConfig.manifest,
-    namespace,
-    "summit_systems"
-  )?.address;
+  const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_CHAIN
 
   /**
    * Custom hook to handle system calls and state management in the Dojo application.

@@ -1,8 +1,6 @@
 use starknet::ContractAddress;
 use summit::models::beast::{LiveBeastStats};
-use summit::models::summit::{
-    BeastEvent
-};
+use summit::models::summit::{BeastEvent};
 
 #[starknet::interface]
 trait ISummitEvents<T> {
@@ -35,10 +33,10 @@ trait ISummitEvents<T> {
 
 #[dojo::contract]
 pub mod summit_events {
-    use starknet::ContractAddress;
-    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use dojo::event::EventStorage;
     use dojo::world::WorldStorage;
+    use starknet::ContractAddress;
+    use starknet::storage::{StoragePointerReadAccess, StoragePointerWriteAccess};
     use summit::constants::DEFAULT_NS;
     use summit::models::beast::{LiveBeastStats};
     use summit::models::summit::{

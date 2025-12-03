@@ -1,11 +1,11 @@
 import { useDynamicConnector } from "@/contexts/starknet";
-import { Beast } from "@/types/game";
+import { Beast, Diplomacy } from "@/types/game";
 import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime } from "@/utils/beasts";
 import { addAddressPadding } from "starknet";
 
 export interface Top5000Cutoff {
-  rewards_earned: number;
+  blocks_held: number;
   power: number;
   health: number;
 }
@@ -67,7 +67,7 @@ export const useGameTokens = () => {
           LOWER(printf('%064x', CAST(token_id AS INTEGER))) AS token_hex64,
           "live_stats.attack_streak", "live_stats.bonus_health", "live_stats.bonus_xp", "live_stats.current_health", "live_stats.extra_lives",
           "live_stats.has_claimed_potions", "live_stats.last_death_timestamp", "live_stats.stats.luck", "live_stats.stats.spirit", "live_stats.stats.specials",
-          "live_stats.revival_count", "live_stats.rewards_earned", "live_stats.stats.wisdom", "live_stats.stats.diplomacy", "live_stats.kills_claimed"
+          "live_stats.revival_count", "live_stats.blocks_held", "live_stats.stats.wisdom", "live_stats.stats.diplomacy", "live_stats.kills_claimed"
         FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
       )
       SELECT
@@ -98,7 +98,7 @@ export const useGameTokens = () => {
         s."live_stats.has_claimed_potions",
         s."live_stats.last_death_timestamp",
         s."live_stats.revival_count",
-        s."live_stats.rewards_earned",
+        s."live_stats.blocks_held",
         s."live_stats.stats.luck",
         s."live_stats.stats.spirit",
         s."live_stats.stats.specials",
@@ -146,7 +146,7 @@ export const useGameTokens = () => {
         has_claimed_potions: cachedBeast?.has_claimed_potions || Boolean(data["live_stats.has_claimed_potions"]),
         last_death_timestamp: Math.max(cachedBeast?.last_death_timestamp || 0, parseInt(data["live_stats.last_death_timestamp"], 16)),
         revival_count: Math.max(cachedBeast?.revival_count || 0, data["live_stats.revival_count"]),
-        rewards_earned: parseInt(data["live_stats.rewards_earned"], 16) || 0,
+        blocks_held: parseInt(data["live_stats.blocks_held"], 16) || 0,
         revival_time: 0,
         stats: {
           spirit: Math.max(cachedBeast?.stats.spirit || 0, data["live_stats.stats.spirit"]),
@@ -170,7 +170,7 @@ export const useGameTokens = () => {
   const countAliveBeasts = async () => {
     let q = `
       SELECT COUNT(DISTINCT attacking_beast_id) as count
-      FROM "summit_0_0_9-BattleEvent"
+      FROM "summit_relayer_1-BattleEvent"
       WHERE internal_created_at > datetime('now', '-20 hours');
     `
 
@@ -289,7 +289,7 @@ export const useGameTokens = () => {
   const getValidAdventurers = async (adventurerIds: number[]) => {
     let q = `
       SELECT adventurer_id
-      FROM "summit_0_0_9-CorpseRewardEvent"
+      FROM "summit_relayer_1-CorpseRewardEvent"
       WHERE adventurer_id IN (${adventurerIds.map((id: number) => `'0x${id.toString(16).padStart(16, '0')}'`).join(',')})
     `
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
@@ -304,13 +304,13 @@ export const useGameTokens = () => {
 
   const getTop5000Cutoff = async (): Promise<Top5000Cutoff | null> => {
     try {
-      // Query 1: Get rewards_earned sorted DESC (fast, no joins)
+      // Query 1: Get blocks_held sorted DESC (fast, no joins)
       const statsQuery = `
         SELECT 
-          "live_stats.rewards_earned" as rewards_earned
+          "live_stats.blocks_held" as blocks_held
         FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
-        WHERE "live_stats.rewards_earned" > 0
-        ORDER BY "live_stats.rewards_earned" DESC
+        WHERE "live_stats.blocks_held" > 0
+        ORDER BY "live_stats.blocks_held" DESC
         LIMIT 5000
       `;
 
@@ -323,17 +323,17 @@ export const useGameTokens = () => {
 
       if (!statsData || statsData.length < 5000) {
         return {
-          rewards_earned: 0,
+          blocks_held: 0,
           power: 0,
           health: 0,
         }
       }
 
-      // Get the 5000th beast's rewards_earned
-      const cutoffRewards = statsData[4999].rewards_earned;
+      // Get the 5000th beast's blocks_held
+      const cutoffRewards = statsData[4999].blocks_held;
 
       return {
-        rewards_earned: cutoffRewards,
+        blocks_held: cutoffRewards,
         power: 0,
         health: 0,
       }
@@ -341,6 +341,35 @@ export const useGameTokens = () => {
     } catch (error) {
       console.error("Error getting top 5000 cutoff:", error);
       return null;
+    }
+  }
+
+  const getDiplomacy = async (beast: Beast) => {
+    let q = `
+      SELECT total_power, beast_token_ids
+      FROM "${currentNetworkConfig.namespace}-DiplomacyEvent"
+      WHERE specials_hash = ${beast.specials_hash}
+    `
+    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+    const sql = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" }
+    })
+
+    let data = await sql.json()
+
+    if (!data || data.length === 0) {
+      return {
+        specials_hash: beast.specials_hash,
+        total_power: 0,
+        beast_token_ids: [],
+      }
+    }
+
+    return {
+      specials_hash: beast.specials_hash,
+      total_power: data[0].total_power,
+      beast_token_ids: data[0].beast_token_ids,
     }
   }
 
@@ -352,6 +381,7 @@ export const useGameTokens = () => {
     getKilledBeasts,
     getValidAdventurers,
     countAliveBeasts,
-    getTop5000Cutoff
+    getTop5000Cutoff,
+    getDiplomacy
   };
 };

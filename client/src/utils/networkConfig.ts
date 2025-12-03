@@ -1,4 +1,3 @@
-import { getContractByName } from "@dojoengine/core";
 import manifest_mainnet from "../../manifest.json";
 
 export interface NetworkConfig {
@@ -36,7 +35,7 @@ export enum ChainId {
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_0_0_9",
+    namespace: "summit_relayer_1",
     manifest: manifest_mainnet,
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
@@ -135,152 +134,6 @@ export const NETWORKS = {
 export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
   const network = NETWORKS[networkKey as keyof typeof NETWORKS];
   if (!network) throw new Error(`Network ${networkKey} not found`);
-
-  const SUMMIT_ADDRESS = getContractByName(
-    network.manifest,
-    network.namespace,
-    "summit_systems"
-  )?.address;
-
-  const policies = {
-    "contracts": {
-      [SUMMIT_ADDRESS]: {
-        "name": "Summit Game",
-        "description": "Main game contract for Summit gameplay",
-        "methods": [
-          {
-            "name": "Attack",
-            "description": "Attack the Summit",
-            "entrypoint": "attack"
-          },
-          {
-            "name": "Attack Unsafe",
-            "description": "Attack the Summit without safety checks",
-            "entrypoint": "attack_unsafe"
-          },
-          {
-            "name": "Feed",
-            "description": "Feed beast dead adventurers",
-            "entrypoint": "feed"
-          },
-          {
-            "name": "Claim Beast Reward",
-            "description": "Claim beast rewards",
-            "entrypoint": "claim_beast_reward"
-          },
-          {
-            "name": "Claim Corpse Reward",
-            "description": "Claim corpse rewards",
-            "entrypoint": "claim_corpse_reward"
-          },
-          {
-            "name": "Add Extra Life",
-            "description": "Add extra life to beast",
-            "entrypoint": "add_extra_life"
-          },
-          {
-            "name": "Apply Stat Points",
-            "description": "Apply stat points to beast",
-            "entrypoint": "apply_stat_points"
-          },
-          {
-            "name": "Apply Poison",
-            "description": "Apply poison to beast",
-            "entrypoint": "apply_poison"
-          }
-        ]
-      },
-      "0x075bbe6a4a4c744ad2da8da0cc7562623d4181418359d62909a02b4abf5be651": {
-        "name": "Attack Potion",
-        "description": "ERC 20 token for Attack Potion",
-        "methods": [
-          {
-            "name": "Approve",
-            "amount": "50000000000000000000000",
-            "spender": SUMMIT_ADDRESS,
-            "description": "Approve Attack Potion",
-            "entrypoint": "approve"
-          }
-        ]
-      },
-      "0x003561384b4c4502f87fd728332f8cf4e604a1215185d9d997be33769ba32fc3": {
-        "name": "Revive Potion",
-        "description": "ERC 20 token for Revive Potion",
-        "methods": [
-          {
-            "name": "Approve",
-            "amount": "50000000000000000000000",
-            "spender": SUMMIT_ADDRESS,
-            "description": "Approve Revive Potion",
-            "entrypoint": "approve"
-          }
-        ]
-      },
-      "0x07af033bf4a3f2cae7f871ca015c7021f97846217733d72665aaf6ad735d4359": {
-        "name": "Extra Life Potion",
-        "description": "ERC 20 token for Extra Life Potion",
-        "methods": [
-          {
-            "name": "Approve",
-            "amount": "50000000000000000000000",
-            "spender": SUMMIT_ADDRESS,
-            "description": "Approve Extra Life Potion",
-            "entrypoint": "approve"
-          }
-        ]
-      },
-      "0x047314b2b569360da4623035d2d81479a90a677beae8518e221960b07afb960f": {
-        "name": "Poison Potion",
-        "description": "ERC 20 token for Poison Potion",
-        "methods": [
-          {
-            "name": "Approve",
-            "amount": "50000000000000000000000",
-            "spender": SUMMIT_ADDRESS,
-            "description": "Approve Poison Potion",
-            "entrypoint": "approve"
-          }
-        ]
-      },
-      "0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd": {
-        "name": "Kill Token",
-        "description": "ERC 20 token for Kill Token",
-        "methods": [
-          {
-            "name": "Approve",
-            "amount": "50000000000000000000000",
-            "spender": SUMMIT_ADDRESS,
-            "description": "Approve Kill Token",
-            "entrypoint": "approve"
-          }
-        ]
-      },
-      "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c": {
-        "name": "Corpse Token",
-        "description": "ERC 20 token for Corpse Token",
-        "methods": [
-          {
-            "name": "Approve",
-            "amount": "50000000000000000000000",
-            "spender": SUMMIT_ADDRESS,
-            "description": "Approve Corpse Token",
-            "entrypoint": "approve"
-          }
-        ]
-      },
-      "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f": {
-        "name": "Cartridge VRF Provider",
-        "description": "Verifiable Random Function contract, allows randomness in the game",
-        "methods": [
-          {
-            "name": "Request Random",
-            "description": "Allows requesting random numbers from the VRF provider",
-            "entrypoint": "request_random"
-          }
-        ]
-      },
-    }
-  };
 
   return {
     chainId: network.chainId,

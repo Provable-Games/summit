@@ -72,7 +72,7 @@ function BeastCollection() {
 
       // Apply hide top 5000 filter
       if (hideTop5000) {
-        filtered = filtered.filter(beast => beast.rewards_earned < Math.max(top5000Cutoff?.rewards_earned || 0, 0.01));
+        filtered = filtered.filter(beast => beast.blocks_held < Math.max(top5000Cutoff?.blocks_held || 0, 0.01));
       }
 
       // Sort the filtered collection
@@ -102,8 +102,8 @@ function BeastCollection() {
         } else if (sortMethod === 'health') {
           return (b.health + b.bonus_health) - (a.health + a.bonus_health)
         } else if (sortMethod === 'rewards earned') {
-          if (b.rewards_earned !== a.rewards_earned) {
-            return b.rewards_earned - a.rewards_earned
+          if (b.blocks_held !== a.blocks_held) {
+            return b.blocks_held - a.blocks_held
           }
           // Tiebreaker: lower power wins (same as top 5000 logic)
           if (a.power !== b.power) {
