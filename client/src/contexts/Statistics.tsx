@@ -9,8 +9,8 @@ import {
 
 export interface Top5000Cutoff {
   blocks_held: number;
-  power: number;
-  health: number;
+  bonus_xp: number;
+  last_death_timestamp: number;
 }
 
 export interface StatisticsContext {

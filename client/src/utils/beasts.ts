@@ -2,6 +2,7 @@ import { Beast, Combat, Summit } from '@/types/game';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
 import { SoundName } from '@/contexts/sound';
 import * as starknet from "@scure/starknet";
+import { Top5000Cutoff } from '@/contexts/Statistics';
 
 export const fetchBeastTypeImage = (type: string): string => {
   try {
@@ -144,7 +145,7 @@ export const formatBeastName = (beast: Beast): string => {
 
 export const getBeastDetails = (id: number, prefix: number, suffix: number, level: number) => {
   const specialsHash = getSpecialsHash(prefix, suffix);
-  
+
   return {
     name: BEAST_NAMES[id],
     prefix: ITEM_NAME_PREFIXES[prefix],
@@ -260,4 +261,12 @@ export function applyPoisonDamage(
 export const getSpecialsHash = (prefix: number, suffix: number): bigint => {
   const params = [BigInt(prefix), BigInt(suffix)];
   return starknet.poseidonHashMany(params);
-} 
+}
+
+export const isBeastInTop5000 = (beast: Beast, top5000Cutoff: Top5000Cutoff): boolean => {
+  if (!top5000Cutoff) return false;
+
+  return beast.blocks_held > top5000Cutoff.blocks_held
+    || (beast.blocks_held === top5000Cutoff.blocks_held && beast.bonus_xp > top5000Cutoff.bonus_xp)
+    || (beast.blocks_held === top5000Cutoff.blocks_held && beast.bonus_xp === top5000Cutoff.bonus_xp && beast.last_death_timestamp > top5000Cutoff.last_death_timestamp);
+}

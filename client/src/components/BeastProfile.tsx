@@ -5,7 +5,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import { Box, LinearProgress, Typography } from "@mui/material";
 import revivePotionIcon from '../assets/images/revive-potion.png';
-import { fetchBeastImage, normaliseHealth } from "../utils/beasts";
+import { fetchBeastImage, isBeastInTop5000, normaliseHealth } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 
 const MAX_HEALTH = 1023;
@@ -24,7 +24,7 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
   const bonusLevels = Math.floor(Math.sqrt(currentExperience)) - beast.level;
 
   // Calculate if beast is in top 5000
-  const isInTop5000 = beast.blocks_held >= Math.max(top5000Cutoff?.blocks_held || 0, 0.01);
+  const isInTop5000 = isBeastInTop5000(beast, top5000Cutoff);
 
   const diff = ((beast.last_death_timestamp * 1000) + 46 * 60 * 60 * 1000) - Date.now();
   const timeLeft = diff > 3600000 ? `${Math.floor(diff / 3600000)}h` : `${Math.floor((diff % 3600000) / 60000)}m`;

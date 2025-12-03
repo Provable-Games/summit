@@ -1,5 +1,6 @@
 import { BeastTypeFilter, SortMethod, useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
+import { isBeastInTop5000 } from '@/utils/beasts';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
@@ -72,7 +73,7 @@ function BeastCollection() {
 
       // Apply hide top 5000 filter
       if (hideTop5000) {
-        filtered = filtered.filter(beast => beast.blocks_held < Math.max(top5000Cutoff?.blocks_held || 0, 0.01));
+        filtered = filtered.filter(beast => !isBeastInTop5000(beast, top5000Cutoff));
       }
 
       // Sort the filtered collection

@@ -1,14 +1,9 @@
 import { useDynamicConnector } from "@/contexts/starknet";
-import { Beast, Diplomacy } from "@/types/game";
+import { Top5000Cutoff } from "@/contexts/Statistics";
+import { Beast } from "@/types/game";
 import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime } from "@/utils/beasts";
 import { addAddressPadding } from "starknet";
-
-export interface Top5000Cutoff {
-  blocks_held: number;
-  power: number;
-  health: number;
-}
 
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
@@ -307,10 +302,15 @@ export const useGameTokens = () => {
       // Query 1: Get blocks_held sorted DESC (fast, no joins)
       const statsQuery = `
         SELECT 
-          "live_stats.blocks_held" as blocks_held
+          "live_stats.blocks_held" as blocks_held,
+          "live_stats.bonus_xp" as bonus_xp,
+          "live_stats.last_death_timestamp" as last_death_timestamp
         FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
         WHERE "live_stats.blocks_held" > 0
-        ORDER BY "live_stats.blocks_held" DESC
+        ORDER BY 
+          "live_stats.blocks_held" DESC,
+          "live_stats.bonus_xp" DESC,
+          "live_stats.last_death_timestamp" DESC
         LIMIT 5000
       `;
 
@@ -324,20 +324,19 @@ export const useGameTokens = () => {
       if (!statsData || statsData.length < 5000) {
         return {
           blocks_held: 0,
-          power: 0,
-          health: 0,
+          bonus_xp: 0,
+          last_death_timestamp: 0,
         }
       }
 
       // Get the 5000th beast's blocks_held
-      const cutoffRewards = statsData[4999].blocks_held;
+      const lastBeast = statsData[4999];
 
       return {
-        blocks_held: cutoffRewards,
-        power: 0,
-        health: 0,
+        blocks_held: lastBeast.blocks_held,
+        bonus_xp: lastBeast.bonus_xp,
+        last_death_timestamp: lastBeast.last_death_timestamp,
       }
-
     } catch (error) {
       console.error("Error getting top 5000 cutoff:", error);
       return null;

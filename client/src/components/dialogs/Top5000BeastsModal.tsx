@@ -1,5 +1,6 @@
 import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
+import { isBeastInTop5000 } from '@/utils/beasts';
 import { gameColors } from '@/utils/themes';
 import CloseIcon from '@mui/icons-material/Close';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
@@ -23,7 +24,7 @@ export default function Top5000BeastsModal({ open, onClose }: Top5000BeastsModal
   const [playerBeastsInTop5000, setPlayerBeastsInTop5000] = useState(0);
 
   useEffect(() => {
-    setPlayerBeastsInTop5000(collection.filter(beast => beast.blocks_held > top5000Cutoff?.blocks_held || 0).length);
+    setPlayerBeastsInTop5000(collection.filter(beast => isBeastInTop5000(beast, top5000Cutoff)).length);
   }, [collection, top5000Cutoff]);
 
   const progressPercent = (playerBeastsInTop5000 / collection.length) * 100;
@@ -72,8 +73,8 @@ export default function Top5000BeastsModal({ open, onClose }: Top5000BeastsModal
         <Box sx={styles.statsGrid}>
           <Box sx={styles.statCard}>
             <WhatshotIcon sx={styles.statIcon} />
-            <Typography sx={styles.statLabel}>Current Cutoff</Typography>
-            <Typography sx={styles.statValue}>{Math.max(top5000Cutoff?.blocks_held || 0, 0.01)}</Typography>
+            <Typography sx={styles.statLabel}>Blocks Needed</Typography>
+            <Typography sx={styles.statValue}>{top5000Cutoff?.blocks_held || 0}</Typography>
           </Box>
 
           <Box sx={styles.statCard}>
