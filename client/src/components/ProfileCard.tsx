@@ -10,19 +10,21 @@ import { gameColors } from '@/utils/themes';
 import { ellipseAddress, formatRewardNumber } from '@/utils/utils';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
-import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, Button, IconButton, Tooltip, Typography, Skeleton } from '@mui/material';
 import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import { addAddressPadding } from 'starknet';
 import BeastDexModal from './dialogs/BeastDexModal';
 import MarketplaceModal from './dialogs/MarketplaceModal';
+import { useStatistics } from '@/contexts/Statistics';
 
 const ProfileCard = () => {
   const { collection, leaderboard, onboarding, loadingCollection, summitEnded } = useGameStore()
   const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
   const { playerName, tokenBalances, openProfile } = useController()
+  const { tokenPrices } = useStatistics();
   const { connect, connectors } = useConnect();
 
   let cartridgeConnector = connectors.find(conn => conn.id === "controller")
@@ -32,6 +34,18 @@ const ProfileCard = () => {
   const isCartridge = connector?.id === 'controller'
   const killTokens = tokenBalances["KILL"] || 0
   const corpseTokens = tokenBalances["CORPSE"] || 0
+
+  const renderPotionItem = (imgSrc: string, tokenName: string) => {
+    const price = tokenPrices[tokenName]
+
+    return <Box sx={styles.potionItem}>
+      <img src={imgSrc} alt={tokenName} style={{ width: '20px', height: '20px' }} />
+      {price
+        ? <Typography sx={styles.potionPrice}>${price}</Typography>
+        : <Skeleton variant="text" width={40} sx={{ bgcolor: 'grey.700' }} />
+      }
+    </Box>
+  }
 
   const handleProfileClick = async () => {
     if (address && isCartridge) {
@@ -119,38 +133,19 @@ const ProfileCard = () => {
             </Button>
           </Box>
 
-
           <Box sx={styles.potionsSection}>
             <Box sx={styles.potionPrices}>
               <Box sx={styles.potionRow}>
-                <Box sx={styles.potionItem}>
-                  <img src={attackPotionImg} alt="Attack" style={{ width: '20px', height: '20px' }} />
-                  <Typography sx={styles.potionPrice}>$0.10</Typography>
-                </Box>
-                <Box sx={styles.potionItem}>
-                  <img src={lifePotionImg} alt="Extra life" style={{ width: '20px', height: '20px' }} />
-                  <Typography sx={styles.potionPrice}>$0.15</Typography>
-                </Box>
+                {renderPotionItem(attackPotionImg, "ATTACK")}
+                {renderPotionItem(lifePotionImg, "EXTRA LIFE")}
               </Box>
               <Box sx={styles.potionRow}>
-                <Box sx={styles.potionItem}>
-                  <img src={poisonPotionImg} alt="Poison" style={{ width: '20px', height: '20px' }} />
-                  <Typography sx={styles.potionPrice}>$0.20</Typography>
-                </Box>
-                <Box sx={styles.potionItem}>
-                  <img src={revivePotionImg} alt="Revive" style={{ width: '20px', height: '20px' }} />
-                  <Typography sx={styles.potionPrice}>$0.25</Typography>
-                </Box>
+                {renderPotionItem(poisonPotionImg, "POISON")}
+                {renderPotionItem(revivePotionImg, "REVIVE")}
               </Box>
               <Box sx={styles.potionRow}>
-                <Box sx={styles.potionItem}>
-                  <img src={killTokenImg} alt="Kill" style={{ width: '20px', height: '20px' }} />
-                  <Typography sx={styles.potionPrice}>$0.30</Typography>
-                </Box>
-                <Box sx={styles.potionItem}>
-                  <img src={corpseTokenImg} alt="Corpse" style={{ width: '20px', height: '20px' }} />
-                  <Typography sx={styles.potionPrice}>$0.35</Typography>
-                </Box>
+                {renderPotionItem(killTokenImg, "KILL")}
+                {renderPotionItem(corpseTokenImg, "CORPSE")}
               </Box>
             </Box>
             <Button sx={[styles.buyPotionsButton, { width: isMobile ? '100%' : '145px' }]} onClick={() => setPotionShopOpen(true)}>

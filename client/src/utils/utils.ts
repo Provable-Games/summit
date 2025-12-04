@@ -37,8 +37,25 @@ export function parseBalances(
     const base = 10n ** BigInt(tokenDecimals);
     const intPart = raw / base;
     const fracPart = raw % base;
-    const frac = fracPart.toString().padStart(tokenDecimals, "0").slice(0, showDecimals);
-    return `${intPart}${showDecimals > 0 ? "." + frac : ""}`;
+
+    // No decimals to show or value is an exact integer
+    if (showDecimals <= 0 || fracPart === 0n) {
+      return intPart.toString();
+    }
+
+    // Take up to `showDecimals` digits, then trim trailing zeros
+    let frac = fracPart
+      .toString()
+      .padStart(tokenDecimals, "0")
+      .slice(0, showDecimals)
+      .replace(/0+$/, "");
+
+    // If everything was trimmed, just return the integer part
+    if (!frac.length) {
+      return intPart.toString();
+    }
+
+    return `${intPart.toString()}.${frac}`;
   }
 
   const out: Record<string, number> = {};
@@ -47,7 +64,7 @@ export function parseBalances(
     const raw = uint256ToBigInt(results[i].result);
     const tokenDecimals = token.decimals ?? 18;
     const shownDecimals = token.displayDecimals;
-    out[token.name] = parseInt(formatBalance(raw, tokenDecimals, shownDecimals));
+    out[token.name] = parseFloat(formatBalance(raw, tokenDecimals, shownDecimals));
   }
   return out;
 }

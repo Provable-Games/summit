@@ -343,6 +343,60 @@ export const useGameTokens = () => {
     }
   }
 
+  const countBeastsWithBlocksHeld = async () => {
+    const q = `
+      SELECT COUNT(*) as count
+      FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+      WHERE "live_stats.blocks_held" > 0
+    `;
+
+    try {
+      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+
+      const data = await sql.json();
+      return data[0]?.count || 0;
+    } catch (error) {
+      console.error("Error counting beasts with blocks_held:", error);
+      return 0;
+    }
+  };
+
+  const getTopBeastsByBlocksHeld = async (limit: number, offset: number) => {
+    try {
+      const q = `
+        SELECT 
+          token_id,
+          "live_stats.blocks_held" as blocks_held,
+          "live_stats.bonus_xp" as bonus_xp,
+          "live_stats.last_death_timestamp" as last_death_timestamp
+        FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+        WHERE "live_stats.blocks_held" > 0
+        ORDER BY 
+          "live_stats.blocks_held" DESC,
+          "live_stats.bonus_xp" DESC,
+          "live_stats.last_death_timestamp" DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+
+      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+
+      const data = await sql.json();
+      return data || [];
+    } catch (error) {
+      console.error("Error getting top beasts by blocks_held:", error);
+      return [];
+    }
+  }
+
   const getDiplomacy = async (beast: Beast) => {
     let q = `
       SELECT total_power, beast_token_ids
@@ -381,6 +435,8 @@ export const useGameTokens = () => {
     getValidAdventurers,
     countAliveBeasts,
     getTop5000Cutoff,
-    getDiplomacy
+    getDiplomacy,
+    getTopBeastsByBlocksHeld,
+    countBeastsWithBlocksHeld,
   };
 };

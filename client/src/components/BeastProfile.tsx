@@ -268,9 +268,8 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
             <Box sx={styles.rewardsRow}>
               <Box sx={styles.rewardsLeft}>
                 <Box sx={styles.rewardsEarnedSection}>
-                  <img src="/images/survivor_token.png" alt="" style={{ width: '20px', height: '20px' }} />
                   <Typography sx={styles.rewardsEarnedValue}>
-                    {beast.blocks_held.toLocaleString()}
+                    blocks: {beast.blocks_held.toLocaleString()}
                   </Typography>
                 </Box>
               </Box>
@@ -819,7 +818,7 @@ const styles = {
   // Rewards earned value
   rewardsEarnedValue: {
     fontSize: '12px',
-    color: '#FFF',
+    color: gameColors.accentGreen,
     textShadow: '1px 1px 0px #000000',
     fontWeight: 'bold',
     letterSpacing: '0.5px',

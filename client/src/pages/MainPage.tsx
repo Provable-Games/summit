@@ -13,6 +13,7 @@ import Leaderboard from '../components/Leaderboard'
 import LeaderboardButton from '../components/LeaderboardButton'
 import BeastBoard from '../components/BeastBoard'
 import Top5000BeastsModal from '../components/dialogs/Top5000BeastsModal'
+import LeaderboardModal from '../components/dialogs/LeaderboardModal'
 import Onboarding from '../components/Onboarding'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
@@ -22,6 +23,7 @@ function MainPage() {
   const { summit, attackInProgress, selectedBeasts, onboarding } = useGameStore()
   const { pauseUpdates } = useGameDirector();
   const [top5000ModalOpen, setTop5000ModalOpen] = useState(false);
+  const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false);
 
   return <>
     <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
@@ -33,7 +35,7 @@ function MainPage() {
         {isBrowser && <Box sx={styles.sideContainer}>
           <Box sx={styles.leaderboardSection}>
             <Leaderboard />
-            <LeaderboardButton />
+            <LeaderboardButton onClick={() => setLeaderboardModalOpen(true)} />
           </Box>
         </Box>}
 
@@ -73,11 +75,19 @@ function MainPage() {
       <Countdown />
     </Box >
 
-    {top5000ModalOpen && <Top5000BeastsModal
-      open={top5000ModalOpen}
-      onClose={() => setTop5000ModalOpen(false)}
-    />
-    }
+    {top5000ModalOpen && (
+      <Top5000BeastsModal
+        open={top5000ModalOpen}
+        onClose={() => setTop5000ModalOpen(false)}
+      />
+    )}
+
+    {leaderboardModalOpen && (
+      <LeaderboardModal
+        open={leaderboardModalOpen}
+        onClose={() => setLeaderboardModalOpen(false)}
+      />
+    )}
   </>
 }
 

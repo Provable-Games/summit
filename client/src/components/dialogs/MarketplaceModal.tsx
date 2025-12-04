@@ -7,6 +7,7 @@ import lifePotionImg from '@/assets/images/life-potion.png';
 import poisonPotionImg from '@/assets/images/poison-potion.png';
 import revivePotionImg from '@/assets/images/revive-potion.png';
 import { useController } from '@/contexts/controller';
+import { useStatistics } from '@/contexts/Statistics';
 import { NETWORKS } from '@/utils/networkConfig';
 import { gameColors } from '@/utils/themes';
 import { formatAmount } from '@/utils/utils';
@@ -44,6 +45,14 @@ const POTIONS: Potion[] = [
     color: '#ff6b6b'
   },
   {
+    id: 'revive',
+    name: 'Revive Potion',
+    image: revivePotionImg,
+    price: 0.25,
+    description: 'Instantly revives fallen beasts',
+    color: '#00d2d3'
+  },
+  {
     id: 'health',
     name: 'Extra Life',
     image: lifePotionImg,
@@ -58,14 +67,6 @@ const POTIONS: Potion[] = [
     price: 0.20,
     description: 'Poison the beast on the summit',
     color: '#a29bfe'
-  },
-  {
-    id: 'revive',
-    name: 'Revive Potion',
-    image: revivePotionImg,
-    price: 0.25,
-    description: 'Instantly revives fallen beasts',
-    color: '#00d2d3'
   },
   {
     id: 'kill',
@@ -96,7 +97,8 @@ const POTION_ADDRESSES = {
 
 export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { open, close } = props;
-  const { tokenBalances, executePotionPurchase } = useController();
+  const { tokenBalances, fetchPaymentTokenBalances } = useController();
+  const { tokenPrices } = useStatistics();
   const { provider } = useProvider();
   const [activeTab, setActiveTab] = useState(0);
   const [quantities, setQuantities] = useState<Record<string, number>>({
@@ -130,6 +132,15 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     corpse: { amount: '', loading: false }
   });
 
+  const POTION_TOKEN_NAMES: Record<string, string> = {
+    attack: 'ATTACK',
+    revive: 'REVIVE',
+    health: 'EXTRA LIFE',
+    poison: 'POISON',
+    kill: 'KILL',
+    corpse: 'CORPSE',
+  };
+
   const routerContract = useMemo(
     () =>
       new Contract({
@@ -149,6 +160,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   }, []);
 
   const userTokens = useMemo(() => {
+    console.log(tokenBalances);
     return paymentTokens
       .map((token: any) => ({
         symbol: token.name,
@@ -158,10 +170,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         decimals: token.decimals || 18,
         displayDecimals: token.displayDecimals || 4,
       }))
-      .filter((token: any) =>
-        token.symbol !== 'SURVIVOR' &&
-        token.symbol !== 'DUNGEON_TICKET'
-      );
   }, [paymentTokens, tokenBalances]);
 
   const selectedTokenData = userTokens.find(
@@ -170,6 +178,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   useEffect(() => {
     if (open) {
+      fetchPaymentTokenBalances();
+
       setQuantities({
         attack: 0,
         health: 0,
@@ -186,6 +196,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         kill: 0,
         corpse: 0
       });
+
       if (userTokens.length > 0) {
         if (!selectedToken) {
           setSelectedToken(userTokens[0].symbol);
@@ -195,11 +206,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         }
       }
     }
-  }, [open, userTokens]);
-
-  const totalCostUSD = activeTab === 0
-    ? POTIONS.reduce((sum, potion) => sum + (potion.price * quantities[potion.id]), 0)
-    : 0;
+  }, [open]);
 
   const totalItems = activeTab === 0
     ? Object.values(quantities).reduce((sum, qty) => sum + qty, 0)
@@ -212,7 +219,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     POTIONS.forEach(potion => {
       const quantity = quantities[potion.id];
       if (quantity > 0 && tokenQuotes[potion.id].amount) {
-        total += Number(tokenQuotes[potion.id].amount) * quantity;
+        total += Number(tokenQuotes[potion.id].amount);
       }
     });
     return total;
@@ -221,7 +228,15 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const canAfford = selectedTokenData && totalTokenCost <= Number(selectedTokenData.rawBalance);
 
   const fetchPotionQuote = useCallback(
-    async (potionId: string, tokenSymbol: string) => {
+    async (potionId: string, tokenSymbol: string, quantity: number) => {
+      if (quantity <= 0) {
+        setTokenQuotes(prev => ({
+          ...prev,
+          [potionId]: { amount: '', loading: false }
+        }));
+        return;
+      }
+
       const selectedTokenData = userTokens.find(
         (t: any) => t.symbol === tokenSymbol
       );
@@ -241,7 +256,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
       try {
         const quote = await getSwapQuote(
-          -1e18, // 1 potion
+          -quantity * 1e18,
           POTION_ADDRESSES[potionId as keyof typeof POTION_ADDRESSES],
           selectedTokenData.address
         );
@@ -278,19 +293,36 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   );
 
   const adjustQuantity = (potionId: string, delta: number) => {
-    setQuantities(prev => ({
-      ...prev,
-      [potionId]: Math.max(0, Math.min(99, prev[potionId] + delta))
-    }));
+    setQuantities(prev => {
+      const newQuantity = Math.max(0, Math.min(99, prev[potionId] + delta));
+
+      if (activeTab === 0 && selectedToken) {
+        fetchPotionQuote(potionId, selectedToken, newQuantity);
+      }
+
+      return {
+        ...prev,
+        [potionId]: newQuantity
+      };
+    });
   };
 
   const onQuantityInputChange = (potionId: string, value: string) => {
     const raw = value.replace(/\D/g, '');
     const num = raw === '' ? 0 : parseInt(raw, 10);
-    setQuantities(prev => ({
-      ...prev,
-      [potionId]: Math.max(0, Math.min(99, isNaN(num) ? 0 : num))
-    }));
+
+    setQuantities(prev => {
+      const newQuantity = Math.max(0, Math.min(99, isNaN(num) ? 0 : num));
+
+      if (activeTab === 0 && selectedToken) {
+        fetchPotionQuote(potionId, selectedToken, newQuantity);
+      }
+
+      return {
+        ...prev,
+        [potionId]: newQuantity
+      };
+    });
   };
 
   const adjustSellQuantity = (potionId: string, delta: number) => {
@@ -332,9 +364,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const handleTokenSelect = (tokenSymbol: string) => {
     setSelectedToken(tokenSymbol);
     handleTokenClose();
-    POTIONS.forEach(potion => {
-      fetchPotionQuote(potion.id, tokenSymbol);
-    });
   };
 
   const handleReceiveTokenSelect = (tokenSymbol: string) => {
@@ -400,11 +429,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   };
 
   useEffect(() => {
-    if (selectedToken && activeTab === 0) {
-      POTIONS.forEach(potion => {
-        fetchPotionQuote(potion.id, selectedToken);
-      });
-    }
+    if (!selectedToken || activeTab !== 0) return;
+
+    POTIONS.forEach(potion => {
+      const quantity = quantities[potion.id] || 0;
+      fetchPotionQuote(potion.id, selectedToken, quantity);
+    });
   }, [selectedToken, fetchPotionQuote, activeTab]);
 
   return (
@@ -481,13 +511,14 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                   <Typography sx={styles.potionDescription}>{potion.description}</Typography>
                   <Box sx={styles.potionPrice}>
                     <Typography sx={styles.priceText}>
-                      {tokenQuotes[potion.id].loading
-                        ? 'Loading...'
-                        : tokenQuotes[potion.id].error
-                          ? tokenQuotes[potion.id].error
-                          : tokenQuotes[potion.id].amount
-                            ? `${tokenQuotes[potion.id].amount} ${selectedToken}`
-                            : `$${potion.price.toFixed(2)}`}
+                      {(() => {
+                        const tokenName = POTION_TOKEN_NAMES[potion.id];
+                        const priceStr = tokenName ? tokenPrices[tokenName] : undefined;
+                        if (priceStr) {
+                          return `$${priceStr}`;
+                        }
+                        return 'No liquidity';
+                      })()}
                     </Typography>
                   </Box>
                 </Box>
@@ -695,20 +726,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
                 <Box sx={styles.totalInfo}>
                   <Typography sx={styles.totalLabel}>Total Cost</Typography>
-                  <Box sx={styles.totalUSD}>
-                    <Typography sx={styles.totalUSDAmount}>${totalCostUSD.toFixed(2)}</Typography>
-                  </Box>
                   {hasItems && selectedToken && (
                     <Box sx={[styles.totalValue, !canAfford && styles.totalInsufficient]}>
                       <Typography sx={styles.totalAmount}>
                         {totalTokenCost.toFixed(4)} {selectedToken}
                       </Typography>
                     </Box>
-                  )}
-                  {hasItems && (
-                    <Typography sx={styles.itemCount}>
-                      {totalItems} item{totalItems > 1 ? 's' : ''}
-                    </Typography>
                   )}
                 </Box>
               </Box>
@@ -831,11 +854,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
                 <Box sx={styles.totalInfo}>
                   <Typography sx={styles.totalLabel}>You'll Receive</Typography>
-                  {hasItems && (
-                    <Typography sx={styles.itemCount}>
-                      Selling {totalItems} item{totalItems > 1 ? 's' : ''}
-                    </Typography>
-                  )}
                 </Box>
               </Box>
 

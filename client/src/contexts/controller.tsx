@@ -25,6 +25,7 @@ export interface ControllerContext {
   tokenBalances: Record<string, number>;
   setTokenBalances: (tokenBalances: Record<string, number>) => void;
   fetchTokenBalances: () => void;
+  fetchPaymentTokenBalances: () => void;
   fetchBeastCollection: () => void;
   filterValidAdventurers: () => void;
   openProfile: () => void;
@@ -171,8 +172,14 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   }
 
   async function fetchTokenBalances() {
+    let balances = await getTokenBalances(currentNetworkConfig.tokens.erc20);
+    setTokenBalances(prev => ({ ...prev, ...balances }));
+  }
+
+  async function fetchPaymentTokenBalances() {
     let balances = await getTokenBalances(currentNetworkConfig.paymentTokens);
-    setTokenBalances(balances);
+    console.log(balances);
+    setTokenBalances(prev => ({ ...prev, ...balances }));
   }
 
   const acceptTermsOfService = () => {
@@ -186,6 +193,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         isPending: isConnecting || isPending,
         setTokenBalances,
         tokenBalances,
+        fetchPaymentTokenBalances,
         fetchTokenBalances,
         fetchBeastCollection,
         filterValidAdventurers,
