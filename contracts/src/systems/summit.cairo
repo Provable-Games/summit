@@ -2,7 +2,7 @@ use starknet::ContractAddress;
 use summit::models::beast::{Beast, Stats};
 
 #[starknet::interface]
-trait ISummitSystem<T> {
+pub trait ISummitSystem<T> {
     fn start_summit(ref self: T);
     fn attack(
         ref self: T,
@@ -684,7 +684,7 @@ pub mod summit_systems {
         fn _save_beast(ref self: ContractState, beast: Beast, update_diplomacy: bool) {
             self.live_beast_stats.entry(beast.live.token_id).write(beast.live);
 
-            self.summit_events_dispatcher.read().emit_beast_event(beast.live);
+            // self.summit_events_dispatcher.read().emit_beast_event(beast.live);
 
             if update_diplomacy && beast.live.stats.diplomacy == 1 {
                 let (specials_hash, total_power, beast_token_ids) = Self::_get_diplomacy_data(@self, beast);

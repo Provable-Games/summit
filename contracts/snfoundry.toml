@@ -1,0 +1,26 @@
+# Starknet Foundry configuration
+
+[snforge_default]
+# Default configuration that applies to all tests
+
+[profile.default]
+# Profile for default testing
+fork = []
+
+[profile.mainnet_fork]
+# Profile for mainnet forking tests
+fork = [
+    {
+        name = "mainnet",
+        url = "https://starknet-mainnet.public.blastapi.io",
+        block_id = { Tag = "Latest" }
+    }
+]
+
+[fork.mainnet]
+url = "https://starknet-mainnet.public.blastapi.io"
+block_id = { Tag = "Latest" }
+
+[fork.mainnet_fork]
+url = "https://starknet-mainnet.public.blastapi.io"  
+block_id = { Tag = "Latest" }

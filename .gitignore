@@ -6,6 +6,9 @@ dojo/target/*
 contracts/torii.db
 contracts/KATANA.toml
 contracts/manifests/*
+contracts/coverage
+contracts/snfoundry_trace
+contracts/.snfoundry_cache
 !contracts/manifests/dev/manifest.json
 !contracts/manifests/dev/manifest.toml
 !contracts/manifests/prod/deployment/manifest.json
