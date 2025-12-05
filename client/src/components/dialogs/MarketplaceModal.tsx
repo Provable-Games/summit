@@ -7,6 +7,7 @@ import lifePotionImg from '@/assets/images/life-potion.png';
 import poisonPotionImg from '@/assets/images/poison-potion.png';
 import revivePotionImg from '@/assets/images/revive-potion.png';
 import { useController } from '@/contexts/controller';
+import { useDynamicConnector } from '@/contexts/starknet';
 import { useStatistics } from '@/contexts/Statistics';
 import { NETWORKS } from '@/utils/networkConfig';
 import { gameColors } from '@/utils/themes';
@@ -30,92 +31,77 @@ interface Potion {
   id: string;
   name: string;
   image: string;
-  price: number;
   description: string;
   color: string;
 }
 
 const POTIONS: Potion[] = [
   {
-    id: 'attack',
+    id: 'ATTACK',
     name: 'Attack Potion',
     image: attackPotionImg,
-    price: 0.10,
     description: 'Increase attack power',
     color: '#ff6b6b'
   },
   {
-    id: 'revive',
+    id: 'REVIVE',
     name: 'Revive Potion',
     image: revivePotionImg,
-    price: 0.25,
     description: 'Instantly revives fallen beasts',
     color: '#00d2d3'
   },
   {
-    id: 'health',
+    id: 'EXTRA LIFE',
     name: 'Extra Life',
     image: lifePotionImg,
-    price: 0.15,
     description: 'Grants an extra life when holding the summit',
     color: '#ff4757'
   },
   {
-    id: 'poison',
+    id: 'POISON',
     name: 'Poison Potion',
     image: poisonPotionImg,
-    price: 0.20,
     description: 'Poison the beast on the summit',
     color: '#a29bfe'
   },
   {
-    id: 'kill',
+    id: 'KILL',
     name: 'Kill Token',
     image: killTokenImg,
-    price: 0.30,
     description: 'Used to upgrade your beasts',
     color: '#e74c3c'
   },
   {
-    id: 'corpse',
+    id: 'CORPSE',
     name: 'Corpse Token',
     image: corpseTokenImg,
-    price: 0.35,
     description: 'Used to give your beasts bonus health',
     color: '#95a5a6'
   }
 ];
 
-const POTION_ADDRESSES = {
-  attack: '0x075bbe6a4a4c744ad2da8da0cc7562623d4181418359d62909a02b4abf5be651',
-  health: '0x07af033bf4a3f2cae7f871ca015c7021f97846217733d72665aaf6ad735d4359',
-  poison: '0x047314b2b569360da4623035d2d81479a90a677beae8518e221960b07afb960f',
-  revive: '0x003561384b4c4502f87fd728332f8cf4e604a1215185d9d997be33769ba32fc3',
-  kill: '0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd',
-  corpse: '0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c',
-};
-
 export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { open, close } = props;
+  const { currentNetworkConfig } = useDynamicConnector();
   const { tokenBalances, fetchPaymentTokenBalances } = useController();
   const { tokenPrices } = useStatistics();
   const { provider } = useProvider();
   const [activeTab, setActiveTab] = useState(0);
   const [quantities, setQuantities] = useState<Record<string, number>>({
-    attack: 0,
-    health: 0,
-    poison: 0,
-    revive: 0,
-    kill: 0,
-    corpse: 0
+    "ATTACK": 0,
+    "EXTRA LIFE": 0,
+    "POISON": 0,
+    "REVIVE": 0,
+    "KILL": 0,
+    "CORPSE": 0
   });
   const [sellQuantities, setSellQuantities] = useState<Record<string, number>>({
-    attack: 0,
-    health: 0,
-    poison: 0,
-    revive: 0,
-    kill: 0,
-    corpse: 0
+    "ATTACK": 0,
+    "EXTRA LIFE": 0,
+    "POISON": 0,
+    "REVIVE": 0,
+    "KILL": 0,
+    "CORPSE": 0
   });
   const [selectedToken, setSelectedToken] = useState<string>('');
   const [selectedReceiveToken, setSelectedReceiveToken] = useState<string>('');
@@ -124,22 +110,13 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [receiveAnchorEl, setReceiveAnchorEl] = useState<null | HTMLElement>(null);
   const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string }>>({
-    attack: { amount: '', loading: false },
-    health: { amount: '', loading: false },
-    poison: { amount: '', loading: false },
-    revive: { amount: '', loading: false },
-    kill: { amount: '', loading: false },
-    corpse: { amount: '', loading: false }
+    "ATTACK": { amount: '', loading: false },
+    "EXTRA LIFE": { amount: '', loading: false },
+    "POISON": { amount: '', loading: false },
+    "REVIVE": { amount: '', loading: false },
+    "KILL": { amount: '', loading: false },
+    "CORPSE": { amount: '', loading: false }
   });
-
-  const POTION_TOKEN_NAMES: Record<string, string> = {
-    attack: 'ATTACK',
-    revive: 'REVIVE',
-    health: 'EXTRA LIFE',
-    poison: 'POISON',
-    kill: 'KILL',
-    corpse: 'CORPSE',
-  };
 
   const routerContract = useMemo(
     () =>
@@ -160,7 +137,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   }, []);
 
   const userTokens = useMemo(() => {
-    console.log(tokenBalances);
     return paymentTokens
       .map((token: any) => ({
         symbol: token.name,
@@ -181,20 +157,20 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       fetchPaymentTokenBalances();
 
       setQuantities({
-        attack: 0,
-        health: 0,
-        poison: 0,
-        revive: 0,
-        kill: 0,
-        corpse: 0
+        "ATTACK": 0,
+        "EXTRA LIFE": 0,
+        "POISON": 0,
+        "REVIVE": 0,
+        "KILL": 0,
+        "CORPSE": 0
       });
       setSellQuantities({
-        attack: 0,
-        health: 0,
-        poison: 0,
-        revive: 0,
-        kill: 0,
-        corpse: 0
+        "ATTACK": 0,
+        "EXTRA LIFE": 0,
+        "POISON": 0,
+        "REVIVE": 0,
+        "KILL": 0,
+        "CORPSE": 0
       });
 
       if (userTokens.length > 0) {
@@ -241,7 +217,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         (t: any) => t.symbol === tokenSymbol
       );
 
-      if (!selectedTokenData?.address || !POTION_ADDRESSES[potionId as keyof typeof POTION_ADDRESSES]) {
+      if (!selectedTokenData?.address) {
         setTokenQuotes(prev => ({
           ...prev,
           [potionId]: { amount: '', loading: false, error: 'Token not supported' }
@@ -257,7 +233,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       try {
         const quote = await getSwapQuote(
           -quantity * 1e18,
-          POTION_ADDRESSES[potionId as keyof typeof POTION_ADDRESSES],
+          currentNetworkConfig.tokens.erc20.find(token => token.name === potionId)?.address!,
           selectedTokenData.address
         );
 
@@ -294,7 +270,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   const adjustQuantity = (potionId: string, delta: number) => {
     setQuantities(prev => {
-      const newQuantity = Math.max(0, Math.min(99, prev[potionId] + delta));
+      const newQuantity = Math.max(0, prev[potionId] + delta);
 
       if (activeTab === 0 && selectedToken) {
         fetchPotionQuote(potionId, selectedToken, newQuantity);
@@ -312,7 +288,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     const num = raw === '' ? 0 : parseInt(raw, 10);
 
     setQuantities(prev => {
-      const newQuantity = Math.max(0, Math.min(99, isNaN(num) ? 0 : num));
+      const newQuantity = Math.max(0, isNaN(num) ? 0 : num);
 
       if (activeTab === 0 && selectedToken) {
         fetchPotionQuote(potionId, selectedToken, newQuantity);
@@ -326,8 +302,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   };
 
   const adjustSellQuantity = (potionId: string, delta: number) => {
-    const potionName = POTIONS.find(p => p.id === potionId)?.name.toUpperCase().replace(' POTION', '').replace(' TOKEN', '') || '';
-    const balance = tokenBalances[potionName] || 0;
+    const balance = tokenBalances[potionId] || 0;
     setSellQuantities(prev => ({
       ...prev,
       [potionId]: Math.max(0, Math.min(balance, prev[potionId] + delta))
@@ -337,8 +312,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const onSellQuantityInputChange = (potionId: string, value: string) => {
     const raw = value.replace(/\D/g, '');
     const num = raw === '' ? 0 : parseInt(raw, 10);
-    const potionName = POTIONS.find(p => p.id === potionId)?.name.toUpperCase().replace(' POTION', '').replace(' TOKEN', '') || '';
-    const balance = tokenBalances[potionName] || 0;
+    const balance = tokenBalances[potionId] || 0;
     setSellQuantities(prev => ({
       ...prev,
       [potionId]: Math.max(0, Math.min(balance, isNaN(num) ? 0 : num))
@@ -379,11 +353,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       const calls: any[] = [];
 
       for (const potion of POTIONS) {
+        const potionAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === potion.id)?.address!;
         const quantity = quantities[potion.id];
         if (quantity > 0 && tokenQuotes[potion.id].amount) {
           const quote = await getSwapQuote(
             -quantity * 1e18,
-            POTION_ADDRESSES[potion.id as keyof typeof POTION_ADDRESSES],
+            potionAddress,
             selectedTokenData.address
           );
 
@@ -392,7 +367,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               routerContract,
               selectedTokenData.address,
               {
-                tokenAddress: POTION_ADDRESSES[potion.id as keyof typeof POTION_ADDRESSES],
+                tokenAddress: potionAddress,
                 minimumAmount: quantity,
                 quote: quote
               }
@@ -512,8 +487,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                   <Box sx={styles.potionPrice}>
                     <Typography sx={styles.priceText}>
                       {(() => {
-                        const tokenName = POTION_TOKEN_NAMES[potion.id];
-                        const priceStr = tokenName ? tokenPrices[tokenName] : undefined;
+                        const priceStr = tokenPrices[potion.id] ? tokenPrices[potion.id] : undefined;
                         if (priceStr) {
                           return `$${priceStr}`;
                         }
@@ -549,7 +523,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                   <IconButton
                     size="small"
                     onClick={() => adjustQuantity(potion.id, 1)}
-                    disabled={quantities[potion.id] >= 99}
                     sx={styles.quantityButton}
                   >
                     <AddIcon sx={{ fontSize: '16px' }} />

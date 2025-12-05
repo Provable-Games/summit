@@ -68,7 +68,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
       return fetchTokenPrice(token);
     }
 
-    setTokenPrices((prev) => ({ ...prev, [token.name]: ((swap.total * -1) / 1e6).toFixed(4) }));
+    setTokenPrices((prev) => ({ ...prev, [token.name]: ((swap.total * -1) / 1e18).toFixed(4) }));
   };
 
   const refreshBeastsAlive = () => {
@@ -87,6 +87,9 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "ATTACK"));
     fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "REVIVE"));
     fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE"));
+    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "POISON"));
+    // fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "KILL"));
+    // fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE"));
   }, []);
 
   return (
