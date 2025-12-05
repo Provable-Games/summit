@@ -403,7 +403,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       }
 
       if (calls.length > 0) {
-        await executePotionPurchase(calls, quantities);
+        // await executePotionPurchase(calls, quantities);
         close();
       }
     } catch (error) {
