@@ -83,7 +83,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
   // Fetch beasts leaderboard for current page
   useEffect(() => {
     const fetchBeastsPage = async () => {
-      if (!open || activeTab !== 'beasts') return;
+      if (activeTab !== 'beasts') return;
 
       setBeastsLoading(true);
       try {
@@ -99,7 +99,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
     };
 
     fetchBeastsPage();
-  }, [open, activeTab, beastsPage]);
+  }, [activeTab, beastsPage]);
 
   const formatRewards = (rewards: number) =>
     rewards.toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -214,12 +214,24 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                               <Typography sx={styles.playerName}>
                                 {name}
                               </Typography>
-                              <Typography sx={styles.playerAddress}>
+                              <Typography
+                                sx={styles.playerAddress}
+                                component="a"
+                                href={`https://voyager.online/contract/${player.owner}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
                                 {formatAddress(player.owner)}
                               </Typography>
                             </>
                           ) : (
-                            <Typography sx={styles.playerAddress}>
+                            <Typography
+                              sx={styles.playerAddress}
+                              component="a"
+                              href={`https://voyager.online/contract/${player.owner}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
                               {formatAddress(player.owner)}
                             </Typography>
                           )}
@@ -477,6 +489,11 @@ const styles = {
     fontSize: '11px',
     color: '#bbb',
     fontFamily: 'monospace',
+    textDecoration: 'none',
+    cursor: 'pointer',
+    '&:hover': {
+      textDecoration: 'underline !important',
+    },
   },
   rewardsCell: {
     flex: '0 0 140px',
