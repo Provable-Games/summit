@@ -35,18 +35,20 @@ const ClaimRewardsButton = () => {
     handleClose();
   };
 
+  if (totalRewards === 0) {
+    return null;
+  }
+
   return (
     <>
       <Badge
         badgeContent={totalRewards}
         color="error"
-        invisible={totalRewards === 0}
         sx={styles.badge}
       >
         <IconButton
           onClick={handleClick}
           sx={styles.iconButton}
-          disabled={totalRewards === 0}
         >
           <CardGiftcardIcon sx={styles.icon} />
         </IconButton>
