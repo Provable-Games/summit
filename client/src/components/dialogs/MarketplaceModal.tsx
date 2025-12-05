@@ -319,13 +319,13 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
       try {
         const quote = await getSwapQuote(
-          -quantity * 1e18,
+          quantity * 1e18,
+          potionAddress,
           receiveTokenData.address,
-          potionAddress
         );
 
         if (quote) {
-          const rawAmount = (quote.total * -1) / Math.pow(10, receiveTokenData.decimals || 18);
+          const rawAmount = quote.total / Math.pow(10, receiveTokenData.decimals || 18);
           if (rawAmount === 0) {
             setTokenQuotes(prev => ({
               ...prev,
@@ -518,9 +518,9 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
           if (!quote) {
             quote = await getSwapQuote(
-              -quantity * 1e18,
+              quantity * 1e18,
+              potionAddress,
               selectedReceiveTokenData.address,
-              potionAddress
             );
           }
 
@@ -721,8 +721,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                             : tokenQuotes[potion.id].error
                               ? tokenQuotes[potion.id].error
                               : tokenQuotes[potion.id].amount
-                                ? `Sell ${sellQuantities[potion.id]} for ${tokenQuotes[potion.id].amount} ${selectedReceiveToken}`
-                                : `Sell ${sellQuantities[potion.id]} for ${selectedReceiveToken}`
+                                ? `Sell ${sellQuantities[potion.id]}`
+                                : `Sell ${sellQuantities[potion.id]}`
                           : 'Select amount'}
                       </Typography>
                     </Box>
