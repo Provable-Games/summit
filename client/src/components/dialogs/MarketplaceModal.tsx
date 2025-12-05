@@ -9,9 +9,10 @@ import revivePotionImg from '@/assets/images/revive-potion.png';
 import { useController } from '@/contexts/controller';
 import { useDynamicConnector } from '@/contexts/starknet';
 import { useStatistics } from '@/contexts/Statistics';
+import { useSystemCalls } from '@/dojo/useSystemCalls';
 import { NETWORKS } from '@/utils/networkConfig';
 import { gameColors } from '@/utils/themes';
-import { formatAmount } from '@/utils/utils';
+import { delay, formatAmount } from '@/utils/utils';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -86,6 +87,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { tokenBalances, fetchPaymentTokenBalances } = useController();
   const { tokenPrices } = useStatistics();
   const { provider } = useProvider();
+  const { executeAction } = useSystemCalls();
   const [activeTab, setActiveTab] = useState(0);
   const [quantities, setQuantities] = useState<Record<string, number>>({
     "ATTACK": 0,
@@ -109,7 +111,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const [sellInProgress, setSellInProgress] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [receiveAnchorEl, setReceiveAnchorEl] = useState<null | HTMLElement>(null);
-  const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string }>>({
+  const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string; quote?: any }>>({
     "ATTACK": { amount: '', loading: false },
     "EXTRA LIFE": { amount: '', loading: false },
     "POISON": { amount: '', loading: false },
@@ -150,6 +152,10 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   const selectedTokenData = userTokens.find(
     (t: any) => t.symbol === selectedToken
+  );
+
+  const selectedReceiveTokenData = userTokens.find(
+    (t: any) => t.symbol === selectedReceiveToken
   );
 
   useEffect(() => {
@@ -201,6 +207,18 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     return total;
   }, [quantities, tokenQuotes, activeTab]);
 
+  const totalReceiveAmount = useMemo(() => {
+    if (activeTab !== 1) return 0;
+    let total = 0;
+    POTIONS.forEach(potion => {
+      const quantity = sellQuantities[potion.id];
+      if (quantity > 0 && tokenQuotes[potion.id].amount) {
+        total += Number(tokenQuotes[potion.id].amount);
+      }
+    });
+    return total;
+  }, [sellQuantities, tokenQuotes, activeTab]);
+
   const canAfford = selectedTokenData && totalTokenCost <= Number(selectedTokenData.rawBalance);
 
   const fetchPotionQuote = useCallback(
@@ -248,7 +266,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             const amount = formatAmount(rawAmount);
             setTokenQuotes(prev => ({
               ...prev,
-              [potionId]: { amount, loading: false }
+              [potionId]: { amount, loading: false, quote: quote }
             }));
           }
         } else {
@@ -259,6 +277,75 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         }
       } catch (error) {
         console.error('Error fetching quote:', error);
+        setTokenQuotes(prev => ({
+          ...prev,
+          [potionId]: { amount: '', loading: false, error: 'Failed to get quote' }
+        }));
+      }
+    },
+    [userTokens]
+  );
+
+  const fetchSellQuote = useCallback(
+    async (potionId: string, tokenSymbol: string, quantity: number) => {
+      if (quantity <= 0) {
+        setTokenQuotes(prev => ({
+          ...prev,
+          [potionId]: { amount: '', loading: false }
+        }));
+        return;
+      }
+
+      const receiveTokenData = userTokens.find(
+        (t: any) => t.symbol === tokenSymbol
+      );
+
+      if (!receiveTokenData?.address) {
+        setTokenQuotes(prev => ({
+          ...prev,
+          [potionId]: { amount: '', loading: false, error: 'Token not supported' }
+        }));
+        return;
+      }
+
+      const potionAddress = currentNetworkConfig.tokens.erc20.find(
+        (token: any) => token.name === potionId
+      )?.address!;
+
+      setTokenQuotes(prev => ({
+        ...prev,
+        [potionId]: { amount: '', loading: true }
+      }));
+
+      try {
+        const quote = await getSwapQuote(
+          -quantity * 1e18,
+          receiveTokenData.address,
+          potionAddress
+        );
+
+        if (quote) {
+          const rawAmount = (quote.total * -1) / Math.pow(10, receiveTokenData.decimals || 18);
+          if (rawAmount === 0) {
+            setTokenQuotes(prev => ({
+              ...prev,
+              [potionId]: { amount: '', loading: false, error: 'No liquidity' }
+            }));
+          } else {
+            const amount = formatAmount(rawAmount);
+            setTokenQuotes(prev => ({
+              ...prev,
+              [potionId]: { amount, loading: false, quote: quote }
+            }));
+          }
+        } else {
+          setTokenQuotes(prev => ({
+            ...prev,
+            [potionId]: { amount: '', loading: false, error: 'No quote available' }
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching sell quote:', error);
         setTokenQuotes(prev => ({
           ...prev,
           [potionId]: { amount: '', loading: false, error: 'Failed to get quote' }
@@ -303,20 +390,36 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   const adjustSellQuantity = (potionId: string, delta: number) => {
     const balance = tokenBalances[potionId] || 0;
-    setSellQuantities(prev => ({
-      ...prev,
-      [potionId]: Math.max(0, Math.min(balance, prev[potionId] + delta))
-    }));
+    setSellQuantities(prev => {
+      const newQuantity = Math.max(0, Math.min(balance, prev[potionId] + delta));
+
+      if (activeTab === 1 && selectedReceiveToken) {
+        fetchSellQuote(potionId, selectedReceiveToken, newQuantity);
+      }
+
+      return {
+        ...prev,
+        [potionId]: newQuantity
+      };
+    });
   };
 
   const onSellQuantityInputChange = (potionId: string, value: string) => {
     const raw = value.replace(/\D/g, '');
     const num = raw === '' ? 0 : parseInt(raw, 10);
     const balance = tokenBalances[potionId] || 0;
-    setSellQuantities(prev => ({
-      ...prev,
-      [potionId]: Math.max(0, Math.min(balance, isNaN(num) ? 0 : num))
-    }));
+    setSellQuantities(prev => {
+      const newQuantity = Math.max(0, Math.min(balance, isNaN(num) ? 0 : num));
+
+      if (activeTab === 1 && selectedReceiveToken) {
+        fetchSellQuote(potionId, selectedReceiveToken, newQuantity);
+      }
+
+      return {
+        ...prev,
+        [potionId]: newQuantity
+      };
+    });
   };
 
   const handleTokenClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -356,11 +459,15 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         const potionAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === potion.id)?.address!;
         const quantity = quantities[potion.id];
         if (quantity > 0 && tokenQuotes[potion.id].amount) {
-          const quote = await getSwapQuote(
-            -quantity * 1e18,
-            potionAddress,
-            selectedTokenData.address
-          );
+          let quote = tokenQuotes[potion.id].quote;
+
+          if (!quote) {
+            quote = await getSwapQuote(
+              -quantity * 1e18,
+              potionAddress,
+              selectedTokenData.address
+            );
+          }
 
           if (quote) {
             const swapCalls = generateSwapCalls(
@@ -378,8 +485,13 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       }
 
       if (calls.length > 0) {
-        // await executePotionPurchase(calls, quantities);
-        close();
+        let result = await executeAction(calls, () => { });
+
+        if (result) {
+          await delay(2000);
+          fetchPaymentTokenBalances();
+          close();
+        }
       }
     } catch (error) {
       console.error('Error purchasing potions:', error);
@@ -389,13 +501,53 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   };
 
   const handleSell = async () => {
-    if (!hasItems) return;
+    if (!hasItems || !selectedReceiveTokenData) return;
     setSellInProgress(true);
 
     try {
-      // TODO: Implement sell functionality
-      console.log('Selling:', sellQuantities, 'for', selectedReceiveToken);
-      // Will need to generate swap calls from potion tokens to selectedReceiveToken
+      const calls: any[] = [];
+
+      for (const potion of POTIONS) {
+        const potionAddress = currentNetworkConfig.tokens.erc20.find(
+          (token: any) => token.name === potion.id
+        )?.address!;
+        const quantity = sellQuantities[potion.id];
+
+        if (quantity > 0) {
+          let quote = tokenQuotes[potion.id].quote;
+
+          if (!quote) {
+            quote = await getSwapQuote(
+              -quantity * 1e18,
+              selectedReceiveTokenData.address,
+              potionAddress
+            );
+          }
+
+          if (quote) {
+            const swapCalls = generateSwapCalls(
+              routerContract,
+              potionAddress,
+              {
+                tokenAddress: selectedReceiveTokenData.address,
+                minimumAmount: quantity,
+                quote: quote
+              }
+            );
+            calls.push(...swapCalls);
+          }
+        }
+      }
+
+      if (calls.length > 0) {
+        const result = await executeAction(calls, () => { });
+
+        if (result) {
+          await delay(2000);
+          fetchPaymentTokenBalances();
+          close();
+        }
+      }
     } catch (error) {
       console.error('Error selling items:', error);
     } finally {
@@ -411,6 +563,17 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       fetchPotionQuote(potion.id, selectedToken, quantity);
     });
   }, [selectedToken, fetchPotionQuote, activeTab]);
+
+  useEffect(() => {
+    if (!selectedReceiveToken || activeTab !== 1) return;
+
+    POTIONS.forEach(potion => {
+      const quantity = sellQuantities[potion.id] || 0;
+      if (quantity > 0) {
+        fetchSellQuote(potion.id, selectedReceiveToken, quantity);
+      }
+    });
+  }, [selectedReceiveToken, fetchSellQuote, activeTab, sellQuantities]);
 
   return (
     <Dialog
@@ -553,7 +716,13 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                     <Box sx={styles.potionPrice}>
                       <Typography sx={styles.priceText}>
                         {balance > 0 && sellQuantities[potion.id] > 0
-                          ? `Sell ${sellQuantities[potion.id]} for ${selectedReceiveToken}`
+                          ? tokenQuotes[potion.id].loading
+                            ? 'Fetching quote...'
+                            : tokenQuotes[potion.id].error
+                              ? tokenQuotes[potion.id].error
+                              : tokenQuotes[potion.id].amount
+                                ? `Sell ${sellQuantities[potion.id]} for ${tokenQuotes[potion.id].amount} ${selectedReceiveToken}`
+                                : `Sell ${sellQuantities[potion.id]} for ${selectedReceiveToken}`
                           : 'Select amount'}
                       </Typography>
                     </Box>
@@ -827,6 +996,13 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
                 <Box sx={styles.totalInfo}>
                   <Typography sx={styles.totalLabel}>You'll Receive</Typography>
+                  {hasItems && selectedReceiveToken && (
+                    <Box sx={styles.totalValue}>
+                      <Typography sx={styles.totalAmount}>
+                        {totalReceiveAmount.toFixed(4)} {selectedReceiveToken}
+                      </Typography>
+                    </Box>
+                  )}
                 </Box>
               </Box>
 

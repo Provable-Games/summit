@@ -178,7 +178,6 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
   async function fetchPaymentTokenBalances() {
     let balances = await getTokenBalances(currentNetworkConfig.paymentTokens);
-    console.log(balances);
     setTokenBalances(prev => ({ ...prev, ...balances }));
   }
 
