@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-source .env
+source ../.env
 
 # Validate required environment variables
 if [ -z "$STARKNET_ACCOUNT" ] || [ -z "$STARKNET_PRIVATE_KEY" ]; then
@@ -10,7 +10,7 @@ if [ -z "$STARKNET_ACCOUNT" ] || [ -z "$STARKNET_PRIVATE_KEY" ]; then
 fi
 
 OWNER="0x418ed348930686c844fda4556173457d3f71ae547262406d271de534af6b35e"
-summit_address="0x029a44584d62472018da0d428420f31ea0cf26ed29c21a9d60cc08164b8058fd"
+summit_address="0x029a44584d62472018da0D428420f31ea0cF26ed29C21a9d60cC08164B8058FD"
 
 kill_token_name="0 0x546573744b696c6c546f6b656e 13"
 kill_token_symbol="0 0x5453544B54 5"
@@ -25,7 +25,7 @@ echo "Building project..."
 scarb build
 
 # Check if contract file exists
-CONTRACT_FILE="target/dev/test_consumable_SummitERC20.contract_class.json"
+CONTRACT_FILE="target/dev/test_summit_token_SummitERC20.contract_class.json"
 if [ ! -f "$CONTRACT_FILE" ]; then
     echo "Error: Contract file not found at $CONTRACT_FILE"
     exit 1

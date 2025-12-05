@@ -18,3 +18,4 @@ contracts/deploy/mainnet.sh
 contracts/savage-summit.code-workspace
 account.json
 dojo/deploy/mainnet.sh
+token/target

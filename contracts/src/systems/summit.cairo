@@ -40,6 +40,7 @@ pub trait ISummitSystem<T> {
     fn set_poison_potion_address(ref self: T, poison_potion_address: ContractAddress);
     fn set_kill_token_address(ref self: T, kill_token_address: ContractAddress);
     fn set_corpse_token_address(ref self: T, corpse_token_address: ContractAddress);
+    fn set_test_money_address(ref self: T, test_money_address: ContractAddress);
     fn withdraw_funds(ref self: T, token_address: ContractAddress, amount: u256);
 
     fn get_summit_data(ref self: T) -> (Beast, u64, ContractAddress, u16, u64, felt252);
@@ -141,6 +142,7 @@ pub mod summit_systems {
         kill_token_dispatcher: SummitERC20Dispatcher,
         corpse_token_dispatcher: SummitERC20Dispatcher,
         summit_events_dispatcher: ISummitEventsDispatcher,
+        test_money_dispatcher: IERC20Dispatcher,
     }
 
     #[event]
@@ -252,6 +254,7 @@ pub mod summit_systems {
 
             let mut potion_rewards = 0;
             let mut kills_rewards = 0;
+            let mut test_money = 0;
 
             let mut i = 0;
             while (i < beast_token_ids.len()) {
@@ -281,6 +284,7 @@ pub mod summit_systems {
                 }
 
                 if (beast.live.has_claimed_potions == 0) {
+                    test_money += 5;
                     potion_rewards += InternalSummitImpl::get_potion_amount(beast.fixed.id);
                     beast.live.has_claimed_potions = 1;
                 }
@@ -312,6 +316,10 @@ pub mod summit_systems {
 
             if kills_rewards > 0 {
                 self.kill_token_dispatcher.read().mint(get_caller_address(), kills_rewards * TOKEN_DECIMALS);
+            }
+
+            if test_money > 0 {
+                self.test_money_dispatcher.read().transfer(get_caller_address(), test_money * TOKEN_DECIMALS);
             }
         }
 
@@ -555,6 +563,11 @@ pub mod summit_systems {
             self.corpse_token_dispatcher.write(SummitERC20Dispatcher { contract_address: corpse_token_address });
         }
 
+        fn set_test_money_address(ref self: ContractState, test_money_address: ContractAddress) {
+            self.ownable.assert_only_owner();
+            self.test_money_dispatcher.write(IERC20Dispatcher { contract_address: test_money_address });
+        }
+
         fn withdraw_funds(ref self: ContractState, token_address: ContractAddress, amount: u256) {
             self.ownable.assert_only_owner();
             let token = IERC20Dispatcher { contract_address: token_address };
@@ -618,7 +631,6 @@ pub mod summit_systems {
         fn get_denshokan_address(self: @ContractState) -> ContractAddress {
             self.denshokan_dispatcher.read().contract_address
         }
-
 
         fn get_beast_address(self: @ContractState) -> ContractAddress {
             self.beast_dispatcher.read().contract_address
@@ -684,7 +696,7 @@ pub mod summit_systems {
         fn _save_beast(ref self: ContractState, beast: Beast, update_diplomacy: bool) {
             self.live_beast_stats.entry(beast.live.token_id).write(beast.live);
 
-            // self.summit_events_dispatcher.read().emit_beast_event(beast.live);
+            self.summit_events_dispatcher.read().emit_beast_event(beast.live);
 
             if update_diplomacy && beast.live.stats.diplomacy == 1 {
                 let (specials_hash, total_power, beast_token_ids) = Self::_get_diplomacy_data(@self, beast);

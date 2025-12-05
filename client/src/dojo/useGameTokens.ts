@@ -215,7 +215,7 @@ export const useGameTokens = () => {
     const q = `
         SELECT owner, SUM(amount) AS amount
         FROM "${currentNetworkConfig.namespace}-RewardEvent"
-        WHERE internal_created_at > '2025-11-21 16:20:00'
+        WHERE internal_created_at > '2025-12-5 12:00:00'
         GROUP BY owner
         ORDER BY amount DESC
       `;

@@ -1,0 +1,25 @@
+[package]
+name = "test_summit_token"
+version = "0.1.0"
+edition = "2024_07"
+
+[cairo]
+sierra-replace-ids = true
+
+[dependencies]
+starknet = "2.13.1"
+openzeppelin_token = "1.0.0"
+openzeppelin_access = "1.0.0"
+
+[dev-dependencies]
+snforge_std = "0.46.0"
+
+[scripts]
+test = "snforge test"
+
+[[target.starknet-contract]]
+sierra = true
+
+[tool.fmt]
+sort-module-level-items = true
+max-line-length = 120
