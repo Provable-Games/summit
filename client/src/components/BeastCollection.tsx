@@ -134,13 +134,11 @@ function BeastCollection() {
     if (attackInProgress) return;
 
     const allBeasts = collectionWithCombat;
-    const maxBeasts = Math.min(50, allBeasts.length);
+    const maxBeasts = Math.min(75, allBeasts.length);
 
-    // If 50 or more beasts are selected, or all alive beasts are selected, deselect all
     if (selectedBeasts.length >= maxBeasts) {
       setSelectedBeasts([])
     } else {
-      // Select up to 50 beasts (or all if less than 50)
       setSelectedBeasts(allBeasts.slice(0, maxBeasts))
     }
   }
@@ -151,10 +149,9 @@ function BeastCollection() {
     setHideDeadBeasts(hide)
   }
 
-  // Helper to check if max beasts are selected (50 or all if less than 50)
   const maxBeastsSelected = useMemo(() => {
     const allBeasts = collectionWithCombat;
-    const maxBeasts = Math.min(50, allBeasts.length);
+    const maxBeasts = Math.min(75, allBeasts.length);
     return allBeasts.length > 0 && selectedBeasts.length >= maxBeasts;
   }, [collectionWithCombat, selectedBeasts]);
 
@@ -287,7 +284,7 @@ function BeastCollection() {
                 </Box>
               </Tooltip>
 
-              <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Select 50</Box>}>
+              <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Select 75</Box>}>
                 <Box sx={[styles.utilityButton, maxBeastsSelected && styles.selectedItem]} onClick={() => selectAllBeasts()}>
                   <LibraryAddCheckIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />
                 </Box>

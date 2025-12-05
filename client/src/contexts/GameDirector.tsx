@@ -272,7 +272,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       setBattleEvents([]);
       setAttackInProgress(true);
 
-      let beastIds = action.beastIds.slice(0, 50);
+      let beastIds = action.beastIds.slice(0, 75);
 
       if (beastIds.length === 0) {
         setActionFailed();
@@ -337,7 +337,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         .find((event: BattleEvent) => (event.attack_count + event.critical_attack_count) > (event.counter_attack_count + event.critical_counter_attack_count))) {
         executeGameAction({
           type: 'attack_until_capture',
-          beastIds: action.beastIds.slice(50),
+          beastIds: action.beastIds.slice(75),
         });
       } else {
         setAttackInProgress(false);
