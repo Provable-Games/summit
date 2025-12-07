@@ -28,7 +28,12 @@ trait ISummitEvents<T> {
     fn emit_poison_event(ref self: T, beast_token_id: u32, count: u16, player: ContractAddress);
     fn emit_diplomacy_event(ref self: T, specials_hash: felt252, beast_token_ids: Span<u32>, total_power: u16);
     fn emit_summit_event(ref self: T, beast: BeastEvent, live_stats: LiveBeastStats, owner: ContractAddress);
-    fn emit_corpse_reward_event(ref self: T, adventurer_id: u64, player: ContractAddress);
+    fn emit_corpse_event(ref self: T, adventurer_id: u64, player: ContractAddress);
+    fn emit_skull_event(ref self: T, beast_token_id: u32, skulls: u128);
+
+    fn get_summit_address(self: @T) -> ContractAddress;
+    fn get_corpse_address(self: @T) -> ContractAddress;
+    fn get_skull_address(self: @T) -> ContractAddress;
 }
 
 #[dojo::contract]
@@ -40,17 +45,26 @@ pub mod summit_events {
     use summit::constants::DEFAULT_NS;
     use summit::models::beast::{LiveBeastStats};
     use summit::models::summit::{
-        BattleEvent, BeastEvent, CorpseRewardEvent, DiplomacyEvent, LiveBeastStatsEvent, PoisonEvent, RewardEvent,
+        BattleEvent, BeastEvent, CorpseEvent, DiplomacyEvent, LiveBeastStatsEvent, PoisonEvent, RewardEvent, SkullEvent,
         SummitEvent,
     };
 
     #[storage]
     struct Storage {
         summit_address: ContractAddress,
+        corpse_address: ContractAddress,
+        skull_address: ContractAddress,
     }
 
-    fn dojo_init(ref self: ContractState, summit_address: ContractAddress) {
+    fn dojo_init(
+        ref self: ContractState,
+        summit_address: ContractAddress,
+        corpse_address: ContractAddress,
+        skull_address: ContractAddress,
+    ) {
         self.summit_address.write(summit_address);
+        self.corpse_address.write(corpse_address);
+        self.skull_address.write(skull_address);
     }
 
     #[abi(embed_v0)]
@@ -137,10 +151,30 @@ pub mod summit_events {
             world.emit_event(@SummitEvent { taken_at: starknet::get_block_number(), beast, live_stats, owner });
         }
 
-        fn emit_corpse_reward_event(ref self: ContractState, adventurer_id: u64, player: ContractAddress) {
-            self.validate_caller_is_summit();
+        fn emit_corpse_event(ref self: ContractState, adventurer_id: u64, player: ContractAddress) {
+            let corpse_address = self.corpse_address.read();
+            assert(corpse_address == starknet::get_caller_address(), 'Invalid caller');
             let mut world: WorldStorage = self.world(@DEFAULT_NS());
-            world.emit_event(@CorpseRewardEvent { adventurer_id, player });
+            world.emit_event(@CorpseEvent { adventurer_id, player });
+        }
+
+        fn emit_skull_event(ref self: ContractState, beast_token_id: u32, skulls: u128) {
+            let skull_address = self.skull_address.read();
+            assert(skull_address == starknet::get_caller_address(), 'Invalid caller');
+            let mut world: WorldStorage = self.world(@DEFAULT_NS());
+            world.emit_event(@SkullEvent { beast_token_id, skulls });
+        }
+
+        fn get_summit_address(self: @ContractState) -> ContractAddress {
+            self.summit_address.read()
+        }
+
+        fn get_corpse_address(self: @ContractState) -> ContractAddress {
+            self.corpse_address.read()
+        }
+
+        fn get_skull_address(self: @ContractState) -> ContractAddress {
+            self.skull_address.read()
         }
     }
 
@@ -148,7 +182,7 @@ pub mod summit_events {
     impl InternalImpl of InternalTrait {
         fn validate_caller_is_summit(ref self: ContractState) {
             let summit_address = self.summit_address.read();
-            assert!(summit_address == starknet::get_caller_address(), "Invalid caller");
+            assert(summit_address == starknet::get_caller_address(), 'Invalid caller');
         }
     }
 }

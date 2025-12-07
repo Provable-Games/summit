@@ -88,7 +88,7 @@ fn mock_erc20_transfer(token_address: ContractAddress, success: bool) {
 fn mock_summit_events() {
     mock_call(EVENT_ADDRESS(), selector!("emit_beast_event"), (), 1000);
     mock_call(EVENT_ADDRESS(), selector!("emit_diplomacy_event"), (), 1000);
-    mock_call(EVENT_ADDRESS(), selector!("emit_corpse_reward_event"), (), 1000);
+    mock_call(EVENT_ADDRESS(), selector!("emit_corpse_event"), (), 1000);
     mock_call(EVENT_ADDRESS(), selector!("emit_poison_event"), (), 1000);
     mock_call(EVENT_ADDRESS(), selector!("emit_battle_event"), (), 1000);
     mock_call(EVENT_ADDRESS(), selector!("emit_summit_event"), (), 1000);

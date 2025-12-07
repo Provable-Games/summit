@@ -1692,7 +1692,7 @@
             },
             {
               "type": "function",
-              "name": "emit_corpse_reward_event",
+              "name": "emit_corpse_event",
               "inputs": [
                 {
                   "name": "adventurer_id",
@@ -1829,7 +1829,7 @@
         "emit_poison_event",
         "emit_diplomacy_event",
         "emit_summit_event",
-        "emit_corpse_reward_event",
+        "emit_corpse_event",
         "upgrade"
       ]
     }

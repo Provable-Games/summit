@@ -75,10 +75,18 @@ pub struct SummitEvent {
 
 #[derive(Drop, Serde)]
 #[dojo::event]
-pub struct CorpseRewardEvent {
+pub struct CorpseEvent {
     #[key]
     pub adventurer_id: u64,
     pub player: ContractAddress,
+}
+
+#[derive(Drop, Serde)]
+#[dojo::event]
+pub struct SkullEvent {
+    #[key]
+    pub beast_token_id: u32,
+    pub skulls: u128,
 }
 
 #[derive(Drop, Serde)]

@@ -28,7 +28,7 @@ pub trait ISummitEvents<T> {
     fn emit_poison_event(ref self: T, beast_token_id: u32, count: u16, player: ContractAddress);
     fn emit_diplomacy_event(ref self: T, specials_hash: felt252, beast_token_ids: Span<u32>, total_power: u16);
     fn emit_summit_event(ref self: T, beast: PackableBeast, live_stats: LiveBeastStats, owner: ContractAddress);
-    fn emit_corpse_reward_event(ref self: T, adventurer_id: u64, player: ContractAddress);
+    fn emit_corpse_event(ref self: T, adventurer_id: u64, player: ContractAddress);
 }
 
 #[starknet::interface]
