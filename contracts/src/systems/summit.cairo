@@ -10,7 +10,7 @@ pub trait ISummitSystem<T> {
         attacking_beast_token_ids: Span<u32>,
         revival_potions: u16,
         attack_potions: u8,
-        extra_life_potions: u8,
+        extra_life_potions: u16,
         vrf: bool,
     );
     fn attack_unsafe(
@@ -18,12 +18,12 @@ pub trait ISummitSystem<T> {
         attacking_beast_token_ids: Span<u32>,
         revival_potions: u16,
         attack_potions: u8,
-        extra_life_potions: u8,
+        extra_life_potions: u16,
     );
     fn feed(ref self: T, beast_token_id: u32, amount: u16);
     fn claim_beast_reward(ref self: T, beast_token_ids: Span<u32>);
 
-    fn add_extra_life(ref self: T, beast_token_id: u32, extra_life_potions: u8);
+    fn add_extra_life(ref self: T, beast_token_id: u32, extra_life_potions: u16);
     fn apply_stat_points(ref self: T, beast_token_id: u32, stats: Stats);
     fn apply_poison(ref self: T, beast_token_id: u32, count: u16);
 
@@ -82,7 +82,7 @@ pub mod summit_systems {
     use starknet::{ClassHash, ContractAddress, get_block_number, get_block_timestamp, get_caller_address};
     use summit::constants::{
         BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS, DAY_SECONDS, EIGHT_BITS_MAX,
-        MAX_REVIVAL_COUNT, MINIMUM_DAMAGE, TOKEN_DECIMALS, errors,
+        MAX_REVIVAL_COUNT, MINIMUM_DAMAGE, TOKEN_DECIMALS, errors, BEAST_MAX_EXTRA_LIVES
     };
     use summit::erc20::interface::{SummitERC20Dispatcher, SummitERC20DispatcherTrait};
     use summit::interfaces::{
@@ -188,7 +188,7 @@ pub mod summit_systems {
             attacking_beast_token_ids: Span<u32>,
             revival_potions: u16,
             attack_potions: u8,
-            extra_life_potions: u8,
+            extra_life_potions: u16,
             vrf: bool,
         ) {
             InternalSummitImpl::_attack_summit(
@@ -207,7 +207,7 @@ pub mod summit_systems {
             attacking_beast_token_ids: Span<u32>,
             revival_potions: u16,
             attack_potions: u8,
-            extra_life_potions: u8,
+            extra_life_potions: u16,
         ) {
             InternalSummitImpl::_attack_summit(
                 ref self, attacking_beast_token_ids, revival_potions, attack_potions, extra_life_potions, true, 0,
@@ -284,14 +284,14 @@ pub mod summit_systems {
                 .transfer(get_caller_address(), beast_token_ids.len().into() * TOKEN_DECIMALS);
         }
 
-        fn add_extra_life(ref self: ContractState, beast_token_id: u32, extra_life_potions: u8) {
+        fn add_extra_life(ref self: ContractState, beast_token_id: u32, extra_life_potions: u16) {
             assert(extra_life_potions > 0, 'No extra lives');
             assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
 
             let summit_beast_token_id = self.summit_beast_token_id.read();
             assert(beast_token_id == summit_beast_token_id, 'Not summit beast');
 
-            assert(extra_life_potions <= EIGHT_BITS_MAX, errors::BEAST_MAX_EXTRA_LIVES);
+            assert(extra_life_potions <= BEAST_MAX_EXTRA_LIVES, errors::BEAST_MAX_EXTRA_LIVES);
 
             let summit_owner = self.beast_dispatcher.read().owner_of(summit_beast_token_id.into());
             assert(summit_owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
@@ -301,9 +301,9 @@ pub mod summit_systems {
             // Apply extra life potions
             let mut potions_to_use = extra_life_potions;
 
-            // Prevent u8 overflow
-            if beast.live.extra_lives > EIGHT_BITS_MAX - extra_life_potions {
-                potions_to_use = EIGHT_BITS_MAX - beast.live.extra_lives;
+            // Prevent u16 overflow
+            if beast.live.extra_lives > BEAST_MAX_EXTRA_LIVES - extra_life_potions {
+                potions_to_use = BEAST_MAX_EXTRA_LIVES - beast.live.extra_lives;
             }
 
             // apply poison damage before adding extra lives
@@ -712,7 +712,7 @@ pub mod summit_systems {
             attacking_beast_token_ids: Span<u32>,
             revival_potions: u16,
             attack_potions: u8,
-            extra_life_potions: u8,
+            extra_life_potions: u16,
             vrf: bool,
             defending_beast_token_id: u32,
         ) {
@@ -727,7 +727,7 @@ pub mod summit_systems {
 
             // assert consumable amounts
             assert(attack_potions <= EIGHT_BITS_MAX, errors::MAX_ATTACK_POTION);
-            assert(extra_life_potions <= EIGHT_BITS_MAX, errors::BEAST_MAX_EXTRA_LIVES);
+            assert(extra_life_potions <= BEAST_MAX_EXTRA_LIVES, errors::BEAST_MAX_EXTRA_LIVES);
 
             let summit_owner = self.beast_dispatcher.read().owner_of(summit_beast_token_id.into());
             assert(get_caller_address() != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);

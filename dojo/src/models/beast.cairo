@@ -7,11 +7,10 @@ pub struct LiveBeastStats {
     pub attack_streak: u8, // 4 bits
     pub last_death_timestamp: u64, // 64 bits
     pub revival_count: u8, // 5 bits
-    pub extra_lives: u8, // 8 bits
+    pub extra_lives: u16, // 12 bits
     pub has_claimed_potions: u8, // 1 bit
     pub blocks_held: u32, // 17 bits
     pub stats: Stats,
-    pub kills_claimed: u8,
 }
 
 #[derive(Introspect, Copy, Drop, Serde)]

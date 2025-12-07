@@ -13,14 +13,6 @@ fn REAL_PLAYER() -> ContractAddress {
     0x0689701974d95364aAd9C2306Bc322A40a27fb775b0C97733FD0e36E900b1878.try_into().unwrap()
 }
 
-fn ADVENTURER_ADDRESS() -> ContractAddress {
-    0x3fc7ecd6d577daa1ee855a9fa13a914d01acda06715c9fc74f1ee1a5e346a01.try_into().unwrap()
-}
-
-fn DENSHOKAN_ADDRESS() -> ContractAddress {
-    0x036017e69d21d6d8c13e266eabb73ef1f1d02722d86bdcabe5f168f8e549d3cd.try_into().unwrap()
-}
-
 fn DUNGEON_ADDRESS() -> ContractAddress {
     0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42.try_into().unwrap()
 }
@@ -48,8 +40,6 @@ fn deploy_summit() -> ISummitSystemDispatcher {
     calldata.append(owner.into());
     calldata.append(start_timestamp.into());
     calldata.append(submission_blocks.into());
-    calldata.append(ADVENTURER_ADDRESS().into());
-    calldata.append(DENSHOKAN_ADDRESS().into());
     calldata.append(DUNGEON_ADDRESS().into());
     calldata.append(BEAST_ADDRESS().into());
     calldata.append(BEAST_DATA_ADDRESS().into());
@@ -217,20 +207,6 @@ fn test_feed_zero_amount() {
 
 #[test]
 #[fork("mainnet")]
-#[should_panic(expected: ('Not token owner',))]
-fn test_feed_not_owner() {
-    let summit = deploy_summit_and_start();
-
-    let fake_owner: ContractAddress = 0x123.try_into().unwrap();
-    start_cheat_caller_address(summit.contract_address, fake_owner);
-
-    summit.feed(60989, 10);
-
-    stop_cheat_caller_address(summit.contract_address);
-}
-
-#[test]
-#[fork("mainnet")]
 fn test_add_extra_life_basic() {
     let summit = deploy_summit_and_start();
 
@@ -383,25 +359,6 @@ fn test_claim_beast_reward_not_owner() {
     stop_cheat_caller_address(summit.contract_address);
 }
 
-#[test]
-#[fork("mainnet")]
-fn test_claim_corpse_reward_basic() {
-    let summit = deploy_summit_and_start();
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    mock_erc20_mint(summit.get_corpse_token_address(), true);
-
-    // Mock the adventurer system calls to return proper data
-    mock_call(ADVENTURER_ADDRESS(), selector!("get_adventurer_dungeon"), DUNGEON_ADDRESS(), 1000);
-    mock_call(ADVENTURER_ADDRESS(), selector!("get_adventurer_level"), 10, 1000);
-    mock_call(DENSHOKAN_ADDRESS(), selector!("owner_of"), REAL_PLAYER(), 1000);
-
-    let adventurer_ids = array![1].span();
-    summit.claim_corpse_reward(adventurer_ids);
-
-    stop_cheat_caller_address(summit.contract_address);
-}
-
 // ===========================================
 // SUMMIT AND LEADERBOARD FUNCTIONS TESTS
 // ===========================================
@@ -455,8 +412,6 @@ fn test_set_start_timestamp() {
     calldata.append(owner.into());
     calldata.append(start_timestamp.into());
     calldata.append(submission_blocks.into());
-    calldata.append(ADVENTURER_ADDRESS().into());
-    calldata.append(DENSHOKAN_ADDRESS().into());
     calldata.append(DUNGEON_ADDRESS().into());
     calldata.append(BEAST_ADDRESS().into());
     calldata.append(BEAST_DATA_ADDRESS().into());
@@ -572,9 +527,6 @@ fn test_get_beast() {
 #[fork("mainnet")]
 fn test_get_all_addresses() {
     let summit = deploy_summit();
-
-    assert(summit.get_adventurer_address() == ADVENTURER_ADDRESS(), 'Wrong adventurer address');
-    assert(summit.get_denshokan_address() == DENSHOKAN_ADDRESS(), 'Wrong denshokan address');
     assert(summit.get_dungeon_address() == DUNGEON_ADDRESS(), 'Wrong dungeon address');
     assert(summit.get_beast_address() == BEAST_ADDRESS(), 'Wrong beast address');
     assert(summit.get_beast_data_address() == BEAST_DATA_ADDRESS(), 'Wrong beast data address');
