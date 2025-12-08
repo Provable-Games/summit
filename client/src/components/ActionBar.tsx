@@ -756,7 +756,7 @@ function ActionBar() {
                       Math.max(0, 4000 - ((selectedBeasts[0]?.extra_lives as number) || 0))
                     )
                     : (tokenBalances["POISON"] || 0),
-                (potion === 'poison' ? 2050 : 255)
+                (potion === 'poison' ? 2050 : potion === 'extraLife' ? 4000 : 255)
               )
             }
             onChange={(e, value) => {
@@ -830,7 +830,7 @@ function ActionBar() {
                       Math.max(0, 4000 - ((selectedBeasts[0]?.extra_lives as number) || 0))
                     )
                     : (tokenBalances["POISON"] || 0),
-                (potion === 'poison' ? 2050 : 255)
+                (potion === 'poison' ? 2050 : potion === 'extraLife' ? 4000 : 255)
               )
             }
           </Typography>

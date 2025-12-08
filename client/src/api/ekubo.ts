@@ -37,7 +37,7 @@ interface RouterContract {
 interface SwapCall {
   contractAddress: string;
   entrypoint: string;
-  calldata: string[];
+  calldata: any[];
 }
 
 export const getPriceChart = async (token: string, otherToken: string) => {
@@ -63,18 +63,21 @@ export const getSwapQuote = async (amount: number, token: string, otherToken: st
 }
 
 export const generateSwapCalls = (ROUTER_CONTRACT: RouterContract, purchaseToken: string, tokenQuote: TokenQuote): SwapCall[] => {
-  let totalQuoteSum = 0n;
-
   if (!tokenQuote.quote || tokenQuote.quote.splits.length === 0) {
     return [];
   }
 
+  let { tokenAddress, minimumAmount, quote } = tokenQuote;
+
+  let totalQuoteSum = 0n;
   const total = BigInt(tokenQuote.quote.total);
-  totalQuoteSum = total < 0n ? -total : total;
 
   if (total < 0n) {
+    totalQuoteSum = -total;
     const doubledTotal = totalQuoteSum * 2n;
     totalQuoteSum = doubledTotal < (totalQuoteSum + BigInt(1e19)) ? doubledTotal : (totalQuoteSum + BigInt(1e19));
+  } else {
+    totalQuoteSum = BigInt(minimumAmount * 1e18);
   }
 
   const transferCall: SwapCall = {
@@ -89,7 +92,6 @@ export const generateSwapCalls = (ROUTER_CONTRACT: RouterContract, purchaseToken
     calldata: [purchaseToken],
   };
 
-  let { tokenAddress, minimumAmount, quote } = tokenQuote;
 
   if (!quote || quote.splits.length === 0) {
     return [transferCall, clearCall];
@@ -97,10 +99,13 @@ export const generateSwapCalls = (ROUTER_CONTRACT: RouterContract, purchaseToken
 
   let { splits } = quote;
 
-  const clearProfitsCall = ROUTER_CONTRACT.populate("clear_minimum", [
-    { contract_address: tokenAddress },
-    minimumAmount * 1e18,
-  ]);
+  let minimumClear = total < 0n ? num.toHex(BigInt(minimumAmount * 1e18)) : num.toHex(total);
+
+  const clearProfitsCall = {
+    contractAddress: ROUTER_CONTRACT.address,
+    entrypoint: "clear_minimum",
+    calldata: [tokenAddress, minimumClear, "0x0"],
+  }
 
   let swapCalls: SwapCall[];
 
@@ -133,9 +138,9 @@ export const generateSwapCalls = (ROUTER_CONTRACT: RouterContract, purchaseToken
             token: tokenAddress,
             encoded: [],
           }).encoded,
-          tokenAddress,
+          total < 0n ? tokenAddress : purchaseToken,
           num.toHex(BigInt(split.amount_specified) < 0n ? -BigInt(split.amount_specified) : BigInt(split.amount_specified)),
-          "0x1",
+          total < 0n ? "0x1" : "0x0",
         ],
       },
       clearProfitsCall,
@@ -172,9 +177,9 @@ export const generateSwapCalls = (ROUTER_CONTRACT: RouterContract, purchaseToken
                   encoded: [],
                 }
               ).encoded,
-              tokenAddress,
+              total < 0n ? tokenAddress : purchaseToken,
               num.toHex(BigInt(split.amount_specified) < 0n ? -BigInt(split.amount_specified) : BigInt(split.amount_specified)),
-              "0x1",
+              total < 0n ? "0x1" : "0x0",
             ]);
           }, []),
         ],

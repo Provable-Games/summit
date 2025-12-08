@@ -89,7 +89,7 @@ export const NETWORKS = {
     beasts:
       "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
     ekuboRouter:
-      "0x0199741822c2dc722f6f605204f35e56dbc23bceed54818168c4c49e4fb8737e",
+      "0x04505a9f06f2bd639b6601f37a4dc0908bb70e8e0e0c34b1220827d64f4fc066",
     paymentTokens: [
       {
         name: "TEST USD",

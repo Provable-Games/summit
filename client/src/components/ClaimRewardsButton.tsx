@@ -4,18 +4,27 @@ import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import { Badge, Box, Button, IconButton, Menu, MenuItem, Typography } from '@mui/material';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import claimCorpses from './dialogs/claimCorpses';
+import ClaimCorpseReward from './dialogs/ClaimCorpseReward';
+import ClaimSkullReward from './dialogs/ClaimSkullReward';
 import ClaimStarterPack from './dialogs/ClaimStarterPack';
 
 const ClaimRewardsButton = () => {
   const { collection, adventurerCollection } = useGameStore();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false);
-  const [claimCorpsesDialog, setclaimCorpsesDialog] = useState(false);
+  const [claimCorpseRewardDialog, setClaimCorpseRewardDialog] = useState(false);
+  const [claimSkullRewardDialog, setClaimSkullRewardDialog] = useState(false);
 
-  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions || beast.adventurers_killed > beast.kills_claimed);
+  const unclaimedStarterPacks = collection.filter(beast => !beast.has_claimed_potions);
+  const unclaimedSkullTokens = collection.reduce(
+    (sum, beast) => sum + ((beast.adventurers_killed || 0) - (beast.kills_claimed || 0)),
+    0,
+  );
   const unclaimedCorpseTokens = adventurerCollection.reduce((sum, adventurer) => sum + adventurer.level, 0);
-  const totalRewards = unclaimedBeasts.length + (unclaimedCorpseTokens > 0 ? 1 : 0);
+  const totalRewards =
+    unclaimedStarterPacks.length +
+    (unclaimedSkullTokens > 0 ? 1 : 0) +
+    (unclaimedCorpseTokens > 0 ? 1 : 0);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -30,8 +39,13 @@ const ClaimRewardsButton = () => {
     handleClose();
   };
 
-  const handleclaimCorpses = () => {
-    setclaimCorpsesDialog(true);
+  const handleClaimSkullReward = () => {
+    setClaimSkullRewardDialog(true);
+    handleClose();
+  };
+
+  const handleClaimCorpseReward = () => {
+    setClaimCorpseRewardDialog(true);
     handleClose();
   };
 
@@ -72,14 +86,28 @@ const ClaimRewardsButton = () => {
           },
         }}
       >
-        {unclaimedBeasts.length > 0 && (
+        {unclaimedStarterPacks.length > 0 && (
           <MenuItem sx={styles.menuItem}>
             <Box sx={styles.menuItemContent}>
               <Box sx={styles.menuItemInfo}>
-                <Typography sx={styles.menuItemTitle}>Beast Reward</Typography>
-                <Typography sx={styles.menuItemSubtitle}>{unclaimedBeasts.length} available</Typography>
+                <Typography sx={styles.menuItemTitle}>Starter Pack</Typography>
+                <Typography sx={styles.menuItemSubtitle}>{unclaimedStarterPacks.length} beasts</Typography>
               </Box>
               <Button sx={styles.claimButton} onClick={handleClaimBeastReward}>
+                <Typography sx={styles.claimButtonText}>CLAIM</Typography>
+              </Button>
+            </Box>
+          </MenuItem>
+        )}
+
+        {unclaimedSkullTokens > 0 && (
+          <MenuItem sx={styles.menuItem}>
+            <Box sx={styles.menuItemContent}>
+              <Box sx={styles.menuItemInfo}>
+                <Typography sx={styles.menuItemTitle}>Skulls</Typography>
+                <Typography sx={styles.menuItemSubtitle}>{unclaimedSkullTokens} $SKULL</Typography>
+              </Box>
+              <Button sx={styles.claimButton} onClick={handleClaimSkullReward}>
                 <Typography sx={styles.claimButtonText}>CLAIM</Typography>
               </Button>
             </Box>
@@ -93,7 +121,7 @@ const ClaimRewardsButton = () => {
                 <Typography sx={styles.menuItemTitle}>Corpse Token</Typography>
                 <Typography sx={styles.menuItemSubtitle}>{unclaimedCorpseTokens} available</Typography>
               </Box>
-              <Button sx={styles.claimButton} onClick={handleclaimCorpses}>
+              <Button sx={styles.claimButton} onClick={handleClaimCorpseReward}>
                 <Typography sx={styles.claimButtonText}>CLAIM</Typography>
               </Button>
             </Box>
@@ -108,10 +136,17 @@ const ClaimRewardsButton = () => {
         />
       )}
 
-      {claimCorpsesDialog && (
-        <claimCorpses
-          open={claimCorpsesDialog}
-          close={() => setclaimCorpsesDialog(false)}
+      {claimCorpseRewardDialog && (
+        <ClaimCorpseReward
+          open={claimCorpseRewardDialog}
+          close={() => setClaimCorpseRewardDialog(false)}
+        />
+      )}
+
+      {claimSkullRewardDialog && (
+        <ClaimSkullReward
+          open={claimSkullRewardDialog}
+          close={() => setClaimSkullRewardDialog(false)}
         />
       )}
     </>
@@ -168,11 +203,12 @@ const styles = {
   },
   menuItemContent: {
     display: 'flex',
+    width: '100%',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     textAlign: 'center',
-    gap: 1,
+    gap: 0.5,
   },
   menuItemInfo: {
     display: 'flex',

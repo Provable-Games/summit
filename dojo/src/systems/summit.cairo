@@ -34,6 +34,10 @@ trait ISummitEvents<T> {
     fn get_summit_address(self: @T) -> ContractAddress;
     fn get_corpse_address(self: @T) -> ContractAddress;
     fn get_skull_address(self: @T) -> ContractAddress;
+
+    fn set_corpse_address(ref self: T, corpse_address: ContractAddress);
+    fn set_skull_address(ref self: T, skull_address: ContractAddress);
+    fn set_summit_address(ref self: T, summit_address: ContractAddress);
 }
 
 #[dojo::contract]
@@ -163,6 +167,18 @@ pub mod summit_events {
             assert(skull_address == starknet::get_caller_address(), 'Invalid caller');
             let mut world: WorldStorage = self.world(@DEFAULT_NS());
             world.emit_event(@SkullEvent { beast_token_id, skulls });
+        }
+
+        fn set_corpse_address(ref self: ContractState, corpse_address: ContractAddress) {
+            self.corpse_address.write(corpse_address);
+        }
+
+        fn set_skull_address(ref self: ContractState, skull_address: ContractAddress) {
+            self.skull_address.write(skull_address);
+        }
+
+        fn set_summit_address(ref self: ContractState, summit_address: ContractAddress) {
+            self.summit_address.write(summit_address);
         }
 
         fn get_summit_address(self: @ContractState) -> ContractAddress {

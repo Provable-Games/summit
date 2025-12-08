@@ -37,7 +37,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent, setAppliedPoisonCount, appliedPoisonCount } = useGameStore();
   const { gameEventsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
-  const { executeAction, attack, feed, claimBeastReward, claimCorpses, addExtraLife, applyStatPoints, applyPoison } = useSystemCalls();
+  const { executeAction, attack, feed, claimBeastReward, claimCorpses, claimSkulls, addExtraLife, applyStatPoints, applyPoison } = useSystemCalls();
   const { tokenBalances, setTokenBalances } = useController();
   const { play } = useSound();
   const { getDiplomacy } = useGameTokens();
@@ -290,6 +290,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     if (action.type === 'claim_corpse_reward') {
       txs.push(claimCorpses(action.adventurerIds));
+    }
+
+    if (action.type === 'claim_skull_reward') {
+      txs.push(claimSkulls(action.beastIds));
     }
 
     if (action.type === 'add_extra_life') {

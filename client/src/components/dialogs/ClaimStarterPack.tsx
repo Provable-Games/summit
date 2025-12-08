@@ -1,5 +1,4 @@
 import attackPotionIcon from '@/assets/images/attack-potion.png';
-import killTokenIcon from '@/assets/images/kill-token.png';
 import lifePotionIcon from '@/assets/images/life-potion.png';
 import poisonPotionIcon from '@/assets/images/poison-potion.png';
 import revivePotionIcon from '@/assets/images/revive-potion.png';
@@ -52,49 +51,39 @@ function ClaimStarterPack(props) {
   const { tokenBalances, setTokenBalances } = useController()
   const [claimInProgress, setClaimInProgress] = useState(false)
   const [potionsClaimed, setPotionsClaimed] = useState(0)
-  const [killTokensClaimed, setKillTokensClaimed] = useState(0)
 
   const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions)
-  const unclaimedKillTokens = collection.filter((beast: Beast) => beast.adventurers_killed > beast.kills_claimed)
 
   useEffect(() => {
     setClaimInProgress(false);
   }, [actionFailed]);
 
-  // When all unclaimed beasts are claimed, refresh balances and close modal
+  // When all unclaimed starter packs are claimed, refresh balances and close modal
   useEffect(() => {
-    if (collection.length > 0 && unclaimedBeasts.length === 0 && unclaimedKillTokens.length === 0) {
+    if (collection.length > 0 && unclaimedBeasts.length === 0) {
       setTokenBalances(({
         ...tokenBalances,
         "REVIVE": tokenBalances["REVIVE"] + potionsClaimed * 2,
         "ATTACK": tokenBalances["ATTACK"] + potionsClaimed * 3,
         "EXTRA LIFE": tokenBalances["EXTRA LIFE"] + potionsClaimed * 1,
         "POISON": tokenBalances["POISON"] + potionsClaimed * 3,
-        "SKULL": tokenBalances["SKULL"] + killTokensClaimed,
       }))
 
       close()
     }
-  }, [unclaimedBeasts.length, unclaimedKillTokens.length]);
+  }, [unclaimedBeasts.length]);
 
   const getPotionsToClaim = (potion: typeof POTIONS[number]) => {
     return unclaimedBeasts.reduce((sum: number, beast: Beast) => sum + (6 - beast.tier) * potion.packMultiplier, 0)
-  }
-  const getTokensToClaim = () => {
-    return unclaimedKillTokens.reduce((sum: number, beast: Beast) => sum + (beast.adventurers_killed - beast.kills_claimed), 0)
   }
 
   const claimAll = async () => {
     setClaimInProgress(true)
 
     setPotionsClaimed(unclaimedBeasts.reduce((sum: number, beast: Beast) => sum + (6 - beast.tier), 0))
-    setKillTokensClaimed(unclaimedKillTokens.reduce((sum: number, beast: Beast) => sum + (beast.adventurers_killed - beast.kills_claimed), 0))
 
     try {
-      const beastIds = Array.from(new Set([
-        ...unclaimedBeasts.map(beast => beast.token_id),
-        ...unclaimedKillTokens.map(beast => beast.token_id)
-      ]))
+      const beastIds = unclaimedBeasts.map(beast => beast.token_id);
 
       for (let i = 0; i < beastIds.length; i += LIMIT) {
         const batch = beastIds.slice(i, i + LIMIT)
@@ -205,24 +194,6 @@ function ClaimStarterPack(props) {
               })
             )}
           </Box>}
-
-          {getTokensToClaim() > 0 && (
-            <Box sx={styles.killTokensSection}>
-              <img src={killTokenIcon} alt='' width={'70px'} />
-
-              <Box sx={styles.killTokensContent}>
-                <Typography sx={styles.killTokensTitle}>
-                  {getTokensToClaim()} $KILL
-                </Typography>
-              </Box>
-              <Typography sx={styles.killTokensDescription}>
-                Earned from your beasts that have killed adventurers.
-              </Typography>
-              <Typography sx={styles.killTokensDescription}>
-                Used to upgrade your beasts.
-              </Typography>
-            </Box>
-          )}
 
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
             <Button
