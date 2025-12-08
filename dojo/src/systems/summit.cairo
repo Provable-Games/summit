@@ -29,7 +29,7 @@ trait ISummitEvents<T> {
     fn emit_diplomacy_event(ref self: T, specials_hash: felt252, beast_token_ids: Span<u32>, total_power: u16);
     fn emit_summit_event(ref self: T, beast: BeastEvent, live_stats: LiveBeastStats, owner: ContractAddress);
     fn emit_corpse_event(ref self: T, adventurer_id: u64, player: ContractAddress);
-    fn emit_skull_event(ref self: T, beast_token_id: u32, skulls: u128);
+    fn emit_skull_event(ref self: T, beast_token_id: u32, skulls: u64);
 
     fn get_summit_address(self: @T) -> ContractAddress;
     fn get_corpse_address(self: @T) -> ContractAddress;
@@ -158,7 +158,7 @@ pub mod summit_events {
             world.emit_event(@CorpseEvent { adventurer_id, player });
         }
 
-        fn emit_skull_event(ref self: ContractState, beast_token_id: u32, skulls: u128) {
+        fn emit_skull_event(ref self: ContractState, beast_token_id: u32, skulls: u64) {
             let skull_address = self.skull_address.read();
             assert(skull_address == starknet::get_caller_address(), 'Invalid caller');
             let mut world: WorldStorage = self.world(@DEFAULT_NS());

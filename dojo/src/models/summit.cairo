@@ -86,7 +86,7 @@ pub struct CorpseEvent {
 pub struct SkullEvent {
     #[key]
     pub beast_token_id: u32,
-    pub skulls: u128,
+    pub skulls: u64,
 }
 
 #[derive(Drop, Serde)]
