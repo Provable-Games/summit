@@ -18,7 +18,6 @@ import { Box, Button, Dialog, IconButton, InputBase, Typography } from '@mui/mat
 import { useEffect, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 
-// DUMMY VALUES FOR COSTS
 const UPGRADE_COSTS = {
   luck_per_level: 1,
   spirit_per_level: 1,
@@ -27,6 +26,8 @@ const UPGRADE_COSTS = {
   wisdom: 20,
   health_per_point: 1,
 };
+
+const MAX_ATTRIBUTES = 100;
 
 interface BeastUpgradeModalProps {
   open: boolean;
@@ -47,7 +48,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   const [wisdomSelected, setWisdomSelected] = useState(false);
   const [bonusHealthUpgrade, setBonusHealthUpgrade] = useState(0);
 
-  const killTokens = tokenBalances["KILL"] || 0;
+  const killTokens = tokenBalances["SKULL"] || 0;
   const corpseTokens = tokenBalances["CORPSE"] || 0;
   const currentBeast = beast;
 
@@ -136,7 +137,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
     const currentUpgrade = stat === 'luck' ? luckUpgrade : spiritUpgrade;
     const setter = stat === 'luck' ? setLuckUpgrade : setSpiritUpgrade;
 
-    const newValue = Math.max(0, Math.min(255 - currentValue, currentUpgrade + delta));
+    const newValue = Math.max(0, Math.min(MAX_ATTRIBUTES - currentValue, currentUpgrade + delta));
     setter(newValue);
   };
 
@@ -166,8 +167,8 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   const currentSpiritReductionSec = getSpiritRevivalReductionSeconds(currentSpirit);
   const nextSpiritReductionSec = getSpiritRevivalReductionSeconds(currentSpirit + spiritUpgrade);
 
-  // Vitality/Health visuals (Bonus-only, max 1023)
-  const MAX_BONUS_HEALTH = 1023;
+  // Vitality/Health visuals (Bonus-only, max 2000)
+  const MAX_BONUS_HEALTH = 2000;
   const currentBonusHealth = currentBeast.bonus_health || 0;
   const plannedBonusHealth = bonusHealthUpgrade || 0;
   const plannedTotalBonus = Math.min(MAX_BONUS_HEALTH, currentBonusHealth + plannedBonusHealth);
@@ -178,14 +179,14 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   const onLuckInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     const num = raw === '' ? 0 : parseInt(raw, 10);
-    const max = Math.max(0, 255 - currentLuck);
+    const max = Math.max(0, MAX_ATTRIBUTES - currentLuck);
     setLuckUpgrade(Math.max(0, Math.min(max, isNaN(num) ? 0 : num)));
   };
 
   const onSpiritInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     const num = raw === '' ? 0 : parseInt(raw, 10);
-    const max = Math.max(0, 255 - currentSpirit);
+    const max = Math.max(0, MAX_ATTRIBUTES - currentSpirit);
     setSpiritUpgrade(Math.max(0, Math.min(max, isNaN(num) ? 0 : num)));
   };
 
@@ -296,7 +297,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
             <Typography sx={styles.resourceHeadline}>Tokens Remaining</Typography>
             <Box sx={styles.resources}>
               <Box sx={styles.resourceItem}>
-                <img src={killTokenImg} alt="Kill" style={{ width: '32px', height: '32px' }} />
+                <img src={killTokenImg} alt="SKULL" style={{ width: '32px', height: '32px' }} />
                 <Box sx={styles.resourceTexts}>
                   <Typography sx={styles.resourceLabel}>Kill</Typography>
                   <Box sx={styles.resourceRow}>
@@ -335,7 +336,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                   <Typography sx={styles.attributeLevel}>
                     {currentLuck}
                     {luckUpgrade > 0 && <span style={{ color: '#4ade80' }}> → {currentLuck + luckUpgrade}</span>}
-                    <span style={{ color: '#bbb' }}> / 255</span>
+                    <span style={{ color: '#bbb' }}> / {MAX_ATTRIBUTES}</span>
                   </Typography>
                   <Typography sx={styles.attributeEffect}>
                     Critical hit chance: {currentLuckCrit}%
@@ -370,7 +371,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                   <IconButton
                     size="small"
                     onClick={() => adjustStat('luck', 1)}
-                    disabled={currentLuck + luckUpgrade >= 255}
+                    disabled={currentLuck + luckUpgrade >= MAX_ATTRIBUTES}
                     sx={styles.statButton}
                   >
                     <AddIcon sx={{ fontSize: '16px' }} />
@@ -387,7 +388,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                   <Typography sx={styles.attributeLevel}>
                     {currentSpirit}
                     {spiritUpgrade > 0 && <span style={{ color: '#4ade80' }}> → {currentSpirit + spiritUpgrade}</span>}
-                    <span style={{ color: '#bbb' }}> / 255</span>
+                    <span style={{ color: '#bbb' }}> / {MAX_ATTRIBUTES}</span>
                   </Typography>
                   <Typography sx={styles.attributeEffect}>
                     Revival time reduction: {formatShortDuration(currentSpiritReductionSec)}
@@ -422,7 +423,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                   <IconButton
                     size="small"
                     onClick={() => adjustStat('spirit', 1)}
-                    disabled={currentSpirit + spiritUpgrade >= 255}
+                    disabled={currentSpirit + spiritUpgrade >= MAX_ATTRIBUTES}
                     sx={styles.statButton}
                   >
                     <AddIcon sx={{ fontSize: '16px' }} />
@@ -582,7 +583,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
               {killTokenCost > 0 && (
                 <Box sx={styles.tokenCard}>
                   <Box sx={styles.tokenIcon}>
-                    <img src={killTokenImg} alt="Kill" style={{ width: '24px', height: '24px' }} />
+                    <img src={killTokenImg} alt="SKULL" style={{ width: '24px', height: '24px' }} />
                   </Box>
                   <Typography sx={styles.tokenUseValue}>{killTokenCost}</Typography>
                 </Box>

@@ -30,7 +30,7 @@ export enum ChainId {
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_relayer_1",
+    namespace: "summit_relayer_2",
     manifest: manifest_mainnet,
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
@@ -69,15 +69,15 @@ export const NETWORKS = {
           displayDecimals: 0,
         },
         {
-          name: "KILL",
+          name: "SKULL",
           address:
-            "0x1ce91617544027a91c46785c6ca839849af699d7ee612e6e63545924953b268",
+            "0x0559aa5a69d2062d73a301daae431620df1714b701c084093114ca10848e3743",
           displayDecimals: 0,
         },
         {
           name: "CORPSE",
           address:
-            "0x2602c9c9dab2402493caadfa12c5400f594c210f228b6d88219e2ddbe2af67a",
+            "0x0539b2889ee3e0f8e9e655675beb44ea40e3572050cb36bf02e5e9792593563a",
           displayDecimals: 0,
         }
       ],
@@ -122,15 +122,15 @@ export const NETWORKS = {
         displayDecimals: 0,
       },
       {
-        name: "KILL",
+        name: "SKULL",
         address:
-          "0x1ce91617544027a91c46785c6ca839849af699d7ee612e6e63545924953b268",
+          "0x0559aa5a69d2062d73a301daae431620df1714b701c084093114ca10848e3743",
         displayDecimals: 0,
       },
       {
         name: "CORPSE",
         address:
-          "0x2602c9c9dab2402493caadfa12c5400f594c210f228b6d88219e2ddbe2af67a",
+          "0x0539b2889ee3e0f8e9e655675beb44ea40e3572050cb36bf02e5e9792593563a",
         displayDecimals: 0,
       }
       // {

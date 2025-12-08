@@ -65,13 +65,17 @@ export const getSwapQuote = async (amount: number, token: string, otherToken: st
 export const generateSwapCalls = (ROUTER_CONTRACT: RouterContract, purchaseToken: string, tokenQuote: TokenQuote): SwapCall[] => {
   let totalQuoteSum = 0n;
 
-  if (tokenQuote.quote && tokenQuote.quote.splits.length > 0) {
-    const total = BigInt(tokenQuote.quote.total);
-    totalQuoteSum = total < 0n ? -total : total;
+  if (!tokenQuote.quote || tokenQuote.quote.splits.length === 0) {
+    return [];
   }
 
-  const doubledTotal = totalQuoteSum * 2n;
-  totalQuoteSum = doubledTotal < (totalQuoteSum + BigInt(1e19)) ? doubledTotal : (totalQuoteSum + BigInt(1e19));
+  const total = BigInt(tokenQuote.quote.total);
+  totalQuoteSum = total < 0n ? -total : total;
+
+  if (total < 0n) {
+    const doubledTotal = totalQuoteSum * 2n;
+    totalQuoteSum = doubledTotal < (totalQuoteSum + BigInt(1e19)) ? doubledTotal : (totalQuoteSum + BigInt(1e19));
+  }
 
   const transferCall: SwapCall = {
     contractAddress: purchaseToken,
@@ -102,7 +106,7 @@ export const generateSwapCalls = (ROUTER_CONTRACT: RouterContract, purchaseToken
 
   if (splits.length === 1) {
     const split = splits[0];
-    
+
     swapCalls = [
       {
         contractAddress: ROUTER_CONTRACT.address,

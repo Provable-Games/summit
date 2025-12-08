@@ -37,7 +37,7 @@ pub trait ISummitSystem<T> {
     fn set_revive_potion_address(ref self: T, revive_potion_address: ContractAddress);
     fn set_extra_life_potion_address(ref self: T, extra_life_potion_address: ContractAddress);
     fn set_poison_potion_address(ref self: T, poison_potion_address: ContractAddress);
-    fn set_kill_token_address(ref self: T, kill_token_address: ContractAddress);
+    fn set_skull_token_address(ref self: T, skull_token_address: ContractAddress);
     fn set_corpse_token_address(ref self: T, corpse_token_address: ContractAddress);
     fn set_test_money_address(ref self: T, test_money_address: ContractAddress);
     fn withdraw_funds(ref self: T, token_address: ContractAddress, amount: u256);
@@ -61,7 +61,7 @@ pub trait ISummitSystem<T> {
     fn get_revive_potion_address(self: @T) -> ContractAddress;
     fn get_extra_life_potion_address(self: @T) -> ContractAddress;
     fn get_poison_potion_address(self: @T) -> ContractAddress;
-    fn get_kill_token_address(self: @T) -> ContractAddress;
+    fn get_skull_token_address(self: @T) -> ContractAddress;
     fn get_corpse_token_address(self: @T) -> ContractAddress;
 }
 
@@ -132,7 +132,7 @@ pub mod summit_systems {
         revive_potion_dispatcher: SummitERC20Dispatcher,
         extra_life_potion_dispatcher: SummitERC20Dispatcher,
         poison_potion_dispatcher: SummitERC20Dispatcher,
-        kill_token_dispatcher: SummitERC20Dispatcher,
+        skull_token_dispatcher: SummitERC20Dispatcher,
         corpse_token_dispatcher: SummitERC20Dispatcher,
         summit_events_dispatcher: ISummitEventsDispatcher,
         test_money_dispatcher: IERC20Dispatcher,
@@ -349,7 +349,7 @@ pub mod summit_systems {
             tokens_required += stats.spirit.into() + stats.luck.into();
 
             assert(tokens_required > 0, 'No upgrades chosen');
-            self.kill_token_dispatcher.read().burn_from(get_caller_address(), tokens_required.into() * TOKEN_DECIMALS);
+            self.skull_token_dispatcher.read().burn_from(get_caller_address(), tokens_required.into() * TOKEN_DECIMALS);
             self._save_beast(beast, true);
         }
 
@@ -482,9 +482,9 @@ pub mod summit_systems {
             self.poison_potion_dispatcher.write(SummitERC20Dispatcher { contract_address: poison_potion_address });
         }
 
-        fn set_kill_token_address(ref self: ContractState, kill_token_address: ContractAddress) {
+        fn set_skull_token_address(ref self: ContractState, skull_token_address: ContractAddress) {
             self.ownable.assert_only_owner();
-            self.kill_token_dispatcher.write(SummitERC20Dispatcher { contract_address: kill_token_address });
+            self.skull_token_dispatcher.write(SummitERC20Dispatcher { contract_address: skull_token_address });
         }
 
         fn set_corpse_token_address(ref self: ContractState, corpse_token_address: ContractAddress) {
@@ -581,8 +581,8 @@ pub mod summit_systems {
             self.poison_potion_dispatcher.read().contract_address
         }
 
-        fn get_kill_token_address(self: @ContractState) -> ContractAddress {
-            self.kill_token_dispatcher.read().contract_address
+        fn get_skull_token_address(self: @ContractState) -> ContractAddress {
+            self.skull_token_dispatcher.read().contract_address
         }
 
         fn get_corpse_token_address(self: @ContractState) -> ContractAddress {

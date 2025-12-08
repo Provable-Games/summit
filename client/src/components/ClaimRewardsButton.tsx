@@ -4,14 +4,14 @@ import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import { Badge, Box, Button, IconButton, Menu, MenuItem, Typography } from '@mui/material';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import ClaimCorpseReward from './dialogs/ClaimCorpseReward';
+import claimCorpses from './dialogs/claimCorpses';
 import ClaimStarterPack from './dialogs/ClaimStarterPack';
 
 const ClaimRewardsButton = () => {
   const { collection, adventurerCollection } = useGameStore();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false);
-  const [claimCorpseRewardDialog, setClaimCorpseRewardDialog] = useState(false);
+  const [claimCorpsesDialog, setclaimCorpsesDialog] = useState(false);
 
   const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions || beast.adventurers_killed > beast.kills_claimed);
   const unclaimedCorpseTokens = adventurerCollection.reduce((sum, adventurer) => sum + adventurer.level, 0);
@@ -30,8 +30,8 @@ const ClaimRewardsButton = () => {
     handleClose();
   };
 
-  const handleClaimCorpseReward = () => {
-    setClaimCorpseRewardDialog(true);
+  const handleclaimCorpses = () => {
+    setclaimCorpsesDialog(true);
     handleClose();
   };
 
@@ -93,7 +93,7 @@ const ClaimRewardsButton = () => {
                 <Typography sx={styles.menuItemTitle}>Corpse Token</Typography>
                 <Typography sx={styles.menuItemSubtitle}>{unclaimedCorpseTokens} available</Typography>
               </Box>
-              <Button sx={styles.claimButton} onClick={handleClaimCorpseReward}>
+              <Button sx={styles.claimButton} onClick={handleclaimCorpses}>
                 <Typography sx={styles.claimButtonText}>CLAIM</Typography>
               </Button>
             </Box>
@@ -108,10 +108,10 @@ const ClaimRewardsButton = () => {
         />
       )}
 
-      {claimCorpseRewardDialog && (
-        <ClaimCorpseReward
-          open={claimCorpseRewardDialog}
-          close={() => setClaimCorpseRewardDialog(false)}
+      {claimCorpsesDialog && (
+        <claimCorpses
+          open={claimCorpsesDialog}
+          close={() => setclaimCorpsesDialog(false)}
         />
       )}
     </>

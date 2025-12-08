@@ -94,7 +94,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     "EXTRA LIFE": 0,
     "POISON": 0,
     "REVIVE": 0,
-    "KILL": 0,
+    "SKULL": 0,
     "CORPSE": 0
   });
   const [sellQuantities, setSellQuantities] = useState<Record<string, number>>({
@@ -102,7 +102,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     "EXTRA LIFE": 0,
     "POISON": 0,
     "REVIVE": 0,
-    "KILL": 0,
+    "SKULL": 0,
     "CORPSE": 0
   });
   const [selectedToken, setSelectedToken] = useState<string>('');
@@ -116,7 +116,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     "EXTRA LIFE": { amount: '', loading: false },
     "POISON": { amount: '', loading: false },
     "REVIVE": { amount: '', loading: false },
-    "KILL": { amount: '', loading: false },
+    "SKULL": { amount: '', loading: false },
     "CORPSE": { amount: '', loading: false }
   });
 
@@ -167,7 +167,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         "EXTRA LIFE": 0,
         "POISON": 0,
         "REVIVE": 0,
-        "KILL": 0,
+        "SKULL": 0,
         "CORPSE": 0
       });
       setSellQuantities({
@@ -175,7 +175,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         "EXTRA LIFE": 0,
         "POISON": 0,
         "REVIVE": 0,
-        "KILL": 0,
+        "SKULL": 0,
         "CORPSE": 0
       });
 

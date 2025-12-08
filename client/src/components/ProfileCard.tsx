@@ -32,7 +32,7 @@ const ProfileCard = () => {
   const [beastDexOpen, setBeastDexOpen] = useState(false)
   const [potionShopOpen, setPotionShopOpen] = useState(false)
   const isCartridge = connector?.id === 'controller'
-  const killTokens = tokenBalances["KILL"] || 0
+  const killTokens = tokenBalances["SKULL"] || 0
   const corpseTokens = tokenBalances["CORPSE"] || 0
 
   const renderPotionItem = (imgSrc: string, tokenName: string) => {
@@ -110,7 +110,7 @@ const ProfileCard = () => {
         <Box sx={styles.tokensSection}>
           <Box sx={styles.tokens}>
             <Box sx={styles.tokenItem} borderRight={`1px solid ${gameColors.accentGreen}40`}>
-              <img src={killTokenImg} alt="Kill" style={{ width: '18px', height: '18px' }} />
+              <img src={killTokenImg} alt="SKULL" style={{ width: '18px', height: '18px' }} />
               <Box sx={styles.tokenTexts}>
                 <Typography sx={styles.tokenValue}>{killTokens.toLocaleString()}</Typography>
               </Box>
@@ -144,7 +144,7 @@ const ProfileCard = () => {
                 {renderPotionItem(revivePotionImg, "REVIVE")}
               </Box>
               <Box sx={styles.potionRow}>
-                {renderPotionItem(killTokenImg, "KILL")}
+                {renderPotionItem(killTokenImg, "SKULL")}
                 {renderPotionItem(corpseTokenImg, "CORPSE")}
               </Box>
             </Box>

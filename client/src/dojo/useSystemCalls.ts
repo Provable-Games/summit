@@ -154,12 +154,12 @@ export const useSystemCalls = () => {
     return txs;
   };
 
-  const applyStatPoints = (beastId: number, stats: Stats, killRequired: number) => {
+  const applyStatPoints = (beastId: number, stats: Stats, skullRequired: number) => {
     let txs: any[] = [];
 
-    if (killRequired > 0) {
-      let killTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "KILL")?.address;
-      txs.push(approveTokens(killTokenAddress, killRequired));
+    if (skullRequired > 0) {
+      let skullTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL")?.address;
+      txs.push(approveTokens(skullTokenAddress, skullRequired));
     }
 
     txs.push({
@@ -187,11 +187,19 @@ export const useSystemCalls = () => {
     };
   };
 
-  const claimCorpseReward = (adventurerIds: number[]) => {
+  const claimCorpses = (adventurerIds: number[]) => {
     return {
-      contractAddress: SUMMIT_ADDRESS,
-      entrypoint: "claim_corpse_reward",
+      contractAddress: currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE")?.address,
+      entrypoint: "claim",
       calldata: CallData.compile([adventurerIds]),
+    };
+  };
+
+  const claimSkulls = (beastIds: number[]) => {
+    return {
+      contractAddress: currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL")?.address,
+      entrypoint: "claim",
+      calldata: CallData.compile([beastIds]),
     };
   };
 
@@ -227,7 +235,8 @@ export const useSystemCalls = () => {
     feed,
     attack,
     claimBeastReward,
-    claimCorpseReward,
+    claimCorpses,
+    claimSkulls,
     executeAction,
     addExtraLife,
     applyStatPoints,

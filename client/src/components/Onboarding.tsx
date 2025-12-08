@@ -1,6 +1,6 @@
 import { useGameStore } from '@/stores/gameStore';
 import { useEffect, useState } from 'react';
-import ClaimCorpseReward from './dialogs/ClaimCorpseReward';
+import claimCorpses from './dialogs/claimCorpses';
 import ClaimStarterPack from './dialogs/ClaimStarterPack';
 
 type OnboardingStep = 'starter_pack' | 'corpse_reward' | 'complete';
@@ -39,7 +39,7 @@ function Onboarding() {
         />
       )}
       {currentStep === 'corpse_reward' && (
-        <ClaimCorpseReward
+        <claimCorpses
           open={true}
           close={() => { setOnboarding(false) }}
           isOnboarding={true}

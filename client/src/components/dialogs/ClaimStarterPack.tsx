@@ -70,7 +70,7 @@ function ClaimStarterPack(props) {
         "ATTACK": tokenBalances["ATTACK"] + potionsClaimed * 3,
         "EXTRA LIFE": tokenBalances["EXTRA LIFE"] + potionsClaimed * 1,
         "POISON": tokenBalances["POISON"] + potionsClaimed * 3,
-        "KILL": tokenBalances["KILL"] + killTokensClaimed,
+        "SKULL": tokenBalances["SKULL"] + killTokensClaimed,
       }))
 
       close()
