@@ -157,28 +157,23 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
 pub impl BeastUtilsImpl of BeastUtilsTrait {
     fn crit_chance(self: Beast) -> u8 {
         let points: u16 = self.live.stats.luck.into();
-        let total_bp: u16 = match points {
-            0 => 0,
-            1 => 1200,
-            2 => 2100,
-            3 => 2775,
-            4 => 3281,
-            5 => 3660,
-            6 => 3944,
-            7 => 4157,
-            8 => 4316,
-            9 => 4435,
-            10 => 4524,
-            11 => 4590,
-            12 => 4639,
-            13 => 4675,
-            14 => 4702,
-            15 => 4722,
-            _ => {
-                let extra = (points - 15) * 20;
-                4722 + extra
-            },
-        };
+
+        let mut total_bp: u16 = 0;
+        if points <= 5 {
+            total_bp = match points {
+                0 => 0,
+                1 => 1000,
+                2 => 1400,
+                3 => 1700,
+                4 => 1900,
+                5 => 2000,
+                _ => 0,
+            };
+        } else if points <= 70 {
+            total_bp = 2000 + ((points - 5) * 100);
+        } else {
+            total_bp = 8500 + ((points - 70) * 50);
+        }
 
         let percent = total_bp / 100;
         percent.try_into().unwrap()
@@ -186,25 +181,23 @@ pub impl BeastUtilsImpl of BeastUtilsTrait {
 
     fn spirit_reduction(self: Beast) -> u64 {
         let points: u64 = self.live.stats.spirit.into();
-        let reduction: u64 = match points {
-            0 => 0,
-            1 => 10800,
-            2 => 18900,
-            3 => 24975,
-            4 => 29531,
-            5 => 32948,
-            6 => 35511,
-            7 => 37433,
-            8 => 38874,
-            9 => 39954,
-            10 => 40764,
-            11 => 41372,
-            12 => 41828,
-            13 => 42170,
-            14 => 42427,
-            15 => 42620,
-            _ => 42620 + ((points - 15) * 100),
-        };
+        let mut reduction: u64 = 0;
+
+        if points <= 5 {
+            reduction = match points {
+                0 => 0,
+                1 => 6480,
+                2 => 9072,
+                3 => 11016,
+                4 => 12312,
+                5 => 12960,
+                _ => 0,
+            };
+        } else if points <= 70 {
+            reduction = 12960 + ((points - 5) * 648);
+        } else {
+            reduction = 55080 + ((points - 70) * 324);
+        }
 
         reduction
     }
@@ -263,7 +256,7 @@ mod tests {
             0_u8, // luck
             0_u8, // specials
             0_u8, // wisdom
-            0_u8, // diplomacy
+            0_u8 // diplomacy
         );
         let packed = PackableLiveStatsStorePacking::pack(stats);
         let unpacked = PackableLiveStatsStorePacking::unpack(packed);
@@ -310,11 +303,11 @@ mod tests {
             4094_u16, // (2^12 - 1) - 1
             1_u8, // 1-bit remains 1 for max
             131070_u32, // (2^17 - 1) - 1
-            254_u8, // (2^8 - 1) - 1
-            254_u8, // (2^8 - 1) - 1
+            100, // (2^8 - 1) - 1
+            100, // (2^8 - 1) - 1
             1_u8, // 1-bit remains 1 for max
             1_u8, // 1-bit remains 1 for max
-            1_u8, // 1-bit remains 1 for max
+            1_u8 // 1-bit remains 1 for max
         );
         let packed = PackableLiveStatsStorePacking::pack(stats);
         let unpacked = PackableLiveStatsStorePacking::unpack(packed);
@@ -328,16 +321,16 @@ mod tests {
         assert(unpacked.extra_lives == 4094_u16, 'max extra_lives');
         assert(unpacked.has_claimed_potions == 1_u8, 'max has_claimed_potions');
         assert(unpacked.blocks_held == 131070_u32, 'max blocks_held');
-        assert(unpacked.stats.spirit == 254_u8, 'max spirit');
-        assert(unpacked.stats.luck == 254_u8, 'max luck');
+        assert(unpacked.stats.spirit == 100, 'max spirit');
+        assert(unpacked.stats.luck == 100, 'max luck');
         assert(unpacked.stats.specials == 1_u8, 'max specials');
         assert(unpacked.stats.wisdom == 1_u8, 'max wisdom');
-        assert(unpacked.stats.diplomacy == 1_u8, 'max diplomacy');  
+        assert(unpacked.stats.diplomacy == 1_u8, 'max diplomacy');
     }
 
     #[test]
     fn pack_unpack_mixed_values() {
-        let stats = build_stats(100_u32, 100, 100, 100, 9, 123456789, 7, 42, 1, 54321, 17, 200, 0, 1_u8, 0_u8);
+        let stats = build_stats(100_u32, 100, 100, 100, 9, 123456789, 7, 42, 1, 54321, 17, 96, 0, 1_u8, 0_u8);
         let packed = PackableLiveStatsStorePacking::pack(stats);
         let unpacked = PackableLiveStatsStorePacking::unpack(packed);
 
@@ -352,7 +345,7 @@ mod tests {
         assert(unpacked.has_claimed_potions == 1_u8, 'mixed has_claimed_potions');
         assert(unpacked.blocks_held == 54321_u32, 'mixed blocks_held');
         assert(unpacked.stats.spirit == 17_u8, 'mixed spirit');
-        assert(unpacked.stats.luck == 200_u8, 'mixed luck');
+        assert(unpacked.stats.luck == 96_u8, 'mixed luck');
         assert(unpacked.stats.specials == 0_u8, 'mixed specials');
         assert(unpacked.stats.wisdom == 1_u8, 'mixed wisdom');
         assert(unpacked.stats.diplomacy == 0_u8, 'mixed diplomacy');

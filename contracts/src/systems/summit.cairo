@@ -81,8 +81,8 @@ pub mod summit_systems {
     use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ClassHash, ContractAddress, get_block_number, get_block_timestamp, get_caller_address};
     use summit::constants::{
-        BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS, DAY_SECONDS, EIGHT_BITS_MAX,
-        MAX_REVIVAL_COUNT, MINIMUM_DAMAGE, TOKEN_DECIMALS, errors, BEAST_MAX_EXTRA_LIVES
+        BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_ATTRIBUTES, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS,
+        BEAST_MAX_EXTRA_LIVES, DAY_SECONDS, EIGHT_BITS_MAX, MAX_REVIVAL_COUNT, MINIMUM_DAMAGE, TOKEN_DECIMALS, errors,
     };
     use summit::erc20::interface::{SummitERC20Dispatcher, SummitERC20DispatcherTrait};
     use summit::interfaces::{
@@ -218,12 +218,6 @@ pub mod summit_systems {
             assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
             assert(amount > 0, 'No amount to feed');
 
-            // assert the caller owns the beast they are feeding
-            assert(
-                self.beast_dispatcher.read().owner_of(beast_token_id.into()) == get_caller_address(),
-                errors::NOT_TOKEN_OWNER,
-            );
-
             let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
             let new_bonus_health = beast.live.bonus_health + amount;
             assert(new_bonus_health <= BEAST_MAX_BONUS_HEALTH, errors::BEAST_MAX_BONUS_HEALTH);
@@ -293,15 +287,12 @@ pub mod summit_systems {
 
             assert(extra_life_potions <= BEAST_MAX_EXTRA_LIVES, errors::BEAST_MAX_EXTRA_LIVES);
 
-            let summit_owner = self.beast_dispatcher.read().owner_of(summit_beast_token_id.into());
-            assert(summit_owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
-
             let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
 
             // Apply extra life potions
             let mut potions_to_use = extra_life_potions;
 
-            // Prevent u16 overflow
+            // Prevent overflow
             if beast.live.extra_lives > BEAST_MAX_EXTRA_LIVES - extra_life_potions {
                 potions_to_use = BEAST_MAX_EXTRA_LIVES - beast.live.extra_lives;
             }
@@ -322,11 +313,6 @@ pub mod summit_systems {
 
         fn apply_stat_points(ref self: ContractState, beast_token_id: u32, stats: Stats) {
             assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
-
-            assert(
-                self.beast_dispatcher.read().owner_of(beast_token_id.into()) == get_caller_address(),
-                errors::NOT_TOKEN_OWNER,
-            );
 
             let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
 
@@ -356,6 +342,10 @@ pub mod summit_systems {
 
             beast.live.stats.spirit += stats.spirit;
             beast.live.stats.luck += stats.luck;
+
+            assert(beast.live.stats.spirit <= BEAST_MAX_ATTRIBUTES, errors::BEAST_MAX_ATTRIBUTES);
+            assert(beast.live.stats.luck <= BEAST_MAX_ATTRIBUTES, errors::BEAST_MAX_ATTRIBUTES);
+
             tokens_required += stats.spirit.into() + stats.luck.into();
 
             assert(tokens_required > 0, 'No upgrades chosen');
