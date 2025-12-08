@@ -24,7 +24,7 @@ pub trait ISummitEvents<T> {
         attack_potions: u8,
         xp_gained: u8,
     );
-    fn emit_reward_event(ref self: T, beast_token_id: u32, owner: ContractAddress, amount: u32);
+    fn emit_reward_event(ref self: T, beast_token_id: u32, owner: ContractAddress, amount: u256);
     fn emit_poison_event(ref self: T, beast_token_id: u32, count: u16, player: ContractAddress);
     fn emit_diplomacy_event(ref self: T, specials_hash: felt252, beast_token_ids: Span<u32>, total_power: u16);
     fn emit_summit_event(ref self: T, beast: PackableBeast, live_stats: LiveBeastStats, owner: ContractAddress);

@@ -186,17 +186,17 @@ pub impl BeastUtilsImpl of BeastUtilsTrait {
         if points <= 5 {
             reduction = match points {
                 0 => 0,
-                1 => 6480,
-                2 => 9072,
-                3 => 11016,
-                4 => 12312,
-                5 => 12960,
+                1 => 7200,
+                2 => 10080,
+                3 => 12240,
+                4 => 13680,
+                5 => 14400,
                 _ => 0,
             };
         } else if points <= 70 {
-            reduction = 12960 + ((points - 5) * 648);
+            reduction = 14400 + ((points - 5) * 720);
         } else {
-            reduction = 55080 + ((points - 70) * 324);
+            reduction = 61200 + ((points - 70) * 360);
         }
 
         reduction

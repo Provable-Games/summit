@@ -1329,7 +1329,7 @@
   "contracts": [
     {
       "address": "0x481fbc2206dd5594d173d2e976a030dbadb14f65d77db3e0931bfaad007fa25",
-      "class_hash": "0x65f39bce2576b67bf115199eb6f037745b0eca1b4e8d4a2a13e31b9a4235d75",
+      "class_hash": "0x1a898512bb4bf9ff16c8e682933356cb56fa3d01d390a27ed9efde847201b1b",
       "abi": [
         {
           "type": "impl",
@@ -1758,6 +1758,42 @@
                 }
               ],
               "state_mutability": "view"
+            },
+            {
+              "type": "function",
+              "name": "set_corpse_address",
+              "inputs": [
+                {
+                  "name": "corpse_address",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "set_skull_address",
+              "inputs": [
+                {
+                  "name": "skull_address",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
+            },
+            {
+              "type": "function",
+              "name": "set_summit_address",
+              "inputs": [
+                {
+                  "name": "summit_address",
+                  "type": "core::starknet::contract_address::ContractAddress"
+                }
+              ],
+              "outputs": [],
+              "state_mutability": "external"
             }
           ]
         },
@@ -1886,6 +1922,9 @@
         "emit_summit_event",
         "emit_corpse_event",
         "emit_skull_event",
+        "set_corpse_address",
+        "set_skull_address",
+        "set_summit_address",
         "upgrade"
       ]
     }

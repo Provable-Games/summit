@@ -49,7 +49,7 @@ pub trait ISummitSystem<T> {
 
     fn get_start_timestamp(self: @T) -> u64;
     fn get_terminal_block(self: @T) -> u64;
-    fn get_submission_blocks(self: @T) -> u64;
+    fn get_beast_submission_blocks(self: @T) -> u64;
     fn get_summit_claimed(self: @T) -> bool;
 
     fn get_event_address(self: @T) -> ContractAddress;
@@ -118,11 +118,16 @@ pub mod summit_systems {
         diplomacy_beast: Map<felt252, Map<u8, u32>>, // (prefix-suffix hash) -> (index) -> beast token id
         diplomacy_count: Map<felt252, u8>,
         start_timestamp: u64,
+        summit_duration_blocks: u64,
         terminal_block: u64,
-        submission_blocks: u64,
         summit_claimed: bool,
+        summit_reward_amount: u256, // Total amount being distributed
+        showdown_reward_amount: u256, // Showdown winner reward
         beast_leaderboard: Map<u16, u32>, // position -> beast token id
+        beast_submission_blocks: u64,
         beast_tokens_distributed: u16,
+        beast_tokens_amount: u256, // Amount each top beast get
+        beast_prices: u32, // Number of beasts getting reward
         dungeon_address: ContractAddress,
         beast_dispatcher: IERC721Dispatcher,
         beast_nft_dispatcher: IBeastsDispatcher,
@@ -152,7 +157,12 @@ pub mod summit_systems {
         ref self: ContractState,
         owner: ContractAddress,
         start_timestamp: u64,
-        submission_blocks: u64,
+        summit_duration_blocks: u64,
+        summit_reward_amount: u256,
+        showdown_reward_amount: u256,
+        beast_tokens_amount: u256,
+        beast_submission_blocks: u64,
+        beast_prices: u32,
         dungeon_address: ContractAddress,
         beast_address: ContractAddress,
         beast_data_address: ContractAddress,
@@ -160,7 +170,12 @@ pub mod summit_systems {
     ) {
         self.ownable.initializer(owner);
         self.start_timestamp.write(start_timestamp);
-        self.submission_blocks.write(submission_blocks);
+        self.summit_duration_blocks.write(summit_duration_blocks);
+        self.summit_reward_amount.write(summit_reward_amount);
+        self.showdown_reward_amount.write(showdown_reward_amount);
+        self.beast_tokens_amount.write(beast_tokens_amount);
+        self.beast_submission_blocks.write(beast_submission_blocks);
+        self.beast_prices.write(beast_prices);
         self.dungeon_address.write(dungeon_address);
         self.beast_dispatcher.write(IERC721Dispatcher { contract_address: beast_address });
         self.beast_nft_dispatcher.write(IBeastsDispatcher { contract_address: beast_address });
@@ -395,7 +410,8 @@ pub mod summit_systems {
             let current_block = get_block_number();
             assert(current_block >= self.terminal_block.read(), 'Summit not over');
             assert(
-                current_block < self.terminal_block.read() + self.submission_blocks.read(), 'Submission period over',
+                current_block < self.terminal_block.read() + self.beast_submission_blocks.read(),
+                'Submission period over',
             );
 
             assert(position > 0 && position <= 5000, 'Invalid position');
@@ -426,7 +442,8 @@ pub mod summit_systems {
 
         fn distribute_beast_tokens(ref self: ContractState, limit: u16) {
             assert(
-                get_block_number() > self.terminal_block.read() + self.submission_blocks.read(), 'Submission not over',
+                get_block_number() > self.terminal_block.read() + self.beast_submission_blocks.read(),
+                'Submission not over',
             );
 
             let mut current_position = self.beast_tokens_distributed.read();
@@ -515,8 +532,8 @@ pub mod summit_systems {
             self.terminal_block.read()
         }
 
-        fn get_submission_blocks(self: @ContractState) -> u64 {
-            self.submission_blocks.read()
+        fn get_beast_submission_blocks(self: @ContractState) -> u64 {
+            self.beast_submission_blocks.read()
         }
 
         fn get_summit_claimed(self: @ContractState) -> bool {
@@ -659,15 +676,13 @@ pub mod summit_systems {
             // Mint reward
             if (blocks_on_summit > 0 && current_block < self.terminal_block.read()) {
                 beast.live.blocks_held += blocks_on_summit.try_into().unwrap();
-                // let summit_config: SummitConfig = world.read_model(SUMMIT_ID);
-                // let reward_dispatcher = RewardERC20Dispatcher { contract_address: summit_config.reward_address };
-                // reward_dispatcher.mint(summit_owner, reward_amount * TOKEN_DECIMALS);
-                let total_reward_amount = blocks_on_summit.try_into().unwrap() * 100;
+                let block_reward = self.summit_reward_amount.read() / self.summit_duration_blocks.read().into();
+                let total_reward_amount = blocks_on_summit.into() * block_reward;
                 let diplomacy_reward_amount = total_reward_amount / 100;
 
                 let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
                 let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
-                if diplomacy_count > 1 {
+                if diplomacy_count > 0 {
                     let mut index = 0;
                     loop {
                         if index >= diplomacy_count {
@@ -679,21 +694,15 @@ pub mod summit_systems {
                             .beast_dispatcher
                             .read()
                             .owner_of(diplomacy_beast_token_id.into());
-                        self
-                            .summit_events_dispatcher
-                            .read()
-                            .emit_reward_event(
-                                diplomacy_beast_token_id, diplomacy_beast_owner, diplomacy_reward_amount,
-                            );
+                        Self::_reward_beast(
+                            ref self, diplomacy_beast_token_id, diplomacy_beast_owner, diplomacy_reward_amount,
+                        );
                         index += 1;
                     }
                 }
 
                 let summit_reward_amount = total_reward_amount - (diplomacy_reward_amount * diplomacy_count.into());
-                self
-                    .summit_events_dispatcher
-                    .read()
-                    .emit_reward_event(beast.live.token_id, summit_owner, summit_reward_amount);
+                Self::_reward_beast(ref self, beast.live.token_id, summit_owner, summit_reward_amount);
             }
         }
 
@@ -749,6 +758,7 @@ pub mod summit_systems {
                 // get stats for the beast that is attacking
                 let mut attacking_beast = Self::_get_beast(@self, attacking_beast_token_id);
 
+                Self::_assert_beast_can_attack(@self, attacking_beast);
                 // assert the attacking beast is alive
                 remaining_revival_potions =
                     Self::_use_revival_potions(@self, ref attacking_beast, ref remaining_revival_potions);
@@ -978,6 +988,13 @@ pub mod summit_systems {
             (combat_result.total_damage, combat_result.critical_hit_bonus > 0)
         }
 
+        fn _assert_beast_can_attack(self: @ContractState, beast: Beast) {
+            let last_killed_timestamp = Self::_get_last_killed_timestamp(self, beast);
+            assert!(
+                last_killed_timestamp < get_block_timestamp() - DAY_SECONDS, "Beast has been killed in the last day",
+            );
+        }
+
         /// @title _use_revival_potions
         /// @notice this function is used to apply revival potions if needed
         /// @param live_beast_stats the stats of the beast to check
@@ -989,12 +1006,6 @@ pub mod summit_systems {
             let mut revival_time = BASE_REVIVAL_TIME_SECONDS;
 
             if time_since_death < revival_time {
-                // if the beast has not been killed in the last 14 days, reduce the revival time by 4 hours
-                let last_killed_timestamp = Self::_get_last_killed_timestamp(self, beast);
-                if last_killed_timestamp < current_time - (DAY_SECONDS * 14) {
-                    revival_time -= 14400;
-                }
-
                 // spirit reduction
                 revival_time -= beast.spirit_reduction();
 
@@ -1202,6 +1213,14 @@ pub mod summit_systems {
             }
 
             (bonus / 500).try_into().unwrap()
+        }
+
+        fn _reward_beast(
+            ref self: ContractState, beast_token_id: u32, beast_owner: ContractAddress, reward_amount: u256,
+        ) {
+            // self.reward_dispatcher.read().transfer(beast_owner, reward_amount);
+
+            self.summit_events_dispatcher.read().emit_reward_event(beast_token_id, beast_owner, reward_amount);
         }
     }
 
