@@ -34,12 +34,24 @@ fn deploy_summit() -> ISummitSystemDispatcher {
     let contract = declare("summit_systems").unwrap().contract_class();
     let owner = REAL_PLAYER();
     let start_timestamp = 1000_u64;
-    let submission_blocks = 100_u64;
+    let summit_duration_blocks = 1000000_u64;
+    let summit_reward_amount = 0;
+    let showdown_duration_seconds = 100_u64;
+    let showdown_reward_amount = 100;
+    let beast_tokens_amount = 100;
+    let beast_submission_blocks = 100_u64;
+    let beast_top_spots = 100_u32;
 
     let mut calldata = array![];
     calldata.append(owner.into());
     calldata.append(start_timestamp.into());
-    calldata.append(submission_blocks.into());
+    calldata.append(summit_duration_blocks.into());
+    calldata.append(summit_reward_amount.into());
+    calldata.append(showdown_duration_seconds.into());
+    calldata.append(showdown_reward_amount.into());
+    calldata.append(beast_tokens_amount.into());
+    calldata.append(beast_submission_blocks.into());
+    calldata.append(beast_top_spots.into());
     calldata.append(DUNGEON_ADDRESS().into());
     calldata.append(BEAST_ADDRESS().into());
     calldata.append(BEAST_DATA_ADDRESS().into());
@@ -262,7 +274,7 @@ fn test_apply_stat_points_basic() {
     let summit = deploy_summit_and_start();
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    mock_erc20_burn_from(summit.get_kill_token_address(), true);
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
 
     let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit: 5, luck: 3 };
 
@@ -280,7 +292,7 @@ fn test_apply_stat_points_unlock_specials() {
     let summit = deploy_summit_and_start();
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    mock_erc20_burn_from(summit.get_kill_token_address(), true);
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
 
     let stats = summit::models::beast::Stats { specials: 1, wisdom: 0, diplomacy: 0, spirit: 0, luck: 0 };
 
@@ -336,7 +348,7 @@ fn test_claim_beast_reward_basic() {
     mock_erc20_transfer(summit.get_poison_potion_address(), true);
     mock_erc20_transfer(summit.get_revive_potion_address(), true);
     mock_erc20_transfer(summit.get_extra_life_potion_address(), true);
-    mock_erc20_mint(summit.get_kill_token_address(), true);
+    mock_erc20_mint(summit.get_skull_token_address(), true);
 
     let beast_token_ids = array![60989].span();
     summit.claim_beast_reward(beast_token_ids);
@@ -485,7 +497,7 @@ fn test_get_terminal_block() {
 #[fork("mainnet")]
 fn test_get_submission_blocks() {
     let summit = deploy_summit();
-    let submission_blocks = summit.get_submission_blocks();
+    let submission_blocks = summit.get_beast_submission_blocks();
     assert(submission_blocks == 100_u64, 'Wrong submission blocks');
 }
 

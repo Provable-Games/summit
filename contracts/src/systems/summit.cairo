@@ -49,8 +49,14 @@ pub trait ISummitSystem<T> {
 
     fn get_start_timestamp(self: @T) -> u64;
     fn get_terminal_block(self: @T) -> u64;
-    fn get_beast_submission_blocks(self: @T) -> u64;
     fn get_summit_claimed(self: @T) -> bool;
+    fn get_summit_duration_blocks(self: @T) -> u64;
+    fn get_summit_reward_amount(self: @T) -> u256;
+    fn get_showdown_duration_seconds(self: @T) -> u64;
+    fn get_showdown_reward_amount(self: @T) -> u256;
+    fn get_beast_tokens_amount(self: @T) -> u256;
+    fn get_beast_submission_blocks(self: @T) -> u64;
+    fn get_beast_top_spots(self: @T) -> u32;
 
     fn get_event_address(self: @T) -> ContractAddress;
     fn get_dungeon_address(self: @T) -> ContractAddress;
@@ -547,6 +553,30 @@ pub mod summit_systems {
 
         fn get_summit_claimed(self: @ContractState) -> bool {
             self.summit_claimed.read()
+        }
+
+        fn get_summit_duration_blocks(self: @ContractState) -> u64 {
+            self.summit_duration_blocks.read()
+        }
+
+        fn get_summit_reward_amount(self: @ContractState) -> u256 {
+            self.summit_reward_amount.read()
+        }
+
+        fn get_showdown_duration_seconds(self: @ContractState) -> u64 {
+            self.showdown_duration_seconds.read()
+        }
+
+        fn get_showdown_reward_amount(self: @ContractState) -> u256 {
+            self.showdown_reward_amount.read()
+        }
+
+        fn get_beast_tokens_amount(self: @ContractState) -> u256 {
+            self.beast_tokens_amount.read()
+        }
+
+        fn get_beast_top_spots(self: @ContractState) -> u32 {
+            self.beast_top_spots.read()
         }
 
         fn get_summit_data(ref self: ContractState) -> (Beast, u64, ContractAddress, u16, u64, felt252) {
