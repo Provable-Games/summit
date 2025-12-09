@@ -1328,8 +1328,8 @@
   },
   "contracts": [
     {
-      "address": "0x481fbc2206dd5594d173d2e976a030dbadb14f65d77db3e0931bfaad007fa25",
-      "class_hash": "0x1a898512bb4bf9ff16c8e682933356cb56fa3d01d390a27ed9efde847201b1b",
+      "address": "0x2666d60c00a3ab5acc7ab8e49a67c145c7790d0f35231fab4d671852615ea2",
+      "class_hash": "0x1da1336e1d3dda562f527bf5dc7299dd8cb68bf1e3526adcbd8f8e679bfca30",
       "abi": [
         {
           "type": "impl",
@@ -1628,7 +1628,7 @@
                 },
                 {
                   "name": "amount",
-                  "type": "core::integer::u32"
+                  "type": "core::integer::u128"
                 }
               ],
               "outputs": [],
@@ -1758,42 +1758,6 @@
                 }
               ],
               "state_mutability": "view"
-            },
-            {
-              "type": "function",
-              "name": "set_corpse_address",
-              "inputs": [
-                {
-                  "name": "corpse_address",
-                  "type": "core::starknet::contract_address::ContractAddress"
-                }
-              ],
-              "outputs": [],
-              "state_mutability": "external"
-            },
-            {
-              "type": "function",
-              "name": "set_skull_address",
-              "inputs": [
-                {
-                  "name": "skull_address",
-                  "type": "core::starknet::contract_address::ContractAddress"
-                }
-              ],
-              "outputs": [],
-              "state_mutability": "external"
-            },
-            {
-              "type": "function",
-              "name": "set_summit_address",
-              "inputs": [
-                {
-                  "name": "summit_address",
-                  "type": "core::starknet::contract_address::ContractAddress"
-                }
-              ],
-              "outputs": [],
-              "state_mutability": "external"
             }
           ]
         },
@@ -1906,12 +1870,12 @@
         }
       ],
       "init_calldata": [
-        "0x017470b635ed59086d4062354c47330db655862f837495d2e5047af2c7a638c9",
-        "0x0539b2889ee3e0f8e9e655675beb44ea40e3572050cb36bf02e5e9792593563a",
-        "0x0559aa5a69d2062d73a301daae431620df1714b701c084093114ca10848e3743"
+        "0x06015596d10cbc6dd695a964827eee290d3487fffcf60d02264b81524dd275e4",
+        "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105",
+        "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a"
       ],
       "tag": "summit_relayer_3-summit_events",
-      "selector": "0x675699b765daba83c9c0dbcff562d01c7e272212c6a1c23676137fb9a96dbaa",
+      "selector": "0x7e99d193db0e2c3e5183d062ff2f762c3e7aa92bdfd3c24bcdc6ee082411293",
       "systems": [
         "dojo_init",
         "emit_beast_event",
@@ -1922,9 +1886,6 @@
         "emit_summit_event",
         "emit_corpse_event",
         "emit_skull_event",
-        "set_corpse_address",
-        "set_skull_address",
-        "set_summit_address",
         "upgrade"
       ]
     }
@@ -1936,55 +1897,55 @@
       "members": [],
       "class_hash": "0x3ce76a36f1f379fb0400dd7a19ab62ad8c246b2f14445f8f6b16ebeb28ad79b",
       "tag": "summit_relayer_3-BattleEvent",
-      "selector": "0x3086d086b33e0e731386dca436fa37578bc41eef2f64d745c441c8025912472"
+      "selector": "0x78f39a0cec5f923d0ebe90c2843c47e34a214f0c9e762d17e85ebbf9d938f3e"
     },
     {
       "members": [],
       "class_hash": "0x458a0aa50aa35cd22da110441adf58fdaf991dc9b39a3ef42b9fa4ff161beaa",
       "tag": "summit_relayer_3-BeastEvent",
-      "selector": "0x171fad23659d472cf73f24e15800879f6a7f7361db7270a9f199797db85552b"
+      "selector": "0x753187c4be91da4dd4575c779cc4281da66d67da46a8ce865ae24d8ee45dae9"
     },
     {
       "members": [],
       "class_hash": "0x6ff9b4d8164a40b3dd56e95dca1295650edc1a3c7d010d180f8141152bc5e4d",
       "tag": "summit_relayer_3-CorpseEvent",
-      "selector": "0x3e219bac884b2247fe94c5aad8f9b6d5bef54d70644127a48b6bc908d25e864"
+      "selector": "0x1ace1bcf1edb77efcd0ee645f8a8f26c56a2d167ac47e1972d10c3652124911"
     },
     {
       "members": [],
       "class_hash": "0x6493118ec20e23c677cbc1a70c5dafcd7073f3ce992fc8903e000e0685a9dcc",
       "tag": "summit_relayer_3-DiplomacyEvent",
-      "selector": "0x462f867522fc9363a7629211a2b2f46c5d4aefb0473847a453ecfd5dee14622"
+      "selector": "0x60f162342e68a4bffad6593552f73c7b6ddd3b407718c787b25a756f987fe13"
     },
     {
       "members": [],
       "class_hash": "0x782294f7938d75af415344195746012a584737ce53942f2686970c1be15bf20",
       "tag": "summit_relayer_3-LiveBeastStatsEvent",
-      "selector": "0x2e60e91405d87c0d8a3b6d1e94c8c75218d70bbfd22d40ab980fa23470257f3"
+      "selector": "0x456d049ed7d7194fa199f56da070d6b582630b3b650f0d39b2b016d007282c6"
     },
     {
       "members": [],
       "class_hash": "0x2113a0250bda87df1c499705a0bcbfcbd08af16d4c6659565b64f6539a36280",
       "tag": "summit_relayer_3-PoisonEvent",
-      "selector": "0x63632e0e1b32dec778ba15bea2c925fdb6bb197abcf5677f9b9961aab59b11c"
+      "selector": "0x4346d7dd7221385921afdd5e5f4dde496ef6112b1aa6be27bceb9e51081c971"
     },
     {
       "members": [],
-      "class_hash": "0xf71e3c006ea105f8f33c85967ce7944be526d63baef0879647f6b23cad0584",
+      "class_hash": "0x6f28a0dd1400e5f713cf225c8eb18630a9e78b0e57a38ba14d9829eb931a6e",
       "tag": "summit_relayer_3-RewardEvent",
-      "selector": "0x6e724caf83ddf0b2bd08520f9e0376e76297876e1245c6dfeec8211d58cac7d"
+      "selector": "0x4db5340dc0bb8f5351cbee64acd52c7ae0da3ddd146940dc669377d252b72a"
     },
     {
       "members": [],
       "class_hash": "0x780a3fc15457579fb2c2f4300aab377e3007f887b6d6723f39ec188aa58be07",
       "tag": "summit_relayer_3-SkullEvent",
-      "selector": "0x7342308f2f2dd20cce32a7a7769414a3ac65b6cc0a71f12bf8209626dc7e531"
+      "selector": "0x799b03de42a6cbb2622b983699f9c2ee52aea8f6a9ebe081569a4f9d886fd03"
     },
     {
       "members": [],
       "class_hash": "0x4b6deecc9d634060c5d31bc1fde1c49414fc90e2f54a60c0f1c37f2acf7e2ae",
       "tag": "summit_relayer_3-SummitEvent",
-      "selector": "0x385b62f5442edf4ea43820596bf6210e2965c74edeb53d16a3061da5fa5baf8"
+      "selector": "0x60a667353389e63bc21123369ea6536f578e348e2041069bd6aef0fda9faeeb"
     }
   ],
   "external_contracts": []

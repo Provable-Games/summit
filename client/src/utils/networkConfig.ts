@@ -71,13 +71,13 @@ export const NETWORKS = {
         {
           name: "SKULL",
           address:
-            "0x0559aa5a69d2062d73a301daae431620df1714b701c084093114ca10848e3743",
+            "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a",
           displayDecimals: 0,
         },
         {
           name: "CORPSE",
           address:
-            "0x0539b2889ee3e0f8e9e655675beb44ea40e3572050cb36bf02e5e9792593563a",
+            "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105",
           displayDecimals: 0,
         }
       ],
@@ -124,13 +124,13 @@ export const NETWORKS = {
       {
         name: "SKULL",
         address:
-          "0x0559aa5a69d2062d73a301daae431620df1714b701c084093114ca10848e3743",
+          "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a",
         displayDecimals: 0,
       },
       {
         name: "CORPSE",
         address:
-          "0x0539b2889ee3e0f8e9e655675beb44ea40e3572050cb36bf02e5e9792593563a",
+          "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105",
         displayDecimals: 0,
       }
       // {
@@ -195,11 +195,6 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "entrypoint": "claim_beast_reward"
           },
           {
-            "name": "Claim Corpse Reward",
-            "description": "Claim corpse rewards",
-            "entrypoint": "claim_corpse_reward"
-          },
-          {
             "name": "Add Extra Life",
             "description": "Add extra life to beast",
             "entrypoint": "add_extra_life"
@@ -221,7 +216,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           },
         ]
       },
-      "0x075bbe6a4a4c744ad2da8da0cc7562623d4181418359d62909a02b4abf5be651": {
+      "0x63eb1e13f9a5e237aa8b4a4b649db577a67641217ab9eb7cbbfd837bc4a11ee": {
         "name": "Attack Potion",
         "description": "ERC 20 token for Attack Potion",
         "methods": [
@@ -234,7 +229,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x003561384b4c4502f87fd728332f8cf4e604a1215185d9d997be33769ba32fc3": {
+      "0x2c90c8bfc60cbab2064fcd271039d633c7f30a0544f5727bbb06767d35bd3c0": {
         "name": "Revive Potion",
         "description": "ERC 20 token for Revive Potion",
         "methods": [
@@ -247,7 +242,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x07af033bf4a3f2cae7f871ca015c7021f97846217733d72665aaf6ad735d4359": {
+      "0x7fdef6a5d5376d346eb1d830ad28aead5bdc1f02e53c7fb4584a17288f4b20d": {
         "name": "Extra Life Potion",
         "description": "ERC 20 token for Extra Life Potion",
         "methods": [
@@ -260,7 +255,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x047314b2b569360da4623035d2d81479a90a677beae8518e221960b07afb960f": {
+      "0x7664d9c661c2d794d0d227369821088b21003e8fd9bd8885b39b6a769be4f43": {
         "name": "Poison Potion",
         "description": "ERC 20 token for Poison Potion",
         "methods": [
@@ -273,23 +268,38 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd": {
-        "name": "Kill Token",
-        "description": "ERC 20 token for Kill Token",
+      "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a": {
+        "name": "Skull Token",
+        "description": "ERC 20 token for Skull Token",
         "methods": [
+          {
+            "name": "Claim Skulls",
+            "description": "Claim skulls",
+            "entrypoint": "claim"
+          },
           {
             "name": "Approve",
             "amount": "50000000000000000000000",
             "spender": SUMMIT_ADDRESS,
-            "description": "Approve Kill Token",
+            "description": "Approve Skull Token",
             "entrypoint": "approve"
           }
         ]
       },
-      "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c": {
+      "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105": {
         "name": "Corpse Token",
         "description": "ERC 20 token for Corpse Token",
         "methods": [
+          {
+            "name": "Claim Corpses",
+            "description": "Claim corpses",
+            "entrypoint": "claim"
+          },
+          {
+            "name": "Claim Corpse Reward",
+            "description": "Claim corpse rewards",
+            "entrypoint": "claim_efficient"
+          },
           {
             "name": "Approve",
             "amount": "50000000000000000000000",

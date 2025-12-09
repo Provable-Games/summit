@@ -19,7 +19,7 @@ default = "summit_relayer_3"
 
 [init_call_args]
 "summit_relayer_3-summit_events" = [
-    "0x017470b635ed59086d4062354c47330db655862f837495d2e5047af2c7a638c9", # summit_address
-    "0x0539b2889ee3e0f8e9e655675beb44ea40e3572050cb36bf02e5e9792593563a", # corpse_address
-    "0x0559aa5a69d2062d73a301daae431620df1714b701c084093114ca10848e3743" # skull_address
+    "0x06015596d10cbc6dd695a964827eee290d3487fffcf60d02264b81524dd275e4", # summit_address
+    "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105", # corpse_address
+    "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a" # skull_address
 ]
