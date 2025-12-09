@@ -68,9 +68,8 @@ export const useGameTokens = () => {
       skulls AS (
         SELECT
           LOWER(printf('%064x', CAST(beast_token_id AS INTEGER))) AS token_hex64,
-          SUM(skulls) AS kills_claimed
+          skulls
         FROM "${currentNetworkConfig.namespace}-SkullEvent"
-        GROUP BY beast_token_id
       )
       SELECT
         tbn.token_id,
@@ -106,7 +105,7 @@ export const useGameTokens = () => {
         s."live_stats.stats.specials",
         s."live_stats.stats.wisdom",
         s."live_stats.stats.diplomacy",
-        COALESCE(sk.kills_claimed, 0) AS kills_claimed
+        sk.skulls
       FROM tbn
       LEFT JOIN attrs a  ON a.token_id    = tbn.token_id
       LEFT JOIN stats s  ON s.token_hex64 = tbn.token_hex64
@@ -158,7 +157,7 @@ export const useGameTokens = () => {
           wisdom: cachedBeast?.stats.wisdom || Boolean(data["live_stats.stats.wisdom"]),
           diplomacy: cachedBeast?.stats.diplomacy || Boolean(data["live_stats.stats.diplomacy"]),
         },
-        kills_claimed: Math.max(cachedBeast?.kills_claimed || 0, data["kills_claimed"] || 0),
+        kills_claimed: Math.max(cachedBeast?.kills_claimed || 0, parseInt(data["skulls"], 16) || 0),
       }
       beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)
