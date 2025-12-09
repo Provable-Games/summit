@@ -190,7 +190,7 @@ export const useSystemCalls = () => {
   const claimCorpses = (adventurerIds: number[]) => {
     return {
       contractAddress: currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE")?.address,
-      entrypoint: "claim",
+      entrypoint: "claim_efficient",
       calldata: CallData.compile([adventurerIds]),
     };
   };
