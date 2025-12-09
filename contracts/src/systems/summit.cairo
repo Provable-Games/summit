@@ -28,8 +28,8 @@ pub trait ISummitSystem<T> {
     fn apply_poison(ref self: T, beast_token_id: u32, count: u16);
 
     fn claim_summit(ref self: T);
-    fn add_beast_to_leaderboard(ref self: T, beast_token_id: u32, position: u16);
-    fn distribute_beast_tokens(ref self: T, limit: u16);
+    fn add_beast_to_leaderboard(ref self: T, beast_token_id: u32, position: u32);
+    fn distribute_beast_tokens(ref self: T, limit: u32);
 
     fn set_start_timestamp(ref self: T, start_timestamp: u64);
     fn set_event_address(ref self: T, event_address: ContractAddress);
@@ -119,15 +119,16 @@ pub mod summit_systems {
         diplomacy_count: Map<felt252, u8>,
         start_timestamp: u64,
         summit_duration_blocks: u64,
+        showdown_duration_seconds: u64,
         terminal_block: u64,
         summit_claimed: bool,
         summit_reward_amount: u256, // Total amount being distributed
         showdown_reward_amount: u256, // Showdown winner reward
-        beast_leaderboard: Map<u16, u32>, // position -> beast token id
+        beast_leaderboard: Map<u32, u32>, // position -> beast token id
         beast_submission_blocks: u64,
-        beast_tokens_distributed: u16,
+        beast_tokens_distributed: u32,
         beast_tokens_amount: u256, // Amount each top beast get
-        beast_prices: u32, // Number of beasts getting reward
+        beast_top_spots: u32, // Number of beasts getting reward
         dungeon_address: ContractAddress,
         beast_dispatcher: IERC721Dispatcher,
         beast_nft_dispatcher: IBeastsDispatcher,
@@ -159,10 +160,11 @@ pub mod summit_systems {
         start_timestamp: u64,
         summit_duration_blocks: u64,
         summit_reward_amount: u256,
+        showdown_duration_seconds: u64,
         showdown_reward_amount: u256,
         beast_tokens_amount: u256,
         beast_submission_blocks: u64,
-        beast_prices: u32,
+        beast_top_spots: u32,
         dungeon_address: ContractAddress,
         beast_address: ContractAddress,
         beast_data_address: ContractAddress,
@@ -172,10 +174,11 @@ pub mod summit_systems {
         self.start_timestamp.write(start_timestamp);
         self.summit_duration_blocks.write(summit_duration_blocks);
         self.summit_reward_amount.write(summit_reward_amount);
+        self.showdown_duration_seconds.write(showdown_duration_seconds);
         self.showdown_reward_amount.write(showdown_reward_amount);
         self.beast_tokens_amount.write(beast_tokens_amount);
         self.beast_submission_blocks.write(beast_submission_blocks);
-        self.beast_prices.write(beast_prices);
+        self.beast_top_spots.write(beast_top_spots);
         self.dungeon_address.write(dungeon_address);
         self.beast_dispatcher.write(IERC721Dispatcher { contract_address: beast_address });
         self.beast_nft_dispatcher.write(IBeastsDispatcher { contract_address: beast_address });
@@ -250,14 +253,15 @@ pub mod summit_systems {
         fn claim_beast_reward(ref self: ContractState, beast_token_ids: Span<u32>) {
             assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
 
+            let beast_dispatcher = self.beast_dispatcher.read();
+
             let mut potion_rewards: u256 = 0;
 
             let mut i = 0;
             while (i < beast_token_ids.len()) {
                 let beast_token_id = *beast_token_ids.at(i);
                 assert(
-                    self.beast_dispatcher.read().owner_of(beast_token_id.into()) == get_caller_address(),
-                    errors::NOT_TOKEN_OWNER,
+                    beast_dispatcher.owner_of(beast_token_id.into()) == get_caller_address(), errors::NOT_TOKEN_OWNER,
                 );
 
                 let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
@@ -395,10 +399,10 @@ pub mod summit_systems {
             assert(self.summit_beast_token_id.read() == 0, 'Summit already started');
 
             let current_block = get_block_number();
-            self.terminal_block.write(current_block + 1_000_000);
+            self.terminal_block.write(current_block + self.summit_duration_blocks.read());
 
             let start_token_id = 1;
-            self.summit_history.entry(start_token_id).write(get_block_number());
+            self.summit_history.entry(start_token_id).write(current_block);
             self.summit_beast_token_id.write(start_token_id);
 
             let mut beast: Beast = InternalSummitImpl::_get_beast(@self, start_token_id);
@@ -406,7 +410,7 @@ pub mod summit_systems {
             self._save_beast(beast, false);
         }
 
-        fn add_beast_to_leaderboard(ref self: ContractState, beast_token_id: u32, position: u16) {
+        fn add_beast_to_leaderboard(ref self: ContractState, beast_token_id: u32, position: u32) {
             let current_block = get_block_number();
             assert(current_block >= self.terminal_block.read(), 'Summit not over');
             assert(
@@ -414,7 +418,7 @@ pub mod summit_systems {
                 'Submission period over',
             );
 
-            assert(position > 0 && position <= 5000, 'Invalid position');
+            assert(position > 0 && position <= self.beast_top_spots.read(), 'Invalid position');
 
             let new_beast: Beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
             assert!(new_beast.live.blocks_held > 0, "Beast has no rewards earned");
@@ -440,27 +444,32 @@ pub mod summit_systems {
             self.beast_leaderboard.entry(position).write(beast_token_id);
         }
 
-        fn distribute_beast_tokens(ref self: ContractState, limit: u16) {
+        fn distribute_beast_tokens(ref self: ContractState, limit: u32) {
             assert(
                 get_block_number() > self.terminal_block.read() + self.beast_submission_blocks.read(),
                 'Submission not over',
             );
 
+            let beast_top_spots = self.beast_top_spots.read();
+            let beast_tokens_amount = self.beast_tokens_amount.read();
+            let beast_dispatcher = self.beast_dispatcher.read();
+            let reward_dispatcher = self.reward_dispatcher.read();
+
             let mut current_position = self.beast_tokens_distributed.read();
-            assert(current_position < 5000, 'All rewards distributed');
+            assert(current_position < beast_top_spots, 'All rewards distributed');
 
             let new_limit = current_position + limit;
 
             while current_position < new_limit {
                 current_position += 1;
 
-                if current_position > 5000 {
+                if current_position > beast_top_spots {
                     break;
                 }
 
                 let beast_token_id = self.beast_leaderboard.entry(current_position).read();
-                let beast_owner = self.beast_dispatcher.read().owner_of(beast_token_id.into());
-                self.reward_dispatcher.read().transfer(beast_owner, 5 * TOKEN_DECIMALS);
+                let beast_owner = beast_dispatcher.owner_of(beast_token_id.into());
+                reward_dispatcher.transfer(beast_owner, beast_tokens_amount);
             }
 
             self.beast_tokens_distributed.write(current_position);
@@ -613,7 +622,7 @@ pub mod summit_systems {
             let current_timestamp = get_block_timestamp();
             let taken_at = self.showdown_taken_at.read();
 
-            if taken_at > 0 && current_timestamp - taken_at >= 300 {
+            if taken_at > 0 && current_timestamp - taken_at >= self.showdown_duration_seconds.read() {
                 return false;
             }
 
@@ -666,15 +675,22 @@ pub mod summit_systems {
         /// @param token_id the id of the beast
         fn _finalize_summit_history(ref self: ContractState, ref beast: Beast, summit_owner: ContractAddress) {
             let mut taken_at: u64 = self.summit_history.entry(beast.live.token_id).read();
+            let terminal_block = self.terminal_block.read();
 
-            if taken_at >= self.terminal_block.read() {
+            if taken_at >= terminal_block {
                 return;
             }
 
             let current_block = get_block_number();
-            let blocks_on_summit = current_block - taken_at;
+
+            let blocks_on_summit = if current_block > terminal_block {
+                terminal_block - taken_at
+            } else {
+                current_block - taken_at
+            };
+
             // Mint reward
-            if (blocks_on_summit > 0 && current_block < self.terminal_block.read()) {
+            if blocks_on_summit > 0 {
                 beast.live.blocks_held += blocks_on_summit.try_into().unwrap();
                 let block_reward = self.summit_reward_amount.read() / self.summit_duration_blocks.read().into();
                 let total_reward_amount = blocks_on_summit.into() * block_reward;
@@ -728,7 +744,10 @@ pub mod summit_systems {
             assert(attack_potions <= EIGHT_BITS_MAX, errors::MAX_ATTACK_POTION);
             assert(extra_life_potions <= BEAST_MAX_EXTRA_LIVES, errors::BEAST_MAX_EXTRA_LIVES);
 
-            let summit_owner = self.beast_dispatcher.read().owner_of(summit_beast_token_id.into());
+            let beast_dispatcher = self.beast_dispatcher.read();
+            let event_dispatcher = self.summit_events_dispatcher.read();
+
+            let summit_owner = beast_dispatcher.owner_of(summit_beast_token_id.into());
             assert(get_caller_address() != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
 
             let mut defending_beast = Self::_get_beast(@self, summit_beast_token_id);
@@ -752,7 +771,7 @@ pub mod summit_systems {
                 let attacking_beast_token_id = *attacking_beast_token_ids.at(i);
 
                 // assert the caller owns the beast they attacking with
-                let beast_owner = self.beast_dispatcher.read().owner_of(attacking_beast_token_id.into());
+                let beast_owner = beast_dispatcher.owner_of(attacking_beast_token_id.into());
                 assert(beast_owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
 
                 // get stats for the beast that is attacking
@@ -840,9 +859,7 @@ pub mod summit_systems {
                 }
 
                 // emit battle event
-                self
-                    .summit_events_dispatcher
-                    .read()
+                event_dispatcher
                     .emit_battle_event(
                         beast_owner,
                         attacking_beast_token_id,
@@ -912,10 +929,7 @@ pub mod summit_systems {
                     self.poison_count.write(0);
 
                     // emit summit event
-                    self
-                        .summit_events_dispatcher
-                        .read()
-                        .emit_summit_event(attacking_beast.fixed, attacking_beast.live, beast_owner);
+                    event_dispatcher.emit_summit_event(attacking_beast.fixed, attacking_beast.live, beast_owner);
 
                     break;
                 }

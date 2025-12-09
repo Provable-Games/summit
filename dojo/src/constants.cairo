@@ -1,3 +1,3 @@
 pub fn DEFAULT_NS() -> ByteArray {
-    "summit_relayer_2"
+    "summit_relayer_3"
 }

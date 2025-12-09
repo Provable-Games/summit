@@ -40,7 +40,7 @@ pub struct RewardEvent {
     #[key]
     pub beast_token_id: u32,
     pub owner: ContractAddress,
-    pub amount: u32,
+    pub amount: u256,
 }
 
 #[derive(Drop, Serde)]

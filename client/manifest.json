@@ -1874,7 +1874,7 @@
         "0x0539b2889ee3e0f8e9e655675beb44ea40e3572050cb36bf02e5e9792593563a",
         "0x0559aa5a69d2062d73a301daae431620df1714b701c084093114ca10848e3743"
       ],
-      "tag": "summit_relayer_2-summit_events",
+      "tag": "summit_relayer_3-summit_events",
       "selector": "0x675699b765daba83c9c0dbcff562d01c7e272212c6a1c23676137fb9a96dbaa",
       "systems": [
         "dojo_init",
@@ -1896,55 +1896,55 @@
     {
       "members": [],
       "class_hash": "0x3ce76a36f1f379fb0400dd7a19ab62ad8c246b2f14445f8f6b16ebeb28ad79b",
-      "tag": "summit_relayer_2-BattleEvent",
+      "tag": "summit_relayer_3-BattleEvent",
       "selector": "0x3086d086b33e0e731386dca436fa37578bc41eef2f64d745c441c8025912472"
     },
     {
       "members": [],
       "class_hash": "0x458a0aa50aa35cd22da110441adf58fdaf991dc9b39a3ef42b9fa4ff161beaa",
-      "tag": "summit_relayer_2-BeastEvent",
+      "tag": "summit_relayer_3-BeastEvent",
       "selector": "0x171fad23659d472cf73f24e15800879f6a7f7361db7270a9f199797db85552b"
     },
     {
       "members": [],
       "class_hash": "0x6ff9b4d8164a40b3dd56e95dca1295650edc1a3c7d010d180f8141152bc5e4d",
-      "tag": "summit_relayer_2-CorpseEvent",
+      "tag": "summit_relayer_3-CorpseEvent",
       "selector": "0x3e219bac884b2247fe94c5aad8f9b6d5bef54d70644127a48b6bc908d25e864"
     },
     {
       "members": [],
       "class_hash": "0x6493118ec20e23c677cbc1a70c5dafcd7073f3ce992fc8903e000e0685a9dcc",
-      "tag": "summit_relayer_2-DiplomacyEvent",
+      "tag": "summit_relayer_3-DiplomacyEvent",
       "selector": "0x462f867522fc9363a7629211a2b2f46c5d4aefb0473847a453ecfd5dee14622"
     },
     {
       "members": [],
       "class_hash": "0x782294f7938d75af415344195746012a584737ce53942f2686970c1be15bf20",
-      "tag": "summit_relayer_2-LiveBeastStatsEvent",
+      "tag": "summit_relayer_3-LiveBeastStatsEvent",
       "selector": "0x2e60e91405d87c0d8a3b6d1e94c8c75218d70bbfd22d40ab980fa23470257f3"
     },
     {
       "members": [],
       "class_hash": "0x2113a0250bda87df1c499705a0bcbfcbd08af16d4c6659565b64f6539a36280",
-      "tag": "summit_relayer_2-PoisonEvent",
+      "tag": "summit_relayer_3-PoisonEvent",
       "selector": "0x63632e0e1b32dec778ba15bea2c925fdb6bb197abcf5677f9b9961aab59b11c"
     },
     {
       "members": [],
       "class_hash": "0xf71e3c006ea105f8f33c85967ce7944be526d63baef0879647f6b23cad0584",
-      "tag": "summit_relayer_2-RewardEvent",
+      "tag": "summit_relayer_3-RewardEvent",
       "selector": "0x6e724caf83ddf0b2bd08520f9e0376e76297876e1245c6dfeec8211d58cac7d"
     },
     {
       "members": [],
       "class_hash": "0x780a3fc15457579fb2c2f4300aab377e3007f887b6d6723f39ec188aa58be07",
-      "tag": "summit_relayer_2-SkullEvent",
+      "tag": "summit_relayer_3-SkullEvent",
       "selector": "0x7342308f2f2dd20cce32a7a7769414a3ac65b6cc0a71f12bf8209626dc7e531"
     },
     {
       "members": [],
       "class_hash": "0x4b6deecc9d634060c5d31bc1fde1c49414fc90e2f54a60c0f1c37f2acf7e2ae",
-      "tag": "summit_relayer_2-SummitEvent",
+      "tag": "summit_relayer_3-SummitEvent",
       "selector": "0x385b62f5442edf4ea43820596bf6210e2965c74edeb53d16a3061da5fa5baf8"
     }
   ],

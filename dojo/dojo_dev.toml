@@ -4,14 +4,14 @@ description = "DNC"
 seed = "DNC"
 
 [namespace]
-default = "summit_relayer_2"
+default = "summit_relayer_3"
 
 [writers]
-"summit_relayer_2" = [
-    "summit_relayer_2-summit_events",
+"summit_relayer_3" = [
+    "summit_relayer_3-summit_events",
 ]
 
 [init_call_args]
-"summit_relayer_2-summit_events" = [
+"summit_relayer_3-summit_events" = [
     "0x029a44584d62472018da0d428420f31ea0cf26ed29c21a9d60cc08164b8058fd", # summit_address
 ]

@@ -24,7 +24,7 @@ trait ISummitEvents<T> {
         attack_potions: u8,
         xp_gained: u8,
     );
-    fn emit_reward_event(ref self: T, beast_token_id: u32, owner: ContractAddress, amount: u32);
+    fn emit_reward_event(ref self: T, beast_token_id: u32, owner: ContractAddress, amount: u256);
     fn emit_poison_event(ref self: T, beast_token_id: u32, count: u16, player: ContractAddress);
     fn emit_diplomacy_event(ref self: T, specials_hash: felt252, beast_token_ids: Span<u32>, total_power: u16);
     fn emit_summit_event(ref self: T, beast: BeastEvent, live_stats: LiveBeastStats, owner: ContractAddress);
@@ -34,10 +34,6 @@ trait ISummitEvents<T> {
     fn get_summit_address(self: @T) -> ContractAddress;
     fn get_corpse_address(self: @T) -> ContractAddress;
     fn get_skull_address(self: @T) -> ContractAddress;
-
-    fn set_corpse_address(ref self: T, corpse_address: ContractAddress);
-    fn set_skull_address(ref self: T, skull_address: ContractAddress);
-    fn set_summit_address(ref self: T, summit_address: ContractAddress);
 }
 
 #[dojo::contract]
@@ -123,7 +119,7 @@ pub mod summit_events {
                 );
         }
 
-        fn emit_reward_event(ref self: ContractState, beast_token_id: u32, owner: ContractAddress, amount: u32) {
+        fn emit_reward_event(ref self: ContractState, beast_token_id: u32, owner: ContractAddress, amount: u256) {
             self.validate_caller_is_summit();
             let mut world: WorldStorage = self.world(@DEFAULT_NS());
             world
@@ -167,18 +163,6 @@ pub mod summit_events {
             assert(skull_address == starknet::get_caller_address(), 'Invalid caller');
             let mut world: WorldStorage = self.world(@DEFAULT_NS());
             world.emit_event(@SkullEvent { beast_token_id, skulls });
-        }
-
-        fn set_corpse_address(ref self: ContractState, corpse_address: ContractAddress) {
-            self.corpse_address.write(corpse_address);
-        }
-
-        fn set_skull_address(ref self: ContractState, skull_address: ContractAddress) {
-            self.skull_address.write(skull_address);
-        }
-
-        fn set_summit_address(ref self: ContractState, summit_address: ContractAddress) {
-            self.summit_address.write(summit_address);
         }
 
         fn get_summit_address(self: @ContractState) -> ContractAddress {
