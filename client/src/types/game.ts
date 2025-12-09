@@ -51,8 +51,6 @@ export interface Beast {
   adventurers_killed?: number;
   combat?: Combat;
   battle?: BattleEvent;
-  kill_tokens?: number; // New: tokens for upgrades
-  corpse_tokens?: number; // New: tokens for bonus health
 }
 
 export interface Stats {

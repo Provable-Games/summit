@@ -62,8 +62,15 @@ export const useGameTokens = () => {
           LOWER(printf('%064x', CAST(token_id AS INTEGER))) AS token_hex64,
           "live_stats.attack_streak", "live_stats.bonus_health", "live_stats.bonus_xp", "live_stats.current_health", "live_stats.extra_lives",
           "live_stats.has_claimed_potions", "live_stats.last_death_timestamp", "live_stats.stats.luck", "live_stats.stats.spirit", "live_stats.stats.specials",
-          "live_stats.revival_count", "live_stats.blocks_held", "live_stats.stats.wisdom", "live_stats.stats.diplomacy", "live_stats.kills_claimed"
+          "live_stats.revival_count", "live_stats.blocks_held", "live_stats.stats.wisdom", "live_stats.stats.diplomacy"
         FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+      ),
+      skulls AS (
+        SELECT
+          LOWER(printf('%064x', CAST(beast_token_id AS INTEGER))) AS token_hex64,
+          SUM(skulls) AS kills_claimed
+        FROM "${currentNetworkConfig.namespace}-SkullEvent"
+        GROUP BY beast_token_id
       )
       SELECT
         tbn.token_id,
@@ -99,10 +106,11 @@ export const useGameTokens = () => {
         s."live_stats.stats.specials",
         s."live_stats.stats.wisdom",
         s."live_stats.stats.diplomacy",
-        s."live_stats.kills_claimed"
+        COALESCE(sk.kills_claimed, 0) AS kills_claimed
       FROM tbn
       LEFT JOIN attrs a  ON a.token_id    = tbn.token_id
-      LEFT JOIN stats s  ON s.token_hex64 = tbn.token_hex64;
+      LEFT JOIN stats s  ON s.token_hex64 = tbn.token_hex64
+      LEFT JOIN skulls sk ON sk.token_hex64 = tbn.token_hex64;
     `
 
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
@@ -150,7 +158,7 @@ export const useGameTokens = () => {
           wisdom: cachedBeast?.stats.wisdom || Boolean(data["live_stats.stats.wisdom"]),
           diplomacy: cachedBeast?.stats.diplomacy || Boolean(data["live_stats.stats.diplomacy"]),
         },
-        kills_claimed: Math.max(cachedBeast?.kills_claimed || 0, data["live_stats.kills_claimed"]),
+        kills_claimed: Math.max(cachedBeast?.kills_claimed || 0, data["kills_claimed"] || 0),
       }
       beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)

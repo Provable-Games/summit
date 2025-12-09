@@ -108,10 +108,6 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
 export const getBeastRevivalTime = (beast: Beast): number => {
   let revivalTime = 86400000;
 
-  if ((beast.last_dm_death_timestamp * 1000) < Date.now() - 1209600000) {
-    revivalTime -= 14400000;
-  }
-
   if (beast.stats.spirit > 0) {
     revivalTime -= getSpiritRevivalReductionSeconds(beast.stats.spirit) * 1000;
   }
@@ -133,6 +129,38 @@ export const getBeastCurrentHealth = (beast: Beast): number => {
   }
 
   return beast.current_health
+}
+
+// A beast is "locked" for 24 hours after its last death.
+// During this window it cannot be selected as an attacker.
+export const BEAST_LOCK_DURATION_MS = 24 * 60 * 60 * 1000;
+
+export const isBeastLocked = (beast: Beast): boolean => {
+  if (!beast.last_dm_death_timestamp) return false;
+
+  const lastDeathMs = beast.last_dm_death_timestamp * 1000;
+  return Date.now() - lastDeathMs < BEAST_LOCK_DURATION_MS;
+}
+
+export const getBeastLockedTimeRemaining = (beast: Beast): { hours: number; minutes: number } => {
+  if (!beast.last_dm_death_timestamp) {
+    return { hours: 0, minutes: 0 };
+  }
+
+  const lastDeathMs = beast.last_dm_death_timestamp * 1000;
+  const elapsedMs = Date.now() - lastDeathMs;
+  const remainingMs = Math.max(0, BEAST_LOCK_DURATION_MS - elapsedMs);
+
+  // Work in whole minutes, rounding up so there is always at least 1 minute while locked.
+  const totalMinutes = Math.ceil(remainingMs / (60 * 1000));
+  if (totalMinutes <= 0) {
+    return { hours: 0, minutes: 0 };
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return { hours, minutes };
 }
 
 export const getExperienceDefending = (attackingBeast: Beast): number => {
@@ -189,16 +217,16 @@ export const getSpiritRevivalReductionSeconds = (points: number): number => {
   if (p <= 5) {
     switch (p) {
       case 0: reduction = 0; break;
-      case 1: reduction = 6480; break;
-      case 2: reduction = 9072; break;
-      case 3: reduction = 11016; break;
-      case 4: reduction = 12312; break;
-      case 5: reduction = 12960; break;
+      case 1: reduction = 7200; break;
+      case 2: reduction = 10080; break;
+      case 3: reduction = 12240; break;
+      case 4: reduction = 13680; break;
+      case 5: reduction = 14400; break;
     }
   } else if (p <= 70) {
-    reduction = 12960 + (p - 5) * 648;
+    reduction = 14400 + (p - 5) * 720;
   } else {
-    reduction = 55080 + (p - 70) * 324;
+    reduction = 61200 + (p - 70) * 360;
   }
 
   return reduction;

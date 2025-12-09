@@ -1,3 +1,4 @@
+import { delay } from "@/utils/utils";
 import { num } from "starknet"
 
 interface SwapQuote {
@@ -54,6 +55,11 @@ export const getSwapQuote = async (amount: number, token: string, otherToken: st
   const response = await fetch(`https://starknet-mainnet-quoter-api.ekubo.org/${amount}/${token}/${otherToken}`)
 
   const data = await response.json()
+
+  if (!data.total_calculated) {
+    await delay(2000);
+    return getSwapQuote(amount, token, otherToken);
+  }
 
   return {
     impact: data?.price_impact || 0,

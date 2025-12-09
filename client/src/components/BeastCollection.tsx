@@ -1,6 +1,6 @@
 import { BeastTypeFilter, SortMethod, useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
-import { isBeastInTop5000 } from '@/utils/beasts';
+import { isBeastInTop5000, isBeastLocked } from '@/utils/beasts';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
@@ -122,6 +122,7 @@ function BeastCollection() {
 
   const selectBeast = useCallback((beast: Beast) => {
     if (attackInProgress || attackMode === 'capture') return;
+    if (isBeastLocked(beast)) return;
 
     if (selectedBeasts.find(prevBeast => prevBeast.token_id === beast.token_id)) {
       setSelectedBeasts((prev: Beast[]) => prev.filter(prevBeast => prevBeast.token_id !== beast.token_id));
@@ -133,7 +134,7 @@ function BeastCollection() {
   const selectAllBeasts = () => {
     if (attackInProgress) return;
 
-    const allBeasts = collectionWithCombat;
+    const allBeasts = collectionWithCombat.filter((beast: Beast) => !isBeastLocked(beast));
     const maxBeasts = Math.min(75, allBeasts.length);
 
     if (selectedBeasts.length >= maxBeasts) {
@@ -150,7 +151,7 @@ function BeastCollection() {
   }
 
   const maxBeastsSelected = useMemo(() => {
-    const allBeasts = collectionWithCombat;
+    const allBeasts = collectionWithCombat.filter((beast: Beast) => !isBeastLocked(beast));
     const maxBeasts = Math.min(75, allBeasts.length);
     return allBeasts.length > 0 && selectedBeasts.length >= maxBeasts;
   }, [collectionWithCombat, selectedBeasts]);
@@ -431,6 +432,7 @@ function BeastCollection() {
                   const isSelected = selectedBeasts.some(b => b.token_id === beast.token_id);
                   const isSavage = summit?.beast.token_id === beast.token_id;
                   const isDead = beast.current_health === 0;
+                  const isLocked = isBeastLocked(beast);
                   const selectionIndex = selectedBeasts.findIndex(b => b.token_id === beast.token_id) + 1;
                   const combat = summit && !isSavage ? beast.combat : null;
 
@@ -451,6 +453,7 @@ function BeastCollection() {
                         isSelected={isSelected}
                         isSavage={isSavage}
                         isDead={isDead}
+                        isLocked={isLocked}
                         combat={combat}
                         selectionIndex={selectionIndex}
                         summitHealth={summit?.beast.current_health || 0}

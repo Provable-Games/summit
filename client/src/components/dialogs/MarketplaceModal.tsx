@@ -18,7 +18,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SellIcon from '@mui/icons-material/Sell';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import { Box, Button, Dialog, IconButton, InputBase, Menu, MenuItem, Tab, Tabs, Typography } from '@mui/material';
+import { Box, Button, Dialog, IconButton, InputBase, Menu, MenuItem, Skeleton, Tab, Tabs, Typography } from '@mui/material';
 import { useProvider } from '@starknet-react/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Contract } from 'starknet';
@@ -269,11 +269,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               [potionId]: { amount, loading: false, quote: quote }
             }));
           }
-        } else {
-          setTokenQuotes(prev => ({
-            ...prev,
-            [potionId]: { amount: '', loading: false, error: 'No quote available' }
-          }));
         }
       } catch (error) {
         console.error('Error fetching quote:', error);
@@ -562,7 +557,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       const quantity = quantities[potion.id] || 0;
       fetchPotionQuote(potion.id, selectedToken, quantity);
     });
-  }, [selectedToken, fetchPotionQuote, activeTab]);
+  }, [selectedToken, activeTab]);
 
   useEffect(() => {
     if (!selectedReceiveToken || activeTab !== 1) return;
@@ -870,9 +865,11 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                   <Typography sx={styles.totalLabel}>Total Cost</Typography>
                   {hasItems && selectedToken && (
                     <Box sx={[styles.totalValue, !canAfford && styles.totalInsufficient]}>
-                      <Typography sx={styles.totalAmount}>
-                        {totalTokenCost.toFixed(4)} {selectedToken}
-                      </Typography>
+                      {totalTokenCost > 0
+                        ? <Typography sx={styles.totalAmount}>
+                          {totalTokenCost.toFixed(4)} {selectedToken}
+                        </Typography>
+                        : <Skeleton variant="text" width={100} height={18} />}
                     </Box>
                   )}
                 </Box>
@@ -998,9 +995,10 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                   <Typography sx={styles.totalLabel}>You'll Receive</Typography>
                   {hasItems && selectedReceiveToken && (
                     <Box sx={styles.totalValue}>
-                      <Typography sx={styles.totalAmount}>
+                      {totalReceiveAmount > 0 ? <Typography sx={styles.totalAmount}>
                         {totalReceiveAmount.toFixed(4)} {selectedReceiveToken}
                       </Typography>
+                        : <Skeleton variant="text" width={100} height={18} />}
                     </Box>
                   )}
                 </Box>

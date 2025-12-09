@@ -93,7 +93,6 @@ export const components: any = {
     has_claimed_potions: 'boolean',
     blocks_held: 'number',
     stats: 'Stats',
-    kills_claimed: 'number',
   },
   'Stats': {
     spirit: 'number',

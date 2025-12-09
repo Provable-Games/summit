@@ -1,7 +1,6 @@
 import { getSwapQuote } from "@/api/ekubo";
 import { useGameTokens } from "@/dojo/useGameTokens";
 import { NETWORKS } from "@/utils/networkConfig";
-import { delay } from "@/utils/utils";
 import {
   createContext,
   PropsWithChildren,
@@ -62,12 +61,6 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
 
   const fetchTokenPrice = async (token: any) => {
     const swap = await getSwapQuote(-1e18, token.address, USDC_ADDRESS);
-
-    if (!swap?.total) {
-      await delay(3000);
-      return fetchTokenPrice(token);
-    }
-
     setTokenPrices((prev) => ({ ...prev, [token.name]: ((swap.total * -1) / 1e18).toFixed(4) }));
   };
 

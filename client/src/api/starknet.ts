@@ -82,7 +82,7 @@ export const useStarknetApi = () => {
           wisdom: Boolean(parseInt(data?.result[20], 16)),
           diplomacy: Boolean(parseInt(data?.result[21], 16)),
         },
-        kills_claimed: parseInt(data?.result[22], 16),
+        kills_claimed: 0,
       }
       beast.current_level = getBeastCurrentLevel(beast.level, beast.bonus_xp);
       
@@ -92,10 +92,10 @@ export const useStarknetApi = () => {
           ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.current_level),
           revival_time: 0,
         },
-        taken_at: parseInt(data?.result[23], 16),
-        owner: data?.result[24],
-        poison_count: parseInt(data?.result[25], 16),
-        poison_timestamp: parseInt(data?.result[26], 16),
+        taken_at: parseInt(data?.result[22], 16),
+        owner: data?.result[23],
+        poison_count: parseInt(data?.result[24], 16),
+        poison_timestamp: parseInt(data?.result[25], 16),
       }
     } catch (error) {
       console.log('error', error)
