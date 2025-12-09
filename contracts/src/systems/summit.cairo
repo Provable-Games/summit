@@ -51,10 +51,10 @@ pub trait ISummitSystem<T> {
     fn get_terminal_block(self: @T) -> u64;
     fn get_summit_claimed(self: @T) -> bool;
     fn get_summit_duration_blocks(self: @T) -> u64;
-    fn get_summit_reward_amount(self: @T) -> u256;
+    fn get_summit_reward_amount(self: @T) -> u128;
     fn get_showdown_duration_seconds(self: @T) -> u64;
-    fn get_showdown_reward_amount(self: @T) -> u256;
-    fn get_beast_tokens_amount(self: @T) -> u256;
+    fn get_showdown_reward_amount(self: @T) -> u128;
+    fn get_beast_tokens_amount(self: @T) -> u128;
     fn get_beast_submission_blocks(self: @T) -> u64;
     fn get_beast_top_spots(self: @T) -> u32;
 
@@ -128,12 +128,12 @@ pub mod summit_systems {
         showdown_duration_seconds: u64,
         terminal_block: u64,
         summit_claimed: bool,
-        summit_reward_amount: u256, // Total amount being distributed
-        showdown_reward_amount: u256, // Showdown winner reward
+        summit_reward_amount: u128, // Total amount being distributed
+        showdown_reward_amount: u128, // Showdown winner reward
         beast_leaderboard: Map<u32, u32>, // position -> beast token id
         beast_submission_blocks: u64,
         beast_tokens_distributed: u32,
-        beast_tokens_amount: u256, // Amount each top beast get
+        beast_tokens_amount: u128, // Amount each top beast get
         beast_top_spots: u32, // Number of beasts getting reward
         dungeon_address: ContractAddress,
         beast_dispatcher: IERC721Dispatcher,
@@ -165,10 +165,10 @@ pub mod summit_systems {
         owner: ContractAddress,
         start_timestamp: u64,
         summit_duration_blocks: u64,
-        summit_reward_amount: u256,
+        summit_reward_amount: u128,
         showdown_duration_seconds: u64,
-        showdown_reward_amount: u256,
-        beast_tokens_amount: u256,
+        showdown_reward_amount: u128,
+        beast_tokens_amount: u128,
         beast_submission_blocks: u64,
         beast_top_spots: u32,
         dungeon_address: ContractAddress,
@@ -273,29 +273,17 @@ pub mod summit_systems {
                 let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
                 assert(beast.live.has_claimed_potions == 0, 'Already claimed potions');
 
-                potion_rewards += InternalSummitImpl::get_potion_amount(beast.fixed.id);
+                potion_rewards += InternalSummitImpl::get_potion_amount(beast.fixed.id).into();
                 beast.live.has_claimed_potions = 1;
 
                 self._save_beast(beast, false);
                 i += 1;
             }
 
-            self
-                .attack_potion_dispatcher
-                .read()
-                .transfer(get_caller_address(), 3 * potion_rewards.into() * TOKEN_DECIMALS);
-            self
-                .poison_potion_dispatcher
-                .read()
-                .transfer(get_caller_address(), 3 * potion_rewards.into() * TOKEN_DECIMALS);
-            self
-                .revive_potion_dispatcher
-                .read()
-                .transfer(get_caller_address(), 2 * potion_rewards.into() * TOKEN_DECIMALS);
-            self
-                .extra_life_potion_dispatcher
-                .read()
-                .transfer(get_caller_address(), potion_rewards.into() * TOKEN_DECIMALS);
+            self.attack_potion_dispatcher.read().transfer(get_caller_address(), 3 * potion_rewards * TOKEN_DECIMALS);
+            self.poison_potion_dispatcher.read().transfer(get_caller_address(), 3 * potion_rewards * TOKEN_DECIMALS);
+            self.revive_potion_dispatcher.read().transfer(get_caller_address(), 2 * potion_rewards * TOKEN_DECIMALS);
+            self.extra_life_potion_dispatcher.read().transfer(get_caller_address(), potion_rewards * TOKEN_DECIMALS);
 
             self
                 .test_money_dispatcher
@@ -475,7 +463,7 @@ pub mod summit_systems {
 
                 let beast_token_id = self.beast_leaderboard.entry(current_position).read();
                 let beast_owner = beast_dispatcher.owner_of(beast_token_id.into());
-                reward_dispatcher.transfer(beast_owner, beast_tokens_amount);
+                reward_dispatcher.transfer(beast_owner, beast_tokens_amount.into());
             }
 
             self.beast_tokens_distributed.write(current_position);
@@ -559,7 +547,7 @@ pub mod summit_systems {
             self.summit_duration_blocks.read()
         }
 
-        fn get_summit_reward_amount(self: @ContractState) -> u256 {
+        fn get_summit_reward_amount(self: @ContractState) -> u128 {
             self.summit_reward_amount.read()
         }
 
@@ -567,11 +555,11 @@ pub mod summit_systems {
             self.showdown_duration_seconds.read()
         }
 
-        fn get_showdown_reward_amount(self: @ContractState) -> u256 {
+        fn get_showdown_reward_amount(self: @ContractState) -> u128 {
             self.showdown_reward_amount.read()
         }
 
-        fn get_beast_tokens_amount(self: @ContractState) -> u256 {
+        fn get_beast_tokens_amount(self: @ContractState) -> u128 {
             self.beast_tokens_amount.read()
         }
 
@@ -1147,7 +1135,7 @@ pub mod summit_systems {
             u32_to_u8s(rnd1_u64)
         }
 
-        fn get_potion_amount(id: u8) -> u256 {
+        fn get_potion_amount(id: u8) -> u8 {
             if (id >= 1 && id <= 5) || (id >= 26 && id < 31) || (id >= 51 && id < 56) {
                 5
             } else if (id >= 6 && id < 11) || (id >= 31 && id < 36) || (id >= 56 && id < 61) {
@@ -1260,7 +1248,7 @@ pub mod summit_systems {
         }
 
         fn _reward_beast(
-            ref self: ContractState, beast_token_id: u32, beast_owner: ContractAddress, reward_amount: u256,
+            ref self: ContractState, beast_token_id: u32, beast_owner: ContractAddress, reward_amount: u128,
         ) {
             // self.reward_dispatcher.read().transfer(beast_owner, reward_amount);
 
