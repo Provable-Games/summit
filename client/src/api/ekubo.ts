@@ -41,18 +41,8 @@ interface SwapCall {
   calldata: any[];
 }
 
-export const getPriceChart = async (token: string, otherToken: string) => {
-  const response = await fetch(`https://starknet-mainnet-api.ekubo.org/price/${token}/${otherToken}/history?interval=10000`)
-
-  const data = await response.json()
-
-  return {
-    data: data?.data || []
-  }
-}
-
 export const getSwapQuote = async (amount: number, token: string, otherToken: string): Promise<SwapQuote> => {
-  const response = await fetch(`https://starknet-mainnet-quoter-api.ekubo.org/${amount}/${token}/${otherToken}`)
+  const response = await fetch(`https://prod-api-quoter.ekubo.org/23448594291968334/${amount}/${token}/${otherToken}`)
 
   const data = await response.json()
 
