@@ -85,7 +85,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { open, close } = props;
   const { currentNetworkConfig } = useDynamicConnector();
   const { tokenBalances, fetchPaymentTokenBalances } = useController();
-  const { tokenPrices } = useStatistics();
+  const { tokenPrices, setTokenPrices } = useStatistics();
   const { provider } = useProvider();
   const { executeAction } = useSystemCalls();
   const [activeTab, setActiveTab] = useState(0);
@@ -161,6 +161,24 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   useEffect(() => {
     if (open) {
       fetchPaymentTokenBalances();
+
+      // Refresh token prices when modal opens (4 API calls)
+      const usdcAddress = paymentTokens.find((t: any) => t.name === "TEST USD")?.address;
+      if (usdcAddress) {
+        POTIONS.forEach(potion => {
+          const token = currentNetworkConfig.tokens.erc20.find((t: any) => t.name === potion.id);
+          if (token) {
+            getSwapQuote(-1e18, token.address, usdcAddress).then(swap => {
+              if (swap.total) {
+                setTokenPrices(prev => ({
+                  ...prev,
+                  [potion.id]: ((swap.total * -1) / 1e18).toFixed(4)
+                }));
+              }
+            }).catch(err => console.error(`Failed to fetch price for ${potion.id}:`, err));
+          }
+        });
+      }
 
       setQuantities({
         "ATTACK": 0,
