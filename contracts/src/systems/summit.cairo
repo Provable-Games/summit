@@ -1244,7 +1244,7 @@ pub mod summit_systems {
                 index += 1;
             }
 
-            (bonus / 500).try_into().unwrap()
+            (bonus / 250).try_into().unwrap()
         }
 
         fn _reward_beast(

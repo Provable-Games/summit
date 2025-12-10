@@ -110,7 +110,8 @@ export default function Top5000BeastsModal({ open, onClose }: Top5000BeastsModal
             <Typography sx={styles.rewardLabel}>You stand to earn</Typography>
             <Box sx={styles.rewardValue}>
               <Typography sx={styles.rewardNumber}>
-                {playerBeastsInTop5000 * survivorTokensPerBeast} $SURVIVOR
+                {/* {playerBeastsInTop5000 * survivorTokensPerBeast} $SURVIVOR */}
+                NOT IN ALPHA
               </Typography>
             </Box>
           </Box>
