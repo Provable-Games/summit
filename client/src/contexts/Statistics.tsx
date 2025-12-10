@@ -77,12 +77,12 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     refreshBeastsAlive();
     refreshTop5000Cutoff();
 
-    // fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "ATTACK"));
-    // fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "REVIVE"));
-    // fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE"));
-    // fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "POISON"));
-    // fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL"));
-    // fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE"));
+    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "ATTACK"));
+    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "REVIVE"));
+    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE"));
+    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "POISON"));
+    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL"));
+    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE"));
   }, []);
 
   return (

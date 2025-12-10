@@ -66,8 +66,8 @@ const POTIONS: Potion[] = [
     color: '#a29bfe'
   },
   {
-    id: 'KILL',
-    name: 'Kill Token',
+    id: 'SKULL',
+    name: 'Skull Token',
     image: killTokenImg,
     description: 'Used to upgrade your beasts',
     color: '#e74c3c'
