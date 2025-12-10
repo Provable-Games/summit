@@ -418,12 +418,24 @@ fn test_set_start_timestamp() {
     let contract = declare("summit_systems").unwrap().contract_class();
     let owner = REAL_PLAYER();
     let start_timestamp = 9999999999_u64; // Future timestamp
-    let submission_blocks = 100_u64;
+    let summit_duration_blocks = 1000000_u64;
+    let summit_reward_amount = 0_u128;
+    let showdown_duration_seconds = 100_u64;
+    let showdown_reward_amount = 100_u128;
+    let beast_tokens_amount = 100_u128;
+    let beast_submission_blocks = 100_u64;
+    let beast_top_spots = 100_u32;
 
     let mut calldata = array![];
     calldata.append(owner.into());
     calldata.append(start_timestamp.into());
-    calldata.append(submission_blocks.into());
+    calldata.append(summit_duration_blocks.into());
+    calldata.append(summit_reward_amount.into());
+    calldata.append(showdown_duration_seconds.into());
+    calldata.append(showdown_reward_amount.into());
+    calldata.append(beast_tokens_amount.into());
+    calldata.append(beast_submission_blocks.into());
+    calldata.append(beast_top_spots.into());
     calldata.append(DUNGEON_ADDRESS().into());
     calldata.append(BEAST_ADDRESS().into());
     calldata.append(BEAST_DATA_ADDRESS().into());
