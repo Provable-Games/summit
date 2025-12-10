@@ -76,43 +76,17 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   };
 
   const refreshTokenPrices = async () => {
-    const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON"];
+    const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON", "SKULL", "CORPSE"];
 
-    const pricePromises = tokenNames.map(async (name) => {
-      const token = currentNetworkConfig.tokens.erc20.find((t: any) => t.name === name);
-      if (!token) return null;
-
-      try {
-        const swap = await getSwapQuote(-1e18, token.address, USDC_ADDRESS);
-        if (swap.total) {
-          return { [name]: ((swap.total * -1) / 1e18).toFixed(4) };
-        }
-      } catch (err) {
-        console.error(`Failed to fetch price for ${name}:`, err);
-      }
-      return null;
-    });
-
-    const results = await Promise.all(pricePromises);
-    const newPrices = results
-      .filter((price): price is Record<string, string> => price !== null)
-      .reduce((acc, price) => ({ ...acc, ...price }), {});
-
-    if (Object.keys(newPrices).length > 0) {
-      setTokenPrices((prev) => ({ ...prev, ...newPrices }));
+    for (const tokenName of tokenNames) {
+      fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === tokenName));
     }
   };
 
   useEffect(() => {
     refreshBeastsAlive();
     refreshTop5000Cutoff();
-
-    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "ATTACK"));
-    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "REVIVE"));
-    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE"));
-    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "POISON"));
-    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL"));
-    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE"));
+    refreshTokenPrices();
   }, []);
 
   return (
