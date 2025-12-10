@@ -1,7 +1,7 @@
 import { Beast } from "@/types/game";
 
 const BEAST_COLLECTION_KEY_PREFIX = 'summit_beast_collection_';
-const VERSION_TIMESTAMP = 1765294572730;
+const VERSION_TIMESTAMP = 1765390624531;
 
 const getCacheKey = (address: string): string => {
   const normalizedAddress = address.toLowerCase();
