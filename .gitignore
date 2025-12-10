@@ -17,5 +17,6 @@ contracts/.snfoundry_cache
 contracts/deploy/mainnet.sh
 contracts/savage-summit.code-workspace
 account.json
+account-file
 dojo/deploy/mainnet.sh
 token/target

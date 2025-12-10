@@ -1,26 +1,18 @@
-# Starknet Foundry configuration
+[sncast.profile]
+url = "http://127.0.0.1:5050/"
+accounts-file = "../account-file"
+account = "mainuser"
+wait-params = { timeout = 500, retry-interval = 10 }
+block-explorer = "StarkScan"
+show-explorer-links = true
 
-[snforge_default]
-# Default configuration that applies to all tests
+# Mainnet profile used by deployment scripts
+[sncast.myprofile1]
+accounts-file = "../account-file"
+account = "mainuser"
+wait-params = { timeout = 500, retry-interval = 10 }
+block-explorer = "StarkScan"
+show-explorer-links = true
 
-[profile.default]
-# Profile for default testing
-fork = []
-
-[profile.mainnet_fork]
-# Profile for mainnet forking tests
-fork = [
-    {
-        name = "mainnet",
-        url = "https://starknet-mainnet.public.blastapi.io",
-        block_id = { Tag = "Latest" }
-    }
-]
-
-[fork.mainnet]
-url = "https://starknet-mainnet.public.blastapi.io"
-block_id = { Tag = "Latest" }
-
-[fork.mainnet_fork]
-url = "https://starknet-mainnet.public.blastapi.io"  
-block_id = { Tag = "Latest" }
+[sncast.myprofile1.networks]
+mainnet = "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/6Pzw4ZYxhoeS_bpcXV9oI5FjSCdKZE8d"
