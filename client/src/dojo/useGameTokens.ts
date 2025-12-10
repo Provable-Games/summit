@@ -224,7 +224,7 @@ export const useGameTokens = () => {
     const q = `
       SELECT owner, amount
       FROM "${currentNetworkConfig.namespace}-RewardEvent"
-      WHERE internal_created_at > '2025-12-10 16:23:00'
+      WHERE internal_created_at > '2025-12-10 18:00:00'
     `;
 
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;

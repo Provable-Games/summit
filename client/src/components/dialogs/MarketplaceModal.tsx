@@ -65,20 +65,20 @@ const POTIONS: Potion[] = [
     description: 'Poison the beast on the summit',
     color: '#a29bfe'
   },
-  {
-    id: 'SKULL',
-    name: 'Skull Token',
-    image: killTokenImg,
-    description: 'Used to upgrade your beasts',
-    color: '#e74c3c'
-  },
-  {
-    id: 'CORPSE',
-    name: 'Corpse Token',
-    image: corpseTokenImg,
-    description: 'Used to give your beasts bonus health',
-    color: '#95a5a6'
-  }
+  // {
+  //   id: 'SKULL',
+  //   name: 'Skull Token',
+  //   image: killTokenImg,
+  //   description: 'Used to upgrade your beasts',
+  //   color: '#e74c3c'
+  // },
+  // {
+  //   id: 'CORPSE',
+  //   name: 'Corpse Token',
+  //   image: corpseTokenImg,
+  //   description: 'Used to give your beasts bonus health',
+  //   color: '#95a5a6'
+  // }
 ];
 
 export default function MarketplaceModal(props: MarketplaceModalProps) {
