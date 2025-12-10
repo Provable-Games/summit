@@ -237,7 +237,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                           )}
                         </Box>
                         <Typography sx={styles.rewardsCell}>
-                          {formatRewards(player.amount / 100)}
+                          {formatRewards(player.amount / 10)}
                         </Typography>
                       </Box>
                     );
