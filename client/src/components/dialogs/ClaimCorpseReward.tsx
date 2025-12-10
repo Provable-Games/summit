@@ -6,9 +6,9 @@ import { Box, Button, Dialog, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
 
-const LIMIT = 300;
+const LIMIT = 200;
 
-function ClaimCorpseReward(props) {
+function claimCorpses(props) {
   const { open, close, isOnboarding = false } = props
   const { executeGameAction, actionFailed } = useGameDirector()
   const { adventurerCollection, setAdventurerCollection } = useGameStore()
@@ -161,7 +161,7 @@ function ClaimCorpseReward(props) {
   )
 }
 
-export default ClaimCorpseReward
+export default claimCorpses
 
 const styles = {
   dialogContainer: {

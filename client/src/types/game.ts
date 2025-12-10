@@ -2,10 +2,16 @@ export interface Summit {
   beast: Beast;
   taken_at: number;
   owner: string;
-  diplomacy_bonus: number;
-  diplomacy_count: number;
   poison_count: number;
   poison_timestamp: number;
+  diplomacy?: Diplomacy;
+}
+
+export interface Diplomacy {
+  specials_hash: bigint;
+  bonus: number;
+  total_power: number;
+  beast_token_ids: number[];
 }
 
 export interface Leaderboard {
@@ -36,16 +42,15 @@ export interface Beast {
   revival_time: number;
   extra_lives: number;
   has_claimed_potions: boolean;
-  rewards_earned: number;
+  blocks_held: number;
   stats: Stats;
   kills_claimed: number;
+  specials_hash?: bigint;
   rank?: number;
   last_dm_death_timestamp?: number;
   adventurers_killed?: number;
   combat?: Combat;
   battle?: BattleEvent;
-  kill_tokens?: number; // New: tokens for upgrades
-  corpse_tokens?: number; // New: tokens for bonus health
 }
 
 export interface Stats {

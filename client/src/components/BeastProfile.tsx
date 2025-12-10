@@ -1,9 +1,11 @@
+import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
-import revivePotionIcon from '../assets/images/revive-potion.png';
 import { Box, LinearProgress, Typography } from "@mui/material";
-import { fetchBeastImage, normaliseHealth } from "../utils/beasts";
+import revivePotionIcon from '../assets/images/revive-potion.png';
+import { fetchBeastImage, isBeastInTop5000, normaliseHealth } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 
 const MAX_HEALTH = 1023;
@@ -15,10 +17,14 @@ interface BeastProfileProps {
 
 export default function BeastProfile({ beast }: BeastProfileProps) {
   const { summit } = useGameStore()
+  const { top5000Cutoff } = useStatistics()
   const originalExperience = Math.pow(beast.level, 2);
   const currentExperience = originalExperience + beast.bonus_xp;
   const nextLevelExperience = Math.pow(beast.current_level + 1, 2);
   const bonusLevels = Math.floor(Math.sqrt(currentExperience)) - beast.level;
+
+  // Calculate if beast is in top 5000
+  const isInTop5000 = isBeastInTop5000(beast, top5000Cutoff);
 
   const diff = ((beast.last_death_timestamp * 1000) + 46 * 60 * 60 * 1000) - Date.now();
   const timeLeft = diff > 3600000 ? `${Math.floor(diff / 3600000)}h` : `${Math.floor((diff % 3600000) / 60000)}m`;
@@ -251,6 +257,30 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
               <Box sx={styles.pixelRevivalIcon}>
                 <img src={revivePotionIcon} alt="Revive Potion" width="12" height="12" />
               </Box>
+            </Box>
+          </Box>
+
+          {/* Divider */}
+          <Box sx={styles.divider} />
+
+          {/* Rewards Section */}
+          <Box sx={styles.rewardsContainer}>
+            <Box sx={styles.rewardsRow}>
+              <Box sx={styles.rewardsLeft}>
+                <Box sx={styles.rewardsEarnedSection}>
+                  <Typography sx={styles.rewardsEarnedValue}>
+                    blocks: {beast.blocks_held.toLocaleString()}
+                  </Typography>
+                </Box>
+              </Box>
+              {isInTop5000 && (
+                <Box sx={styles.top5000Badge}>
+                  <EmojiEventsIcon sx={{ fontSize: '16px', color: gameColors.yellow }} />
+                  <Box sx={styles.top5000TextContainer}>
+                    <Typography sx={styles.top5000Label}>TOP 5000</Typography>
+                  </Box>
+                </Box>
+              )}
             </Box>
           </Box>
         </Box>
@@ -747,5 +777,88 @@ const styles = {
     height: '6px',
     borderRadius: '50%',
     position: 'relative',
+  },
+
+  // Rewards container
+  rewardsContainer: {
+  },
+
+  // Rewards row
+  rewardsRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '8px',
+  },
+
+  // Rewards left section
+  rewardsLeft: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2px',
+  },
+
+  // Rewards earned section
+  rewardsEarnedSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
+
+  // Rewards earned label
+  rewardsEarnedLabel: {
+    fontSize: '10px',
+    color: gameColors.accentGreen,
+    textShadow: '1px 1px 0px #000000',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    fontWeight: 'bold',
+  },
+
+  // Rewards earned value
+  rewardsEarnedValue: {
+    fontSize: '12px',
+    color: gameColors.accentGreen,
+    textShadow: '1px 1px 0px #000000',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+  },
+
+  // Top 5000 badge
+  top5000Badge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    padding: '4px 6px',
+    background: `linear-gradient(135deg, ${gameColors.yellow}20 0%, ${gameColors.yellow}10 100%)`,
+    border: `1px solid ${gameColors.yellow}60`,
+    borderRadius: '4px',
+  },
+
+  // Top 5000 text container
+  top5000TextContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+
+  // Top 5000 label
+  top5000Label: {
+    fontSize: '10px',
+    color: gameColors.yellow,
+    textShadow: '1px 1px 0px #000000',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    lineHeight: '1',
+  },
+
+  // Top 5000 reward text
+  top5000Reward: {
+    fontSize: '9px',
+    color: gameColors.brightGreen,
+    textShadow: '1px 1px 0px #000000',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    lineHeight: '1.2',
   },
 }

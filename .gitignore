@@ -1,10 +1,14 @@
 node_modules
 contracts/target/*
+dojo/target/*
 !contracts/target/dev/manifest.json
 !contracts/target/release/manifest.json
 contracts/torii.db
 contracts/KATANA.toml
 contracts/manifests/*
+contracts/coverage
+contracts/snfoundry_trace
+contracts/.snfoundry_cache
 !contracts/manifests/dev/manifest.json
 !contracts/manifests/dev/manifest.toml
 !contracts/manifests/prod/deployment/manifest.json
@@ -12,3 +16,7 @@ contracts/manifests/*
 .env
 contracts/deploy/mainnet.sh
 contracts/savage-summit.code-workspace
+account.json
+account-file
+dojo/deploy/mainnet.sh
+token/target

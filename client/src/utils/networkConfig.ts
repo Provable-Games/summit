@@ -1,4 +1,3 @@
-import { getContractByName } from "@dojoengine/core";
 import manifest_mainnet from "../../manifest.json";
 
 export interface NetworkConfig {
@@ -7,12 +6,7 @@ export interface NetworkConfig {
   manifest: any;
   slot: string;
   preset: string;
-  policies:
-  | Array<{
-    target: string;
-    method: string;
-  }>
-  | undefined;
+  policies: | any | undefined;
   rpcUrl: string;
   toriiUrl: string;
   subscriptionUrl: string;
@@ -24,6 +18,7 @@ export interface NetworkConfig {
   ekuboRouter: string;
   beasts: string;
   dungeon: string;
+  paymentTokens: any[];
 }
 
 export enum ChainId {
@@ -35,54 +30,54 @@ export enum ChainId {
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_0_0_9",
+    namespace: "summit_relayer_3",
     manifest: manifest_mainnet,
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
-    subscriptionUrl: "https://api.cartridge.gg/x/summit-4/torii",
+    subscriptionUrl: "https://api.cartridge.gg/x/summit-5/torii",
     tokens: {
       erc20: [
-        {
-          name: "SURVIVOR",
-          address:
-            "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
-          displayDecimals: 0,
-        },
+        // {
+        //   name: "SURVIVOR",
+        //   address:
+        //     "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
+        //   displayDecimals: 0,
+        // },
         {
           name: "ATTACK",
           address:
-            "0x075bbe6a4a4c744ad2da8da0cc7562623d4181418359d62909a02b4abf5be651",
+            "0x63eb1e13f9a5e237aa8b4a4b649db577a67641217ab9eb7cbbfd837bc4a11ee",
           displayDecimals: 0,
         },
         {
           name: "REVIVE",
           address:
-            "0x003561384b4c4502f87fd728332f8cf4e604a1215185d9d997be33769ba32fc3",
+            "0x2c90c8bfc60cbab2064fcd271039d633c7f30a0544f5727bbb06767d35bd3c0",
           displayDecimals: 0,
         },
         {
           name: "EXTRA LIFE",
           address:
-            "0x07af033bf4a3f2cae7f871ca015c7021f97846217733d72665aaf6ad735d4359",
+            "0x7fdef6a5d5376d346eb1d830ad28aead5bdc1f02e53c7fb4584a17288f4b20d",
           displayDecimals: 0,
         },
         {
           name: "POISON",
           address:
-            "0x047314b2b569360da4623035d2d81479a90a677beae8518e221960b07afb960f",
+            "0x7664d9c661c2d794d0d227369821088b21003e8fd9bd8885b39b6a769be4f43",
           displayDecimals: 0,
         },
         {
-          name: "KILL",
+          name: "SKULL",
           address:
-            "0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd",
+            "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a",
           displayDecimals: 0,
         },
         {
           name: "CORPSE",
           address:
-            "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c",
+            "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105",
           displayDecimals: 0,
         }
       ],
@@ -94,7 +89,76 @@ export const NETWORKS = {
     beasts:
       "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
     ekuboRouter:
-      "0x0199741822c2dc722f6f605204f35e56dbc23bceed54818168c4c49e4fb8737e",
+      "0x04505a9f06f2bd639b6601f37a4dc0908bb70e8e0e0c34b1220827d64f4fc066",
+    paymentTokens: [
+      {
+        name: "TEST USD",
+        address:
+          "0x03c8559b31a325f9f45ce98f709e8e7c655805c6ca4eecb78ff7761f202acba3",
+        displayDecimals: 0,
+      },
+      {
+        name: "ATTACK",
+        address:
+          "0x63eb1e13f9a5e237aa8b4a4b649db577a67641217ab9eb7cbbfd837bc4a11ee",
+        displayDecimals: 0,
+      },
+      {
+        name: "REVIVE",
+        address:
+          "0x2c90c8bfc60cbab2064fcd271039d633c7f30a0544f5727bbb06767d35bd3c0",
+        displayDecimals: 0,
+      },
+      {
+        name: "EXTRA LIFE",
+        address:
+          "0x7fdef6a5d5376d346eb1d830ad28aead5bdc1f02e53c7fb4584a17288f4b20d",
+        displayDecimals: 0,
+      },
+      {
+        name: "POISON",
+        address:
+          "0x7664d9c661c2d794d0d227369821088b21003e8fd9bd8885b39b6a769be4f43",
+        displayDecimals: 0,
+      },
+      {
+        name: "SKULL",
+        address:
+          "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a",
+        displayDecimals: 0,
+      },
+      {
+        name: "CORPSE",
+        address:
+          "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105",
+        displayDecimals: 0,
+      }
+      // {
+      //   name: "ETH",
+      //   address:
+      //     "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+      //   displayDecimals: 4,
+      // },
+      // {
+      //   name: "STRK",
+      //   address:
+      //     "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+      //   displayDecimals: 2,
+      // },
+      // {
+      //   name: "USDC",
+      //   address:
+      //     "0x033068F6539f8e6e6b131e6B2B814e6c34A5224bC66947c47DaB9dFeE93b35fb",
+      //   displayDecimals: 2,
+      //   decimals: 6,
+      // },
+      // {
+      //   name: "SURVIVOR",
+      //   address:
+      //     "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
+      //   displayDecimals: 0,
+      // },
+    ],
   },
 };
 
@@ -102,11 +166,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
   const network = NETWORKS[networkKey as keyof typeof NETWORKS];
   if (!network) throw new Error(`Network ${networkKey} not found`);
 
-  const SUMMIT_ADDRESS = getContractByName(
-    network.manifest,
-    network.namespace,
-    "summit_systems"
-  )?.address;
+  const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS
 
   const policies = {
     "contracts": {
@@ -135,11 +195,6 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "entrypoint": "claim_beast_reward"
           },
           {
-            "name": "Claim Corpse Reward",
-            "description": "Claim corpse rewards",
-            "entrypoint": "claim_corpse_reward"
-          },
-          {
             "name": "Add Extra Life",
             "description": "Add extra life to beast",
             "entrypoint": "add_extra_life"
@@ -153,10 +208,15 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "name": "Apply Poison",
             "description": "Apply poison to beast",
             "entrypoint": "apply_poison"
-          }
+          },
+          {
+            "name": "Claim Summit",
+            "description": "Claim summit",
+            "entrypoint": "claim_summit"
+          },
         ]
       },
-      "0x075bbe6a4a4c744ad2da8da0cc7562623d4181418359d62909a02b4abf5be651": {
+      "0x63eb1e13f9a5e237aa8b4a4b649db577a67641217ab9eb7cbbfd837bc4a11ee": {
         "name": "Attack Potion",
         "description": "ERC 20 token for Attack Potion",
         "methods": [
@@ -169,7 +229,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x003561384b4c4502f87fd728332f8cf4e604a1215185d9d997be33769ba32fc3": {
+      "0x2c90c8bfc60cbab2064fcd271039d633c7f30a0544f5727bbb06767d35bd3c0": {
         "name": "Revive Potion",
         "description": "ERC 20 token for Revive Potion",
         "methods": [
@@ -182,7 +242,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x07af033bf4a3f2cae7f871ca015c7021f97846217733d72665aaf6ad735d4359": {
+      "0x7fdef6a5d5376d346eb1d830ad28aead5bdc1f02e53c7fb4584a17288f4b20d": {
         "name": "Extra Life Potion",
         "description": "ERC 20 token for Extra Life Potion",
         "methods": [
@@ -195,7 +255,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x047314b2b569360da4623035d2d81479a90a677beae8518e221960b07afb960f": {
+      "0x7664d9c661c2d794d0d227369821088b21003e8fd9bd8885b39b6a769be4f43": {
         "name": "Poison Potion",
         "description": "ERC 20 token for Poison Potion",
         "methods": [
@@ -208,23 +268,38 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x02beaf101300efd433877bf358005d29c32e048e314529ac1fdbe4ac024c17cd": {
-        "name": "Kill Token",
-        "description": "ERC 20 token for Kill Token",
+      "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a": {
+        "name": "Skull Token",
+        "description": "ERC 20 token for Skull Token",
         "methods": [
+          {
+            "name": "Claim Skulls",
+            "description": "Claim skulls",
+            "entrypoint": "claim"
+          },
           {
             "name": "Approve",
             "amount": "50000000000000000000000",
             "spender": SUMMIT_ADDRESS,
-            "description": "Approve Kill Token",
+            "description": "Approve Skull Token",
             "entrypoint": "approve"
           }
         ]
       },
-      "0x0195685bd2bce86e4ebe4ea5ef44d9dc00c4e7c6e362d428abdb618b4739c25c": {
+      "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105": {
         "name": "Corpse Token",
         "description": "ERC 20 token for Corpse Token",
         "methods": [
+          {
+            "name": "Claim Corpses",
+            "description": "Claim corpses",
+            "entrypoint": "claim"
+          },
+          {
+            "name": "Claim Corpse Reward",
+            "description": "Claim corpse rewards",
+            "entrypoint": "claim_efficient"
+          },
           {
             "name": "Approve",
             "amount": "50000000000000000000000",
@@ -253,8 +328,8 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     namespace: network.namespace,
     manifest: network.manifest,
     slot: network.slot,
-    preset: "savage-summit",
-    policies: undefined,
+    preset: "savage-summit_2",
+    policies: policies,
     rpcUrl: network.rpcUrl,
     toriiUrl: network.torii,
     subscriptionUrl: network.subscriptionUrl,
@@ -264,6 +339,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     ekuboRouter: network.ekuboRouter,
     beasts: network.beasts,
     dungeon: network.dungeon,
+    paymentTokens: network.paymentTokens,
   };
 }
 

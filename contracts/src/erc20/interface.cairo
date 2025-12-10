@@ -1,10 +1,7 @@
 use starknet::ContractAddress;
 
 #[starknet::interface]
-pub trait ConsumableERC20<TContractState> {
-    fn transfer_from(
-        ref self: TContractState, sender: ContractAddress, recipient: ContractAddress, amount: u256,
-    ) -> bool;
-    fn burn(ref self: TContractState, amount: u256);
-    fn mint(ref self: TContractState, recipient: ContractAddress, amount: u256);
+pub trait SummitERC20<TContractState> {
+    fn transfer(ref self: TContractState, to: ContractAddress, amount: u256);
+    fn burn_from(ref self: TContractState, from: ContractAddress, amount: u256);
 }

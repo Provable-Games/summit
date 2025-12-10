@@ -9,9 +9,11 @@ pub const DAY_SECONDS: u64 = 24 * 60 * 60;
 pub const MAX_U32: u32 = 0xffffffff;
 pub const MAX_U16: u16 = 0xffff;
 pub const MINIMUM_DAMAGE: u8 = 4;
-pub const BEAST_MAX_BONUS_HEALTH: u16 = 1023;
+pub const BEAST_MAX_EXTRA_LIVES: u16 = 4000;
+pub const BEAST_MAX_BONUS_HEALTH: u16 = 2000;
 pub const BEAST_MAX_BONUS_LVLS: u16 = 40;
-pub const MAX_REVIVAL_COUNT: u8 = 15;
+pub const BEAST_MAX_ATTRIBUTES: u8 = 100;
+pub const MAX_REVIVAL_COUNT: u8 = 31;
 pub const EIGHT_BITS_MAX: u8 = 255;
 pub const TOKEN_DECIMALS: u256 = 1_000_000_000_000_000_000;
 
@@ -22,8 +24,9 @@ pub mod errors {
     pub const BEAST_ADDRESS_NOT_SET: felt252 = 'beast address not set';
     pub const BEAST_ATTACKING_OWN_BEAST: felt252 = 'attacking own beast';
     pub const BEAST_MAX_BONUS_HEALTH: felt252 = 'beast has max bonus health';
+    pub const BEAST_MAX_ATTRIBUTES: felt252 = 'beast has max attributes';
     pub const BEAST_ALIVE: felt252 = 'beast is alive';
-    pub const BEAST_MAX_EXTRA_LIVES: felt252 = 'Max 255 extra lives';
+    pub const BEAST_MAX_EXTRA_LIVES: felt252 = 'Max 2000 extra lives';
     pub const MAX_ATTACK_POTION: felt252 = 'Max 255 attack potions';
 
     pub const ADVENTURER_ALIVE: felt252 = 'adventurer is alive';
@@ -32,8 +35,4 @@ pub mod errors {
 
     pub const NOT_ENOUGH_CONSUMABLES: felt252 = 'not enough consumables';
     pub const POTION_NOT_ALLOWED_ON_SUMMIT: felt252 = 'Potion not allowed on summit';
-}
-
-pub fn DEFAULT_NS() -> ByteArray {
-    "summit_0_0_9"
 }

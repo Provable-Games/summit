@@ -1,3 +1,4 @@
+import { delay } from "@/utils/utils";
 import { num } from "starknet"
 
 interface SwapQuote {
@@ -37,23 +38,18 @@ interface RouterContract {
 interface SwapCall {
   contractAddress: string;
   entrypoint: string;
-  calldata: string[];
-}
-
-export const getPriceChart = async (token: string, otherToken: string) => {
-  const response = await fetch(`https://starknet-mainnet-api.ekubo.org/price/${token}/${otherToken}/history?interval=10000`)
-
-  const data = await response.json()
-
-  return {
-    data: data?.data || []
-  }
+  calldata: any[];
 }
 
 export const getSwapQuote = async (amount: number, token: string, otherToken: string): Promise<SwapQuote> => {
-  const response = await fetch(`https://starknet-mainnet-quoter-api.ekubo.org/${amount}/${token}/${otherToken}`)
+  const response = await fetch(`https://prod-api-quoter.ekubo.org/23448594291968334/${amount}/${token}/${otherToken}`)
 
   const data = await response.json()
+
+  if (!data.total_calculated) {
+    await delay(2000);
+    return getSwapQuote(amount, token, otherToken);
+  }
 
   return {
     impact: data?.price_impact || 0,
@@ -63,15 +59,22 @@ export const getSwapQuote = async (amount: number, token: string, otherToken: st
 }
 
 export const generateSwapCalls = (ROUTER_CONTRACT: RouterContract, purchaseToken: string, tokenQuote: TokenQuote): SwapCall[] => {
-  let totalQuoteSum = 0n;
-
-  if (tokenQuote.quote && tokenQuote.quote.splits.length > 0) {
-    const total = BigInt(tokenQuote.quote.total);
-    totalQuoteSum = total < 0n ? -total : total;
+  if (!tokenQuote.quote || tokenQuote.quote.splits.length === 0) {
+    return [];
   }
 
-  const doubledTotal = totalQuoteSum * 2n;
-  totalQuoteSum = doubledTotal < (totalQuoteSum + BigInt(1e19)) ? doubledTotal : (totalQuoteSum + BigInt(1e19));
+  let { tokenAddress, minimumAmount, quote } = tokenQuote;
+
+  let totalQuoteSum = 0n;
+  const total = BigInt(tokenQuote.quote.total);
+
+  if (total < 0n) {
+    totalQuoteSum = -total;
+    const doubledTotal = totalQuoteSum * 2n;
+    totalQuoteSum = doubledTotal < (totalQuoteSum + BigInt(1e19)) ? doubledTotal : (totalQuoteSum + BigInt(1e19));
+  } else {
+    totalQuoteSum = BigInt(minimumAmount * 1e18);
+  }
 
   const transferCall: SwapCall = {
     contractAddress: purchaseToken,
@@ -85,7 +88,6 @@ export const generateSwapCalls = (ROUTER_CONTRACT: RouterContract, purchaseToken
     calldata: [purchaseToken],
   };
 
-  let { tokenAddress, minimumAmount, quote } = tokenQuote;
 
   if (!quote || quote.splits.length === 0) {
     return [transferCall, clearCall];
@@ -93,16 +95,19 @@ export const generateSwapCalls = (ROUTER_CONTRACT: RouterContract, purchaseToken
 
   let { splits } = quote;
 
-  const clearProfitsCall = ROUTER_CONTRACT.populate("clear_minimum", [
-    { contract_address: tokenAddress },
-    minimumAmount * 1e18,
-  ]);
+  let minimumClear = total < 0n ? num.toHex(BigInt(minimumAmount * 1e18)) : num.toHex(total);
+
+  const clearProfitsCall = {
+    contractAddress: ROUTER_CONTRACT.address,
+    entrypoint: "clear_minimum",
+    calldata: [tokenAddress, minimumClear, "0x0"],
+  }
 
   let swapCalls: SwapCall[];
 
   if (splits.length === 1) {
     const split = splits[0];
-    
+
     swapCalls = [
       {
         contractAddress: ROUTER_CONTRACT.address,
@@ -129,9 +134,9 @@ export const generateSwapCalls = (ROUTER_CONTRACT: RouterContract, purchaseToken
             token: tokenAddress,
             encoded: [],
           }).encoded,
-          tokenAddress,
+          total < 0n ? tokenAddress : purchaseToken,
           num.toHex(BigInt(split.amount_specified) < 0n ? -BigInt(split.amount_specified) : BigInt(split.amount_specified)),
-          "0x1",
+          total < 0n ? "0x1" : "0x0",
         ],
       },
       clearProfitsCall,
@@ -168,9 +173,9 @@ export const generateSwapCalls = (ROUTER_CONTRACT: RouterContract, purchaseToken
                   encoded: [],
                 }
               ).encoded,
-              tokenAddress,
+              total < 0n ? tokenAddress : purchaseToken,
               num.toHex(BigInt(split.amount_specified) < 0n ? -BigInt(split.amount_specified) : BigInt(split.amount_specified)),
-              "0x1",
+              total < 0n ? "0x1" : "0x0",
             ]);
           }, []),
         ],

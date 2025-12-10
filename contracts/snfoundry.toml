@@ -1,0 +1,18 @@
+[sncast.profile]
+url = "http://127.0.0.1:5050/"
+accounts-file = "../account-file"
+account = "mainuser"
+wait-params = { timeout = 500, retry-interval = 10 }
+block-explorer = "StarkScan"
+show-explorer-links = true
+
+# Mainnet profile used by deployment scripts
+[sncast.myprofile1]
+accounts-file = "../account-file"
+account = "mainuser"
+wait-params = { timeout = 500, retry-interval = 10 }
+block-explorer = "StarkScan"
+show-explorer-links = true
+
+[sncast.myprofile1.networks]
+mainnet = "https://starknet-mainnet.g.alchemy.com/starknet/version/rpc/v0_10/6Pzw4ZYxhoeS_bpcXV9oI5FjSCdKZE8d"

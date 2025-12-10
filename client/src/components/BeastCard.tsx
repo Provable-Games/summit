@@ -2,13 +2,14 @@ import { Beast, Combat } from '@/types/game';
 import CasinoIcon from '@mui/icons-material/Casino';
 import EnergyIcon from '@mui/icons-material/ElectricBolt';
 import HandshakeIcon from '@mui/icons-material/Handshake';
+import LockClockIcon from '@mui/icons-material/LockClock';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import StarIcon from '@mui/icons-material/Star';
 import { Box, Typography } from "@mui/material";
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import swordIcon from '../assets/images/sword.png';
-import { fetchBeastImage } from "../utils/beasts";
+import { fetchBeastImage, getBeastLockedTimeRemaining } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 
 interface BeastCardProps {
@@ -16,6 +17,7 @@ interface BeastCardProps {
   isSelected: boolean;
   isSavage: boolean;
   isDead: boolean;
+  isLocked: boolean;
   combat: Combat | null;
   selectionIndex: number;
   summitHealth: number;
@@ -29,6 +31,7 @@ const BeastCard = memo(({
   isSelected,
   isSavage,
   isDead,
+  isLocked,
   combat,
   selectionIndex,
   summitHealth,
@@ -36,12 +39,18 @@ const BeastCard = memo(({
   onMouseEnter,
   onMouseLeave,
 }: BeastCardProps) => {
+  const lockedTime = useMemo(
+    () => (isLocked ? getBeastLockedTimeRemaining(beast) : { hours: 0, minutes: 0 }),
+    [isLocked, beast],
+  );
+
   return (
     <Box
       sx={[
         styles.beastCard,
         isSelected && styles.selectedCard,
         isDead && styles.deadCard,
+        isLocked && styles.lockedCard,
       ]}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
@@ -60,27 +69,45 @@ const BeastCard = memo(({
           style={{ ...styles.beastImage }}
         />
 
+        {/* Locked overlay */}
+        {isLocked && (
+          <Box sx={styles.lockOverlay}>
+            <LockClockIcon sx={{ fontSize: 22, mb: '2px', color: gameColors.brightGreen }} />
+            <Typography sx={styles.lockText}>LOCKED</Typography>
+            {(lockedTime.hours > 0 || lockedTime.minutes > 0) && (
+              <Typography sx={styles.lockSubText}>
+                {lockedTime.hours}h {lockedTime.minutes}m
+              </Typography>
+            )}
+          </Box>
+        )}
+
         {/* Upgrade Icons */}
-        {(beast.stats.spirit || beast.stats.luck || beast.stats.specials) && (
+        {(beast.stats.spirit || beast.stats.luck || beast.stats.specials || beast.stats.wisdom || beast.stats.diplomacy) && (
           <Box sx={styles.upgradeIconsContainer}>
             {beast.stats.luck > 0 && (
               <Box sx={{ color: '#ff69b4' }}>
                 <CasinoIcon sx={{ fontSize: '14px' }} />
               </Box>
             )}
-            {beast.stats.specials === true && (
+            {beast.stats.specials ? (
               <Box sx={{ color: '#ffd700' }}>
                 <StarIcon sx={{ fontSize: '14px' }} />
               </Box>
-            )}
-            {beast.stats.wisdom === true && (
+            ) : null}
+            {beast.stats.wisdom ? (
               <Box sx={{ color: '#60a5fa' }}>
                 <PsychologyIcon sx={{ fontSize: '14px' }} />
               </Box>
-            )}
-            {beast.stats.diplomacy === true && (
+            ) : null}
+            {beast.stats.diplomacy ? (
               <Box sx={{ color: '#a78bfa' }}>
                 <HandshakeIcon sx={{ fontSize: '14px' }} />
+              </Box>
+            ) : null}
+            {beast.stats.spirit > 0 && (
+              <Box sx={{ color: '#00ffff' }}>
+                <EnergyIcon sx={{ fontSize: '14px' }} />
               </Box>
             )}
           </Box>
@@ -179,6 +206,12 @@ const BeastCard = memo(({
   return (
     prevProps.beast.token_id === nextProps.beast.token_id &&
     prevProps.beast.current_health === nextProps.beast.current_health &&
+    prevProps.beast.bonus_health === nextProps.beast.bonus_health &&
+    prevProps.beast.stats.luck === nextProps.beast.stats.luck &&
+    prevProps.beast.stats.spirit === nextProps.beast.stats.spirit &&
+    prevProps.beast.stats.specials === nextProps.beast.stats.specials &&
+    prevProps.beast.stats.wisdom === nextProps.beast.stats.wisdom &&
+    prevProps.beast.stats.diplomacy === nextProps.beast.stats.diplomacy &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isSavage === nextProps.isSavage &&
     prevProps.isDead === nextProps.isDead &&
@@ -254,6 +287,19 @@ const styles = {
       `,
     }
   },
+  lockedCard: {
+    opacity: 0.8,
+    filter: 'grayscale(60%)',
+    cursor: 'not-allowed',
+    '&:hover': {
+      transform: 'translateY(-2px)',
+      boxShadow: `
+        inset 0 1px 0 ${gameColors.darkGray}60,
+        0 2px 4px rgba(0, 0, 0, 0.4),
+        0 0 0 1px ${gameColors.darkGray}
+      `,
+    },
+  },
   glowEffect: {
     position: 'absolute',
     top: '-50%',
@@ -286,6 +332,28 @@ const styles = {
     overflow: 'hidden',
     background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.black} 100%)`,
     boxShadow: `inset 0 1px 0 ${gameColors.darkGreen}, inset 0 -1px 0 ${gameColors.black}`,
+  },
+  lockOverlay: {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'linear-gradient(135deg, rgba(0,0,0,0.75), rgba(0,0,0,0.95))',
+    textAlign: 'center',
+    pointerEvents: 'none',
+  },
+  lockText: {
+    fontSize: '11px',
+    fontWeight: 'bold',
+    letterSpacing: '0.6px',
+    color: gameColors.brightGreen,
+  },
+  lockSubText: {
+    fontSize: '10px',
+    marginTop: '2px',
+    color: '#e5e7eb',
   },
   upgradeIconsContainer: {
     position: 'absolute',

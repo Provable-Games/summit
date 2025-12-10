@@ -37,7 +37,7 @@ export function SoundProvider({ children }: PropsWithChildren) {
     const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.muted) : null;
     return stored ? stored === "1" : false;
   });
-  const [volume, setVolumeState] = useState<number>(0.5);
+  const [volume, setVolumeState] = useState<number>(0.2);
 
   const [unlocked, setUnlocked] = useState(false);
   useEffect(() => {

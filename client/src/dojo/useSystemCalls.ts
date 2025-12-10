@@ -3,7 +3,6 @@ import { useGameStore } from "@/stores/gameStore";
 import { AppliedPotions, Stats } from "@/types/game";
 import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
-import { getContractByName } from "@dojoengine/core";
 import { useAccount } from "@starknet-react/core";
 import { useSnackbar } from "notistack";
 import { CallData } from "starknet";
@@ -14,13 +13,8 @@ export const useSystemCalls = () => {
   const { account } = useAccount();
   const { currentNetworkConfig } = useDynamicConnector();
 
-  const namespace = currentNetworkConfig.namespace;
   const VRF_PROVIDER_ADDRESS = "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f"
-  const SUMMIT_ADDRESS = getContractByName(
-    currentNetworkConfig.manifest,
-    namespace,
-    "summit_systems"
-  )?.address;
+  const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS
 
   /**
    * Custom hook to handle system calls and state management in the Dojo application.
@@ -160,12 +154,12 @@ export const useSystemCalls = () => {
     return txs;
   };
 
-  const applyStatPoints = (beastId: number, stats: Stats, killRequired: number) => {
+  const applyStatPoints = (beastId: number, stats: Stats, skullRequired: number) => {
     let txs: any[] = [];
 
-    if (killRequired > 0) {
-      let killTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "KILL")?.address;
-      txs.push(approveTokens(killTokenAddress, killRequired));
+    if (skullRequired > 0) {
+      let skullTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL")?.address;
+      txs.push(approveTokens(skullTokenAddress, skullRequired));
     }
 
     txs.push({
@@ -193,11 +187,19 @@ export const useSystemCalls = () => {
     };
   };
 
-  const claimCorpseReward = (adventurerIds: number[]) => {
+  const claimCorpses = (adventurerIds: number[]) => {
     return {
-      contractAddress: SUMMIT_ADDRESS,
-      entrypoint: "claim_corpse_reward",
+      contractAddress: currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE")?.address,
+      entrypoint: "claim_efficient",
       calldata: CallData.compile([adventurerIds]),
+    };
+  };
+
+  const claimSkulls = (beastIds: number[]) => {
+    return {
+      contractAddress: currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL")?.address,
+      entrypoint: "claim",
+      calldata: CallData.compile([beastIds]),
     };
   };
 
@@ -233,7 +235,8 @@ export const useSystemCalls = () => {
     feed,
     attack,
     claimBeastReward,
-    claimCorpseReward,
+    claimCorpses,
+    claimSkulls,
     executeAction,
     addExtraLife,
     applyStatPoints,

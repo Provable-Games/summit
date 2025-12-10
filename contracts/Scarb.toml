@@ -1,5 +1,5 @@
 [package]
-cairo-version = "=2.10.1"
+cairo-version = "2.13.1"
 name = "summit"
 version = "0.1.0"
 edition = "2024_07"
@@ -8,25 +8,33 @@ edition = "2024_07"
 sierra-replace-ids = true
 
 [dependencies]
-openzeppelin_token = "1.0.0"
-dojo = { git = "https://github.com/dojoengine/dojo", tag = "v1.6.0" }
-death_mountain = { git = "https://github.com/Provable-Games/death-mountain.git" }
+starknet = "2.13.1"
+openzeppelin_token = "2.0.0"
+openzeppelin_access = "2.0.0"
+openzeppelin_upgrades = "2.0.0"
 beasts_nft = { git = "https://github.com/Provable-Games/beasts.git" }
+death_mountain_combat = { git = "https://github.com/Provable-Games/death-mountain.git", branch = "componentize" }
+death_mountain_beast = { git = "https://github.com/Provable-Games/death-mountain.git", branch = "componentize" }
+
+[scripts]
+test = "snforge test"
 
 [dev-dependencies]
-cairo_test = "=2.10.1"
-dojo_cairo_test = { git = "https://github.com/dojoengine/dojo", tag = "v1.6.0" }
+snforge_std = "0.46.0"
 
 [[target.starknet-contract]]
-sierra = true
-casm = true
-build-external-contracts = [
-    "dojo::world::world_contract::world",
-    "beasts_nft::beasts_nft"
-]
+build-external-contracts = ["beasts_nft::beasts_nft"] 
 
 [tool.fmt]
 sort-module-level-items = true
 max-line-length = 120
 
-[profile.mainnet]
+[tool.snforge]
+fork = [
+    { name = "mainnet", url = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_8", block_id = { tag = "latest" } }
+]
+
+[profile.dev.cairo]
+unstable-add-statements-functions-debug-info = true
+unstable-add-statements-code-locations-debug-info = true
+inlining-strategy = "avoid"

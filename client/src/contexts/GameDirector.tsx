@@ -1,7 +1,7 @@
 import { useStarknetApi } from "@/api/starknet";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useGameStore } from "@/stores/gameStore";
-import { BattleEvent, Beast, GameAction, getEntityModel, Summit } from "@/types/game";
+import { BattleEvent, Beast, Diplomacy, GameAction, getEntityModel, Summit } from "@/types/game";
 import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastDetails, getBeastRevivalTime, applyPoisonDamage } from "@/utils/beasts";
 import { useQueries } from '@/utils/queries';
 import { useDojoSDK } from '@dojoengine/sdk/react';
@@ -15,6 +15,7 @@ import {
 } from "react";
 import { useController } from "./controller";
 import { useSound } from "@/contexts/sound";
+import { useGameTokens } from "@/dojo/useGameTokens";
 
 export interface GameDirectorContext {
   executeGameAction: (action: GameAction) => Promise<boolean>;
@@ -24,6 +25,7 @@ export interface GameDirectorContext {
 }
 
 export const START_TIMESTAMP = 1760947200;
+export const TERMINAL_BLOCK = 5000000;
 
 const GameDirectorContext = createContext<GameDirectorContext>(
   {} as GameDirectorContext
@@ -32,14 +34,16 @@ const GameDirectorContext = createContext<GameDirectorContext>(
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
   const { summit, setSummit, setAttackInProgress, collection, setCollection, setAppliedPotions, appliedPotions,
-    setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent, setAppliedPoisonCount } = useGameStore();
+    setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent, setAppliedPoisonCount, appliedPoisonCount } = useGameStore();
   const { gameEventsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
-  const { executeAction, attack, feed, claimBeastReward, claimCorpseReward, addExtraLife, applyStatPoints, applyPoison } = useSystemCalls();
+  const { executeAction, attack, feed, claimBeastReward, claimCorpses, claimSkulls, addExtraLife, applyStatPoints, applyPoison } = useSystemCalls();
   const { tokenBalances, setTokenBalances } = useController();
   const { play } = useSound();
+  const { getDiplomacy } = useGameTokens();
 
   const [nextSummit, setNextSummit] = useState<Summit | null>(null);
+  const [diplomacyEvent, setDiplomacyEvent] = useState<Diplomacy>();
   const [summitSubscription, setSummitSubscription] = useState<any>(null);
   const [actionFailed, setActionFailed] = useReducer((x) => x + 1, 0);
   const [eventQueue, setEventQueue] = useState<any[]>([]);
@@ -96,6 +100,40 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
   }, [nextSummit, pauseUpdates]);
 
+  useEffect(() => {
+    async function fetchDiplomacy() {
+      const diplomacy = await getDiplomacy(summit.beast);
+
+      setSummit(prevSummit => ({
+        ...prevSummit,
+        diplomacy: {
+          ...diplomacy,
+          bonus: prevSummit.beast.stats.diplomacy
+            ? Math.floor((diplomacy.total_power - prevSummit.beast.power) / 500)
+            : Math.floor(diplomacy.total_power / 500),
+        },
+      }));
+    }
+
+    if (summit?.beast) {
+      fetchDiplomacy();
+    }
+  }, [summit?.beast.token_id]);
+
+  useEffect(() => {
+    if (diplomacyEvent && diplomacyEvent.specials_hash === summit?.beast.specials_hash) {
+      setSummit(prevSummit => ({
+        ...prevSummit,
+        diplomacy: {
+          ...diplomacyEvent,
+          bonus: prevSummit.beast.stats.diplomacy
+            ? Math.floor((diplomacyEvent.total_power - prevSummit.beast.power) / 500)
+            : Math.floor(diplomacyEvent.total_power / 500),
+        },
+      }));
+    }
+  }, [diplomacyEvent]);
+
   const fetchSummitData = async () => {
     const summitBeast = await getSummitData();
 
@@ -130,6 +168,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           let poison_event = data.filter((entity: any) => Boolean(getEntityModel(entity, "PoisonEvent")))
             .map((entity: any) => getEntityModel(entity, "PoisonEvent"))
 
+          let diplomacyEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "DiplomacyEvent")))
+            .map((entity: any) => getEntityModel(entity, "DiplomacyEvent"))
+
+          if (diplomacyEvent.length > 0) {
+            setDiplomacyEvent(diplomacyEvent[0]);
+          }
+
           if (liveBeastStatsEvent.length > 0) {
             setEventQueue((prev) => [...prev, ...liveBeastStatsEvent.map(liveStatEvent => liveStatEvent.live_stats)]);
           }
@@ -155,8 +200,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
               },
               taken_at: summit.taken_at,
               owner: summit.owner,
-              diplomacy_bonus: summit.diplomacy_bonus,
-              diplomacy_count: summit.diplomacy_count,
               poison_count: 0,
               poison_timestamp: 0,
             })
@@ -229,7 +272,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       setBattleEvents([]);
       setAttackInProgress(true);
 
-      let beastIds = action.beastIds.slice(0, 50);
+      let beastIds = action.beastIds.slice(0, 75);
 
       if (beastIds.length === 0) {
         setActionFailed();
@@ -246,7 +289,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     if (action.type === 'claim_corpse_reward') {
-      txs.push(claimCorpseReward(action.adventurerIds));
+      txs.push(claimCorpses(action.adventurerIds));
+    }
+
+    if (action.type === 'claim_skull_reward') {
+      txs.push(claimSkulls(action.beastIds));
     }
 
     if (action.type === 'add_extra_life') {
@@ -294,7 +341,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         .find((event: BattleEvent) => (event.attack_count + event.critical_attack_count) > (event.counter_attack_count + event.critical_counter_attack_count))) {
         executeGameAction({
           type: 'attack_until_capture',
-          beastIds: action.beastIds.slice(50),
+          beastIds: action.beastIds.slice(75),
         });
       } else {
         setAttackInProgress(false);
@@ -311,8 +358,18 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       });
       setApplyingPotions(false);
     } else if (action.type === 'apply_poison') {
+      setTokenBalances({
+        ...tokenBalances,
+        POISON: tokenBalances["POISON"] - appliedPoisonCount,
+      });
       setAppliedPoisonCount(0);
       setApplyingPotions(false);
+    } else if (action.type === 'upgrade_beast') {
+      setTokenBalances({
+        ...tokenBalances,
+        SKULL: tokenBalances["SKULL"] - action.killTokens,
+        CORPSE: tokenBalances["CORPSE"] - action.corpseTokens,
+      });
     }
 
     return true;

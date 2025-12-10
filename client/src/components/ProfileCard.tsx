@@ -1,37 +1,51 @@
+import attackPotionImg from '@/assets/images/attack-potion.png';
+import corpseTokenImg from '@/assets/images/corpse-token.png';
+import killTokenImg from '@/assets/images/kill-token.png';
+import lifePotionImg from '@/assets/images/life-potion.png';
+import poisonPotionImg from '@/assets/images/poison-potion.png';
+import revivePotionImg from '@/assets/images/revive-potion.png';
 import { useController } from '@/contexts/controller';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { ellipseAddress, formatRewardNumber } from '@/utils/utils';
-import killTokenImg from '@/assets/images/kill-token.png';
-import corpseTokenImg from '@/assets/images/corpse-token.png';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
-import { Box, Button, IconButton, Tooltip, Typography } from '@mui/material';
+import { Box, Button, IconButton, Tooltip, Typography, Skeleton } from '@mui/material';
 import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import ClaimStarterPack from './dialogs/ClaimStarterPack';
 import { addAddressPadding } from 'starknet';
-import ClaimCorpseReward from './dialogs/ClaimCorpseReward';
 import BeastDexModal from './dialogs/BeastDexModal';
+import MarketplaceModal from './dialogs/MarketplaceModal';
+import { useStatistics } from '@/contexts/Statistics';
 
 const ProfileCard = () => {
-  const { collection, adventurerCollection, leaderboard, onboarding, loadingCollection } = useGameStore()
+  const { collection, leaderboard, onboarding, loadingCollection, summitEnded } = useGameStore()
   const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
   const { playerName, tokenBalances, openProfile } = useController()
+  const { tokenPrices } = useStatistics();
   const { connect, connectors } = useConnect();
 
   let cartridgeConnector = connectors.find(conn => conn.id === "controller")
 
-  const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false)
-  const [claimCorpseRewardDialog, setClaimCorpseRewardDialog] = useState(false)
   const [beastDexOpen, setBeastDexOpen] = useState(false)
-  const unclaimedBeasts = collection.filter(beast => !beast.has_claimed_potions || beast.adventurers_killed > beast.kills_claimed)
-  const unclaimedCorpseTokens = adventurerCollection.reduce((sum, adventurer) => sum + adventurer.level, 0)
+  const [potionShopOpen, setPotionShopOpen] = useState(false)
   const isCartridge = connector?.id === 'controller'
-  const killTokens = tokenBalances["KILL"] || 0
+  const killTokens = tokenBalances["SKULL"] || 0
   const corpseTokens = tokenBalances["CORPSE"] || 0
+
+  const renderPotionItem = (imgSrc: string, tokenName: string) => {
+    const price = tokenPrices[tokenName]
+
+    return <Box sx={styles.potionItem}>
+      <img src={imgSrc} alt={tokenName} style={{ width: '20px', height: '20px' }} />
+      {price
+        ? <Typography sx={styles.potionPrice}>${price}</Typography>
+        : <Skeleton variant="text" width={40} sx={{ bgcolor: 'grey.700' }} />
+      }
+    </Box>
+  }
 
   const handleProfileClick = async () => {
     if (address && isCartridge) {
@@ -79,7 +93,7 @@ const ProfileCard = () => {
 
             <Box display={'flex'} alignItems={'start'}>
               <Typography sx={styles.infoValue}>
-                {formatRewardNumber((leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount || 0) / 100)}
+                {formatRewardNumber((leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount || 0) / 10)}
               </Typography>
             </Box>
           </Box>
@@ -96,7 +110,7 @@ const ProfileCard = () => {
         <Box sx={styles.tokensSection}>
           <Box sx={styles.tokens}>
             <Box sx={styles.tokenItem} borderRight={`1px solid ${gameColors.accentGreen}40`}>
-              <img src={killTokenImg} alt="Kill" style={{ width: '18px', height: '18px' }} />
+              <img src={killTokenImg} alt="SKULL" style={{ width: '18px', height: '18px' }} />
               <Box sx={styles.tokenTexts}>
                 <Typography sx={styles.tokenValue}>{killTokens.toLocaleString()}</Typography>
               </Box>
@@ -110,49 +124,40 @@ const ProfileCard = () => {
           </Box>
         </Box>
 
-        <Box sx={styles.upgradeSection}>
-          <Button sx={[styles.upgradeButton, { animation: 'none', width: isMobile ? '100%' : '145px' }]} onClick={() => setBeastDexOpen(true)}>
-            <Typography sx={styles.upgradeButtonText}>
-              UPGRADE BEASTS
-            </Typography>
-          </Button>
-        </Box>
+        {!summitEnded && <>
+          <Box sx={styles.upgradeSection}>
+            <Button sx={[styles.upgradeButton, { animation: 'none', width: isMobile ? '100%' : '145px' }]} onClick={() => setBeastDexOpen(true)}>
+              <Typography sx={styles.upgradeButtonText}>
+                UPGRADE BEASTS
+              </Typography>
+            </Button>
+          </Box>
 
-        {unclaimedBeasts.length > 0 && <Box sx={styles.starterPackSection}>
-          <Typography sx={styles.starterPackTitle}>
-            BEAST REWARD
-          </Typography>
+          <Box sx={styles.potionsSection}>
+            <Box sx={styles.potionPrices}>
+              <Box sx={styles.potionRow}>
+                {renderPotionItem(attackPotionImg, "ATTACK")}
+                {renderPotionItem(lifePotionImg, "EXTRA LIFE")}
+              </Box>
+              <Box sx={styles.potionRow}>
+                {renderPotionItem(poisonPotionImg, "POISON")}
+                {renderPotionItem(revivePotionImg, "REVIVE")}
+              </Box>
+              {/* <Box sx={styles.potionRow}>
+                {renderPotionItem(killTokenImg, "SKULL")}
+                {renderPotionItem(corpseTokenImg, "CORPSE")}
+              </Box> */}
+            </Box>
+            <Button sx={[styles.buyPotionsButton, { width: isMobile ? '100%' : '145px' }]} onClick={() => setPotionShopOpen(true)}>
+              <Typography sx={styles.buyPotionsButtonText}>
+                MARKETPLACE
+              </Typography>
+            </Button>
+          </Box>
+        </>}
 
-          <Typography sx={styles.starterPackSubtitle}>
-            {unclaimedBeasts.length} available
-          </Typography>
-
-          <Button sx={styles.claimButton} onClick={() => setClaimStarterPackDialog(true)}>
-            <Typography sx={styles.claimButtonText}>
-              CLAIM
-            </Typography>
-          </Button>
-        </Box>}
-
-        {unclaimedCorpseTokens > 0 && <Box sx={styles.upgradeSection}>
-          <Typography sx={styles.starterPackTitle} pt={0.5}>
-            CORPSE TOKEN
-          </Typography>
-
-          <Typography sx={styles.starterPackSubtitle}>
-            {unclaimedCorpseTokens} available
-          </Typography>
-
-          <Button sx={styles.upgradeButton} onClick={() => setClaimCorpseRewardDialog(true)}>
-            <Typography sx={styles.upgradeButtonText}>
-              CLAIM
-            </Typography>
-          </Button>
-        </Box>}
-
-        {claimStarterPackDialog && <ClaimStarterPack open={claimStarterPackDialog} close={() => setClaimStarterPackDialog(false)} />}
-        {claimCorpseRewardDialog && <ClaimCorpseReward open={claimCorpseRewardDialog} close={() => setClaimCorpseRewardDialog(false)} />}
         {beastDexOpen && <BeastDexModal open={beastDexOpen} close={() => setBeastDexOpen(false)} />}
+        {potionShopOpen && <MarketplaceModal open={potionShopOpen} close={() => setPotionShopOpen(false)} />}
       </>}
     </Box>
   )
@@ -290,7 +295,7 @@ const styles = {
   starterPackSection: {
     width: '100%',
     borderTop: `1px solid ${gameColors.accentGreen}40`,
-    pt: 1,
+    pt: 0.5,
     textAlign: 'center',
   },
   starterPackTitle: {
@@ -310,7 +315,8 @@ const styles = {
     borderRadius: '6px',
     width: isMobile ? '100%' : '100px',
     height: isMobile ? '40px' : '28px',
-    my: '6px',
+    mb: '6px',
+    mt: '2px',
     border: `2px solid ${gameColors.brightGreen}`,
     transition: 'all 0.3s ease',
     boxShadow: `
@@ -423,8 +429,7 @@ const styles = {
   },
   upgradeSection: {
     width: '100%',
-    borderTop: `1px solid ${gameColors.accentGreen}40`,
-    mt: 0.5,
+    mb: 0.5,
     textAlign: 'center',
   },
   upgradeTitle: {
@@ -503,6 +508,76 @@ const styles = {
     },
   },
   upgradeButtonText: {
+    color: '#ffedbb',
+    letterSpacing: '0.5px',
+    fontSize: '12px',
+    fontWeight: 'bold',
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
+    textTransform: 'uppercase',
+  },
+  potionsSection: {
+    width: '100%',
+    borderTop: `1px solid ${gameColors.accentGreen}40`,
+    pt: 1,
+    textAlign: 'center',
+  },
+  potionsTitle: {
+    fontSize: '12px',
+    letterSpacing: '0.5px',
+    color: gameColors.gameYellow,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    py: 0.5,
+  },
+  potionPrices: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0.5,
+    mb: 0.5,
+  },
+  potionRow: {
+    display: 'flex',
+    justifyContent: 'space-evenly',
+    gap: 0.5,
+  },
+  potionItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    background: `${gameColors.darkGreen}60`,
+    border: `1px solid ${gameColors.accentGreen}30`,
+    borderRadius: '4px',
+    px: 1,
+    py: 0.5,
+    minWidth: '60px',
+    justifyContent: 'center',
+  },
+  potionPrice: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#FFD700',
+  },
+  buyPotionsButton: {
+    background: `linear-gradient(135deg, ${gameColors.brightGreen} 0%, ${gameColors.accentGreen} 100%)`,
+    borderRadius: '6px',
+    width: isMobile ? '100%' : '100px',
+    height: isMobile ? '40px' : '28px',
+    mb: '6px',
+    border: `2px solid ${gameColors.brightGreen}`,
+    transition: 'all 0.3s ease',
+    boxShadow: `
+      0 0 20px ${gameColors.brightGreen}50,
+      0 2px 4px rgba(0, 0, 0, 0.3)
+    `,
+    '&:hover': {
+      background: `linear-gradient(135deg, ${gameColors.brightGreen} 20%, ${gameColors.lightGreen} 100%)`,
+      boxShadow: `
+        0 0 30px ${gameColors.brightGreen}80,
+        0 4px 8px rgba(0, 0, 0, 0.4)
+      `,
+    },
+  },
+  buyPotionsButtonText: {
     color: '#ffedbb',
     letterSpacing: '0.5px',
     fontSize: '12px',

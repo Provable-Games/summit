@@ -262,26 +262,22 @@ function Summit() {
             </Typography>
 
             {/* Extra Lives Indicator */}
-            {summit.beast.extra_lives > 0 && (
-              <Box sx={styles.extraLivesContainer}>
-                {summit.beast.extra_lives > 1 && (
-                  <Typography sx={styles.extraLivesNumber}>
-                    {summit.beast.extra_lives}
-                  </Typography>
-                )}
+            <Box sx={styles.extraLivesContainer}>
+              {summit.poison_count > 1 && (
+                <Typography sx={styles.extraLivesNumber}>{summit.poison_count}</Typography>
+              )}
+              {summit.poison_count > 0 && (
+                <img src={poisonPotionIcon} alt='' style={{ ...styles.extraLivesHeart, marginRight: '4px' }} />
+              )}
+              {summit.beast.extra_lives > 1 && (
+                <Typography sx={styles.extraLivesNumber}>
+                  {summit.beast.extra_lives}
+                </Typography>
+              )}
+              {summit.beast.extra_lives > 0 && (
                 <img src={heart} alt='Extra Life' style={styles.extraLivesHeart} />
-              </Box>
-            )}
-
-            {/* Poison Indicator */}
-            {summit.poison_count > 0 && (
-              <Box sx={[styles.poisonContainer, { right: summit.beast.extra_lives > 0 ? '45px' : '4px' }]}>
-                {summit.poison_count > 1 && (
-                  <Typography sx={styles.extraLivesNumber}>{summit.poison_count}</Typography>
-                )}
-                <img src={poisonPotionIcon} alt='' style={styles.extraLivesHeart} />
-              </Box>
-            )}
+              )}
+            </Box>
 
             <Box sx={styles.abilitiesContainer}>
               {Boolean(summit.beast.stats.specials) && <StarIcon sx={{ fontSize: '16px', color: '#ffd700', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
@@ -336,7 +332,7 @@ function Summit() {
               </Box>
             </Box>
           </Tooltip>
-          {summit.diplomacy_bonus > 0 && <Tooltip
+          {summit.diplomacy && summit.diplomacy.bonus > 0 && <Tooltip
             title={
               <Box sx={styles.tooltipContent}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
@@ -351,7 +347,7 @@ function Summit() {
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                 <Typography sx={styles.statLabel}>STR</Typography>
               </Box>
-              <Typography sx={styles.levelValue}>{summit.diplomacy_bonus}</Typography>
+              <Typography sx={styles.levelValue}>{summit.diplomacy.bonus}</Typography>
             </Box>
           </Tooltip>}
         </Box>

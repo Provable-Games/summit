@@ -1,5 +1,6 @@
-import { useGameStore, SortMethod, BeastTypeFilter } from '@/stores/gameStore';
+import { BeastTypeFilter, SortMethod, useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
+import { isBeastInTop5000, isBeastLocked } from '@/utils/beasts';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
@@ -7,24 +8,27 @@ import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
 import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
 import { Box, Link, Popover, Tooltip, Typography } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import { useVirtualizer } from '@tanstack/react-virtual';
 import { calculateBattleResult } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 import BeastCard from './BeastCard';
 import BeastProfile from './BeastProfile';
+import { useStatistics } from '@/contexts/Statistics';
 
 function BeastCollection() {
   const {
     loadingCollection, collection, selectedBeasts, setSelectedBeasts,
     attackInProgress, summit, appliedPotions, attackMode,
     hideDeadBeasts, setHideDeadBeasts,
+    hideTop5000, setHideTop5000,
     sortMethod, setSortMethod,
     typeFilter, setTypeFilter,
     nameMatchFilter, setNameMatchFilter,
   } = useGameStore()
+  const { top5000Cutoff } = useStatistics()
   const { address } = useAccount()
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
@@ -39,6 +43,7 @@ function BeastCollection() {
       (attackerType === 'Brute' && defenderType === 'Hunter')
     );
   };
+
 
   // Calculate combat results - lightweight operation (just math)
   // useMemo prevents recalculation when filters/sorting change
@@ -64,6 +69,11 @@ function BeastCollection() {
       // Apply dead beast filter
       if (hideDeadBeasts) {
         filtered = filtered.filter(beast => beast.current_health > 0);
+      }
+
+      // Apply hide top 5000 filter
+      if (hideTop5000) {
+        filtered = filtered.filter(beast => !isBeastInTop5000(beast, top5000Cutoff));
       }
 
       // Sort the filtered collection
@@ -92,16 +102,27 @@ function BeastCollection() {
           return (b.combat?.attack || 0) - (a.combat?.attack || 0)
         } else if (sortMethod === 'health') {
           return (b.health + b.bonus_health) - (a.health + a.bonus_health)
+        } else if (sortMethod === 'rewards earned') {
+          if (b.blocks_held !== a.blocks_held) {
+            return b.blocks_held - a.blocks_held
+          }
+          // Tiebreaker: lower power wins (same as top 5000 logic)
+          if (a.power !== b.power) {
+            return a.power - b.power
+          }
+          // Second tiebreaker: lower health wins
+          return (a.health + a.bonus_health) - (b.health + b.bonus_health)
         }
         return 0
       })
     }
 
     return collection.sort((a, b) => b.power - a.power)
-  }, [collection, summit, appliedPotions?.attack, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts]);
+  }, [collection, summit, appliedPotions?.attack, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, hideTop5000]);
 
   const selectBeast = useCallback((beast: Beast) => {
     if (attackInProgress || attackMode === 'capture') return;
+    if (isBeastLocked(beast)) return;
 
     if (selectedBeasts.find(prevBeast => prevBeast.token_id === beast.token_id)) {
       setSelectedBeasts((prev: Beast[]) => prev.filter(prevBeast => prevBeast.token_id !== beast.token_id));
@@ -113,14 +134,12 @@ function BeastCollection() {
   const selectAllBeasts = () => {
     if (attackInProgress) return;
 
-    const allBeasts = collectionWithCombat;
-    const maxBeasts = Math.min(50, allBeasts.length);
+    const allBeasts = collectionWithCombat.filter((beast: Beast) => !isBeastLocked(beast));
+    const maxBeasts = Math.min(75, allBeasts.length);
 
-    // If 50 or more beasts are selected, or all alive beasts are selected, deselect all
     if (selectedBeasts.length >= maxBeasts) {
       setSelectedBeasts([])
     } else {
-      // Select up to 50 beasts (or all if less than 50)
       setSelectedBeasts(allBeasts.slice(0, maxBeasts))
     }
   }
@@ -131,10 +150,9 @@ function BeastCollection() {
     setHideDeadBeasts(hide)
   }
 
-  // Helper to check if max beasts are selected (50 or all if less than 50)
   const maxBeastsSelected = useMemo(() => {
-    const allBeasts = collectionWithCombat;
-    const maxBeasts = Math.min(50, allBeasts.length);
+    const allBeasts = collectionWithCombat.filter((beast: Beast) => !isBeastLocked(beast));
+    const maxBeasts = Math.min(75, allBeasts.length);
     return allBeasts.length > 0 && selectedBeasts.length >= maxBeasts;
   }, [collectionWithCombat, selectedBeasts]);
 
@@ -267,7 +285,7 @@ function BeastCollection() {
                 </Box>
               </Tooltip>
 
-              <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Select 50</Box>}>
+              <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Select 75</Box>}>
                 <Box sx={[styles.utilityButton, maxBeastsSelected && styles.selectedItem]} onClick={() => selectAllBeasts()}>
                   <LibraryAddCheckIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />
                 </Box>
@@ -297,6 +315,7 @@ function BeastCollection() {
                             {sortMethod === 'recommended' && <TipsAndUpdatesIcon sx={{ fontSize: '12px', color: gameColors.gameYellow }} />}
                             {sortMethod === 'power' && <FlashOnIcon sx={{ fontSize: '12px', color: gameColors.yellow }} />}
                             {sortMethod === 'health' && <FavoriteIcon sx={{ fontSize: '12px', color: gameColors.red }} />}
+                            {sortMethod === 'rewards earned' && <img src="/images/survivor_token.png" alt="Rewards Earned" style={{ width: '16px', height: '16px' }} />}
                           </Box>
                           <Typography sx={styles.sortDropdownText}>
                             {sortMethod === 'recommended' ? 'Recommended' : sortMethod.charAt(0).toUpperCase() + sortMethod.slice(1)}
@@ -314,7 +333,7 @@ function BeastCollection() {
                             style={{ overflow: 'hidden' }}
                           >
                             <Box sx={styles.sortDropdownOptions}>
-                              {(['recommended', 'power', 'health'] as SortMethod[]).map((method) => (
+                              {(['recommended', 'power', 'health', 'rewards earned'] as SortMethod[]).map((method) => (
                                 <Box
                                   key={method}
                                   sx={[styles.sortDropdownOption, sortMethod === method && styles.sortDropdownOptionActive]}
@@ -328,6 +347,7 @@ function BeastCollection() {
                                     {method === 'recommended' && <TipsAndUpdatesIcon sx={{ fontSize: '12px', color: gameColors.gameYellow }} />}
                                     {method === 'power' && <FlashOnIcon sx={{ fontSize: '12px', color: gameColors.yellow }} />}
                                     {method === 'health' && <FavoriteIcon sx={{ fontSize: '12px', color: gameColors.red }} />}
+                                    {method === 'rewards earned' && <img src="/images/survivor_token.png" alt="Rewards Earned" style={{ width: '16px', height: '16px' }} />}
                                   </Box>
                                   <Typography sx={styles.sortDropdownOptionText}>
                                     {method === 'recommended' ? 'Recommended' : method.charAt(0).toUpperCase() + method.slice(1)}
@@ -339,9 +359,6 @@ function BeastCollection() {
                         )}
                       </AnimatePresence>
                     </Box>
-
-                    {/* Divider */}
-                    <Box sx={styles.filterDivider} />
 
                     {/* Type Section */}
                     <Box mb={0.5}>
@@ -378,6 +395,14 @@ function BeastCollection() {
                           <Typography sx={styles.compactToggleText}>Name Match</Typography>
                         </Box>
                       </Box>
+                      <Box sx={styles.compactToggles} mt={0.5}>
+                        <Box
+                          sx={[styles.compactToggle, hideTop5000 && styles.compactToggleActive]}
+                          onClick={() => setHideTop5000(!hideTop5000)}
+                        >
+                          <Typography sx={[styles.compactToggleText, { lineHeight: '14px' }]}>Hide Top 5000</Typography>
+                        </Box>
+                      </Box>
                     </Box>
                   </Box>
                 </motion.div>
@@ -407,6 +432,7 @@ function BeastCollection() {
                   const isSelected = selectedBeasts.some(b => b.token_id === beast.token_id);
                   const isSavage = summit?.beast.token_id === beast.token_id;
                   const isDead = beast.current_health === 0;
+                  const isLocked = isBeastLocked(beast);
                   const selectionIndex = selectedBeasts.findIndex(b => b.token_id === beast.token_id) + 1;
                   const combat = summit && !isSavage ? beast.combat : null;
 
@@ -427,6 +453,7 @@ function BeastCollection() {
                         isSelected={isSelected}
                         isSavage={isSavage}
                         isDead={isDead}
+                        isLocked={isLocked}
                         combat={combat}
                         selectionIndex={selectionIndex}
                         summitHealth={summit?.beast.current_health || 0}
@@ -822,7 +849,7 @@ const styles = {
     borderRadius: '4px',
     border: `2px solid ${gameColors.accentGreen}60`,
     width: '150px',
-    height: '180px',
+    height: '195px',
     boxSizing: 'border-box',
     padding: '4px 8px',
     display: 'flex',

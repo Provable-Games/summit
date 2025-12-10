@@ -91,9 +91,8 @@ export const components: any = {
     revival_count: 'number',
     extra_lives: 'number',
     has_claimed_potions: 'boolean',
-    rewards_earned: 'number',
+    blocks_held: 'number',
     stats: 'Stats',
-    kills_claimed: 'number',
   },
   'Stats': {
     spirit: 'number',

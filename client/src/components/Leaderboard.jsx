@@ -8,6 +8,8 @@ import { lookupAddressNames } from '@/utils/addressNameCache';
 import { Box, Typography, IconButton } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { useEffect, useState } from 'react';
+import { TERMINAL_BLOCK } from '@/contexts/GameDirector';
+import FinalShowdown from './FinalShowdown';
 
 function Leaderboard() {
   const { beastsRegistered, beastsAlive, refreshBeastsAlive } = useStatistics()
@@ -19,7 +21,10 @@ function Leaderboard() {
   const [currentBlock, setCurrentBlock] = useState(0)
   const [summitOwnerRank, setSummitOwnerRank] = useState(null)
 
-  // Fetch current block every 5 seconds
+  // Check if we're in the final showdown phase
+  const isFinalShowdown = currentBlock >= TERMINAL_BLOCK;
+
+  // Fetch current block - every 2 seconds during Final Showdown, every 5 seconds otherwise
   useEffect(() => {
     const fetchBlock = async () => {
       const block = await getCurrentBlock()
@@ -27,10 +32,10 @@ function Leaderboard() {
     }
 
     fetchBlock()
-    const interval = setInterval(fetchBlock, 5000)
+    const interval = setInterval(fetchBlock, isFinalShowdown ? 2000 : 5000)
 
     return () => clearInterval(interval)
-  }, [])
+  }, [isFinalShowdown])
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -86,7 +91,7 @@ function Leaderboard() {
 
     // Find summit owner in leaderboard
     const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summit.owner))
-    const score = (player?.amount || 0) + (blocksHeld * (100 - summit.diplomacy_count))
+    const score = (player?.amount || 0) + (blocksHeld * (100 - (summit.diplomacy?.beast_token_ids.length || 0)))
 
     // Find summit owner's rank in the sorted list
     const liveRank = leaderboard.findIndex(p => p.amount < score) + 1
@@ -103,7 +108,7 @@ function Leaderboard() {
 
   // Derived "Current Summit" metrics
   const blocksHeld = summit?.taken_at && currentBlock ? Math.max(0, currentBlock - summit.taken_at) : 0
-  const diplomacyCount = summit?.diplomacy_count || 0
+  const diplomacyCount = summit?.diplomacy?.beast_token_ids.length || 0
   const perBlockToOwner = Math.max(0, 100 - diplomacyCount)
   const summitOwnerPlayer = summit?.owner
     ? leaderboard.find(p => addAddressPadding(p.owner) === addAddressPadding(summit.owner))
@@ -121,10 +126,14 @@ function Leaderboard() {
           {displayName}
         </Typography>
         <Typography sx={styles.bigFiveRewards}>
-          {formatRewards(player.amount / 100)}
+          {formatRewards(player.amount / 10)}
         </Typography>
       </Box>
     )
+  }
+
+  if (isFinalShowdown) {
+    return <FinalShowdown summit={summit} currentBlock={currentBlock} />;
   }
 
   return <Box sx={styles.container}>
@@ -170,7 +179,7 @@ function Leaderboard() {
                     {addressNames[summit.owner] || 'Warlock'}
                   </Typography>
                   <Typography sx={styles.summitOwnerScore}>
-                    {formatRewards(beforeAmount / 100)} <span style={{ color: gameColors.brightGreen }}>+{formatRewards(gainedSince / 100)}</span>
+                    {formatRewards(beforeAmount / 10)} <span style={{ color: gameColors.brightGreen }}>+{formatRewards(gainedSince / 100)}</span>
                   </Typography>
                 </Box>
                 {diplomacyCount > 0 && (

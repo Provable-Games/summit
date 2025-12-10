@@ -1,6 +1,8 @@
 import { Beast, Combat, Summit } from '@/types/game';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
 import { SoundName } from '@/contexts/sound';
+import * as starknet from "@scure/starknet";
+import { Top5000Cutoff } from '@/contexts/Statistics';
 
 export const fetchBeastTypeImage = (type: string): string => {
   try {
@@ -80,13 +82,13 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
   let summitNameMatch = nameMatchBonus(summit, beast, elemental);
 
   let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((elemental * (1 + 0.1 * potions) + beastNameMatch) - summit.power))
-  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental * (1 + 0.1 * _summit.diplomacy_bonus) + summitNameMatch) - beast.power)
+  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental * (1 + 0.1 * _summit.diplomacy?.bonus) + summitNameMatch) - beast.power)
 
   let beastCritChance = getLuckCritChancePercent(beast.stats.luck);
   let summitCritChance = getLuckCritChancePercent(summit.stats.luck);
 
   let beastCritDamage = beastCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor(((elemental * 2) * (1 + 0.1 * potions) + beastNameMatch) - summit.power)) : 0;
-  let summitCritDamage = summitCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) * (1 + 0.1 * _summit.diplomacy_bonus) + summitNameMatch) - beast.power) : 0;
+  let summitCritDamage = summitCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) * (1 + 0.1 * _summit.diplomacy?.bonus) + summitNameMatch) - beast.power) : 0;
 
   let beastAverageDamage = beastCritChance > 0 ? (beastDamage * (100 - beastCritChance) + beastCritDamage * beastCritChance) / 100 : beastDamage;
   let summitAverageDamage = summitCritChance > 0 ? (summitDamage * (100 - summitCritChance) + summitCritDamage * summitCritChance) / 100 : summitDamage;
@@ -105,10 +107,6 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
 
 export const getBeastRevivalTime = (beast: Beast): number => {
   let revivalTime = 86400000;
-
-  if ((beast.last_dm_death_timestamp * 1000) < Date.now() - 1209600000) {
-    revivalTime -= 14400000;
-  }
 
   if (beast.stats.spirit > 0) {
     revivalTime -= getSpiritRevivalReductionSeconds(beast.stats.spirit) * 1000;
@@ -133,6 +131,38 @@ export const getBeastCurrentHealth = (beast: Beast): number => {
   return beast.current_health
 }
 
+// A beast is "locked" for 24 hours after its last death.
+// During this window it cannot be selected as an attacker.
+export const BEAST_LOCK_DURATION_MS = 24 * 60 * 60 * 1000;
+
+export const isBeastLocked = (beast: Beast): boolean => {
+  if (!beast.last_dm_death_timestamp) return false;
+
+  const lastDeathMs = beast.last_dm_death_timestamp * 1000;
+  return Date.now() - lastDeathMs < BEAST_LOCK_DURATION_MS;
+}
+
+export const getBeastLockedTimeRemaining = (beast: Beast): { hours: number; minutes: number } => {
+  if (!beast.last_dm_death_timestamp) {
+    return { hours: 0, minutes: 0 };
+  }
+
+  const lastDeathMs = beast.last_dm_death_timestamp * 1000;
+  const elapsedMs = Date.now() - lastDeathMs;
+  const remainingMs = Math.max(0, BEAST_LOCK_DURATION_MS - elapsedMs);
+
+  // Work in whole minutes, rounding up so there is always at least 1 minute while locked.
+  const totalMinutes = Math.ceil(remainingMs / (60 * 1000));
+  if (totalMinutes <= 0) {
+    return { hours: 0, minutes: 0 };
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return { hours, minutes };
+}
+
 export const getExperienceDefending = (attackingBeast: Beast): number => {
   return Math.floor(attackingBeast.power / 100) + 1;
 }
@@ -142,13 +172,16 @@ export const formatBeastName = (beast: Beast): string => {
 }
 
 export const getBeastDetails = (id: number, prefix: number, suffix: number, level: number) => {
+  const specialsHash = getSpecialsHash(prefix, suffix);
+
   return {
     name: BEAST_NAMES[id],
     prefix: ITEM_NAME_PREFIXES[prefix],
     suffix: ITEM_NAME_SUFFIXES[suffix],
     tier: BEAST_TIERS[id],
     type: BEAST_TYPES[id],
-    power: (6 - BEAST_TIERS[id]) * level
+    power: (6 - BEAST_TIERS[id]) * level,
+    specials_hash: specialsHash,
   }
 }
 
@@ -156,26 +189,22 @@ export const getBeastDetails = (id: number, prefix: number, suffix: number, leve
 export const getLuckCritChancePercent = (points: number): number => {
   const p = Math.max(0, Math.floor(points));
   let totalBp = 0; // basis points
-  switch (p) {
-    case 0: totalBp = 0; break;
-    case 1: totalBp = 1200; break;
-    case 2: totalBp = 2100; break;
-    case 3: totalBp = 2775; break;
-    case 4: totalBp = 3281; break;
-    case 5: totalBp = 3660; break;
-    case 6: totalBp = 3944; break;
-    case 7: totalBp = 4157; break;
-    case 8: totalBp = 4316; break;
-    case 9: totalBp = 4435; break;
-    case 10: totalBp = 4524; break;
-    case 11: totalBp = 4590; break;
-    case 12: totalBp = 4639; break;
-    case 13: totalBp = 4675; break;
-    case 14: totalBp = 4702; break;
-    case 15: totalBp = 4722; break;
-    default:
-      totalBp = 4722 + (p - 15) * 20;
+
+  if (p <= 5) {
+    switch (p) {
+      case 0: totalBp = 0; break;
+      case 1: totalBp = 1000; break;
+      case 2: totalBp = 1400; break;
+      case 3: totalBp = 1700; break;
+      case 4: totalBp = 1900; break;
+      case 5: totalBp = 2000; break;
+    }
+  } else if (p <= 70) {
+    totalBp = 2000 + (p - 5) * 100;
+  } else {
+    totalBp = 8500 + (p - 70) * 50;
   }
+
   // integer division like Cairo
   return Math.floor(totalBp / 100);
 }
@@ -183,26 +212,24 @@ export const getLuckCritChancePercent = (points: number): number => {
 // Spirit revival time reduction in seconds mirrored from contracts/src/models/beast.cairo
 export const getSpiritRevivalReductionSeconds = (points: number): number => {
   const p = Math.max(0, Math.floor(points));
-  switch (p) {
-    case 0: return 0;
-    case 1: return 10800;
-    case 2: return 18900;
-    case 3: return 24975;
-    case 4: return 29531;
-    case 5: return 32948;
-    case 6: return 35511;
-    case 7: return 37433;
-    case 8: return 38874;
-    case 9: return 39954;
-    case 10: return 40764;
-    case 11: return 41372;
-    case 12: return 41828;
-    case 13: return 42170;
-    case 14: return 42427;
-    case 15: return 42620;
-    default:
-      return 42620 + (p - 15) * 100;
+  let reduction = 0;
+
+  if (p <= 5) {
+    switch (p) {
+      case 0: reduction = 0; break;
+      case 1: reduction = 7200; break;
+      case 2: reduction = 10080; break;
+      case 3: reduction = 12240; break;
+      case 4: reduction = 13680; break;
+      case 5: reduction = 14400; break;
+    }
+  } else if (p <= 70) {
+    reduction = 14400 + (p - 5) * 720;
+  } else {
+    reduction = 61200 + (p - 70) * 360;
   }
+
+  return reduction;
 }
 
 /**
@@ -215,7 +242,6 @@ export const getSpiritRevivalReductionSeconds = (points: number): number => {
 export function applyPoisonDamage(
   summit: Summit,
 ): { currentHealth: number; extraLives: number } {
-  console.log('SUMMIT', summit);
   const count = Math.max(0, summit.poison_count || 0);
   const ts = Math.max(0, summit.poison_timestamp || 0);
   if (count === 0 || ts === 0) {
@@ -251,4 +277,17 @@ export function applyPoisonDamage(
     currentHealth: currentHealthAfter,
     extraLives: extraLivesAfter,
   };
+}
+
+export const getSpecialsHash = (prefix: number, suffix: number): bigint => {
+  const params = [BigInt(prefix), BigInt(suffix)];
+  return starknet.poseidonHashMany(params);
+}
+
+export const isBeastInTop5000 = (beast: Beast, top5000Cutoff: Top5000Cutoff): boolean => {
+  if (!top5000Cutoff || beast.blocks_held === 0) return false;
+
+  return beast.blocks_held > top5000Cutoff.blocks_held
+    || (beast.blocks_held === top5000Cutoff.blocks_held && beast.bonus_xp > top5000Cutoff.bonus_xp)
+    || (beast.blocks_held === top5000Cutoff.blocks_held && beast.bonus_xp === top5000Cutoff.bonus_xp && beast.last_death_timestamp > top5000Cutoff.last_death_timestamp);
 }
