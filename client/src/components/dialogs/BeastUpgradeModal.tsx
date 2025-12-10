@@ -14,7 +14,7 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import RemoveIcon from '@mui/icons-material/Remove';
 import StarIcon from '@mui/icons-material/Star';
-import { Box, Button, Dialog, IconButton, InputBase, Typography } from '@mui/material';
+import { Box, Button, Dialog, IconButton, InputBase, Slider, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 
@@ -167,14 +167,9 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   const currentSpiritReductionSec = getSpiritRevivalReductionSeconds(currentSpirit);
   const nextSpiritReductionSec = getSpiritRevivalReductionSeconds(currentSpirit + spiritUpgrade);
 
-  // Vitality/Health visuals (Bonus-only, max 2000)
   const MAX_BONUS_HEALTH = 2000;
   const currentBonusHealth = currentBeast.bonus_health || 0;
-  const plannedBonusHealth = bonusHealthUpgrade || 0;
-  const plannedTotalBonus = Math.min(MAX_BONUS_HEALTH, currentBonusHealth + plannedBonusHealth);
-  const currentBonusPct = Math.min(100, (currentBonusHealth * 100) / MAX_BONUS_HEALTH);
-  const plannedTotalPct = Math.min(100, (plannedTotalBonus * 100) / MAX_BONUS_HEALTH);
-  const plannedAddPct = Math.max(0, plannedTotalPct - currentBonusPct);
+  const maxBonusAdd = Math.max(0, MAX_BONUS_HEALTH - currentBonusHealth);
 
   const onLuckInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
@@ -193,7 +188,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   const onBonusHealthInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     const num = raw === '' ? 0 : parseInt(raw, 10);
-    const maxAdd = Math.max(0, MAX_BONUS_HEALTH - currentBonusHealth);
+    const maxAdd = maxBonusAdd;
     setBonusHealthUpgrade(Math.max(0, Math.min(maxAdd, isNaN(num) ? 0 : num)));
   };
 
@@ -531,12 +526,26 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                     )}
                     <span style={{ color: '#bbb' }}> / {MAX_BONUS_HEALTH}</span>
                   </Typography>
-                  <Box sx={styles.healthBar}>
-                    <Box sx={[styles.healthBarSegment, styles.healthBarBonus]} style={{ width: `${currentBonusPct}%` }} />
-                    {plannedBonusHealth > 0 && plannedAddPct > 0 && (
-                      <Box sx={[styles.healthBarSegment, styles.healthBarPlanned]} style={{ width: `${plannedAddPct}%` }} />
-                    )}
-                  </Box>
+                  <Slider
+                    value={bonusHealthUpgrade}
+                    min={0}
+                    max={maxBonusAdd}
+                    step={10}
+                    onChange={(_, value) => {
+                      if (typeof value === 'number') {
+                        setBonusHealthUpgrade(value);
+                      }
+                    }}
+                    sx={{
+                      ml: 1,
+                      color: '#58b000',
+                      width: 'calc(100% - 20px)',
+                      '& .MuiSlider-thumb': {
+                        width: 14,
+                        height: 14,
+                      },
+                    }}
+                  />
                 </Box>
                 <Box sx={styles.attributeControls}>
                   <IconButton
@@ -562,7 +571,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                   <IconButton
                     size="small"
                     onClick={() => {
-                      const maxAdd = Math.max(0, MAX_BONUS_HEALTH - currentBonusHealth);
+                      const maxAdd = maxBonusAdd;
                       setBonusHealthUpgrade(Math.min(maxAdd, bonusHealthUpgrade + 10))
                     }}
                     sx={styles.statButton}

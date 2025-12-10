@@ -64,9 +64,9 @@ export default function Top5000BeastsModal({ open, onClose }: Top5000BeastsModal
 
         <Box sx={styles.header}>
           <EmojiEventsIcon sx={styles.trophyIcon} />
-          <Typography sx={styles.title}>Beast Rewards</Typography>
+          <Typography sx={styles.title} pb={0.5}>Beast Rewards</Typography>
           <Typography sx={styles.subtitle}>
-            The top 5,000 beasts that have held the Summit the longest will each receive {survivorTokensPerBeast} $SURVIVOR
+            The top 5,000 beasts that have held the Summit the longest will each receive {survivorTokensPerBeast} $SURVIVOR once the Summit ends
           </Typography>
         </Box>
 
@@ -107,7 +107,7 @@ export default function Top5000BeastsModal({ open, onClose }: Top5000BeastsModal
 
         <Box sx={styles.rewardSection}>
           <Box sx={styles.rewardCard}>
-            <Typography sx={styles.rewardLabel}>Current Reward</Typography>
+            <Typography sx={styles.rewardLabel}>You stand to earn</Typography>
             <Box sx={styles.rewardValue}>
               <Typography sx={styles.rewardNumber}>
                 {playerBeastsInTop5000 * survivorTokensPerBeast} $SURVIVOR
@@ -240,15 +240,11 @@ const styles = {
     mb: 2,
   },
   rewardCard: {
-    background: `linear-gradient(135deg, ${gameColors.lightGreen}20 0%, ${gameColors.mediumGreen}20 100%)`,
-    border: `2px solid ${gameColors.brightGreen}60`,
+    backgroundColor: `${gameColors.darkGreen}`,
+    border: `1px solid ${gameColors.brightGreen}60`,
     borderRadius: '10px',
     p: 1.5,
     textAlign: 'center',
-    boxShadow: `
-      0 0 20px ${gameColors.brightGreen}20,
-      inset 0 0 20px ${gameColors.brightGreen}10
-    `,
   },
   rewardLabel: {
     fontSize: '14px',
@@ -263,7 +259,7 @@ const styles = {
     justifyContent: 'center',
   },
   rewardNumber: {
-    fontSize: '24px',
+    fontSize: '16px',
     fontWeight: 'bold',
     color: gameColors.yellow,
   },

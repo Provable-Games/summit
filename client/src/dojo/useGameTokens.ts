@@ -173,7 +173,7 @@ export const useGameTokens = () => {
     let q = `
       SELECT COUNT(DISTINCT attacking_beast_id) as count
       FROM "summit_relayer_3-BattleEvent"
-      WHERE internal_created_at > datetime('now', '-20 hours');
+      WHERE internal_created_at > datetime('now', '-24 hours');
     `
 
     let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;

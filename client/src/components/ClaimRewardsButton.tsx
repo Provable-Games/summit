@@ -105,7 +105,7 @@ const ClaimRewardsButton = () => {
             <Box sx={styles.menuItemContent}>
               <Box sx={styles.menuItemInfo}>
                 <Typography sx={styles.menuItemTitle}>Skulls</Typography>
-                <Typography sx={styles.menuItemSubtitle}>{unclaimedSkullTokens} $SKULL</Typography>
+                <Typography sx={styles.menuItemSubtitle}>{unclaimedSkullTokens} available</Typography>
               </Box>
               <Button sx={styles.claimButton} onClick={handleClaimSkullReward}>
                 <Typography sx={styles.claimButtonText}>CLAIM</Typography>

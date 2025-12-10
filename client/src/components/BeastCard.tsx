@@ -206,6 +206,12 @@ const BeastCard = memo(({
   return (
     prevProps.beast.token_id === nextProps.beast.token_id &&
     prevProps.beast.current_health === nextProps.beast.current_health &&
+    prevProps.beast.bonus_health === nextProps.beast.bonus_health &&
+    prevProps.beast.stats.luck === nextProps.beast.stats.luck &&
+    prevProps.beast.stats.spirit === nextProps.beast.stats.spirit &&
+    prevProps.beast.stats.specials === nextProps.beast.stats.specials &&
+    prevProps.beast.stats.wisdom === nextProps.beast.stats.wisdom &&
+    prevProps.beast.stats.diplomacy === nextProps.beast.stats.diplomacy &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isSavage === nextProps.isSavage &&
     prevProps.isDead === nextProps.isDead &&

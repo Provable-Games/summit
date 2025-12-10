@@ -364,6 +364,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       });
       setAppliedPoisonCount(0);
       setApplyingPotions(false);
+    } else if (action.type === 'upgrade_beast') {
+      setTokenBalances({
+        ...tokenBalances,
+        SKULL: tokenBalances["SKULL"] - action.killTokens,
+        CORPSE: tokenBalances["CORPSE"] - action.corpseTokens,
+      });
     }
 
     return true;
