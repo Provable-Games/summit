@@ -3,7 +3,9 @@ import { useGameTokens } from "@/dojo/useGameTokens";
 import { NETWORKS } from "@/utils/networkConfig";
 import {
   createContext,
+  Dispatch,
   PropsWithChildren,
+  SetStateAction,
   useContext,
   useEffect,
   useState,
@@ -22,7 +24,7 @@ export interface StatisticsContext {
   top5000Cutoff: Top5000Cutoff | null;
   refreshBeastsAlive: () => void;
   refreshTop5000Cutoff: () => void;
-  setTokenPrices: (tokenPrices: Record<string, string>) => void;
+  refreshTokenPrices: () => Promise<void>;
   tokenPrices: Record<string, string>;
 }
 
@@ -73,6 +75,34 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     fetchTop5000Cutoff();
   };
 
+  const refreshTokenPrices = async () => {
+    const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON"];
+
+    const pricePromises = tokenNames.map(async (name) => {
+      const token = currentNetworkConfig.tokens.erc20.find((t: any) => t.name === name);
+      if (!token) return null;
+
+      try {
+        const swap = await getSwapQuote(-1e18, token.address, USDC_ADDRESS);
+        if (swap.total) {
+          return { [name]: ((swap.total * -1) / 1e18).toFixed(4) };
+        }
+      } catch (err) {
+        console.error(`Failed to fetch price for ${name}:`, err);
+      }
+      return null;
+    });
+
+    const results = await Promise.all(pricePromises);
+    const newPrices = results
+      .filter((price): price is Record<string, string> => price !== null)
+      .reduce((acc, price) => ({ ...acc, ...price }), {});
+
+    if (Object.keys(newPrices).length > 0) {
+      setTokenPrices((prev) => ({ ...prev, ...newPrices }));
+    }
+  };
+
   useEffect(() => {
     refreshBeastsAlive();
     refreshTop5000Cutoff();
@@ -93,7 +123,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
         top5000Cutoff,
         refreshBeastsAlive,
         refreshTop5000Cutoff,
-        setTokenPrices,
+        refreshTokenPrices,
         tokenPrices,
       }}
     >

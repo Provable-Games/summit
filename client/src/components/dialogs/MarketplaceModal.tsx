@@ -85,7 +85,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { open, close } = props;
   const { currentNetworkConfig } = useDynamicConnector();
   const { tokenBalances, fetchPaymentTokenBalances } = useController();
-  const { tokenPrices } = useStatistics();
+  const { tokenPrices, refreshTokenPrices } = useStatistics();
   const { provider } = useProvider();
   const { executeAction } = useSystemCalls();
   const [activeTab, setActiveTab] = useState(0);
@@ -161,6 +161,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   useEffect(() => {
     if (open) {
       fetchPaymentTokenBalances();
+      refreshTokenPrices();
 
       setQuantities({
         "ATTACK": 0,
