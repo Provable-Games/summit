@@ -72,13 +72,13 @@ const POTIONS: Potion[] = [
     description: 'Used to upgrade your beasts',
     color: '#e74c3c'
   },
-  // {
-  //   id: 'CORPSE',
-  //   name: 'Corpse Token',
-  //   image: corpseTokenImg,
-  //   description: 'Used to give your beasts bonus health',
-  //   color: '#95a5a6'
-  // }
+  {
+    id: 'CORPSE',
+    name: 'Corpse Token',
+    image: corpseTokenImg,
+    description: 'Used to give your beasts bonus health',
+    color: '#95a5a6'
+  }
 ];
 
 export default function MarketplaceModal(props: MarketplaceModalProps) {
