@@ -20,7 +20,7 @@ death_mountain_beast = { git = "https://github.com/Provable-Games/death-mountain
 test = "snforge test"
 
 [dev-dependencies]
-snforge_std = "0.46.0"
+snforge_std = "0.53.0"
 
 [[target.starknet-contract]]
 build-external-contracts = ["beasts_nft::beasts_nft"] 
@@ -31,7 +31,7 @@ max-line-length = 120
 
 [tool.snforge]
 fork = [
-    { name = "mainnet", url = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_8", block_id = { tag = "latest" } }
+    { name = "mainnet", url = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10", block_id = { tag = "latest" } }
 ]
 
 [profile.dev.cairo]
