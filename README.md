@@ -116,11 +116,11 @@ Upgraded using **Kill Tokens** (earned when beasts kill adventurers in Loot Surv
 |------|------|--------|
 | Luck | 1 Kill/level | Critical hit chance (up to 95%) |
 | Spirit | 1 Kill/level | Reduces 24h revival cooldown |
-| Specials | 10 Kill | Unlocks prefix/suffix name bonuses |
-| Diplomacy | 15 Kill | Share rewards with matching beasts |
-| Wisdom | 20 Kill | Earn XP when defending |
+| Specials | 1 Kill | Unlocks prefix/suffix name bonuses |
+| Diplomacy | 5 Kill | Share rewards with matching beasts |
+| Wisdom | 10 Kill | Earn XP when defending |
 
-**Vitality:** Use **Corpse Tokens** (from dead adventurers) to add bonus health (max 1,023)
+**Vitality:** Use **Corpse Tokens** (from dead adventurers) to add bonus health (max 2,000)
 
 ### Consumables
 

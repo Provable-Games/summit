@@ -51,8 +51,8 @@ Main contract: `contracts/src/systems/summit.cairo`
 - Uses OpenZeppelin's Ownable and Upgradeable components
 - Dispatches to external contracts: Beasts NFT, Beast Data, Reward Token, Potions
 
-Key interfaces in `contracts/src/interfaces.cairo`:
-- `ISummitSystem` - Main game functions (attack, feed, claim, etc.)
+Key interface `ISummitSystem` in `contracts/src/systems/summit.cairo`:
+- Main game functions (attack, feed, claim, etc.)
 - External dispatchers for token interactions
 
 ### Wallet Integration
@@ -94,10 +94,10 @@ Full documentation: https://docs.provable.games/summit
 
 **Upgrade Costs:**
 - Luck/Spirit: 1 Kill Token per level (max 255)
-- Specials: 10 Kill Tokens (one-time unlock)
-- Diplomacy: 15 Kill Tokens (one-time unlock)
-- Wisdom: 20 Kill Tokens (one-time unlock)
-- Bonus Health: 1 Corpse Token per HP (max 1,023)
+- Specials: 1 Kill Token (one-time unlock)
+- Diplomacy: 5 Kill Tokens (one-time unlock)
+- Wisdom: 10 Kill Tokens (one-time unlock)
+- Bonus Health: 1 Corpse Token per HP (max 2,000)
 
 **Rewards:**
 - Summit holder earns 0.1 $SURVIVOR per block
