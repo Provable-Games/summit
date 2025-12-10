@@ -419,10 +419,10 @@ fn test_set_start_timestamp() {
     let owner = REAL_PLAYER();
     let start_timestamp = 9999999999_u64; // Future timestamp
     let summit_duration_blocks = 1000000_u64;
-    let summit_reward_amount = 0;
+    let summit_reward_amount = 0_u128;
     let showdown_duration_seconds = 100_u64;
-    let showdown_reward_amount = 100;
-    let beast_tokens_amount = 100;
+    let showdown_reward_amount = 100_u128;
+    let beast_tokens_amount = 100_u128;
     let beast_submission_blocks = 100_u64;
     let beast_top_spots = 100_u32;
 
