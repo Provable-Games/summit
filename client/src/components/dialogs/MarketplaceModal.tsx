@@ -65,13 +65,13 @@ const POTIONS: Potion[] = [
     description: 'Poison the beast on the summit',
     color: '#a29bfe'
   },
-  // {
-  //   id: 'SKULL',
-  //   name: 'Skull Token',
-  //   image: killTokenImg,
-  //   description: 'Used to upgrade your beasts',
-  //   color: '#e74c3c'
-  // },
+  {
+    id: 'SKULL',
+    name: 'Skull Token',
+    image: killTokenImg,
+    description: 'Used to upgrade your beasts',
+    color: '#e74c3c'
+  },
   // {
   //   id: 'CORPSE',
   //   name: 'Corpse Token',

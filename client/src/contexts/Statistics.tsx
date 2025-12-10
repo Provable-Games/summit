@@ -81,7 +81,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "REVIVE"));
     fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE"));
     fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "POISON"));
-    // fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL"));
+    fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL"));
     // fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE"));
   }, []);
 

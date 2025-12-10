@@ -143,10 +143,10 @@ const ProfileCard = () => {
                 {renderPotionItem(poisonPotionImg, "POISON")}
                 {renderPotionItem(revivePotionImg, "REVIVE")}
               </Box>
-              {/* <Box sx={styles.potionRow}>
+              <Box sx={styles.potionRow}>
                 {renderPotionItem(killTokenImg, "SKULL")}
-                {renderPotionItem(corpseTokenImg, "CORPSE")}
-              </Box> */}
+                {/* {renderPotionItem(corpseTokenImg, "CORPSE")} */}
+              </Box>
             </Box>
             <Button sx={[styles.buyPotionsButton, { width: isMobile ? '100%' : '145px' }]} onClick={() => setPotionShopOpen(true)}>
               <Typography sx={styles.buyPotionsButtonText}>
