@@ -126,7 +126,7 @@ function Leaderboard() {
           {displayName}
         </Typography>
         <Typography sx={styles.bigFiveRewards}>
-          {formatRewards(player.amount / 100)}
+          {formatRewards(player.amount / 10)}
         </Typography>
       </Box>
     )
@@ -179,7 +179,7 @@ function Leaderboard() {
                     {addressNames[summit.owner] || 'Warlock'}
                   </Typography>
                   <Typography sx={styles.summitOwnerScore}>
-                    {formatRewards(beforeAmount / 100)} <span style={{ color: gameColors.brightGreen }}>+{formatRewards(gainedSince / 100)}</span>
+                    {formatRewards(beforeAmount / 10)} <span style={{ color: gameColors.brightGreen }}>+{formatRewards(gainedSince / 100)}</span>
                   </Typography>
                 </Box>
                 {diplomacyCount > 0 && (
