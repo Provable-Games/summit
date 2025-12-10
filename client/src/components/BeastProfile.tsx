@@ -269,7 +269,7 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
               <Box sx={styles.rewardsLeft}>
                 <Box sx={styles.rewardsEarnedSection}>
                   <Typography sx={styles.rewardsEarnedValue}>
-                    blocks: {beast.blocks_held.toLocaleString()}
+                    blocks: {beast.blocks_held ? Number(beast.blocks_held).toLocaleString() : 0}
                   </Typography>
                 </Box>
               </Box>
