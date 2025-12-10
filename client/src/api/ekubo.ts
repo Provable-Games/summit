@@ -42,19 +42,30 @@ interface SwapCall {
 }
 
 export const getSwapQuote = async (amount: number, token: string, otherToken: string): Promise<SwapQuote> => {
-  const response = await fetch(`https://prod-api-quoter.ekubo.org/23448594291968334/${amount}/${token}/${otherToken}`)
+  const maxRetries = 10;
 
-  const data = await response.json()
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const response = await fetch(`https://prod-api-quoter.ekubo.org/23448594291968334/${amount}/${token}/${otherToken}`);
+    const data = await response.json();
 
-  if (!data.total_calculated) {
-    await delay(2000);
-    return getSwapQuote(amount, token, otherToken);
+    if (data.total_calculated) {
+      return {
+        impact: data?.price_impact || 0,
+        total: data?.total_calculated || 0,
+        splits: data?.splits || [],
+      };
+    }
+
+    // If total_calculated is missing and we still have retries left, wait and retry
+    if (attempt < maxRetries - 1) {
+      await delay(2000);
+    }
   }
 
   return {
-    impact: data?.price_impact || 0,
-    total: data?.total_calculated || 0,
-    splits: data?.splits || [],
+    impact: 0,
+    total: 0,
+    splits: [],
   }
 }
 
