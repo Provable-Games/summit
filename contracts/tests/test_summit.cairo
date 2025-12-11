@@ -632,7 +632,7 @@ fn test_add_beast_to_leaderboard_invalid_position_too_high() {
 
 #[test]
 #[fork("mainnet")]
-#[should_panic] // Panics with "Beast has no rewards earned"
+#[should_panic(expected: "Beast has no rewards earned")]
 fn test_add_beast_to_leaderboard_no_blocks_held() {
     let summit = deploy_summit_and_start();
     let terminal_block = summit.get_terminal_block();
