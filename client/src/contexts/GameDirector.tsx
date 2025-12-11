@@ -109,8 +109,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         diplomacy: {
           ...diplomacy,
           bonus: prevSummit.beast.stats.diplomacy
-            ? Math.floor((diplomacy.total_power - prevSummit.beast.power) / 500)
-            : Math.floor(diplomacy.total_power / 500),
+            ? Math.floor((diplomacy.total_power - prevSummit.beast.power) / 250)
+            : Math.floor(diplomacy.total_power / 250),
         },
       }));
     }
@@ -127,8 +127,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         diplomacy: {
           ...diplomacyEvent,
           bonus: prevSummit.beast.stats.diplomacy
-            ? Math.floor((diplomacyEvent.total_power - prevSummit.beast.power) / 500)
-            : Math.floor(diplomacyEvent.total_power / 500),
+            ? Math.floor((diplomacyEvent.total_power - prevSummit.beast.power) / 250)
+            : Math.floor(diplomacyEvent.total_power / 250),
         },
       }));
     }

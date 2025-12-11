@@ -96,6 +96,7 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
   let estimatedDamage = Math.max(MINIMUM_DAMAGE, Math.floor(Math.ceil(beast.current_health / summitAverageDamage) * beastAverageDamage));
 
   return {
+    summit_token_id: summit.token_id,
     attack: beastDamage,
     defense: summitDamage,
     attackCritDamage: beastCritDamage,

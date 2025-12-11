@@ -61,6 +61,7 @@ export interface Stats {
   diplomacy: boolean;
 }
 export interface Combat {
+  summit_token_id: number;
   attack: number;
   defense: number;
   attackCritDamage: number;
