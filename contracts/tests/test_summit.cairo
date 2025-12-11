@@ -1343,8 +1343,8 @@ fn fuzz_test_feed_amounts(bonus_health: u16) {
 
     mock_erc20_burn_from(summit.get_corpse_token_address(), true);
 
-    // Only feed if within valid bounds
-    if bonus_health <= 2000 {
+    // Only feed if within valid bounds (non-zero and <= 2000)
+    if bonus_health > 0 && bonus_health <= 2000 {
         summit.feed(60989, bonus_health);
     }
 
@@ -1635,19 +1635,24 @@ fn test_attack_unused_revival_potions() {
 // P0 TESTS: STATE CONSISTENCY
 // ==========================
 
+// Note: Full blocks_held tracking requires multi-player scenarios where one beast takes
+// the summit from another, which updates blocks_held. With single-player fork testing,
+// we can only verify the basic attack flow. The blocks_held accumulation is implicitly
+// tested by test_claim_beast_reward_basic which requires blocks_held > 0.
 #[test]
 #[fork("mainnet")]
-fn test_summit_history_tracks_blocks_held() {
+fn test_summit_beast_can_be_attacked() {
     let summit = deploy_summit_and_start();
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    // Attack with beast 60989
+    // Attack with beast 60989 to take the summit
     let attacking_beasts = array![60989].span();
     summit.attack(1, attacking_beasts, 0, 0, 0, false);
 
-    // Beast 60989 is now on summit, but we need to advance blocks to accrue blocks_held
-    // When summit is finalized, blocks_held gets updated
+    // Verify beast is now on summit
+    let summit_beast_id = summit.get_summit_beast_token_id();
+    assert(summit_beast_id == 60989, 'Beast should be on summit');
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1728,20 +1733,24 @@ fn test_claim_summit_before_game_ends() {
 // ADDITIONAL EDGE CASES
 // ==========================
 
+// Note: Full streak cap testing requires multi-player scenarios where one beast repeatedly
+// attacks another to build streak > 10. With single-player fork testing, a beast can only
+// attack once (taking the empty summit). The attack_streak cap (10) is enforced in the
+// contract's combat logic when updating streak after successful attacks.
 #[test]
 #[fork("mainnet")]
-fn test_attack_streak_caps_at_10() {
+fn test_attack_initializes_streak() {
     let summit = deploy_summit_and_start();
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    // Attack multiple times to build streak
+    // Attack to take empty summit - this initializes the streak
     let attacking_beasts = array![60989].span();
     summit.attack(1, attacking_beasts, 0, 0, 0, false);
 
-    // Beast should have attack_streak incremented
+    // Verify beast's attack_streak is within valid bounds
     let beast = summit.get_beast(60989);
-    assert(beast.live.attack_streak <= 10, 'Streak should cap at 10');
+    assert(beast.live.attack_streak <= 10, 'Streak should be within bounds');
 
     stop_cheat_caller_address(summit.contract_address);
 }
