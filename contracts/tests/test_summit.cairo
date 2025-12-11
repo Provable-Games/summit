@@ -2172,3 +2172,36 @@ fn fuzz_test_spirit_reduction_monotonic(spirit: u8) {
         assert(reduction_current >= reduction_previous, 'Reduction should increase');
     }
 }
+
+// ==========================
+// Gas benchmark test - Long battle with many loop iterations
+// ==========================
+
+#[test]
+#[fork("mainnet")]
+fn test_attack_long_battle_gas_benchmark() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
+    mock_erc20_burn_from(summit.get_corpse_token_address(), true);
+
+    // Beast 1 is the initial summit beast (owned by someone else, not REAL_PLAYER)
+    // This allows REAL_PLAYER to attack it
+
+    // Step 1: Give the summit beast (beast 1) extra lives to prolong the battle
+    // Using 50 extra lives for a long battle with many loop iterations
+    summit.add_extra_life(1, 50);
+
+    // Step 2: Give attacker (beast 60989) max bonus health so it survives counter-attacks
+    summit.feed(60989, 2000);
+
+    // Step 3: Attack beast 1 with beast 60989 (long battle due to extra lives)
+    let attacking_beasts = array![60989].span();
+    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+
+    // Beast 60989 should win and take the summit
+    assert(summit.get_summit_beast_token_id() == 60989, 'Beast 60989 should win');
+
+    stop_cheat_caller_address(summit.contract_address);
+}
