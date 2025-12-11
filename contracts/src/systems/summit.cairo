@@ -1206,6 +1206,12 @@ pub mod summit_systems {
 
         fn _apply_poison_damage(ref self: ContractState, ref beast: Beast) -> u64 {
             let poison_count = self.poison_count.read();
+
+            // Early exit if no poison - skip timestamp syscall and storage reads
+            if poison_count == 0 {
+                return 0;
+            }
+
             let time_since_poison = get_block_timestamp() - self.poison_timestamp.read();
             let damage: u64 = time_since_poison * poison_count.into();
 
