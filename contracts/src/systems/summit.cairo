@@ -718,6 +718,7 @@ pub mod summit_systems {
                 let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
                 let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
                 if diplomacy_count > 0 {
+                    let beast_dispatcher = self.beast_dispatcher.read();
                     let mut index = 0;
                     loop {
                         if index >= diplomacy_count {
@@ -725,10 +726,7 @@ pub mod summit_systems {
                         }
 
                         let diplomacy_beast_token_id = self.diplomacy_beast.entry(specials_hash).entry(index).read();
-                        let diplomacy_beast_owner = self
-                            .beast_dispatcher
-                            .read()
-                            .owner_of(diplomacy_beast_token_id.into());
+                        let diplomacy_beast_owner = beast_dispatcher.owner_of(diplomacy_beast_token_id.into());
                         Self::_reward_beast(
                             ref self, diplomacy_beast_token_id, diplomacy_beast_owner, diplomacy_reward_amount,
                         );
