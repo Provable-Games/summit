@@ -88,7 +88,8 @@ pub mod summit_systems {
     use starknet::{ClassHash, ContractAddress, get_block_number, get_block_timestamp, get_caller_address};
     use summit::constants::{
         BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_ATTRIBUTES, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS,
-        BEAST_MAX_EXTRA_LIVES, DAY_SECONDS, EIGHT_BITS_MAX, MAX_REVIVAL_COUNT, MINIMUM_DAMAGE, TOKEN_DECIMALS, errors,
+        BEAST_MAX_EXTRA_LIVES, DAY_SECONDS, DIPLOMACY_COST, EIGHT_BITS_MAX, MAX_REVIVAL_COUNT, MINIMUM_DAMAGE,
+        SPECIALS_COST, TOKEN_DECIMALS, WISDOM_COST, errors,
     };
     use summit::erc20::interface::{SummitERC20Dispatcher, SummitERC20DispatcherTrait};
     use summit::interfaces::{
@@ -333,13 +334,13 @@ pub mod summit_systems {
             if stats.specials == 1 {
                 assert(beast.live.stats.specials == 0, 'Specials already unlocked');
                 beast.live.stats.specials = 1;
-                tokens_required += 1;
+                tokens_required += SPECIALS_COST;
             }
 
             if stats.wisdom == 1 {
                 assert(beast.live.stats.wisdom == 0, 'Wisdom already unlocked');
                 beast.live.stats.wisdom = 1;
-                tokens_required += 10;
+                tokens_required += WISDOM_COST;
             }
 
             if stats.diplomacy == 1 {
@@ -350,7 +351,7 @@ pub mod summit_systems {
                 self.diplomacy_beast.entry(specials_hash).entry(diplomacy_count).write(beast_token_id);
                 self.diplomacy_count.entry(specials_hash).write(diplomacy_count + 1);
                 beast.live.stats.diplomacy = 1;
-                tokens_required += 5;
+                tokens_required += DIPLOMACY_COST;
             }
 
             beast.live.stats.spirit += stats.spirit;
