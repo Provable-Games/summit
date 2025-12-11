@@ -2090,3 +2090,85 @@ fn test_spirit_reduction_spirit_71() {
     // 61200 + (71-70)*360 = 61200 + 360 = 61560
     assert(reduction == 61560, 'Reduction should be 61560s');
 }
+
+// ==========================
+// FUZZ TESTS FOR BEAST MODEL
+// ==========================
+// These are pure unit tests (no mainnet fork) so fuzzing is fast and deterministic
+
+#[test]
+#[fuzzer(runs: 500)]
+fn fuzz_test_crit_chance_bounds(luck: u8) {
+    let beast = create_test_beast(luck, 0);
+    let crit = beast.crit_chance();
+
+    // Verify the curve behavior based on luck ranges
+    // Note: crit_chance has no cap - it can exceed 100% for very high luck
+    if luck == 0 {
+        assert(crit == 0, 'Luck 0 should give 0% crit');
+    } else if luck == 1 {
+        assert(crit == 10, 'Luck 1 should give 10% crit');
+    } else if luck <= 5 {
+        // Lookup table: 1400, 1700, 1900, 2000 basis points
+        assert(crit >= 10 && crit <= 20, 'Low luck range invalid');
+    } else if luck <= 70 {
+        // 2000 + (luck-5) * 100 basis points = 20% to 85%
+        assert(crit >= 20 && crit <= 85, 'Mid luck range invalid');
+    } else {
+        // 8500 + (luck-70) * 50 basis points = 85%+ (no cap)
+        assert(crit >= 85, 'High luck should be >= 85%');
+    }
+}
+
+#[test]
+#[fuzzer(runs: 500)]
+fn fuzz_test_spirit_reduction_bounds(spirit: u8) {
+    let beast = create_test_beast(0, spirit);
+    let reduction = beast.spirit_reduction();
+
+    // Verify the curve behavior based on spirit ranges
+    if spirit == 0 {
+        assert(reduction == 0, 'Spirit 0 should give 0s');
+    } else if spirit == 1 {
+        assert(reduction == 7200, 'Spirit 1 should give 7200s');
+    } else if spirit <= 5 {
+        // Lookup table: 10080, 12240, 13680, 14400
+        assert(reduction >= 7200 && reduction <= 14400, 'Low spirit range invalid');
+    } else if spirit <= 70 {
+        // 14400 + (spirit-5) * 720
+        assert(reduction >= 14400 && reduction <= 61200, 'Mid spirit range invalid');
+    } else {
+        // 61200 + (spirit-70) * 360
+        assert(reduction >= 61200, 'High spirit range invalid');
+    }
+}
+
+#[test]
+#[fuzzer(runs: 500)]
+fn fuzz_test_crit_chance_monotonic(luck: u8) {
+    // Crit chance should be monotonically increasing with luck
+    if luck > 0 {
+        let beast_current = create_test_beast(luck, 0);
+        let beast_previous = create_test_beast(luck - 1, 0);
+
+        let crit_current = beast_current.crit_chance();
+        let crit_previous = beast_previous.crit_chance();
+
+        assert(crit_current >= crit_previous, 'Crit should increase with luck');
+    }
+}
+
+#[test]
+#[fuzzer(runs: 500)]
+fn fuzz_test_spirit_reduction_monotonic(spirit: u8) {
+    // Spirit reduction should be monotonically increasing with spirit
+    if spirit > 1 {
+        let beast_current = create_test_beast(0, spirit);
+        let beast_previous = create_test_beast(0, spirit - 1);
+
+        let reduction_current = beast_current.spirit_reduction();
+        let reduction_previous = beast_previous.spirit_reduction();
+
+        assert(reduction_current >= reduction_previous, 'Reduction should increase');
+    }
+}
