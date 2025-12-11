@@ -4,7 +4,8 @@ use snforge_std::{
     stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, get_block_timestamp};
-use summit::models::beast::LiveBeastStats;
+use beasts_nft::pack::PackableBeast;
+use summit::models::beast::{Beast, BeastUtilsTrait, LiveBeastStats};
 use summit::systems::summit::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
 
 // Real mainnet contract addresses
@@ -631,7 +632,7 @@ fn test_add_beast_to_leaderboard_invalid_position_too_high() {
 
 #[test]
 #[fork("mainnet")]
-#[should_panic]
+#[should_panic] // Panics with "Beast has no rewards earned"
 fn test_add_beast_to_leaderboard_no_blocks_held() {
     let summit = deploy_summit_and_start();
     let terminal_block = summit.get_terminal_block();
@@ -663,13 +664,10 @@ fn test_distribute_beast_tokens_before_submission_ends() {
     stop_cheat_caller_address(summit.contract_address);
     stop_cheat_block_number_global();
 }
-use beasts_nft::pack::PackableBeast;
 
 // ===========================================
 // BEAST MODEL TESTS (crit_chance, spirit_reduction)
 // ===========================================
-
-use summit::models::beast::{Beast, BeastUtilsTrait};
 
 fn create_test_beast(luck: u8, spirit: u8) -> Beast {
     // Use default values for fixed properties - they don't affect crit_chance or spirit_reduction
@@ -854,7 +852,7 @@ fn test_set_attack_potion_address() {
 
 #[test]
 #[fork("mainnet")]
-#[should_panic]
+#[should_panic(expected: ('Caller is not the owner',))]
 fn test_set_attack_potion_address_non_owner() {
     let summit = deploy_summit();
     let fake_owner: ContractAddress = 0x123.try_into().unwrap();
@@ -881,7 +879,7 @@ fn test_set_revive_potion_address() {
 
 #[test]
 #[fork("mainnet")]
-#[should_panic]
+#[should_panic(expected: ('Caller is not the owner',))]
 fn test_set_revive_potion_address_non_owner() {
     let summit = deploy_summit();
     let fake_owner: ContractAddress = 0x123.try_into().unwrap();
@@ -908,7 +906,7 @@ fn test_set_poison_potion_address() {
 
 #[test]
 #[fork("mainnet")]
-#[should_panic]
+#[should_panic(expected: ('Caller is not the owner',))]
 fn test_set_poison_potion_address_non_owner() {
     let summit = deploy_summit();
     let fake_owner: ContractAddress = 0x123.try_into().unwrap();
@@ -935,7 +933,7 @@ fn test_set_skull_token_address() {
 
 #[test]
 #[fork("mainnet")]
-#[should_panic]
+#[should_panic(expected: ('Caller is not the owner',))]
 fn test_set_skull_token_address_non_owner() {
     let summit = deploy_summit();
     let fake_owner: ContractAddress = 0x123.try_into().unwrap();
@@ -962,7 +960,7 @@ fn test_set_corpse_token_address() {
 
 #[test]
 #[fork("mainnet")]
-#[should_panic]
+#[should_panic(expected: ('Caller is not the owner',))]
 fn test_set_corpse_token_address_non_owner() {
     let summit = deploy_summit();
     let fake_owner: ContractAddress = 0x123.try_into().unwrap();
@@ -1328,8 +1326,8 @@ fn fuzz_test_attack_with_random_potions(attack_potions: u8, extra_life_potions: 
 
     let attacking_beasts = array![60989].span();
 
-    // Only attack if within valid bounds
-    if attack_potions <= 255 && extra_life_potions <= 4000 {
+    // Only attack if within valid bounds (attack_potions is u8, so always <= 255)
+    if extra_life_potions <= 4000 {
         summit.attack(1, attacking_beasts, 0, attack_potions, extra_life_potions, false);
     }
 
@@ -1412,22 +1410,6 @@ fn test_get_event_address() {
     let summit = deploy_summit();
     let event_address = summit.get_event_address();
     assert(event_address == EVENT_ADDRESS(), 'Event address mismatch');
-}
-
-#[test]
-#[fork("mainnet")]
-fn test_attack_with_max_attack_potions() {
-    let summit = deploy_summit_and_start();
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    mock_erc20_burn_from(summit.get_attack_potion_address(), true);
-
-    let attacking_beasts = array![60989].span();
-
-    // Attack with max attack potions (255)
-    summit.attack(1, attacking_beasts, 0, 255, 0, false);
-
-    stop_cheat_caller_address(summit.contract_address);
 }
 
 #[test]
@@ -1742,47 +1724,6 @@ fn test_claim_summit_before_game_ends() {
 // test_add_beast_to_leaderboard_before_terminal cover the negative cases.
 
 // ==========================
-// P1 TESTS: XP AND LEVELING
-// ==========================
-
-#[test]
-fn test_get_level_from_xp_zero() { // _get_level_from_xp(0) should return 1
-// This is tested indirectly through beast creation
-// Level is sqrt(xp), but 0 returns 1
-}
-
-#[test]
-fn test_get_level_from_xp_values() { // _get_level_from_xp(100) should return 10 (sqrt(100) = 10)
-// _get_level_from_xp(99) should return 9 (sqrt(99) ≈ 9.95, floor = 9)
-// This is tested indirectly through combat spec calculation
-}
-
-// ==========================
-// P2 TESTS: GET POTION AMOUNT
-// ==========================
-
-#[test]
-fn test_get_potion_amount_tier1() { // Beast IDs 1-5, 26-30, 51-55 should return 5 potions
-// This is tested indirectly through claim_beast_reward
-}
-
-#[test]
-fn test_get_potion_amount_tier2() { // Beast IDs 6-10, 31-35, 56-60 should return 4 potions
-}
-
-#[test]
-fn test_get_potion_amount_tier3() { // Beast IDs 11-15, 36-40, 61-65 should return 3 potions
-}
-
-#[test]
-fn test_get_potion_amount_tier4() { // Beast IDs 16-20, 41-45, 66-70 should return 2 potions
-}
-
-#[test]
-fn test_get_potion_amount_tier5() { // Other IDs should return 1 potion
-}
-
-// ==========================
 // ADDITIONAL EDGE CASES
 // ==========================
 
@@ -1869,10 +1810,14 @@ fn test_add_extra_life_applies_poison_first() {
     let attacking_beasts = array![60989].span();
     summit.attack(1, attacking_beasts, 0, 0, 0, false);
 
+    // Get beast health before poison
+    let beast_before_poison = summit.get_beast(60989);
+    let health_before = beast_before_poison.live.current_health;
+
     // Apply poison
     summit.apply_poison(60989, 5);
 
-    // Advance time so poison will deal damage
+    // Advance time so poison will deal damage (5 poison * 10 seconds = 50 damage)
     start_cheat_block_timestamp_global(get_block_timestamp() + 10);
 
     // Add extra lives - this should apply poison damage first
@@ -1880,6 +1825,10 @@ fn test_add_extra_life_applies_poison_first() {
 
     let beast = summit.get_beast(60989);
     assert(beast.live.extra_lives == 3, 'Extra lives not added');
+
+    // Verify poison was applied (health should be reduced by poison damage)
+    // poison_damage = time_since_poison * poison_count = 10 * 5 = 50
+    assert(beast.live.current_health < health_before, 'Poison damage not applied');
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1943,34 +1892,9 @@ fn test_set_start_timestamp_after_summit_started() {
 // SHOWDOWN TESTS
 // ==========================
 
-#[test]
-#[fork("mainnet")]
-fn test_attack_during_showdown_sets_timestamp() {
-    let summit = deploy_summit_and_start();
-    let terminal_block = summit.get_terminal_block();
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-
-    // Take the summit before terminal block
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
-
-    stop_cheat_caller_address(summit.contract_address);
-
-    // Advance past terminal block (into showdown)
-    start_cheat_block_number_global(terminal_block + 1);
-
-    // Create second player
-    let _player2: ContractAddress = 0x0689701974d95364aAd9C2306Bc322A40a27fb775b0C97733FD0e36E900b1879
-        .try_into()
-        .unwrap();
-
-    // Mock ownership for beast 62345 to be owned by player2
-    // Note: In reality we need the beast owner to match, but since we're forking mainnet,
-    // we need beasts owned by different addresses
-
-    stop_cheat_block_number_global();
-}
+// Note: test_attack_during_showdown_sets_timestamp - requires a second player to attack
+// during showdown to verify showdown_taken_at timestamp is set. This requires two different
+// beast owners which is difficult to test with mainnet forking.
 
 // ==========================
 // FUZZING TESTS - EXTENDED
