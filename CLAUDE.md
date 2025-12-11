@@ -94,9 +94,9 @@ Full documentation: https://docs.provable.games/summit
 
 **Upgrade Costs:**
 - Luck/Spirit: 1 Kill Token per level (max 255)
-- Specials: 1 Kill Token (one-time unlock)
-- Diplomacy: 5 Kill Tokens (one-time unlock)
-- Wisdom: 10 Kill Tokens (one-time unlock)
+- Specials: 10 Kill Tokens (one-time unlock)
+- Diplomacy: 15 Kill Tokens (one-time unlock)
+- Wisdom: 20 Kill Tokens (one-time unlock)
 - Bonus Health: 1 Corpse Token per HP (max 2,000)
 
 **Rewards:**
