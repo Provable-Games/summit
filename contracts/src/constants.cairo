@@ -14,6 +14,9 @@ pub const BEAST_MAX_BONUS_HEALTH: u16 = 2000;
 pub const BEAST_MAX_BONUS_LVLS: u16 = 40;
 pub const BEAST_MAX_ATTRIBUTES: u8 = 100;
 pub const MAX_REVIVAL_COUNT: u8 = 31;
+pub const SPECIALS_COST: u16 = 10;
+pub const DIPLOMACY_COST: u16 = 15;
+pub const WISDOM_COST: u16 = 20;
 pub const EIGHT_BITS_MAX: u8 = 255;
 pub const TOKEN_DECIMALS: u256 = 1_000_000_000_000_000_000;
 
