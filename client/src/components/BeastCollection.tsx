@@ -68,7 +68,7 @@ function BeastCollection() {
 
       // Apply dead beast filter
       if (hideDeadBeasts) {
-        filtered = filtered.filter(beast => beast.current_health > 0);
+        filtered = filtered.filter(beast => beast.current_health > 0 && !isBeastLocked(beast));
       }
 
       // Apply hide top 5000 filter

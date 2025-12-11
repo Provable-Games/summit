@@ -561,6 +561,7 @@ const styles = {
   },
   beastName: {
     fontSize: '18px',
+    lineHeight: '20px',
     fontWeight: 'bold',
     color: '#ffedbb',
     textTransform: 'uppercase',
