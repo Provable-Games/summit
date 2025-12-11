@@ -122,9 +122,13 @@ function ActionBar() {
   }, [deadBeasts.length, revivalPotionsRequired, tokenBalances["REVIVE"]]);
 
   useEffect(() => {
-    if (attackMode === 'capture') {
+    if (attackMode === 'capture' || attackMode === 'autopilot') {
       setSelectedBeasts([]);
       setAppliedPotions({ revive: 0, attack: 0, extraLife: 0 });
+    }
+
+    if (attackMode !== 'autopilot' && autopilotEnabled) {
+      setAutopilotEnabled(false);
     }
   }, [attackMode]);
 
