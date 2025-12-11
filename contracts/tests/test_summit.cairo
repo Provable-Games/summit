@@ -1,7 +1,7 @@
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, mock_call, start_cheat_block_number_global,
     start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_block_number_global,
-    stop_cheat_caller_address,
+    stop_cheat_block_timestamp_global, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, get_block_timestamp};
 use beasts_nft::pack::PackableBeast;
@@ -1684,6 +1684,7 @@ fn test_poison_damage_over_time() {
     // Apply more poison - this will trigger damage calculation
     summit.apply_poison(60989, 1);
 
+    stop_cheat_block_timestamp_global();
     stop_cheat_caller_address(summit.contract_address);
 }
 
@@ -1830,6 +1831,7 @@ fn test_add_extra_life_applies_poison_first() {
     // poison_damage = time_since_poison * poison_count = 10 * 5 = 50
     assert(beast.live.current_health < health_before, 'Poison damage not applied');
 
+    stop_cheat_block_timestamp_global();
     stop_cheat_caller_address(summit.contract_address);
 }
 
