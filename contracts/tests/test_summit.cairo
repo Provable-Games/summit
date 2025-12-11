@@ -1314,10 +1314,12 @@ fn test_apply_stat_points_unlock_diplomacy_twice() {
 // FUZZING TESTS
 // ==========================
 
+// Note: Fuzz tests removed from fork tests due to slow RPC calls and potential flakiness.
+// Using targeted edge-case tests instead for deterministic, fast CI runs.
+
 #[test]
 #[fork("mainnet")]
-#[fuzzer(runs: 10)]
-fn fuzz_test_attack_with_random_potions(attack_potions: u8, extra_life_potions: u16) {
+fn test_attack_with_medium_potions() {
     let summit = deploy_summit_and_start();
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
@@ -1325,46 +1327,87 @@ fn fuzz_test_attack_with_random_potions(attack_potions: u8, extra_life_potions: 
     mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
 
     let attacking_beasts = array![60989].span();
-
-    // Only attack if within valid bounds (attack_potions is u8, so always <= 255)
-    if extra_life_potions <= 4000 {
-        summit.attack(1, attacking_beasts, 0, attack_potions, extra_life_potions, false);
-    }
+    // Test with mid-range values
+    summit.attack(1, attacking_beasts, 0, 100, 500, false);
 
     stop_cheat_caller_address(summit.contract_address);
 }
 
 #[test]
 #[fork("mainnet")]
-#[fuzzer(runs: 10)]
-fn fuzz_test_feed_amounts(bonus_health: u16) {
+fn test_attack_with_high_extra_lives() {
     let summit = deploy_summit_and_start();
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
+    mock_erc20_burn_from(summit.get_attack_potion_address(), true);
+    mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
+
+    let attacking_beasts = array![60989].span();
+    // Test near the 4000 limit
+    summit.attack(1, attacking_beasts, 0, 50, 3999, false);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_feed_mid_range_amount() {
+    let summit = deploy_summit_and_start();
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_corpse_token_address(), true);
 
-    // Only feed if within valid bounds (non-zero and <= 2000)
-    if bonus_health > 0 && bonus_health <= 2000 {
-        summit.feed(60989, bonus_health);
-    }
+    summit.feed(60989, 1000);
+    let beast = summit.get_beast(60989);
+    assert(beast.live.bonus_health == 1000, 'Bonus health should be 1000');
 
     stop_cheat_caller_address(summit.contract_address);
 }
 
 #[test]
 #[fork("mainnet")]
-#[fuzzer(runs: 10)]
-fn fuzz_test_apply_stat_points(spirit: u8, luck: u8) {
+fn test_apply_stat_points_spirit_only() {
     let summit = deploy_summit_and_start();
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-
     mock_erc20_burn_from(summit.get_skull_token_address(), true);
 
-    // Only apply if within valid bounds and at least one stat is non-zero
-    if (spirit > 0 || luck > 0) && spirit <= 100 && luck <= 100 {
-        let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit, luck };
-        summit.apply_stat_points(60989, stats);
-    }
+    let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit: 50, luck: 0 };
+    summit.apply_stat_points(60989, stats);
+
+    let beast = summit.get_beast(60989);
+    assert(beast.live.stats.spirit == 50, 'Spirit should be 50');
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_apply_stat_points_luck_only() {
+    let summit = deploy_summit_and_start();
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit: 0, luck: 75 };
+    summit.apply_stat_points(60989, stats);
+
+    let beast = summit.get_beast(60989);
+    assert(beast.live.stats.luck == 75, 'Luck should be 75');
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_apply_stat_points_max_values() {
+    let summit = deploy_summit_and_start();
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit: 100, luck: 100 };
+    summit.apply_stat_points(60989, stats);
+
+    let beast = summit.get_beast(60989);
+    assert(beast.live.stats.spirit == 100, 'Spirit should be 100');
+    assert(beast.live.stats.luck == 100, 'Luck should be 100');
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1908,45 +1951,56 @@ fn test_set_start_timestamp_after_summit_started() {
 // beast owners which is difficult to test with mainnet forking.
 
 // ==========================
-// FUZZING TESTS - EXTENDED
+// EXTRA LIVES EDGE CASE TESTS
 // ==========================
 
 #[test]
 #[fork("mainnet")]
-#[fuzzer(runs: 20)]
-fn fuzz_test_feed_various_amounts(amount: u16) {
+fn test_add_extra_lives_small_amount() {
     let summit = deploy_summit_and_start();
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    mock_erc20_burn_from(summit.get_corpse_token_address(), true);
+    mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
 
-    // Only test valid amounts (1 to BEAST_MAX_BONUS_HEALTH)
-    if amount > 0 && amount <= 2000 {
-        summit.feed(60989, amount);
-        let beast = summit.get_beast(60989);
-        assert(beast.live.bonus_health == amount, 'Bonus health mismatch');
-    }
+    let attacking_beasts = array![60989].span();
+    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+
+    summit.add_extra_life(60989, 10);
+    let beast = summit.get_beast(60989);
+    assert(beast.live.extra_lives == 10, 'Extra lives should be 10');
 
     stop_cheat_caller_address(summit.contract_address);
 }
 
 #[test]
 #[fork("mainnet")]
-#[fuzzer(runs: 20)]
-fn fuzz_test_add_extra_lives(extra_lives: u16) {
+fn test_add_extra_lives_medium_amount() {
     let summit = deploy_summit_and_start();
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
 
-    // Take the summit first
     let attacking_beasts = array![60989].span();
     summit.attack(1, attacking_beasts, 0, 0, 0, false);
 
-    // Only test valid amounts
-    if extra_lives > 0 && extra_lives <= 4000 {
-        summit.add_extra_life(60989, extra_lives);
-        let beast = summit.get_beast(60989);
-        assert(beast.live.extra_lives == extra_lives, 'Extra lives mismatch');
-    }
+    summit.add_extra_life(60989, 500);
+    let beast = summit.get_beast(60989);
+    assert(beast.live.extra_lives == 500, 'Extra lives should be 500');
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_add_extra_lives_near_max() {
+    let summit = deploy_summit_and_start();
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
+
+    let attacking_beasts = array![60989].span();
+    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+
+    summit.add_extra_life(60989, 3999);
+    let beast = summit.get_beast(60989);
+    assert(beast.live.extra_lives == 3999, 'Extra lives should be 3999');
 
     stop_cheat_caller_address(summit.contract_address);
 }
