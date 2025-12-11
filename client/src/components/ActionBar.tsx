@@ -135,7 +135,7 @@ function ActionBar() {
   useEffect(() => {
     if (!autopilotEnabled || attackInProgress || !collectionWithCombat) return;
 
-    let myBeast = collectionWithCombat.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
+    let myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
     if (myBeast) return;
 
     if (attackStrategy === 'all_out') {
@@ -154,7 +154,7 @@ function ActionBar() {
         });
       }
     }
-  }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
+  }, [collectionWithCombat, autopilotEnabled]);
 
   const hasEnoughRevivePotions = (tokenBalances["REVIVE"] || 0) >= revivalPotionsRequired;
   const enableAttack = (attackMode === 'capture' && !attackInProgress) || ((!isSavage || attackMode !== 'safe') && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions);
