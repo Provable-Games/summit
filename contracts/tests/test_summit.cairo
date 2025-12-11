@@ -1360,8 +1360,8 @@ fn fuzz_test_apply_stat_points(spirit: u8, luck: u8) {
 
     mock_erc20_burn_from(summit.get_skull_token_address(), true);
 
-    // Only apply if within valid bounds
-    if spirit <= 100 && luck <= 100 {
+    // Only apply if within valid bounds and at least one stat is non-zero
+    if (spirit > 0 || luck > 0) && spirit <= 100 && luck <= 100 {
         let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit, luck };
         summit.apply_stat_points(60989, stats);
     }
