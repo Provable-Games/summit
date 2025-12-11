@@ -199,7 +199,6 @@ export const useGameTokens = () => {
       SELECT COUNT(*) as count
       FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
     `
-    console.log("q", q);
     let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
 
     try {
@@ -298,7 +297,6 @@ export const useGameTokens = () => {
         })
         .sort((a, b) => b.amount - a.amount);
 
-      console.log("leaderboard", leaderboard);
       return leaderboard;
     } catch (error) {
       console.error("Error getting big five:", error);
