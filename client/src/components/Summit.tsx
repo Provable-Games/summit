@@ -1,11 +1,13 @@
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useSound } from '@/contexts/sound';
 import { useGameStore } from '@/stores/gameStore';
+import SummitGiftModal from '@/components/dialogs/SummitGiftModal';
 import CasinoIcon from '@mui/icons-material/Casino';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import StarIcon from '@mui/icons-material/Star';
-import { Box, LinearProgress, Tooltip, Typography } from '@mui/material';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import { Box, IconButton, LinearProgress, Tooltip, Typography } from '@mui/material';
 import { AnimatePresence, motion, useAnimationControls } from 'framer-motion';
 import { useLottie } from 'lottie-react';
 import { useEffect, useRef, useState } from 'react';
@@ -24,6 +26,7 @@ function Summit() {
   const { play } = useSound()
 
   const controls = useAnimationControls()
+  const [giftModalOpen, setGiftModalOpen] = useState(false)
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
   const [spectatorDamage, setSpectatorDamage] = useState<Array<{ id: string; damage: number; attackerName: string; imageSrc: string }>>([])
   const [poisonNotices, setPoisonNotices] = useState<Array<{ id: string; count: number; playerName: string }>>([])
@@ -299,6 +302,25 @@ function Summit() {
 
         {/* Stats Row */}
         <Box sx={styles.statsRow}>
+          {!isSavage && (
+            <Tooltip
+              title={
+                <Box sx={styles.tooltipContent}>
+                  <Typography sx={[styles.statLabel, { fontSize: '11px' }]}>
+                    Gift upgrades or extra lives to this Summit beast.
+                  </Typography>
+                </Box>
+              }
+              placement="bottom"
+            >
+              <IconButton
+                sx={styles.giftButton}
+                onClick={() => setGiftModalOpen(true)}
+              >
+                <CardGiftcardIcon sx={{ fontSize: '18px' }} />
+              </IconButton>
+            </Tooltip>
+          )}
           <Box sx={styles.statBox}>
             <Typography sx={styles.statLabel}>LEVEL</Typography>
             <Typography sx={styles.levelValue}>{summit.beast.current_level}</Typography>
@@ -526,6 +548,15 @@ function Summit() {
           );
         })}
       </AnimatePresence>
+      {summit && (
+        <SummitGiftModal
+          open={giftModalOpen}
+          close={() => setGiftModalOpen(false)}
+          beast={summit.beast}
+          ownerName={cartridgeName}
+          isSavage={isSavage}
+        />
+      )}
     </Box>
   );
 }
@@ -628,6 +659,7 @@ const styles = {
     gap: '8px',
     marginTop: '2px',
     justifyContent: 'center',
+    alignItems: 'center',
     zIndex: 999,
   },
   statBox: {
@@ -658,6 +690,12 @@ const styles = {
     lineHeight: '1',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
   },
+  levelWithGift: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px',
+  },
   typeValue: {
     fontSize: '12px',
     color: '#FFF',
@@ -676,6 +714,15 @@ const styles = {
     color: '#FFD700',
     fontWeight: 'bold',
     lineHeight: '1',
+  },
+  giftButton: {
+    width: '20px',
+    height: '20px',
+    color: '#ffedbb',
+    '&:hover': {
+      color: gameColors.brightGreen,
+      backgroundColor: 'rgba(0,0,0,0.3)',
+    },
   },
   healthContainer: {
     width: '100%',

@@ -105,6 +105,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       };
 
       setSummit(newSummit);
+      setNextSummit(null);
       play("roar");
     }
 
@@ -115,6 +116,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     if (diplomacyEvent && diplomacyEvent.specials_hash === summit?.beast.specials_hash) {
+      console.log('setsummit at diplomacyEvent');
       setSummit(prevSummit => ({
         ...prevSummit,
         diplomacy: {
