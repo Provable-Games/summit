@@ -60,6 +60,9 @@ jobs:
         with:
           starknet-foundry-version: ${{ env.SNFORGE_VERSION }}
 
+      - name: Install cairo-coverage
+        run: curl -L https://raw.githubusercontent.com/software-mansion/cairo-coverage/main/scripts/install.sh | sh
+
       - name: Run Tests
         run: cd contracts && scarb test --coverage
 
