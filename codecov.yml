@@ -3,7 +3,7 @@ comment:
   behavior: default
 
 coverage:
-  range:70..100
+  range: 90..100
   status:
     project:
       coverage:
@@ -11,7 +11,7 @@ coverage:
         threshold: 4%
     patch:
       default:
-        target: 70%
+        target: 90%
         threshold: 4%
 
 ignore:
