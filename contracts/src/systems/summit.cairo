@@ -764,9 +764,10 @@ pub mod summit_systems {
 
             let beast_dispatcher = self.beast_dispatcher.read();
             let event_dispatcher = self.summit_events_dispatcher.read();
+            let caller = get_caller_address();
 
             let summit_owner = beast_dispatcher.owner_of(summit_beast_token_id.into());
-            assert(get_caller_address() != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
+            assert(caller != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
 
             let mut defending_beast = Self::_get_beast(@self, summit_beast_token_id);
             self._apply_poison_damage(ref defending_beast);
@@ -791,7 +792,7 @@ pub mod summit_systems {
 
                 // assert the caller owns the beast they attacking with
                 let beast_owner = beast_dispatcher.owner_of(attacking_beast_token_id.into());
-                assert(beast_owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
+                assert(beast_owner == caller, errors::NOT_TOKEN_OWNER);
 
                 // get stats for the beast that is attacking
                 let mut attacking_beast = Self::_get_beast(@self, attacking_beast_token_id);
@@ -996,7 +997,7 @@ pub mod summit_systems {
                         self
                             .extra_life_potion_dispatcher
                             .read()
-                            .burn_from(get_caller_address(), extra_life_potions.into() * TOKEN_DECIMALS);
+                            .burn_from(caller, extra_life_potions.into() * TOKEN_DECIMALS);
                     }
 
                     // update the live stats of the attacking beast
@@ -1025,16 +1026,10 @@ pub mod summit_systems {
             }
 
             if revival_potions > 0 {
-                self
-                    .revive_potion_dispatcher
-                    .read()
-                    .burn_from(get_caller_address(), revival_potions.into() * TOKEN_DECIMALS);
+                self.revive_potion_dispatcher.read().burn_from(caller, revival_potions.into() * TOKEN_DECIMALS);
             }
             if attack_potions > 0 {
-                self
-                    .attack_potion_dispatcher
-                    .read()
-                    .burn_from(get_caller_address(), attack_potions.into() * TOKEN_DECIMALS);
+                self.attack_potion_dispatcher.read().burn_from(caller, attack_potions.into() * TOKEN_DECIMALS);
             }
         }
 
