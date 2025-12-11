@@ -20,7 +20,7 @@ death_mountain_beast = { git = "https://github.com/Provable-Games/death-mountain
 test = "snforge test"
 
 [dev-dependencies]
-snforge_std = "0.53.0"
+snforge_std = "0.54.0"
 
 [[target.starknet-contract]]
 build-external-contracts = ["beasts_nft::beasts_nft"] 
