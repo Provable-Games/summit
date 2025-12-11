@@ -1736,6 +1736,68 @@ fn test_poison_damage_over_time() {
     stop_cheat_caller_address(summit.contract_address);
 }
 
+/// @notice Tests that poison damage is calculated from the correct timestamp after
+/// an attack occurs before poison is applied.
+///
+/// This test covers the following critical scenario:
+/// 1. Attack happens (triggers _apply_poison_damage with poison_count=0)
+/// 2. Poison is applied (sets poison_count > 0)
+/// 3. Time advances slightly (10 seconds)
+/// 4. Another action triggers _apply_poison_damage
+/// 5. Damage should be based on 10 seconds, NOT from genesis time (timestamp 0)
+///
+/// Bug this catches: If _apply_poison_damage doesn't refresh the timestamp when
+/// poison_count=0, the next damage calculation would use a stale/zero timestamp,
+/// causing massive incorrect damage.
+#[test]
+#[fork("mainnet")]
+fn test_poison_timestamp_refresh_after_attack() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_poison_potion_address(), true);
+    mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
+
+    // Step 1: Attack to take the summit
+    // This triggers _apply_poison_damage on beast 1 (defender) with poison_count=0
+    // Beast 60989 wins and becomes the new summit beast
+    let attacking_beasts = array![60989].span();
+    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+
+    // Get the beast's health after taking summit
+    let beast_after_attack = summit.get_beast(60989);
+    let health_after_attack = beast_after_attack.live.current_health;
+
+    // Step 2: Apply poison to the new summit beast
+    // This calls _apply_poison_damage BEFORE setting poison_count
+    // At this moment poison_count is 0 - the timestamp MUST be refreshed here
+    summit.apply_poison(60989, 5);
+
+    // Step 3: Advance time by only 10 seconds
+    // If timestamp was properly set, damage = 10 * 5 = 50
+    // If timestamp was stale (0), damage would be massive (current_time * 5)
+    start_cheat_block_timestamp_global(get_block_timestamp() + 10);
+
+    // Step 4: Add extra life to trigger _apply_poison_damage
+    summit.add_extra_life(60989, 1);
+
+    // Step 5: Verify damage is reasonable (not from genesis)
+    let beast_after_poison = summit.get_beast(60989);
+    let health_after_poison = beast_after_poison.live.current_health;
+
+    // Expected damage: 10 seconds * 5 poison = 50 damage
+    let expected_damage: u16 = 50;
+    let actual_damage = health_after_attack - health_after_poison;
+
+    // Damage should be approximately 50, definitely not thousands from stale timestamp
+    // Allow some tolerance for rounding
+    assert(actual_damage <= expected_damage + 10, 'Poison dmg too high');
+    assert(actual_damage >= expected_damage - 10, 'Poison dmg too low');
+
+    stop_cheat_block_timestamp_global();
+    stop_cheat_caller_address(summit.contract_address);
+}
+
 // ==========================
 // P1 TESTS: CLAIM SUMMIT
 // ==========================
