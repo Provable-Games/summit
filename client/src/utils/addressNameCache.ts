@@ -144,7 +144,6 @@ export function cacheAddressName(address: string, name: string | null): void {
 export function clearAddressNameCache(): void {
   try {
     localStorage.removeItem(CACHE_KEY);
-    console.log('Address name cache cleared');
   } catch (error) {
     console.error('Error clearing address name cache:', error);
   }

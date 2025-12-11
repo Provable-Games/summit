@@ -37,7 +37,7 @@ export function SoundProvider({ children }: PropsWithChildren) {
     const stored = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEYS.muted) : null;
     return stored ? stored === "1" : false;
   });
-  const [volume, setVolumeState] = useState<number>(0.2);
+  const [volume, setVolumeState] = useState<number>(0.1);
 
   const [unlocked, setUnlocked] = useState(false);
   useEffect(() => {
@@ -71,7 +71,7 @@ export function SoundProvider({ children }: PropsWithChildren) {
   const playNow = useCallback((name: SoundName, opts?: PlayOptions) => {
     if (muted) return;
     const a = new Audio(SOUNDS[name]);
-    a.volume = Math.min(1, Math.max(0, (opts?.volume ?? 1) * volume));
+    a.volume = opts?.volume ?? volume;
     if (opts?.rate && Number.isFinite(opts.rate)) {
       try { a.playbackRate = opts.rate; } catch { }
     }

@@ -22,7 +22,8 @@ interface GameState {
   selectedAdventurers: Adventurer[];
   appliedPotions: AppliedPotions;
   appliedPoisonCount: number;
-  attackMode: 'safe' | 'unsafe' | 'capture';
+  attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot';
+  autopilotEnabled: boolean;
 
   // Beast Collection Filters
   hideDeadBeasts: boolean;
@@ -48,7 +49,8 @@ interface GameState {
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => void;
   setAppliedPotions: (appliedPotions: AppliedPotions) => void;
   setAppliedPoisonCount: (appliedPoisonCount: number) => void;
-  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture') => void;
+  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot') => void;
+  setAutopilotEnabled: (autopilotEnabled: boolean) => void;
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => void;
@@ -83,6 +85,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   },
   appliedPoisonCount: 0,
   attackMode: 'safe',
+  autopilotEnabled: false,
 
   // Beast Collection Filters - Default Values
   hideDeadBeasts: false,
@@ -114,6 +117,8 @@ export const useGameStore = create<GameState>((set, get) => ({
         extraLife: 0,
       },
       appliedPoisonCount: 0,
+      attackMode: 'safe',
+      autopilotEnabled: false,
       // Reset filters to defaults
       hideDeadBeasts: false,
       typeFilter: 'all',
@@ -142,7 +147,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => set({ adventurerCollection }),
   setAppliedPotions: (appliedPotions: AppliedPotions) => set({ appliedPotions }),
   setAppliedPoisonCount: (appliedPoisonCount: number) => set({ appliedPoisonCount }),
-  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture') => set({ attackMode }),
+  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot') => set({ attackMode }),
+  setAutopilotEnabled: (autopilotEnabled: boolean) => set({ autopilotEnabled }),
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => set({ hideDeadBeasts }),

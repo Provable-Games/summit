@@ -24,8 +24,6 @@ function AttackingBeasts() {
 
   // Create enhanced beasts with battle data
   useEffect(() => {
-    console.log('battleEvents', battleEvents);
-
     if (battleEvents.length > 0 && battleEvents[0].defending_beast_token_id !== summit?.beast.token_id) {
       handleSkip()
       return;
@@ -142,7 +140,6 @@ function AttackingBeasts() {
       if (currentIndex >= damageQueue.length) {
         if (visibleBeasts.length <= 1) {
           setTimeout(() => {
-            console.log('no more beasts in queue, skipping');
             handleSkip();
           }, 1000);
         }
@@ -171,7 +168,6 @@ function AttackingBeasts() {
 
           if (prevSummit.beast.current_health <= nextDamage.value) {
             setTimeout(() => {
-              console.log('changing summit, skipping');
               handleSkip();
             }, 1000);
           }
@@ -226,7 +222,6 @@ function AttackingBeasts() {
                 if (nextBeast) {
                   setActiveBeastTokenId(nextBeast.token_id);
                 } else {
-                  console.log('no next beast, skipping');
                   handleSkip()
                 }
 
