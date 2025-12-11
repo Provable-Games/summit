@@ -80,15 +80,16 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
   let summitElemental = elementalDamage(summit, beast);
   let beastNameMatch = nameMatchBonus(beast, summit, elemental);
   let summitNameMatch = nameMatchBonus(summit, beast, elemental);
+  let diplomacyBonus = _summit.diplomacy?.bonus || 0;
 
   let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((elemental * (1 + 0.1 * potions) + beastNameMatch) - summit.power))
-  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental * (1 + 0.1 * _summit.diplomacy?.bonus) + summitNameMatch) - beast.power)
+  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental * (1 + 0.1 * diplomacyBonus) + summitNameMatch) - beast.power)
 
   let beastCritChance = getLuckCritChancePercent(beast.stats.luck);
   let summitCritChance = getLuckCritChancePercent(summit.stats.luck);
 
   let beastCritDamage = beastCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor(((elemental * 2) * (1 + 0.1 * potions) + beastNameMatch) - summit.power)) : 0;
-  let summitCritDamage = summitCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) * (1 + 0.1 * _summit.diplomacy?.bonus) + summitNameMatch) - beast.power) : 0;
+  let summitCritDamage = summitCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) * (1 + 0.1 * diplomacyBonus) + summitNameMatch) - beast.power) : 0;
 
   let beastAverageDamage = beastCritChance > 0 ? (beastDamage * (100 - beastCritChance) + beastCritDamage * beastCritChance) / 100 : beastDamage;
   let summitAverageDamage = summitCritChance > 0 ? (summitDamage * (100 - summitCritChance) + summitCritDamage * summitCritChance) / 100 : summitDamage;
@@ -96,7 +97,6 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
   let estimatedDamage = Math.max(MINIMUM_DAMAGE, Math.floor(Math.ceil(beast.current_health / summitAverageDamage) * beastAverageDamage));
 
   return {
-    summit_token_id: summit.token_id,
     attack: beastDamage,
     defense: summitDamage,
     attackCritDamage: beastCritDamage,

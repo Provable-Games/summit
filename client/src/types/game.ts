@@ -54,14 +54,13 @@ export interface Beast {
 }
 
 export interface Stats {
-  spirit: number; // 0-255
-  luck: number; // 0-255
+  spirit: number; // 0-100
+  luck: number; // 0-100
   specials: boolean;
   wisdom: boolean;
   diplomacy: boolean;
 }
 export interface Combat {
-  summit_token_id: number;
   attack: number;
   defense: number;
   attackCritDamage: number;
@@ -86,6 +85,7 @@ export interface AppliedPotions {
 
 export interface GameAction {
   type: string;
+  pauseUpdates?: boolean;
   beastId?: number;
   beastIds?: number[];
   adventurerIds?: number[];

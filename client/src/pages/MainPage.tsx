@@ -20,7 +20,7 @@ import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
 
 function MainPage() {
-  const { summit, attackInProgress, selectedBeasts, onboarding } = useGameStore()
+  const { summit, attackInProgress, selectedBeasts, onboarding, attackMode } = useGameStore()
   const { pauseUpdates } = useGameDirector();
   const [top5000ModalOpen, setTop5000ModalOpen] = useState(false);
   const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false);
@@ -52,13 +52,12 @@ function MainPage() {
         {onboarding
           ? <Onboarding />
           : <>
-            {(!attackInProgress || !pauseUpdates) && <Box sx={styles.bottomContainer}>
-              <ActionBar />
-              <BeastCollection />
-            </Box>}
-
-            {(attackInProgress && pauseUpdates && selectedBeasts.length > 0) &&
-              <AttackingBeasts />
+            {(attackInProgress && pauseUpdates && selectedBeasts.length > 0 && attackMode !== 'autopilot' && attackMode !== 'capture')
+              ? <AttackingBeasts />
+              : <Box sx={styles.bottomContainer}>
+                <ActionBar />
+                <BeastCollection />
+              </Box>
             }
           </>}
       </>

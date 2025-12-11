@@ -90,35 +90,28 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   }, [eventQueue, pauseUpdates]);
 
   useEffect(() => {
-    if (nextSummit && !pauseUpdates) {
+    async function processNextSummit() {
       let newSummit = { ...nextSummit };
       const { currentHealth, extraLives } = applyPoisonDamage(newSummit);
       newSummit.beast.current_health = currentHealth;
       newSummit.beast.extra_lives = extraLives;
+
+      const diplomacy = await getDiplomacy(newSummit.beast);
+      newSummit.diplomacy = {
+        ...diplomacy,
+        bonus: newSummit.beast.stats.diplomacy
+          ? Math.floor((diplomacy.total_power - newSummit.beast.power) / 250)
+          : Math.floor(diplomacy.total_power / 250),
+      };
+
       setSummit(newSummit);
       play("roar");
     }
+
+    if (nextSummit && !pauseUpdates) {
+      processNextSummit();
+    }
   }, [nextSummit, pauseUpdates]);
-
-  useEffect(() => {
-    async function fetchDiplomacy() {
-      const diplomacy = await getDiplomacy(summit.beast);
-
-      setSummit(prevSummit => ({
-        ...prevSummit,
-        diplomacy: {
-          ...diplomacy,
-          bonus: prevSummit.beast.stats.diplomacy
-            ? Math.floor((diplomacy.total_power - prevSummit.beast.power) / 250)
-            : Math.floor(diplomacy.total_power / 250),
-        },
-      }));
-    }
-
-    if (summit?.beast) {
-      fetchDiplomacy();
-    }
-  }, [summit?.beast.token_id]);
 
   useEffect(() => {
     if (diplomacyEvent && diplomacyEvent.specials_hash === summit?.beast.specials_hash) {
@@ -138,10 +131,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     const summitBeast = await getSummitData();
 
     if (summitBeast) {
-      const { currentHealth, extraLives } = applyPoisonDamage(summitBeast);
-      summitBeast.beast.current_health = currentHealth;
-      summitBeast.beast.extra_lives = extraLives;
-      setSummit(summitBeast);
+      setNextSummit(summitBeast);
     }
   };
 
@@ -258,11 +248,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const executeGameAction = async (action: GameAction) => {
     let txs: any[] = [];
 
+    if (action.pauseUpdates) {
+      setPauseUpdates(true);
+    }
+
     if (action.type === 'attack') {
       setBattleEvents([]);
       setAttackInProgress(true);
-      setPauseUpdates(true);
-
       txs.push(
         ...attack(action.beastIds, action.appliedPotions, action.safeAttack, action.vrf)
       );
@@ -335,7 +327,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         extraLife: 0,
       });
 
-      setBattleEvents(events.filter((event: any) => event.componentName === 'BattleEvent'));
+      if (action.pauseUpdates) {
+        setBattleEvents(events.filter((event: any) => event.componentName === 'BattleEvent'));
+      } else {
+        setAttackInProgress(false);
+      }
     } else if (action.type === 'attack_until_capture') {
       if (!events.filter((event: any) => event.componentName === 'BattleEvent')
         .find((event: BattleEvent) => (event.attack_count + event.critical_attack_count) > (event.counter_attack_count + event.critical_counter_attack_count))) {
