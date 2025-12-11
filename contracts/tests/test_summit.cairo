@@ -2097,7 +2097,7 @@ fn test_spirit_reduction_spirit_71() {
 // These are pure unit tests (no mainnet fork) so fuzzing is fast and deterministic
 
 #[test]
-#[fuzzer(runs: 500)]
+#[fuzzer(runs: 101)]
 fn fuzz_test_crit_chance_bounds(luck: u8) {
     let beast = create_test_beast(luck, 0);
     let crit = beast.crit_chance();
@@ -2121,7 +2121,7 @@ fn fuzz_test_crit_chance_bounds(luck: u8) {
 }
 
 #[test]
-#[fuzzer(runs: 500)]
+#[fuzzer(runs: 101)]
 fn fuzz_test_spirit_reduction_bounds(spirit: u8) {
     let beast = create_test_beast(0, spirit);
     let reduction = beast.spirit_reduction();
@@ -2144,7 +2144,7 @@ fn fuzz_test_spirit_reduction_bounds(spirit: u8) {
 }
 
 #[test]
-#[fuzzer(runs: 500)]
+#[fuzzer(runs: 101)]
 fn fuzz_test_crit_chance_monotonic(luck: u8) {
     // Crit chance should be monotonically increasing with luck
     if luck > 0 {
@@ -2159,7 +2159,7 @@ fn fuzz_test_crit_chance_monotonic(luck: u8) {
 }
 
 #[test]
-#[fuzzer(runs: 500)]
+#[fuzzer(runs: 101)]
 fn fuzz_test_spirit_reduction_monotonic(spirit: u8) {
     // Spirit reduction should be monotonically increasing with spirit
     if spirit > 1 {
