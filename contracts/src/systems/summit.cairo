@@ -1114,6 +1114,10 @@ pub mod summit_systems {
             let dungeon_address = self.dungeon_address.read();
 
             let num_deaths = beast_data_dispatcher.get_collectable_count(dungeon_address, beast_hash);
+            // Return 0 if beast has never been killed - allows beast to attack
+            if num_deaths == 0 {
+                return 0;
+            }
             let collectable_entity = beast_data_dispatcher.get_collectable(dungeon_address, beast_hash, num_deaths - 1);
             collectable_entity.timestamp
         }
@@ -1200,16 +1204,19 @@ pub mod summit_systems {
         fn _apply_poison_damage(ref self: ContractState, ref beast: Beast) -> u64 {
             let poison_count = self.poison_count.read();
 
-            // Early exit if no poison - skip timestamp syscall and storage reads
+            // Early exit if no poison - but still refresh timestamp to ensure
+            // it's current when poison is next applied
             if poison_count == 0 {
+                self.poison_timestamp.write(get_block_timestamp());
                 return 0;
             }
 
-            let time_since_poison = get_block_timestamp() - self.poison_timestamp.read();
+            let current_time = get_block_timestamp();
+            let time_since_poison = current_time - self.poison_timestamp.read();
             let damage: u64 = time_since_poison * poison_count.into();
 
             if damage == 0 {
-                self.poison_timestamp.write(get_block_timestamp());
+                self.poison_timestamp.write(current_time);
                 return 0;
             }
 
@@ -1239,7 +1246,7 @@ pub mod summit_systems {
                 }
             }
 
-            self.poison_timestamp.write(get_block_timestamp());
+            self.poison_timestamp.write(current_time);
 
             damage
         }
