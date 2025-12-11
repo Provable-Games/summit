@@ -1118,10 +1118,10 @@ pub mod summit_systems {
         fn _get_last_killed_timestamp(self: @ContractState, beast: Beast) -> u64 {
             let beast_hash = ImplBeast::get_beast_hash(beast.fixed.id, beast.fixed.prefix, beast.fixed.suffix);
             let beast_data_dispatcher = self.beast_data_dispatcher.read();
+            let dungeon_address = self.dungeon_address.read();
 
-            let num_deaths = beast_data_dispatcher.get_collectable_count(self.dungeon_address.read(), beast_hash);
-            let collectable_entity = beast_data_dispatcher
-                .get_collectable(self.dungeon_address.read(), beast_hash, num_deaths - 1);
+            let num_deaths = beast_data_dispatcher.get_collectable_count(dungeon_address, beast_hash);
+            let collectable_entity = beast_data_dispatcher.get_collectable(dungeon_address, beast_hash, num_deaths - 1);
             collectable_entity.timestamp
         }
 
