@@ -1746,13 +1746,13 @@ fn test_claim_summit_before_game_ends() {
 // ==========================
 
 #[test]
-fn test_get_level_from_xp_zero() {// _get_level_from_xp(0) should return 1
+fn test_get_level_from_xp_zero() { // _get_level_from_xp(0) should return 1
 // This is tested indirectly through beast creation
 // Level is sqrt(xp), but 0 returns 1
 }
 
 #[test]
-fn test_get_level_from_xp_values() {// _get_level_from_xp(100) should return 10 (sqrt(100) = 10)
+fn test_get_level_from_xp_values() { // _get_level_from_xp(100) should return 10 (sqrt(100) = 10)
 // _get_level_from_xp(99) should return 9 (sqrt(99) ≈ 9.95, floor = 9)
 // This is tested indirectly through combat spec calculation
 }
@@ -1762,24 +1762,24 @@ fn test_get_level_from_xp_values() {// _get_level_from_xp(100) should return 10 
 // ==========================
 
 #[test]
-fn test_get_potion_amount_tier1() {// Beast IDs 1-5, 26-30, 51-55 should return 5 potions
+fn test_get_potion_amount_tier1() { // Beast IDs 1-5, 26-30, 51-55 should return 5 potions
 // This is tested indirectly through claim_beast_reward
 }
 
 #[test]
-fn test_get_potion_amount_tier2() {// Beast IDs 6-10, 31-35, 56-60 should return 4 potions
+fn test_get_potion_amount_tier2() { // Beast IDs 6-10, 31-35, 56-60 should return 4 potions
 }
 
 #[test]
-fn test_get_potion_amount_tier3() {// Beast IDs 11-15, 36-40, 61-65 should return 3 potions
+fn test_get_potion_amount_tier3() { // Beast IDs 11-15, 36-40, 61-65 should return 3 potions
 }
 
 #[test]
-fn test_get_potion_amount_tier4() {// Beast IDs 16-20, 41-45, 66-70 should return 2 potions
+fn test_get_potion_amount_tier4() { // Beast IDs 16-20, 41-45, 66-70 should return 2 potions
 }
 
 #[test]
-fn test_get_potion_amount_tier5() {// Other IDs should return 1 potion
+fn test_get_potion_amount_tier5() { // Other IDs should return 1 potion
 }
 
 // ==========================
