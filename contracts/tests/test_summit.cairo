@@ -1,10 +1,10 @@
+use beasts_nft::pack::PackableBeast;
 use snforge_std::{
     ContractClassTrait, DeclareResultTrait, declare, mock_call, start_cheat_block_number_global,
     start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_block_number_global,
     stop_cheat_block_timestamp_global, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, get_block_timestamp};
-use beasts_nft::pack::PackableBeast;
 use summit::models::beast::{Beast, BeastUtilsTrait, LiveBeastStats};
 use summit::systems::summit::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
 
