@@ -1,7 +1,10 @@
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, mock_call, start_cheat_caller_address, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, mock_call, start_cheat_block_number_global,
+    start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_block_number_global,
+    stop_cheat_caller_address,
 };
 use starknet::ContractAddress;
+use summit::models::beast::LiveBeastStats;
 use summit::systems::summit::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
 
 // Real mainnet contract addresses
@@ -555,4 +558,921 @@ fn test_get_all_addresses() {
     assert(summit.get_beast_address() == BEAST_ADDRESS(), 'Wrong beast address');
     assert(summit.get_beast_data_address() == BEAST_DATA_ADDRESS(), 'Wrong beast data address');
     assert(summit.get_reward_address() == REWARD_ADDRESS(), 'Wrong reward address');
+}
+
+// ===========================================
+// LEADERBOARD TESTS
+// ===========================================
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Summit not over',))]
+fn test_add_beast_to_leaderboard_before_terminal() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    // Try to add to leaderboard before summit ends
+    summit.add_beast_to_leaderboard(60989, 1);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Submission period over',))]
+fn test_add_beast_to_leaderboard_after_submission() {
+    let summit = deploy_summit_and_start();
+    let terminal_block = summit.get_terminal_block();
+    let submission_blocks = summit.get_beast_submission_blocks();
+
+    // Set block past submission window
+    start_cheat_block_number_global(terminal_block + submission_blocks + 1);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.add_beast_to_leaderboard(60989, 1);
+
+    stop_cheat_caller_address(summit.contract_address);
+    stop_cheat_block_number_global();
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Invalid position',))]
+fn test_add_beast_to_leaderboard_invalid_position_zero() {
+    let summit = deploy_summit_and_start();
+    let terminal_block = summit.get_terminal_block();
+
+    start_cheat_block_number_global(terminal_block + 1);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.add_beast_to_leaderboard(60989, 0); // Position 0 is invalid
+
+    stop_cheat_caller_address(summit.contract_address);
+    stop_cheat_block_number_global();
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Invalid position',))]
+fn test_add_beast_to_leaderboard_invalid_position_too_high() {
+    let summit = deploy_summit_and_start();
+    let terminal_block = summit.get_terminal_block();
+    let top_spots = summit.get_beast_top_spots();
+
+    start_cheat_block_number_global(terminal_block + 1);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.add_beast_to_leaderboard(60989, top_spots + 1); // Beyond max position
+
+    stop_cheat_caller_address(summit.contract_address);
+    stop_cheat_block_number_global();
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic]
+fn test_add_beast_to_leaderboard_no_blocks_held() {
+    let summit = deploy_summit_and_start();
+    let terminal_block = summit.get_terminal_block();
+
+    start_cheat_block_number_global(terminal_block + 1);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    // Beast 60989 never held the summit, so blocks_held = 0
+    // Should panic with "Beast has no rewards earned"
+    summit.add_beast_to_leaderboard(60989, 1);
+
+    stop_cheat_caller_address(summit.contract_address);
+    stop_cheat_block_number_global();
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Submission not over',))]
+fn test_distribute_beast_tokens_before_submission_ends() {
+    let summit = deploy_summit_and_start();
+    let terminal_block = summit.get_terminal_block();
+
+    // Set block to during submission window
+    start_cheat_block_number_global(terminal_block + 1);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.distribute_beast_tokens(1);
+
+    stop_cheat_caller_address(summit.contract_address);
+    stop_cheat_block_number_global();
+}
+use beasts_nft::pack::PackableBeast;
+
+// ===========================================
+// BEAST MODEL TESTS (crit_chance, spirit_reduction)
+// ===========================================
+
+use summit::models::beast::{Beast, BeastUtilsTrait};
+
+fn create_test_beast(luck: u8, spirit: u8) -> Beast {
+    // Use default values for fixed properties - they don't affect crit_chance or spirit_reduction
+    let fixed = PackableBeast { id: 1, prefix: 1, suffix: 1, level: 10, health: 100, shiny: 0, animated: 0 };
+
+    let live = LiveBeastStats {
+        token_id: 1,
+        current_health: 100,
+        bonus_health: 0,
+        bonus_xp: 0,
+        attack_streak: 0,
+        last_death_timestamp: 0,
+        revival_count: 0,
+        extra_lives: 0,
+        has_claimed_potions: 0,
+        blocks_held: 0,
+        stats: summit::models::beast::Stats { spirit, luck, specials: 0, wisdom: 0, diplomacy: 0 },
+    };
+
+    Beast { fixed, live }
+}
+
+#[test]
+fn test_crit_chance_zero_luck() {
+    let beast = create_test_beast(0, 0);
+    let crit = beast.crit_chance();
+    assert(crit == 0, 'Crit should be 0%');
+}
+
+#[test]
+fn test_crit_chance_luck_1() {
+    let beast = create_test_beast(1, 0);
+    let crit = beast.crit_chance();
+    assert(crit == 10, 'Crit should be 10%');
+}
+
+#[test]
+fn test_crit_chance_luck_5() {
+    let beast = create_test_beast(5, 0);
+    let crit = beast.crit_chance();
+    assert(crit == 20, 'Crit should be 20%');
+}
+
+#[test]
+fn test_crit_chance_luck_50() {
+    let beast = create_test_beast(50, 0);
+    let crit = beast.crit_chance();
+    // 2000 + (50-5)*100 = 2000 + 4500 = 6500 bp = 65%
+    assert(crit == 65, 'Crit should be 65%');
+}
+
+#[test]
+fn test_crit_chance_luck_70() {
+    let beast = create_test_beast(70, 0);
+    let crit = beast.crit_chance();
+    // 2000 + (70-5)*100 = 2000 + 6500 = 8500 bp = 85%
+    assert(crit == 85, 'Crit should be 85%');
+}
+
+#[test]
+fn test_crit_chance_luck_100() {
+    let beast = create_test_beast(100, 0);
+    let crit = beast.crit_chance();
+    // 8500 + (100-70)*50 = 8500 + 1500 = 10000 bp = 100%
+    assert(crit == 100, 'Crit should be 100%');
+}
+
+#[test]
+fn test_spirit_reduction_zero_spirit() {
+    let beast = create_test_beast(0, 0);
+    let reduction = beast.spirit_reduction();
+    assert(reduction == 0, 'Reduction should be 0');
+}
+
+#[test]
+fn test_spirit_reduction_spirit_1() {
+    let beast = create_test_beast(0, 1);
+    let reduction = beast.spirit_reduction();
+    assert(reduction == 7200, 'Reduction should be 7200s');
+}
+
+#[test]
+fn test_spirit_reduction_spirit_5() {
+    let beast = create_test_beast(0, 5);
+    let reduction = beast.spirit_reduction();
+    assert(reduction == 14400, 'Reduction should be 14400s');
+}
+
+#[test]
+fn test_spirit_reduction_spirit_50() {
+    let beast = create_test_beast(0, 50);
+    let reduction = beast.spirit_reduction();
+    // 14400 + (50-5)*720 = 14400 + 32400 = 46800
+    assert(reduction == 46800, 'Reduction should be 46800s');
+}
+
+#[test]
+fn test_spirit_reduction_spirit_100() {
+    let beast = create_test_beast(0, 100);
+    let reduction = beast.spirit_reduction();
+    // 61200 + (100-70)*360 = 61200 + 10800 = 72000
+    assert(reduction == 72000, 'Reduction should be 72000s');
+}
+
+// ===========================================
+// ADDITIONAL ATTACK EDGE CASE TESTS
+// ===========================================
+
+#[test]
+#[fork("mainnet")]
+fn test_attack_with_attack_potions() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_attack_potion_address(), true);
+
+    let attacking_beasts = array![60989].span();
+    summit.attack(1, attacking_beasts, 0, 5, 0, false);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_attack_with_extra_life_potions() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
+
+    let attacking_beasts = array![60989].span();
+    summit.attack(1, attacking_beasts, 0, 0, 10, false);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_attack_max_attack_potions() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_attack_potion_address(), true);
+
+    let attacking_beasts = array![60989].span();
+    // 255 is the max u8 value - should work
+    summit.attack(1, attacking_beasts, 0, 255, 0, false);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Max 2000 extra lives',))]
+fn test_attack_too_many_extra_life_potions() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    let attacking_beasts = array![60989].span();
+    summit.attack(1, attacking_beasts, 0, 0, 4001, false);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// ===========================================
+// ADDITIONAL ADMIN SETTER TESTS
+// ===========================================
+
+#[test]
+#[fork("mainnet")]
+fn test_set_attack_potion_address() {
+    let summit = deploy_summit();
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    let new_address: ContractAddress = 0x999.try_into().unwrap();
+    summit.set_attack_potion_address(new_address);
+
+    assert(summit.get_attack_potion_address() == new_address, 'Address not updated');
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic]
+fn test_set_attack_potion_address_non_owner() {
+    let summit = deploy_summit();
+    let fake_owner: ContractAddress = 0x123.try_into().unwrap();
+    start_cheat_caller_address(summit.contract_address, fake_owner);
+
+    let new_address: ContractAddress = 0x999.try_into().unwrap();
+    summit.set_attack_potion_address(new_address);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_set_revive_potion_address() {
+    let summit = deploy_summit();
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    let new_address: ContractAddress = 0x999.try_into().unwrap();
+    summit.set_revive_potion_address(new_address);
+
+    assert(summit.get_revive_potion_address() == new_address, 'Address not updated');
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic]
+fn test_set_revive_potion_address_non_owner() {
+    let summit = deploy_summit();
+    let fake_owner: ContractAddress = 0x123.try_into().unwrap();
+    start_cheat_caller_address(summit.contract_address, fake_owner);
+
+    let new_address: ContractAddress = 0x999.try_into().unwrap();
+    summit.set_revive_potion_address(new_address);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_set_poison_potion_address() {
+    let summit = deploy_summit();
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    let new_address: ContractAddress = 0x999.try_into().unwrap();
+    summit.set_poison_potion_address(new_address);
+
+    assert(summit.get_poison_potion_address() == new_address, 'Address not updated');
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic]
+fn test_set_poison_potion_address_non_owner() {
+    let summit = deploy_summit();
+    let fake_owner: ContractAddress = 0x123.try_into().unwrap();
+    start_cheat_caller_address(summit.contract_address, fake_owner);
+
+    let new_address: ContractAddress = 0x999.try_into().unwrap();
+    summit.set_poison_potion_address(new_address);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_set_skull_token_address() {
+    let summit = deploy_summit();
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    let new_address: ContractAddress = 0x999.try_into().unwrap();
+    summit.set_skull_token_address(new_address);
+
+    assert(summit.get_skull_token_address() == new_address, 'Address not updated');
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic]
+fn test_set_skull_token_address_non_owner() {
+    let summit = deploy_summit();
+    let fake_owner: ContractAddress = 0x123.try_into().unwrap();
+    start_cheat_caller_address(summit.contract_address, fake_owner);
+
+    let new_address: ContractAddress = 0x999.try_into().unwrap();
+    summit.set_skull_token_address(new_address);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_set_corpse_token_address() {
+    let summit = deploy_summit();
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    let new_address: ContractAddress = 0x999.try_into().unwrap();
+    summit.set_corpse_token_address(new_address);
+
+    assert(summit.get_corpse_token_address() == new_address, 'Address not updated');
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic]
+fn test_set_corpse_token_address_non_owner() {
+    let summit = deploy_summit();
+    let fake_owner: ContractAddress = 0x123.try_into().unwrap();
+    start_cheat_caller_address(summit.contract_address, fake_owner);
+
+    let new_address: ContractAddress = 0x999.try_into().unwrap();
+    summit.set_corpse_token_address(new_address);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// ===========================================
+// ADDITIONAL STAT POINTS TESTS
+// ===========================================
+
+#[test]
+#[fork("mainnet")]
+fn test_apply_stat_points_unlock_wisdom() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    let stats = summit::models::beast::Stats { specials: 0, wisdom: 1, diplomacy: 0, spirit: 0, luck: 0 };
+
+    summit.apply_stat_points(60989, stats);
+
+    let beast = summit.get_beast(60989);
+    assert(beast.live.stats.wisdom == 1, 'Wisdom not unlocked');
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_apply_stat_points_unlock_diplomacy() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 1, spirit: 0, luck: 0 };
+
+    summit.apply_stat_points(60989, stats);
+
+    let beast = summit.get_beast(60989);
+    assert(beast.live.stats.diplomacy == 1, 'Diplomacy not unlocked');
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Specials already unlocked',))]
+fn test_apply_stat_points_unlock_specials_twice() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    let stats = summit::models::beast::Stats { specials: 1, wisdom: 0, diplomacy: 0, spirit: 0, luck: 0 };
+
+    // First unlock
+    summit.apply_stat_points(60989, stats);
+
+    // Try to unlock again - should fail
+    summit.apply_stat_points(60989, stats);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// ===========================================
+// ADDITIONAL FEED TESTS
+// ===========================================
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('beast has max bonus health',))]
+fn test_feed_beyond_max_bonus_health() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_corpse_token_address(), true);
+
+    // Feed to max (2000)
+    summit.feed(60989, 2000);
+
+    // Try to feed more - should fail
+    summit.feed(60989, 1);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_feed_summit_beast() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_corpse_token_address(), true);
+
+    // First make beast #60989 the summit beast
+    let attacking_beasts = array![60989].span();
+    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+
+    // Now feed the summit beast
+    summit.feed(60989, 10);
+
+    let beast = summit.get_beast(60989);
+    assert(beast.live.bonus_health == 10, 'Bonus health not updated');
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// ===========================================
+// ADDITIONAL GETTER TESTS
+// ===========================================
+
+#[test]
+#[fork("mainnet")]
+fn test_get_summit_duration_blocks() {
+    let summit = deploy_summit();
+    let duration = summit.get_summit_duration_blocks();
+    assert(duration == 1000000_u64, 'Wrong summit duration');
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_get_summit_reward_amount() {
+    let summit = deploy_summit();
+    let amount = summit.get_summit_reward_amount();
+    assert(amount == 0, 'Wrong summit reward amount');
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_get_showdown_duration_seconds() {
+    let summit = deploy_summit();
+    let duration = summit.get_showdown_duration_seconds();
+    assert(duration == 100_u64, 'Wrong showdown duration');
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_get_showdown_reward_amount() {
+    let summit = deploy_summit();
+    let amount = summit.get_showdown_reward_amount();
+    assert(amount == 100, 'Wrong showdown reward');
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_get_beast_tokens_amount() {
+    let summit = deploy_summit();
+    let amount = summit.get_beast_tokens_amount();
+    assert(amount == 100, 'Wrong beast tokens amount');
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_get_beast_top_spots() {
+    let summit = deploy_summit();
+    let spots = summit.get_beast_top_spots();
+    assert(spots == 100_u32, 'Wrong beast top spots');
+}
+
+// ===========================================
+// POISON EDGE CASE TESTS
+// ===========================================
+
+#[test]
+#[fork("mainnet")]
+fn test_apply_poison_multiple_times() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_poison_potion_address(), true);
+
+    let attacking_beasts = array![60989].span();
+    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+
+    // Apply poison first time
+    summit.apply_poison(60989, 5);
+
+    // Apply poison again
+    summit.apply_poison(60989, 3);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('No poison to apply',))]
+fn test_apply_poison_zero_count() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    let attacking_beasts = array![60989].span();
+    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+
+    summit.apply_poison(60989, 0);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('can only attack beast on summit',))]
+fn test_apply_poison_not_summit_beast() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    // Try to poison beast that's not on summit
+    summit.apply_poison(60989, 5);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// ===========================================
+// CLAIM BEAST REWARD EDGE CASES
+// ===========================================
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Already claimed potions',))]
+fn test_claim_beast_reward_twice() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_transfer(summit.get_attack_potion_address(), true);
+    mock_erc20_transfer(summit.get_poison_potion_address(), true);
+    mock_erc20_transfer(summit.get_revive_potion_address(), true);
+    mock_erc20_transfer(summit.get_extra_life_potion_address(), true);
+    mock_erc20_mint(summit.get_skull_token_address(), true);
+
+    let beast_token_ids = array![60989].span();
+    summit.claim_beast_reward(beast_token_ids);
+
+    // Try to claim again
+    summit.claim_beast_reward(beast_token_ids);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// ===========================================
+// EXTRA LIFE EDGE CASES
+// ===========================================
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Max 2000 extra lives',))]
+fn test_add_extra_life_too_many() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    let attacking_beasts = array![60989].span();
+    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+
+    // Try to add too many extra lives
+    summit.add_extra_life(60989, 4001);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// ===========================================
+// ADDITIONAL STAT POINTS EDGE CASES
+// ===========================================
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('beast has max attributes',))]
+fn test_apply_stat_points_exceed_max_spirit() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    // Apply spirit to max (100)
+    let stats1 = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit: 100, luck: 0 };
+    summit.apply_stat_points(60989, stats1);
+
+    // Try to add more - should fail
+    let stats2 = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit: 1, luck: 0 };
+    summit.apply_stat_points(60989, stats2);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('beast has max attributes',))]
+fn test_apply_stat_points_exceed_max_luck() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    // Apply luck to max (100)
+    let stats1 = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit: 0, luck: 100 };
+    summit.apply_stat_points(60989, stats1);
+
+    // Try to add more - should fail
+    let stats2 = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit: 0, luck: 1 };
+    summit.apply_stat_points(60989, stats2);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Wisdom already unlocked',))]
+fn test_apply_stat_points_unlock_wisdom_twice() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    let stats = summit::models::beast::Stats { specials: 0, wisdom: 1, diplomacy: 0, spirit: 0, luck: 0 };
+
+    // First unlock
+    summit.apply_stat_points(60989, stats);
+
+    // Try to unlock again
+    summit.apply_stat_points(60989, stats);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Diplomacy already unlocked',))]
+fn test_apply_stat_points_unlock_diplomacy_twice() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 1, spirit: 0, luck: 0 };
+
+    // First unlock
+    summit.apply_stat_points(60989, stats);
+
+    // Try to unlock again
+    summit.apply_stat_points(60989, stats);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// ==========================
+// FUZZING TESTS
+// ==========================
+
+#[test]
+#[fork("mainnet")]
+#[fuzzer(runs: 10)]
+fn fuzz_test_attack_with_random_potions(attack_potions: u8, extra_life_potions: u16) {
+    let summit = deploy_summit_and_start();
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    mock_erc20_burn_from(summit.get_attack_potion_address(), true);
+    mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
+
+    let attacking_beasts = array![60989].span();
+
+    // Only attack if within valid bounds
+    if attack_potions <= 255 && extra_life_potions <= 4000 {
+        summit.attack(1, attacking_beasts, 0, attack_potions, extra_life_potions, false);
+    }
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[fuzzer(runs: 10)]
+fn fuzz_test_feed_amounts(bonus_health: u16) {
+    let summit = deploy_summit_and_start();
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    mock_erc20_burn_from(summit.get_corpse_token_address(), true);
+
+    // Only feed if within valid bounds
+    if bonus_health <= 2000 {
+        summit.feed(60989, bonus_health);
+    }
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[fuzzer(runs: 10)]
+fn fuzz_test_apply_stat_points(spirit: u8, luck: u8) {
+    let summit = deploy_summit_and_start();
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    // Only apply if within valid bounds
+    if spirit <= 100 && luck <= 100 {
+        let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit, luck };
+        summit.apply_stat_points(60989, stats);
+    }
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// ==========================
+// DIRECT STORAGE ACCESS TESTS
+// ==========================
+
+#[test]
+#[fork("mainnet")]
+fn test_attack_with_vrf() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_attack_potion_address(), true);
+
+    let attacking_beasts = array![60989].span();
+
+    // Attack with VRF enabled
+    summit.attack(1, attacking_beasts, 0, 0, 0, true);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_multiple_beasts_attack_summit() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_attack_potion_address(), true);
+
+    // Attack with multiple beasts
+    let attacking_beasts = array![60989, 62345].span();
+    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_get_event_address() {
+    let summit = deploy_summit();
+    let event_address = summit.get_event_address();
+    assert(event_address == EVENT_ADDRESS(), 'Event address mismatch');
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_attack_with_max_attack_potions() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_attack_potion_address(), true);
+
+    let attacking_beasts = array![60989].span();
+
+    // Attack with max attack potions (255)
+    summit.attack(1, attacking_beasts, 0, 255, 0, false);
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_feed_max_bonus_health() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    mock_erc20_burn_from(summit.get_corpse_token_address(), true);
+
+    // Feed to max bonus health (2000)
+    summit.feed(60989, 2000);
+
+    let beast = summit.get_beast(60989);
+    assert(beast.live.bonus_health == 2000, 'Max bonus health not set');
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// ==========================
+// ADDITIONAL ADMIN TESTS
+// ==========================
+
+#[test]
+#[fork("mainnet")]
+fn test_set_extra_life_potion_address() {
+    let summit = deploy_summit();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    let new_address: ContractAddress = 0xFED.try_into().unwrap();
+    summit.set_extra_life_potion_address(new_address);
+
+    assert(summit.get_extra_life_potion_address() == new_address, 'Extra life addr not set');
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Caller is not the owner',))]
+fn test_set_extra_life_potion_address_non_owner() {
+    let summit = deploy_summit();
+
+    let new_address: ContractAddress = 0xFED.try_into().unwrap();
+    summit.set_extra_life_potion_address(new_address);
 }
