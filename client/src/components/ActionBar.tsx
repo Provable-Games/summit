@@ -143,7 +143,7 @@ function ActionBar() {
     } else if (attackStrategy === 'guaranteed') {
       let beastIds = collectionWithCombat.slice(0, 75)
 
-      let totalEstimatedDamage = beastIds.reduce((acc, beast) => acc + calculateBattleResult(beast, summit, 0).estimatedDamage, 0)
+      let totalEstimatedDamage = beastIds.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
       if (totalEstimatedDamage > ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health) {
         executeGameAction({
           type: 'attack',
