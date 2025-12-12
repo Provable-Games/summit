@@ -15,7 +15,7 @@ import lifePotionIcon from '../assets/images/life-potion.png';
 import poisonPotionIcon from '../assets/images/poison-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import { gameColors } from '../utils/themes';
-import { calculateBattleResult, isBeastLocked } from '../utils/beasts';
+import { calculateBattleResult, getBeastRevivalTime, getBeastCurrentHealth, isBeastLocked } from '../utils/beasts';
 import AutopilotConfigModal from './dialogs/AutopilotConfigModal';
 import { useAutopilotStore } from '@/stores/autopilotStore';
 
@@ -34,6 +34,7 @@ function ActionBar() {
   const [potion, setPotion] = useState(null)
   const [attackDropdownAnchor, setAttackDropdownAnchor] = useState<null | HTMLElement>(null);
   const [autopilotConfigOpen, setAutopilotConfigOpen] = useState(false);
+  const [lastBeastAttacked, setLastBeastAttacked] = useState(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>, potion: any) => {
     setAnchorEl(event.currentTarget);
@@ -60,12 +61,15 @@ function ActionBar() {
 
   const collectionWithCombat = useMemo<Beast[]>(() => {
     if (summit && collection.length > 0) {
-      let filtered = collection.filter((beast: Beast) => beast.current_health > 0 && !isBeastLocked(beast))
-        .map((beast: Beast) => ({
-          ...beast,
-          combat: calculateBattleResult(beast, summit, 0)
-        }));
+      let filtered = collection.map((beast: Beast) => {
+        let newBeast = { ...beast }
+        newBeast.revival_time = getBeastRevivalTime(newBeast);
+        newBeast.current_health = getBeastCurrentHealth(newBeast)
+        newBeast.combat = calculateBattleResult(newBeast, summit, 0)
+        return newBeast
+      }).filter((beast: Beast) => beast.current_health > 0 && !isBeastLocked(beast));
 
+      console.log(filtered.sort((a: Beast, b: Beast) => b.combat?.score - a.combat?.score))
       return filtered.sort((a: Beast, b: Beast) => b.combat?.score - a.combat?.score)
     }
 
@@ -134,17 +138,20 @@ function ActionBar() {
 
   useEffect(() => {
     if (!autopilotEnabled || attackInProgress || !collectionWithCombat) return;
+    if (lastBeastAttacked === summit?.beast.token_id) return;
 
     let myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
     if (myBeast) return;
 
     if (attackStrategy === 'all_out') {
+      setLastBeastAttacked(summit?.beast.token_id);
       handleAttackUntilCapture();
     } else if (attackStrategy === 'guaranteed') {
       let beastIds = collectionWithCombat.slice(0, 75)
 
       let totalEstimatedDamage = beastIds.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
       if (totalEstimatedDamage > ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health) {
+        setLastBeastAttacked(summit?.beast.token_id);
         executeGameAction({
           type: 'attack',
           beastIds: beastIds.map((beast: Beast) => beast.token_id),
@@ -154,7 +161,7 @@ function ActionBar() {
         });
       }
     }
-  }, [collectionWithCombat, autopilotEnabled]);
+  }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
 
   const hasEnoughRevivePotions = (tokenBalances["REVIVE"] || 0) >= revivalPotionsRequired;
   const enableAttack = (attackMode === 'capture' && !attackInProgress) || ((!isSavage || attackMode !== 'safe') && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions);

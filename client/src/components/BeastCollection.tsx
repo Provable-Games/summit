@@ -1,6 +1,7 @@
+import { useStatistics } from '@/contexts/Statistics';
 import { BeastTypeFilter, SortMethod, useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
-import { isBeastInTop5000, isBeastLocked } from '@/utils/beasts';
+import { getBeastCurrentHealth, getBeastRevivalTime, isBeastInTop5000, isBeastLocked } from '@/utils/beasts';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
@@ -16,7 +17,6 @@ import { calculateBattleResult } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 import BeastCard from './BeastCard';
 import BeastProfile from './BeastProfile';
-import { useStatistics } from '@/contexts/Statistics';
 
 function BeastCollection() {
   const {
@@ -44,15 +44,17 @@ function BeastCollection() {
     );
   };
 
-
   // Calculate combat results - lightweight operation (just math)
   // useMemo prevents recalculation when filters/sorting change
   const collectionWithCombat = useMemo(() => {
     if (summit && collection.length > 0) {
-      let filtered = collection.map((beast: Beast) => ({
-        ...beast,
-        combat: calculateBattleResult(beast, summit, appliedPotions?.attack || 0)
-      }));
+      let filtered = collection.map((beast: Beast) => {
+        let newBeast = { ...beast }
+        newBeast.revival_time = getBeastRevivalTime(newBeast);
+        newBeast.current_health = getBeastCurrentHealth(newBeast)
+        newBeast.combat = calculateBattleResult(newBeast, summit, appliedPotions?.attack || 0)
+        return newBeast
+      });
 
       // Apply type filter
       if (typeFilter === 'strong') {

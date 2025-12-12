@@ -18,6 +18,7 @@ import {
   saveBeastCollectionToCache,
 } from "@/utils/beastCache";
 import { Beast } from "@/types/game";
+import { getBeastCurrentHealth, getBeastRevivalTime } from "@/utils/beasts";
 
 export interface ControllerContext {
   playerName: string | undefined;
@@ -133,7 +134,12 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     // Load from cache immediately
     const cachedCollection = loadBeastCollectionFromCache(account.address);
     if (cachedCollection && cachedCollection.length > 0) {
-      setCollection(cachedCollection);
+      setCollection(cachedCollection.map((beast: Beast) => {
+        let newBeast = { ...beast }
+        newBeast.revival_time = getBeastRevivalTime(newBeast);
+        newBeast.current_health = getBeastCurrentHealth(newBeast)
+        return newBeast
+      }));
       setLoadingCollection(false);
 
       if (cachedCollection.length > 0 && cachedCollection.every((beast: Beast) => !beast.has_claimed_potions)) {
