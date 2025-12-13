@@ -88,8 +88,8 @@ pub mod summit_systems {
     use starknet::{ClassHash, ContractAddress, get_block_number, get_block_timestamp, get_caller_address};
     use summit::constants::{
         BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_ATTRIBUTES, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS,
-        BEAST_MAX_EXTRA_LIVES, DAY_SECONDS, DIPLOMACY_COST, EIGHT_BITS_MAX, MAX_REVIVAL_COUNT, MINIMUM_DAMAGE,
-        SPECIALS_COST, TOKEN_DECIMALS, WISDOM_COST, errors,
+        BEAST_MAX_EXTRA_LIVES, DAY_SECONDS, DIPLOMACY_COST, MAX_REVIVAL_COUNT, MINIMUM_DAMAGE, SPECIALS_COST,
+        TOKEN_DECIMALS, WISDOM_COST, errors,
     };
     use summit::erc20::interface::{SummitERC20Dispatcher, SummitERC20DispatcherTrait};
     use summit::interfaces::{
@@ -755,12 +755,13 @@ pub mod summit_systems {
             assert(summit_beast_token_id != 0, 'Summit not started');
             Self::_summit_playable(@self);
 
-            if defending_beast_token_id != 0 {
+            let safe_attack = defending_beast_token_id != 0;
+
+            if safe_attack {
                 assert(defending_beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
             }
 
             // assert consumable amounts
-            assert(attack_potions <= EIGHT_BITS_MAX, errors::MAX_ATTACK_POTION);
             assert(extra_life_potions <= BEAST_MAX_EXTRA_LIVES, errors::BEAST_MAX_EXTRA_LIVES);
 
             let beast_dispatcher = self.beast_dispatcher.read();
@@ -785,6 +786,7 @@ pub mod summit_systems {
                 0
             };
 
+            let mut beast_attacked = false;
             let mut i = 0;
             while (i < attacking_beast_token_ids.len()) {
                 let attacking_beast_token_id = *attacking_beast_token_ids.at(i);
@@ -796,10 +798,36 @@ pub mod summit_systems {
                 // get stats for the beast that is attacking
                 let mut attacking_beast = Self::_get_beast(@self, attacking_beast_token_id);
 
-                Self::_assert_beast_can_attack(@self, attacking_beast);
-                // assert the attacking beast is alive
-                remaining_revival_potions =
-                    Self::_use_revival_potions(@self, ref attacking_beast, ref remaining_revival_potions);
+                if Self::_is_killed_recently_in_death_mountain(@self, attacking_beast) {
+                    if safe_attack {
+                        assert!(false, "Beast {} has been killed in the last day", attacking_beast_token_id);
+                    } else {
+                        continue;
+                    }
+                }
+
+                // check if it needs revival potions
+                let potions_required = Self::_revival_potions_required(@self, attacking_beast);
+                if potions_required > 0 {
+                    if remaining_revival_potions < potions_required {
+                        if safe_attack {
+                            assert!(
+                                false,
+                                "Beast {} requires {} revival potions",
+                                attacking_beast_token_id,
+                                potions_required,
+                            );
+                        } else {
+                            continue;
+                        }
+                    }
+
+                    if attacking_beast.live.revival_count < MAX_REVIVAL_COUNT {
+                        attacking_beast.live.revival_count += 1;
+                    }
+
+                    remaining_revival_potions -= potions_required;
+                }
 
                 // reset health to starting health plus any bonus health they have accrued
                 // @dev beasts attack till death so we don't need any additional logic
@@ -876,6 +904,8 @@ pub mod summit_systems {
                 if attacking_beast.live.attack_streak < 10 {
                     attacking_beast.live.attack_streak += 1;
                 }
+
+                beast_attacked = true;
 
                 // emit battle event
                 event_dispatcher
@@ -956,11 +986,15 @@ pub mod summit_systems {
                 i += 1;
             }
 
+            assert(beast_attacked, 'No beast attacked');
+
             // update the live stats of the defending beast after all attacks
             self._save_beast(defending_beast, true);
 
             // Burn consumables
-            assert(remaining_revival_potions == 0, 'Unused revival potions');
+            if safe_attack {
+                assert(remaining_revival_potions == 0, 'Unused revival potions');
+            }
 
             if revival_potions > 0 {
                 self
@@ -1021,39 +1055,31 @@ pub mod summit_systems {
             (combat_result.total_damage, combat_result.critical_hit_bonus > 0)
         }
 
-        fn _assert_beast_can_attack(self: @ContractState, beast: Beast) {
+        fn _is_killed_recently_in_death_mountain(self: @ContractState, beast: Beast) -> bool {
             let last_killed_timestamp = Self::_get_last_killed_timestamp(self, beast);
-            assert!(
-                last_killed_timestamp < get_block_timestamp() - DAY_SECONDS, "Beast has been killed in the last day",
-            );
+            last_killed_timestamp > get_block_timestamp() - DAY_SECONDS
         }
 
-        /// @title _use_revival_potions
         /// @notice this function is used to apply revival potions if needed
         /// @param live_beast_stats the stats of the beast to check
-        fn _use_revival_potions(self: @ContractState, ref beast: Beast, ref remaining_potions: u16) -> u16 {
+        fn _revival_potions_required(self: @ContractState, beast: Beast) -> u16 {
             let last_death_timestamp = beast.live.last_death_timestamp;
             let current_time = get_block_timestamp();
             let time_since_death = current_time - last_death_timestamp;
 
             let mut revival_time = BASE_REVIVAL_TIME_SECONDS;
+            let mut potions_required = 0;
 
             if time_since_death < revival_time {
                 // spirit reduction
                 revival_time -= beast.spirit_reduction();
 
                 if time_since_death < revival_time {
-                    Self::_assert_beast_can_be_revived(beast, remaining_potions);
-
-                    remaining_potions -= beast.live.revival_count.into() + 1;
-
-                    if beast.live.revival_count < MAX_REVIVAL_COUNT {
-                        beast.live.revival_count += 1;
-                    }
+                    potions_required = beast.live.revival_count.into() + 1;
                 }
             }
 
-            remaining_potions
+            potions_required
         }
 
         fn _get_last_killed_timestamp(self: @ContractState, beast: Beast) -> u64 {
@@ -1075,11 +1101,6 @@ pub mod summit_systems {
             let max_xp = (beast.fixed.level + BEAST_MAX_BONUS_LVLS) * (beast.fixed.level + BEAST_MAX_BONUS_LVLS);
 
             beast.live.bonus_xp < max_xp - base_xp
-        }
-
-        fn _assert_beast_can_be_revived(beast: Beast, potion_count: u16) {
-            assert(beast.live.current_health == 0, errors::BEAST_ALIVE);
-            assert(potion_count >= beast.live.revival_count.into() + 1, errors::NOT_ENOUGH_CONSUMABLES);
         }
 
         /// @notice: gets level from xp
@@ -1253,7 +1274,8 @@ pub mod summit_systems {
         ) {
             // self.reward_dispatcher.read().transfer(beast_owner, reward_amount);
 
-            self.summit_events_dispatcher.read().emit_reward_event(beast_token_id, beast_owner, reward_amount);
+            let reward_amount_u32: u32 = (reward_amount / 100_000_000_000_000).try_into().unwrap();
+            self.summit_events_dispatcher.read().emit_reward_event(beast_token_id, beast_owner, reward_amount_u32);
         }
     }
 
