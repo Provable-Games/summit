@@ -843,6 +843,22 @@ pub mod summit_systems {
                 let mut critical_counter_attack_count = 0;
                 let mut critical_counter_attack_damage = 0;
 
+                // precompute combat specs and crit chances before battle loop
+                let attacker_has_specials = attacking_beast.live.stats.specials == 1;
+                let defender_has_specials = defending_beast.live.stats.specials == 1;
+
+                // combat specs for when attacking_beast attacks
+                let attacker_spec_as_attacker = attacking_beast.get_combat_spec(attacker_has_specials);
+                let defender_spec_when_attacked = defending_beast.get_combat_spec(attacker_has_specials);
+
+                // combat specs for when defending_beast counter-attacks
+                let defender_spec_as_attacker = defending_beast.get_combat_spec(defender_has_specials);
+                let attacker_spec_when_attacked = attacking_beast.get_combat_spec(defender_has_specials);
+
+                // precompute critical hit chances
+                let attacker_crit_chance = attacking_beast.crit_chance();
+                let defender_crit_chance = defending_beast.crit_chance();
+
                 // loop until the attacking beast is dead or the summit beast is dead
                 loop {
                     // if either beast is dead, break
@@ -859,7 +875,13 @@ pub mod summit_systems {
 
                     let (damage, attacker_crit_hit) = self
                         ._attack(
-                            attacking_beast, ref defending_beast, remaining_attack_potions, attacker_crit_hit_rnd, vrf,
+                            attacker_spec_as_attacker,
+                            defender_spec_when_attacked,
+                            ref defending_beast,
+                            remaining_attack_potions,
+                            attacker_crit_hit_rnd,
+                            attacker_crit_chance,
+                            vrf,
                         );
 
                     if attacker_crit_hit {
@@ -874,7 +896,15 @@ pub mod summit_systems {
 
                     if defending_beast.live.current_health != 0 {
                         let (damage, defender_crit_hit) = self
-                            ._attack(defending_beast, ref attacking_beast, diplomacy_bonus, defender_crit_hit_rnd, vrf);
+                            ._attack(
+                                defender_spec_as_attacker,
+                                attacker_spec_when_attacked,
+                                ref attacking_beast,
+                                diplomacy_bonus,
+                                defender_crit_hit_rnd,
+                                defender_crit_chance,
+                                vrf,
+                            );
 
                         if defender_crit_hit {
                             critical_counter_attack_count += 1;
@@ -1010,28 +1040,31 @@ pub mod summit_systems {
             }
         }
 
-        /// @title attack
         /// @notice this function is used to process a beast attacking another beast
-        /// @param attacker the beast that is attacking
+        /// @param attacker_combat_spec precomputed combat spec for the attacker
+        /// @param defender_combat_spec precomputed combat spec for the defender
         /// @param defender a ref to the beast that is defending
+        /// @param attack_potions number of attack potions to use
+        /// @param critical_hit_rnd random number for critical hit calculation
+        /// @param critical_hit_chance precomputed critical hit chance for the attacker
+        /// @param vrf whether VRF is being used
         /// @return a tuple containing the combat result and a bool indicating if the defender died
         /// @dev this function only mutates the defender
         fn _attack(
             ref self: ContractState,
-            attacker: Beast,
+            attacker_combat_spec: CombatSpec,
+            defender_combat_spec: CombatSpec,
             ref defender: Beast,
             attack_potions: u8,
             critical_hit_rnd: u8,
+            critical_hit_chance: u8,
             vrf: bool,
         ) -> (u16, bool) {
-            let attacker_combat_spec = attacker.get_combat_spec(attacker.live.stats.specials == 1);
-            let defender_combat_spec = defender.get_combat_spec(attacker.live.stats.specials == 1);
             let minimum_damage = MINIMUM_DAMAGE;
 
             let attacker_strength = attack_potions;
             let defender_strength = 0;
 
-            let critical_hit_chance = attacker.crit_chance();
             if (critical_hit_chance > 0) {
                 assert(vrf, 'missing VRF seed');
             }
