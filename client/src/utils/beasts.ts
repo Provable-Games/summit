@@ -3,6 +3,7 @@ import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SU
 import { SoundName } from '@/contexts/sound';
 import * as starknet from "@scure/starknet";
 import { Top5000Cutoff } from '@/contexts/Statistics';
+import { addAddressPadding } from 'starknet';
 
 export const fetchBeastTypeImage = (type: string): string => {
   try {
@@ -280,9 +281,10 @@ export function applyPoisonDamage(
   };
 }
 
-export const getSpecialsHash = (prefix: number, suffix: number): bigint => {
+export const getSpecialsHash = (prefix: number, suffix: number): string => {
   const params = [BigInt(prefix), BigInt(suffix)];
-  return starknet.poseidonHashMany(params);
+  let hash = starknet.poseidonHashMany(params);
+  return addAddressPadding(hash.toString(16));
 }
 
 export const isBeastInTop5000 = (beast: Beast, top5000Cutoff: Top5000Cutoff): boolean => {

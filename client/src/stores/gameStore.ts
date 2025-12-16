@@ -14,6 +14,7 @@ interface GameState {
   poisonEvent: PoisonEvent | null;
   killedByAdventurers: number[];
   collection: Beast[];
+  collectionSyncing: boolean;
   loadingCollection: boolean;
   attackInProgress: boolean;
   applyingPotions: boolean;
@@ -43,6 +44,7 @@ interface GameState {
   setCollection: (collection: Beast[] | ((prev: Beast[]) => Beast[])) => void;
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => void;
   setLoadingCollection: (loadingCollection: boolean) => void;
+  setCollectionSyncing: (collectionSyncing: boolean) => void;
   setAttackInProgress: (attackInProgress: boolean) => void;
   setApplyingPotions: (applyingPotions: boolean) => void;
   setSelectedBeasts: (selectedBeasts: Beast[] | ((prev: Beast[]) => Beast[])) => void;
@@ -74,6 +76,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   collection: [],
   adventurerCollection: [],
   loadingCollection: false,
+  collectionSyncing: false,
   attackInProgress: false,
   applyingPotions: false,
   selectedBeasts: [],
@@ -107,6 +110,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       collection: [],
       adventurerCollection: [],
       loadingCollection: false,
+      collectionSyncing: false,
       attackInProgress: false,
       applyingPotions: false,
       selectedBeasts: [],
@@ -139,6 +143,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setCollection: (collection: Beast[] | ((prev: Beast[]) => Beast[])) =>
     set(state => ({ collection: typeof collection === 'function' ? collection(state.collection) : collection })),
   setLoadingCollection: (loadingCollection: boolean) => set({ loadingCollection }),
+  setCollectionSyncing: (collectionSyncing: boolean) => set({ collectionSyncing }),
   setAttackInProgress: (attackInProgress: boolean) => set({ attackInProgress }),
   setApplyingPotions: (applyingPotions: boolean) => set({ applyingPotions }),
   setSelectedBeasts: (selectedBeasts: Beast[] | ((prev: Beast[]) => Beast[])) =>

@@ -26,7 +26,7 @@ function ActionBar() {
   const { selectedBeasts, summit,
     attackInProgress, appliedPotions, setAppliedPotions,
     applyingPotions, setApplyingPotions, appliedPoisonCount, setAppliedPoisonCount,
-    collection, setSelectedBeasts, attackMode, setAttackMode,
+    collection, collectionSyncing, setSelectedBeasts, attackMode, setAttackMode,
     autopilotEnabled, setAutopilotEnabled } = useGameStore();
   const { attackStrategy } = useAutopilotStore();
 
@@ -69,7 +69,6 @@ function ActionBar() {
         return newBeast
       }).filter((beast: Beast) => beast.current_health > 0 && !isBeastLocked(beast));
 
-      console.log(filtered.sort((a: Beast, b: Beast) => b.combat?.score - a.combat?.score))
       return filtered.sort((a: Beast, b: Beast) => b.combat?.score - a.combat?.score)
     }
 
@@ -164,7 +163,7 @@ function ActionBar() {
   }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
 
   const hasEnoughRevivePotions = (tokenBalances["REVIVE"] || 0) >= revivalPotionsRequired;
-  const enableAttack = (attackMode === 'capture' && !attackInProgress) || ((!isSavage || attackMode !== 'safe') && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions);
+  const enableAttack = ((attackMode === 'capture' || attackMode === 'autopilot') && !attackInProgress) || ((!isSavage || attackMode !== 'safe') && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions);
   const highlightAttackButton = attackMode === 'autopilot' ? true : enableAttack;
 
   const enableExtraLifePotion = tokenBalances["EXTRA LIFE"] > 0;
@@ -179,6 +178,11 @@ function ActionBar() {
   }
 
   return <Box sx={styles.container}>
+    {(collection.length > 0 && collectionSyncing) && <Box sx={styles.collectionSyncing}>
+      <Typography sx={styles.collectionSyncingText}>Syncing collection</Typography>
+      <div className='dotLoader accentGreen' />
+    </Box>}
+
     {/* Attack Button + Potions */}
     <Box sx={styles.buttonGroup}>
       {/* Section 1: Attack Button */}
@@ -985,6 +989,19 @@ const styles = {
     zIndex: 100,
     overflowX: 'auto',
     overflowY: 'hidden',
+    position: 'relative',
+  },
+  collectionSyncing: {
+    position: 'absolute',
+    bottom: '10px',
+    right: '10px',
+    display: 'flex',
+    alignItems: 'baseline',
+  },
+  collectionSyncingText: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: gameColors.accentGreen,
   },
   buttonGroup: {
     display: 'flex',

@@ -354,24 +354,61 @@ function Summit() {
               </Box>
             </Box>
           </Tooltip>
-          {summit.diplomacy && summit.diplomacy.bonus > 0 && <Tooltip
-            title={
-              <Box sx={styles.tooltipContent}>
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                  <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa' }} />
-                  <Typography sx={[styles.statLabel, { fontSize: '12px' }]}>DIPLOMACY BOOST</Typography>
+          {summit.diplomacy && summit.diplomacy.bonus > 0 && (
+            <Tooltip
+              title={
+                <Box sx={styles.tooltipContent}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      minWidth: '180px',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+                      <Typography sx={[styles.statLabel, { fontSize: '12px' }]}>
+                        DIPLOMACY BOOST
+                      </Typography>
+                      <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa' }} />
+                    </Box>
+
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <Typography sx={[styles.statLabel, { fontSize: '11px', opacity: 0.85 }]}>
+                        Beasts
+                      </Typography>
+                      <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
+                        {summit.diplomacy.beast_token_ids.length}
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: '2px' }}>
+                      <Typography sx={[styles.statLabel, { fontSize: '11px', opacity: 0.85 }]}>
+                        Total power
+                      </Typography>
+                      <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
+                        {summit.diplomacy.total_power}
+                      </Typography>
+                    </Box>
+
+                    <Typography sx={[styles.statLabel, { fontSize: '10px', opacity: 0.7 }]}>
+                      ⓘ 250 power = 1 STR
+                    </Typography>
+                  </Box>
                 </Box>
+              }
+              placement="bottom"
+            >
+              <Box sx={styles.statBox}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                  <Typography sx={styles.statLabel}>STR</Typography>
+                </Box>
+                <Typography sx={styles.levelValue}>{summit.diplomacy.bonus}</Typography>
               </Box>
-            }
-            placement="bottom"
-          >
-            <Box sx={styles.statBox}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <Typography sx={styles.statLabel}>STR</Typography>
-              </Box>
-              <Typography sx={styles.levelValue}>{summit.diplomacy.bonus}</Typography>
-            </Box>
-          </Tooltip>}
+            </Tooltip>
+          )}
         </Box>
       </Box>
 

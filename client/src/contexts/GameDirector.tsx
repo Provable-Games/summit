@@ -11,7 +11,8 @@ import {
   useContext,
   useEffect,
   useReducer,
-  useState
+  useState,
+  useRef,
 } from "react";
 import { useController } from "./controller";
 import { useSound } from "@/contexts/sound";
@@ -44,7 +45,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   const [nextSummit, setNextSummit] = useState<Summit | null>(null);
   const [diplomacyEvent, setDiplomacyEvent] = useState<Diplomacy>();
-  const [summitSubscription, setSummitSubscription] = useState<any>(null);
+  const summitSubscriptionRef = useRef<any | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryCountRef = useRef(0);
   const [actionFailed, setActionFailed] = useReducer((x) => x + 1, 0);
   const [eventQueue, setEventQueue] = useState<any[]>([]);
   const [pauseUpdates, setPauseUpdates] = useState(false);
@@ -116,7 +119,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     if (diplomacyEvent && diplomacyEvent.specials_hash === summit?.beast.specials_hash) {
-      console.log('setsummit at diplomacyEvent');
       setSummit(prevSummit => ({
         ...prevSummit,
         diplomacy: {
@@ -138,69 +140,97 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   };
 
   const subscribeSummitUpdates = async () => {
-    if (summitSubscription) {
+    if (summitSubscriptionRef.current) {
       try {
-        summitSubscription.cancel();
+        summitSubscriptionRef.current.cancel();
       } catch (error) { }
     }
 
-    const [_, sub] = await sdk.subscribeEventQuery({
-      query: gameEventsQuery(),
-      callback: ({ data, error }: { data?: any[]; error?: Error }) => {
-        if (data && data.length > 0) {
-          let liveBeastStatsEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "LiveBeastStatsEvent")))
-            .map((entity: any) => getEntityModel(entity, "LiveBeastStatsEvent"))
-
-          let summitEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "SummitEvent")))
-            .map((entity: any) => getEntityModel(entity, "SummitEvent"))
-
-          let battleEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "BattleEvent")))
-            .map((entity: any) => getEntityModel(entity, "BattleEvent"))
-
-          let poison_event = data.filter((entity: any) => Boolean(getEntityModel(entity, "PoisonEvent")))
-            .map((entity: any) => getEntityModel(entity, "PoisonEvent"))
-
-          let diplomacyEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "DiplomacyEvent")))
-            .map((entity: any) => getEntityModel(entity, "DiplomacyEvent"))
-
-          if (diplomacyEvent.length > 0) {
-            setDiplomacyEvent(diplomacyEvent[0]);
+    try {
+      const [_, sub] = await sdk.subscribeEventQuery({
+        query: gameEventsQuery(),
+        callback: ({ data, error }: { data?: any[]; error?: Error }) => {
+          if (error) {
+            console.error("Summit subscription error:", error);
+            retryCountRef.current += 1;
+            const delay = Math.min(30000, 2000 * retryCountRef.current);
+            if (reconnectTimeoutRef.current) {
+              clearTimeout(reconnectTimeoutRef.current);
+            }
+            reconnectTimeoutRef.current = setTimeout(() => {
+              subscribeSummitUpdates();
+            }, delay);
+            return;
           }
 
-          if (liveBeastStatsEvent.length > 0) {
-            setEventQueue((prev) => [...prev, ...liveBeastStatsEvent.map(liveStatEvent => liveStatEvent.live_stats)]);
+          if (data && data.length > 0) {
+            // Successful event received; reset retry counter
+            retryCountRef.current = 0;
+
+            let liveBeastStatsEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "LiveBeastStatsEvent")))
+              .map((entity: any) => getEntityModel(entity, "LiveBeastStatsEvent"))
+
+            let summitEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "SummitEvent")))
+              .map((entity: any) => getEntityModel(entity, "SummitEvent"))
+
+            let battleEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "BattleEvent")))
+              .map((entity: any) => getEntityModel(entity, "BattleEvent"))
+
+            let poison_event = data.filter((entity: any) => Boolean(getEntityModel(entity, "PoisonEvent")))
+              .map((entity: any) => getEntityModel(entity, "PoisonEvent"))
+
+            let diplomacyEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "DiplomacyEvent")))
+              .map((entity: any) => getEntityModel(entity, "DiplomacyEvent"))
+
+            if (diplomacyEvent.length > 0) {
+              setDiplomacyEvent(diplomacyEvent[0]);
+            }
+
+            if (liveBeastStatsEvent.length > 0) {
+              setEventQueue((prev) => [...prev, ...liveBeastStatsEvent.map(liveStatEvent => liveStatEvent.live_stats)]);
+            }
+
+            if (poison_event.length > 0) {
+              setPoisonEvent(poison_event[0]);
+            }
+
+            if (battleEvent.length > 0) {
+              setSpectatorBattleEvents(prev => [...prev, ...battleEvent]);
+            }
+
+            if (summitEvent.length > 0) {
+              let summit = summitEvent[0];
+              let newSummitBeast = { ...summit.beast, ...summit.live_stats };
+              newSummitBeast.current_level = getBeastCurrentLevel(newSummitBeast.level, newSummitBeast.bonus_xp);
+
+              setNextSummit({
+                beast: {
+                  ...newSummitBeast,
+                  ...getBeastDetails(newSummitBeast.id, newSummitBeast.prefix, newSummitBeast.suffix, newSummitBeast.current_level),
+                  revival_time: 0,
+                },
+                taken_at: summit.taken_at,
+                owner: summit.owner,
+                poison_count: 0,
+                poison_timestamp: 0,
+              })
+            }
           }
+        },
+      });
 
-          if (poison_event.length > 0) {
-            setPoisonEvent(poison_event[0]);
-          }
-
-          if (battleEvent.length > 0) {
-            setSpectatorBattleEvents(prev => [...prev, ...battleEvent]);
-          }
-
-          if (summitEvent.length > 0) {
-            let summit = summitEvent[0];
-            let newSummitBeast = { ...summit.beast, ...summit.live_stats };
-            newSummitBeast.current_level = getBeastCurrentLevel(newSummitBeast.level, newSummitBeast.bonus_xp);
-
-            setNextSummit({
-              beast: {
-                ...newSummitBeast,
-                ...getBeastDetails(newSummitBeast.id, newSummitBeast.prefix, newSummitBeast.suffix, newSummitBeast.current_level),
-                revival_time: 0,
-              },
-              taken_at: summit.taken_at,
-              owner: summit.owner,
-              poison_count: 0,
-              poison_timestamp: 0,
-            })
-          }
-        }
-      },
-    });
-
-    setSummitSubscription(sub);
+      summitSubscriptionRef.current = sub;
+    } catch (error) {
+      console.error("Failed to subscribe to summit updates:", error);
+      retryCountRef.current += 1;
+      const delay = Math.min(30000, 2000 * retryCountRef.current);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      reconnectTimeoutRef.current = setTimeout(() => {
+        subscribeSummitUpdates();
+      }, delay);
+    }
   };
 
   const processSummitUpdate = (update: any) => {

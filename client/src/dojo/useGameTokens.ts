@@ -8,6 +8,42 @@ import { addAddressPadding } from "starknet";
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
+  const getBeastMetadata = async (tokenIds: number[]) => {
+    let tokenIdList = tokenIds.map((tokenId: number) => `'${addAddressPadding(tokenId.toString(16))}'`).join(',');
+
+    let q = `
+      SELECT metadata
+      FROM "tokens"
+      WHERE token_id IN (${tokenIdList})
+    `
+    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+    const sql = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json"
+      }
+    })
+    const data = await sql.json()
+    return data.map((data: any) => {
+      let metadata: any;
+      try {
+        metadata = typeof data.metadata === 'string' ? JSON.parse(data.metadata) : data.metadata;
+      } catch (e) {
+        console.error("Failed to parse beast metadata:", e, data.metadata);
+        return null;
+      }
+
+      const attrs: { [key: string]: string } = {};
+      if (metadata.attributes && Array.isArray(metadata.attributes)) {
+        metadata.attributes.forEach((attr: any) => {
+          attrs[attr.trait_type] = attr.value;
+        });
+      }
+
+      return attrs;
+    }).filter(Boolean);
+  }
+
   const getBeastCollection = async (accountAddress: string, cachedCollection: Beast[]) => {
     let q = `
       WITH tbf AS (
@@ -35,28 +71,6 @@ export const useGameTokens = () => {
           FROM tbf
         ) AS tb
       ),
-      attrs AS (
-        SELECT
-          ta.token_id,
-          MAX(CASE WHEN ta.trait_name='Beast'  THEN ta.trait_value END) AS "Beast",
-          MAX(CASE WHEN ta.trait_name='Type'   THEN ta.trait_value END) AS "Type",
-          MAX(CASE WHEN ta.trait_name='Prefix' THEN ta.trait_value END) AS "Prefix",
-          MAX(CASE WHEN ta.trait_name='Suffix' THEN ta.trait_value END) AS "Suffix",
-          MAX(CASE WHEN ta.trait_name='Token ID'             THEN ta.trait_value END) AS "Token ID",
-          MAX(CASE WHEN ta.trait_name='Beast ID'             THEN ta.trait_value END) AS "Beast ID",
-          MAX(CASE WHEN ta.trait_name='Tier'                 THEN ta.trait_value END) AS "Tier",
-          MAX(CASE WHEN ta.trait_name='Level'                THEN ta.trait_value END) AS "Level",
-          MAX(CASE WHEN ta.trait_name='Health'               THEN ta.trait_value END) AS "Health",
-          MAX(CASE WHEN ta.trait_name='Power'                THEN ta.trait_value END) AS "Power",
-          MAX(CASE WHEN ta.trait_name='Rank'                 THEN ta.trait_value END) AS "Rank",
-          MAX(CASE WHEN ta.trait_name='Adventurers Killed'   THEN ta.trait_value END) AS "Adventurers Killed",
-          MAX(CASE WHEN ta.trait_name='Last Death Timestamp' THEN ta.trait_value END) AS "Last Death Timestamp",
-          MAX(CASE WHEN ta.trait_name='Shiny'                THEN ta.trait_value END) AS "Shiny",
-          MAX(CASE WHEN ta.trait_name='Animated'             THEN ta.trait_value END) AS "Animated"
-        FROM token_attributes AS ta
-        JOIN tbf ON tbf.token_id = ta.token_id
-        GROUP BY ta.token_id
-      ),
       stats AS (
         SELECT
           LOWER(printf('%064x', CAST(token_id AS INTEGER))) AS token_hex64,
@@ -73,24 +87,11 @@ export const useGameTokens = () => {
       )
       SELECT
         tbn.token_id,
+        tbn.token_hex64,
         tbn.account_address,
         tbn.contract_address,
         tbn.balance,
-        a."Token ID",
-        a."Beast ID",
-        a."Beast",
-        a."Type",
-        a."Tier",
-        a."Prefix",
-        a."Suffix",
-        a."Level",
-        a."Health",
-        a."Power",
-        a."Rank",
-        a."Adventurers Killed",
-        a."Last Death Timestamp",
-        a."Shiny",
-        a."Animated",
+        t.metadata,
         s."live_stats.attack_streak",
         s."live_stats.bonus_health",
         s."live_stats.bonus_xp",
@@ -107,7 +108,7 @@ export const useGameTokens = () => {
         s."live_stats.stats.diplomacy",
         sk.skulls
       FROM tbn
-      LEFT JOIN attrs a  ON a.token_id    = tbn.token_id
+      LEFT JOIN tokens t ON t.contract_address = tbn.contract_address AND t.token_id = ('0x' || tbn.token_hex64)
       LEFT JOIN stats s  ON s.token_hex64 = tbn.token_hex64
       LEFT JOIN skulls sk ON sk.token_hex64 = tbn.token_hex64;
     `
@@ -122,24 +123,45 @@ export const useGameTokens = () => {
 
     let data = await sql.json()
 
-    let beasts: Beast[] = data.filter((data: any) => data["Beast"]).map((data: any) => {
-      let cachedBeast = cachedCollection.find((beast: Beast) => beast.token_id === Number(data["Token ID"]));
+    let beasts: Beast[] = data.filter((data: any) => data.metadata).map((data: any) => {
+      // Parse metadata JSON
+      let metadata: any;
+      try {
+        metadata = typeof data.metadata === 'string' ? JSON.parse(data.metadata) : data.metadata;
+      } catch (e) {
+        console.error("Failed to parse beast metadata:", e, data.metadata);
+        return null;
+      }
+
+      // Parse attributes array into a map
+      const attrs: { [key: string]: string } = {};
+      if (metadata.attributes && Array.isArray(metadata.attributes)) {
+        metadata.attributes.forEach((attr: any) => {
+          attrs[attr.trait_type] = attr.value;
+        });
+      }
+
+      // Extract numeric token ID from composite format
+      const tokenIdHex = data.token_hex64 || data.token_id.split(':')[1];
+      const numericTokenId = parseInt(tokenIdHex, 16);
+
+      let cachedBeast = cachedCollection.find((beast: Beast) => beast.token_id === numericTokenId);
       let beast: any = {
-        id: Number(data["Beast ID"]),
-        token_id: Number(data["Token ID"]),
-        name: data["Beast"].replace(" ", ""),
-        level: Number(data["Level"]),
-        health: Number(data["Health"]),
-        prefix: data["Prefix"],
-        suffix: data["Suffix"],
-        power: Number(data["Power"]),
-        tier: Number(data["Tier"]),
-        type: data["Type"],
-        shiny: Number(data["Shiny"]),
-        animated: Number(data["Animated"]),
-        rank: Number(data["Rank"]),
-        adventurers_killed: Number(data["Adventurers Killed"]),
-        last_dm_death_timestamp: Number(data["Last Death Timestamp"]),
+        id: Number(attrs["Beast ID"]),
+        token_id: numericTokenId,
+        name: attrs["Beast"].replace(" ", ""),
+        level: Number(attrs["Level"]),
+        health: Number(attrs["Health"]),
+        prefix: attrs["Prefix"],
+        suffix: attrs["Suffix"],
+        power: Number(attrs["Power"]),
+        tier: Number(attrs["Tier"]),
+        type: attrs["Type"],
+        shiny: Number(attrs["Shiny"]),
+        animated: Number(attrs["Animated"]),
+        rank: Number(attrs["Rank"]),
+        adventurers_killed: Number(attrs["Adventurers Killed"]),
+        last_dm_death_timestamp: Number(attrs["Last Death Timestamp"]),
         attack_streak: data["live_stats.attack_streak"] || 0,
         bonus_health: Math.max(cachedBeast?.bonus_health || 0, data["live_stats.bonus_health"]),
         bonus_xp: Math.max(cachedBeast?.bonus_xp || 0, data["live_stats.bonus_xp"]),
@@ -471,28 +493,29 @@ export const useGameTokens = () => {
     let q = `
       SELECT total_power, beast_token_ids
       FROM "${currentNetworkConfig.namespace}-DiplomacyEvent"
-      WHERE specials_hash = ${beast.specials_hash}
+      WHERE specials_hash = '${beast.specials_hash}'
     `
-    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-    const sql = await fetch(url, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" }
-    })
+    try {
+      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      })
 
-    let data = await sql.json()
+      let data = await sql.json()
 
-    if (!data || data.length === 0) {
+      return {
+        specials_hash: beast.specials_hash,
+        total_power: data[0].total_power,
+        beast_token_ids: JSON.parse(data[0].beast_token_ids),
+      }
+    } catch (error) {
+      console.error("Error getting diplomacy:", error);
       return {
         specials_hash: beast.specials_hash,
         total_power: 0,
         beast_token_ids: [],
       }
-    }
-
-    return {
-      specials_hash: beast.specials_hash,
-      total_power: data[0].total_power,
-      beast_token_ids: data[0].beast_token_ids,
     }
   }
 
@@ -508,5 +531,6 @@ export const useGameTokens = () => {
     getDiplomacy,
     getTopBeastsByBlocksHeld,
     countBeastsWithBlocksHeld,
+    getBeastMetadata
   };
 };

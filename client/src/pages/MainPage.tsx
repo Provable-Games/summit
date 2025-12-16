@@ -18,8 +18,10 @@ import Onboarding from '../components/Onboarding'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
+import { useAccount } from "@starknet-react/core"
 
 function MainPage() {
+  const { address } = useAccount()
   const { summit, attackInProgress, selectedBeasts, onboarding, attackMode } = useGameStore()
   const { pauseUpdates } = useGameDirector();
   const [top5000ModalOpen, setTop5000ModalOpen] = useState(false);
@@ -43,8 +45,8 @@ function MainPage() {
 
         {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
           <Box sx={styles.profileSection}>
-            <ClaimRewardsButton />
-            <BeastBoard onClick={() => setTop5000ModalOpen(true)} />
+            {address ? <ClaimRewardsButton /> : null}
+            {address ? <BeastBoard onClick={() => setTop5000ModalOpen(true)} /> : null}
             <ProfileCard />
           </Box>
         </Box>}

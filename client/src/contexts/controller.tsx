@@ -47,7 +47,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { account, isConnecting } = useAccount();
   const { connector, connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
-  const { collection, setCollection, setAdventurerCollection, setLoadingCollection, setOnboarding } = useGameStore();
+  const { collection, setCollection, setAdventurerCollection, setLoadingCollection, setOnboarding, setCollectionSyncing } = useGameStore();
   const { getTokenBalances } = useStarknetApi();
   const { getBeastCollection, getValidAdventurers } = useGameTokens();
   const [userName, setUserName] = useState<string>();
@@ -56,7 +56,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const [showTermsOfService, setShowTermsOfService] = useState(false);
   const { identifyAddress } = useAnalytics();
 
-  const { games: adventurers, loading: adventurersLoading } = useMetagameTokens({
+  const { games: adventurers } = useMetagameTokens({
     mintedByAddress: addAddressPadding(currentNetworkConfig.dungeon),
     owner: account?.address || "0x0",
     gameOver: true,
@@ -131,6 +131,8 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   async function fetchBeastCollection() {
     if (!account?.address) return;
 
+    setCollectionSyncing(true);
+
     // Load from cache immediately
     const cachedCollection = loadBeastCollectionFromCache(account.address);
     if (cachedCollection && cachedCollection.length > 0) {
@@ -174,6 +176,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
       }
     } finally {
       setLoadingCollection(false);
+      setCollectionSyncing(false);
     }
   }
 
