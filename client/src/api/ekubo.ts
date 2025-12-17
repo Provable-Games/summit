@@ -50,7 +50,7 @@ export const getSwapQuote = async (
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const response = await fetch(
-      `https://prod-api-quoter.ekubo.org/loot-quoter/${amount}/${token}/${otherToken}`
+      `https://prod-api-quoter.ekubo.org/23448594291968366/${amount}/${token}/${otherToken}`
     );
     const data = await response.json();
 
