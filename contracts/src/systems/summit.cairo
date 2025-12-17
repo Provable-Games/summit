@@ -802,6 +802,7 @@ pub mod summit_systems {
                     if safe_attack {
                         assert!(false, "Beast {} has been killed in the last day", attacking_beast_token_id);
                     } else {
+                        i += 1;
                         continue;
                     }
                 }
@@ -818,6 +819,7 @@ pub mod summit_systems {
                                 potions_required,
                             );
                         } else {
+                            i += 1;
                             continue;
                         }
                     }
