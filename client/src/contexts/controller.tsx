@@ -169,10 +169,9 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         setOnboarding(false);
       }
 
-      // Update state with fresh/merged data
-      setCollection(prevCollection => prevCollection.map(beast => {
-        const freshBeast = freshBeasts.find(freshBeast => freshBeast.token_id === beast.token_id);
-        if (!freshBeast) return beast;
+      setCollection(prevCollection => freshBeasts.map(freshBeast => {
+        const beast = prevCollection.find(beast => freshBeast.token_id === beast.token_id);
+        if (!beast) return freshBeast;
 
         return {
           ...beast,
