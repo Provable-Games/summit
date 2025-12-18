@@ -184,14 +184,16 @@ export const useGameTokens = () => {
     }
 
     // Build lookup maps for O(1) access
+    // Note: SQL JSON responses may return numeric IDs as strings, so we
+    // explicitly convert to Number to ensure consistent Map key types
     const statsMap = new Map<number, any>();
     for (const row of statsData) {
-      statsMap.set(row.token_id, row);
+      statsMap.set(Number(row.token_id), row);
     }
 
     const skullsMap = new Map<number, string>();
     for (const row of skullsData) {
-      skullsMap.set(row.beast_token_id, row.skulls);
+      skullsMap.set(Number(row.beast_token_id), row.skulls);
     }
 
     const metadataMap = new Map<string, any>();
