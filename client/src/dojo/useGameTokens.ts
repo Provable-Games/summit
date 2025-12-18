@@ -9,91 +9,181 @@ export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
   const getBeastCollection = async (accountAddress: string, cachedCollection: Beast[]) => {
-    let q = `
-      WITH tbf AS (
-        SELECT tb.token_id, tb.account_address, tb.contract_address, tb.balance
-        FROM token_balances tb
-        WHERE tb.account_address = '${addAddressPadding(accountAddress.toLowerCase())}'
-          AND tb.contract_address = '0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4'
-          AND tb.balance = '0x0000000000000000000000000000000000000000000000000000000000000001'
+    const contractAddress = currentNetworkConfig.beasts;
+
+    // Step 1: Get token balances with hex IDs (fast query using index)
+    const tokenBalancesQuery = `
+      SELECT
+        token_id,
+        LOWER(CASE WHEN SUBSTR(suf,1,2)='0x' THEN SUBSTR(suf,3) ELSE suf END) AS token_hex64
+      FROM (
+        SELECT token_id, SUBSTR(token_id, INSTR(token_id, ':')+1) AS suf
+        FROM token_balances
+        WHERE account_address = '${addAddressPadding(accountAddress.toLowerCase())}'
+          AND contract_address = '${contractAddress}'
+          AND balance = '0x0000000000000000000000000000000000000000000000000000000000000001'
         LIMIT 10000
-      ),
-      tbn AS (
+      )
+    `;
+
+    const tokenBalancesUrl = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(tokenBalancesQuery)}`;
+    let tokenBalancesData: any[];
+
+    try {
+      const tokenBalancesResponse = await fetch(tokenBalancesUrl, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+
+      if (!tokenBalancesResponse.ok) {
+        console.error("Failed to fetch token balances:", tokenBalancesResponse.status);
+        return [];
+      }
+
+      const result = await tokenBalancesResponse.json();
+      tokenBalancesData = Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error("Error fetching token balances:", error);
+      return [];
+    }
+
+    if (tokenBalancesData.length === 0) {
+      return [];
+    }
+
+    // Step 2: Convert hex to integer IDs in JS and build lookup map
+    const tokenMap = new Map<number, { token_id: string; token_hex64: string }>();
+    const integerIds: number[] = [];
+
+    for (const row of tokenBalancesData) {
+      const intId = parseInt(row.token_hex64, 16);
+      tokenMap.set(intId, row);
+      integerIds.push(intId);
+    }
+
+    // Step 3: Query stats and skulls in parallel with integer IDs (uses index)
+    const integerIdsList = integerIds.join(',');
+
+    const statsQuery = `
+      SELECT
+        token_id,
+        "live_stats.attack_streak",
+        "live_stats.bonus_health",
+        "live_stats.bonus_xp",
+        "live_stats.current_health",
+        "live_stats.extra_lives",
+        "live_stats.has_claimed_potions",
+        "live_stats.last_death_timestamp",
+        "live_stats.stats.luck",
+        "live_stats.stats.spirit",
+        "live_stats.stats.specials",
+        "live_stats.revival_count",
+        "live_stats.blocks_held",
+        "live_stats.stats.wisdom",
+        "live_stats.stats.diplomacy"
+      FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+      WHERE token_id IN (${integerIdsList})
+    `;
+
+    const skullsQuery = `
+      SELECT beast_token_id, skulls
+      FROM "${currentNetworkConfig.namespace}-SkullEvent"
+      WHERE beast_token_id IN (${integerIdsList})
+    `;
+
+    // Step 4: Get metadata (uses existing join pattern which is fast)
+    const metadataQuery = `
+      WITH tbf AS (
         SELECT
-          tb.token_id,
-          tb.account_address,
-          tb.contract_address,
-          tb.balance,
+          token_id,
           LOWER(CASE WHEN SUBSTR(suf,1,2)='0x' THEN SUBSTR(suf,3) ELSE suf END) AS token_hex64
         FROM (
-          SELECT
-            tbf.token_id,
-            tbf.account_address,
-            tbf.contract_address,
-            tbf.balance,
-            SUBSTR(tbf.token_id, INSTR(tbf.token_id, ':')+1) AS suf
-          FROM tbf
-        ) AS tb
-      ),
-      stats AS (
-        SELECT
-          LOWER(printf('%064x', CAST(token_id AS INTEGER))) AS token_hex64,
-          "live_stats.attack_streak", "live_stats.bonus_health", "live_stats.bonus_xp", "live_stats.current_health", "live_stats.extra_lives",
-          "live_stats.has_claimed_potions", "live_stats.last_death_timestamp", "live_stats.stats.luck", "live_stats.stats.spirit", "live_stats.stats.specials",
-          "live_stats.revival_count", "live_stats.blocks_held", "live_stats.stats.wisdom", "live_stats.stats.diplomacy"
-        FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
-      ),
-      skulls AS (
-        SELECT
-          LOWER(printf('%064x', CAST(beast_token_id AS INTEGER))) AS token_hex64,
-          skulls
-        FROM "${currentNetworkConfig.namespace}-SkullEvent"
+          SELECT token_id, SUBSTR(token_id, INSTR(token_id, ':')+1) AS suf
+          FROM token_balances
+          WHERE account_address = '${addAddressPadding(accountAddress.toLowerCase())}'
+            AND contract_address = '${contractAddress}'
+            AND balance = '0x0000000000000000000000000000000000000000000000000000000000000001'
+          LIMIT 10000
+        )
       )
-      SELECT
-        tbn.token_id,
-        tbn.token_hex64,
-        tbn.account_address,
-        tbn.contract_address,
-        tbn.balance,
-        t.metadata,
-        s."live_stats.attack_streak",
-        s."live_stats.bonus_health",
-        s."live_stats.bonus_xp",
-        s."live_stats.current_health",
-        s."live_stats.extra_lives",
-        s."live_stats.has_claimed_potions",
-        s."live_stats.last_death_timestamp",
-        s."live_stats.revival_count",
-        s."live_stats.blocks_held",
-        s."live_stats.stats.luck",
-        s."live_stats.stats.spirit",
-        s."live_stats.stats.specials",
-        s."live_stats.stats.wisdom",
-        s."live_stats.stats.diplomacy",
-        sk.skulls
-      FROM tbn
-      LEFT JOIN tokens t ON t.contract_address = tbn.contract_address AND t.token_id = ('0x' || tbn.token_hex64)
-      LEFT JOIN stats s  ON s.token_hex64 = tbn.token_hex64
-      LEFT JOIN skulls sk ON sk.token_hex64 = tbn.token_hex64;
-    `
+      SELECT tbf.token_hex64, t.metadata
+      FROM tbf
+      LEFT JOIN tokens t ON t.contract_address = '${contractAddress}'
+        AND t.token_id = ('0x' || tbf.token_hex64)
+    `;
 
-    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-    const sql = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json"
+    // Execute all three queries in parallel
+    let statsData: any[] = [];
+    let skullsData: any[] = [];
+    let metadataData: any[] = [];
+
+    try {
+      const [statsResponse, skullsResponse, metadataResponse] = await Promise.all([
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(statsQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        }),
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(skullsQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        }),
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(metadataQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        })
+      ]);
+
+      const results = await Promise.all([
+        statsResponse.ok ? statsResponse.json() : [],
+        skullsResponse.ok ? skullsResponse.json() : [],
+        metadataResponse.ok ? metadataResponse.json() : []
+      ]);
+
+      statsData = Array.isArray(results[0]) ? results[0] : [];
+      skullsData = Array.isArray(results[1]) ? results[1] : [];
+      metadataData = Array.isArray(results[2]) ? results[2] : [];
+    } catch (error) {
+      console.error("Error fetching beast collection data:", error);
+      return [];
+    }
+
+    // Build lookup maps for O(1) access
+    // Note: SQL JSON responses may return numeric IDs as strings, so we
+    // explicitly convert to Number to ensure consistent Map key types
+    const statsMap = new Map<number, any>();
+    for (const row of statsData) {
+      statsMap.set(Number(row.token_id), row);
+    }
+
+    const skullsMap = new Map<number, string>();
+    for (const row of skullsData) {
+      skullsMap.set(Number(row.beast_token_id), row.skulls);
+    }
+
+    const metadataMap = new Map<string, any>();
+    for (const row of metadataData) {
+      if (row.metadata) {
+        metadataMap.set(row.token_hex64, row.metadata);
       }
-    })
+    }
 
-    let data = await sql.json()
+    // Step 5: Combine all data into Beast objects
+    let beasts: Beast[] = integerIds.map((numericTokenId) => {
+      const tokenInfo = tokenMap.get(numericTokenId)!;
+      const stats = statsMap.get(numericTokenId) || {};
+      const skulls = skullsMap.get(numericTokenId);
+      const rawMetadata = metadataMap.get(tokenInfo.token_hex64);
 
-    let beasts: Beast[] = data.filter((data: any) => data.metadata).map((data: any) => {
+      if (!rawMetadata) {
+        return null;
+      }
+
       // Parse metadata JSON
       let metadata: any;
       try {
-        metadata = typeof data.metadata === 'string' ? JSON.parse(data.metadata) : data.metadata;
+        metadata = typeof rawMetadata === 'string' ? JSON.parse(rawMetadata) : rawMetadata;
       } catch (e) {
-        console.error("Failed to parse beast metadata:", e, data.metadata);
+        console.error("Failed to parse beast metadata:", e, rawMetadata);
         return null;
       }
 
@@ -105,15 +195,11 @@ export const useGameTokens = () => {
         });
       }
 
-      // Extract numeric token ID from composite format
-      const tokenIdHex = data.token_hex64 || data.token_id.split(':')[1];
-      const numericTokenId = parseInt(tokenIdHex, 16);
-
       let cachedBeast = cachedCollection.find((beast: Beast) => beast.token_id === numericTokenId);
       let beast: any = {
         id: Number(attrs["Beast ID"]),
         token_id: numericTokenId,
-        name: attrs["Beast"].replace(" ", ""),
+        name: attrs["Beast"]?.replace(" ", "") || "",
         level: Number(attrs["Level"]),
         health: Number(attrs["Health"]),
         prefix: attrs["Prefix"],
@@ -127,24 +213,24 @@ export const useGameTokens = () => {
         adventurers_killed: cachedBeast?.adventurers_killed || 0,
         last_dm_death_timestamp: cachedBeast?.last_dm_death_timestamp || 0,
         last_killed_by: cachedBeast?.last_killed_by || 0,
-        attack_streak: data["live_stats.attack_streak"] || 0,
-        bonus_health: Math.max(cachedBeast?.bonus_health || 0, data["live_stats.bonus_health"]),
-        bonus_xp: Math.max(cachedBeast?.bonus_xp || 0, data["live_stats.bonus_xp"]),
-        current_health: data["live_stats.current_health"],
-        extra_lives: data["live_stats.extra_lives"] || 0,
-        has_claimed_potions: cachedBeast?.has_claimed_potions || Boolean(data["live_stats.has_claimed_potions"]),
-        last_death_timestamp: Math.max(cachedBeast?.last_death_timestamp || 0, parseInt(data["live_stats.last_death_timestamp"], 16)),
-        revival_count: Math.max(cachedBeast?.revival_count || 0, data["live_stats.revival_count"]),
-        blocks_held: parseInt(data["live_stats.blocks_held"], 16) || 0,
+        attack_streak: stats["live_stats.attack_streak"] || 0,
+        bonus_health: Math.max(cachedBeast?.bonus_health || 0, stats["live_stats.bonus_health"] || 0),
+        bonus_xp: Math.max(cachedBeast?.bonus_xp || 0, stats["live_stats.bonus_xp"] || 0),
+        current_health: stats["live_stats.current_health"] ?? null,
+        extra_lives: stats["live_stats.extra_lives"] || 0,
+        has_claimed_potions: cachedBeast?.has_claimed_potions || Boolean(stats["live_stats.has_claimed_potions"]),
+        last_death_timestamp: stats["live_stats.last_death_timestamp"] ? parseInt(stats["live_stats.last_death_timestamp"], 16) : 0,
+        revival_count: Math.max(cachedBeast?.revival_count || 0, stats["live_stats.revival_count"] || 0),
+        blocks_held: parseInt(stats["live_stats.blocks_held"], 16) || 0,
         revival_time: 0,
         stats: {
-          spirit: Math.max(cachedBeast?.stats.spirit || 0, data["live_stats.stats.spirit"]),
-          luck: Math.max(cachedBeast?.stats.luck || 0, data["live_stats.stats.luck"]),
-          specials: cachedBeast?.stats.specials || Boolean(data["live_stats.stats.specials"]),
-          wisdom: cachedBeast?.stats.wisdom || Boolean(data["live_stats.stats.wisdom"]),
-          diplomacy: cachedBeast?.stats.diplomacy || Boolean(data["live_stats.stats.diplomacy"]),
+          spirit: Math.max(cachedBeast?.stats.spirit || 0, stats["live_stats.stats.spirit"] || 0),
+          luck: Math.max(cachedBeast?.stats.luck || 0, stats["live_stats.stats.luck"] || 0),
+          specials: cachedBeast?.stats.specials || Boolean(stats["live_stats.stats.specials"]),
+          wisdom: cachedBeast?.stats.wisdom || Boolean(stats["live_stats.stats.wisdom"]),
+          diplomacy: cachedBeast?.stats.diplomacy || Boolean(stats["live_stats.stats.diplomacy"]),
         },
-        kills_claimed: Math.max(cachedBeast?.kills_claimed || 0, parseInt(data["skulls"], 16) || 0),
+        kills_claimed: Math.max(cachedBeast?.kills_claimed || 0, parseInt(skulls || "0", 16) || 0),
       }
       beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)
@@ -156,7 +242,7 @@ export const useGameTokens = () => {
       beast.entity_hash = getEntityHash(beast.id, Number(prefix), Number(suffix));
 
       return beast
-    })
+    }).filter(Boolean) as Beast[];
 
     return beasts
   }
