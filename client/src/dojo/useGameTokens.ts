@@ -45,7 +45,7 @@ export const useGameTokens = () => {
     } catch (error) {
       console.error("Error fetching token balances:", error);
       return [];
-    }
+    const contractAddress = currentNetworkConfig.beasts;
 
     if (tokenBalancesData.length === 0) {
       return [];
