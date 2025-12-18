@@ -9,7 +9,7 @@ export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
   const getBeastCollection = async (accountAddress: string, cachedCollection: Beast[]) => {
-    const contractAddress = '0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4';
+    const contractAddress = currentNetworkConfig.beasts;
 
     // Step 1: Get token balances with hex IDs (fast query using index)
     const tokenBalancesQuery = `
@@ -45,7 +45,7 @@ export const useGameTokens = () => {
     } catch (error) {
       console.error("Error fetching token balances:", error);
       return [];
-    const contractAddress = currentNetworkConfig.beasts;
+    }
 
     if (tokenBalancesData.length === 0) {
       return [];
@@ -210,8 +210,9 @@ export const useGameTokens = () => {
         shiny: Number(attrs["Shiny"]),
         animated: Number(attrs["Animated"]),
         rank: Number(attrs["Rank"]),
-        adventurers_killed: Number(attrs["Adventurers Killed"]),
-        last_dm_death_timestamp: Number(attrs["Last Death Timestamp"]),
+        adventurers_killed: cachedBeast?.adventurers_killed || 0,
+        last_dm_death_timestamp: cachedBeast?.last_dm_death_timestamp || 0,
+        last_killed_by: cachedBeast?.last_killed_by || 0,
         attack_streak: stats["live_stats.attack_streak"] || 0,
         bonus_health: Math.max(cachedBeast?.bonus_health || 0, stats["live_stats.bonus_health"] || 0),
         bonus_xp: Math.max(cachedBeast?.bonus_xp || 0, stats["live_stats.bonus_xp"] || 0),
