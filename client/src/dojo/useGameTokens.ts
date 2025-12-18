@@ -63,13 +63,27 @@ export const useGameTokens = () => {
     `;
 
     const tokenBalancesUrl = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(tokenBalancesQuery)}`;
-    const tokenBalancesResponse = await fetch(tokenBalancesUrl, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" }
-    });
-    const tokenBalancesData = await tokenBalancesResponse.json();
+    let tokenBalancesData: any[];
 
-    if (!tokenBalancesData || tokenBalancesData.length === 0) {
+    try {
+      const tokenBalancesResponse = await fetch(tokenBalancesUrl, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+
+      if (!tokenBalancesResponse.ok) {
+        console.error("Failed to fetch token balances:", tokenBalancesResponse.status);
+        return [];
+      }
+
+      const result = await tokenBalancesResponse.json();
+      tokenBalancesData = Array.isArray(result) ? result : [];
+    } catch (error) {
+      console.error("Error fetching token balances:", error);
+      return [];
+    }
+
+    if (tokenBalancesData.length === 0) {
       return [];
     }
 
@@ -135,26 +149,39 @@ export const useGameTokens = () => {
     `;
 
     // Execute all three queries in parallel
-    const [statsResponse, skullsResponse, metadataResponse] = await Promise.all([
-      fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(statsQuery)}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      }),
-      fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(skullsQuery)}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      }),
-      fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(metadataQuery)}`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      })
-    ]);
+    let statsData: any[] = [];
+    let skullsData: any[] = [];
+    let metadataData: any[] = [];
 
-    const [statsData, skullsData, metadataData] = await Promise.all([
-      statsResponse.json(),
-      skullsResponse.json(),
-      metadataResponse.json()
-    ]);
+    try {
+      const [statsResponse, skullsResponse, metadataResponse] = await Promise.all([
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(statsQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        }),
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(skullsQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        }),
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(metadataQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        })
+      ]);
+
+      const results = await Promise.all([
+        statsResponse.ok ? statsResponse.json() : [],
+        skullsResponse.ok ? skullsResponse.json() : [],
+        metadataResponse.ok ? metadataResponse.json() : []
+      ]);
+
+      statsData = Array.isArray(results[0]) ? results[0] : [];
+      skullsData = Array.isArray(results[1]) ? results[1] : [];
+      metadataData = Array.isArray(results[2]) ? results[2] : [];
+    } catch (error) {
+      console.error("Error fetching beast collection data:", error);
+      return [];
+    }
 
     // Build lookup maps for O(1) access
     const statsMap = new Map<number, any>();
