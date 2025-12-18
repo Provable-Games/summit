@@ -281,6 +281,12 @@ export function applyPoisonDamage(
   };
 }
 
+export const getEntityHash = (id: number, prefix: number, suffix: number): string => {
+  const params = [BigInt(id), BigInt(prefix), BigInt(suffix)];
+  let hash = starknet.poseidonHashMany(params);
+  return addAddressPadding(hash.toString(16));
+}
+
 export const getSpecialsHash = (prefix: number, suffix: number): string => {
   const params = [BigInt(prefix), BigInt(suffix)];
   let hash = starknet.poseidonHashMany(params);

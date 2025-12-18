@@ -225,15 +225,43 @@ function BeastCollection() {
           <Box sx={styles.noBeastsContent}>
             {/* Text and Steps */}
             <Box sx={styles.noBeastsTextContainer}>
-              <Typography sx={styles.emptyStateTitle} mb={2}>
+              <Typography sx={styles.emptyStateTitle} mb={1}>
                 NO BEASTS FOUND
               </Typography>
-              <Typography sx={styles.emptyStateSubtitle} mb={'2px'}>
-                COLLECT BEASTS BY PLAYING
-              </Typography>
-              <Link sx={[styles.emptyStateSubtitle, { textDecoration: 'underline !important' }]} href="https://lootsurvivor.io" target="_blank">
-                LOOT SURVIVOR 2
-              </Link>
+
+              <Box sx={styles.noBeastsOptions}>
+                <Box sx={styles.noBeastsOption}>
+                  <Typography sx={styles.emptyStateSubtitle} mb={'2px'}>
+                    COLLECT BEASTS BY PLAYING
+                  </Typography>
+                  <Link
+                    sx={[styles.emptyStateSubtitle, { textDecoration: 'underline !important' }]}
+                    href="https://lootsurvivor.io/survivor"
+                    target="_blank"
+                  >
+                    LOOT SURVIVOR 2
+                  </Link>
+                </Box>
+
+                <Box sx={styles.noBeastsOptionsDivider}>
+                  <Box sx={styles.emptyStateDividerLine} />
+                  <Typography sx={styles.emptyStateDividerText}>OR</Typography>
+                  <Box sx={styles.emptyStateDividerLine} />
+                </Box>
+
+                <Box sx={styles.noBeastsOption}>
+                  <Typography sx={styles.emptyStateSubtitle}>
+                    BUY BEASTS ON {' '}
+                    <Link
+                      sx={[styles.emptyStateSubtitle, { textDecoration: 'underline !important' }]}
+                      href="https://empire.realms.world/trade/beasts"
+                      target="_blank"
+                    >
+                      MARKETPLACE
+                    </Link>
+                  </Typography>
+                </Box>
+              </Box>
             </Box>
 
             {/* Sad Beast */}
@@ -540,7 +568,6 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: 2,
     position: 'relative',
     zIndex: 1,
   },
@@ -554,10 +581,10 @@ const styles = {
   },
   emptyStateSubtitle: {
     fontSize: '14px',
+    fontWeight: '600',
+    letterSpacing: '0.5px',
     color: gameColors.accentGreen,
-    letterSpacing: '1px',
     textTransform: 'uppercase',
-    textShadow: `0 1px 2px rgba(0, 0, 0, 0.6)`,
   },
   // Connect wallet state styles
   connectWalletContent: {
@@ -607,6 +634,39 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'flex-start',
+  },
+  noBeastsOptions: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 0.5,
+    marginTop: 1,
+  },
+  noBeastsOption: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+  },
+  noBeastsOptionsDivider: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+    width: '100%',
+    marginTop: 1,
+    marginBottom: 1,
+  },
+  emptyStateDividerLine: {
+    flex: 1,
+    height: '1px',
+    background: `linear-gradient(90deg, transparent, ${gameColors.accentGreen}60, transparent)`,
+  },
+  emptyStateDividerText: {
+    fontSize: '10px',
+    fontWeight: 'bold',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    color: gameColors.accentGreen,
+    textShadow: `0 1px 2px rgba(0, 0, 0, 0.6)`,
   },
   singleBeastShowcase: {
     position: 'relative',

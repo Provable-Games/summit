@@ -49,7 +49,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { disconnect } = useDisconnect();
   const { collection, setCollection, setAdventurerCollection, setLoadingCollection, setOnboarding, setCollectionSyncing } = useGameStore();
   const { getTokenBalances } = useStarknetApi();
-  const { getBeastCollection, getValidAdventurers } = useGameTokens();
+  const { getBeastCollection, getValidAdventurers, getDungeonStats } = useGameTokens();
   const [userName, setUserName] = useState<string>();
   const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({});
 
@@ -92,10 +92,16 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
   // Persist collection changes to localStorage
   useEffect(() => {
-    if (account?.address && collection.length > 0) {
+    if (collection.length > 0 && account?.address) {
       saveBeastCollectionToCache(collection, account.address);
     }
-  }, [collection, account?.address]);
+  }, [collection]);
+
+  useEffect(() => {
+    if (collection.length > 0) {
+      fetchDungeonStats();
+    }
+  }, [collection.length]);
 
   useEffect(() => {
     if (account) {
@@ -165,9 +171,6 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
       // Update state with fresh/merged data
       setCollection(freshCollection);
-
-      // Save to cache
-      saveBeastCollectionToCache(freshCollection, account.address);
     } catch (error) {
       console.error('Error fetching beast collection:', error);
       // If fetch fails and we have cached data, keep using it
@@ -177,6 +180,23 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     } finally {
       setLoadingCollection(false);
       setCollectionSyncing(false);
+    }
+  }
+
+  async function fetchDungeonStats() {
+    const dungeonStats = await getDungeonStats(collection.map(beast => beast.entity_hash));
+
+    if (dungeonStats.length > 0) {
+      setCollection(prevCollection => prevCollection.map(beast => {
+        const dungeonStat = dungeonStats.find(stat => stat.entity_hash === beast.entity_hash);
+
+        return {
+          ...beast,
+          adventurers_killed: parseInt(dungeonStat?.adventurers_killed || "0", 16),
+          last_killed_by: parseInt(dungeonStat?.killed_by || "0", 16),
+          last_dm_death_timestamp: parseInt(dungeonStat?.timestamp || "0", 16),
+        };
+      }));
     }
   }
 
