@@ -161,16 +161,40 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
     // Fetch fresh data in the background
     try {
-      const freshCollection = await getBeastCollection(account.address, cachedCollection);
+      const freshBeasts = await getBeastCollection(account.address);
 
-      if (freshCollection.length > 0 && freshCollection.every((beast: Beast) => !beast.has_claimed_potions)) {
+      if (freshBeasts.length > 0 && freshBeasts.every((beast: Beast) => !beast.has_claimed_potions)) {
         setOnboarding(true);
       } else {
         setOnboarding(false);
       }
 
       // Update state with fresh/merged data
-      setCollection(freshCollection);
+      setCollection(prevCollection => prevCollection.map(beast => {
+        const freshBeast = freshBeasts.find(freshBeast => freshBeast.token_id === beast.token_id);
+        if (!freshBeast) return beast;
+
+        return {
+          ...beast,
+          bonus_health: Math.max(beast.bonus_health, freshBeast.bonus_health),
+          bonus_xp: Math.max(beast.bonus_xp, freshBeast.bonus_xp),
+          has_claimed_potions: beast.has_claimed_potions || freshBeast.has_claimed_potions,
+          revival_count: Math.max(beast.revival_count, freshBeast.revival_count),
+          last_death_timestamp: Math.max(beast.last_death_timestamp, freshBeast.last_death_timestamp),
+          stats: {
+            spirit: Math.max(beast.stats.spirit, freshBeast.stats.spirit),
+            luck: Math.max(beast.stats.luck, freshBeast.stats.luck),
+            specials: beast.stats.specials || freshBeast.stats.specials,
+            wisdom: beast.stats.wisdom || freshBeast.stats.wisdom,
+            diplomacy: beast.stats.diplomacy || freshBeast.stats.diplomacy,
+          },
+          kills_claimed: Math.max(beast.kills_claimed, freshBeast.kills_claimed),
+          revival_time: Math.min(beast.revival_time, freshBeast.revival_time),
+          current_health: Math.max(beast.current_health, freshBeast.current_health),
+          current_level: Math.max(beast.current_level, freshBeast.current_level),
+          power: Math.max(beast.power, freshBeast.power),
+        }
+      }));
     } catch (error) {
       console.error('Error fetching beast collection:', error);
       // If fetch fails and we have cached data, keep using it

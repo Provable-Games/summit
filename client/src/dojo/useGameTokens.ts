@@ -8,7 +8,7 @@ import { addAddressPadding } from "starknet";
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
-  const getBeastCollection = async (accountAddress: string, cachedCollection: Beast[]) => {
+  const getBeastCollection = async (accountAddress: string) => {
     const contractAddress = currentNetworkConfig.beasts;
 
     // Step 1: Get token balances with hex IDs (fast query using index)
@@ -195,7 +195,6 @@ export const useGameTokens = () => {
         });
       }
 
-      let cachedBeast = cachedCollection.find((beast: Beast) => beast.token_id === numericTokenId);
       let beast: any = {
         id: Number(attrs["Beast ID"]),
         token_id: numericTokenId,
@@ -210,27 +209,24 @@ export const useGameTokens = () => {
         shiny: Number(attrs["Shiny"]),
         animated: Number(attrs["Animated"]),
         rank: Number(attrs["Rank"]),
-        adventurers_killed: cachedBeast?.adventurers_killed || 0,
-        last_dm_death_timestamp: cachedBeast?.last_dm_death_timestamp || 0,
-        last_killed_by: cachedBeast?.last_killed_by || 0,
         attack_streak: stats["live_stats.attack_streak"] || 0,
-        bonus_health: Math.max(cachedBeast?.bonus_health || 0, stats["live_stats.bonus_health"] || 0),
-        bonus_xp: Math.max(cachedBeast?.bonus_xp || 0, stats["live_stats.bonus_xp"] || 0),
+        bonus_health: stats["live_stats.bonus_health"] || 0,
+        bonus_xp: stats["live_stats.bonus_xp"] || 0,
         current_health: stats["live_stats.current_health"] ?? null,
         extra_lives: stats["live_stats.extra_lives"] || 0,
-        has_claimed_potions: cachedBeast?.has_claimed_potions || Boolean(stats["live_stats.has_claimed_potions"]),
+        has_claimed_potions: Boolean(stats["live_stats.has_claimed_potions"]),
         last_death_timestamp: stats["live_stats.last_death_timestamp"] ? parseInt(stats["live_stats.last_death_timestamp"], 16) : 0,
-        revival_count: Math.max(cachedBeast?.revival_count || 0, stats["live_stats.revival_count"] || 0),
+        revival_count: stats["live_stats.revival_count"] || 0,
         blocks_held: parseInt(stats["live_stats.blocks_held"], 16) || 0,
         revival_time: 0,
         stats: {
-          spirit: Math.max(cachedBeast?.stats.spirit || 0, stats["live_stats.stats.spirit"] || 0),
-          luck: Math.max(cachedBeast?.stats.luck || 0, stats["live_stats.stats.luck"] || 0),
-          specials: cachedBeast?.stats.specials || Boolean(stats["live_stats.stats.specials"]),
-          wisdom: cachedBeast?.stats.wisdom || Boolean(stats["live_stats.stats.wisdom"]),
-          diplomacy: cachedBeast?.stats.diplomacy || Boolean(stats["live_stats.stats.diplomacy"]),
+          spirit: stats["live_stats.stats.spirit"] || 0,
+          luck: stats["live_stats.stats.luck"] || 0,
+          specials: Boolean(stats["live_stats.stats.specials"]),
+          wisdom: Boolean(stats["live_stats.stats.wisdom"]),
+          diplomacy: Boolean(stats["live_stats.stats.diplomacy"]),
         },
-        kills_claimed: Math.max(cachedBeast?.kills_claimed || 0, parseInt(skulls || "0", 16) || 0),
+        kills_claimed: parseInt(skulls || "0", 16),
       }
       beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)
@@ -248,46 +244,67 @@ export const useGameTokens = () => {
   }
 
   const getDungeonStats = async (specialHashes: string[]) => {
-    try {
-      let q = `
-      WITH special(entity_hash) AS (
-        VALUES ${specialHashes.map((hash: string) => `('${addAddressPadding(hash.toLowerCase())}')`).join(',')}
-      ),
-      mx AS (
-        SELECT c.entity_hash, MAX(c."index") AS max_index
-        FROM "ls_0_0_9-CollectableEntity" c
-        JOIN special s USING(entity_hash)
-        WHERE c.dungeon = '${currentNetworkConfig.dungeon}'
-        GROUP BY c.entity_hash
-      ),
-      last_row AS (
-        SELECT c.entity_hash, c.killed_by, c."timestamp"
-        FROM "ls_0_0_9-CollectableEntity" c
-        JOIN mx
-          ON c.entity_hash = mx.entity_hash
-        AND c."index"     = mx.max_index
-        WHERE c.dungeon = '${currentNetworkConfig.dungeon}'
-      )
-      SELECT
-        l.entity_hash,
-        l.killed_by,
-        l."timestamp",
-        es.adventurers_killed AS adventurers_killed
-      FROM last_row l
-      LEFT JOIN "ls_0_0_9-EntityStats" es
-        ON es.dungeon = '0x0000000000000000000000000000000000000000000000000000000000000006'
-      AND es.entity_hash = l.entity_hash;
-    `
-      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-      const sql = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json"
-        }
-      })
+    if (!specialHashes || specialHashes.length === 0) {
+      return [];
+    }
 
-      const data = await sql.json()
-      return data
+    const BATCH_SIZE = 800;
+    const allResults: any[] = [];
+
+    try {
+      for (let i = 0; i < specialHashes.length; i += BATCH_SIZE) {
+        const batch = specialHashes.slice(i, i + BATCH_SIZE);
+        if (batch.length === 0) continue;
+
+        const valuesClause = batch
+          .map((hash: string) => `('${addAddressPadding(hash.toLowerCase())}')`)
+          .join(',');
+
+        const q = `
+          WITH special(entity_hash) AS (
+            VALUES ${valuesClause}
+          ),
+          mx AS (
+            SELECT c.entity_hash, MAX(c."index") AS max_index
+            FROM "ls_0_0_9-CollectableEntity" c
+            JOIN special s USING(entity_hash)
+            WHERE c.dungeon = '${currentNetworkConfig.dungeon}'
+            GROUP BY c.entity_hash
+          ),
+          last_row AS (
+            SELECT c.entity_hash, c.killed_by, c."timestamp"
+            FROM "ls_0_0_9-CollectableEntity" c
+            JOIN mx
+              ON c.entity_hash = mx.entity_hash
+            AND c."index"     = mx.max_index
+            WHERE c.dungeon = '${currentNetworkConfig.dungeon}'
+          )
+          SELECT
+            l.entity_hash,
+            l.killed_by,
+            l."timestamp",
+            es.adventurers_killed AS adventurers_killed
+          FROM last_row l
+          LEFT JOIN "ls_0_0_9-EntityStats" es
+            ON es.dungeon = '0x0000000000000000000000000000000000000000000000000000000000000006'
+          AND es.entity_hash = l.entity_hash;
+        `;
+
+        const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+        const sql = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json"
+          }
+        });
+
+        const data = await sql.json();
+        if (Array.isArray(data)) {
+          allResults.push(...data);
+        }
+      }
+
+      return allResults;
     } catch (error) {
       console.error("Error getting dungeon stats:", error);
       return [];
