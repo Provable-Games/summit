@@ -8,7 +8,7 @@ export interface Summit {
 }
 
 export interface Diplomacy {
-  specials_hash: bigint;
+  specials_hash: string;
   bonus: number;
   total_power: number;
   beast_token_ids: number[];
@@ -45,10 +45,12 @@ export interface Beast {
   blocks_held: number;
   stats: Stats;
   kills_claimed: number;
-  specials_hash?: bigint;
+  entity_hash?: string;
+  specials_hash?: string;
   rank?: number;
   last_dm_death_timestamp?: number;
   adventurers_killed?: number;
+  last_killed_by?: number;
   combat?: Combat;
   battle?: BattleEvent;
 }
@@ -139,5 +141,10 @@ export class GameQueryBuilder extends HistoricalToriiQueryBuilder<any> { }
 
 export const getEntityModel = (entity: any, modelName: string) => {
   let namespace = NETWORKS.SN_MAIN.namespace
+  return entity?.models[`${namespace}`]?.[modelName]
+};
+
+export const getDeathMountainModel = (entity: any, modelName: string) => {
+  let namespace = "ls_0_0_9"
   return entity?.models[`${namespace}`]?.[modelName]
 };

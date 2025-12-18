@@ -1,7 +1,7 @@
 import { useStarknetApi } from "@/api/starknet";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useGameStore } from "@/stores/gameStore";
-import { BattleEvent, Beast, Diplomacy, GameAction, getEntityModel, Summit } from "@/types/game";
+import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, getEntityModel, Summit } from "@/types/game";
 import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastDetails, getBeastRevivalTime, applyPoisonDamage } from "@/utils/beasts";
 import { useQueries } from '@/utils/queries';
 import { useDojoSDK } from '@dojoengine/sdk/react';
@@ -36,7 +36,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
   const { summit, setSummit, setAttackInProgress, collection, setCollection, setAppliedPotions, appliedPotions,
     setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent, setAppliedPoisonCount, appliedPoisonCount } = useGameStore();
-  const { gameEventsQuery } = useQueries();
+  const { gameEventsQuery, dungeonStatsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimBeastReward, claimCorpses, claimSkulls, addExtraLife, applyStatPoints, applyPoison } = useSystemCalls();
   const { tokenBalances, setTokenBalances } = useController();
@@ -45,8 +45,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   const [nextSummit, setNextSummit] = useState<Summit | null>(null);
   const [diplomacyEvent, setDiplomacyEvent] = useState<Diplomacy>();
+  const [collectableEntity, setCollectableEntity] = useState<any>();
+  const [entityStats, setEntityStats] = useState<any>();
+
+  const dungeonSubscriptionRef = useRef<any | null>(null);
   const summitSubscriptionRef = useRef<any | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const retryCountRef = useRef(0);
   const [actionFailed, setActionFailed] = useReducer((x) => x + 1, 0);
   const [eventQueue, setEventQueue] = useState<any[]>([]);
@@ -55,6 +60,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     fetchSummitData();
     subscribeSummitUpdates();
+    subscribeDungeonUpdates();
   }, []);
 
   useEffect(() => {
@@ -131,6 +137,30 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
   }, [diplomacyEvent]);
 
+  useEffect(() => {
+    if (collectableEntity && collectableEntity.index > 0) {
+      if (collection.find((beast: Beast) => beast.entity_hash === collectableEntity.entity_hash)) {
+        setCollection(prevCollection => prevCollection.map((beast: Beast) =>
+          beast.entity_hash === collectableEntity.entity_hash
+            ? { ...beast, last_killed_by: collectableEntity.killed_by, last_dm_death_timestamp: collectableEntity.timestamp }
+            : beast
+        ));
+      }
+    }
+  }, [collectableEntity]);
+
+  useEffect(() => {
+    if (entityStats) {
+      if (collection.find((beast: Beast) => beast.entity_hash === entityStats.entity_hash)) {
+        setCollection(prevCollection => prevCollection.map((beast: Beast) =>
+          beast.entity_hash === entityStats.entity_hash
+            ? { ...beast, adventurers_killed: entityStats.adventurers_killed }
+            : beast
+        ));
+      }
+    }
+  }, [entityStats]);
+
   const fetchSummitData = async () => {
     const summitBeast = await getSummitData();
 
@@ -138,6 +168,49 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       setNextSummit(summitBeast);
     }
   };
+
+  const subscribeDungeonUpdates = async () => {
+    if (dungeonSubscriptionRef.current) {
+      try {
+        dungeonSubscriptionRef.current.cancel();
+      } catch (error) { }
+    }
+
+    try {
+      const [_, sub] = await sdk.subscribeEntityQuery({
+        query: dungeonStatsQuery(),
+        callback: ({ data, error }: { data?: any[]; error?: Error }) => {
+          if (error) {
+            console.error("Dungeon subscription error:", error);
+            return;
+          }
+
+          if (data && data.length > 0) {
+            let collectableEntity = data.filter((entity: any) => Boolean(getDeathMountainModel(entity, "CollectableEntity")))
+              .map((entity: any) => getDeathMountainModel(entity, "CollectableEntity"))
+
+            let entityStats = data.filter((entity: any) => Boolean(getDeathMountainModel(entity, "EntityStats")))
+              .map((entity: any) => getDeathMountainModel(entity, "EntityStats"))
+
+            if (collectableEntity.length > 0) {
+              setCollectableEntity(collectableEntity[0]);
+            }
+
+            if (entityStats.length > 0) {
+              setEntityStats(entityStats[0]);
+            }
+          }
+        },
+      });
+
+      dungeonSubscriptionRef.current = sub;
+    } catch (error) {
+      console.error("Failed to subscribe to dungeon updates:", error);
+      setTimeout(() => {
+        subscribeDungeonUpdates();
+      }, 30000);
+    }
+  }
 
   const subscribeSummitUpdates = async () => {
     if (summitSubscriptionRef.current) {
@@ -150,19 +223,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       const [_, sub] = await sdk.subscribeEventQuery({
         query: gameEventsQuery(),
         callback: ({ data, error }: { data?: any[]; error?: Error }) => {
-          if (error) {
-            console.error("Summit subscription error:", error);
-            retryCountRef.current += 1;
-            const delay = Math.min(30000, 2000 * retryCountRef.current);
-            if (reconnectTimeoutRef.current) {
-              clearTimeout(reconnectTimeoutRef.current);
-            }
-            reconnectTimeoutRef.current = setTimeout(() => {
-              subscribeSummitUpdates();
-            }, delay);
-            return;
-          }
-
           if (data && data.length > 0) {
             // Successful event received; reset retry counter
             retryCountRef.current = 0;

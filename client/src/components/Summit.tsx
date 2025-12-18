@@ -388,9 +388,11 @@ function Summit() {
                       <Typography sx={[styles.statLabel, { fontSize: '11px', opacity: 0.85 }]}>
                         Total power
                       </Typography>
-                      <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
+                      {summit.beast.stats.diplomacy ? <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
+                        {summit.diplomacy.total_power}({summit.diplomacy.total_power - summit.beast.power})
+                      </Typography> : <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
                         {summit.diplomacy.total_power}
-                      </Typography>
+                      </Typography>}
                     </Box>
 
                     <Typography sx={[styles.statLabel, { fontSize: '10px', opacity: 0.7 }]}>

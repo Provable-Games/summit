@@ -6,7 +6,7 @@ import LockClockIcon from '@mui/icons-material/LockClock';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import StarIcon from '@mui/icons-material/Star';
-import { Box, Typography } from "@mui/material";
+import { Box, Typography, Link } from "@mui/material";
 import { memo, useMemo } from 'react';
 import swordIcon from '../assets/images/sword.png';
 import { fetchBeastImage, getBeastLockedTimeRemaining } from "../utils/beasts";
@@ -72,8 +72,18 @@ const BeastCard = memo(({
         {/* Locked overlay */}
         {isLocked && (
           <Box sx={styles.lockOverlay}>
-            <LockClockIcon sx={{ fontSize: 22, mb: '2px', color: gameColors.brightGreen }} />
-            <Typography sx={styles.lockText}>LOCKED</Typography>
+            <Typography sx={styles.lockText}>KILLED IN LS2</Typography>
+            <Link
+              href={`https://lootsurvivor.io/survivor/watch?id=${beast.last_killed_by}&beast=${encodeURIComponent(
+                `${beast.prefix}_${beast.suffix}_${beast.name}`,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              sx={styles.lockWatchLink}
+            >
+              Watch
+            </Link>
             {(lockedTime.hours > 0 || lockedTime.minutes > 0) && (
               <Typography sx={styles.lockSubText}>
                 {lockedTime.hours}h {lockedTime.minutes}m
@@ -290,7 +300,6 @@ const styles = {
   lockedCard: {
     opacity: 0.8,
     filter: 'grayscale(60%)',
-    cursor: 'not-allowed',
     '&:hover': {
       transform: 'translateY(-2px)',
       boxShadow: `
@@ -342,7 +351,7 @@ const styles = {
     justifyContent: 'center',
     background: 'linear-gradient(135deg, rgba(0,0,0,0.75), rgba(0,0,0,0.95))',
     textAlign: 'center',
-    pointerEvents: 'none',
+    gap: '2px',
   },
   lockText: {
     fontSize: '11px',
@@ -354,6 +363,22 @@ const styles = {
     fontSize: '10px',
     marginTop: '2px',
     color: '#e5e7eb',
+  },
+  lockWatchLink: {
+    px: '8px',
+    py: '2px',
+    borderRadius: '999px',
+    border: `1px solid ${gameColors.brightGreen}`,
+    fontSize: '10px',
+    fontWeight: 'bold',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.6px',
+    color: gameColors.brightGreen,
+    textDecoration: 'none',
+    '&:hover': {
+      backgroundColor: `${gameColors.brightGreen}20`,
+      textDecoration: 'none',
+    },
   },
   upgradeIconsContainer: {
     position: 'absolute',

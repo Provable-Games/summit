@@ -2,47 +2,11 @@ import { useDynamicConnector } from "@/contexts/starknet";
 import { Top5000Cutoff } from "@/contexts/Statistics";
 import { Beast } from "@/types/game";
 import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
-import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime } from "@/utils/beasts";
+import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime, getEntityHash } from "@/utils/beasts";
 import { addAddressPadding } from "starknet";
 
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
-
-  const getBeastMetadata = async (tokenIds: number[]) => {
-    let tokenIdList = tokenIds.map((tokenId: number) => `'${addAddressPadding(tokenId.toString(16))}'`).join(',');
-
-    let q = `
-      SELECT metadata
-      FROM "tokens"
-      WHERE token_id IN (${tokenIdList})
-    `
-    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-    const sql = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json"
-      }
-    })
-    const data = await sql.json()
-    return data.map((data: any) => {
-      let metadata: any;
-      try {
-        metadata = typeof data.metadata === 'string' ? JSON.parse(data.metadata) : data.metadata;
-      } catch (e) {
-        console.error("Failed to parse beast metadata:", e, data.metadata);
-        return null;
-      }
-
-      const attrs: { [key: string]: string } = {};
-      if (metadata.attributes && Array.isArray(metadata.attributes)) {
-        metadata.attributes.forEach((attr: any) => {
-          attrs[attr.trait_type] = attr.value;
-        });
-      }
-
-      return attrs;
-    }).filter(Boolean);
-  }
 
   const getBeastCollection = async (accountAddress: string, cachedCollection: Beast[]) => {
     const contractAddress = '0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4';
@@ -271,10 +235,62 @@ export const useGameTokens = () => {
       beast.current_health = getBeastCurrentHealth(beast)
       beast.current_level = getBeastCurrentLevel(beast.level, beast.bonus_xp)
       beast.power = (6 - beast.tier) * beast.current_level;
+
+      let prefix = Object.keys(ITEM_NAME_PREFIXES).find((key: any) => ITEM_NAME_PREFIXES[key] === beast.prefix) || 0;
+      let suffix = Object.keys(ITEM_NAME_SUFFIXES).find((key: any) => ITEM_NAME_SUFFIXES[key] === beast.suffix) || 0;
+      beast.entity_hash = getEntityHash(beast.id, Number(prefix), Number(suffix));
+
       return beast
     }).filter(Boolean) as Beast[];
 
     return beasts
+  }
+
+  const getDungeonStats = async (specialHashes: string[]) => {
+    try {
+      let q = `
+      WITH special(entity_hash) AS (
+        VALUES ${specialHashes.map((hash: string) => `('${addAddressPadding(hash.toLowerCase())}')`).join(',')}
+      ),
+      mx AS (
+        SELECT c.entity_hash, MAX(c."index") AS max_index
+        FROM "ls_0_0_9-CollectableEntity" c
+        JOIN special s USING(entity_hash)
+        WHERE c.dungeon = '${currentNetworkConfig.dungeon}'
+        GROUP BY c.entity_hash
+      ),
+      last_row AS (
+        SELECT c.entity_hash, c.killed_by, c."timestamp"
+        FROM "ls_0_0_9-CollectableEntity" c
+        JOIN mx
+          ON c.entity_hash = mx.entity_hash
+        AND c."index"     = mx.max_index
+        WHERE c.dungeon = '${currentNetworkConfig.dungeon}'
+      )
+      SELECT
+        l.entity_hash,
+        l.killed_by,
+        l."timestamp",
+        es.adventurers_killed AS adventurers_killed
+      FROM last_row l
+      LEFT JOIN "ls_0_0_9-EntityStats" es
+        ON es.dungeon = '0x0000000000000000000000000000000000000000000000000000000000000006'
+      AND es.entity_hash = l.entity_hash;
+    `
+      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+
+      const data = await sql.json()
+      return data
+    } catch (error) {
+      console.error("Error getting dungeon stats:", error);
+      return [];
+    }
   }
 
   const countAliveBeasts = async () => {
@@ -412,52 +428,7 @@ export const useGameTokens = () => {
     }
   }
 
-  const getKilledBy = async (beast: Beast) => {
-    let prefix =
-      Object.keys(ITEM_NAME_PREFIXES).find(
-        (key: any) => ITEM_NAME_PREFIXES[key] === beast.prefix
-      ) || 0;
-    let suffix =
-      Object.keys(ITEM_NAME_SUFFIXES).find(
-        (key: any) => ITEM_NAME_SUFFIXES[key] === beast.suffix
-      ) || 0;
 
-    let q = `
-      SELECT killed_by
-      FROM "ls_0_0_9-CollectableEntity"
-      WHERE dungeon = '${currentNetworkConfig.dungeon}' AND killed_by != "0x0000000000000000"
-      AND id = ${beast.id} AND suffix = ${suffix} AND prefix = ${prefix}
-      LIMIT 1000;
-    `
-
-    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-    const sql = await fetch(url, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" }
-    })
-
-    let data = await sql.json()
-    return data.map((row: any) => parseInt(row.killed_by, 16))
-  }
-
-  const getKilledBeasts = async (adventurer_id: number) => {
-    let q = `
-      SELECT *
-      FROM "ls_0_0_9-CollectableEntity"
-      WHERE dungeon = '${currentNetworkConfig.dungeon}'
-      AND killed_by = '0x${adventurer_id.toString(16).padStart(16, '0')}'
-      LIMIT 1000;
-    `
-
-    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-    const sql = await fetch(url, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" }
-    })
-
-    let data = await sql.json()
-    return data
-  }
 
   const getValidAdventurers = async (adventurerIds: number[]) => {
     let q = `
@@ -596,7 +567,6 @@ export const useGameTokens = () => {
         beast_token_ids: JSON.parse(data[0].beast_token_ids),
       }
     } catch (error) {
-      console.error("Error getting diplomacy:", error);
       return {
         specials_hash: beast.specials_hash,
         total_power: 0,
@@ -609,14 +579,12 @@ export const useGameTokens = () => {
     getBeastCollection,
     countRegisteredBeasts,
     getLeaderboard,
-    getKilledBy,
-    getKilledBeasts,
     getValidAdventurers,
     countAliveBeasts,
     getTop5000Cutoff,
     getDiplomacy,
     getTopBeastsByBlocksHeld,
     countBeastsWithBlocksHeld,
-    getBeastMetadata
+    getDungeonStats
   };
 };
