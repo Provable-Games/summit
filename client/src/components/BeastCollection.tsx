@@ -188,7 +188,7 @@ function BeastCollection() {
     const allBeasts = collectionWithCombat.filter(
       (beast: Beast) => !isBeastLocked(beast)
     );
-    const maxBeasts = Math.min(200, allBeasts.length);
+    const maxBeasts = Math.min(150, allBeasts.length);
 
     if (selectedBeasts.length >= maxBeasts) {
       setSelectedBeasts([]);
@@ -207,7 +207,7 @@ function BeastCollection() {
     const allBeasts = collectionWithCombat.filter(
       (beast: Beast) => !isBeastLocked(beast)
     );
-    const maxBeasts = Math.min(200, allBeasts.length);
+    const maxBeasts = Math.min(75, allBeasts.length);
     return allBeasts.length > 0 && selectedBeasts.length >= maxBeasts;
   }, [collectionWithCombat, selectedBeasts]);
 
@@ -376,7 +376,7 @@ function BeastCollection() {
 
               <Tooltip
                 placement="bottom"
-                title={<Box sx={styles.tooltipContent}>Select 200</Box>}
+                title={<Box sx={styles.tooltipContent}>Select 75</Box>}
               >
                 <Box
                   sx={[
