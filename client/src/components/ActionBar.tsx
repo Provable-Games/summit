@@ -1,7 +1,7 @@
 import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useGameStore } from '@/stores/gameStore';
-import { Beast } from '@/types/game';
+import { AppliedPotions, Beast } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -15,7 +15,7 @@ import lifePotionIcon from '../assets/images/life-potion.png';
 import poisonPotionIcon from '../assets/images/poison-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import { gameColors } from '../utils/themes';
-import { calculateBattleResult, getBeastRevivalTime, getBeastCurrentHealth, isBeastLocked } from '../utils/beasts';
+import { calculateBattleResult, getBeastRevivalTime, getBeastCurrentHealth, isBeastLocked, calculateOptimalAttackPotions } from '../utils/beasts';
 import AutopilotConfigModal from './dialogs/AutopilotConfigModal';
 import { useAutopilotStore } from '@/stores/autopilotStore';
 
@@ -28,7 +28,9 @@ function ActionBar() {
     applyingPotions, setApplyingPotions, appliedPoisonCount, setAppliedPoisonCount,
     collection, collectionSyncing, setSelectedBeasts, attackMode, setAttackMode,
     autopilotEnabled, setAutopilotEnabled } = useGameStore();
-  const { attackStrategy } = useAutopilotStore();
+  const { attackStrategy, extraLifeStrategy, extraLifeMax, extraLifeTotalMax, extraLifeReplenishTo, extraLifePotionsUsed, useRevivePotions, revivePotionMax, revivePotionMaxPerBeast,
+    useAttackPotions, attackPotionMax, revivePotionsUsed, attackPotionsUsed, setRevivePotionsUsed,
+    setAttackPotionsUsed, setExtraLifePotionsUsed, setPoisonPotionsUsed } = useAutopilotStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
@@ -61,26 +63,46 @@ function ActionBar() {
 
   const collectionWithCombat = useMemo<Beast[]>(() => {
     if (summit && collection.length > 0) {
+      let revivePotionsEnabled = autopilotEnabled && useRevivePotions && revivePotionsUsed < revivePotionMax;
+
       let filtered = collection.map((beast: Beast) => {
         let newBeast = { ...beast }
         newBeast.revival_time = getBeastRevivalTime(newBeast);
-        newBeast.current_health = getBeastCurrentHealth(newBeast)
-        newBeast.combat = calculateBattleResult(newBeast, summit, 0)
+        newBeast.current_health = getBeastCurrentHealth(beast);
+        newBeast.combat = calculateBattleResult(newBeast, summit, 0);
         return newBeast
-      }).filter((beast: Beast) => beast.current_health > 0 && !isBeastLocked(beast));
+      }).filter((beast: Beast) => !isBeastLocked(beast));
 
-      return filtered.sort((a: Beast, b: Beast) => b.combat?.score - a.combat?.score)
+      filtered = filtered.sort((a: Beast, b: Beast) => b.combat?.score - a.combat?.score);
+
+      if (revivePotionsEnabled) {
+        let revivePotionsRemaining = revivePotionMax - revivePotionsUsed;
+        filtered = filtered.map((beast: Beast) => {
+          if (beast.current_health === 0) {
+            if (beast.revival_count >= revivePotionsRemaining || beast.revival_count >= revivePotionMaxPerBeast) {
+              return null;
+            } else {
+              revivePotionsRemaining -= beast.revival_count + 1;
+            }
+          }
+          return beast;
+        }).filter(Boolean);
+      } else {
+        filtered = filtered.filter((beast: Beast) => beast.current_health > 0);
+      }
+
+      return filtered
     }
 
     return [];
-  }, [summit?.beast?.token_id, collection.length]);
+  }, [summit?.beast?.token_id, collection.length, revivePotionsUsed, attackPotionsUsed]);
 
   const handleAttackUntilCapture = () => {
     if (!enableAttack) return;
 
     executeGameAction({
       type: 'attack_until_capture',
-      beastIds: collectionWithCombat.map((beast: Beast) => beast.token_id),
+      beasts: collectionWithCombat,
     });
   }
 
@@ -146,21 +168,50 @@ function ActionBar() {
       setLastBeastAttacked(summit?.beast.token_id);
       handleAttackUntilCapture();
     } else if (attackStrategy === 'guaranteed') {
-      let beastIds = collectionWithCombat.slice(0, 75)
+      let beasts = collectionWithCombat.slice(0, 75)
 
-      let totalEstimatedDamage = beastIds.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
-      if (totalEstimatedDamage > ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health) {
+      let attackPotions = 0;
+      if (autopilotEnabled && useAttackPotions && attackPotionsUsed < attackPotionMax) {
+        attackPotions = calculateOptimalAttackPotions(beasts[0], summit, Math.min(attackPotionMax - attackPotionsUsed, 255));
+        beasts[0].combat = calculateBattleResult(beasts[0], summit, attackPotions);
+      }
+
+      let totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
+      let totalSummitHealth = ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health;
+
+      if (totalEstimatedDamage > (totalSummitHealth * 1.2)) {
+        let revivePotions = beasts.reduce((acc: number, beast: Beast) => beast.current_health === 0 ? acc + beast.revival_count + 1 : acc, 0);
+
+        let extraLifePotions = 0;
+        if (extraLifeStrategy === 'after_capture') {
+          extraLifePotions = Math.min(tokenBalances["EXTRA LIFE"] || 0, extraLifeMax);
+        } else if (extraLifeStrategy === 'aggressive') {
+          extraLifePotions = Math.min(extraLifeMax - extraLifePotionsUsed, 4000);
+        }
+
         setLastBeastAttacked(summit?.beast.token_id);
         executeGameAction({
           type: 'attack',
-          beastIds: beastIds.map((beast: Beast) => beast.token_id),
-          appliedPotions: { revive: 0, attack: 0, extraLife: 0 },
+          beastIds: beasts.map((beast: Beast) => beast.token_id),
+          appliedPotions: { revive: revivePotions, attack: attackPotions, extraLife: extraLifePotions },
           safeAttack: false,
           vrf: true
         });
       }
     }
   }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
+
+  const startAutopilot = () => {
+    setRevivePotionsUsed(0);
+    setAttackPotionsUsed(0);
+    setExtraLifePotionsUsed(0);
+    setPoisonPotionsUsed(0);
+    setAutopilotEnabled(true);
+  }
+
+  const stopAutopilot = () => {
+    setAutopilotEnabled(false);
+  }
 
   const hasEnoughRevivePotions = (tokenBalances["REVIVE"] || 0) >= revivalPotionsRequired;
   const enableAttack = ((attackMode === 'capture' || attackMode === 'autopilot') && !attackInProgress) || ((!isSavage || attackMode !== 'safe') && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions);
@@ -212,7 +263,7 @@ function ActionBar() {
               }
             </Box>
           </Box>
-          : isSavageSelected
+          : (isSavageSelected && attackMode !== 'autopilot')
             ? <Box sx={[styles.attackButton, appliedPotions.extraLife > 0 && styles.attackButtonEnabled]}
               onClick={handleAddExtraLife}>
               <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
@@ -248,7 +299,7 @@ function ActionBar() {
                   ]}
                   onClick={() => {
                     if (attackMode === 'autopilot') {
-                      setAutopilotEnabled(!autopilotEnabled);
+                      autopilotEnabled ? stopAutopilot() : startAutopilot();
                     } else if (attackMode === 'capture') {
                       handleAttackUntilCapture();
                     } else {
@@ -266,7 +317,7 @@ function ActionBar() {
                             ]}
                             variant="h5"
                           >
-                            {`Autopilot: ${autopilotEnabled ? 'ON' : 'OFF'}`}
+                            {autopilotEnabled ? 'STOP AUTOPILOT' : 'START AUTOPILOT'}
                           </Typography>
                         </Box>
                       )
@@ -807,26 +858,13 @@ function ActionBar() {
                 }
               }}
               onClick={() => {
-                const target = (summit.beast.extra_lives > 0)
-                  ? (summit.beast.health + summit.beast.bonus_health)
-                  : Math.max(1, summit.beast.current_health || 0);
-                const maxAllowed = Math.min(tokenBalances["ATTACK"] || 0, 255);
-                let bestRequired = Number.POSITIVE_INFINITY;
-                const beast = selectedBeasts[0] as Beast | undefined;
-                if (beast && beast.current_health > 0) {
-                  for (let n = 0; n <= maxAllowed; n++) {
-                    const combat = calculateBattleResult(beast, summit, n);
-                    if (combat.estimatedDamage >= target) {
-                      bestRequired = n;
-                      break;
-                    }
-                  }
+                if (selectedBeasts.length > 0) {
+                  const value = calculateOptimalAttackPotions(selectedBeasts[0], summit, Math.min(tokenBalances["ATTACK"] || 0, 255))
+                  setAppliedPotions({
+                    ...appliedPotions,
+                    attack: value
+                  });
                 }
-                const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
-                setAppliedPotions({
-                  ...appliedPotions,
-                  attack: value
-                });
               }}
             >
               Optimal

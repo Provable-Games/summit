@@ -1,9 +1,15 @@
 import { useStarknetApi } from "@/api/starknet";
 import { useGameTokens } from "@/dojo/useGameTokens";
 import { useGameStore } from "@/stores/gameStore";
+import { Beast } from "@/types/game";
 import { useAnalytics } from "@/utils/analytics";
+import {
+  loadBeastCollectionFromCache,
+  saveBeastCollectionToCache,
+} from "@/utils/beastCache";
+import { getBeastCurrentHealth, getBeastRevivalTime } from "@/utils/beasts";
+import { delay } from "@/utils/utils";
 import { useAccount, useConnect, useDisconnect } from "@starknet-react/core";
-import { useGameTokens as useMetagameTokens } from "metagame-sdk/sql";
 import {
   createContext,
   PropsWithChildren,
@@ -11,21 +17,14 @@ import {
   useEffect,
   useState,
 } from "react";
-import { addAddressPadding } from "starknet";
 import { useDynamicConnector } from "./starknet";
-import {
-  loadBeastCollectionFromCache,
-  saveBeastCollectionToCache,
-} from "@/utils/beastCache";
-import { Beast } from "@/types/game";
-import { getBeastCurrentHealth, getBeastRevivalTime } from "@/utils/beasts";
 
 export interface ControllerContext {
   playerName: string | undefined;
   isPending: boolean;
   tokenBalances: Record<string, number>;
   setTokenBalances: (tokenBalances: Record<string, number>) => void;
-  fetchTokenBalances: () => void;
+  fetchTokenBalances: (delayMs: number) => void;
   fetchPaymentTokenBalances: () => void;
   fetchBeastCollection: () => void;
   filterValidAdventurers: () => void;
@@ -56,39 +55,20 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const [showTermsOfService, setShowTermsOfService] = useState(false);
   const { identifyAddress } = useAnalytics();
 
-  const { games: adventurers } = useMetagameTokens({
-    mintedByAddress: addAddressPadding(currentNetworkConfig.dungeon),
-    owner: account?.address || "0x0",
-    gameOver: true,
-    sortBy: "minted_at",
-    sortOrder: "desc",
-    limit: 10000,
-  });
-
   const filterValidAdventurers = async () => {
-    const adventurerIds = adventurers.map(adventurer => adventurer.token_id);
-    const validIds = await getValidAdventurers(adventurerIds);
+    const validAdventurers = await getValidAdventurers(account?.address);
 
-    const validAdventurers = adventurers.filter(adventurer =>
-      validIds.includes(adventurer.token_id)
-    );
-
-    setAdventurerCollection(
-      validAdventurers.map((adventurer) => ({
-        id: adventurer.token_id,
-        name: adventurer.player_name,
-        level: Math.floor(Math.sqrt(adventurer.score)),
-        metadata: JSON.parse(adventurer.metadata || "{}"),
-        soulbound: adventurer.soulbound,
-      }))
-    );
+    setAdventurerCollection(validAdventurers.map((adventurer: any) => ({
+      id: adventurer.token_id,
+      level: Math.floor(Math.sqrt(adventurer.score)),
+    })));
   };
 
   useEffect(() => {
-    if (adventurers) {
+    if (account?.address) {
       filterValidAdventurers();
     }
-  }, [adventurers]);
+  }, [account?.address]);
 
   // Persist collection changes to localStorage
   useEffect(() => {
@@ -223,7 +203,8 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     }
   }
 
-  async function fetchTokenBalances() {
+  async function fetchTokenBalances(delayMs: number = 0) {
+    await delay(delayMs);
     let balances = await getTokenBalances(currentNetworkConfig.tokens.erc20);
     setTokenBalances(prev => ({ ...prev, ...balances }));
   }

@@ -88,6 +88,7 @@ export interface AppliedPotions {
 export interface GameAction {
   type: string;
   pauseUpdates?: boolean;
+  beasts?: Beast[];
   beastId?: number;
   beastIds?: number[];
   adventurerIds?: number[];

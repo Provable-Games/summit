@@ -446,13 +446,20 @@ export const useGameTokens = () => {
     }
   }
 
+  const getValidAdventurers = async (owner: string) => {
+    let namespace = "relayer_0_0_1"
 
-
-  const getValidAdventurers = async (adventurerIds: number[]) => {
     let q = `
-      SELECT adventurer_id
-      FROM "summit_relayer_3-CorpseEvent"
-      WHERE adventurer_id IN (${adventurerIds.map((id: number) => `'0x${id.toString(16).padStart(16, '0')}'`).join(',')})
+      SELECT o.token_id, tm.minted_by, tm.id, tm.game_over, ce.adventurer_id, s.score
+      FROM '${namespace}-TokenMetadataUpdate' tm
+      LEFT JOIN '${namespace}-TokenScoreUpdate' s on s.id = tm.id
+      LEFT JOIN '${namespace}-OwnersUpdate' o ON o.token_id = tm.id
+      LEFT JOIN '${namespace}-MinterRegistryUpdate' mr ON mr.id = tm.minted_by
+      LEFT JOIN '${currentNetworkConfig.namespace}-CorpseEvent' ce ON ce.adventurer_id = tm.id
+      WHERE o.owner = "${addAddressPadding(owner.toLowerCase())}"
+      AND mr.minter_address = "${addAddressPadding(currentNetworkConfig.dungeon)}"
+      AND tm.game_over = 1
+      AND ce.adventurer_id IS NULL
     `
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
     const sql = await fetch(url, {
@@ -461,7 +468,10 @@ export const useGameTokens = () => {
     })
 
     let data = await sql.json()
-    return adventurerIds.filter((id: number) => !data.some((row: any) => parseInt(row.adventurer_id, 16) === id))
+    return data.map((row: any) => ({
+      token_id: parseInt(row.token_id, 16),
+      score: parseInt(row.score, 16),
+    }))
   }
 
   const getTop5000Cutoff = async (): Promise<Top5000Cutoff | null> => {

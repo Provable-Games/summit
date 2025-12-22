@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Summit, Beast, Adventurer, AppliedPotions, BattleEvent, Leaderboard, PoisonEvent } from '@/types/game';
 
-export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'rewards earned';
+export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'blocks held';
 export type BeastTypeFilter = 'all' | 'strong';
 
 interface GameState {

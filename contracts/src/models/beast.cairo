@@ -8,7 +8,7 @@ pub struct LiveBeastStats {
     pub bonus_xp: u16, // 16 bits
     pub attack_streak: u8, // 4 bits
     pub last_death_timestamp: u64, // 64 bits
-    pub revival_count: u8, // 5 bits
+    pub revival_count: u8, // 6 bits
     pub extra_lives: u16, // 12 bits 4000 max
     pub has_claimed_potions: u8, // 1 bit
     pub blocks_held: u32, // 17 bits
@@ -33,7 +33,7 @@ pub struct Beast {
 /// Power of 2 constants for bit manipulation
 mod pow {
     pub const TWO_POW_4: u256 = 0x10;
-    pub const TWO_POW_5: u256 = 0x20;
+    pub const TWO_POW_6: u256 = 0x40;
     pub const TWO_POW_8: u256 = 0x100;
     pub const TWO_POW_12: u256 = 0x1000;
     pub const TWO_POW_16: u256 = 0x10000;
@@ -44,14 +44,14 @@ mod pow {
     pub const TWO_POW_61: u256 = 0x2000000000000000;
     pub const TWO_POW_64: u256 = 0x10000000000000000;
     pub const TWO_POW_125: u256 = 0x20000000000000000000000000000000;
-    pub const TWO_POW_130: u256 = 0x400000000000000000000000000000000;
-    pub const TWO_POW_142: u256 = 0x400000000000000000000000000000000000;
+    pub const TWO_POW_131: u256 = 0x800000000000000000000000000000000;
     pub const TWO_POW_143: u256 = 0x800000000000000000000000000000000000;
-    pub const TWO_POW_160: u256 = 0x10000000000000000000000000000000000000000;
-    pub const TWO_POW_168: u256 = 0x1000000000000000000000000000000000000000000;
-    pub const TWO_POW_176: u256 = 0x100000000000000000000000000000000000000000000;
+    pub const TWO_POW_144: u256 = 0x1000000000000000000000000000000000000;
+    pub const TWO_POW_161: u256 = 0x20000000000000000000000000000000000000000;
+    pub const TWO_POW_169: u256 = 0x2000000000000000000000000000000000000000000;
     pub const TWO_POW_177: u256 = 0x200000000000000000000000000000000000000000000;
     pub const TWO_POW_178: u256 = 0x400000000000000000000000000000000000000000000;
+    pub const TWO_POW_179: u256 = 0x800000000000000000000000000000000000000000000;
 }
 
 // Storage packing implementation for PackableBeast
@@ -65,14 +65,14 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
             + value.attack_streak.into() * pow::TWO_POW_57
             + value.last_death_timestamp.into() * pow::TWO_POW_61
             + value.revival_count.into() * pow::TWO_POW_125
-            + value.extra_lives.into() * pow::TWO_POW_130
-            + value.has_claimed_potions.into() * pow::TWO_POW_142
-            + value.blocks_held.into() * pow::TWO_POW_143
-            + value.stats.spirit.into() * pow::TWO_POW_160
-            + value.stats.luck.into() * pow::TWO_POW_168
-            + value.stats.specials.into() * pow::TWO_POW_176
-            + value.stats.wisdom.into() * pow::TWO_POW_177
-            + value.stats.diplomacy.into() * pow::TWO_POW_178)
+            + value.extra_lives.into() * pow::TWO_POW_131
+            + value.has_claimed_potions.into() * pow::TWO_POW_143
+            + value.blocks_held.into() * pow::TWO_POW_144
+            + value.stats.spirit.into() * pow::TWO_POW_161
+            + value.stats.luck.into() * pow::TWO_POW_169
+            + value.stats.specials.into() * pow::TWO_POW_177
+            + value.stats.wisdom.into() * pow::TWO_POW_178
+            + value.stats.diplomacy.into() * pow::TWO_POW_179)
             .try_into()
             .expect('pack beast overflow')
     }
@@ -104,9 +104,9 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
         let last_death_timestamp = (packed % pow::TWO_POW_64).try_into().expect('unpack last_death_timestamp');
         packed = packed / pow::TWO_POW_64;
 
-        // Extract revival_count (5 bits)
-        let revival_count = (packed % pow::TWO_POW_5).try_into().expect('unpack revival_count');
-        packed = packed / pow::TWO_POW_5;
+        // Extract revival_count (6 bits)
+        let revival_count = (packed % pow::TWO_POW_6).try_into().expect('unpack revival_count');
+        packed = packed / pow::TWO_POW_6;
 
         // Extract extra_lives (8 bits)
         let extra_lives = (packed % pow::TWO_POW_12).try_into().expect('unpack extra_lives');
@@ -286,7 +286,7 @@ mod tests {
         // bonus_xp: 16 bits → 2^16 - 1
         // attack_streak: 4 bits → 2^4 - 1
         // last_death_timestamp: 64 bits → 2^64 - 1
-        // revival_count: 5 bits → 2^5 - 1
+        // revival_count: 6 bits → 2^6 - 1
         // extra_lives: 12 bits → 2^12 - 1
         // has_claimed_potions: 1 bit → 1
         // blocks_held: 17 bits → 2^17 - 1
@@ -299,7 +299,7 @@ mod tests {
             65534_u16, // (2^16 - 1) - 1
             14_u8, // (2^4 - 1) - 1
             0xFFFFFFFFFFFFFFFE_u64, // (2^64 - 1) - 1
-            30_u8, // (2^5 - 1) - 1
+            63_u8, // (2^6 - 1) - 1
             4094_u16, // (2^12 - 1) - 1
             1_u8, // 1-bit remains 1 for max
             131070_u32, // (2^17 - 1) - 1
@@ -317,7 +317,7 @@ mod tests {
         assert(unpacked.bonus_xp == 65534_u16, 'max bonus_xp');
         assert(unpacked.attack_streak == 14_u8, 'max attack_streak');
         assert(unpacked.last_death_timestamp == 0xFFFFFFFFFFFFFFFE_u64, 'max last_death_timestamp');
-        assert(unpacked.revival_count == 30_u8, 'max revival_count');
+        assert(unpacked.revival_count == 63_u8, 'max revival_count');
         assert(unpacked.extra_lives == 4094_u16, 'max extra_lives');
         assert(unpacked.has_claimed_potions == 1_u8, 'max has_claimed_potions');
         assert(unpacked.blocks_held == 131070_u32, 'max blocks_held');

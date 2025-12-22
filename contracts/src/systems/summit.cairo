@@ -1,5 +1,5 @@
 use starknet::ContractAddress;
-use summit::models::beast::{Beast, Stats};
+use summit::models::beast::{Beast, LiveBeastStats, Stats};
 
 #[starknet::interface]
 pub trait ISummitSystem<T> {
@@ -7,18 +7,10 @@ pub trait ISummitSystem<T> {
     fn attack(
         ref self: T,
         defending_beast_token_id: u32,
-        attacking_beast_token_ids: Span<u32>,
-        revival_potions: u16,
-        attack_potions: u8,
+        attacking_beasts: Span<(u32, u16, u8)>, // (beast token id, attack count, attack potions)
+        revival_potions: u32,
         extra_life_potions: u16,
         vrf: bool,
-    );
-    fn attack_unsafe(
-        ref self: T,
-        attacking_beast_token_ids: Span<u32>,
-        revival_potions: u16,
-        attack_potions: u8,
-        extra_life_potions: u16,
     );
     fn feed(ref self: T, beast_token_id: u32, amount: u16);
     fn claim_beast_reward(ref self: T, beast_token_ids: Span<u32>);
@@ -46,6 +38,7 @@ pub trait ISummitSystem<T> {
     fn get_summit_beast_token_id(self: @T) -> u32;
     fn get_summit_beast(self: @T) -> Beast;
     fn get_beast(self: @T, beast_token_id: u32) -> Beast;
+    fn get_live_stats(self: @T, beast_token_ids: Span<u32>) -> Span<LiveBeastStats>;
 
     fn get_start_timestamp(self: @T) -> u64;
     fn get_terminal_block(self: @T) -> u64;
@@ -210,32 +203,13 @@ pub mod summit_systems {
         fn attack(
             ref self: ContractState,
             defending_beast_token_id: u32,
-            attacking_beast_token_ids: Span<u32>,
-            revival_potions: u16,
-            attack_potions: u8,
+            attacking_beasts: Span<(u32, u16, u8)>,
+            revival_potions: u32,
             extra_life_potions: u16,
             vrf: bool,
         ) {
             InternalSummitImpl::_attack_summit(
-                ref self,
-                attacking_beast_token_ids,
-                revival_potions,
-                attack_potions,
-                extra_life_potions,
-                vrf,
-                defending_beast_token_id,
-            );
-        }
-
-        fn attack_unsafe(
-            ref self: ContractState,
-            attacking_beast_token_ids: Span<u32>,
-            revival_potions: u16,
-            attack_potions: u8,
-            extra_life_potions: u16,
-        ) {
-            InternalSummitImpl::_attack_summit(
-                ref self, attacking_beast_token_ids, revival_potions, attack_potions, extra_life_potions, true, 0,
+                ref self, attacking_beasts, revival_potions, extra_life_potions, vrf, defending_beast_token_id,
             );
         }
 
@@ -594,6 +568,18 @@ pub mod summit_systems {
             InternalSummitImpl::_get_beast(self, beast_token_id)
         }
 
+        fn get_live_stats(self: @ContractState, beast_token_ids: Span<u32>) -> Span<LiveBeastStats> {
+            let mut live_stats = array![];
+            let mut i = 0;
+            while i < beast_token_ids.len() {
+                let token_id = *beast_token_ids.at(i);
+                let live_stat: LiveBeastStats = self.live_beast_stats.entry(token_id).read();
+                live_stats.append(live_stat);
+                i += 1;
+            }
+            live_stats.span()
+        }
+
         fn get_dungeon_address(self: @ContractState) -> ContractAddress {
             self.dungeon_address.read()
         }
@@ -743,9 +729,8 @@ pub mod summit_systems {
 
         fn _attack_summit(
             ref self: ContractState,
-            attacking_beast_token_ids: Span<u32>,
-            revival_potions: u16,
-            attack_potions: u8,
+            attacking_beasts: Span<(u32, u16, u8)>,
+            revival_potions: u32,
             extra_life_potions: u16,
             vrf: bool,
             defending_beast_token_id: u32,
@@ -771,14 +756,9 @@ pub mod summit_systems {
             assert(get_caller_address() != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
 
             let mut defending_beast = Self::_get_beast(@self, summit_beast_token_id);
-            self._apply_poison_damage(ref defending_beast);
-
             let diplomacy_bonus = Self::_get_diplomacy_bonus(@self, defending_beast);
 
-            let mut remaining_attack_potions = attack_potions;
-            let mut remaining_revival_potions = revival_potions;
-
-            let current_time = get_block_timestamp();
+            self._apply_poison_damage(ref defending_beast);
 
             let random_seed = if vrf {
                 VRFImpl::seed()
@@ -786,11 +766,16 @@ pub mod summit_systems {
                 0
             };
 
+            let current_time = get_block_timestamp();
+
+            let mut total_attack_potions: u32 = 0;
+            let mut remaining_revival_potions = revival_potions;
             let mut beast_attacked = false;
             let mut i = 0;
-            while (i < attacking_beast_token_ids.len()) {
-                let attacking_beast_token_id = *attacking_beast_token_ids.at(i);
+            while (i < attacking_beasts.len()) {
+                let (attacking_beast_token_id, attack_count, attack_potions) = *attacking_beasts.at(i);
 
+                assert!(attack_count > 0, "Attack count must be greater than 0");
                 // assert the caller owns the beast they attacking with
                 let beast_owner = beast_dispatcher.owner_of(attacking_beast_token_id.into());
                 assert(beast_owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
@@ -807,214 +792,218 @@ pub mod summit_systems {
                     }
                 }
 
-                // check if it needs revival potions
-                let potions_required = Self::_revival_potions_required(@self, attacking_beast);
-                if potions_required > 0 {
-                    if remaining_revival_potions < potions_required {
-                        if safe_attack {
-                            assert!(
-                                false,
-                                "Beast {} requires {} revival potions",
-                                attacking_beast_token_id,
-                                potions_required,
-                            );
-                        } else {
-                            i += 1;
-                            continue;
+                let mut attack_counter = 0;
+                while (attack_counter < attack_count) {
+                    // check if it needs revival potions
+                    let potions_required = Self::_revival_potions_required(@self, attacking_beast);
+                    if potions_required > 0 {
+                        if remaining_revival_potions < potions_required {
+                            if safe_attack {
+                                assert!(
+                                    false,
+                                    "Beast {} requires {} revival potions",
+                                    attacking_beast_token_id,
+                                    potions_required,
+                                );
+                            } else {
+                                break;
+                            }
                         }
+
+                        if attacking_beast.live.revival_count < MAX_REVIVAL_COUNT {
+                            attacking_beast.live.revival_count += 1;
+                        }
+
+                        remaining_revival_potions -= potions_required;
                     }
 
-                    if attacking_beast.live.revival_count < MAX_REVIVAL_COUNT {
-                        attacking_beast.live.revival_count += 1;
+                    // reset health to starting health plus any bonus health they have accrued
+                    // @dev beasts attack till death so we don't need any additional logic
+                    attacking_beast.live.current_health = attacking_beast.fixed.health
+                        + attacking_beast.live.bonus_health;
+
+                    let mut battle_counter: u32 = 0;
+                    let mut attack_count = 0;
+                    let mut attack_damage = 0;
+                    let mut critical_attack_count = 0;
+                    let mut critical_attack_damage = 0;
+                    let mut counter_attack_count = 0;
+                    let mut counter_attack_damage = 0;
+                    let mut critical_counter_attack_count = 0;
+                    let mut critical_counter_attack_damage = 0;
+
+                    // precompute combat specs and crit chances before battle loop
+                    let attacker_has_specials = attacking_beast.live.stats.specials == 1;
+                    let defender_has_specials = defending_beast.live.stats.specials == 1;
+
+                    // combat specs for when attacking_beast attacks
+                    let attacker_spec_as_attacker = attacking_beast.get_combat_spec(attacker_has_specials);
+                    let defender_spec_when_attacked = defending_beast.get_combat_spec(attacker_has_specials);
+
+                    // combat specs for when defending_beast counter-attacks
+                    let defender_spec_as_attacker = defending_beast.get_combat_spec(defender_has_specials);
+                    let attacker_spec_when_attacked = attacking_beast.get_combat_spec(defender_has_specials);
+
+                    // precompute critical hit chances
+                    let attacker_crit_chance = attacking_beast.crit_chance();
+                    let defender_crit_chance = defending_beast.crit_chance();
+
+                    if (attack_counter == 0) {
+                        total_attack_potions += attack_potions.into();
                     }
 
-                    remaining_revival_potions -= potions_required;
-                }
+                    // loop until the attacking beast is dead or the summit beast is dead
+                    loop {
+                        // if either beast is dead, break
+                        if attacking_beast.live.current_health == 0 || defending_beast.live.current_health == 0 {
+                            break;
+                        }
 
-                // reset health to starting health plus any bonus health they have accrued
-                // @dev beasts attack till death so we don't need any additional logic
-                attacking_beast.live.current_health = attacking_beast.fixed.health + attacking_beast.live.bonus_health;
-
-                let mut battle_counter: u32 = 0;
-                let mut attack_count = 0;
-                let mut attack_damage = 0;
-                let mut critical_attack_count = 0;
-                let mut critical_attack_damage = 0;
-                let mut counter_attack_count = 0;
-                let mut counter_attack_damage = 0;
-                let mut critical_counter_attack_count = 0;
-                let mut critical_counter_attack_damage = 0;
-
-                // precompute combat specs and crit chances before battle loop
-                let attacker_has_specials = attacking_beast.live.stats.specials == 1;
-                let defender_has_specials = defending_beast.live.stats.specials == 1;
-
-                // combat specs for when attacking_beast attacks
-                let attacker_spec_as_attacker = attacking_beast.get_combat_spec(attacker_has_specials);
-                let defender_spec_when_attacked = defending_beast.get_combat_spec(attacker_has_specials);
-
-                // combat specs for when defending_beast counter-attacks
-                let defender_spec_as_attacker = defending_beast.get_combat_spec(defender_has_specials);
-                let attacker_spec_when_attacked = attacking_beast.get_combat_spec(defender_has_specials);
-
-                // precompute critical hit chances
-                let attacker_crit_chance = attacking_beast.crit_chance();
-                let defender_crit_chance = defending_beast.crit_chance();
-
-                // loop until the attacking beast is dead or the summit beast is dead
-                loop {
-                    // if either beast is dead, break
-                    if attacking_beast.live.current_health == 0 || defending_beast.live.current_health == 0 {
-                        break;
-                    }
-
-                    let (_, attacker_crit_hit_rnd, defender_crit_hit_rnd, _) = Self::_get_battle_randomness(
-                        attacking_beast_token_id,
-                        random_seed,
-                        attacking_beast.live.last_death_timestamp,
-                        battle_counter,
-                    );
-
-                    let (damage, attacker_crit_hit) = self
-                        ._attack(
-                            attacker_spec_as_attacker,
-                            defender_spec_when_attacked,
-                            ref defending_beast,
-                            remaining_attack_potions,
-                            attacker_crit_hit_rnd,
-                            attacker_crit_chance,
-                            vrf,
+                        let (_, attacker_crit_hit_rnd, defender_crit_hit_rnd, _) = Self::_get_battle_randomness(
+                            attacking_beast_token_id,
+                            random_seed,
+                            attacking_beast.live.last_death_timestamp,
+                            battle_counter,
                         );
 
-                    if attacker_crit_hit {
-                        critical_attack_count += 1;
-                        critical_attack_damage = damage;
-                    } else {
-                        attack_count += 1;
-                        attack_damage = damage;
-                    }
-
-                    defending_beast._use_extra_life();
-
-                    if defending_beast.live.current_health != 0 {
-                        let (damage, defender_crit_hit) = self
+                        let (damage, attacker_crit_hit) = self
                             ._attack(
-                                defender_spec_as_attacker,
-                                attacker_spec_when_attacked,
-                                ref attacking_beast,
-                                diplomacy_bonus,
-                                defender_crit_hit_rnd,
-                                defender_crit_chance,
+                                attacker_spec_as_attacker,
+                                defender_spec_when_attacked,
+                                ref defending_beast,
+                                attack_potions,
+                                attacker_crit_hit_rnd,
+                                attacker_crit_chance,
                                 vrf,
                             );
 
-                        if defender_crit_hit {
-                            critical_counter_attack_count += 1;
-                            critical_counter_attack_damage = damage;
+                        if attacker_crit_hit {
+                            critical_attack_count += 1;
+                            critical_attack_damage = damage;
                         } else {
-                            counter_attack_count += 1;
-                            counter_attack_damage = damage;
+                            attack_count += 1;
+                            attack_damage = damage;
                         }
+
+                        defending_beast._use_extra_life();
+
+                        if defending_beast.live.current_health != 0 {
+                            let (damage, defender_crit_hit) = self
+                                ._attack(
+                                    defender_spec_as_attacker,
+                                    attacker_spec_when_attacked,
+                                    ref attacking_beast,
+                                    diplomacy_bonus,
+                                    defender_crit_hit_rnd,
+                                    defender_crit_chance,
+                                    vrf,
+                                );
+
+                            if defender_crit_hit {
+                                critical_counter_attack_count += 1;
+                                critical_counter_attack_damage = damage;
+                            } else {
+                                counter_attack_count += 1;
+                                counter_attack_damage = damage;
+                            }
+                        }
+
+                        battle_counter += 1;
                     }
 
-                    battle_counter += 1;
-                }
-
-                // reset attack streak if 2x base revival time has passed since last death
-                if attacking_beast.live.last_death_timestamp + BASE_REVIVAL_TIME_SECONDS * 2 < current_time {
-                    attacking_beast.live.attack_streak = 0;
-                }
-
-                let mut xp_gained = 0;
-                // check if max xp is reached
-                if Self::_beast_can_get_xp(attacking_beast) {
-                    xp_gained = 10 + attacking_beast.live.attack_streak;
-                    attacking_beast.live.bonus_xp += xp_gained.into();
-                }
-
-                // increase attack streak if less than 10
-                if attacking_beast.live.attack_streak < 10 {
-                    attacking_beast.live.attack_streak += 1;
-                }
-
-                beast_attacked = true;
-
-                // emit battle event
-                event_dispatcher
-                    .emit_battle_event(
-                        beast_owner,
-                        attacking_beast_token_id,
-                        attacking_beast.fixed.id,
-                        attacking_beast.fixed.shiny,
-                        attacking_beast.fixed.animated,
-                        summit_beast_token_id,
-                        attack_count,
-                        attack_damage,
-                        critical_attack_count,
-                        critical_attack_damage,
-                        counter_attack_count,
-                        counter_attack_damage,
-                        critical_counter_attack_count,
-                        critical_counter_attack_damage,
-                        attack_potions,
-                        xp_gained,
-                    );
-
-                // Remove attack potions
-                remaining_attack_potions = 0;
-
-                if attacking_beast.live.current_health == 0 {
-                    // add xp to summit beast if wisdom unlocked
-                    if defending_beast.live.stats.wisdom == 1 {
-                        defending_beast
-                            .live
-                            .bonus_xp += ImplCombat::get_attack_hp(attacking_beast.get_combat_spec(false))
-                            / 100;
-                    }
-                    // set death timestamp for prev summit beast
-                    attacking_beast.live.last_death_timestamp = current_time;
-                    // update the live stats of the attacking beast
-                    self._save_beast(attacking_beast, true);
-                } else if defending_beast.live.current_health == 0 {
-                    // finalize the summit history for prev summit beast
-                    self._finalize_summit_history(ref defending_beast, summit_owner);
-
-                    // set death timestamp for prev summit beast
-                    defending_beast.live.last_death_timestamp = current_time;
-
-                    // initialize summit history for the new beast
-                    // Timestamp in showdown, otherwise block number
-                    let current_block = get_block_number();
-                    if (current_block >= self.terminal_block.read()) {
-                        self.showdown_taken_at.write(current_time);
-                    } else {
-                        self.summit_history.entry(attacking_beast_token_id).write(current_block);
+                    // reset attack streak if 2x base revival time has passed since last death
+                    if attacking_beast.live.last_death_timestamp + BASE_REVIVAL_TIME_SECONDS * 2 < current_time {
+                        attacking_beast.live.attack_streak = 0;
                     }
 
-                    // set the new summit beast
-                    self.summit_beast_token_id.write(attacking_beast_token_id);
-
-                    // Apply extra life potions
-                    if extra_life_potions > 0 {
-                        attacking_beast.live.extra_lives = extra_life_potions;
-                        self
-                            .extra_life_potion_dispatcher
-                            .read()
-                            .burn_from(get_caller_address(), extra_life_potions.into() * TOKEN_DECIMALS);
+                    let mut xp_gained = 0;
+                    // check if max xp is reached
+                    if Self::_beast_can_get_xp(attacking_beast) {
+                        xp_gained = 10 + attacking_beast.live.attack_streak;
+                        attacking_beast.live.bonus_xp += xp_gained.into();
                     }
 
-                    // update the live stats of the attacking beast
-                    self._save_beast(attacking_beast, true);
+                    // increase attack streak if less than 10
+                    if attacking_beast.live.attack_streak < 10 {
+                        attacking_beast.live.attack_streak += 1;
+                    }
 
-                    // remove poison count
-                    self.poison_count.write(0);
+                    beast_attacked = true;
 
-                    // emit summit event
-                    event_dispatcher.emit_summit_event(attacking_beast.fixed, attacking_beast.live, beast_owner);
+                    // emit battle event
+                    event_dispatcher
+                        .emit_battle_event(
+                            beast_owner,
+                            attacking_beast_token_id,
+                            attacking_beast.fixed.id,
+                            attacking_beast.fixed.shiny,
+                            attacking_beast.fixed.animated,
+                            summit_beast_token_id,
+                            attack_count,
+                            attack_damage,
+                            critical_attack_count,
+                            critical_attack_damage,
+                            counter_attack_count,
+                            counter_attack_damage,
+                            critical_counter_attack_count,
+                            critical_counter_attack_damage,
+                            attack_potions,
+                            xp_gained,
+                        );
 
-                    break;
+                    if attacking_beast.live.current_health == 0 {
+                        // add xp to summit beast if wisdom unlocked
+                        if defending_beast.live.stats.wisdom == 1 {
+                            defending_beast
+                                .live
+                                .bonus_xp += ImplCombat::get_attack_hp(attacking_beast.get_combat_spec(false))
+                                / 100;
+                        }
+                        // set death timestamp for prev summit beast
+                        attacking_beast.live.last_death_timestamp = current_time;
+                        // update the live stats of the attacking beast
+                        self._save_beast(attacking_beast, true);
+                    } else if defending_beast.live.current_health == 0 {
+                        // finalize the summit history for prev summit beast
+                        self._finalize_summit_history(ref defending_beast, summit_owner);
+
+                        // set death timestamp for prev summit beast
+                        defending_beast.live.last_death_timestamp = current_time;
+
+                        // initialize summit history for the new beast
+                        // Timestamp in showdown, otherwise block number
+                        let current_block = get_block_number();
+                        if (current_block >= self.terminal_block.read()) {
+                            self.showdown_taken_at.write(current_time);
+                        } else {
+                            self.summit_history.entry(attacking_beast_token_id).write(current_block);
+                        }
+
+                        // set the new summit beast
+                        self.summit_beast_token_id.write(attacking_beast_token_id);
+
+                        // Apply extra life potions
+                        if extra_life_potions > 0 {
+                            attacking_beast.live.extra_lives = extra_life_potions;
+                            self
+                                .extra_life_potion_dispatcher
+                                .read()
+                                .burn_from(get_caller_address(), extra_life_potions.into() * TOKEN_DECIMALS);
+                        }
+
+                        // update the live stats of the attacking beast
+                        self._save_beast(attacking_beast, true);
+
+                        // remove poison count
+                        self.poison_count.write(0);
+
+                        // emit summit event
+                        event_dispatcher.emit_summit_event(attacking_beast.fixed, attacking_beast.live, beast_owner);
+
+                        break;
+                    }
+                    attack_counter += 1;
                 }
-
                 i += 1;
             }
 
@@ -1028,17 +1017,19 @@ pub mod summit_systems {
                 assert(remaining_revival_potions == 0, 'Unused revival potions');
             }
 
-            if revival_potions > 0 {
+            let revival_potions_used = revival_potions - remaining_revival_potions;
+            if revival_potions_used > 0 {
                 self
                     .revive_potion_dispatcher
                     .read()
-                    .burn_from(get_caller_address(), revival_potions.into() * TOKEN_DECIMALS);
+                    .burn_from(get_caller_address(), revival_potions_used.into() * TOKEN_DECIMALS);
             }
-            if attack_potions > 0 {
+
+            if total_attack_potions > 0 {
                 self
                     .attack_potion_dispatcher
                     .read()
-                    .burn_from(get_caller_address(), attack_potions.into() * TOKEN_DECIMALS);
+                    .burn_from(get_caller_address(), total_attack_potions.into() * TOKEN_DECIMALS);
             }
         }
 
@@ -1097,7 +1088,7 @@ pub mod summit_systems {
 
         /// @notice this function is used to apply revival potions if needed
         /// @param live_beast_stats the stats of the beast to check
-        fn _revival_potions_required(self: @ContractState, beast: Beast) -> u16 {
+        fn _revival_potions_required(self: @ContractState, beast: Beast) -> u32 {
             let last_death_timestamp = beast.live.last_death_timestamp;
             let current_time = get_block_timestamp();
             let time_since_death = current_time - last_death_timestamp;

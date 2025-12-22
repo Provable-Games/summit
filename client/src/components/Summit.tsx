@@ -150,7 +150,11 @@ function Summit() {
   useEffect(() => {
     if (summit) {
       setEstimatedDamage(
-        selectedBeasts.reduce((acc, beast) => acc + calculateBattleResult(beast, summit, appliedPotions.attack).estimatedDamage, 0)
+        selectedBeasts.reduce(
+          (acc, beast, idx) =>
+            acc + calculateBattleResult(beast, summit, idx === 0 ? appliedPotions.attack : 0).estimatedDamage,
+          0
+        )
       )
     }
   }, [selectedBeasts, summit, appliedPotions.attack])

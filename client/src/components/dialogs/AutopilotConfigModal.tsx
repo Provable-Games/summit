@@ -1,9 +1,18 @@
-import { useAutopilotStore, AttackStrategy } from '@/stores/autopilotStore';
+import {
+  AttackStrategy,
+  ExtraLifeStrategy,
+  PoisonStrategy,
+  useAutopilotStore,
+} from '@/stores/autopilotStore';
 import { gameColors } from '@/utils/themes';
 import CloseIcon from '@mui/icons-material/Close';
 import TuneIcon from '@mui/icons-material/Tune';
-import { Box, Button, Dialog, Typography } from '@mui/material';
-import React from 'react';
+import { Box, Button, Dialog, Switch, TextField, Typography } from '@mui/material';
+import { useController } from '@/contexts/controller';
+import revivePotionIcon from '@/assets/images/revive-potion.png';
+import attackPotionIcon from '@/assets/images/attack-potion.png';
+import lifePotionIcon from '@/assets/images/life-potion.png';
+import poisonPotionIcon from '@/assets/images/poison-potion.png';
 
 interface AutopilotConfigModalProps {
   open: boolean;
@@ -13,8 +22,8 @@ interface AutopilotConfigModalProps {
 const ATTACK_OPTIONS: { value: AttackStrategy; label: string; description: string }[] = [
   {
     value: 'guaranteed',
-    label: 'Only when guaranteed',
-    description: `Attack only when you're guaranteed to take the Summit.`,
+    label: 'Careful',
+    description: `Attack only when you have a good chance of taking the Summit.`,
   },
   {
     value: 'all_out',
@@ -23,14 +32,109 @@ const ATTACK_OPTIONS: { value: AttackStrategy; label: string; description: strin
   },
 ];
 
+const EXTRA_LIFE_OPTIONS: {
+  value: ExtraLifeStrategy;
+  label: string;
+  description: string;
+}[] = [
+    {
+      value: 'disabled',
+      label: 'Never',
+      description: `Never use Extra Life potions.`,
+    },
+    {
+      value: 'after_capture',
+      label: 'After capture',
+      description: `Use Extra Life potions after you capture the Summit.`,
+    },
+    {
+      value: 'aggressive',
+      label: 'All out',
+      description: `Keep replenishing Extra Lives when you hold the Summit.`,
+    },
+  ];
+
+const POISON_OPTIONS: {
+  value: PoisonStrategy;
+  label: string;
+  description: string;
+}[] = [
+    {
+      value: 'disabled',
+      label: 'Never',
+      description: `Never use Poison.`,
+    },
+    {
+      value: 'conservative',
+      label: 'Conservative',
+      description: `Only use Poison when Summit has more than X extra lives.`,
+    },
+    {
+      value: 'aggressive',
+      label: 'Aggressive',
+      description: `Use poison every time Summit Changes.`,
+    },
+  ];
+
 function AutopilotConfigModal(props: AutopilotConfigModalProps) {
   const { open, close } = props;
+
+  const { tokenBalances } = useController();
 
   const {
     attackStrategy,
     setAttackStrategy,
+    useRevivePotions,
+    setUseRevivePotions,
+    revivePotionMax,
+    setRevivePotionMax,
+    revivePotionMaxPerBeast,
+    setRevivePotionMaxPerBeast,
+
+    useAttackPotions,
+    setUseAttackPotions,
+    attackPotionMax,
+    setAttackPotionMax,
+
+    extraLifeStrategy,
+    setExtraLifeStrategy,
+    extraLifeMax,
+    setExtraLifeMax,
+    extraLifeTotalMax,
+    setExtraLifeTotalMax,
+    extraLifeReplenishTo,
+    setExtraLifeReplenishTo,
+
+    poisonStrategy,
+    setPoisonStrategy,
+    poisonConservativeExtraLivesTrigger,
+    setPoisonConservativeExtraLivesTrigger,
+    poisonConservativeAmount,
+    setPoisonConservativeAmount,
+    poisonAggressiveAmount,
+    setPoisonAggressiveAmount,
     resetToDefaults,
   } = useAutopilotStore();
+
+  const reviveAvailable = tokenBalances?.['REVIVE'] ?? 0;
+  const attackAvailable = tokenBalances?.['ATTACK'] ?? 0;
+  const extraLifeAvailable = tokenBalances?.['EXTRA LIFE'] ?? 0;
+  const poisonAvailable = tokenBalances?.['POISON'] ?? 0;
+
+  const poisonAmount =
+    poisonStrategy === 'aggressive'
+      ? poisonAggressiveAmount
+      : poisonConservativeAmount;
+
+  const extraLifeDisabled = extraLifeStrategy === 'disabled';
+
+  const setPoisonAmount = (next: number) => {
+    if (poisonStrategy === 'aggressive') {
+      setPoisonAggressiveAmount(next);
+    } else {
+      setPoisonConservativeAmount(next);
+    }
+  };
 
   const renderAttackRow = (
     title: string,
@@ -57,6 +161,82 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
             </Box>
           );
         })}
+      </Box>
+    </Box>
+  );
+
+  const renderStrategyRow = <T extends string>(
+    title: string,
+    subtitle: string,
+    options: { value: T; label: string; description: string }[],
+    current: T,
+    onChange: (value: T) => void,
+  ) => (
+    <Box sx={styles.row}>
+      <Box sx={styles.rowHeader}>
+        <Typography sx={styles.rowTitle}>{title}</Typography>
+        <Typography sx={styles.rowSubtitle}>{subtitle}</Typography>
+      </Box>
+      <Box sx={styles.optionGrid}>
+        {options.map((opt) => {
+          const active = current === opt.value;
+          return (
+            <Box
+              key={opt.value}
+              sx={[styles.optionCard, active && styles.optionCardActive]}
+              onClick={() => onChange(opt.value)}
+            >
+              <Typography sx={styles.optionLabel}>{opt.label}</Typography>
+              <Typography sx={styles.optionDescription}>{opt.description}</Typography>
+            </Box>
+          );
+        })}
+      </Box>
+    </Box>
+  );
+
+  const numberField = (
+    value: number,
+    onChange: (next: number) => void,
+    disabled?: boolean,
+    min = 0,
+    max?: number,
+  ) => (
+    <TextField
+      type="number"
+      size="small"
+      value={value}
+      disabled={disabled}
+      onChange={(e) => {
+        const raw = e.target.value;
+        let next = Number.parseInt(raw, 10);
+        if (Number.isNaN(next)) next = min;
+        next = Math.max(min, next);
+        if (typeof max === 'number') next = Math.min(max, next);
+        onChange(next);
+      }}
+      inputProps={{ min, max, step: 1, inputMode: 'numeric' }}
+      sx={styles.numberField}
+    />
+  );
+
+  const availablePill = (
+    available: number,
+    iconSrc: string,
+    iconAlt: string,
+    disabled: boolean,
+    onClick: () => void,
+  ) => (
+    <Box
+      sx={[styles.availablePill, disabled && styles.availablePillDisabled]}
+      onClick={disabled ? undefined : onClick}
+      role="button"
+      aria-disabled={disabled}
+      tabIndex={disabled ? -1 : 0}
+    >
+      <Box sx={styles.availablePillInner}>
+        <Typography sx={styles.availableText}>Available: {available}</Typography>
+        <img src={iconSrc} alt={iconAlt} style={styles.availableIcon as React.CSSProperties} />
       </Box>
     </Box>
   );
@@ -113,10 +293,183 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
         {/* Content */}
         <Box sx={styles.content}>
           {renderAttackRow(
-            'When to attack',
+            'ATTACK SUMMIT',
             'Choose how Autopilot should decide to attack the Summit.',
             attackStrategy,
             setAttackStrategy,
+          )}
+
+          <Box sx={styles.row}>
+            <Box sx={styles.inlineControls}>
+              <Box sx={styles.toggleRow} onClick={() => setUseRevivePotions(!useRevivePotions)}>
+                <Switch
+                  checked={useRevivePotions}
+                  onChange={(e) => setUseRevivePotions(e.target.checked)}
+                  onClick={(e) => e.stopPropagation()}
+                  sx={styles.switch}
+                />
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={styles.inlineTitle}>Use revival potions</Typography>
+                  <Typography sx={styles.inlineSub}>
+                    Allow Autopilot to spend revive potions when attacking.
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box sx={styles.maxCol}>
+                {availablePill(
+                  Number(reviveAvailable) || 0,
+                  revivePotionIcon,
+                  'Revive',
+                  !useRevivePotions,
+                  () => setRevivePotionMax(Math.max(0, Number(reviveAvailable) || 0)),
+                )}
+                <Box sx={styles.maxRow}>
+                  <Typography sx={styles.maxLabel}>Max Usage</Typography>
+                  {numberField(revivePotionMax, setRevivePotionMax, !useRevivePotions)}
+                </Box>
+                <Box sx={styles.maxRow}>
+                  <Typography sx={styles.maxLabel}>Max per beast</Typography>
+                  {numberField(
+                    revivePotionMaxPerBeast,
+                    setRevivePotionMaxPerBeast,
+                    !useRevivePotions,
+                    1,
+                    32,
+                  )}
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+
+          <Box sx={styles.row}>
+            <Box sx={styles.inlineControls}>
+              <Box sx={styles.toggleRow} onClick={() => setUseAttackPotions(!useAttackPotions)}>
+                <Switch
+                  checked={useAttackPotions}
+                  onChange={(e) => setUseAttackPotions(e.target.checked)}
+                  onClick={(e) => e.stopPropagation()}
+                  sx={styles.switch}
+                />
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography sx={styles.inlineTitle}>Use attack potions</Typography>
+                  <Typography sx={styles.inlineSub}>
+                    Allow Autopilot to spend attack potions when attacking (optimal use).
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Box sx={styles.maxCol}>
+                {availablePill(
+                  Number(attackAvailable) || 0,
+                  attackPotionIcon,
+                  'Attack',
+                  !useAttackPotions,
+                  () => setAttackPotionMax(Math.max(0, Number(attackAvailable) || 0)),
+                )}
+                <Box sx={styles.maxRow}>
+                  <Typography sx={styles.maxLabel}>Max</Typography>
+                  {numberField(attackPotionMax, setAttackPotionMax, !useAttackPotions)}
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+
+          <Box sx={styles.sectionDivider} />
+
+          {renderStrategyRow(
+            'Extra Life',
+            'Configure how Autopilot should use Extra Life potions.',
+            EXTRA_LIFE_OPTIONS,
+            extraLifeStrategy,
+            setExtraLifeStrategy,
+          )}
+          <Box sx={styles.maxOnlyRow}>
+            <Typography sx={styles.maxLabel}>
+              Set Extra Lives configuration
+            </Typography>
+            <Box sx={styles.maxCol}>
+              {availablePill(
+                Number(extraLifeAvailable) || 0,
+                lifePotionIcon,
+                'Extra Life',
+                extraLifeDisabled,
+                () => {
+                  if (extraLifeStrategy === 'aggressive') {
+                    setExtraLifeReplenishTo(Math.min(extraLifeAvailable, 4000));
+                  } else {
+                    setExtraLifeMax(Math.max(0, Number(extraLifeAvailable) || 0));
+                  }
+                },
+              )}
+              {extraLifeStrategy === 'aggressive' && (
+                <>
+                  <Box sx={styles.maxRow}>
+                    <Typography sx={styles.maxLabel}>Replenish to</Typography>
+                    {numberField(extraLifeReplenishTo, setExtraLifeReplenishTo, extraLifeDisabled, 1, Math.min(extraLifeAvailable, 4000))}
+                  </Box>
+                  <Box sx={styles.maxRow}>
+                    <Typography sx={styles.maxLabel}>Max usage</Typography>
+                    {numberField(extraLifeTotalMax, setExtraLifeTotalMax, extraLifeDisabled, 1, extraLifeAvailable)}
+                  </Box>
+                </>
+              )}
+
+              {extraLifeStrategy === 'after_capture' && (
+                <>
+                  <Box sx={styles.maxRow}>
+                    <Typography sx={styles.maxLabel}>After each capture</Typography>
+                    {numberField(extraLifeMax, setExtraLifeMax, extraLifeDisabled, 0, Math.min(extraLifeAvailable, 4000))}
+                  </Box>
+                  <Box sx={styles.maxRow}>
+                    <Typography sx={styles.maxLabel}>Max usage</Typography>
+                    {numberField(extraLifeTotalMax, setExtraLifeTotalMax, extraLifeDisabled, 1, extraLifeAvailable)}
+                  </Box>
+                </>
+              )}
+            </Box>
+          </Box>
+
+          <Box sx={styles.sectionDivider} />
+
+          {renderStrategyRow(
+            'Poison',
+            'Configure how Autopilot should use Poison.',
+            POISON_OPTIONS,
+            poisonStrategy,
+            setPoisonStrategy,
+          )}
+          {poisonStrategy !== 'disabled' && (
+            <>
+              {poisonStrategy === 'conservative' && (
+                <Box sx={styles.maxOnlyRow}>
+                  <Typography sx={styles.maxLabel}>More than this extra lives</Typography>
+                  <Box sx={styles.maxCol}>
+                    {numberField(
+                      poisonConservativeExtraLivesTrigger,
+                      setPoisonConservativeExtraLivesTrigger,
+                      false,
+                    )}
+                  </Box>
+                </Box>
+              )}
+
+              <Box sx={styles.maxOnlyRow}>
+                <Typography sx={styles.maxLabel}>
+                  {poisonStrategy === 'aggressive' ? 'Poison to apply (each Summit change)' : 'Poison to apply'}
+                </Typography>
+                <Box sx={styles.maxCol}>
+                  {availablePill(
+                    Number(poisonAvailable) || 0,
+                    poisonPotionIcon,
+                    'Poison',
+                    false,
+                    () => setPoisonAmount(Math.max(0, Number(poisonAvailable) || 0)),
+                  )}
+                  {numberField(poisonAmount, setPoisonAmount, false)}
+                </Box>
+              </Box>
+            </>
           )}
         </Box>
 
@@ -210,7 +563,7 @@ const styles = {
   content: {
     display: 'flex',
     flexDirection: 'column' as const,
-    gap: 1.5,
+    gap: 1,
   },
   row: {
     background: `${gameColors.darkGreen}80`,
@@ -268,6 +621,159 @@ const styles = {
     fontSize: '11px',
     color: '#bbb',
     lineHeight: 1.3,
+  },
+  sectionDivider: {
+    height: '1px',
+    background: `linear-gradient(90deg, transparent, ${gameColors.accentGreen}60, transparent)`,
+    opacity: 0.6,
+    my: 0.5,
+  },
+  inlineControls: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 2,
+    flexWrap: 'wrap' as const,
+  },
+  toggleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+    cursor: 'pointer',
+    flex: 1,
+    minWidth: '280px',
+    userSelect: 'none' as const,
+  },
+  inlineTitle: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#ffedbb',
+    lineHeight: 1.2,
+  },
+  inlineSub: {
+    fontSize: '11px',
+    color: '#bbb',
+    lineHeight: 1.2,
+    mt: 0.25,
+  },
+  maxRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+    justifyContent: 'flex-end',
+  },
+  maxCol: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'flex-end',
+    gap: 0.5,
+  },
+  availablePill: {
+    borderRadius: '999px',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    background: `${gameColors.darkGreen}70`,
+    padding: '2px 8px',
+    cursor: 'pointer',
+    userSelect: 'none' as const,
+    transition: 'all 0.15s ease',
+    '&:hover': {
+      borderColor: `${gameColors.brightGreen}80`,
+      boxShadow: `0 0 10px ${gameColors.brightGreen}30`,
+    },
+  },
+  availablePillDisabled: {
+    cursor: 'default',
+    opacity: 0.7,
+    borderColor: `${gameColors.accentGreen}25`,
+    '&:hover': {
+      borderColor: `${gameColors.accentGreen}25`,
+      boxShadow: 'none',
+    },
+  },
+  availableText: {
+    fontSize: '11px',
+    color: gameColors.accentGreen,
+    fontWeight: 700,
+    letterSpacing: '0.2px',
+  },
+  availablePillInner: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+  },
+  availableIcon: {
+    width: 14,
+    height: 14,
+    objectFit: 'contain' as const,
+    opacity: 0.95,
+    filter: 'drop-shadow(0 0 6px rgba(0,0,0,0.35))',
+  },
+  maxOnlyRow: {
+    background: `${gameColors.darkGreen}80`,
+    borderRadius: '8px',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    padding: 1.25,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.accentGreen}30,
+      0 4px 8px rgba(0, 0, 0, 0.4)
+    `,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 1,
+    flexWrap: 'wrap' as const,
+  },
+  maxLabel: {
+    fontSize: '11px',
+    color: '#9aa',
+    fontWeight: 'bold',
+    letterSpacing: '0.3px',
+    textTransform: 'uppercase' as const,
+  },
+  numberField: {
+    width: 120,
+    '& .MuiInputBase-input': {
+      color: '#ffedbb',
+      padding: '6px 8px',
+      fontSize: '12px',
+      fontWeight: 600,
+    },
+    '& .MuiOutlinedInput-root': {
+      background: `${gameColors.darkGreen}55`,
+      borderRadius: '8px',
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      borderColor: `${gameColors.accentGreen}40`,
+    },
+    '&:hover .MuiOutlinedInput-notchedOutline': {
+      borderColor: `${gameColors.brightGreen}80`,
+    },
+    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+      borderColor: gameColors.brightGreen,
+    },
+    // Disabled state: make it look intentionally "locked", not muddy/black
+    '& .MuiOutlinedInput-root.Mui-disabled': {
+      background: `${gameColors.darkGreen}35`,
+    },
+    '& .MuiOutlinedInput-root.Mui-disabled .MuiOutlinedInput-notchedOutline': {
+      borderColor: `${gameColors.accentGreen}25`,
+      borderStyle: 'dashed',
+    },
+    '& .MuiInputBase-input.Mui-disabled': {
+      WebkitTextFillColor: '#9aa',
+      opacity: 1,
+    },
+  },
+  switch: {
+    '& .MuiSwitch-switchBase.Mui-checked': {
+      color: gameColors.brightGreen,
+    },
+    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+      backgroundColor: `${gameColors.brightGreen}AA`,
+    },
+    '& .MuiSwitch-track': {
+      backgroundColor: `${gameColors.accentGreen}55`,
+    },
   },
   footer: {
     display: 'flex',
