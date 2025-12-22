@@ -112,8 +112,8 @@ fn test_attack_basic() {
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     assert(summit.get_summit_beast_token_id() == 60989, 'Wrong summit beast token id');
     stop_cheat_caller_address(summit.contract_address);
@@ -127,8 +127,8 @@ fn test_attack_summit_not_started() {
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(0, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(0, attacking_beasts, 0, 0, false);
     stop_cheat_caller_address(summit.contract_address);
 }
 
@@ -141,8 +141,8 @@ fn test_attack_not_beast_owner() {
     let fake_owner: ContractAddress = 0x123.try_into().unwrap();
     start_cheat_caller_address(summit.contract_address, fake_owner);
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
     stop_cheat_caller_address(summit.contract_address);
 }
 
@@ -154,10 +154,10 @@ fn test_attack_own_summit_beast() {
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
-    summit.attack(60989, attacking_beasts, 0, 0, 0, false);
+    summit.attack(60989, attacking_beasts, 0, 0, false);
     stop_cheat_caller_address(summit.contract_address);
 }
 
@@ -169,8 +169,8 @@ fn test_attack_with_revival_potions() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_revive_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -182,8 +182,8 @@ fn test_attack_unsafe_basic() {
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    let attacking_beasts = array![60989].span();
-    summit.attack_unsafe(attacking_beasts, 0, 0, 0);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(0, attacking_beasts, 0, 0, true);
 
     assert(summit.get_summit_beast_token_id() == 60989, 'Wrong summit beast token id');
     stop_cheat_caller_address(summit.contract_address);
@@ -229,8 +229,8 @@ fn test_add_extra_life_basic() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     summit.add_extra_life(60989, 3);
 
@@ -247,8 +247,8 @@ fn test_add_extra_life_zero_potions() {
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     summit.add_extra_life(60989, 0);
 
@@ -330,8 +330,8 @@ fn test_apply_poison() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_poison_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     summit.apply_poison(60989, 5);
 
@@ -405,8 +405,8 @@ fn test_claim_summit_basic() {
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -784,8 +784,8 @@ fn test_attack_with_attack_potions() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_attack_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 5, 0, false);
+    let attacking_beasts = array![(60989, 1, 5)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -798,8 +798,8 @@ fn test_attack_with_extra_life_potions() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 10, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 10, false);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -812,23 +812,23 @@ fn test_attack_max_attack_potions() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_attack_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
+    let attacking_beasts = array![(60989, 1, 255)].span();
     // 255 is the max u8 value - should work
-    summit.attack(1, attacking_beasts, 0, 255, 0, false);
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     stop_cheat_caller_address(summit.contract_address);
 }
 
 #[test]
 #[fork("mainnet")]
-#[should_panic(expected: ('Max 2000 extra lives',))]
+#[should_panic(expected: ('Max 4000 extra lives',))]
 fn test_attack_too_many_extra_life_potions() {
     let summit = deploy_summit_and_start();
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 4001, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 4001, false);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1061,8 +1061,8 @@ fn test_feed_summit_beast() {
     mock_erc20_burn_from(summit.get_corpse_token_address(), true);
 
     // First make beast #60989 the summit beast
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     // Now feed the summit beast
     summit.feed(60989, 10);
@@ -1137,8 +1137,8 @@ fn test_apply_poison_multiple_times() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_poison_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     // Apply poison first time
     summit.apply_poison(60989, 5);
@@ -1157,8 +1157,8 @@ fn test_apply_poison_zero_count() {
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     summit.apply_poison(60989, 0);
 
@@ -1211,14 +1211,14 @@ fn test_claim_beast_reward_twice() {
 
 #[test]
 #[fork("mainnet")]
-#[should_panic(expected: ('Max 2000 extra lives',))]
+#[should_panic(expected: ('Max 4000 extra lives',))]
 fn test_add_extra_life_too_many() {
     let summit = deploy_summit_and_start();
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     // Try to add too many extra lives
     summit.add_extra_life(60989, 4001);
@@ -1326,9 +1326,9 @@ fn test_attack_with_medium_potions() {
     mock_erc20_burn_from(summit.get_attack_potion_address(), true);
     mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
+    let attacking_beasts = array![(60989, 1, 100)].span();
     // Test with mid-range values
-    summit.attack(1, attacking_beasts, 0, 100, 500, false);
+    summit.attack(1, attacking_beasts, 0, 500, false);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1342,9 +1342,9 @@ fn test_attack_with_high_extra_lives() {
     mock_erc20_burn_from(summit.get_attack_potion_address(), true);
     mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
+    let attacking_beasts = array![(60989, 1, 50)].span();
     // Test near the 4000 limit
-    summit.attack(1, attacking_beasts, 0, 50, 3999, false);
+    summit.attack(1, attacking_beasts, 0, 3999, false);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1424,10 +1424,10 @@ fn test_attack_with_vrf() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_attack_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
+    let attacking_beasts = array![(60989, 1, 0)].span();
 
     // Attack with VRF enabled
-    summit.attack(1, attacking_beasts, 0, 0, 0, true);
+    summit.attack(1, attacking_beasts, 0, 0, true);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1441,8 +1441,8 @@ fn test_multiple_beasts_attack_summit() {
     mock_erc20_burn_from(summit.get_attack_potion_address(), true);
 
     // Attack with multiple beasts
-    let attacking_beasts = array![60989, 62345].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0), (4689, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1634,8 +1634,8 @@ fn test_attack_defender_uses_extra_lives() {
     mock_erc20_burn_from(summit.get_attack_potion_address(), true);
 
     // First take the summit with beast 60989
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     // Add extra lives to the summit beast
     summit.add_extra_life(60989, 5);
@@ -1651,9 +1651,9 @@ fn test_attack_wrong_defender_id() {
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    let attacking_beasts = array![60989].span();
+    let attacking_beasts = array![(60989, 1, 0)].span();
     // Pass wrong defending beast ID (999 instead of 1)
-    summit.attack(999, attacking_beasts, 0, 0, 0, false);
+    summit.attack(999, attacking_beasts, 0, 0, false);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1667,9 +1667,9 @@ fn test_attack_unused_revival_potions() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_revive_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
+    let attacking_beasts = array![(60989, 1, 0)].span();
     // Pass revival potions when beast is alive (doesn't need them)
-    summit.attack(1, attacking_beasts, 5, 0, 0, false);
+    summit.attack(1, attacking_beasts, 5, 0, false);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1690,8 +1690,8 @@ fn test_summit_beast_can_be_attacked() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
     // Attack with beast 60989 to take the summit
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     // Verify beast is now on summit
     let summit_beast_id = summit.get_summit_beast_token_id();
@@ -1720,8 +1720,8 @@ fn test_poison_damage_over_time() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_poison_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     // Apply poison
     summit.apply_poison(60989, 10);
@@ -1748,8 +1748,8 @@ fn test_claim_summit_before_game_ends() {
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     // Try to claim summit while still playable
     summit.claim_summit();
@@ -1788,8 +1788,8 @@ fn test_attack_initializes_streak() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
 
     // Attack to take empty summit - this initializes the streak
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     // Verify beast's attack_streak is within valid bounds
     let beast = summit.get_beast(60989);
@@ -1807,8 +1807,8 @@ fn test_feed_increases_current_health_for_summit_beast() {
     mock_erc20_burn_from(summit.get_corpse_token_address(), true);
 
     // First take the summit
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     let beast_before = summit.get_beast(60989);
     let health_before = beast_before.live.current_health;
@@ -1860,8 +1860,8 @@ fn test_add_extra_life_applies_poison_first() {
     mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
 
     // Take the summit
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     // Get beast health before poison
     let beast_before_poison = summit.get_beast(60989);
@@ -1896,8 +1896,8 @@ fn test_add_extra_life_overflow_prevention() {
     mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
 
     // Take the summit
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     // Add near-max extra lives
     summit.add_extra_life(60989, 3990);
@@ -1961,8 +1961,8 @@ fn test_add_extra_lives_small_amount() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     summit.add_extra_life(60989, 10);
     let beast = summit.get_beast(60989);
@@ -1978,8 +1978,8 @@ fn test_add_extra_lives_medium_amount() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     summit.add_extra_life(60989, 500);
     let beast = summit.get_beast(60989);
@@ -1995,8 +1995,8 @@ fn test_add_extra_lives_near_max() {
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
     mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
 
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     summit.add_extra_life(60989, 3999);
     let beast = summit.get_beast(60989);
@@ -2197,8 +2197,8 @@ fn test_attack_long_battle_gas_benchmark() {
     summit.feed(60989, 2000);
 
     // Step 3: Attack beast 1 with beast 60989 (long battle due to extra lives)
-    let attacking_beasts = array![60989].span();
-    summit.attack(1, attacking_beasts, 0, 0, 0, false);
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
 
     // Beast 60989 should win and take the summit
     assert(summit.get_summit_beast_token_id() == 60989, 'Beast 60989 should win');

@@ -29,7 +29,7 @@ pub mod errors {
     pub const BEAST_MAX_BONUS_HEALTH: felt252 = 'beast has max bonus health';
     pub const BEAST_MAX_ATTRIBUTES: felt252 = 'beast has max attributes';
     pub const BEAST_ALIVE: felt252 = 'beast is alive';
-    pub const BEAST_MAX_EXTRA_LIVES: felt252 = 'Max 2000 extra lives';
+    pub const BEAST_MAX_EXTRA_LIVES: felt252 = 'Max 4000 extra lives';
     pub const MAX_ATTACK_POTION: felt252 = 'Max 255 attack potions';
 
     pub const ADVENTURER_ALIVE: felt252 = 'adventurer is alive';
