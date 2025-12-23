@@ -3,6 +3,7 @@ import { Summit, Beast, Adventurer, AppliedPotions, BattleEvent, Leaderboard, Po
 
 export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'blocks held';
 export type BeastTypeFilter = 'all' | 'strong';
+export type selection = [Beast, number, number][];
 
 interface GameState {
   summit: Summit | null;
@@ -18,7 +19,7 @@ interface GameState {
   loadingCollection: boolean;
   attackInProgress: boolean;
   applyingPotions: boolean;
-  selectedBeasts: Beast[];
+  selectedBeasts: selection;
   adventurerCollection: Adventurer[];
   selectedAdventurers: Adventurer[];
   appliedPotions: AppliedPotions;
@@ -47,7 +48,7 @@ interface GameState {
   setCollectionSyncing: (collectionSyncing: boolean) => void;
   setAttackInProgress: (attackInProgress: boolean) => void;
   setApplyingPotions: (applyingPotions: boolean) => void;
-  setSelectedBeasts: (selectedBeasts: Beast[] | ((prev: Beast[]) => Beast[])) => void;
+  setSelectedBeasts: (selectedBeasts: selection | ((prev: selection) => selection)) => void;
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => void;
   setAppliedPotions: (appliedPotions: AppliedPotions) => void;
   setAppliedPoisonCount: (appliedPoisonCount: number) => void;
@@ -146,7 +147,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setCollectionSyncing: (collectionSyncing: boolean) => set({ collectionSyncing }),
   setAttackInProgress: (attackInProgress: boolean) => set({ attackInProgress }),
   setApplyingPotions: (applyingPotions: boolean) => set({ applyingPotions }),
-  setSelectedBeasts: (selectedBeasts: Beast[] | ((prev: Beast[]) => Beast[])) =>
+  setSelectedBeasts: (selectedBeasts: selection | ((prev: selection) => selection)) =>
     set(state => ({ selectedBeasts: typeof selectedBeasts === 'function' ? selectedBeasts(state.selectedBeasts) : selectedBeasts })),
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => set({ selectedAdventurers }),
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => set({ adventurerCollection }),

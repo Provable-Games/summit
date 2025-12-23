@@ -2,11 +2,10 @@ import { Beast, Combat } from '@/types/game';
 import CasinoIcon from '@mui/icons-material/Casino';
 import EnergyIcon from '@mui/icons-material/ElectricBolt';
 import HandshakeIcon from '@mui/icons-material/Handshake';
-import LockClockIcon from '@mui/icons-material/LockClock';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import StarIcon from '@mui/icons-material/Star';
-import { Box, Typography, Link } from "@mui/material";
+import { Box, Link, Typography } from "@mui/material";
 import { memo, useMemo } from 'react';
 import swordIcon from '../assets/images/sword.png';
 import { fetchBeastImage, getBeastLockedTimeRemaining } from "../utils/beasts";
@@ -245,7 +244,6 @@ const styles = {
     borderRadius: '6px',
     padding: '6px',
     mt: '6px',
-    mb: '4px',
     boxSizing: 'border-box',
     cursor: 'pointer',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -265,7 +263,7 @@ const styles = {
       transform: 'translateY(-4px)',
       boxShadow: `
         inset 0 1px 0 ${gameColors.brightGreen}60,
-        0 8px 16px rgba(127, 255, 0, 0.2),
+        0 4px 8px rgba(127, 255, 0, 0.2),
         0 0 0 2px ${gameColors.accentGreen}
       `,
     },
@@ -274,13 +272,13 @@ const styles = {
     background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
     boxShadow: `
       inset 0 1px 0 ${gameColors.brightGreen}80,
-      0 4px 12px rgba(127, 255, 0, 0.4),
+      0 4px 4px rgba(127, 255, 0, 0.4),
       0 0 0 2px ${gameColors.brightGreen}
     `,
     '&:hover': {
       boxShadow: `
         inset 0 1px 0 ${gameColors.brightGreen},
-        0 8px 20px rgba(127, 255, 0, 0.5),
+        0 4px 8px rgba(127, 255, 0, 0.5),
         0 0 0 2px ${gameColors.brightGreen}
       `,
     }

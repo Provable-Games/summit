@@ -5,7 +5,10 @@ import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
 import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, getEntityModel, Summit } from "@/types/game";
-import { applyPoisonDamage, calculateBattleResult, calculateOptimalAttackPotions, getBeastCurrentHealth, getBeastCurrentLevel, getBeastDetails, getBeastRevivalTime } from "@/utils/beasts";
+import {
+  applyPoisonDamage, calculateBattleResult, calculateOptimalAttackPotions, getBeastCurrentHealth,
+  getBeastCurrentLevel, getBeastDetails, getBeastRevivalTime
+} from "@/utils/beasts";
 import { useQueries } from '@/utils/queries';
 import { useDojoSDK } from '@dojoengine/sdk/react';
 import {
@@ -36,7 +39,7 @@ const GameDirectorContext = createContext<GameDirectorContext>(
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
   const { summit, setSummit, setAttackInProgress, collection, setCollection, setAppliedPotions, appliedPotions, autopilotEnabled,
-    setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent, setAppliedPoisonCount, appliedPoisonCount } = useGameStore();
+    setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent, setAppliedPoisonCount, appliedPoisonCount, setSelectedBeasts } = useGameStore();
   const { setRevivePotionsUsed, setAttackPotionsUsed, setExtraLifePotionsUsed, useAttackPotions, attackPotionMax, attackPotionsUsed,
     extraLifeStrategy, extraLifeMax, extraLifeTotalMax, extraLifeReplenishTo } = useAutopilotStore();
   const { gameEventsQuery, dungeonStatsQuery } = useQueries();
@@ -116,6 +119,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           : Math.floor(diplomacy.total_power / 250),
       };
 
+      setSelectedBeasts([]);
       setSummit(newSummit);
       setNextSummit(null);
       play("roar");

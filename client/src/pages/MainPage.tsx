@@ -113,11 +113,13 @@ const styles = {
   },
   bottomContainer: {
     width: '100%',
-    height: '271px',
+    minHeight: '266px',
     position: 'absolute',
     bottom: 0,
     background: `linear-gradient(to bottom, transparent, ${gameColors.darkGreen})`,
-    zIndex: 101
+    zIndex: 101,
+    display: 'flex',
+    flexDirection: 'column',
   },
   sideContainer: {
     display: 'flex',

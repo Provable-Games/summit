@@ -7,13 +7,14 @@ import FilterListIcon from '@mui/icons-material/FilterList';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
 import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
-import { Box, Link, Popover, Tooltip, Typography } from "@mui/material";
+import { Box, Link, Popover, TextField, Tooltip, Typography } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import { calculateBattleResult } from "../utils/beasts";
+import attackPotionIcon from '../assets/images/attack-potion.png';
 import { gameColors } from '../utils/themes';
 import BeastCard from './BeastCard';
 import BeastProfile from './BeastProfile';
@@ -34,6 +35,19 @@ function BeastCollection() {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
   const [filterExpanded, setFilterExpanded] = useState(false)
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false)
+  const [attackSettingsAnchorEl, setAttackSettingsAnchorEl] = useState<HTMLElement | null>(null)
+  const [attackSettingsBeastId, setAttackSettingsBeastId] = useState<string | null>(null)
+  const [potionSettingsAnchorEl, setPotionSettingsAnchorEl] = useState<HTMLElement | null>(null)
+  const [potionSettingsBeastId, setPotionSettingsBeastId] = useState<string | null>(null)
+
+  type AttackPotionMode = 'none' | 'optimal' | 'max';
+
+  type BeastAttackConfig = {
+    attacks: number;
+    attackPotionMode: AttackPotionMode;
+  }
+
+  const [beastAttackConfig, setBeastAttackConfig] = useState<Record<string, BeastAttackConfig>>({})
 
   // Helper function to check if attacker is strong against defender
   const isStrongAgainst = (attackerType: string, defenderType: string): boolean => {
@@ -122,16 +136,51 @@ function BeastCollection() {
     return collection.sort((a, b) => b.power - a.power)
   }, [collection, summit, appliedPotions?.attack, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, hideTop5000]);
 
+  const ensureConfigFor = useCallback((beasts: Beast[]) => {
+    setBeastAttackConfig((prev) => {
+      const next = { ...prev };
+      for (const b of beasts) {
+        const key = String(b.token_id);
+        if (!next[key]) next[key] = { attacks: 1, attackPotionMode: 'none' };
+      }
+      return next;
+    });
+  }, []);
+
+  const pruneConfigToSelected = useCallback((selected: Beast[]) => {
+    const selectedSet = new Set(selected.map((b) => String(b.token_id)));
+    setBeastAttackConfig((prev) => {
+      const next: Record<string, BeastAttackConfig> = {};
+      for (const [k, v] of Object.entries(prev)) {
+        if (selectedSet.has(k)) next[k] = v;
+      }
+      // Ensure new selections always have defaults (handles selectAll/fast toggles)
+      for (const b of selected) {
+        const key = String(b.token_id);
+        if (!next[key]) next[key] = { attacks: 1, attackPotionMode: 'none' };
+      }
+      return next;
+    });
+  }, []);
+
   const selectBeast = useCallback((beast: Beast) => {
     if (attackInProgress || attackMode === 'capture') return;
     if (isBeastLocked(beast)) return;
 
     if (selectedBeasts.find(prevBeast => prevBeast.token_id === beast.token_id)) {
-      setSelectedBeasts((prev: Beast[]) => prev.filter(prevBeast => prevBeast.token_id !== beast.token_id));
+      setSelectedBeasts((prev: Beast[]) => {
+        const next = prev.filter(prevBeast => prevBeast.token_id !== beast.token_id);
+        pruneConfigToSelected(next);
+        return next;
+      });
     } else {
-      setSelectedBeasts((prev: Beast[]) => [...prev, beast]);
+      setSelectedBeasts((prev: Beast[]) => {
+        const next = [...prev, beast];
+        ensureConfigFor([beast]);
+        return next;
+      });
     }
-  }, [attackInProgress, attackMode, selectedBeasts]);
+  }, [attackInProgress, attackMode, ensureConfigFor, pruneConfigToSelected, selectedBeasts, setSelectedBeasts]);
 
   const selectAllBeasts = () => {
     if (attackInProgress) return;
@@ -141,12 +190,15 @@ function BeastCollection() {
 
     if (selectedBeasts.length >= maxBeasts) {
       setSelectedBeasts([])
+      setBeastAttackConfig({})
     } else {
-      setSelectedBeasts(allBeasts.slice(0, maxBeasts))
+      const next = allBeasts.slice(0, maxBeasts);
+      setSelectedBeasts(next)
+      ensureConfigFor(next)
     }
   }
 
-  const hideDead = (hide) => {
+  const hideDead = (hide: boolean) => {
     if (attackInProgress) return;
 
     setHideDeadBeasts(hide)
@@ -166,6 +218,32 @@ function BeastCollection() {
   const handleHoverLeave = useCallback(() => {
     setAnchorEl(null);
     setHoveredBeast(null);
+  }, []);
+
+  const openAttackSettings = useCallback((e: React.MouseEvent<HTMLElement>, beastId: string) => {
+    e.stopPropagation();
+    setPotionSettingsAnchorEl(null);
+    setPotionSettingsBeastId(null);
+    setAttackSettingsAnchorEl(e.currentTarget);
+    setAttackSettingsBeastId(beastId);
+  }, []);
+
+  const openPotionSettings = useCallback((e: React.MouseEvent<HTMLElement>, beastId: string) => {
+    e.stopPropagation();
+    setAttackSettingsAnchorEl(null);
+    setAttackSettingsBeastId(null);
+    setPotionSettingsAnchorEl(e.currentTarget);
+    setPotionSettingsBeastId(beastId);
+  }, []);
+
+  const closeAttackSettings = useCallback(() => {
+    setAttackSettingsAnchorEl(null);
+    setAttackSettingsBeastId(null);
+  }, []);
+
+  const closePotionSettings = useCallback(() => {
+    setPotionSettingsAnchorEl(null);
+    setPotionSettingsBeastId(null);
   }, []);
 
   // Virtual scrolling setup for horizontal list
@@ -446,8 +524,10 @@ function BeastCollection() {
               ref={parentRef}
               sx={{
                 ...styles.beastGrid,
+                height: selectedBeasts.length > 0 ? '230px' : styles.beastGrid.height,
                 contain: 'strict',
-                overflow: 'auto',
+                overflowX: 'auto',
+                overflowY: 'hidden',
               }}
             >
               <div
@@ -465,6 +545,8 @@ function BeastCollection() {
                   const isLocked = isBeastLocked(beast);
                   const selectionIndex = selectedBeasts.findIndex(b => b.token_id === beast.token_id) + 1;
                   const combat = summit && !isSavage ? beast.combat : null;
+                  const key = String(beast.token_id);
+                  const cfg = beastAttackConfig[key] ?? { attacks: 1, attackPotionMode: 'none' };
 
                   return (
                     <div
@@ -478,19 +560,45 @@ function BeastCollection() {
                         transform: `translateX(${virtualItem.start}px)`,
                       }}
                     >
-                      <BeastCard
-                        beast={beast}
-                        isSelected={isSelected}
-                        isSavage={isSavage}
-                        isDead={isDead}
-                        isLocked={isLocked}
-                        combat={combat}
-                        selectionIndex={selectionIndex}
-                        summitHealth={summit?.beast.current_health || 0}
-                        onClick={() => selectBeast(beast)}
-                        onMouseEnter={(e) => handleHoverEnter(e, beast)}
-                        onMouseLeave={handleHoverLeave}
-                      />
+                      <Box sx={styles.cardWithSettings}>
+                        <BeastCard
+                          beast={beast}
+                          isSelected={isSelected}
+                          isSavage={isSavage}
+                          isDead={isDead}
+                          isLocked={isLocked}
+                          combat={combat}
+                          selectionIndex={selectionIndex}
+                          summitHealth={summit?.beast.current_health || 0}
+                          onClick={() => selectBeast(beast)}
+                          onMouseEnter={(e) => handleHoverEnter(e, beast)}
+                          onMouseLeave={handleHoverLeave}
+                        />
+
+                        {isSelected && (
+                          <Box
+                            sx={styles.cardQuickRow}
+                            onClick={(e) => e.stopPropagation()}
+                            onMouseDown={(e) => e.stopPropagation()}
+                          >
+                            <Tooltip placement="top" title={<Box sx={styles.tooltipContent}>Click to edit</Box>}>
+                              <Box
+                                sx={styles.quickPills}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Box sx={styles.quickPill} onClick={(e) => openAttackSettings(e, key)}>
+                                  <img src="/images/sword.png" alt="" style={styles.quickPillIcon} />
+                                  <Typography sx={styles.quickPillText}>{cfg.attacks}</Typography>
+                                </Box>
+                                <Box sx={styles.quickPill} onClick={(e) => openPotionSettings(e, key)}>
+                                  <img src={attackPotionIcon} alt="" style={styles.quickPillIcon} />
+                                  <Typography sx={styles.quickPillText}>0</Typography>
+                                </Box>
+                              </Box>
+                            </Tooltip>
+                          </Box>
+                        )}
+                      </Box>
                     </div>
                   );
                 })}
@@ -534,6 +642,98 @@ function BeastCollection() {
           }}
         >
           {hoveredBeast && <BeastProfile beast={hoveredBeast} />}
+        </Popover>
+      )}
+
+      {/* Attacks popover */}
+      {attackSettingsAnchorEl && attackSettingsBeastId && (
+        <Popover
+          open={Boolean(attackSettingsAnchorEl)}
+          anchorEl={attackSettingsAnchorEl}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          onClose={closeAttackSettings}
+          disableRestoreFocus
+          sx={[styles.popoverSx, { width: '230px' }]}
+        >
+          <Box sx={styles.settingsPopover}>
+            <Box sx={styles.settingsPopoverBody}>
+              {(() => {
+                const cfg = beastAttackConfig[attackSettingsBeastId] ?? { attacks: 1, attackPotionMode: 'none' as const };
+                return (
+                  <Box sx={styles.popRow}>
+                    <Typography sx={styles.popLabel}>Number of attacks</Typography>
+                    <TextField
+                      size="small"
+                      type="text"
+                      value={cfg.attacks}
+                      inputProps={{ min: 1, max: 999, inputMode: 'numeric' }}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        let next = parseInt(raw, 10);
+                        if (Number.isNaN(next)) next = 1;
+                        next = Math.max(1, Math.min(999, next));
+                        setBeastAttackConfig((prev) => ({
+                          ...prev,
+                          [attackSettingsBeastId]: { ...(prev[attackSettingsBeastId] ?? { attacks: 1, attackPotionMode: 'none' }), attacks: next },
+                        }));
+                      }}
+                      sx={styles.popInput}
+                    />
+                  </Box>
+                );
+              })()}
+            </Box>
+          </Box>
+        </Popover>
+      )}
+
+      {/* Attack potions popover */}
+      {potionSettingsAnchorEl && potionSettingsBeastId && (
+        <Popover
+          open={Boolean(potionSettingsAnchorEl)}
+          anchorEl={potionSettingsAnchorEl}
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+          transformOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          onClose={closePotionSettings}
+          disableRestoreFocus
+          sx={[styles.popoverSx, { width: '250px' }]}
+        >
+          <Box sx={styles.settingsPopover}>
+            <Box sx={styles.settingsPopoverBody}>
+              {(() => {
+                const cfg = beastAttackConfig[potionSettingsBeastId] ?? { attacks: 1, attackPotionMode: 'none' as const };
+                return (
+                  <Box sx={styles.popRow}>
+                    <Typography sx={styles.popLabel}>Apply attack potions</Typography>
+                    <Box sx={styles.popToggleGroup}>
+                      {([
+                        { key: 'none' as const, label: 'None' },
+                        { key: 'optimal' as const, label: 'Optimal' },
+                        { key: 'max' as const, label: 'Max' },
+                      ] as const).map((opt) => {
+                        const active = cfg.attackPotionMode === opt.key;
+                        return (
+                          <Box
+                            key={opt.key}
+                            sx={[styles.popToggle, active && styles.popToggleActive]}
+                            onClick={() => {
+                              setBeastAttackConfig((prev) => ({
+                                ...prev,
+                                [potionSettingsBeastId]: { ...(prev[potionSettingsBeastId] ?? { attacks: 1, attackPotionMode: 'none' }), attackPotionMode: opt.key },
+                              }));
+                            }}
+                          >
+                            <Typography sx={styles.popToggleText}>{opt.label}</Typography>
+                          </Box>
+                        );
+                      })}
+                    </Box>
+                  </Box>
+                );
+              })()}
+            </Box>
+          </Box>
         </Popover>
       )}
     </Box>
@@ -834,7 +1034,7 @@ const styles = {
     flexShrink: 0,
   },
   beastGrid: {
-    height: '205px',
+    height: '200px',
     display: 'flex',
     gap: 1,
     alignItems: 'flex-start',
@@ -1071,6 +1271,177 @@ const styles = {
     justifyContent: 'center',
     height: '205px',
     flex: 1,
+  },
+  cardWithSettings: {
+    width: '140px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  cardQuickRow: {
+    mt: '6px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '6px',
+  },
+  quickPills: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    cursor: 'pointer',
+    flex: 1,
+    '&:hover': {
+      filter: 'brightness(1.08)',
+    }
+  },
+  quickPill: {
+    height: '22px',
+    flex: 1,
+    borderRadius: '10px',
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen}60 0%, ${gameColors.darkGreen}80 100%)`,
+    border: `1px solid ${gameColors.accentGreen}60`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '4px',
+  },
+  quickPillIcon: {
+    width: '14px',
+    height: '14px',
+    objectFit: 'contain' as const,
+  },
+  quickPillText: {
+    fontSize: '12px',
+    fontWeight: 800,
+    color: '#ffedbb',
+    letterSpacing: '0.2px',
+  },
+  quickEditButton: {
+    width: '24px',
+    height: '22px',
+    borderRadius: '6px',
+    border: `1px solid ${gameColors.brightGreen}50`,
+    background: `linear-gradient(135deg, ${gameColors.lightGreen}40 0%, ${gameColors.mediumGreen}60 100%)`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    color: '#FFF',
+    boxShadow: `0 0 10px rgba(127, 255, 0, 0.18)`,
+    '&:hover': {
+      border: `1px solid ${gameColors.brightGreen}80`,
+      boxShadow: `0 0 14px rgba(127, 255, 0, 0.28)`,
+    }
+  },
+  popoverSx: {
+    zIndex: 10000,
+    '& .MuiPopover-paper': {
+      background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+      border: `1px solid ${gameColors.accentGreen}60`,
+      borderRadius: '10px',
+      overflow: 'hidden',
+      mb: 1,
+    }
+  },
+  settingsPopover: {
+    width: '200px',
+  },
+  settingsPopoverHeader: {
+    px: 1.25,
+    py: 1,
+    borderBottom: `1px solid ${gameColors.accentGreen}30`,
+    background: `${gameColors.darkGreen}80`,
+  },
+  settingsPopoverTitle: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    color: '#ffedbb',
+  },
+  settingsPopoverSubTitle: {
+    fontSize: '10px',
+    fontWeight: 700,
+    letterSpacing: '0.6px',
+    textTransform: 'uppercase',
+    color: gameColors.accentGreen,
+    opacity: 0.95,
+    mt: '2px',
+  },
+  settingsPopoverBody: {
+    px: 1.25,
+    py: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 1,
+  },
+  popRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  popLabel: {
+    fontSize: '10px',
+    fontWeight: 'bold',
+    letterSpacing: '0.6px',
+    textTransform: 'uppercase',
+    color: gameColors.accentGreen,
+  },
+  popInput: {
+    '& .MuiOutlinedInput-root': {
+      background: `${gameColors.darkGreen}B0`,
+      borderRadius: '8px',
+      '& fieldset': {
+        borderColor: `${gameColors.accentGreen}35`,
+      },
+      '&:hover fieldset': {
+        borderColor: `${gameColors.accentGreen}70`,
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: `${gameColors.brightGreen}80`,
+      },
+    },
+    '& input': {
+      color: '#FFF',
+      fontSize: '14px',
+      fontWeight: 800,
+      padding: '6px 8px',
+    },
+  },
+  popToggleGroup: {
+    display: 'flex',
+    gap: '4px',
+    width: '100%',
+  },
+  popToggle: {
+    flex: 1,
+    height: '28px',
+    borderRadius: '8px',
+    px: 1,
+    background: `${gameColors.darkGreen}80`,
+    border: `1px solid ${gameColors.accentGreen}30`,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    '&:hover': {
+      border: `1px solid ${gameColors.accentGreen}70`,
+    },
+  },
+  popToggleActive: {
+    background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    border: `1px solid ${gameColors.brightGreen}70`,
+    boxShadow: `0 0 10px rgba(127, 255, 0, 0.25)`,
+  },
+  popToggleText: {
+    fontSize: '10px',
+    fontWeight: 'bold',
+    color: '#FFF',
+    letterSpacing: '0.3px',
+    textTransform: 'uppercase',
+    lineHeight: '10px',
   },
   noFilterResultsText: {
     fontSize: '14px',
