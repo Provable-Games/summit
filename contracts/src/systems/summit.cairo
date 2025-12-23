@@ -718,6 +718,7 @@ pub mod summit_systems {
                 let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
                 let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
                 if diplomacy_count > 0 {
+                    let beast_dispatcher = self.beast_dispatcher.read();
                     let mut index = 0;
                     loop {
                         if index >= diplomacy_count {
@@ -725,10 +726,7 @@ pub mod summit_systems {
                         }
 
                         let diplomacy_beast_token_id = self.diplomacy_beast.entry(specials_hash).entry(index).read();
-                        let diplomacy_beast_owner = self
-                            .beast_dispatcher
-                            .read()
-                            .owner_of(diplomacy_beast_token_id.into());
+                        let diplomacy_beast_owner = beast_dispatcher.owner_of(diplomacy_beast_token_id.into());
                         Self::_reward_beast(
                             ref self, diplomacy_beast_token_id, diplomacy_beast_owner, diplomacy_reward_amount,
                         );
@@ -753,7 +751,7 @@ pub mod summit_systems {
             let summit_beast_token_id = self.summit_beast_token_id.read();
 
             assert(summit_beast_token_id != 0, 'Summit not started');
-            Self::_summit_playable(@self);
+            assert(Self::_summit_playable(@self), 'Summit not playable');
 
             let safe_attack = defending_beast_token_id != 0;
 
@@ -766,9 +764,10 @@ pub mod summit_systems {
 
             let beast_dispatcher = self.beast_dispatcher.read();
             let event_dispatcher = self.summit_events_dispatcher.read();
+            let caller = get_caller_address();
 
             let summit_owner = beast_dispatcher.owner_of(summit_beast_token_id.into());
-            assert(get_caller_address() != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
+            assert(caller != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
 
             let mut defending_beast = Self::_get_beast(@self, summit_beast_token_id);
             self._apply_poison_damage(ref defending_beast);
@@ -793,7 +792,7 @@ pub mod summit_systems {
 
                 // assert the caller owns the beast they attacking with
                 let beast_owner = beast_dispatcher.owner_of(attacking_beast_token_id.into());
-                assert(beast_owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
+                assert(beast_owner == caller, errors::NOT_TOKEN_OWNER);
 
                 // get stats for the beast that is attacking
                 let mut attacking_beast = Self::_get_beast(@self, attacking_beast_token_id);
@@ -1000,7 +999,7 @@ pub mod summit_systems {
                         self
                             .extra_life_potion_dispatcher
                             .read()
-                            .burn_from(get_caller_address(), extra_life_potions.into() * TOKEN_DECIMALS);
+                            .burn_from(caller, extra_life_potions.into() * TOKEN_DECIMALS);
                     }
 
                     // update the live stats of the attacking beast
@@ -1029,16 +1028,10 @@ pub mod summit_systems {
             }
 
             if revival_potions > 0 {
-                self
-                    .revive_potion_dispatcher
-                    .read()
-                    .burn_from(get_caller_address(), revival_potions.into() * TOKEN_DECIMALS);
+                self.revive_potion_dispatcher.read().burn_from(caller, revival_potions.into() * TOKEN_DECIMALS);
             }
             if attack_potions > 0 {
-                self
-                    .attack_potion_dispatcher
-                    .read()
-                    .burn_from(get_caller_address(), attack_potions.into() * TOKEN_DECIMALS);
+                self.attack_potion_dispatcher.read().burn_from(caller, attack_potions.into() * TOKEN_DECIMALS);
             }
         }
 
@@ -1120,10 +1113,14 @@ pub mod summit_systems {
         fn _get_last_killed_timestamp(self: @ContractState, beast: Beast) -> u64 {
             let beast_hash = ImplBeast::get_beast_hash(beast.fixed.id, beast.fixed.prefix, beast.fixed.suffix);
             let beast_data_dispatcher = self.beast_data_dispatcher.read();
+            let dungeon_address = self.dungeon_address.read();
 
-            let num_deaths = beast_data_dispatcher.get_collectable_count(self.dungeon_address.read(), beast_hash);
-            let collectable_entity = beast_data_dispatcher
-                .get_collectable(self.dungeon_address.read(), beast_hash, num_deaths - 1);
+            let num_deaths = beast_data_dispatcher.get_collectable_count(dungeon_address, beast_hash);
+            // Return 0 if beast has never been killed - allows beast to attack
+            if num_deaths == 0 {
+                return 0;
+            }
+            let collectable_entity = beast_data_dispatcher.get_collectable(dungeon_address, beast_hash, num_deaths - 1);
             collectable_entity.timestamp
         }
 
@@ -1208,11 +1205,20 @@ pub mod summit_systems {
 
         fn _apply_poison_damage(ref self: ContractState, ref beast: Beast) -> u64 {
             let poison_count = self.poison_count.read();
-            let time_since_poison = get_block_timestamp() - self.poison_timestamp.read();
+
+            // Early exit if no poison - but still refresh timestamp to ensure
+            // it's current when poison is next applied
+            if poison_count == 0 {
+                self.poison_timestamp.write(get_block_timestamp());
+                return 0;
+            }
+
+            let current_time = get_block_timestamp();
+            let time_since_poison = current_time - self.poison_timestamp.read();
             let damage: u64 = time_since_poison * poison_count.into();
 
             if damage == 0 {
-                self.poison_timestamp.write(get_block_timestamp());
+                self.poison_timestamp.write(current_time);
                 return 0;
             }
 
@@ -1242,7 +1248,7 @@ pub mod summit_systems {
                 }
             }
 
-            self.poison_timestamp.write(get_block_timestamp());
+            self.poison_timestamp.write(current_time);
 
             damage
         }
