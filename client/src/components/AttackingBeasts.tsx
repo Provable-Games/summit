@@ -30,7 +30,8 @@ function AttackingBeasts() {
     }
 
     if (selectedBeasts.length > 0) {
-      const enhancedBeasts = selectedBeasts.map(beast => {
+      const enhancedBeasts = selectedBeasts.map(selectedBeast => {
+        const [beast, attacks] = selectedBeast;
         const battleEvent = battleEvents.find(event => event.attacking_beast_token_id === beast.token_id);
 
         if (!battleEvent && battleEvents.length > 0) return null;

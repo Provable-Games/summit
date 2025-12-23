@@ -1,7 +1,7 @@
 import { useStatistics } from '@/contexts/Statistics';
-import { BeastTypeFilter, SortMethod, useGameStore } from '@/stores/gameStore';
+import { BeastTypeFilter, selection, SortMethod, useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
-import { getBeastCurrentHealth, getBeastRevivalTime, isBeastInTop5000, isBeastLocked } from '@/utils/beasts';
+import { calculateMaxAttackPotions, calculateOptimalAttackPotions, getBeastCurrentHealth, getBeastRevivalTime, isBeastInTop5000, isBeastLocked } from '@/utils/beasts';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
@@ -13,43 +13,35 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import { calculateBattleResult } from "../utils/beasts";
 import attackPotionIcon from '../assets/images/attack-potion.png';
+import { calculateBattleResult } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 import BeastCard from './BeastCard';
 import BeastProfile from './BeastProfile';
+import { useController } from '@/contexts/controller';
 
 function BeastCollection() {
   const {
     loadingCollection, collection, selectedBeasts, setSelectedBeasts,
-    attackInProgress, summit, appliedPotions, attackMode,
+    attackInProgress, summit, attackMode,
     hideDeadBeasts, setHideDeadBeasts,
     hideTop5000, setHideTop5000,
     sortMethod, setSortMethod,
     typeFilter, setTypeFilter,
     nameMatchFilter, setNameMatchFilter,
   } = useGameStore()
+  const { tokenBalances } = useController()
   const { top5000Cutoff } = useStatistics()
   const { address } = useAccount()
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
   const [filterExpanded, setFilterExpanded] = useState(false)
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false)
+
+  const [attackSettingsBeastId, setAttackSettingsBeastId] = useState<number | null>(null)
   const [attackSettingsAnchorEl, setAttackSettingsAnchorEl] = useState<HTMLElement | null>(null)
-  const [attackSettingsBeastId, setAttackSettingsBeastId] = useState<string | null>(null)
   const [potionSettingsAnchorEl, setPotionSettingsAnchorEl] = useState<HTMLElement | null>(null)
-  const [potionSettingsBeastId, setPotionSettingsBeastId] = useState<string | null>(null)
 
-  type AttackPotionMode = 'none' | 'optimal' | 'max';
-
-  type BeastAttackConfig = {
-    attacks: number;
-    attackPotionMode: AttackPotionMode;
-  }
-
-  const [beastAttackConfig, setBeastAttackConfig] = useState<Record<string, BeastAttackConfig>>({})
-
-  // Helper function to check if attacker is strong against defender
   const isStrongAgainst = (attackerType: string, defenderType: string): boolean => {
     return (
       (attackerType === 'Hunter' && defenderType === 'Magic') ||
@@ -66,7 +58,7 @@ function BeastCollection() {
         let newBeast = { ...beast }
         newBeast.revival_time = getBeastRevivalTime(newBeast);
         newBeast.current_health = getBeastCurrentHealth(newBeast)
-        newBeast.combat = calculateBattleResult(newBeast, summit, appliedPotions?.attack || 0)
+        newBeast.combat = calculateBattleResult(newBeast, summit, 0)
         return newBeast
       });
 
@@ -134,53 +126,18 @@ function BeastCollection() {
     }
 
     return collection.sort((a, b) => b.power - a.power)
-  }, [collection, summit, appliedPotions?.attack, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, hideTop5000]);
-
-  const ensureConfigFor = useCallback((beasts: Beast[]) => {
-    setBeastAttackConfig((prev) => {
-      const next = { ...prev };
-      for (const b of beasts) {
-        const key = String(b.token_id);
-        if (!next[key]) next[key] = { attacks: 1, attackPotionMode: 'none' };
-      }
-      return next;
-    });
-  }, []);
-
-  const pruneConfigToSelected = useCallback((selected: Beast[]) => {
-    const selectedSet = new Set(selected.map((b) => String(b.token_id)));
-    setBeastAttackConfig((prev) => {
-      const next: Record<string, BeastAttackConfig> = {};
-      for (const [k, v] of Object.entries(prev)) {
-        if (selectedSet.has(k)) next[k] = v;
-      }
-      // Ensure new selections always have defaults (handles selectAll/fast toggles)
-      for (const b of selected) {
-        const key = String(b.token_id);
-        if (!next[key]) next[key] = { attacks: 1, attackPotionMode: 'none' };
-      }
-      return next;
-    });
-  }, []);
+  }, [collection, summit, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, hideTop5000]);
 
   const selectBeast = useCallback((beast: Beast) => {
     if (attackInProgress || attackMode === 'capture') return;
     if (isBeastLocked(beast)) return;
 
-    if (selectedBeasts.find(prevBeast => prevBeast.token_id === beast.token_id)) {
-      setSelectedBeasts((prev: Beast[]) => {
-        const next = prev.filter(prevBeast => prevBeast.token_id !== beast.token_id);
-        pruneConfigToSelected(next);
-        return next;
-      });
+    if (selectedBeasts.find(selection => selection[0].token_id === beast.token_id)) {
+      setSelectedBeasts((prev: selection) => prev.filter(selection => selection[0].token_id !== beast.token_id));
     } else {
-      setSelectedBeasts((prev: Beast[]) => {
-        const next = [...prev, beast];
-        ensureConfigFor([beast]);
-        return next;
-      });
+      setSelectedBeasts((prev: selection) => [...prev, [beast, 1, 0]]);
     }
-  }, [attackInProgress, attackMode, ensureConfigFor, pruneConfigToSelected, selectedBeasts, setSelectedBeasts]);
+  }, [attackInProgress, attackMode, selectedBeasts]);
 
   const selectAllBeasts = () => {
     if (attackInProgress) return;
@@ -190,11 +147,8 @@ function BeastCollection() {
 
     if (selectedBeasts.length >= maxBeasts) {
       setSelectedBeasts([])
-      setBeastAttackConfig({})
     } else {
-      const next = allBeasts.slice(0, maxBeasts);
-      setSelectedBeasts(next)
-      ensureConfigFor(next)
+      setSelectedBeasts(allBeasts.slice(0, maxBeasts).map(beast => [beast, 1, 0]))
     }
   }
 
@@ -220,20 +174,18 @@ function BeastCollection() {
     setHoveredBeast(null);
   }, []);
 
-  const openAttackSettings = useCallback((e: React.MouseEvent<HTMLElement>, beastId: string) => {
+  const openAttackSettings = useCallback((e: React.MouseEvent<HTMLElement>, beastId: number) => {
     e.stopPropagation();
     setPotionSettingsAnchorEl(null);
-    setPotionSettingsBeastId(null);
     setAttackSettingsAnchorEl(e.currentTarget);
     setAttackSettingsBeastId(beastId);
   }, []);
 
-  const openPotionSettings = useCallback((e: React.MouseEvent<HTMLElement>, beastId: string) => {
+  const openPotionSettings = useCallback((e: React.MouseEvent<HTMLElement>, beastId: number) => {
     e.stopPropagation();
     setAttackSettingsAnchorEl(null);
-    setAttackSettingsBeastId(null);
+    setAttackSettingsBeastId(beastId);
     setPotionSettingsAnchorEl(e.currentTarget);
-    setPotionSettingsBeastId(beastId);
   }, []);
 
   const closeAttackSettings = useCallback(() => {
@@ -243,7 +195,6 @@ function BeastCollection() {
 
   const closePotionSettings = useCallback(() => {
     setPotionSettingsAnchorEl(null);
-    setPotionSettingsBeastId(null);
   }, []);
 
   // Virtual scrolling setup for horizontal list
@@ -539,14 +490,13 @@ function BeastCollection() {
               >
                 {virtualizer.getVirtualItems().map((virtualItem) => {
                   const beast = collectionWithCombat[virtualItem.index];
-                  const isSelected = selectedBeasts.some(b => b.token_id === beast.token_id);
+                  const isSelected = selectedBeasts.some(b => b[0].token_id === beast.token_id);
                   const isSavage = summit?.beast.token_id === beast.token_id;
                   const isDead = beast.current_health === 0;
                   const isLocked = isBeastLocked(beast);
-                  const selectionIndex = selectedBeasts.findIndex(b => b.token_id === beast.token_id) + 1;
+                  const selectionIndex = selectedBeasts.findIndex(b => b[0].token_id === beast.token_id) + 1;
                   const combat = summit && !isSavage ? beast.combat : null;
                   const key = String(beast.token_id);
-                  const cfg = beastAttackConfig[key] ?? { attacks: 1, attackPotionMode: 'none' };
 
                   return (
                     <div
@@ -586,13 +536,13 @@ function BeastCollection() {
                                 sx={styles.quickPills}
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <Box sx={styles.quickPill} onClick={(e) => openAttackSettings(e, key)}>
+                                <Box sx={styles.quickPill} onClick={(e) => openAttackSettings(e, beast.token_id)}>
                                   <img src="/images/sword.png" alt="" style={styles.quickPillIcon} />
-                                  <Typography sx={styles.quickPillText}>{cfg.attacks}</Typography>
+                                  <Typography sx={styles.quickPillText}>{selectedBeasts.find(selection => selection[0].token_id === beast.token_id)?.[1]}</Typography>
                                 </Box>
-                                <Box sx={styles.quickPill} onClick={(e) => openPotionSettings(e, key)}>
+                                <Box sx={styles.quickPill} onClick={(e) => openPotionSettings(e, beast.token_id)}>
                                   <img src={attackPotionIcon} alt="" style={styles.quickPillIcon} />
-                                  <Typography sx={styles.quickPillText}>0</Typography>
+                                  <Typography sx={styles.quickPillText}>{selectedBeasts.find(selection => selection[0].token_id === beast.token_id)?.[2]}</Typography>
                                 </Box>
                               </Box>
                             </Tooltip>
@@ -659,24 +609,18 @@ function BeastCollection() {
           <Box sx={styles.settingsPopover}>
             <Box sx={styles.settingsPopoverBody}>
               {(() => {
-                const cfg = beastAttackConfig[attackSettingsBeastId] ?? { attacks: 1, attackPotionMode: 'none' as const };
                 return (
                   <Box sx={styles.popRow}>
                     <Typography sx={styles.popLabel}>Number of attacks</Typography>
                     <TextField
                       size="small"
                       type="text"
-                      value={cfg.attacks}
-                      inputProps={{ min: 1, max: 999, inputMode: 'numeric' }}
+                      value={selectedBeasts.find(selection => selection[0].token_id === attackSettingsBeastId)?.[1]}
                       onChange={(e) => {
-                        const raw = e.target.value;
-                        let next = parseInt(raw, 10);
-                        if (Number.isNaN(next)) next = 1;
-                        next = Math.max(1, Math.min(999, next));
-                        setBeastAttackConfig((prev) => ({
-                          ...prev,
-                          [attackSettingsBeastId]: { ...(prev[attackSettingsBeastId] ?? { attacks: 1, attackPotionMode: 'none' }), attacks: next },
-                        }));
+                        let next = parseInt(e.target.value, 10);
+                        if (isNaN(next)) next = 1;
+                        next = Math.max(1, next);
+                        setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], next, selection[2]] : selection));
                       }}
                       sx={styles.popInput}
                     />
@@ -689,7 +633,7 @@ function BeastCollection() {
       )}
 
       {/* Attack potions popover */}
-      {potionSettingsAnchorEl && potionSettingsBeastId && (
+      {potionSettingsAnchorEl && attackSettingsBeastId && (
         <Popover
           open={Boolean(potionSettingsAnchorEl)}
           anchorEl={potionSettingsAnchorEl}
@@ -702,7 +646,6 @@ function BeastCollection() {
           <Box sx={styles.settingsPopover}>
             <Box sx={styles.settingsPopoverBody}>
               {(() => {
-                const cfg = beastAttackConfig[potionSettingsBeastId] ?? { attacks: 1, attackPotionMode: 'none' as const };
                 return (
                   <Box sx={styles.popRow}>
                     <Typography sx={styles.popLabel}>Apply attack potions</Typography>
@@ -712,16 +655,22 @@ function BeastCollection() {
                         { key: 'optimal' as const, label: 'Optimal' },
                         { key: 'max' as const, label: 'Max' },
                       ] as const).map((opt) => {
-                        const active = cfg.attackPotionMode === opt.key;
                         return (
                           <Box
                             key={opt.key}
-                            sx={[styles.popToggle, active && styles.popToggleActive]}
+                            sx={[styles.popToggle, styles.popToggleActive]}
                             onClick={() => {
-                              setBeastAttackConfig((prev) => ({
-                                ...prev,
-                                [potionSettingsBeastId]: { ...(prev[potionSettingsBeastId] ?? { attacks: 1, attackPotionMode: 'none' }), attackPotionMode: opt.key },
-                              }));
+                              if (opt.key === 'none') {
+                                setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], 0] : selection));
+                              } else if (opt.key === 'optimal') {
+                                let optimalPotions = calculateOptimalAttackPotions(
+                                  selectedBeasts.find(selection => selection[0].token_id === attackSettingsBeastId)?.[0], summit, Math.min(tokenBalances["ATTACK"] || 0, 255));
+                                setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], optimalPotions] : selection));
+                              } else if (opt.key === 'max') {
+                                let maxPotions = calculateMaxAttackPotions(selectedBeasts.find(
+                                  selection => selection[0].token_id === attackSettingsBeastId)?.[0], summit, Math.min(tokenBalances["ATTACK"] || 0, 255));
+                                setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], maxPotions] : selection));
+                              }
                             }}
                           >
                             <Typography sx={styles.popToggleText}>{opt.label}</Typography>

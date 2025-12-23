@@ -1,6 +1,6 @@
 import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
-import { useGameStore } from '@/stores/gameStore';
+import { selection, useGameStore } from '@/stores/gameStore';
 import { AppliedPotions, Beast } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -54,10 +54,10 @@ function ActionBar() {
     executeGameAction({
       type: 'attack',
       pauseUpdates: true,
-      beastIds: selectedBeasts.map(beast => beast.token_id),
+      beastIds: selectedBeasts.map(selectedBeast => selectedBeast[0].token_id),
       appliedPotions: appliedPotions,
       safeAttack: attackMode === 'safe',
-      vrf: (selectedBeasts.find(beast => beast.stats.luck) || summit?.beast?.stats.luck) ? true : false
+      vrf: (selectedBeasts.find(selectedBeast => selectedBeast[0].stats.luck) || summit?.beast?.stats.luck) ? true : false
     });
   }
 
@@ -113,7 +113,7 @@ function ActionBar() {
 
     executeGameAction({
       type: 'add_extra_life',
-      beastId: selectedBeasts[0].token_id,
+      beastId: selectedBeasts[0][0].token_id,
     });
   }
 
@@ -130,18 +130,25 @@ function ActionBar() {
   }
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit?.beast?.token_id))
-  const isSavageSelected = Boolean(selectedBeasts.find((beast: any) => beast.token_id === summit?.beast?.token_id))
-  const deadBeasts = selectedBeasts.filter((beast: any) => beast.current_health === 0);
-  const revivalPotionsRequired = deadBeasts.reduce((sum: number, beast: any) => sum + beast.revival_count + 1, 0);
+  const isSavageSelected = Boolean(selectedBeasts.find((selectedBeast) => selectedBeast[0].token_id === summit?.beast?.token_id))
+  const deadBeasts = selectedBeasts.filter((selectedBeast) => selectedBeast[0].current_health === 0 || selectedBeast[1] > 1);
+  const revivalPotionsRequired = deadBeasts.reduce((sum: number, selectedBeast) => {
+    const [beast, attacks] = selectedBeast;
+    if (beast.current_health === 0) {
+      return sum + (attacks * beast.revival_count) + (attacks * (attacks + 1) / 2);
+    } else {
+      let revivals = attacks - 1;
+      return sum + (revivals * beast.revival_count) + (revivals * (revivals + 1) / 2);
+    }
+  }, 0);
 
   useEffect(() => {
-    if (deadBeasts.length > 0 && appliedPotions.revive < revivalPotionsRequired) {
+    if (deadBeasts.length > 0 && appliedPotions.revive !== revivalPotionsRequired) {
       setAppliedPotions({
         ...appliedPotions,
         revive: Math.min(revivalPotionsRequired, tokenBalances["REVIVE"] || 0)
       });
     } else if (deadBeasts.length === 0 && appliedPotions.revive > 0) {
-      // Clear revive potions if no dead beasts selected
       setAppliedPotions({ ...appliedPotions, revive: 0 });
     }
   }, [deadBeasts.length, revivalPotionsRequired, tokenBalances["REVIVE"]]);
@@ -746,7 +753,7 @@ function ActionBar() {
                     : potion === 'extraLife'
                       ? Math.min(
                         tokenBalances["EXTRA LIFE"] || 0,
-                        Math.max(0, 4000 - ((selectedBeasts[0]?.extra_lives as number) || 0))
+                        Math.max(0, 4000 - ((selectedBeasts[0][0].extra_lives as number) || 0))
                       )
                       : Math.min(tokenBalances["POISON"] || 0, 2050);
                 next = Math.min(next, maxCap);
@@ -767,7 +774,7 @@ function ActionBar() {
                     : potion === 'extraLife'
                       ? Math.min(
                         tokenBalances["EXTRA LIFE"] || 0,
-                        Math.max(0, 4000 - ((selectedBeasts[0]?.extra_lives as number) || 0))
+                        Math.max(0, 4000 - ((selectedBeasts[0][0].extra_lives as number) || 0))
                       )
                       : Math.min(tokenBalances["POISON"] || 0, 2050),
                 inputMode: 'numeric',
@@ -821,7 +828,7 @@ function ActionBar() {
                       : potion === 'extraLife'
                         ? Math.min(
                           tokenBalances["EXTRA LIFE"] || 0,
-                          Math.max(0, 4000 - ((selectedBeasts[0]?.extra_lives as number) || 0))
+                          Math.max(0, 4000 - ((selectedBeasts[0][0].extra_lives as number) || 0))
                         )
                         : 255
                   )
@@ -831,88 +838,6 @@ function ActionBar() {
             <AddIcon fontSize="small" />
           </IconButton>
         </Box>
-
-        {potion === 'attack' && summit?.beast && selectedBeasts.length > 0 && (
-          <Box
-            display={'flex'}
-            alignItems={'center'}
-            justifyContent={'center'}
-            gap={1}
-            width={'100%'}
-          >
-            <Button
-              size="small"
-              variant="outlined"
-              sx={{
-                flex: 1,
-                color: gameColors.gameYellow,
-                borderColor: `${gameColors.gameYellow}80`,
-                textTransform: 'none',
-                fontSize: '11px',
-                padding: '2px 8px',
-                minWidth: 0,
-                '&:hover': {
-                  color: gameColors.gameYellow,
-                  borderColor: gameColors.gameYellow,
-                  backgroundColor: `${gameColors.gameYellow}15`,
-                }
-              }}
-              onClick={() => {
-                if (selectedBeasts.length > 0) {
-                  const value = calculateOptimalAttackPotions(selectedBeasts[0], summit, Math.min(tokenBalances["ATTACK"] || 0, 255))
-                  setAppliedPotions({
-                    ...appliedPotions,
-                    attack: value
-                  });
-                }
-              }}
-            >
-              Optimal
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              sx={{
-                flex: 1,
-                color: gameColors.gameYellow,
-                borderColor: `${gameColors.gameYellow}80`,
-                textTransform: 'none',
-                fontSize: '11px',
-                padding: '2px 8px',
-                minWidth: 0,
-                '&:hover': {
-                  color: gameColors.gameYellow,
-                  borderColor: gameColors.gameYellow,
-                  backgroundColor: `${gameColors.gameYellow}15`,
-                }
-              }}
-              onClick={() => {
-                const target = (summit.beast.extra_lives > 0)
-                  ? (summit.beast.health + summit.beast.bonus_health)
-                  : Math.max(1, summit.beast.current_health || 0);
-                const maxAllowed = Math.min(tokenBalances["ATTACK"] || 0, 255);
-                let bestRequired = Number.POSITIVE_INFINITY;
-                const beast = selectedBeasts[0] as Beast | undefined;
-                if (beast && beast.current_health > 0) {
-                  for (let n = 0; n <= maxAllowed; n++) {
-                    const combat = calculateBattleResult(beast, summit, n);
-                    if (combat.attack >= target) {
-                      bestRequired = n;
-                      break;
-                    }
-                  }
-                }
-                const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
-                setAppliedPotions({
-                  ...appliedPotions,
-                  attack: value
-                });
-              }}
-            >
-              MAX
-            </Button>
-          </Box>
-        )}
 
         <Box sx={{ width: '100%', px: 0.5 }}>
           <Slider
@@ -926,7 +851,7 @@ function ActionBar() {
                   : potion === 'extraLife'
                     ? Math.min(
                       (tokenBalances["EXTRA LIFE"] || 0),
-                      Math.max(0, 4000 - ((selectedBeasts[0]?.extra_lives as number) || 0))
+                      Math.max(0, 4000 - ((selectedBeasts[0][0].extra_lives as number) || 0))
                     )
                     : (tokenBalances["POISON"] || 0),
                 (potion === 'poison' ? 2050 : potion === 'extraLife' ? 4000 : 255)
@@ -1000,7 +925,7 @@ function ActionBar() {
                   : potion === 'extraLife'
                     ? Math.min(
                       (tokenBalances["EXTRA LIFE"] || 0),
-                      Math.max(0, 4000 - ((selectedBeasts[0]?.extra_lives as number) || 0))
+                      Math.max(0, 4000 - ((selectedBeasts[0][0].extra_lives as number) || 0))
                     )
                     : (tokenBalances["POISON"] || 0),
                 (potion === 'poison' ? 2050 : potion === 'extraLife' ? 4000 : 255)

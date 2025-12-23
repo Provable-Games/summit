@@ -149,15 +149,12 @@ function Summit() {
 
   useEffect(() => {
     if (summit) {
-      setEstimatedDamage(
-        selectedBeasts.reduce(
-          (acc, beast, idx) =>
-            acc + calculateBattleResult(beast, summit, idx === 0 ? appliedPotions.attack : 0).estimatedDamage,
-          0
-        )
-      )
+      setEstimatedDamage(selectedBeasts.reduce((acc: number, selectedBeast: any, idx: number) => {
+        const [beast, attacks] = selectedBeast;
+        return acc + calculateBattleResult(beast, summit, selectedBeast[2]).estimatedDamage * attacks;
+      }, 0))
     }
-  }, [selectedBeasts, summit, appliedPotions.attack])
+  }, [selectedBeasts, summit])
 
   const processSpectatorQueue = async () => {
     if (processingSpectatorRef.current) return;

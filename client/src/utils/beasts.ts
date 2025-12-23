@@ -320,3 +320,21 @@ export const calculateOptimalAttackPotions = (beast: Beast, summit: Summit, maxA
   const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
   return value;
 }
+
+export const calculateMaxAttackPotions = (beast: Beast, summit: Summit, maxAllowed: number) => {
+  const target = (summit.beast.extra_lives > 0)
+    ? (summit.beast.health + summit.beast.bonus_health)
+    : Math.max(1, summit.beast.current_health || 0);
+  let bestRequired = Number.POSITIVE_INFINITY;
+  if (beast && beast.current_health > 0) {
+    for (let n = 0; n <= maxAllowed; n++) {
+      const combat = calculateBattleResult(beast, summit, n);
+      if (combat.attack >= target) {
+        bestRequired = n;
+        break;
+      }
+    }
+  }
+  const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
+  return value;
+}

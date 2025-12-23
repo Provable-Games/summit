@@ -1004,6 +1004,9 @@ pub mod summit_systems {
                     }
                     attack_counter += 1;
                 }
+                if (defending_beast.live.current_health == 0) {
+                    break;
+                }
                 i += 1;
             }
 
@@ -1011,11 +1014,6 @@ pub mod summit_systems {
 
             // update the live stats of the defending beast after all attacks
             self._save_beast(defending_beast, true);
-
-            // Burn consumables
-            if safe_attack {
-                assert(remaining_revival_potions == 0, 'Unused revival potions');
-            }
 
             let revival_potions_used = revival_potions - remaining_revival_potions;
             if revival_potions_used > 0 {
