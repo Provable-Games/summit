@@ -14,9 +14,9 @@
     "@cartridge/connector": "file:vendor/cartridge-connector-0.11.3.tgz",
     "@cartridge/controller": "file:vendor/cartridge-controller-0.11.3.tgz",
     "@cloudflare/stream-react": "^1.9.3",
-    "@dojoengine/core": "^1.7.1",
-    "@dojoengine/sdk": "^1.7.2",
-    "@dojoengine/utils": "^1.7.1",
+    "@dojoengine/core": "1.7.2",
+    "@dojoengine/sdk": "1.7.3",
+    "@dojoengine/utils": "1.7.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@fontsource/roboto": "^5.2.5",
@@ -54,6 +54,13 @@
     "uuid": "^10.0.0",
     "vite-plugin-mkcert": "^1.17.8",
     "vite-plugin-wasm": "^3.4.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "@dojoengine/core": "1.7.2",
+      "@dojoengine/sdk": "1.7.3",
+      "@dojoengine/utils": "1.7.1"
+    }
   },
   "devDependencies": {
     "@types/react": "^18.2.0",
