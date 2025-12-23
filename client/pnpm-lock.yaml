@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@cartridge/connector':
-        specifier: file:../controller-upstream/packages/connector/cartridge-connector-0.11.3.tgz
-        version: file:../controller-upstream/packages/connector/cartridge-connector-0.11.3.tgz(@starknet-react/core@5.0.3(bufferutil@4.1.0)(get-starknet-core@4.0.0)(react@18.3.1)(starknet@8.5.2)(typescript@5.9.3)(utf-8-validate@5.0.10))(@types/react@18.3.27)(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+        specifier: file:vendor/cartridge-connector-0.11.3.tgz
+        version: file:vendor/cartridge-connector-0.11.3.tgz(@starknet-react/core@5.0.3(bufferutil@4.1.0)(get-starknet-core@4.0.0)(react@18.3.1)(starknet@8.5.2)(typescript@5.9.3)(utf-8-validate@5.0.10))(@types/react@18.3.27)(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
       '@cartridge/controller':
-        specifier: file:../controller-upstream/packages/controller/cartridge-controller-0.11.3.tgz
-        version: file:../controller-upstream/packages/controller/cartridge-controller-0.11.3.tgz(@types/react@18.3.27)(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
+        specifier: file:vendor/cartridge-controller-0.11.3.tgz
+        version: file:vendor/cartridge-controller-0.11.3.tgz(@types/react@18.3.27)(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
       '@cloudflare/stream-react':
         specifier: ^1.9.3
         version: 1.9.3(react@18.3.1)
@@ -406,8 +406,8 @@ packages:
   '@cartridge/account-wasm@0.7.13':
     resolution: {integrity: sha512-2/cFS96jN31N9piK2Hs/Egxz6cstJ9gV8pgBrqo5vSPckFv2yD9u/8euqDD26MJtLnDa59OYefNJBbKgsK9vHg==}
 
-  '@cartridge/connector@file:../controller-upstream/packages/connector/cartridge-connector-0.11.3.tgz':
-    resolution: {integrity: sha512-iJIiMPI0MIl0bASlxce0WqdA/YvCHBf5p6T1dgDVa+VbT+AD6QVgFcnBMHhe9B76kc5CTTiVvtmlrU0JEKXSTA==, tarball: file:../controller-upstream/packages/connector/cartridge-connector-0.11.3.tgz}
+  '@cartridge/connector@file:vendor/cartridge-connector-0.11.3.tgz':
+    resolution: {integrity: sha512-iJIiMPI0MIl0bASlxce0WqdA/YvCHBf5p6T1dgDVa+VbT+AD6QVgFcnBMHhe9B76kc5CTTiVvtmlrU0JEKXSTA==, tarball: file:vendor/cartridge-connector-0.11.3.tgz}
     version: 0.11.3
     peerDependencies:
       '@starknet-react/core': ^5.0.1
@@ -427,8 +427,8 @@ packages:
       starknet: ^6.21.0
       starknetkit: ^2.6.1
 
-  '@cartridge/controller@file:../controller-upstream/packages/controller/cartridge-controller-0.11.3.tgz':
-    resolution: {integrity: sha512-kt820AaJnNwOuzwfc8ciFAYszopqPbzPKZixV9Vb2lX2F0EW8jLV1NHvgExE2bef6sJrQ3XcELoGAUjmM8PLqQ==, tarball: file:../controller-upstream/packages/controller/cartridge-controller-0.11.3.tgz}
+  '@cartridge/controller@file:vendor/cartridge-controller-0.11.3.tgz':
+    resolution: {integrity: sha512-kt820AaJnNwOuzwfc8ciFAYszopqPbzPKZixV9Vb2lX2F0EW8jLV1NHvgExE2bef6sJrQ3XcELoGAUjmM8PLqQ==, tarball: file:vendor/cartridge-controller-0.11.3.tgz}
     version: 0.11.3
 
   '@cartridge/penpal@6.2.4':
@@ -5659,7 +5659,7 @@ snapshots:
 
   '@cartridge/account-wasm@0.7.13': {}
 
-  '@cartridge/connector@file:../controller-upstream/packages/connector/cartridge-connector-0.11.3.tgz(@starknet-react/core@5.0.3(bufferutil@4.1.0)(get-starknet-core@4.0.0)(react@18.3.1)(starknet@8.5.2)(typescript@5.9.3)(utf-8-validate@5.0.10))(@types/react@18.3.27)(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)':
+  '@cartridge/connector@file:vendor/cartridge-connector-0.11.3.tgz(@starknet-react/core@5.0.3(bufferutil@4.1.0)(get-starknet-core@4.0.0)(react@18.3.1)(starknet@8.5.2)(typescript@5.9.3)(utf-8-validate@5.0.10))(@types/react@18.3.27)(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)':
     dependencies:
       '@cartridge/controller': 0.11.3(@types/react@18.3.27)(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)
       '@starknet-io/get-starknet-wallet-standard': 5.0.0-beta.0(typescript@5.9.3)(zod@3.25.76)
@@ -5784,7 +5784,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@cartridge/controller@file:../controller-upstream/packages/controller/cartridge-controller-0.11.3.tgz(@types/react@18.3.27)(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)':
+  '@cartridge/controller@file:vendor/cartridge-controller-0.11.3.tgz(@types/react@18.3.27)(bufferutil@4.1.0)(react@18.3.1)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@3.25.76)':
     dependencies:
       '@cartridge/controller-wasm': 0.8.0
       '@cartridge/penpal': 6.2.4
