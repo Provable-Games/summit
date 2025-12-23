@@ -20,3 +20,4 @@ account.json
 account-file
 dojo/deploy/mainnet.sh
 token/target
+controller-upstream/

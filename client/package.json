@@ -11,8 +11,8 @@
     "serve": "vite preview"
   },
   "dependencies": {
-    "@cartridge/connector": "^0.10.1",
-    "@cartridge/controller": "^0.10.1",
+    "@cartridge/connector": "file:../controller-upstream/packages/connector/cartridge-connector-0.11.3.tgz",
+    "@cartridge/controller": "file:../controller-upstream/packages/controller/cartridge-controller-0.11.3.tgz",
     "@cloudflare/stream-react": "^1.9.3",
     "@dojoengine/core": "^1.7.1",
     "@dojoengine/sdk": "^1.7.2",
