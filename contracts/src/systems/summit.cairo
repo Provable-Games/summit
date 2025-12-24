@@ -935,6 +935,7 @@ pub mod summit_systems {
                         .emit_battle_event(
                             beast_owner,
                             attacking_beast_token_id,
+                            attack_index: attack_counter,
                             attacking_beast.fixed.id,
                             attacking_beast.fixed.shiny,
                             attacking_beast.fixed.animated,

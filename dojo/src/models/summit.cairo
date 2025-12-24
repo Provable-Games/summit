@@ -15,6 +15,8 @@ pub struct LiveBeastStatsEvent {
 pub struct BattleEvent {
     #[key]
     pub attacking_beast_token_id: u32,
+    #[key]
+    pub attack_index: u16,
     pub attacking_beast_owner: ContractAddress,
     pub attacking_beast_id: u8,
     pub shiny: u8,

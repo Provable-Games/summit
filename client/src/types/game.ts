@@ -100,6 +100,7 @@ export interface GameAction {
 
 export interface BattleEvent {
   attacking_beast_token_id: number;
+  attack_index: number;
   attacking_beast_owner: string | null;
   attacking_beast_id: number;
   attacking_beast_shiny: number;

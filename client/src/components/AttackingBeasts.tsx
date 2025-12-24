@@ -9,19 +9,25 @@ import StarIcon from '@mui/icons-material/Star';
 import { Box, Typography } from '@mui/material';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { fetchBeastImage, getBeastCurrentLevel, getExperienceDefending } from '../utils/beasts';
+import { fetchBeastImage } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 import { shuffle } from '../utils/utils';
+
+type AttackingBeastEntity = Beast & {
+  /** Composite id so a single beast can appear multiple times (multi-attack) */
+  attack_index: number;
+  entity_key: string;
+};
 
 function AttackingBeasts() {
   const { selectedBeasts, setAttackInProgress, setSelectedBeasts, battleEvents, setSummit, summit } = useGameStore();
   const { setPauseUpdates } = useGameDirector();
   const [isAttacking, setIsAttacking] = useState(false);
-  const [deadBeasts, setDeadBeasts] = useState<Set<number>>(new Set());
-  const [damageNumbers, setDamageNumbers] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastIndex: number; critical: boolean }>>([]);
-  const [damageQueue, setDamageQueue] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastIndex: number; critical: boolean }>>([]);
-  const [beasts, setBeasts] = useState<Beast[]>([]);
-  const [activeBeastTokenId, setActiveBeastTokenId] = useState<number | null>(null);
+  const [deadBeasts, setDeadBeasts] = useState<Set<string>>(new Set());
+  const [damageNumbers, setDamageNumbers] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastKey: string; critical: boolean }>>([]);
+  const [damageQueue, setDamageQueue] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastKey: string; critical: boolean }>>([]);
+  const [beasts, setBeasts] = useState<AttackingBeastEntity[]>([]);
+  const [activeBeastKey, setActiveBeastKey] = useState<string | null>(null);
 
   // Create enhanced beasts with battle data
   useEffect(() => {
@@ -31,34 +37,46 @@ function AttackingBeasts() {
     }
 
     if (selectedBeasts.length > 0) {
-      const enhancedBeasts = selectedBeasts.map(selectedBeast => {
+      const enhancedBeasts = selectedBeasts.flatMap((selectedBeast) => {
         const [beast, attacks] = selectedBeast;
-        const battleEvent = battleEvents.find(event => event.attacking_beast_token_id === beast.token_id);
+        const attackCount = Math.max(1, attacks || 0);
 
-        if (!battleEvent && battleEvents.length > 0) return null;
+        return Array.from({ length: attackCount }, (_, attackIndex) => {
+          const battleEvent = battleEvents.find(
+            event =>
+              event.attacking_beast_token_id === beast.token_id &&
+              event.attack_index === attackIndex
+          );
 
-        return {
-          ...beast,
-          current_health: beast.current_health || (beast.health + beast.bonus_health),
-          battle: battleEvent
-        }
+          if (!battleEvent && battleEvents.length > 0) return null;
+
+          return {
+            ...beast,
+            attack_index: attackIndex,
+            entity_key: `${beast.token_id}-${attackIndex}`,
+            current_health: beast.current_health || (beast.health + beast.bonus_health),
+            battle: battleEvent,
+          } satisfies AttackingBeastEntity;
+        }).filter(Boolean) as AttackingBeastEntity[];
       });
 
-      setBeasts(enhancedBeasts.filter(Boolean));
+      setBeasts(enhancedBeasts);
+    } else {
+      setBeasts([]);
     }
   }, [selectedBeasts, battleEvents]);
 
   useEffect(() => {
-    if (beasts.length > 0 && !activeBeastTokenId && beasts[0]?.battle) {
-      setActiveBeastTokenId(beasts[0]?.token_id);
+    if (beasts.length > 0 && !activeBeastKey && beasts[0]?.battle) {
+      setActiveBeastKey(beasts[0]?.entity_key);
     }
   }, [beasts]);
 
   // Build damage queue for the CURRENT active beast only
   useEffect(() => {
-    if (beasts.length === 0 || activeBeastTokenId === null) return;
+    if (beasts.length === 0 || activeBeastKey === null) return;
 
-    const beast = beasts.find(b => b.token_id === activeBeastTokenId);
+    const beast = beasts.find(b => b.entity_key === activeBeastKey);
     if (!beast || !beast.battle) return;
 
     // Build attacks array
@@ -67,22 +85,22 @@ function AttackingBeasts() {
     // Add normal attacks
     for (let i = 0; i < (beast.battle.attack_count || 0); i++) {
       attacks.push({
-        id: `${beast.token_id}-attack-${i}`,
+        id: `${beast.entity_key}-attack-${i}`,
         value: beast.battle.attack_damage || 0,
         type: 'attack' as const,
         critical: false,
-        beastIndex: beast.token_id
+        beastKey: beast.entity_key
       });
     }
 
     // Add critical attacks
     for (let i = 0; i < (beast.battle.critical_attack_count || 0); i++) {
       attacks.push({
-        id: `${beast.token_id}-crit-attack-${i}`,
+        id: `${beast.entity_key}-crit-attack-${i}`,
         value: beast.battle.critical_attack_damage || 0,
         type: 'attack' as const,
         critical: true,
-        beastIndex: beast.token_id
+        beastKey: beast.entity_key
       });
     }
 
@@ -92,22 +110,22 @@ function AttackingBeasts() {
     // Add normal counter-attacks
     for (let i = 0; i < (beast.battle.counter_attack_count || 0); i++) {
       counterAttacks.push({
-        id: `${beast.token_id}-counter-${i}`,
+        id: `${beast.entity_key}-counter-${i}`,
         value: beast.battle.counter_attack_damage || 0,
         type: 'counter' as const,
         critical: false,
-        beastIndex: beast.token_id
+        beastKey: beast.entity_key
       });
     }
 
     // Add critical counter-attacks
     for (let i = 0; i < (beast.battle.critical_counter_attack_count || 0); i++) {
       counterAttacks.push({
-        id: `${beast.token_id}-crit-counter-${i}`,
+        id: `${beast.entity_key}-crit-counter-${i}`,
         value: beast.battle.critical_counter_attack_damage || 0,
         type: 'counter' as const,
         critical: true,
-        beastIndex: beast.token_id
+        beastKey: beast.entity_key
       });
     }
 
@@ -129,7 +147,7 @@ function AttackingBeasts() {
     }
 
     setDamageQueue(queue);
-  }, [activeBeastTokenId]);
+  }, [activeBeastKey]);
 
   // Process damage queue continuously
   useEffect(() => {
@@ -188,7 +206,7 @@ function AttackingBeasts() {
       else if (nextDamage.type === 'counter') {
         setBeasts(prevBeasts => {
           const newBeasts = [...prevBeasts];
-          const beastIndex = newBeasts.findIndex(b => b.token_id === nextDamage.beastIndex);
+          const beastIndex = newBeasts.findIndex(b => b.entity_key === nextDamage.beastKey);
           if (beastIndex === -1) return prevBeasts;
 
           const newHealth = Math.max(0, newBeasts[beastIndex].current_health - nextDamage.value);
@@ -198,31 +216,15 @@ function AttackingBeasts() {
           };
 
           if (newHealth === 0) {
-            setSummit(prevSummit => {
-              const bonusXp = prevSummit.beast.bonus_xp + getExperienceDefending(newBeasts[beastIndex]);
-              const currentLevel = getBeastCurrentLevel(prevSummit.beast.level, bonusXp);
-              const power = (6 - prevSummit.beast.tier) * currentLevel;
-
-              return {
-                ...prevSummit,
-                beast: {
-                  ...prevSummit.beast,
-                  current_level: currentLevel,
-                  bonus_xp: bonusXp,
-                  power: power,
-                }
-              }
-            });
-
-            const deadTokenId = newBeasts[beastIndex].token_id;
+            const deadKey = newBeasts[beastIndex].entity_key;
             setTimeout(() => {
               setDeadBeasts(dead => {
-                const newDeadSet = new Set([...dead, deadTokenId]);
-                const nextBeast = newBeasts.find(b => !newDeadSet.has(b.token_id));
+                const newDeadSet = new Set([...dead, deadKey]);
+                const nextBeast = newBeasts.find(b => !newDeadSet.has(b.entity_key));
 
                 // Find next alive beast and set as active
                 if (nextBeast) {
-                  setActiveBeastTokenId(nextBeast.token_id);
+                  setActiveBeastKey(nextBeast.entity_key);
                 } else {
                   handleSkip()
                 }
@@ -256,7 +258,7 @@ function AttackingBeasts() {
     };
   }, [damageQueue]);
 
-  const visibleBeasts = beasts.filter(beast => !deadBeasts.has(beast.token_id));
+  const visibleBeasts = beasts.filter(beast => !deadBeasts.has(beast.entity_key));
 
   const handleSkip = () => {
     setPauseUpdates(false);
@@ -330,7 +332,7 @@ function AttackingBeasts() {
 
             return (
               <motion.div
-                key={beast.token_id}
+                key={beast.entity_key}
                 layout
                 initial={{ opacity: 0, x: 50 }}
                 animate={{

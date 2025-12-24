@@ -9,6 +9,7 @@ pub trait ISummitEvents<T> {
         ref self: T,
         attacking_beast_owner: ContractAddress,
         attacking_beast_token_id: u32,
+        attack_index: u16,
         attacking_beast_id: u8,
         shiny: u8,
         animated: u8,

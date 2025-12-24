@@ -7,7 +7,7 @@ import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SettingsIcon from '@mui/icons-material/Settings';
-import { Box, IconButton, Menu, MenuItem, Slider, TextField, Tooltip, Typography } from '@mui/material';
+import { Box, Button, IconButton, Menu, MenuItem, Slider, TextField, Tooltip, Typography } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { isBrowser } from 'react-device-detect';
 import attackPotionIcon from '../assets/images/attack-potion.png';
@@ -101,18 +101,19 @@ function ActionBar() {
 
     executeGameAction({
       type: 'attack_until_capture',
-      beasts: collectionWithCombat,
+      beasts: collectionWithCombat.map((beast: Beast) => [beast, 1, 0]),
     });
   }
 
-  const handleAddExtraLife = () => {
-    if (applyingPotions || appliedExtraLifePotions === 0) return;
+  const handleApplyExtraLife = () => {
+    if (!summit?.beast || !isSavage || applyingPotions || appliedExtraLifePotions === 0) return;
 
     setApplyingPotions(true);
 
     executeGameAction({
       type: 'add_extra_life',
-      beastId: selectedBeasts[0][0].token_id,
+      beastId: summit.beast.token_id,
+      extraLifePotions: appliedExtraLifePotions,
     });
   }
 
@@ -205,6 +206,7 @@ function ActionBar() {
   const enableExtraLifePotion = tokenBalances["EXTRA LIFE"] > 0;
   const enablePoisonPotion = tokenBalances["POISON"] > 0;
   const enableApplyPoison = summit?.beast && !applyingPotions && appliedPoisonCount > 0;
+  const enableApplyExtraLife = isSavage && summit?.beast && !applyingPotions && appliedExtraLifePotions > 0;
   const appliedAttackPotions = selectedBeasts.reduce((acc, beast) => acc + beast[2], 0)
 
   if (collection.length === 0) {
@@ -222,136 +224,90 @@ function ActionBar() {
     <Box sx={styles.buttonGroup}>
       {/* Section 1: Attack Button */}
       <Box sx={{ minWidth: isBrowser ? '265px' : '120px' }}>
-        {appliedPoisonCount > 0
-          ? <Box sx={[styles.attackButton, enableApplyPoison && styles.attackButtonEnabled]}
-            onClick={handleApplyPoison}>
+        {applyingPotions
+          ? <Box sx={styles.attackButton}>
             <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
-              {applyingPotions
-                ? <Box display={'flex'} alignItems={'baseline'}>
-                  <Typography variant="h5" sx={styles.buttonText}>Applying</Typography>
-                  <div className='dotLoader green' />
-                </Box>
-                : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                  <Typography sx={[styles.buttonText, !enableApplyPoison && styles.disabledText]} variant="h5">
-                    Apply Poison
-                  </Typography>
-                </Box>
-              }
-
-              {isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
-                {appliedPoisonCount > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
-                  <Typography sx={styles.potionCount}>{appliedPoisonCount}</Typography>
-                  <img src={poisonPotionIcon} alt='' height={'14px'} />
-                </Box>}
+              <Box display={'flex'} alignItems={'baseline'}>
+                <Typography variant="h5" sx={styles.buttonText}>Applying</Typography>
+                <div className='dotLoader green' />
               </Box>
-              }
             </Box>
           </Box>
-          : (isSavageSelected && attackMode !== 'autopilot')
-            ? <Box sx={[styles.attackButton, appliedExtraLifePotions > 0 && styles.attackButtonEnabled]}
-              onClick={handleAddExtraLife}>
-              <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
-                {applyingPotions
-                  ? <Box display={'flex'} alignItems={'baseline'}>
-                    <Typography variant="h5" sx={styles.buttonText}>Applying</Typography>
-                    <div className='dotLoader green' />
-                  </Box>
-                  : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                    <Typography sx={[styles.buttonText, !(appliedExtraLifePotions > 0) && styles.disabledText]} variant="h5">
-                      Add Extra Life
-                    </Typography>
-                  </Box>
-                }
+          : <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Box sx={styles.attackButtonGroup}>
+              <Box
+                sx={[
+                  styles.attackButton,
+                  highlightAttackButton && styles.attackButtonEnabled,
+                  styles.attackButtonMain
+                ]}
+                onClick={() => {
+                  if (attackMode === 'autopilot') {
+                    autopilotEnabled ? stopAutopilot() : startAutopilot();
+                  } else if (attackMode === 'capture') {
+                    handleAttackUntilCapture();
+                  } else {
+                    handleAttack();
+                  }
+                }}>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
+                  {attackMode === 'autopilot'
+                    ? (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                        <Typography
+                          sx={[
+                            styles.buttonText,
+                            autopilotEnabled ? styles.autopilotOnText : styles.autopilotOffText,
+                          ]}
+                          variant="h5"
+                        >
+                          {autopilotEnabled ? 'STOP AUTOPILOT' : 'START AUTOPILOT'}
+                        </Typography>
+                      </Box>
+                    )
+                    : attackInProgress
+                      ? <Box display={'flex'} alignItems={'baseline'}>
+                        <Typography variant="h5" sx={styles.buttonText}>Attacking</Typography>
+                        <div className='dotLoader green' />
+                      </Box>
+                      : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                        <Typography sx={[styles.buttonText, !enableAttack && styles.disabledText]} variant="h5">
+                          {attackMode === 'safe'
+                            ? 'Safe Attack'
+                            : attackMode === 'unsafe'
+                              ? 'Unsafe Attack'
+                              : 'Attack until Capture'}
+                        </Typography>
+                      </Box>
+                  }
 
-                {isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
-                  {appliedExtraLifePotions > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
-                    <Typography sx={styles.potionCount}>{appliedExtraLifePotions}</Typography>
-                    <img src={heart} alt='' height={'12px'} />
-                  </Box>}
-                </Box>
-                }
-              </Box>
-            </Box>
-
-            : <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box sx={styles.attackButtonGroup}>
-                <Box
-                  sx={[
-                    styles.attackButton,
-                    highlightAttackButton && styles.attackButtonEnabled,
-                    styles.attackButtonMain
-                  ]}
-                  onClick={() => {
-                    if (attackMode === 'autopilot') {
-                      autopilotEnabled ? stopAutopilot() : startAutopilot();
-                    } else if (attackMode === 'capture') {
-                      handleAttackUntilCapture();
-                    } else {
-                      handleAttack();
-                    }
-                  }}>
-                  <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
-                    {attackMode === 'autopilot'
-                      ? (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                          <Typography
-                            sx={[
-                              styles.buttonText,
-                              autopilotEnabled ? styles.autopilotOnText : styles.autopilotOffText,
-                            ]}
-                            variant="h5"
-                          >
-                            {autopilotEnabled ? 'STOP AUTOPILOT' : 'START AUTOPILOT'}
-                          </Typography>
-                        </Box>
-                      )
-                      : attackInProgress
-                        ? <Box display={'flex'} alignItems={'baseline'}>
-                          <Typography variant="h5" sx={styles.buttonText}>Attacking</Typography>
-                          <div className='dotLoader green' />
-                        </Box>
-                        : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                          <Typography sx={[styles.buttonText, !enableAttack && styles.disabledText]} variant="h5">
-                            {attackMode === 'safe'
-                              ? 'Safe Attack'
-                              : attackMode === 'unsafe'
-                                ? 'Unsafe Attack'
-                                : 'Attack until Capture'}
-                          </Typography>
-                        </Box>
-                    }
-
-                    {isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      {revivalPotionsRequired > 0 && <Box display={'flex'} alignItems={'center'}>
-                        <Typography sx={styles.potionCount}>{revivalPotionsRequired}</Typography>
-                        <img src={revivePotionIcon} alt='' height={'14px'} />
-                      </Box>}
-                      {appliedAttackPotions > 0 && <Box display={'flex'} alignItems={'center'}>
-                        <Typography sx={styles.potionCount}>{appliedAttackPotions}</Typography>
-                        <img src={attackPotionIcon} alt='' height={'14px'} />
-                      </Box>}
-                      {appliedExtraLifePotions > 0 && <Box display={'flex'} alignItems={'center'}>
-                        <Typography sx={styles.potionCount}>{appliedExtraLifePotions}</Typography>
-                        <img src={heart} alt='' height={'12px'} />
-                      </Box>}
-                      {appliedPoisonCount > 0 && <Box display={'flex'} alignItems={'center'}>
-                        <Typography sx={styles.potionCount}>{appliedPoisonCount}</Typography>
-                        <img src={poisonPotionIcon} alt='' height={'14px'} />
-                      </Box>}
-                    </Box>
-                    }
+                  {isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    {revivalPotionsRequired > 0 && <Box display={'flex'} alignItems={'center'}>
+                      <Typography sx={styles.potionCount}>{revivalPotionsRequired}</Typography>
+                      <img src={revivePotionIcon} alt='' height={'14px'} />
+                    </Box>}
+                    {appliedAttackPotions > 0 && <Box display={'flex'} alignItems={'center'}>
+                      <Typography sx={styles.potionCount}>{appliedAttackPotions}</Typography>
+                      <img src={attackPotionIcon} alt='' height={'14px'} />
+                    </Box>}
+                    {(!isSavage && appliedExtraLifePotions > 0) && <Box display={'flex'} alignItems={'center'}>
+                      <Typography sx={styles.potionCount}>{appliedExtraLifePotions}</Typography>
+                      <img src={heart} alt='' height={'12px'} />
+                    </Box>}
                   </Box>
-                </Box>
-                <Box
-                  sx={[
-                    styles.attackDropdownButton,
-                  ]}
-                  onClick={(event) => setAttackDropdownAnchor(event.currentTarget)}
-                >
-                  <ArrowDropDownIcon sx={{ fontSize: '21px', color: gameColors.yellow }} />
+                  }
                 </Box>
               </Box>
+              <Box
+                sx={[
+                  styles.attackDropdownButton,
+                ]}
+                onClick={(event) => setAttackDropdownAnchor(event.currentTarget)}
+              >
+                <ArrowDropDownIcon sx={{ fontSize: '21px', color: gameColors.yellow }} />
+              </Box>
             </Box>
+          </Box>
         }
       </Box>
 
@@ -644,7 +600,7 @@ function ActionBar() {
         '& .MuiPaper-root': {
           backgroundColor: '#1a1f1a',
           backdropFilter: 'blur(10px)',
-          border: `1px solid ${gameColors.gameYellow}`,
+          border: `1px solid ${gameColors.brightGreen}`,
           borderRadius: '8px',
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
           overflow: 'visible',
@@ -662,17 +618,23 @@ function ActionBar() {
         horizontal: 'center',
       }}
     >
-      <Box width={'160px'} display={'flex'} alignItems={'center'} flexDirection={'column'} p={1} gap={0.5}>
-        <Typography
-          variant='body1'
-          sx={{
-            color: gameColors.gameYellow,
-            fontWeight: 500,
-            mb: 1,
-            fontSize: '14px',
-          }}
-        >
-          {potion === 'extraLife' ? 'Extra Life' : 'Poison Potion'}
+      <Box width={'220px'} display={'flex'} flexDirection={'column'} p={1.25} gap={0.5}>
+        <Box display="flex" alignItems="center" justifyContent="space-between" gap={1}>
+          <Box display="flex" alignItems="center" gap={1} minWidth={0}>
+            <img
+              src={potion === 'extraLife' ? lifePotionIcon : poisonPotionIcon}
+              alt=""
+              height={'18px'}
+              style={{ opacity: 0.95 }}
+            />
+            <Typography sx={styles.menuItemTitle} noWrap>
+              {potion === 'extraLife' ? 'Extra Life' : 'Poison Summit Beast'}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Typography sx={{ ...styles.menuItemDescription, opacity: 0.9, my: 1 }}>
+          {potion === 'poison' ? 'Select amount to apply' : isSavage ? 'Select amount to apply to the Summit' : 'Select amount to apply after you take the Summit'}
         </Typography>
 
         <Box
@@ -680,7 +642,6 @@ function ActionBar() {
           alignItems={'center'}
           justifyContent={'space-between'}
           width={'100%'}
-          gap={1}
           mb={1}
         >
           <IconButton
@@ -709,7 +670,7 @@ function ActionBar() {
 
           <Typography
             component={'div'}
-            sx={{ mx: 1, display: 'flex', alignItems: 'center' }}
+            sx={{ display: 'flex', alignItems: 'center' }}
           >
             <TextField
               type="text"
@@ -745,7 +706,7 @@ function ActionBar() {
                 }
               }}
               sx={{
-                width: 64,
+                width: 96,
                 '& .MuiInputBase-input': {
                   color: gameColors.gameYellow,
                   textAlign: 'center',
@@ -791,7 +752,7 @@ function ActionBar() {
           </IconButton>
         </Box>
 
-        <Box sx={{ width: '100%', px: 0.5 }}>
+        <Box sx={{ width: '100%', px: 1, boxSizing: 'border-box' }}>
           <Slider
             value={potion === 'extraLife' ? appliedExtraLifePotions : appliedPoisonCount}
             step={1}
@@ -854,6 +815,7 @@ function ActionBar() {
             display: 'flex',
             justifyContent: 'space-between',
             width: '100%',
+            boxSizing: 'border-box',
             px: 0.5,
           }}
         >
@@ -870,6 +832,70 @@ function ActionBar() {
             }
           </Typography>
         </Box>
+
+        {potion === 'poison' && (
+          <Button
+            fullWidth
+            variant="contained"
+            disabled={!enableApplyPoison}
+            onClick={() => {
+              handleApplyPoison();
+              handleClose();
+            }}
+            sx={{
+              mt: 1,
+              background: `linear-gradient(135deg, ${gameColors.mediumGreen}30 0%, ${gameColors.darkGreen}70 100%)`,
+              border: `1px solid ${gameColors.brightGreen}`,
+              borderRadius: '5px',
+              color: '#ffedbb',
+              fontWeight: 'bold',
+              textTransform: 'none',
+              '&:hover': {
+                color: '#ffedbb',
+                background: `linear-gradient(135deg, ${gameColors.lightGreen}40 0%, ${gameColors.mediumGreen}80 100%)`,
+              },
+              '&.Mui-disabled': {
+                borderColor: `${gameColors.lightGreen}40`,
+                color: `${gameColors.lightGreen}`,
+                opacity: 0.7,
+              },
+            }}
+          >
+            {applyingPotions ? 'Applying…' : 'Apply Poison'}
+          </Button>
+        )}
+
+        {potion === 'extraLife' && isSavage && (
+          <Button
+            fullWidth
+            variant="contained"
+            disabled={!enableApplyExtraLife}
+            onClick={() => {
+              handleApplyExtraLife();
+              handleClose();
+            }}
+            sx={{
+              mt: 1,
+              background: `linear-gradient(135deg, ${gameColors.mediumGreen}30 0%, ${gameColors.darkGreen}70 100%)`,
+              border: `1px solid ${gameColors.brightGreen}`,
+              borderRadius: '5px',
+              color: '#ffedbb',
+              fontWeight: 'bold',
+              textTransform: 'none',
+              '&:hover': {
+                color: '#ffedbb',
+                background: `linear-gradient(135deg, ${gameColors.lightGreen}40 0%, ${gameColors.mediumGreen}80 100%)`,
+              },
+              '&.Mui-disabled': {
+                borderColor: `${gameColors.lightGreen}40`,
+                color: `${gameColors.lightGreen}`,
+                opacity: 0.7,
+              },
+            }}
+          >
+            {applyingPotions ? 'Applying…' : 'Apply Extra Life'}
+          </Button>
+        )}
       </Box>
     </Menu>}
   </Box>
@@ -1218,7 +1244,6 @@ const styles = {
     color: gameColors.brightGreen,
     fontWeight: 'bold',
     fontSize: '14px',
-    mb: '2px'
   },
   menuItemDescription: {
     color: gameColors.accentGreen,

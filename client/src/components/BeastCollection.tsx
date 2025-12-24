@@ -1,7 +1,11 @@
+import { useController } from '@/contexts/controller';
 import { useStatistics } from '@/contexts/Statistics';
-import { BeastTypeFilter, selection, SortMethod, useGameStore } from '@/stores/gameStore';
-import { Beast } from '@/types/game';
-import { calculateMaxAttackPotions, calculateOptimalAttackPotions, getBeastCurrentHealth, getBeastRevivalTime, isBeastInTop5000, isBeastLocked } from '@/utils/beasts';
+import { BeastTypeFilter, SortMethod, useGameStore } from '@/stores/gameStore';
+import { Beast, selection } from '@/types/game';
+import {
+  calculateMaxAttackPotions, calculateOptimalAttackPotions, getBeastCurrentHealth,
+  getBeastRevivalTime, isBeastInTop5000, isBeastLocked
+} from '@/utils/beasts';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
@@ -18,7 +22,6 @@ import { calculateBattleResult } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 import BeastCard from './BeastCard';
 import BeastProfile from './BeastProfile';
-import { useController } from '@/contexts/controller';
 
 function BeastCollection() {
   const {

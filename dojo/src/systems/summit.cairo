@@ -9,6 +9,7 @@ trait ISummitEvents<T> {
         ref self: T,
         attacking_beast_owner: ContractAddress,
         attacking_beast_token_id: u32,
+        attack_index: u16,
         attacking_beast_id: u8,
         shiny: u8,
         animated: u8,
@@ -79,6 +80,7 @@ pub mod summit_events {
             ref self: ContractState,
             attacking_beast_owner: ContractAddress,
             attacking_beast_token_id: u32,
+            attack_index: u16,
             attacking_beast_id: u8,
             shiny: u8,
             animated: u8,
@@ -99,9 +101,10 @@ pub mod summit_events {
             world
                 .emit_event(
                     @BattleEvent {
-                        attacking_beast_owner,
                         attacking_beast_token_id,
+                        attack_index,
                         attacking_beast_id,
+                        attacking_beast_owner,
                         shiny,
                         animated,
                         defending_beast_token_id,

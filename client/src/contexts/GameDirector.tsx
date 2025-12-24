@@ -39,7 +39,8 @@ const GameDirectorContext = createContext<GameDirectorContext>(
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
   const { summit, setSummit, setAttackInProgress, collection, setCollection, autopilotEnabled,
-    setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent, setAppliedPoisonCount, appliedPoisonCount, setSelectedBeasts } = useGameStore();
+    setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent,
+    setAppliedPoisonCount, appliedPoisonCount, setAppliedExtraLifePotions, setSelectedBeasts } = useGameStore();
   const { setRevivePotionsUsed, setAttackPotionsUsed, setExtraLifePotionsUsed, useAttackPotions, attackPotionMax, attackPotionsUsed,
     extraLifeStrategy, extraLifeMax, extraLifeTotalMax, extraLifeReplenishTo } = useAutopilotStore();
   const { gameEventsQuery, dungeonStatsQuery } = useQueries();
@@ -440,17 +441,18 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         fetchTokenBalances(3000);
       }
     } else if (action.type === 'add_extra_life') {
+      const used = action.extraLifePotions || 0;
       setTokenBalances({
         ...tokenBalances,
-        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - action.extraLifePotions,
+        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - used,
       });
       setApplyingPotions(false);
+      setAppliedExtraLifePotions(0);
     } else if (action.type === 'apply_poison') {
       setTokenBalances({
         ...tokenBalances,
         POISON: tokenBalances["POISON"] - appliedPoisonCount,
       });
-      setAppliedPoisonCount(0);
       setApplyingPotions(false);
     } else if (action.type === 'upgrade_beast') {
       setTokenBalances({

@@ -10,15 +10,15 @@ world_block = 2125240
 max_block_range = 20000
 
 [namespace]
-default = "summit_relayer_3"
+default = "summit_relayer_4"
 
 [writers]
-"summit_relayer_3" = [
-    "summit_relayer_3-summit_events",
+"summit_relayer_4" = [
+    "summit_relayer_4-summit_events",
 ]
 
 [init_call_args]
-"summit_relayer_3-summit_events" = [
+"summit_relayer_4-summit_events" = [
     "0x06015596d10cbc6dd695a964827eee290d3487fffcf60d02264b81524dd275e4", # summit_address
     "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105", # corpse_address
     "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a" # skull_address
