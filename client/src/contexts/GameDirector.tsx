@@ -4,7 +4,7 @@ import { useGameTokens } from "@/dojo/useGameTokens";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
-import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, getEntityModel, Summit } from "@/types/game";
+import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, getEntityModel, selection, Summit } from "@/types/game";
 import {
   applyPoisonDamage, calculateBattleResult, calculateOptimalAttackPotions, getBeastCurrentHealth,
   getBeastCurrentLevel, getBeastDetails, getBeastRevivalTime
@@ -38,7 +38,7 @@ const GameDirectorContext = createContext<GameDirectorContext>(
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
-  const { summit, setSummit, setAttackInProgress, collection, setCollection, setAppliedPotions, appliedPotions, autopilotEnabled,
+  const { summit, setSummit, setAttackInProgress, collection, setCollection, autopilotEnabled,
     setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent, setAppliedPoisonCount, appliedPoisonCount, setSelectedBeasts } = useGameStore();
   const { setRevivePotionsUsed, setAttackPotionsUsed, setExtraLifePotionsUsed, useAttackPotions, attackPotionMax, attackPotionsUsed,
     extraLifeStrategy, extraLifeMax, extraLifeTotalMax, extraLifeReplenishTo } = useAutopilotStore();
@@ -355,10 +355,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       setBattleEvents([]);
       setAttackInProgress(true);
       txs.push(
-        ...attack(action.beastIds, action.appliedPotions, action.safeAttack, action.vrf)
+        ...attack(action.beasts, action.safeAttack, action.vrf)
       );
-      setRevivePotionsUsed(prev => prev + action.appliedPotions.revive);
-      setAttackPotionsUsed(prev => prev + action.appliedPotions.attack);
     }
 
     if (action.type === 'attack_until_capture') {
@@ -366,24 +364,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       setAttackInProgress(true);
 
       let beasts = action.beasts.slice(0, 75);
-      let beastIds = beasts.map((beast: Beast) => beast.token_id);
-      let revivePotions = beasts.reduce((acc: number, beast: Beast) => beast.current_health === 0 ? acc + beast.revival_count + 1 : acc, 0);
-
-      let attackPotions = 0;
-      let extraLifePotions = 0;
-
-      if (autopilotEnabled) {
-        if (useAttackPotions && attackPotionsUsed < attackPotionMax) {
-          attackPotions = calculateOptimalAttackPotions(beasts[0], summit, Math.min(attackPotionMax - attackPotionsUsed, 255));
-          beasts[0].combat = calculateBattleResult(beasts[0], summit, attackPotions);
-        }
-
-        if (extraLifeStrategy === 'after_capture') {
-          extraLifePotions = Math.min(tokenBalances["EXTRA LIFE"] || 0, extraLifeMax);
-        } else if (extraLifeStrategy === 'aggressive') {
-          extraLifePotions = Math.min(extraLifeMax - extraLifePotionsUsed, 4000);
-        }
-      }
 
       if (beasts.length === 0) {
         setActionFailed();
@@ -391,11 +371,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       }
 
       txs.push(
-        ...attack(beastIds, { revive: revivePotions, attack: attackPotions, extraLife: extraLifePotions }, false, true)
+        ...attack(beasts, false, true)
       );
-
-      setRevivePotionsUsed(prev => prev + revivePotions);
-      setAttackPotionsUsed(prev => prev + attackPotions);
     }
 
     if (action.type === 'claim_beast_reward') {
@@ -411,7 +388,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     if (action.type === 'add_extra_life') {
-      txs.push(...addExtraLife(action.beastId, appliedPotions.extraLife));
+      txs.push(...addExtraLife(action.beastId, action.extraLifePotions));
     }
 
     if (action.type === 'upgrade_beast') {
@@ -442,14 +419,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (action.type === 'attack') {
       setTokenBalances({
         ...tokenBalances,
-        ATTACK: tokenBalances["ATTACK"] - appliedPotions.attack,
-        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - (captured ? appliedPotions.extraLife : 0),
-        REVIVE: tokenBalances["REVIVE"] - appliedPotions.revive,
-      });
-      setAppliedPotions({
-        revive: 0,
-        attack: 0,
-        extraLife: 0,
+        ATTACK: tokenBalances["ATTACK"] - 0,
+        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - (captured ? 0 : 0),
+        REVIVE: tokenBalances["REVIVE"] - 0,
       });
 
       if (action.pauseUpdates) {
@@ -470,12 +442,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     } else if (action.type === 'add_extra_life') {
       setTokenBalances({
         ...tokenBalances,
-        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - appliedPotions.extraLife,
-      });
-      setAppliedPotions({
-        revive: 0,
-        attack: 0,
-        extraLife: 0,
+        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - action.extraLifePotions,
       });
       setApplyingPotions(false);
     } else if (action.type === 'apply_poison') {

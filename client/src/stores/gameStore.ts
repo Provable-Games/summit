@@ -1,9 +1,8 @@
 import { create } from 'zustand';
-import { Summit, Beast, Adventurer, AppliedPotions, BattleEvent, Leaderboard, PoisonEvent } from '@/types/game';
+import { Summit, Beast, Adventurer, BattleEvent, Leaderboard, PoisonEvent, selection } from '@/types/game';
 
 export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'blocks held';
 export type BeastTypeFilter = 'all' | 'strong';
-export type selection = [Beast, number, number][];
 
 interface GameState {
   summit: Summit | null;
@@ -22,8 +21,8 @@ interface GameState {
   selectedBeasts: selection;
   adventurerCollection: Adventurer[];
   selectedAdventurers: Adventurer[];
-  appliedPotions: AppliedPotions;
   appliedPoisonCount: number;
+  appliedExtraLifePotions: number;
   attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot';
   autopilotEnabled: boolean;
 
@@ -50,8 +49,8 @@ interface GameState {
   setApplyingPotions: (applyingPotions: boolean) => void;
   setSelectedBeasts: (selectedBeasts: selection | ((prev: selection) => selection)) => void;
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => void;
-  setAppliedPotions: (appliedPotions: AppliedPotions) => void;
   setAppliedPoisonCount: (appliedPoisonCount: number) => void;
+  setAppliedExtraLifePotions: (appliedExtraLifePotions: number) => void;
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot') => void;
   setAutopilotEnabled: (autopilotEnabled: boolean) => void;
 
@@ -82,12 +81,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   applyingPotions: false,
   selectedBeasts: [],
   selectedAdventurers: [],
-  appliedPotions: {
-    revive: 0,
-    attack: 0,
-    extraLife: 0,
-  },
   appliedPoisonCount: 0,
+  appliedExtraLifePotions: 0,
   attackMode: 'safe',
   autopilotEnabled: false,
 
@@ -116,11 +111,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       applyingPotions: false,
       selectedBeasts: [],
       selectedAdventurers: [],
-      appliedPotions: {
-        revive: 0,
-        attack: 0,
-        extraLife: 0,
-      },
+      appliedExtraLifePotions: 0,
       appliedPoisonCount: 0,
       attackMode: 'safe',
       autopilotEnabled: false,
@@ -151,8 +142,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     set(state => ({ selectedBeasts: typeof selectedBeasts === 'function' ? selectedBeasts(state.selectedBeasts) : selectedBeasts })),
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => set({ selectedAdventurers }),
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => set({ adventurerCollection }),
-  setAppliedPotions: (appliedPotions: AppliedPotions) => set({ appliedPotions }),
   setAppliedPoisonCount: (appliedPoisonCount: number) => set({ appliedPoisonCount }),
+  setAppliedExtraLifePotions: (appliedExtraLifePotions: number) => set({ appliedExtraLifePotions }),
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot') => set({ attackMode }),
   setAutopilotEnabled: (autopilotEnabled: boolean) => set({ autopilotEnabled }),
 

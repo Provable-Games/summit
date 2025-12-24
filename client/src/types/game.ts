@@ -79,20 +79,15 @@ export interface Adventurer {
   soulbound: boolean;
 }
 
-export interface AppliedPotions {
-  revive: number;
-  attack: number;
-  extraLife: number;
-}
 
+export type selection = [Beast, number, number][];
 export interface GameAction {
   type: string;
   pauseUpdates?: boolean;
-  beasts?: Beast[];
+  beasts?: selection;
   beastId?: number;
   beastIds?: number[];
   adventurerIds?: number[];
-  appliedPotions?: AppliedPotions;
   safeAttack?: boolean;
   vrf?: boolean;
   stats?: Stats;
@@ -100,6 +95,7 @@ export interface GameAction {
   bonusHealth?: number;
   killTokens?: number;
   corpseTokens?: number;
+  extraLifePotions?: number;
 }
 
 export interface BattleEvent {

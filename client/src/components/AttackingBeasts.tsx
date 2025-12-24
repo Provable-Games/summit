@@ -1,3 +1,4 @@
+import attackPotionImg from '@/assets/images/attack-potion.png';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
@@ -410,22 +411,14 @@ function AttackingBeasts() {
                   )}
 
                   {/* Potion indicators - only show for active beast */}
-                  {/* {index === 0 && (
+                  {beast.battle?.attack_potions != null && beast.battle.attack_potions > 0 && (
                     <Box sx={styles.potionIndicators}>
-                      {beast.battle?.attack_potions != null && beast.battle.attack_potions > 0 && (
-                        <Box sx={styles.potionIcon}>
-                          <Typography sx={styles.potionText}>{beast.battle.attack_potions}</Typography>
-                          <img src={attackPotionIcon} alt='' height={'14px'} />
-                        </Box>
-                      )}
-                      {appliedPotions.extraLife > 0 && (
-                        <Box sx={styles.potionIcon}>
-                          <Typography sx={styles.potionText}>{appliedPotions.extraLife}</Typography>
-                          <img src={lifePotionIcon} alt='' height={'14px'} />
-                        </Box>
-                      )}
+                      <Box sx={styles.potionIcon}>
+                        <Typography sx={styles.potionText}>{beast.battle.attack_potions}</Typography>
+                        <img src={attackPotionImg} alt='' height={'14px'} />
+                      </Box>
                     </Box>
-                  )} */}
+                  )}
 
                   {/* Stats row - show for all but smaller for waiting */}
                   <Box sx={[styles.statsRow]}>

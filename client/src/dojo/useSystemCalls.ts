@@ -1,6 +1,7 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { useGameStore } from "@/stores/gameStore";
-import { AppliedPotions, Stats } from "@/types/game";
+import { selection, Stats } from "@/types/game";
+import { calculateRevivalRequired } from "@/utils/beasts";
 import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
@@ -8,7 +9,7 @@ import { useSnackbar } from "notistack";
 import { CallData } from "starknet";
 
 export const useSystemCalls = () => {
-  const { summit } = useGameStore()
+  const { summit, appliedExtraLifePotions } = useGameStore()
   const { enqueueSnackbar } = useSnackbar();
   const { account } = useAccount();
   const { currentNetworkConfig } = useDynamicConnector();
@@ -95,25 +96,29 @@ export const useSystemCalls = () => {
 
   /**
    * Attacks a beast, optionally fighting to the death.
-   * @param beastIds The IDs of the beasts to attack
-   * @param appliedPotions The potions to apply to the beasts
+   * @param beasts The beasts to attack
+   * @param safeAttack Whether to attack safely
+   * @param vrf Whether to use VRF
    */
-  const attack = (beastIds: number[], appliedPotions: AppliedPotions, safeAttack: boolean, vrf: boolean) => {
+  const attack = (beasts: selection, safeAttack: boolean, vrf: boolean) => {
     let txs: any[] = [];
 
-    if (appliedPotions.revive > 0) {
+    let revivalPotions = calculateRevivalRequired(beasts);
+    let attackPotions = beasts.reduce((acc, beast) => acc + beast[2], 0)
+
+    if (revivalPotions > 0) {
       let reviveAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "REVIVE")?.address;
-      txs.push(approveTokens(reviveAddress, appliedPotions.revive));
+      txs.push(approveTokens(reviveAddress, revivalPotions));
     }
 
-    if (appliedPotions.attack > 0) {
+    if (attackPotions > 0) {
       let attackAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "ATTACK")?.address;
-      txs.push(approveTokens(attackAddress, appliedPotions.attack));
+      txs.push(approveTokens(attackAddress, attackPotions));
     }
 
-    if (appliedPotions.extraLife > 0) {
+    if (appliedExtraLifePotions > 0) {
       let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
-      txs.push(approveTokens(extraLifeAddress, appliedPotions.extraLife));
+      txs.push(approveTokens(extraLifeAddress, appliedExtraLifePotions));
     }
 
     if (vrf || !safeAttack) {
@@ -124,13 +129,7 @@ export const useSystemCalls = () => {
       txs.push({
         contractAddress: SUMMIT_ADDRESS,
         entrypoint: "attack",
-        calldata: CallData.compile([summit.beast.token_id, beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife, vrf]),
-      });
-    } else {
-      txs.push({
-        contractAddress: SUMMIT_ADDRESS,
-        entrypoint: "attack_unsafe",
-        calldata: CallData.compile([beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife]),
+        calldata: CallData.compile([safeAttack ? summit.beast.token_id : 0, beasts, revivalPotions, attackPotions, appliedExtraLifePotions, vrf]),
       });
     }
 

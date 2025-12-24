@@ -21,7 +21,7 @@ import { gameColors } from '../utils/themes';
 
 function Summit() {
   const { collection, summit, attackInProgress, selectedBeasts, spectatorBattleEvents,
-    poisonEvent, setSpectatorBattleEvents, setSummit, setPoisonEvent, appliedPotions } = useGameStore()
+    poisonEvent, setSpectatorBattleEvents, setSummit, setPoisonEvent } = useGameStore()
   const { pauseUpdates } = useGameDirector()
   const { play } = useSound()
 

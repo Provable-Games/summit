@@ -1,4 +1,4 @@
-import { Beast, Combat, Summit } from '@/types/game';
+import { Beast, Combat, Summit, selection } from '@/types/game';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
 import { SoundName } from '@/contexts/sound';
 import * as starknet from "@scure/starknet";
@@ -337,4 +337,16 @@ export const calculateMaxAttackPotions = (beast: Beast, summit: Summit, maxAllow
   }
   const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
   return value;
+}
+
+export const calculateRevivalRequired = (selectedBeasts: selection) => {
+  return selectedBeasts.reduce((sum: number, selectedBeast) => {
+    const [beast, attacks] = selectedBeast;
+    if (beast.current_health === 0) {
+      return sum + (attacks * beast.revival_count) + (attacks * (attacks + 1) / 2);
+    } else {
+      let revivals = attacks - 1;
+      return sum + (revivals * beast.revival_count) + (revivals * (revivals + 1) / 2);
+    }
+  }, 0);
 }
