@@ -792,8 +792,8 @@ pub mod summit_systems {
                     }
                 }
 
-                let mut attack_counter = 0;
-                while (attack_counter < attack_count) {
+                let mut attack_index = 0;
+                while (attack_index < attack_count) {
                     // check if it needs revival potions
                     let potions_required = Self::_revival_potions_required(@self, attacking_beast);
                     if potions_required > 0 {
@@ -848,7 +848,7 @@ pub mod summit_systems {
                     let attacker_crit_chance = attacking_beast.crit_chance();
                     let defender_crit_chance = defending_beast.crit_chance();
 
-                    if (attack_counter == 0) {
+                    if (attack_index == 0) {
                         total_attack_potions += attack_potions.into();
                     }
 
@@ -935,7 +935,7 @@ pub mod summit_systems {
                         .emit_battle_event(
                             beast_owner,
                             attacking_beast_token_id,
-                            attack_index: attack_counter,
+                            attack_index,
                             attacking_beast.fixed.id,
                             attacking_beast.fixed.shiny,
                             attacking_beast.fixed.animated,
@@ -1003,7 +1003,7 @@ pub mod summit_systems {
 
                         break;
                     }
-                    attack_counter += 1;
+                    attack_index += 1;
                 }
                 if (defending_beast.live.current_health == 0) {
                     break;
