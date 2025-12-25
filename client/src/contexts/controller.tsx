@@ -131,7 +131,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
       setLoadingCollection(false);
 
       if (cachedCollection.length > 0 && cachedCollection.every((beast: Beast) => !beast.has_claimed_potions)) {
-        setOnboarding(true);
+        setOnboarding(false);
       } else {
         setOnboarding(false);
       }
@@ -144,7 +144,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
       const freshBeasts = await getBeastCollection(account.address);
 
       if (freshBeasts.length > 0 && freshBeasts.every((beast: Beast) => !beast.has_claimed_potions)) {
-        setOnboarding(true);
+        setOnboarding(false);
       } else {
         setOnboarding(false);
       }

@@ -332,7 +332,7 @@ function BeastCollection() {
       )}
 
       {/* Beast Grid with Utility Buttons */}
-      {!loadingCollection && (
+      {!loadingCollection && collection.length > 0 && (
         <Box sx={styles.beastGridContainer}>
           {/* Left side: Utility Buttons and Filter Panel */}
           <Box sx={styles.leftSideContainer}>
@@ -479,6 +479,7 @@ function BeastCollection() {
               sx={{
                 ...styles.beastGrid,
                 height: selectedBeasts.length > 0 ? '230px' : styles.beastGrid.height,
+                transition: 'height 0.35s cubic-bezier(0.4, 0.0, 0.2, 1)', // Added smooth transition
                 contain: 'strict',
                 overflowX: 'auto',
                 overflowY: 'hidden',
@@ -499,7 +500,6 @@ function BeastCollection() {
                   const isLocked = isBeastLocked(beast);
                   const selectionIndex = selectedBeasts.findIndex(b => b[0].token_id === beast.token_id) + 1;
                   const combat = summit && !isSavage ? beast.combat : null;
-                  const key = String(beast.token_id);
 
                   return (
                     <div

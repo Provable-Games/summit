@@ -76,7 +76,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   };
 
   const refreshTokenPrices = async () => {
-    const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON", "SKULL", "CORPSE"];
+    const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON"];
 
     for (const tokenName of tokenNames) {
       fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === tokenName));

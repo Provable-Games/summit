@@ -35,7 +35,7 @@ export const NETWORKS = {
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
-    subscriptionUrl: "https://api.cartridge.gg/x/summit-6/torii",
+    subscriptionUrl: "https://api.cartridge.gg/x/summit-5/torii",
     tokens: {
       erc20: [
         // {
@@ -268,7 +268,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a": {
+      "0x056747f477c306759134c89ed8fb9c477ca96a229e6c0fd2b44731878f58e66d": {
         "name": "Skull Token",
         "description": "ERC 20 token for Skull Token",
         "methods": [
@@ -286,7 +286,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105": {
+      "0x0773fc83a286a1a05131012d97c1e5970a930b5862641d750510959a7b8cb290": {
         "name": "Corpse Token",
         "description": "ERC 20 token for Corpse Token",
         "methods": [

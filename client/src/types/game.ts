@@ -96,6 +96,8 @@ export interface GameAction {
   killTokens?: number;
   corpseTokens?: number;
   extraLifePotions?: number;
+  attackPotions?: number;
+  revivePotions?: number;
 }
 
 export interface BattleEvent {

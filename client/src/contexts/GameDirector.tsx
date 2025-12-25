@@ -40,7 +40,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
   const { summit, setSummit, setAttackInProgress, collection, setCollection, autopilotEnabled,
     setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent,
-    setAppliedPoisonCount, appliedPoisonCount, setAppliedExtraLifePotions, setSelectedBeasts } = useGameStore();
+    appliedExtraLifePotions, appliedPoisonCount, setAppliedExtraLifePotions, setSelectedBeasts } = useGameStore();
   const { setRevivePotionsUsed, setAttackPotionsUsed, setExtraLifePotionsUsed, useAttackPotions, attackPotionMax, attackPotionsUsed,
     extraLifeStrategy, extraLifeMax, extraLifeTotalMax, extraLifeReplenishTo } = useAutopilotStore();
   const { gameEventsQuery, dungeonStatsQuery } = useQueries();
@@ -420,10 +420,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (action.type === 'attack') {
       setTokenBalances({
         ...tokenBalances,
-        ATTACK: tokenBalances["ATTACK"] - 0,
-        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - (captured ? 0 : 0),
-        REVIVE: tokenBalances["REVIVE"] - 0,
+        ATTACK: tokenBalances["ATTACK"] - action.attackPotions,
+        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - (captured ? action.extraLifePotions : 0),
+        REVIVE: tokenBalances["REVIVE"] - action.revivePotions,
       });
+      setAppliedExtraLifePotions(0);
 
       if (action.pauseUpdates) {
         setBattleEvents(events.filter((event: any) => event.componentName === 'BattleEvent'));

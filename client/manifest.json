@@ -1895,15 +1895,15 @@
   "events": [
     {
       "members": [],
-      "class_hash": "0x3ce76a36f1f379fb0400dd7a19ab62ad8c246b2f14445f8f6b16ebeb28ad79b",
+      "class_hash": "0x1cef31aa19672419dc67105b81beb9d04182ccb702a8c67da387c421654c6e3",
       "tag": "summit_relayer_4-BattleEvent",
-      "selector": "0x78f39a0cec5f923d0ebe90c2843c47e34a214f0c9e762d17e85ebbf9d938f3e"
+      "selector": "0x43006e01719ec7afc7ab60c231b2c288d0150abc655f4bfda56beb68d90cd2e"
     },
     {
       "members": [],
-      "class_hash": "0x458a0aa50aa35cd22da110441adf58fdaf991dc9b39a3ef42b9fa4ff161beaa",
+      "class_hash": "0x33e498a5bd2db633569aea2d1d831f700b403f3523fbf6cdc7a1480a6019768",
       "tag": "summit_relayer_4-BeastEvent",
-      "selector": "0x753187c4be91da4dd4575c779cc4281da66d67da46a8ce865ae24d8ee45dae9"
+      "selector": "0x44461bc7403383f62f1c5501aa8cf77243d71ed42e4b03e6ae745343377cb46"
     },
     {
       "members": [],
@@ -1919,9 +1919,9 @@
     },
     {
       "members": [],
-      "class_hash": "0x782294f7938d75af415344195746012a584737ce53942f2686970c1be15bf20",
+      "class_hash": "0x2f27bcd0feab890e4633560d75df6519eb1c953194d2edbb02a1b8f53a5953c",
       "tag": "summit_relayer_4-LiveBeastStatsEvent",
-      "selector": "0x456d049ed7d7194fa199f56da070d6b582630b3b650f0d39b2b016d007282c6"
+      "selector": "0x470ccadc696f3654c16297717da590df4164900a554b9f2c5f4973dadffafe"
     },
     {
       "members": [],
