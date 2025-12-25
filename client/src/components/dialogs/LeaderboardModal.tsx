@@ -102,7 +102,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
   }, [activeTab, beastsPage]);
 
   const formatRewards = (rewards: number) =>
-    rewards.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    rewards.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
   const formatAddress = (addr: string) => {
     if (!addr) return '';
@@ -237,7 +237,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                           )}
                         </Box>
                         <Typography sx={styles.rewardsCell}>
-                          {formatRewards(player.amount / 10)}
+                          {formatRewards(player.amount)}
                         </Typography>
                       </Box>
                     );

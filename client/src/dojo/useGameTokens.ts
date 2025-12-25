@@ -360,86 +360,25 @@ export const useGameTokens = () => {
   }
 
   const getLeaderboard = async () => {
-    // Fetch all rewards (within time window) and aggregate in JS since
-    // the amount column is now stored as a hex string.
     const q = `
-      SELECT owner, amount
-      FROM "${currentNetworkConfig.namespace}-RewardEvent"
-      WHERE internal_created_at > '2025-12-10 18:00:00'
-    `;
+        SELECT owner, SUM(amount) AS amount
+        FROM "${currentNetworkConfig.namespace}-RewardEvent"
+        WHERE internal_created_at > '2025-11-21 16:20:00'
+        GROUP BY owner
+        ORDER BY amount DESC
+      `;
 
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-
     try {
       const sql = await fetch(url, {
         method: "GET",
         headers: { "Content-Type": "application/json" }
-      });
-
-      const rows: any[] = await sql.json();
-
-      // Aggregate totals per owner using BigInt for precise hex handling.
-      const totals = new Map<string, bigint>();
-
-      for (const row of rows) {
-        const owner = row.owner;
-        const rawAmount = row.amount;
-
-        if (!owner || rawAmount == null) continue;
-
-        let valueBigInt: bigint | null = null;
-
-        if (typeof rawAmount === "string") {
-          // Handle hex strings like "0x0000..."
-          if (/^0x[0-9a-fA-F]+$/.test(rawAmount)) {
-            try {
-              valueBigInt = BigInt(rawAmount);
-            } catch {
-              valueBigInt = null;
-            }
-          } else {
-            // Fallback for decimal strings
-            try {
-              valueBigInt = BigInt(rawAmount);
-            } catch {
-              const numVal = Number(rawAmount);
-              if (!Number.isNaN(numVal) && Number.isFinite(numVal)) {
-                valueBigInt = BigInt(Math.floor(numVal));
-              }
-            }
-          }
-        } else if (typeof rawAmount === "number") {
-          if (Number.isFinite(rawAmount)) {
-            valueBigInt = BigInt(Math.floor(rawAmount));
-          }
-        }
-
-        if (valueBigInt === null) continue;
-
-        const prev = totals.get(owner) ?? 0n;
-        totals.set(owner, prev + valueBigInt);
-      }
-
-      // Convert to the expected Leaderboard shape with numeric amounts.
-      //
-      // Amounts are currently in 18‑decimals (wei-style). The UI expects
-      // `amount` to be scaled such that `amount / 100` gives the final
-      // whole-number display value. To achieve:
-      //   1e18 (wei) -> 1 (display),
-      // we first divide by 1e16 here, then the UI divides by 1e2.
-      const scaleDivisor = 10000000000000000n; // 10^16
-
-      const leaderboard = Array.from(totals.entries())
-        .map(([owner, total]) => {
-          const scaled = total / scaleDivisor;
-          return {
-            owner,
-            amount: Number(scaled),
-          };
-        })
-        .sort((a, b) => b.amount - a.amount);
-
-      return leaderboard;
+      })
+      let data = await sql.json()
+      return data.length > 0 ? data.map((row: any) => ({
+        owner: row.owner,
+        amount: row.amount / 1000,
+      })) : []
     } catch (error) {
       console.error("Error getting big five:", error);
       return [];

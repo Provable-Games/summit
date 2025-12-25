@@ -412,16 +412,6 @@ function AttackingBeasts() {
                     </Box>
                   )}
 
-                  {/* Potion indicators - only show for active beast */}
-                  {beast.battle?.attack_potions != null && beast.battle.attack_potions > 0 && (
-                    <Box sx={styles.potionIndicators}>
-                      <Box sx={styles.potionIcon}>
-                        <Typography sx={styles.potionText}>{beast.battle.attack_potions}</Typography>
-                        <img src={attackPotionImg} alt='' height={'14px'} />
-                      </Box>
-                    </Box>
-                  )}
-
                   {/* Stats row - show for all but smaller for waiting */}
                   <Box sx={[styles.statsRow]}>
                     <Box sx={[styles.statBox, index !== 0 && styles.smallStatBox]}>

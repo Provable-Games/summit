@@ -93,7 +93,7 @@ const ProfileCard = () => {
 
             <Box display={'flex'} alignItems={'start'}>
               <Typography sx={styles.infoValue}>
-                {formatRewardNumber((leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount || 0) / 10)}
+                {formatRewardNumber((leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount || 0))}
               </Typography>
             </Box>
           </Box>

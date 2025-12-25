@@ -11,6 +11,8 @@ import { useEffect, useState } from 'react';
 import { TERMINAL_BLOCK } from '@/contexts/GameDirector';
 import FinalShowdown from './FinalShowdown';
 
+const BLOCK_REWARD = 0.1;
+
 function Leaderboard() {
   const { beastsRegistered, beastsAlive, refreshBeastsAlive } = useStatistics()
   const { summit, leaderboard, setLeaderboard } = useGameStore()
@@ -88,10 +90,13 @@ function Leaderboard() {
 
     // Calculate bonus points from blocks held (1 point per block)
     const blocksHeld = (currentBlock - summit.taken_at)
+    const diplomacyCount = (summit?.diplomacy?.beast_token_ids.length || 0) - (summit.beast.stats.diplomacy ? 1 : 0);
+    const diplomacyRewards = (BLOCK_REWARD / 100 * diplomacyCount);
 
     // Find summit owner in leaderboard
     const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summit.owner))
-    const score = (player?.amount || 0) + (blocksHeld * (100 - (summit.diplomacy?.beast_token_ids.length || 0)))
+    const gainedSince = blocksHeld * BLOCK_REWARD - diplomacyRewards;
+    const score = (player?.amount || 0) + gainedSince;
 
     // Find summit owner's rank in the sorted list
     const liveRank = leaderboard.findIndex(p => p.amount < score) + 1
@@ -99,22 +104,15 @@ function Leaderboard() {
     setSummitOwnerRank({
       rank: liveRank || leaderboard.length + 1,
       score: score,
+      beforeAmount: player?.amount || 0,
+      gainedSince: gainedSince,
+      diplomacyCount: diplomacyCount,
     })
   }, [summit, currentBlock, leaderboard])
 
   const formatRewards = (rewards) => {
     return rewards.toLocaleString(undefined, { maximumFractionDigits: 0 })
   }
-
-  // Derived "Current Summit" metrics
-  const blocksHeld = summit?.taken_at && currentBlock ? Math.max(0, currentBlock - summit.taken_at) : 0
-  const diplomacyCount = summit?.diplomacy?.beast_token_ids.length || 0
-  const perBlockToOwner = Math.max(0, 100 - diplomacyCount)
-  const summitOwnerPlayer = summit?.owner
-    ? leaderboard.find(p => addAddressPadding(p.owner) === addAddressPadding(summit.owner))
-    : null
-  const beforeAmount = summitOwnerPlayer?.amount || 0
-  const gainedSince = blocksHeld * perBlockToOwner
 
   const PlayerRow = ({ player, index, cartridgeName }) => {
     const displayName = cartridgeName || 'Warlock'
@@ -126,7 +124,7 @@ function Leaderboard() {
           {displayName}
         </Typography>
         <Typography sx={styles.bigFiveRewards}>
-          {formatRewards(player.amount / 10)}
+          {formatRewards(player.amount)}
         </Typography>
       </Box>
     )
@@ -179,13 +177,13 @@ function Leaderboard() {
                     {addressNames[summit.owner] || 'Warlock'}
                   </Typography>
                   <Typography sx={styles.summitOwnerScore}>
-                    {formatRewards(beforeAmount / 10)} <span style={{ color: gameColors.brightGreen }}>+{formatRewards(gainedSince / 100)}</span>
+                    {formatRewards(summitOwnerRank.beforeAmount)} <span style={{ color: gameColors.brightGreen }}>+{formatRewards(summitOwnerRank.gainedSince)}</span>
                   </Typography>
                 </Box>
-                {diplomacyCount > 0 && (
+                {summitOwnerRank.diplomacyCount > 0 && (
                   <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
                     <Typography sx={styles.summitOwnerSub}>
-                      +{diplomacyCount} Diplomacy
+                      +{summitOwnerRank.diplomacyCount} Diplomacy
                     </Typography>
                   </Box>
                 )}
