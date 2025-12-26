@@ -450,6 +450,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
     try {
       const calls: any[] = [];
+      const tradedPotionIds: string[] = [];
+      const isPotionTokenName = (name: string) => POTIONS.some((p) => p.id === name);
 
       for (const potion of POTIONS) {
         const potionAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === potion.id)?.address!;
@@ -476,6 +478,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               }
             );
             calls.push(...swapCalls);
+            tradedPotionIds.push(potion.id);
           }
         }
       }
@@ -486,7 +489,11 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         if (result) {
           await delay(2000);
           fetchPaymentTokenBalances();
-          close();
+          const tokensToRefresh = [...tradedPotionIds];
+          if (selectedToken && isPotionTokenName(selectedToken)) {
+            tokensToRefresh.push(selectedToken);
+          }
+          await refreshTokenPrices(tokensToRefresh);
         }
       }
     } catch (error) {
@@ -502,6 +509,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
     try {
       const calls: any[] = [];
+      const tradedPotionIds: string[] = [];
+      const isPotionTokenName = (name: string) => POTIONS.some((p) => p.id === name);
 
       for (const potion of POTIONS) {
         const potionAddress = currentNetworkConfig.tokens.erc20.find(
@@ -531,6 +540,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               }
             );
             calls.push(...swapCalls);
+            tradedPotionIds.push(potion.id);
           }
         }
       }
@@ -541,7 +551,11 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         if (result) {
           await delay(2000);
           fetchPaymentTokenBalances();
-          close();
+          const tokensToRefresh = [...tradedPotionIds];
+          if (selectedReceiveToken && isPotionTokenName(selectedReceiveToken)) {
+            tokensToRefresh.push(selectedReceiveToken);
+          }
+          await refreshTokenPrices(tokensToRefresh);
         }
       }
     } catch (error) {

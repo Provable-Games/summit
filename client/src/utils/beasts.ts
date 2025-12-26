@@ -302,15 +302,14 @@ export const isBeastInTop5000 = (beast: Beast, top5000Cutoff: Top5000Cutoff): bo
 }
 
 export const calculateOptimalAttackPotions = (beast: Beast, summit: Summit, maxAllowed: number) => {
-  const target = (summit.beast.extra_lives > 0)
-    ? (summit.beast.health + summit.beast.bonus_health)
-    : Math.max(1, summit.beast.current_health || 0);
+  const targetDamage = ((summit.beast.health + summit.beast.bonus_health) * summit.beast.extra_lives)
+    + Math.max(1, summit.beast.current_health || 0);
 
   let bestRequired = Number.POSITIVE_INFINITY;
   if (beast) {
     for (let n = 0; n <= maxAllowed; n++) {
       const combat = calculateBattleResult(beast, summit, n);
-      if (combat.estimatedDamage >= target) {
+      if (combat.estimatedDamage >= targetDamage) {
         bestRequired = n;
         break;
       }

@@ -10,8 +10,12 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { useEffect, useState } from 'react';
 import { TERMINAL_BLOCK } from '@/contexts/GameDirector';
 import FinalShowdown from './FinalShowdown';
+import RewardsRemainingBar from './RewardsRemainingBar';
+import { SUMMIT_REWARD_PER_BLOCK, SUMMIT_START_BLOCK, SUMMIT_TOTAL_REWARDS } from '@/utils/summitRewards';
 
-const BLOCK_REWARD = 0.1;
+const START_BLOCK = SUMMIT_START_BLOCK;
+const TOTAL_REWARDS = SUMMIT_TOTAL_REWARDS;
+const BLOCK_REWARD = SUMMIT_REWARD_PER_BLOCK;
 
 function Leaderboard() {
   const { beastsRegistered, beastsAlive, refreshBeastsAlive } = useStatistics()
@@ -111,7 +115,7 @@ function Leaderboard() {
   }, [summit, currentBlock, leaderboard])
 
   const formatRewards = (rewards) => {
-    return rewards.toLocaleString(undefined, { maximumFractionDigits: 0 })
+    return rewards.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
   }
 
   const PlayerRow = ({ player, index, cartridgeName }) => {
@@ -142,6 +146,8 @@ function Leaderboard() {
         <Typography sx={styles.title}>
           SUMMIT ALPHA
         </Typography>
+
+        <RewardsRemainingBar currentBlock={currentBlock} />
 
         <Box sx={styles.sectionHeader}>
           <Typography sx={styles.sectionTitle}>

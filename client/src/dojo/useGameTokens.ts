@@ -313,9 +313,9 @@ export const useGameTokens = () => {
 
   const countAliveBeasts = async () => {
     let q = `
-      SELECT COUNT(DISTINCT attacking_beast_id) as count
+      SELECT COUNT(DISTINCT attacking_beast_token_id) as count
       FROM "summit_relayer_4-BattleEvent"
-      WHERE internal_created_at > datetime('now', '-24 hours');
+      WHERE internal_updated_at > datetime('now', '-24 hours')
     `
 
     let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;

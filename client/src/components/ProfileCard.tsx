@@ -55,6 +55,33 @@ const ProfileCard = () => {
     }
   }
 
+  const RenderMarketplace = () => {
+    return <>
+      <Box sx={styles.potionsSection}>
+        <Box sx={styles.potionPrices}>
+          <Box sx={styles.potionRow}>
+            {renderPotionItem(attackPotionImg, "ATTACK")}
+            {renderPotionItem(lifePotionImg, "EXTRA LIFE")}
+          </Box>
+          <Box sx={styles.potionRow}>
+            {renderPotionItem(poisonPotionImg, "POISON")}
+            {renderPotionItem(revivePotionImg, "REVIVE")}
+          </Box>
+          <Box sx={styles.potionRow}>
+            {renderPotionItem(killTokenImg, "SKULL")}
+            {renderPotionItem(corpseTokenImg, "CORPSE")}
+          </Box>
+        </Box>
+        <Button sx={[styles.buyPotionsButton, { width: isMobile ? '100%' : '145px' }]} onClick={() => setPotionShopOpen(true)}>
+          <Typography sx={styles.buyPotionsButtonText}>
+            MARKETPLACE
+          </Typography>
+        </Button>
+      </Box>
+      {potionShopOpen && <MarketplaceModal open={potionShopOpen} close={() => setPotionShopOpen(false)} />}
+    </>
+  }
+
   if (!address) {
     return <>
       <Button sx={styles.connectButton} onClick={() => connect({ connector: cartridgeConnector })} size='large' startIcon={<SportsEsportsIcon htmlColor='white' />}>
@@ -62,6 +89,7 @@ const ProfileCard = () => {
           CONNECT WALLET
         </Typography>
       </Button>
+      {RenderMarketplace()}
     </>
   }
 
@@ -133,31 +161,10 @@ const ProfileCard = () => {
             </Button>
           </Box>
 
-          <Box sx={styles.potionsSection}>
-            <Box sx={styles.potionPrices}>
-              <Box sx={styles.potionRow}>
-                {renderPotionItem(attackPotionImg, "ATTACK")}
-                {renderPotionItem(lifePotionImg, "EXTRA LIFE")}
-              </Box>
-              <Box sx={styles.potionRow}>
-                {renderPotionItem(poisonPotionImg, "POISON")}
-                {renderPotionItem(revivePotionImg, "REVIVE")}
-              </Box>
-              <Box sx={styles.potionRow}>
-                {renderPotionItem(killTokenImg, "SKULL")}
-                {renderPotionItem(corpseTokenImg, "CORPSE")}
-              </Box>
-            </Box>
-            <Button sx={[styles.buyPotionsButton, { width: isMobile ? '100%' : '145px' }]} onClick={() => setPotionShopOpen(true)}>
-              <Typography sx={styles.buyPotionsButtonText}>
-                MARKETPLACE
-              </Typography>
-            </Button>
-          </Box>
+          {RenderMarketplace()}
         </>}
 
         {beastDexOpen && <BeastDexModal open={beastDexOpen} close={() => setBeastDexOpen(false)} />}
-        {potionShopOpen && <MarketplaceModal open={potionShopOpen} close={() => setPotionShopOpen(false)} />}
       </>}
     </Box>
   )

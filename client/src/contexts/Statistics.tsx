@@ -3,12 +3,10 @@ import { useGameTokens } from "@/dojo/useGameTokens";
 import { NETWORKS } from "@/utils/networkConfig";
 import {
   createContext,
-  Dispatch,
   PropsWithChildren,
-  SetStateAction,
   useContext,
   useEffect,
-  useState,
+  useState
 } from "react";
 import { useDynamicConnector } from "./starknet";
 
@@ -24,7 +22,7 @@ export interface StatisticsContext {
   top5000Cutoff: Top5000Cutoff | null;
   refreshBeastsAlive: () => void;
   refreshTop5000Cutoff: () => void;
-  refreshTokenPrices: () => Promise<void>;
+  refreshTokenPrices: (tokenNames?: string[]) => Promise<void>;
   tokenPrices: Record<string, string>;
 }
 
@@ -75,11 +73,14 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     fetchTop5000Cutoff();
   };
 
-  const refreshTokenPrices = async () => {
-    const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON"];
+  const refreshTokenPrices = async (tokenNames?: string[]) => {
+    const defaultTokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON"];
+    const names = tokenNames && tokenNames.length > 0 ? tokenNames : defaultTokenNames;
+    const uniqueNames = Array.from(new Set(names));
 
-    for (const tokenName of tokenNames) {
-      fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === tokenName));
+    for (const tokenName of uniqueNames) {
+      const token = currentNetworkConfig.tokens.erc20.find(t => t.name === tokenName);
+      await fetchTokenPrice(token);
     }
   };
 
