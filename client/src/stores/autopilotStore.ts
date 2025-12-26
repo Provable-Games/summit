@@ -37,6 +37,8 @@ interface AutopilotConfig {
 
   // Whether / when Autopilot is allowed to spend poison potions
   poisonStrategy: PoisonStrategy;
+  // Cap total poison potions Autopilot may spend per autopilot session (0 = unlimited)
+  poisonTotalMax: number;
   // Conservative: only use poison when Summit has more than X extra lives
   poisonConservativeExtraLivesTrigger: number;
   // Poison amount to apply for conservative strategy
@@ -62,6 +64,7 @@ interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCount
   setExtraLifeReplenishTo: (extraLifeReplenishTo: number) => void;
 
   setPoisonStrategy: (poisonStrategy: PoisonStrategy) => void;
+  setPoisonTotalMax: (poisonTotalMax: number) => void;
   setPoisonConservativeExtraLivesTrigger: (poisonConservativeExtraLivesTrigger: number) => void;
   setPoisonConservativeAmount: (poisonConservativeAmount: number) => void;
   setPoisonAggressiveAmount: (poisonAggressiveAmount: number) => void;
@@ -91,6 +94,7 @@ const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   extraLifeTotalMax: 0,
   extraLifeReplenishTo: 1000,
   poisonStrategy: 'disabled',
+  poisonTotalMax: 0,
   poisonConservativeExtraLivesTrigger: 0,
   poisonConservativeAmount: 0,
   poisonAggressiveAmount: 0,
@@ -182,6 +186,10 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
       poisonStrategy: isPoisonStrategy(parsed.poisonStrategy)
         ? parsed.poisonStrategy
         : DEFAULT_CONFIG.poisonStrategy,
+      poisonTotalMax: sanitizeNonNegativeInt(
+        (parsed as any).poisonTotalMax,
+        DEFAULT_CONFIG.poisonTotalMax,
+      ),
       poisonConservativeExtraLivesTrigger: sanitizeNonNegativeInt(
         parsed.poisonConservativeExtraLivesTrigger,
         DEFAULT_CONFIG.poisonConservativeExtraLivesTrigger,
@@ -246,6 +254,10 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       ),
 
       poisonStrategy: partial.poisonStrategy ?? get().poisonStrategy,
+      poisonTotalMax: sanitizeNonNegativeInt(
+        partial.poisonTotalMax ?? get().poisonTotalMax,
+        DEFAULT_CONFIG.poisonTotalMax,
+      ),
       poisonConservativeExtraLivesTrigger: sanitizeNonNegativeInt(
         partial.poisonConservativeExtraLivesTrigger ?? get().poisonConservativeExtraLivesTrigger,
         DEFAULT_CONFIG.poisonConservativeExtraLivesTrigger,
@@ -311,6 +323,8 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
 
     setPoisonStrategy: (poisonStrategy: PoisonStrategy) =>
       set(() => persist({ poisonStrategy })),
+    setPoisonTotalMax: (poisonTotalMax: number) =>
+      set(() => persist({ poisonTotalMax })),
     setPoisonConservativeExtraLivesTrigger: (poisonConservativeExtraLivesTrigger: number) =>
       set(() => persist({ poisonConservativeExtraLivesTrigger })),
     setPoisonConservativeAmount: (poisonConservativeAmount: number) =>

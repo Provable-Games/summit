@@ -107,6 +107,8 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
 
     poisonStrategy,
     setPoisonStrategy,
+    poisonTotalMax,
+    setPoisonTotalMax,
     poisonConservativeExtraLivesTrigger,
     setPoisonConservativeExtraLivesTrigger,
     poisonConservativeAmount,
@@ -385,9 +387,7 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
             setExtraLifeStrategy,
           )}
           <Box sx={styles.maxOnlyRow}>
-            <Typography sx={styles.maxLabel}>
-              Set Extra Lives configuration
-            </Typography>
+            <Box />
             <Box sx={styles.maxCol}>
               {availablePill(
                 Number(extraLifeAvailable) || 0,
@@ -455,18 +455,29 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
               )}
 
               <Box sx={styles.maxOnlyRow}>
-                <Typography sx={styles.maxLabel}>
-                  {poisonStrategy === 'aggressive' ? 'Poison to apply (each Summit change)' : 'Poison to apply'}
-                </Typography>
+                <Box />
                 <Box sx={styles.maxCol}>
                   {availablePill(
                     Number(poisonAvailable) || 0,
                     poisonPotionIcon,
                     'Poison',
                     false,
-                    () => setPoisonAmount(Math.max(0, Number(poisonAvailable) || 0)),
+                    () => {
+                      const avail = Math.max(0, Number(poisonAvailable) || 0);
+                      setPoisonAmount(avail);
+                      if (poisonTotalMax === 0) setPoisonTotalMax(avail);
+                    },
                   )}
-                  {numberField(poisonAmount, setPoisonAmount, false)}
+                  <Box sx={styles.maxRow}>
+                    <Typography sx={styles.maxLabel}>
+                      {poisonStrategy === 'aggressive' ? 'Poison to apply' : 'Poison to apply'}
+                    </Typography>
+                    {numberField(poisonAmount, setPoisonAmount, false)}
+                  </Box>
+                  <Box sx={styles.maxRow}>
+                    <Typography sx={styles.maxLabel}>Max usage</Typography>
+                    {numberField(poisonTotalMax, setPoisonTotalMax, false, 0, Number(poisonAvailable) || 0)}
+                  </Box>
                 </Box>
               </Box>
             </>

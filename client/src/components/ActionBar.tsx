@@ -28,9 +28,11 @@ function ActionBar() {
     applyingPotions, setApplyingPotions, appliedPoisonCount, setAppliedPoisonCount,
     collection, collectionSyncing, setSelectedBeasts, attackMode, setAttackMode,
     autopilotEnabled, setAutopilotEnabled, appliedExtraLifePotions, setAppliedExtraLifePotions } = useGameStore();
-  const { attackStrategy, extraLifeStrategy, extraLifeMax, extraLifeTotalMax, extraLifeReplenishTo, extraLifePotionsUsed, useRevivePotions, revivePotionMax, revivePotionMaxPerBeast,
+  const { attackStrategy, extraLifeStrategy, extraLifeMax, extraLifeTotalMax, extraLifeReplenishTo,
+    extraLifePotionsUsed, useRevivePotions, revivePotionMax, revivePotionMaxPerBeast,
     useAttackPotions, attackPotionMax, revivePotionsUsed, attackPotionsUsed, setRevivePotionsUsed,
-    setAttackPotionsUsed, setExtraLifePotionsUsed, setPoisonPotionsUsed } = useAutopilotStore();
+    setAttackPotionsUsed, setExtraLifePotionsUsed, setPoisonPotionsUsed, poisonStrategy,
+  poisonTotalMax, poisonPotionsUsed, poisonConservativeExtraLivesTrigger, poisonConservativeAmount, poisonAggressiveAmount } = useAutopilotStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
@@ -108,32 +110,31 @@ function ActionBar() {
     });
   }
 
-  const handleApplyExtraLife = () => {
-    if (!summit?.beast || !isSavage || applyingPotions || appliedExtraLifePotions === 0) return;
+  const handleApplyExtraLife = (amount: number) => {
+    if (!summit?.beast || !isSavage || applyingPotions || amount === 0) return;
 
     setApplyingPotions(true);
 
     executeGameAction({
       type: 'add_extra_life',
       beastId: summit.beast.token_id,
-      extraLifePotions: appliedExtraLifePotions,
+      extraLifePotions: amount,
     });
   }
 
-  const handleApplyPoison = () => {
-    if (!summit?.beast || applyingPotions || appliedPoisonCount === 0) return;
+  const handleApplyPoison = (amount: number) => {
+    if (!summit?.beast || applyingPotions || amount === 0) return;
 
     setApplyingPotions(true);
 
     executeGameAction({
       type: 'apply_poison',
       beastId: summit.beast.token_id,
-      count: appliedPoisonCount,
+      count: amount,
     });
   }
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit?.beast?.token_id))
-  const isSavageSelected = Boolean(selectedBeasts.find((selectedBeast) => selectedBeast[0].token_id === summit?.beast?.token_id))
   const revivalPotionsRequired = calculateRevivalRequired(selectedBeasts);
 
   useEffect(() => {
@@ -148,11 +149,40 @@ function ActionBar() {
   }, [attackMode]);
 
   useEffect(() => {
+    if (!autopilotEnabled || poisonStrategy !== 'aggressive') return;
+    let myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
+    if (myBeast) return;
+
+    const remainingCap =
+      poisonTotalMax > 0 ? Math.max(0, poisonTotalMax - poisonPotionsUsed) : Number.POSITIVE_INFINITY;
+    const poisonBalance = tokenBalances?.["POISON"] || 0;
+    handleApplyPoison(Math.min(poisonAggressiveAmount, poisonBalance, remainingCap));
+  }, [summit?.beast?.token_id]);
+
+  useEffect(() => {
     if (!autopilotEnabled || attackInProgress || !collectionWithCombat) return;
     if (lastBeastAttacked === summit?.beast.token_id) return;
 
     let myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
-    if (myBeast) return;
+
+    if (myBeast) {
+      if (extraLifeStrategy === 'aggressive' && myBeast.extra_lives > 0 && myBeast.extra_lives < extraLifeReplenishTo) {
+        let extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeReplenishTo - myBeast.extra_lives);
+        if (extraLifePotions > 0) {
+          handleApplyExtraLife(extraLifePotions);
+        }
+      }
+
+      return;
+    };
+
+    if (poisonStrategy === 'conservative' && summit?.beast?.extra_lives >= poisonConservativeExtraLivesTrigger
+      && summit.poison_count < poisonConservativeAmount) {
+      const remainingCap =
+        poisonTotalMax > 0 ? Math.max(0, poisonTotalMax - poisonPotionsUsed) : Number.POSITIVE_INFINITY;
+      const poisonBalance = tokenBalances?.["POISON"] || 0;
+      handleApplyPoison(Math.min(poisonConservativeAmount - summit.poison_count, poisonBalance, remainingCap));
+    }
 
     if (attackStrategy === 'all_out') {
       setLastBeastAttacked(summit?.beast.token_id);
@@ -189,9 +219,9 @@ function ActionBar() {
 
       let extraLifePotions = 0;
       if (extraLifeStrategy === 'after_capture') {
-        extraLifePotions = Math.min(tokenBalances["EXTRA LIFE"] || 0, extraLifeMax);
+        extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeMax);
       } else if (extraLifeStrategy === 'aggressive') {
-        extraLifePotions = Math.min(extraLifeMax - extraLifePotionsUsed, 4000);
+        extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeReplenishTo);
       }
 
       setLastBeastAttacked(summit?.beast.token_id);
@@ -199,7 +229,8 @@ function ActionBar() {
         type: 'attack',
         beasts: attackingBeasts,
         safeAttack: false,
-        vrf: true
+        vrf: true,
+        extraLifePotions: extraLifePotions,
       });
     }
   }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
@@ -856,7 +887,7 @@ function ActionBar() {
             variant="contained"
             disabled={!enableApplyPoison}
             onClick={() => {
-              handleApplyPoison();
+              handleApplyPoison(appliedPoisonCount);
               handleClose();
             }}
             sx={{
@@ -888,7 +919,7 @@ function ActionBar() {
             variant="contained"
             disabled={!enableApplyExtraLife}
             onClick={() => {
-              handleApplyExtraLife();
+              handleApplyExtraLife(appliedExtraLifePotions);
               handleClose();
             }}
             sx={{
