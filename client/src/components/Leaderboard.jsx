@@ -11,11 +11,7 @@ import { useEffect, useState } from 'react';
 import { TERMINAL_BLOCK } from '@/contexts/GameDirector';
 import FinalShowdown from './FinalShowdown';
 import RewardsRemainingBar from './RewardsRemainingBar';
-import { SUMMIT_REWARD_PER_BLOCK, SUMMIT_START_BLOCK, SUMMIT_TOTAL_REWARDS } from '@/utils/summitRewards';
-
-const START_BLOCK = SUMMIT_START_BLOCK;
-const TOTAL_REWARDS = SUMMIT_TOTAL_REWARDS;
-const BLOCK_REWARD = SUMMIT_REWARD_PER_BLOCK;
+import { SUMMIT_REWARD_PER_BLOCK } from '@/utils/summitRewards';
 
 function Leaderboard() {
   const { beastsRegistered, beastsAlive, refreshBeastsAlive } = useStatistics()
@@ -95,11 +91,11 @@ function Leaderboard() {
     // Calculate bonus points from blocks held (1 point per block)
     const blocksHeld = (currentBlock - summit.taken_at)
     const diplomacyCount = (summit?.diplomacy?.beast_token_ids.length || 0) - (summit.beast.stats.diplomacy ? 1 : 0);
-    const diplomacyRewards = (BLOCK_REWARD / 100 * diplomacyCount);
+    const diplomacyRewards = (SUMMIT_REWARD_PER_BLOCK / 100 * diplomacyCount);
 
     // Find summit owner in leaderboard
     const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summit.owner))
-    const gainedSince = blocksHeld * BLOCK_REWARD - diplomacyRewards;
+    const gainedSince = blocksHeld * SUMMIT_REWARD_PER_BLOCK - diplomacyRewards;
     const score = (player?.amount || 0) + gainedSince;
 
     // Find summit owner's rank in the sorted list

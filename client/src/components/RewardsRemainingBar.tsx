@@ -9,11 +9,6 @@ type RewardsRemainingBarProps = {
   variant?: 'panel' | 'compact';
 };
 
-function formatRewards(n: number) {
-  const safe = Number.isFinite(n) ? n : 0;
-  return safe.toLocaleString(undefined, { maximumFractionDigits: 1 });
-}
-
 const pulseKeyframes = `
   @keyframes rewardsBarBorderPulse {
     0% { border-color: ${gameColors.accentGreen}40; }

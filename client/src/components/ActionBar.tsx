@@ -2,7 +2,7 @@ import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useAutopilotStore } from '@/stores/autopilotStore';
 import { useGameStore } from '@/stores/gameStore';
-import { Beast } from '@/types/game';
+import { Beast, selection } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -158,35 +158,49 @@ function ActionBar() {
       setLastBeastAttacked(summit?.beast.token_id);
       handleAttackUntilCapture();
     } else if (attackStrategy === 'guaranteed') {
-      let beasts = collectionWithCombat.slice(0, 75)
+      let strongestBeast = collectionWithCombat[0]
 
       let attackPotions = 0;
       if (autopilotEnabled && useAttackPotions && attackPotionsUsed < attackPotionMax) {
-        attackPotions = calculateOptimalAttackPotions(beasts[0], summit, Math.min(attackPotionMax - attackPotionsUsed, 255));
-        beasts[0].combat = calculateBattleResult(beasts[0], summit, attackPotions);
+        attackPotions = calculateOptimalAttackPotions(strongestBeast, summit, Math.min(attackPotionMax - attackPotionsUsed, 255));
+        strongestBeast.combat = calculateBattleResult(strongestBeast, summit, attackPotions);
       }
 
-      let totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
-      let totalSummitHealth = ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health;
-
-      if (totalEstimatedDamage > (totalSummitHealth * 1.2)) {
-        let revivePotions = beasts.reduce((acc: number, beast: Beast) => beast.current_health === 0 ? acc + beast.revival_count + 1 : acc, 0);
-
-        let extraLifePotions = 0;
-        if (extraLifeStrategy === 'after_capture') {
-          extraLifePotions = Math.min(tokenBalances["EXTRA LIFE"] || 0, extraLifeMax);
-        } else if (extraLifeStrategy === 'aggressive') {
-          extraLifePotions = Math.min(extraLifeMax - extraLifePotionsUsed, 4000);
+      let attacks = 1;
+      if (autopilotEnabled && useAttackPotions && revivePotionsUsed < revivePotionMax) {
+        attacks = Math.min(5, revivePotionMaxPerBeast - strongestBeast.revival_count)
+        let potionsRequired = calculateRevivalRequired([[strongestBeast, attacks, 0]])
+        let revivePotionsRemaining = revivePotionMax - revivePotionsUsed;
+        if (potionsRequired <= revivePotionsRemaining) {
+          attacks = 1;
         }
-
-        setLastBeastAttacked(summit?.beast.token_id);
-        executeGameAction({
-          type: 'attack',
-          beastIds: beasts.map((beast: Beast) => beast.token_id),
-          safeAttack: false,
-          vrf: true
-        });
       }
+
+      let attackingBeasts: selection = [[strongestBeast, attacks, attackPotions]]
+      let totalSummitHealth = ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health;
+      if (strongestBeast.combat.estimatedDamage * attacks < totalSummitHealth * 1.2) {
+        let multipleBeasts = collectionWithCombat.slice(0, 75)
+        let totalEstimatedDamage = multipleBeasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
+        if (totalEstimatedDamage < (totalSummitHealth * 1.2)) {
+          return;
+        }
+        attackingBeasts = multipleBeasts.map((beast: Beast, index: number) => [beast, 1, index === 0 ? attackPotions : 0])
+      }
+
+      let extraLifePotions = 0;
+      if (extraLifeStrategy === 'after_capture') {
+        extraLifePotions = Math.min(tokenBalances["EXTRA LIFE"] || 0, extraLifeMax);
+      } else if (extraLifeStrategy === 'aggressive') {
+        extraLifePotions = Math.min(extraLifeMax - extraLifePotionsUsed, 4000);
+      }
+
+      setLastBeastAttacked(summit?.beast.token_id);
+      executeGameAction({
+        type: 'attack',
+        beasts: attackingBeasts,
+        safeAttack: false,
+        vrf: true
+      });
     }
   }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
 
