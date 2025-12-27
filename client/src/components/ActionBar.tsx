@@ -2,12 +2,15 @@ import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useAutopilotStore } from '@/stores/autopilotStore';
 import { useGameStore } from '@/stores/gameStore';
-import { Beast, selection } from '@/types/game';
+import { Beast } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SettingsIcon from '@mui/icons-material/Settings';
-import { Box, Button, IconButton, Menu, MenuItem, Slider, TextField, Tooltip, Typography } from '@mui/material';
+import {
+  Box, Button, IconButton, Menu, MenuItem, Slider,
+  TextField, Tooltip, Typography
+} from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { isBrowser } from 'react-device-detect';
 import attackPotionIcon from '../assets/images/attack-potion.png';
@@ -15,7 +18,10 @@ import heart from '../assets/images/heart.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
 import poisonPotionIcon from '../assets/images/poison-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
-import { calculateBattleResult, calculateOptimalAttackPotions, calculateRevivalRequired, getBeastCurrentHealth, getBeastRevivalTime, isBeastLocked } from '../utils/beasts';
+import {
+  calculateBattleResult, calculateOptimalAttackPotions, calculateRevivalRequired,
+  getBeastCurrentHealth, getBeastRevivalTime, isBeastLocked
+} from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 import AutopilotConfigModal from './dialogs/AutopilotConfigModal';
 
@@ -26,13 +32,14 @@ function ActionBar() {
   const { selectedBeasts, summit,
     attackInProgress,
     applyingPotions, setApplyingPotions, appliedPoisonCount, setAppliedPoisonCount,
-    collection, collectionSyncing, setSelectedBeasts, attackMode, setAttackMode,
+    collection, collectionSyncing, setSelectedBeasts, attackMode, setAttackMode, autopilotLog, setAutopilotLog,
     autopilotEnabled, setAutopilotEnabled, appliedExtraLifePotions, setAppliedExtraLifePotions } = useGameStore();
   const { attackStrategy, extraLifeStrategy, extraLifeMax, extraLifeTotalMax, extraLifeReplenishTo,
     extraLifePotionsUsed, useRevivePotions, revivePotionMax, revivePotionMaxPerBeast,
     useAttackPotions, attackPotionMax, revivePotionsUsed, attackPotionsUsed, setRevivePotionsUsed,
     setAttackPotionsUsed, setExtraLifePotionsUsed, setPoisonPotionsUsed, poisonStrategy,
-  poisonTotalMax, poisonPotionsUsed, poisonConservativeExtraLivesTrigger, poisonConservativeAmount, poisonAggressiveAmount } = useAutopilotStore();
+    poisonTotalMax, poisonPotionsUsed, poisonConservativeExtraLivesTrigger,
+    poisonConservativeAmount, poisonAggressiveAmount } = useAutopilotStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
@@ -68,6 +75,7 @@ function ActionBar() {
   const collectionWithCombat = useMemo<Beast[]>(() => {
     if (summit && collection.length > 0) {
       let revivePotionsEnabled = autopilotEnabled && useRevivePotions && revivePotionsUsed < revivePotionMax;
+      let attackPotionsEnabled = autopilotEnabled && useAttackPotions && attackPotionsUsed < attackPotionMax;
 
       let filtered = collection.map((beast: Beast) => {
         let newBeast = { ...beast }
@@ -95,18 +103,25 @@ function ActionBar() {
         filtered = filtered.filter((beast: Beast) => beast.current_health > 0);
       }
 
+      if (attackPotionsEnabled) {
+        let attackPotions = calculateOptimalAttackPotions(filtered[0], summit, Math.min(attackPotionMax - attackPotionsUsed, 255));
+        let newCombat = calculateBattleResult(filtered[0], summit, attackPotions);
+        filtered[0].combat = newCombat;
+      }
+
       return filtered
     }
 
     return [];
   }, [summit?.beast?.token_id, collection.length, revivePotionsUsed, attackPotionsUsed]);
 
-  const handleAttackUntilCapture = () => {
+  const handleAttackUntilCapture = (extraLifePotions) => {
     if (!enableAttack) return;
 
     executeGameAction({
       type: 'attack_until_capture',
-      beasts: collectionWithCombat.map((beast: Beast) => [beast, 1, 0]),
+      beasts: collectionWithCombat.map((beast: Beast) => [beast, 1, beast.combat?.attackPotions || 0]),
+      extraLifePotions
     });
   }
 
@@ -114,6 +129,7 @@ function ActionBar() {
     if (!summit?.beast || !isSavage || applyingPotions || amount === 0) return;
 
     setApplyingPotions(true);
+    setAutopilotLog('Adding extra lives...')
 
     executeGameAction({
       type: 'add_extra_life',
@@ -126,6 +142,7 @@ function ActionBar() {
     if (!summit?.beast || applyingPotions || amount === 0) return;
 
     setApplyingPotions(true);
+    setAutopilotLog('Applying poison...')
 
     executeGameAction({
       type: 'apply_poison',
@@ -147,6 +164,14 @@ function ActionBar() {
       setAutopilotEnabled(false);
     }
   }, [attackMode]);
+
+  useEffect(() => {
+    if (autopilotEnabled && !attackInProgress && !applyingPotions) {
+      setAutopilotLog('Waiting for trigger...')
+    } else if (attackInProgress) {
+      setAutopilotLog('Attacking...')
+    }
+  }, [autopilotEnabled, attackInProgress, applyingPotions])
 
   useEffect(() => {
     if (!autopilotEnabled || poisonStrategy !== 'aggressive') return;
@@ -184,53 +209,33 @@ function ActionBar() {
       handleApplyPoison(Math.min(poisonConservativeAmount - summit.poison_count, poisonBalance, remainingCap));
     }
 
+    let extraLifePotions = 0;
+    if (extraLifeStrategy === 'after_capture') {
+      extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeMax);
+    } else if (extraLifeStrategy === 'aggressive') {
+      extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeReplenishTo);
+    }
+
     if (attackStrategy === 'all_out') {
       setLastBeastAttacked(summit?.beast.token_id);
-      handleAttackUntilCapture();
+      handleAttackUntilCapture(extraLifePotions);
     } else if (attackStrategy === 'guaranteed') {
-      let strongestBeast = collectionWithCombat[0]
+      let beasts = collectionWithCombat.slice(0, 75)
 
-      let attackPotions = 0;
-      if (autopilotEnabled && useAttackPotions && attackPotionsUsed < attackPotionMax) {
-        attackPotions = calculateOptimalAttackPotions(strongestBeast, summit, Math.min(attackPotionMax - attackPotionsUsed, 255));
-        strongestBeast.combat = calculateBattleResult(strongestBeast, summit, attackPotions);
-      }
-
-      let attacks = 1;
-      if (autopilotEnabled && useAttackPotions && revivePotionsUsed < revivePotionMax) {
-        attacks = Math.min(5, revivePotionMaxPerBeast - strongestBeast.revival_count)
-        let potionsRequired = calculateRevivalRequired([[strongestBeast, attacks, 0]])
-        let revivePotionsRemaining = revivePotionMax - revivePotionsUsed;
-        if (potionsRequired <= revivePotionsRemaining) {
-          attacks = 1;
-        }
-      }
-
-      let attackingBeasts: selection = [[strongestBeast, attacks, attackPotions]]
       let totalSummitHealth = ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health;
-      if (strongestBeast.combat.estimatedDamage * attacks < totalSummitHealth * 1.2) {
-        let multipleBeasts = collectionWithCombat.slice(0, 75)
-        let totalEstimatedDamage = multipleBeasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
-        if (totalEstimatedDamage < (totalSummitHealth * 1.2)) {
-          return;
-        }
-        attackingBeasts = multipleBeasts.map((beast: Beast, index: number) => [beast, 1, index === 0 ? attackPotions : 0])
-      }
-
-      let extraLifePotions = 0;
-      if (extraLifeStrategy === 'after_capture') {
-        extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeMax);
-      } else if (extraLifeStrategy === 'aggressive') {
-        extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeReplenishTo);
+      let totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
+      if (totalEstimatedDamage < (totalSummitHealth * 1.2)) {
+        return;
       }
 
       setLastBeastAttacked(summit?.beast.token_id);
       executeGameAction({
         type: 'attack',
-        beasts: attackingBeasts,
+        beasts: beasts.map((beast: Beast) => ([beast, 1, beast.combat?.attackPotions || 0])),
         safeAttack: false,
         vrf: true,
         extraLifePotions: extraLifePotions,
+        attackPotions: beasts[0].combat?.attackPotions || 0
       });
     }
   }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
@@ -293,7 +298,7 @@ function ActionBar() {
                   if (attackMode === 'autopilot') {
                     autopilotEnabled ? stopAutopilot() : startAutopilot();
                   } else if (attackMode === 'capture') {
-                    handleAttackUntilCapture();
+                    handleAttackUntilCapture(appliedExtraLifePotions);
                   } else {
                     handleAttack();
                   }
@@ -347,9 +352,7 @@ function ActionBar() {
                 </Box>
               </Box>
               <Box
-                sx={[
-                  styles.attackDropdownButton,
-                ]}
+                sx={[styles.attackDropdownButton]}
                 onClick={(event) => setAttackDropdownAnchor(event.currentTarget)}
               >
                 <ArrowDropDownIcon sx={{ fontSize: '21px', color: gameColors.yellow }} />
@@ -682,7 +685,12 @@ function ActionBar() {
         </Box>
 
         <Typography sx={{ ...styles.menuItemDescription, opacity: 0.9, my: 1 }}>
-          {potion === 'poison' ? 'Select amount to apply' : isSavage ? 'Select amount to apply to the Summit' : 'Select amount to apply after you take the Summit'}
+          {potion === 'poison'
+            ? 'Select amount to apply'
+            : isSavage
+              ? 'Select amount to apply to the Summit'
+              : 'Select amount to apply after you take the Summit'
+          }
         </Typography>
 
         <Box

@@ -100,7 +100,7 @@ export const useSystemCalls = () => {
    * @param safeAttack Whether to attack safely
    * @param vrf Whether to use VRF
    */
-  const attack = (beasts: selection, safeAttack: boolean, vrf: boolean) => {
+  const attack = (beasts: selection, safeAttack: boolean, vrf: boolean, extraLifePotions: number) => {
     let txs: any[] = [];
 
     let revivalPotions = calculateRevivalRequired(beasts);
@@ -115,9 +115,9 @@ export const useSystemCalls = () => {
     //   txs.push(approveTokens(attackAddress, attackPotions));
     // }
 
-    // if (appliedExtraLifePotions > 0) {
+    // if (extraLifePotions > 0) {
     //   let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
-    //   txs.push(approveTokens(extraLifeAddress, appliedExtraLifePotions));
+    //   txs.push(approveTokens(extraLifeAddress, extraLifePotions));
     // }
 
     if (vrf || !safeAttack) {
@@ -133,7 +133,7 @@ export const useSystemCalls = () => {
         beastsData.length,
         ...beastsData.flat(),
         revivalPotions,
-        appliedExtraLifePotions,
+        extraLifePotions,
         vrf ? 1 : 0,
       ],
     });

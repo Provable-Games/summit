@@ -25,6 +25,7 @@ interface GameState {
   appliedExtraLifePotions: number;
   attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot';
   autopilotEnabled: boolean;
+  autopilotLog: string;
 
   // Beast Collection Filters
   hideDeadBeasts: boolean;
@@ -53,6 +54,7 @@ interface GameState {
   setAppliedExtraLifePotions: (appliedExtraLifePotions: number) => void;
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot') => void;
   setAutopilotEnabled: (autopilotEnabled: boolean) => void;
+  setAutopilotLog: (autopilotLog: string) => void;
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => void;
@@ -85,6 +87,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   appliedExtraLifePotions: 0,
   attackMode: 'safe',
   autopilotEnabled: false,
+  autopilotLog: '',
 
   // Beast Collection Filters - Default Values
   hideDeadBeasts: false,
@@ -119,6 +122,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       hideDeadBeasts: false,
       typeFilter: 'all',
       nameMatchFilter: false,
+      autopilotLog: ''
     });
   },
 
@@ -146,6 +150,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setAppliedExtraLifePotions: (appliedExtraLifePotions: number) => set({ appliedExtraLifePotions }),
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot') => set({ attackMode }),
   setAutopilotEnabled: (autopilotEnabled: boolean) => set({ autopilotEnabled }),
+  setAutopilotLog: (autopilotLog: string) => set({ autopilotLog }),
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => set({ hideDeadBeasts }),

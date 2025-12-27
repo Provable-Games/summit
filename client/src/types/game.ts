@@ -69,6 +69,7 @@ export interface Combat {
   defenseCritDamage: number;
   score: number;
   estimatedDamage: number;
+  attackPotions?: number;
 }
 
 export interface Adventurer {

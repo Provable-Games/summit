@@ -104,6 +104,7 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
     defenseCritDamage: summitCritDamage,
     score: beastDamage - summitDamage,
     estimatedDamage,
+    attackPotions: potions
   }
 }
 
