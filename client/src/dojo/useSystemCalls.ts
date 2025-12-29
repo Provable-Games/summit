@@ -43,7 +43,7 @@ export const useSystemCalls = () => {
       }
 
       const translatedEvents = receipt.events.map((event: any) =>
-        translateGameEvent(event, currentNetworkConfig.manifest)
+        translateGameEvent(event, currentNetworkConfig.manifest, account!.address)
       );
 
       return translatedEvents.filter(Boolean);

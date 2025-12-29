@@ -11,7 +11,7 @@ pub trait ISummitSystem<T> {
         revival_potions: u32,
         extra_life_potions: u16,
         vrf: bool,
-    ) -> (u8, u16, u32);
+    ) -> (u32, u32, u16);
     fn feed(ref self: T, beast_token_id: u32, amount: u16);
     fn claim_beast_reward(ref self: T, beast_token_ids: Span<u32>);
 
@@ -207,7 +207,7 @@ pub mod summit_systems {
             revival_potions: u32,
             extra_life_potions: u16,
             vrf: bool,
-        ) -> (u8, u16, u32) {
+        ) -> (u32, u32, u16) {
             InternalSummitImpl::_attack_summit(
                 ref self, attacking_beasts, revival_potions, extra_life_potions, vrf, defending_beast_token_id,
             )
@@ -734,7 +734,7 @@ pub mod summit_systems {
             extra_life_potions: u16,
             vrf: bool,
             defending_beast_token_id: u32,
-        ) {
+        ) -> (u32, u32, u16) {
             let summit_beast_token_id = self.summit_beast_token_id.read();
 
             assert(summit_beast_token_id != 0, 'Summit not started');
@@ -1031,7 +1031,11 @@ pub mod summit_systems {
                     .burn_from(get_caller_address(), total_attack_potions.into() * TOKEN_DECIMALS);
             }
 
-            let extra_life_potions_used = if defending_beast.live.current_health == 0 { extra_life_potions } else { 0 };
+            let extra_life_potions_used = if defending_beast.live.current_health == 0 {
+                extra_life_potions
+            } else {
+                0
+            };
             (total_attack_potions, revival_potions_used, extra_life_potions_used)
         }
 

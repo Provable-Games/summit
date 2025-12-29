@@ -101,12 +101,21 @@ export const components: any = {
     specials: 'boolean',
     wisdom: 'boolean',
     diplomacy: 'boolean',
-  }
+  },
 }
 
-export const translateGameEvent = (event: any, manifest: any): any => {
+export const translateGameEvent = (event: any, manifest: any, address: string): any => {
   const eventDefinition = manifest.events.find((definition: any) => definition.selector === event.keys[1]) || manifest.models.find((model: any) => model.selector === event.keys[1]);
-  const name = eventDefinition?.tag?.split('-')[1];
+  let name = eventDefinition?.tag?.split('-')[1];
+
+  if (!name && event.from_address === address && event.data.length === 5) {
+    return {
+      componentName: 'Summit',
+      attack_potions: parseInt(event.data[2], 16),
+      revival_potions: parseInt(event.data[3], 16),
+      extra_life_potions: parseInt(event.data[4], 16),
+    }
+  }
 
   if (!components[name]) return;
 

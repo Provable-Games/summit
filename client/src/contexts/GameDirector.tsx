@@ -417,17 +417,20 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       );
 
     if (action.type === 'attack' || action.type === 'attack_until_capture') {
-      setTokenBalances({
-        ...tokenBalances,
-        ATTACK: tokenBalances["ATTACK"] - action.attackPotions,
-        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - (captured ? action.extraLifePotions : 0),
-        REVIVE: tokenBalances["REVIVE"] - action.revivePotions,
-      });
+      let summitEvent = events.find((event: any) => event.componentName === 'Summit');
+      if (summitEvent) {
+        setTokenBalances({
+          ...tokenBalances,
+          ATTACK: tokenBalances["ATTACK"] - summitEvent.attack_potions,
+          EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - (captured ? summitEvent.extra_life_potions : 0),
+          REVIVE: tokenBalances["REVIVE"] - summitEvent.revival_potions,
+        });
 
-      setAttackPotionsUsed(prev => prev + 1);
-      setRevivePotionsUsed(prev => prev + 1);
-      setExtraLifePotionsUsed(prev => prev + 1);
-      setAppliedExtraLifePotions(0);
+        setAttackPotionsUsed(prev => prev + summitEvent.attack_potions);
+        setRevivePotionsUsed(prev => prev + summitEvent.revival_potions);
+        setExtraLifePotionsUsed(prev => prev + summitEvent.extra_life_potions);
+        setAppliedExtraLifePotions(0);
+      }
     }
 
     if (action.type === 'attack') {
