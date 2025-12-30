@@ -852,11 +852,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       )}
                       {tokenQuotes[potion.id]?.quote && selectedReceiveTokenData && (
                         <Typography sx={styles.potionDescription}>
-                          {(() => {
-                            const raw = tokenQuotes[potion.id].quote.total / Math.pow(10, selectedReceiveTokenData.decimals || 18);
-                            const min = raw * (10000 - SLIPPAGE_BPS) / 10000;
-                            return `Min receive: ${formatAmount(min)} ${selectedReceiveToken}`;
-                          })()}
+                          {/* Slippage already applied to displayed amount */}
                         </Typography>
                       )}
                     </Box>
