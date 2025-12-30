@@ -271,7 +271,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           if (rawAmount === 0) {
             setTokenQuotes(prev => ({
               ...prev,
-              [potionId]: { amount: '', loading: false, error: 'Not enough inventory to quote this amount' }
+              [potionId]: { amount: '', loading: false, error: 'Insufficient liquidity' }
             }));
           } else {
             const amount = formatAmount(rawAmount);
@@ -285,7 +285,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         console.error('Error fetching quote:', error);
         const emsg = (error?.message || '').toLowerCase();
         const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
-          ? 'Not enough inventory to quote this amount'
+          ? 'Insufficient liquidity'
           : 'Failed to get quote';
         setTokenQuotes(prev => ({
           ...prev,
@@ -339,7 +339,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           if (rawAmount === 0) {
             setTokenQuotes(prev => ({
               ...prev,
-              [potionId]: { amount: '', loading: false, error: 'Not enough inventory to quote this amount' }
+              [potionId]: { amount: '', loading: false, error: 'Insufficient liquidity' }
             }));
           } else {
             const amount = formatAmount(rawAmount);
@@ -358,7 +358,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         console.error('Error fetching sell quote:', error);
         const emsg = (error?.message || '').toLowerCase();
         const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
-          ? 'Not enough inventory to quote this amount'
+          ? 'Insufficient liquidity'
           : 'Failed to get quote';
         setTokenQuotes(prev => ({
           ...prev,
@@ -723,7 +723,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       })()}
                     </Typography>
                     {tokenQuotes[potion.id]?.quote?.price_impact !== undefined ||
-                    tokenQuotes[potion.id]?.quote?.impact !== undefined ? (
+                    tokenQuotes[potion.id]?.quote?.impact !== undefined || tokenQuotes[potion.id]?.error ? (
                       <Box
                         component="span"
                         sx={{
@@ -733,14 +733,18 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                           borderRadius: '10px',
                           fontSize: '11px',
                           fontWeight: 600,
-                          bgcolor: getImpactColor(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact),
+                          bgcolor: tokenQuotes[potion.id]?.error
+                            ? '#f7b4b4'
+                            : getImpactColor(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact),
                           color: '#0d1511',
                         }}
                       >
-                        {(() => {
-                          const val = tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0;
-                          return `${val > 0 ? '+' : ''}${(val * 100).toFixed(1)}%`;
-                        })()}
+                        {tokenQuotes[potion.id]?.error
+                          ? 'Insufficient liquidity'
+                          : (() => {
+                            const val = tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0;
+                            return `${val > 0 ? '+' : ''}${(val * 100).toFixed(1)}%`;
+                          })()}
                       </Box>
                     ) : null}
                   </Box>
@@ -785,6 +789,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               const potionName = potion.name.toUpperCase().replace(' POTION', '').replace(' TOKEN', '');
               const balance = tokenBalances[potionName] || 0;
               const quoteImpact = tokenQuotes[potion.id]?.quote?.price_impact ?? tokenQuotes[potion.id]?.quote?.impact;
+              const quoteError = tokenQuotes[potion.id]?.error;
               return (
                 <Box key={potion.id} sx={styles.potionCard}>
                   <Box sx={styles.potionImage}>
@@ -811,7 +816,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                           return 'No liquidity';
                         })()}
                       </Typography>
-                      {quoteImpact !== undefined && (
+                      {(quoteImpact !== undefined || quoteError) && (
                         <Box
                           component="span"
                           sx={{
@@ -821,11 +826,13 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                             borderRadius: '10px',
                             fontSize: '11px',
                             fontWeight: 600,
-                            bgcolor: getImpactColor(quoteImpact),
+                            bgcolor: quoteError ? '#f7b4b4' : getImpactColor(quoteImpact ?? 0),
                             color: '#0d1511',
                           }}
                         >
-                          {`${quoteImpact > 0 ? '+' : ''}${(quoteImpact * 100).toFixed(1)}%`}
+                          {quoteError
+                            ? 'Insufficient liquidity'
+                            : `${quoteImpact > 0 ? '+' : ''}${(quoteImpact * 100).toFixed(1)}%`}
                         </Box>
                       )}
                     </Box>
