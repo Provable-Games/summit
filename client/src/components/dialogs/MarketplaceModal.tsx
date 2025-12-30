@@ -801,11 +801,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                   </Box>
 
                   <Box sx={styles.potionInfo}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography sx={styles.potionName}>
-                        {potion.name} ({formatAmount(balance)})
-                      </Typography>
-                    </Box>
+                    <Typography sx={styles.potionName}>
+                      {potion.name}
+                    </Typography>
+                    <Typography sx={styles.potionDescription}>
+                      Balance: {formatAmount(balance)}
+                    </Typography>
                     <Box sx={styles.potionPrice}>
                       <Typography sx={styles.priceText}>
                         {(() => {
