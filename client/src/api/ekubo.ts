@@ -82,7 +82,9 @@ export const getSwapQuote = async (
         // Avoid hammering on known client-side errors (e.g. 4xx like 429).
         if (response.status === 429) {
           rateLimitUntil = Date.now() + 60_000;
-          console.warn("getSwapQuote: rate limited (429), backing off 60s");
+          console.warn(
+            "getSwapQuote: rate limited (429), backing off 60s for all quotes"
+          );
           throw new Error("Quoter rate limited");
         }
         if (response.status >= 400 && response.status < 500) {

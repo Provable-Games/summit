@@ -63,8 +63,12 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   };
 
   const fetchTokenPrice = useCallback(async (token: any) => {
-    const swap = await getSwapQuote(-1n * 10n ** 18n, token.address, USDC_ADDRESS);
-    setTokenPrices((prev) => ({ ...prev, [token.name]: ((swap.total * -1) / 1e18).toFixed(4) }));
+    try {
+      const swap = await getSwapQuote(-1n * 10n ** 18n, token.address, USDC_ADDRESS);
+      setTokenPrices((prev) => ({ ...prev, [token.name]: ((swap.total * -1) / 1e18).toFixed(4) }));
+    } catch (err) {
+      console.warn("refreshTokenPrices: failed to fetch price", token?.name, err);
+    }
   }, []);
 
   const refreshBeastsAlive = useCallback(() => {
@@ -80,7 +84,9 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON", "SKULL", "CORPSE"];
 
     for (const tokenName of tokenNames) {
-      fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === tokenName));
+      const token = currentNetworkConfig.tokens.erc20.find(token => token.name === tokenName);
+      if (!token) continue;
+      await fetchTokenPrice(token);
     }
   }, [currentNetworkConfig.tokens.erc20, fetchTokenPrice]);
 
