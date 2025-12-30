@@ -23,7 +23,7 @@ interface GameState {
   selectedAdventurers: Adventurer[];
   appliedPoisonCount: number;
   appliedExtraLifePotions: number;
-  attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot';
+  attackMode: 'safe' | 'unsafe' | 'autopilot';
   autopilotEnabled: boolean;
   autopilotLog: string;
 
@@ -52,7 +52,7 @@ interface GameState {
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => void;
   setAppliedPoisonCount: (appliedPoisonCount: number) => void;
   setAppliedExtraLifePotions: (appliedExtraLifePotions: number) => void;
-  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot') => void;
+  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'autopilot') => void;
   setAutopilotEnabled: (autopilotEnabled: boolean) => void;
   setAutopilotLog: (autopilotLog: string) => void;
 
@@ -148,7 +148,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => set({ adventurerCollection }),
   setAppliedPoisonCount: (appliedPoisonCount: number) => set({ appliedPoisonCount }),
   setAppliedExtraLifePotions: (appliedExtraLifePotions: number) => set({ appliedExtraLifePotions }),
-  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot') => set({ attackMode }),
+  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'autopilot') => set({ attackMode }),
   setAutopilotEnabled: (autopilotEnabled: boolean) => set({ autopilotEnabled }),
   setAutopilotLog: (autopilotLog: string) => set({ autopilotLog }),
 

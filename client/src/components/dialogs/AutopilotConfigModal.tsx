@@ -9,6 +9,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import TuneIcon from '@mui/icons-material/Tune';
 import { Box, Button, Dialog, Switch, TextField, Typography } from '@mui/material';
 import { useController } from '@/contexts/controller';
+import React from 'react';
 import revivePotionIcon from '@/assets/images/revive-potion.png';
 import attackPotionIcon from '@/assets/images/attack-potion.png';
 import lifePotionIcon from '@/assets/images/life-potion.png';
@@ -20,6 +21,11 @@ interface AutopilotConfigModalProps {
 }
 
 const ATTACK_OPTIONS: { value: AttackStrategy; label: string; description: string }[] = [
+  {
+    value: 'never',
+    label: 'Never',
+    description: `Never attack the Summit.`,
+  },
   {
     value: 'guaranteed',
     label: 'Careful',
@@ -115,13 +121,102 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     setPoisonConservativeAmount,
     poisonAggressiveAmount,
     setPoisonAggressiveAmount,
+    initializeMaxCapsFromBalances,
     resetToDefaults,
   } = useAutopilotStore();
+
+  const handleResetToDefaults = () => {
+    resetToDefaults();
+    initializeMaxCapsFromBalances(tokenBalances);
+  };
 
   const reviveAvailable = tokenBalances?.['REVIVE'] ?? 0;
   const attackAvailable = tokenBalances?.['ATTACK'] ?? 0;
   const extraLifeAvailable = tokenBalances?.['EXTRA LIFE'] ?? 0;
   const poisonAvailable = tokenBalances?.['POISON'] ?? 0;
+
+  React.useEffect(() => {
+    if (!open) return;
+    initializeMaxCapsFromBalances(tokenBalances);
+  }, [open, reviveAvailable, attackAvailable, extraLifeAvailable, poisonAvailable]);
+
+  // If the user enables a poison strategy and has poison available, default "poison to apply" to 100
+  // (unless they already set a non-zero value).
+  React.useEffect(() => {
+    if (!open) return;
+    if (poisonStrategy === 'disabled') return;
+
+    const balance = Number(poisonAvailable) || 0;
+    if (balance <= 0) return;
+
+    const nextDefault = Math.min(100, balance);
+    if (poisonStrategy === 'aggressive') {
+      if (poisonAggressiveAmount <= 0) setPoisonAggressiveAmount(nextDefault);
+    } else {
+      if (poisonConservativeAmount <= 0) setPoisonConservativeAmount(nextDefault);
+    }
+  }, [open, poisonStrategy, poisonAvailable, poisonAggressiveAmount, poisonConservativeAmount]);
+
+  // Default other strategy values when the user enables them (but don't overwrite if they've already changed them).
+  React.useEffect(() => {
+    if (!open) return;
+
+    const extraLifeBalance = Number(extraLifeAvailable) || 0;
+    const poisonBalance = Number(poisonAvailable) || 0;
+
+    if (extraLifeStrategy === 'aggressive') {
+      const maxAllowed = Math.min(4000, extraLifeBalance);
+      const nextDefault = Math.min(500, maxAllowed);
+      if (extraLifeReplenishTo <= 0 && maxAllowed > 0) setExtraLifeReplenishTo(Math.max(1, nextDefault));
+    }
+
+    if (extraLifeStrategy === 'after_capture') {
+      const maxAllowed = Math.min(4000, extraLifeBalance);
+      const nextDefault = Math.min(500, maxAllowed);
+      if (extraLifeMax <= 0 && maxAllowed > 0) setExtraLifeMax(nextDefault);
+    }
+
+    if (poisonStrategy === 'conservative') {
+      if (poisonConservativeExtraLivesTrigger <= 0) setPoisonConservativeExtraLivesTrigger(100);
+      const nextDefault = Math.min(100, poisonBalance);
+      if (poisonConservativeAmount <= 0 && poisonBalance > 0) setPoisonConservativeAmount(nextDefault);
+    }
+  }, [
+    open,
+    extraLifeStrategy,
+    poisonStrategy,
+    extraLifeAvailable,
+    poisonAvailable,
+    extraLifeReplenishTo,
+    extraLifeMax,
+    poisonConservativeExtraLivesTrigger,
+    poisonConservativeAmount,
+  ]);
+
+  // Always clamp values that are limited by token balances so the UI never shows a number above what you own.
+  React.useEffect(() => {
+    if (!open) return;
+
+    const extraLifeBalance = Math.min(4000, Number(extraLifeAvailable) || 0);
+    if (extraLifeReplenishTo > extraLifeBalance) setExtraLifeReplenishTo(extraLifeBalance);
+    if (extraLifeTotalMax > extraLifeBalance) setExtraLifeTotalMax(extraLifeBalance);
+    if (extraLifeMax > extraLifeBalance) setExtraLifeMax(extraLifeBalance);
+
+    const poisonBalance = Number(poisonAvailable) || 0;
+    if (poisonAggressiveAmount > poisonBalance) setPoisonAggressiveAmount(poisonBalance);
+    if (poisonConservativeAmount > poisonBalance) setPoisonConservativeAmount(poisonBalance);
+    if (poisonTotalMax > poisonBalance) setPoisonTotalMax(poisonBalance);
+  }, [
+    open,
+    extraLifeAvailable,
+    poisonAvailable,
+    extraLifeReplenishTo,
+    extraLifeTotalMax,
+    extraLifeMax,
+    poisonAggressiveAmount,
+    poisonConservativeAmount,
+    poisonTotalMax,
+  ]);
 
   const poisonAmount =
     poisonStrategy === 'aggressive'
@@ -204,22 +299,29 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     min = 0,
     max?: number,
   ) => (
+    (() => {
+      const maxBelowMin = typeof max === 'number' && max < min;
+      const computedDisabled = Boolean(disabled || maxBelowMin);
+      const computedMax = typeof max === 'number' && !maxBelowMin ? max : undefined;
+      return (
     <TextField
       type="number"
       size="small"
       value={value}
-      disabled={disabled}
+      disabled={computedDisabled}
       onChange={(e) => {
         const raw = e.target.value;
         let next = Number.parseInt(raw, 10);
         if (Number.isNaN(next)) next = min;
         next = Math.max(min, next);
-        if (typeof max === 'number') next = Math.min(max, next);
+        if (typeof max === 'number' && !maxBelowMin) next = Math.min(max, next);
         onChange(next);
       }}
-      inputProps={{ min, max, step: 1, inputMode: 'numeric' }}
+      inputProps={{ min, max: computedMax, step: 1, inputMode: 'numeric' }}
       sx={styles.numberField}
     />
+      );
+    })()
   );
 
   const availablePill = (
@@ -301,81 +403,97 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
             setAttackStrategy,
           )}
 
-          <Box sx={styles.row}>
-            <Box sx={styles.inlineControls}>
-              <Box sx={styles.toggleRow} onClick={() => setUseRevivePotions(!useRevivePotions)}>
-                <Switch
-                  checked={useRevivePotions}
-                  onChange={(e) => setUseRevivePotions(e.target.checked)}
-                  onClick={(e) => e.stopPropagation()}
-                  sx={styles.switch}
-                />
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={styles.inlineTitle}>Use revival potions</Typography>
-                  <Typography sx={styles.inlineSub}>
-                    Allow Autopilot to spend revive potions when attacking.
-                  </Typography>
+          {attackStrategy !== 'never' && (
+            <>
+              <Box sx={styles.row}>
+                <Box sx={styles.inlineControls}>
+                  <Box sx={styles.toggleRow} onClick={() => setUseRevivePotions(!useRevivePotions)}>
+                    <Switch
+                      checked={useRevivePotions}
+                      onChange={(e) => setUseRevivePotions(e.target.checked)}
+                      onClick={(e) => e.stopPropagation()}
+                      sx={styles.switch}
+                    />
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={styles.inlineTitle}>Use revival potions</Typography>
+                      <Typography sx={styles.inlineSub}>
+                        Allow Autopilot to spend revive potions when attacking.
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Box sx={styles.maxCol}>
+                    {availablePill(
+                      Number(reviveAvailable) || 0,
+                      revivePotionIcon,
+                      'Revive',
+                      !useRevivePotions,
+                      () => setRevivePotionMax(Number(reviveAvailable) || 0),
+                    )}
+                    <Box sx={styles.maxRow}>
+                      <Typography sx={styles.maxLabel}>Max Usage</Typography>
+                      {numberField(
+                        revivePotionMax,
+                        setRevivePotionMax,
+                        !useRevivePotions,
+                        (Number(reviveAvailable) || 0) > 0 ? 1 : 0,
+                        Number(reviveAvailable) || 0,
+                      )}
+                    </Box>
+                    <Box sx={styles.maxRow}>
+                      <Typography sx={styles.maxLabel}>Max per beast</Typography>
+                      {numberField(
+                        revivePotionMaxPerBeast,
+                        setRevivePotionMaxPerBeast,
+                        !useRevivePotions,
+                        1,
+                        32,
+                      )}
+                    </Box>
+                  </Box>
                 </Box>
               </Box>
 
-              <Box sx={styles.maxCol}>
-                {availablePill(
-                  Number(reviveAvailable) || 0,
-                  revivePotionIcon,
-                  'Revive',
-                  !useRevivePotions,
-                  () => setRevivePotionMax(Math.max(0, Number(reviveAvailable) || 0)),
-                )}
-                <Box sx={styles.maxRow}>
-                  <Typography sx={styles.maxLabel}>Max Usage</Typography>
-                  {numberField(revivePotionMax, setRevivePotionMax, !useRevivePotions)}
-                </Box>
-                <Box sx={styles.maxRow}>
-                  <Typography sx={styles.maxLabel}>Max per beast</Typography>
-                  {numberField(
-                    revivePotionMaxPerBeast,
-                    setRevivePotionMaxPerBeast,
-                    !useRevivePotions,
-                    1,
-                    32,
-                  )}
-                </Box>
-              </Box>
-            </Box>
-          </Box>
+              <Box sx={styles.row}>
+                <Box sx={styles.inlineControls}>
+                  <Box sx={styles.toggleRow} onClick={() => setUseAttackPotions(!useAttackPotions)}>
+                    <Switch
+                      checked={useAttackPotions}
+                      onChange={(e) => setUseAttackPotions(e.target.checked)}
+                      onClick={(e) => e.stopPropagation()}
+                      sx={styles.switch}
+                    />
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={styles.inlineTitle}>Use attack potions</Typography>
+                      <Typography sx={styles.inlineSub}>
+                        Allow Autopilot to spend attack potions when attacking (optimal use).
+                      </Typography>
+                    </Box>
+                  </Box>
 
-          <Box sx={styles.row}>
-            <Box sx={styles.inlineControls}>
-              <Box sx={styles.toggleRow} onClick={() => setUseAttackPotions(!useAttackPotions)}>
-                <Switch
-                  checked={useAttackPotions}
-                  onChange={(e) => setUseAttackPotions(e.target.checked)}
-                  onClick={(e) => e.stopPropagation()}
-                  sx={styles.switch}
-                />
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={styles.inlineTitle}>Use attack potions</Typography>
-                  <Typography sx={styles.inlineSub}>
-                    Allow Autopilot to spend attack potions when attacking (optimal use).
-                  </Typography>
+                  <Box sx={styles.maxCol}>
+                    {availablePill(
+                      Number(attackAvailable) || 0,
+                      attackPotionIcon,
+                      'Attack',
+                      !useAttackPotions,
+                      () => setAttackPotionMax(Number(attackAvailable) || 0),
+                    )}
+                    <Box sx={styles.maxRow}>
+                      <Typography sx={styles.maxLabel}>Max</Typography>
+                      {numberField(
+                        attackPotionMax,
+                        setAttackPotionMax,
+                        !useAttackPotions,
+                        (Number(attackAvailable) || 0) > 0 ? 1 : 0,
+                        Number(attackAvailable) || 0,
+                      )}
+                    </Box>
+                  </Box>
                 </Box>
               </Box>
-
-              <Box sx={styles.maxCol}>
-                {availablePill(
-                  Number(attackAvailable) || 0,
-                  attackPotionIcon,
-                  'Attack',
-                  !useAttackPotions,
-                  () => setAttackPotionMax(Math.max(0, Number(attackAvailable) || 0)),
-                )}
-                <Box sx={styles.maxRow}>
-                  <Typography sx={styles.maxLabel}>Max</Typography>
-                  {numberField(attackPotionMax, setAttackPotionMax, !useAttackPotions)}
-                </Box>
-              </Box>
-            </Box>
-          </Box>
+            </>
+          )}
 
           <Box sx={styles.sectionDivider} />
 
@@ -396,9 +514,9 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
                 extraLifeDisabled,
                 () => {
                   if (extraLifeStrategy === 'aggressive') {
-                    setExtraLifeReplenishTo(Math.min(extraLifeAvailable, 4000));
+                    setExtraLifeReplenishTo(Math.max(1, Math.min(extraLifeAvailable, 4000)));
                   } else {
-                    setExtraLifeMax(Math.max(0, Number(extraLifeAvailable) || 0));
+                    setExtraLifeMax(Math.max(0, Math.min(extraLifeAvailable, 4000)));
                   }
                 },
               )}
@@ -406,11 +524,23 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
                 <>
                   <Box sx={styles.maxRow}>
                     <Typography sx={styles.maxLabel}>Replenish to</Typography>
-                    {numberField(extraLifeReplenishTo, setExtraLifeReplenishTo, extraLifeDisabled, 1, Math.min(extraLifeAvailable, 4000))}
+                    {numberField(
+                      extraLifeReplenishTo,
+                      setExtraLifeReplenishTo,
+                      extraLifeDisabled,
+                      1,
+                      Math.min(extraLifeAvailable, 4000),
+                    )}
                   </Box>
                   <Box sx={styles.maxRow}>
                     <Typography sx={styles.maxLabel}>Max usage</Typography>
-                    {numberField(extraLifeTotalMax, setExtraLifeTotalMax, extraLifeDisabled, 1, extraLifeAvailable)}
+                    {numberField(
+                      extraLifeTotalMax,
+                      setExtraLifeTotalMax,
+                      extraLifeDisabled,
+                      Math.min(extraLifeAvailable, 4000) > 0 ? 1 : 0,
+                      Math.min(extraLifeAvailable, 4000),
+                    )}
                   </Box>
                 </>
               )}
@@ -419,11 +549,23 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
                 <>
                   <Box sx={styles.maxRow}>
                     <Typography sx={styles.maxLabel}>After each capture</Typography>
-                    {numberField(extraLifeMax, setExtraLifeMax, extraLifeDisabled, 0, Math.min(extraLifeAvailable, 4000))}
+                    {numberField(
+                      extraLifeMax,
+                      setExtraLifeMax,
+                      extraLifeDisabled,
+                      0,
+                      Math.min(extraLifeAvailable, 4000),
+                    )}
                   </Box>
                   <Box sx={styles.maxRow}>
                     <Typography sx={styles.maxLabel}>Max usage</Typography>
-                    {numberField(extraLifeTotalMax, setExtraLifeTotalMax, extraLifeDisabled, 1, extraLifeAvailable)}
+                    {numberField(
+                      extraLifeTotalMax,
+                      setExtraLifeTotalMax,
+                      extraLifeDisabled,
+                      Math.min(extraLifeAvailable, 4000) > 0 ? 1 : 0,
+                      Math.min(extraLifeAvailable, 4000),
+                    )}
                   </Box>
                 </>
               )}
@@ -465,18 +607,24 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
                     () => {
                       const avail = Math.max(0, Number(poisonAvailable) || 0);
                       setPoisonAmount(avail);
-                      if (poisonTotalMax === 0) setPoisonTotalMax(avail);
+                      if (poisonTotalMax <= 1) setPoisonTotalMax(avail);
                     },
                   )}
                   <Box sx={styles.maxRow}>
                     <Typography sx={styles.maxLabel}>
                       {poisonStrategy === 'aggressive' ? 'Poison to apply' : 'Poison to apply'}
                     </Typography>
-                    {numberField(poisonAmount, setPoisonAmount, false)}
+                    {numberField(poisonAmount, setPoisonAmount, false, 0, Number(poisonAvailable) || 0)}
                   </Box>
                   <Box sx={styles.maxRow}>
                     <Typography sx={styles.maxLabel}>Max usage</Typography>
-                    {numberField(poisonTotalMax, setPoisonTotalMax, false, 0, Number(poisonAvailable) || 0)}
+                    {numberField(
+                      poisonTotalMax,
+                      setPoisonTotalMax,
+                      false,
+                      (Number(poisonAvailable) || 0) > 0 ? 1 : 0,
+                      Number(poisonAvailable) || 0,
+                    )}
                   </Box>
                 </Box>
               </Box>
@@ -487,7 +635,7 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
         {/* Footer */}
         <Box sx={styles.footer}>
           <Button
-            onClick={resetToDefaults}
+            onClick={handleResetToDefaults}
             sx={styles.resetButton}
           >
             <Typography sx={styles.resetButtonText}>Reset to defaults</Typography>
