@@ -45,6 +45,12 @@ interface SwapCall {
 const inflightQuotes: Record<string, Promise<SwapQuote>> = {};
 let rateLimitUntil = 0;
 
+const applySlippage = (value: bigint, slippageBps: number) => {
+  const basis = 10_000n;
+  const bps = BigInt(slippageBps);
+  return (value * (basis - bps)) / basis;
+};
+
 export const getSwapQuote = async (
   amount: bigint | string,
   token: string,
@@ -146,7 +152,8 @@ export const getSwapQuote = async (
 export const generateSwapCalls = (
   ROUTER_CONTRACT: RouterContract,
   purchaseToken: string,
-  tokenQuote: TokenQuote
+  tokenQuote: TokenQuote,
+  slippageBps: number = 100 // 1%
 ): SwapCall[] => {
   if (!tokenQuote.quote || tokenQuote.quote.splits.length === 0) {
     return [];
@@ -186,8 +193,15 @@ export const generateSwapCalls = (
 
   let { splits } = quote;
 
-  let minimumClear =
-    total < 0n ? num.toHex(BigInt(minimumAmount * 1e18)) : num.toHex(total);
+  let minimumClear: string;
+  if (total < 0n) {
+    const desired = BigInt(minimumAmount) * 10n ** 18n;
+    const withSlippage = applySlippage(desired, slippageBps);
+    minimumClear = num.toHex(withSlippage);
+  } else {
+    const withSlippage = applySlippage(total, slippageBps);
+    minimumClear = num.toHex(withSlippage);
+  }
 
   const clearProfitsCall = {
     contractAddress: ROUTER_CONTRACT.address,

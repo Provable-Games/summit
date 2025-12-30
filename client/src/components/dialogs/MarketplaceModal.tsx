@@ -94,6 +94,8 @@ const formatImpactLabel = (impact?: number) => {
   return `${arrow} ${(Math.abs(impact) * 100).toFixed(1)}%`;
 };
 
+const SLIPPAGE_BPS = 100; // 1%
+
 export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { open, close } = props;
   const { currentNetworkConfig } = useDynamicConnector();
@@ -525,7 +527,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                 tokenAddress: potionAddress,
                 minimumAmount: quantity,
                 quote: quote
-              }
+              },
+              SLIPPAGE_BPS
             );
             calls.push(...swapCalls);
           }
@@ -592,7 +595,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                 tokenAddress: selectedReceiveTokenData.address,
                 minimumAmount: quantity,
                 quote: quote
-              }
+              },
+              SLIPPAGE_BPS
             );
             calls.push(...swapCalls);
           }
@@ -749,11 +753,16 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                           color: '#0d1511',
                         }}
                       >
-                          {tokenQuotes[potion.id]?.error
-                            ? 'insufficient liquidity'
-                            : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
+                        {tokenQuotes[potion.id]?.error
+                          ? 'insufficient liquidity'
+                          : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
                       </Box>
                     ) : null}
+                    {quantities[potion.id] > 0 && (
+                      <Typography sx={styles.potionDescription}>
+                        Min receive: {formatAmount(quantities[potion.id] * (10000 - SLIPPAGE_BPS) / 10000)} {potion.name}
+                      </Typography>
+                    )}
                   </Box>
                 </Box>
 
@@ -843,6 +852,15 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                             ? 'insufficient liquidity'
                             : formatImpactLabel(displayImpact)}
                         </Box>
+                      )}
+                      {tokenQuotes[potion.id]?.quote && selectedReceiveTokenData && (
+                        <Typography sx={styles.potionDescription}>
+                          {(() => {
+                            const raw = tokenQuotes[potion.id].quote.total / Math.pow(10, selectedReceiveTokenData.decimals || 18);
+                            const min = raw * (10000 - SLIPPAGE_BPS) / 10000;
+                            return `Min receive: ${formatAmount(min)} ${selectedReceiveToken}`;
+                          })()}
+                        </Typography>
                       )}
                     </Box>
                   </Box>
