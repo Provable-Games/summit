@@ -595,6 +595,15 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         const result = await executeAction(calls, () => { });
 
         if (result) {
+          // Apply optimistic pricing for sells based on the quote used
+          POTIONS.forEach((potion) => {
+            if (sellQuantities[potion.id] > 0) {
+              const quote = tokenQuotes[potion.id]?.quote;
+              if (quote) {
+                applyOptimisticPrice(potion.id, quote);
+              }
+            }
+          });
           resetAfterAction();
         }
       }
