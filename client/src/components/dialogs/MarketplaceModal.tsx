@@ -90,6 +90,12 @@ const getImpactColor = (impact: number) => {
   return '#b7f7c8'; // low impact - green tint
 };
 
+const formatImpactLabel = (impact?: number) => {
+  if (impact === undefined) return '';
+  const arrow = impact < 0 ? '↓' : '↑';
+  return `${arrow} ${(Math.abs(impact) * 100).toFixed(1)}%`;
+};
+
 export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { open, close } = props;
   const { currentNetworkConfig } = useDynamicConnector();
@@ -739,12 +745,9 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                           color: '#0d1511',
                         }}
                       >
-                        {tokenQuotes[potion.id]?.error
-                          ? 'Insufficient liquidity'
-                          : (() => {
-                            const val = tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0;
-                            return `${val > 0 ? '+' : ''}${(val * 100).toFixed(1)}%`;
-                          })()}
+                          {tokenQuotes[potion.id]?.error
+                            ? 'Insufficient liquidity'
+                            : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
                       </Box>
                     ) : null}
                   </Box>
@@ -833,7 +836,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                         >
                           {quoteError
                             ? 'Insufficient liquidity'
-                            : `${quoteImpact > 0 ? '+' : ''}${(quoteImpact * 100).toFixed(1)}%`}
+                            : formatImpactLabel(quoteImpact)}
                         </Box>
                       )}
                     </Box>
