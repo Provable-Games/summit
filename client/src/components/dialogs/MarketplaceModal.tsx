@@ -286,7 +286,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               [potionId]: { amount: '', loading: false, error: 'Insufficient liquidity' }
             }));
           } else {
-            const amount = formatAmount(rawAmount);
+            const slippageAdjusted = rawAmount * (10000 - SLIPPAGE_BPS) / 10000;
+            const amount = formatAmount(slippageAdjusted);
             setTokenQuotes(prev => ({
               ...prev,
               [potionId]: { amount, loading: false, quote: quote }
@@ -354,7 +355,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               [potionId]: { amount: '', loading: false, error: 'Insufficient liquidity' }
             }));
           } else {
-            const amount = formatAmount(rawAmount);
+            const slippageAdjusted = rawAmount * (10000 - SLIPPAGE_BPS) / 10000;
+            const amount = formatAmount(slippageAdjusted);
             setTokenQuotes(prev => ({
               ...prev,
               [potionId]: { amount, loading: false, quote: quote }
@@ -752,17 +754,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                             : getImpactColor(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact),
                           color: '#0d1511',
                         }}
-                      >
-                        {tokenQuotes[potion.id]?.error
-                          ? 'insufficient liquidity'
-                          : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
+                        >
+                          {tokenQuotes[potion.id]?.error
+                            ? 'insufficient liquidity'
+                            : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
                       </Box>
                     ) : null}
-                    {quantities[potion.id] > 0 && (
-                      <Typography sx={styles.potionDescription}>
-                        Min receive: {formatAmount(quantities[potion.id] * (10000 - SLIPPAGE_BPS) / 10000)} {potion.name}
-                      </Typography>
-                    )}
                   </Box>
                 </Box>
 
