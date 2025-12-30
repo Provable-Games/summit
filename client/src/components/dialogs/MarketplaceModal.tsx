@@ -116,6 +116,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [receiveAnchorEl, setReceiveAnchorEl] = useState<null | HTMLElement>(null);
   const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string; quote?: any }>>(emptyTokenQuotesState);
+  const [optimisticPrices, setOptimisticPrices] = useState<Record<string, string>>({});
 
   const routerContract = useMemo(
     () =>
@@ -447,6 +448,23 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const resetAfterAction = () => {
     setQuantities({ ...emptyQuantities });
     setSellQuantities({ ...emptyQuantities });
+    setTokenQuotes({ ...emptyTokenQuotesState });
+    setOptimisticPrices({});
+  };
+
+  const applyOptimisticPrice = (potionId: string, quote?: any) => {
+    const impact = quote?.price_impact;
+    const base = tokenPrices[potionId];
+    if (impact === undefined || base === undefined) return;
+
+    const baseNum = parseFloat(base);
+    if (isNaN(baseNum)) return;
+
+    const updated = baseNum * (1 + impact);
+    setOptimisticPrices((prev) => ({
+      ...prev,
+      [potionId]: updated.toFixed(4),
+    }));
   };
 
   const handlePurchase = async () => {
@@ -455,6 +473,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
     try {
       const calls: any[] = [];
+      const quotedPotions: { id: string; quote: any }[] = [];
 
       for (const potion of POTIONS) {
         const potionAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === potion.id)?.address!;
@@ -471,6 +490,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           }
 
           if (quote) {
+            quotedPotions.push({ id: potion.id, quote });
             const swapCalls = generateSwapCalls(
               routerContract,
               selectedTokenData.address,
@@ -489,6 +509,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         let result = await executeAction(calls, () => { });
 
         if (result) {
+          quotedPotions.forEach((q) => applyOptimisticPrice(q.id, q.quote));
           await delay(POST_TX_REFRESH_DELAY_MS);
           fetchPaymentTokenBalances();
           refreshTokenPrices();
@@ -674,10 +695,10 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                 <Box sx={styles.potionInfo}>
                   <Typography sx={styles.potionName}>{potion.name}</Typography>
                   <Typography sx={styles.potionDescription}>{potion.description}</Typography>
-                  <Box sx={styles.potionPrice}>
-                    <Typography sx={styles.priceText}>
-                      {(() => {
-                        const priceStr = tokenPrices[potion.id] ? tokenPrices[potion.id] : undefined;
+                    <Box sx={styles.potionPrice}>
+                      <Typography sx={styles.priceText}>
+                        {(() => {
+                        const priceStr = optimisticPrices[potion.id] ?? tokenPrices[potion.id] ?? undefined;
                         if (priceStr) {
                           return `$${priceStr}`;
                         }
