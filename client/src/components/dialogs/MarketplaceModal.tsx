@@ -81,6 +81,21 @@ const POTIONS: Potion[] = [
   }
 ];
 
+const getImpactColor = (impact: number) => {
+  const pct = Math.abs(impact);
+  if (pct >= 0.10) return '#f7b4b4'; // high impact - red tint
+  if (pct >= 0.03) return '#f7e3b4'; // medium impact - amber tint
+  return '#b7f7c8'; // low impact - green tint
+};
+
+const formatImpactLabel = (impact?: number) => {
+  if (impact === undefined) return '';
+  const arrow = impact < 0 ? '▼' : '▲';
+  return `${arrow} ${(Math.abs(impact) * 100).toFixed(1)}%`;
+};
+
+const SLIPPAGE_BPS = 100; // 1%
+
 export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { open, close } = props;
   const { currentNetworkConfig } = useDynamicConnector();
@@ -89,36 +104,34 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { provider } = useProvider();
   const { executeAction } = useSystemCalls();
   const [activeTab, setActiveTab] = useState(0);
-  const [quantities, setQuantities] = useState<Record<string, number>>({
+  const emptyQuantities: Record<string, number> = {
     "ATTACK": 0,
     "EXTRA LIFE": 0,
     "POISON": 0,
     "REVIVE": 0,
     "SKULL": 0,
     "CORPSE": 0
-  });
-  const [sellQuantities, setSellQuantities] = useState<Record<string, number>>({
-    "ATTACK": 0,
-    "EXTRA LIFE": 0,
-    "POISON": 0,
-    "REVIVE": 0,
-    "SKULL": 0,
-    "CORPSE": 0
-  });
-  const [selectedToken, setSelectedToken] = useState<string>('');
-  const [selectedReceiveToken, setSelectedReceiveToken] = useState<string>('');
-  const [purchaseInProgress, setPurchaseInProgress] = useState(false);
-  const [sellInProgress, setSellInProgress] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [receiveAnchorEl, setReceiveAnchorEl] = useState<null | HTMLElement>(null);
-  const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string; quote?: any }>>({
+  };
+
+  const emptyTokenQuotesState: Record<string, { amount: string; loading: boolean; error?: string; quote?: any }> = {
     "ATTACK": { amount: '', loading: false },
     "EXTRA LIFE": { amount: '', loading: false },
     "POISON": { amount: '', loading: false },
     "REVIVE": { amount: '', loading: false },
     "SKULL": { amount: '', loading: false },
     "CORPSE": { amount: '', loading: false }
-  });
+  };
+
+  const [quantities, setQuantities] = useState<Record<string, number>>(emptyQuantities);
+  const [sellQuantities, setSellQuantities] = useState<Record<string, number>>(emptyQuantities);
+  const [selectedToken, setSelectedToken] = useState<string>('');
+  const [selectedReceiveToken, setSelectedReceiveToken] = useState<string>('');
+  const [purchaseInProgress, setPurchaseInProgress] = useState(false);
+  const [sellInProgress, setSellInProgress] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [receiveAnchorEl, setReceiveAnchorEl] = useState<null | HTMLElement>(null);
+  const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string; quote?: any }>>(emptyTokenQuotesState);
+  const [optimisticPrices, setOptimisticPrices] = useState<Record<string, string>>({});
 
   const routerContract = useMemo(
     () =>
@@ -164,20 +177,10 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       refreshTokenPrices();
 
       setQuantities({
-        "ATTACK": 0,
-        "EXTRA LIFE": 0,
-        "POISON": 0,
-        "REVIVE": 0,
-        "SKULL": 0,
-        "CORPSE": 0
+        ...emptyQuantities
       });
       setSellQuantities({
-        "ATTACK": 0,
-        "EXTRA LIFE": 0,
-        "POISON": 0,
-        "REVIVE": 0,
-        "SKULL": 0,
-        "CORPSE": 0
+        ...emptyQuantities
       });
 
       if (userTokens.length > 0) {
@@ -190,6 +193,23 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       }
     }
   }, [open]);
+
+  useEffect(() => {
+    // Reset quotes/optimistic prices when switching tabs to avoid showing stale data
+    setTokenQuotes({ ...emptyTokenQuotesState });
+    setOptimisticPrices({});
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    refreshTokenPrices();
+    const intervalId = setInterval(() => {
+      refreshTokenPrices();
+    }, 60000);
+
+    return () => clearInterval(intervalId);
+  }, [open, refreshTokenPrices]);
 
   const totalItems = activeTab === 0
     ? Object.values(quantities).reduce((sum, qty) => sum + qty, 0)
@@ -262,25 +282,30 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           if (rawAmount === 0) {
             setTokenQuotes(prev => ({
               ...prev,
-              [potionId]: { amount: '', loading: false, error: 'No liquidity' }
+              [potionId]: { amount: '', loading: false, error: 'Insufficient liquidity' }
             }));
           } else {
-            const amount = formatAmount(rawAmount);
+            const slippageAdjusted = rawAmount * (10000 - SLIPPAGE_BPS) / 10000;
+            const amount = formatAmount(slippageAdjusted);
             setTokenQuotes(prev => ({
               ...prev,
               [potionId]: { amount, loading: false, quote: quote }
             }));
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching quote:', error);
+        const emsg = (error?.message || '').toLowerCase();
+        const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
+          ? 'Insufficient liquidity'
+          : 'Failed to get quote';
         setTokenQuotes(prev => ({
           ...prev,
-          [potionId]: { amount: '', loading: false, error: 'Failed to get quote' }
+          [potionId]: { amount: '', loading: false, error: msg }
         }));
       }
     },
-    [userTokens]
+    [userTokens, currentNetworkConfig.tokens.erc20]
   );
 
   const fetchSellQuote = useCallback(
@@ -326,10 +351,11 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           if (rawAmount === 0) {
             setTokenQuotes(prev => ({
               ...prev,
-              [potionId]: { amount: '', loading: false, error: 'No liquidity' }
+              [potionId]: { amount: '', loading: false, error: 'Insufficient liquidity' }
             }));
           } else {
-            const amount = formatAmount(rawAmount);
+            const slippageAdjusted = rawAmount * (10000 - SLIPPAGE_BPS) / 10000;
+            const amount = formatAmount(slippageAdjusted);
             setTokenQuotes(prev => ({
               ...prev,
               [potionId]: { amount, loading: false, quote: quote }
@@ -341,15 +367,19 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             [potionId]: { amount: '', loading: false, error: 'No quote available' }
           }));
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching sell quote:', error);
+        const emsg = (error?.message || '').toLowerCase();
+        const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
+          ? 'Insufficient liquidity'
+          : 'Failed to get quote';
         setTokenQuotes(prev => ({
           ...prev,
-          [potionId]: { amount: '', loading: false, error: 'Failed to get quote' }
+          [potionId]: { amount: '', loading: false, error: msg }
         }));
       }
     },
-    [userTokens]
+    [userTokens, currentNetworkConfig.tokens.erc20]
   );
 
   const adjustQuantity = (potionId: string, delta: number) => {
@@ -445,12 +475,34 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     handleReceiveTokenClose();
   };
 
+  const resetAfterAction = () => {
+    setQuantities({ ...emptyQuantities });
+    setSellQuantities({ ...emptyQuantities });
+    setTokenQuotes({ ...emptyTokenQuotesState });
+  };
+
+  const applyOptimisticPrice = (potionId: string, quote?: any) => {
+    const impact = quote?.price_impact ?? quote?.impact;
+    const base = tokenPrices[potionId];
+    if (impact === undefined || base === undefined) return;
+
+    const baseNum = parseFloat(base);
+    if (isNaN(baseNum)) return;
+
+    const updated = baseNum * (1 + impact);
+    setOptimisticPrices((prev) => ({
+      ...prev,
+      [potionId]: updated.toFixed(4),
+    }));
+  };
+
   const handlePurchase = async () => {
     if (!canAfford || !hasItems || !selectedTokenData) return;
     setPurchaseInProgress(true);
 
     try {
       const calls: any[] = [];
+      const quotedPotions: { id: string; quote: any }[] = [];
 
       for (const potion of POTIONS) {
         const potionAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === potion.id)?.address!;
@@ -467,6 +519,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           }
 
           if (quote) {
+            quotedPotions.push({ id: potion.id, quote });
             const swapCalls = generateSwapCalls(
               routerContract,
               selectedTokenData.address,
@@ -474,7 +527,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                 tokenAddress: potionAddress,
                 minimumAmount: quantity,
                 quote: quote
-              }
+              },
+              SLIPPAGE_BPS
             );
             calls.push(...swapCalls);
           }
@@ -485,9 +539,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         let result = await executeAction(calls, () => { });
 
         if (result) {
-          await delay(2000);
-          fetchPaymentTokenBalances();
-          close();
+          quotedPotions.forEach((q) => applyOptimisticPrice(q.id, q.quote));
+          resetAfterAction();
         }
       }
     } catch (error) {
@@ -529,7 +582,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                 tokenAddress: selectedReceiveTokenData.address,
                 minimumAmount: quantity,
                 quote: quote
-              }
+              },
+              SLIPPAGE_BPS
             );
             calls.push(...swapCalls);
           }
@@ -540,9 +594,16 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         const result = await executeAction(calls, () => { });
 
         if (result) {
-          await delay(2000);
-          fetchPaymentTokenBalances();
-          close();
+          // Apply optimistic pricing for sells based on the quote used
+          POTIONS.forEach((potion) => {
+            if (sellQuantities[potion.id] > 0) {
+              const quote = tokenQuotes[potion.id]?.quote;
+              if (quote) {
+                applyOptimisticPrice(potion.id, quote);
+              }
+            }
+          });
+          resetAfterAction();
         }
       }
     } catch (error) {
@@ -647,13 +708,35 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                   <Box sx={styles.potionPrice}>
                     <Typography sx={styles.priceText}>
                       {(() => {
-                        const priceStr = tokenPrices[potion.id] ? tokenPrices[potion.id] : undefined;
+                        const priceStr = optimisticPrices[potion.id] ?? tokenPrices[potion.id] ?? undefined;
                         if (priceStr) {
                           return `$${priceStr}`;
                         }
                         return 'No liquidity';
                       })()}
                     </Typography>
+                    {tokenQuotes[potion.id]?.quote?.price_impact !== undefined ||
+                    tokenQuotes[potion.id]?.quote?.impact !== undefined || tokenQuotes[potion.id]?.error ? (
+                      <Box
+                        component="span"
+                        sx={{
+                          ml: 1,
+                          px: 0.75,
+                          py: 0.25,
+                          borderRadius: '10px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          bgcolor: tokenQuotes[potion.id]?.error
+                            ? '#f7b4b4'
+                            : getImpactColor(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact),
+                          color: '#0d1511',
+                        }}
+                        >
+                          {tokenQuotes[potion.id]?.error
+                            ? 'insufficient liquidity'
+                            : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
+                      </Box>
+                    ) : null}
                   </Box>
                 </Box>
 
@@ -695,6 +778,9 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             POTIONS.map((potion) => {
               const potionName = potion.name.toUpperCase().replace(' POTION', '').replace(' TOKEN', '');
               const balance = tokenBalances[potionName] || 0;
+              const quoteImpact = tokenQuotes[potion.id]?.quote?.price_impact ?? tokenQuotes[potion.id]?.quote?.impact;
+              const quoteError = tokenQuotes[potion.id]?.error;
+              const displayImpact = quoteImpact !== undefined ? -quoteImpact : undefined;
               return (
                 <Box key={potion.id} sx={styles.potionCard}>
                   <Box sx={styles.potionImage}>
@@ -706,22 +792,46 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                   </Box>
 
                   <Box sx={styles.potionInfo}>
-                    <Typography sx={styles.potionName}>{potion.name}</Typography>
-                    <Typography sx={styles.potionBalance}>
+                    <Typography sx={styles.potionName}>
+                      {potion.name}
+                    </Typography>
+                    <Typography sx={styles.potionDescription}>
                       Balance: {formatAmount(balance)}
                     </Typography>
                     <Box sx={styles.potionPrice}>
                       <Typography sx={styles.priceText}>
-                        {balance > 0 && sellQuantities[potion.id] > 0
-                          ? tokenQuotes[potion.id].loading
-                            ? 'Fetching quote...'
-                            : tokenQuotes[potion.id].error
-                              ? tokenQuotes[potion.id].error
-                              : tokenQuotes[potion.id].amount
-                                ? `Sell ${sellQuantities[potion.id]}`
-                                : `Sell ${sellQuantities[potion.id]}`
-                          : 'Select amount'}
+                        {(() => {
+                          const priceStr = optimisticPrices[potion.id] ?? tokenPrices[potion.id] ?? undefined;
+                          if (priceStr) {
+                            return `$${priceStr}`;
+                          }
+                          return 'No liquidity';
+                        })()}
                       </Typography>
+                      {(quoteImpact !== undefined || quoteError) && (
+                        <Box
+                          component="span"
+                          sx={{
+                            ml: 1,
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: '10px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            bgcolor: quoteError ? '#f7b4b4' : getImpactColor(displayImpact ?? 0),
+                            color: '#0d1511',
+                          }}
+                        >
+                          {quoteError
+                            ? 'insufficient liquidity'
+                            : formatImpactLabel(displayImpact)}
+                        </Box>
+                      )}
+                      {tokenQuotes[potion.id]?.quote && selectedReceiveTokenData && (
+                        <Typography sx={styles.potionDescription}>
+                          {/* Slippage already applied to displayed amount */}
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
 

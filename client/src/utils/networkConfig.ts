@@ -328,7 +328,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     namespace: network.namespace,
     manifest: network.manifest,
     slot: network.slot,
-    preset: "savage-summit_2",
+    preset: "savage-summit",
     policies: policies,
     rpcUrl: network.rpcUrl,
     toriiUrl: network.torii,
