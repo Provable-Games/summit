@@ -774,6 +774,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             POTIONS.map((potion) => {
               const potionName = potion.name.toUpperCase().replace(' POTION', '').replace(' TOKEN', '');
               const balance = tokenBalances[potionName] || 0;
+              const quoteImpact = tokenQuotes[potion.id]?.quote?.price_impact ?? tokenQuotes[potion.id]?.quote?.impact;
               return (
                 <Box key={potion.id} sx={styles.potionCard}>
                   <Box sx={styles.potionImage}>
@@ -785,22 +786,38 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                   </Box>
 
                   <Box sx={styles.potionInfo}>
-                    <Typography sx={styles.potionName}>{potion.name}</Typography>
-                    <Typography sx={styles.potionBalance}>
-                      Balance: {formatAmount(balance)}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography sx={styles.potionName}>
+                        {potion.name} ({formatAmount(balance)})
+                      </Typography>
+                    </Box>
                     <Box sx={styles.potionPrice}>
                       <Typography sx={styles.priceText}>
-                        {balance > 0 && sellQuantities[potion.id] > 0
-                          ? tokenQuotes[potion.id].loading
-                            ? 'Fetching quote...'
-                            : tokenQuotes[potion.id].error
-                              ? tokenQuotes[potion.id].error
-                              : tokenQuotes[potion.id].amount
-                                ? `Sell ${sellQuantities[potion.id]}`
-                                : `Sell ${sellQuantities[potion.id]}`
-                          : 'Select amount'}
+                        {(() => {
+                          const priceStr = optimisticPrices[potion.id] ?? tokenPrices[potion.id] ?? undefined;
+                          if (priceStr) {
+                            return `$${priceStr}`;
+                          }
+                          return 'No liquidity';
+                        })()}
                       </Typography>
+                      {quoteImpact !== undefined && (
+                        <Box
+                          component="span"
+                          sx={{
+                            ml: 1,
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: '10px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            bgcolor: getImpactColor(quoteImpact),
+                            color: '#0d1511',
+                          }}
+                        >
+                          {`${quoteImpact > 0 ? '+' : ''}${(quoteImpact * 100).toFixed(1)}%`}
+                        </Box>
+                      )}
                     </Box>
                   </Box>
 
