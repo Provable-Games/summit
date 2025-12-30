@@ -89,36 +89,33 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { provider } = useProvider();
   const { executeAction } = useSystemCalls();
   const [activeTab, setActiveTab] = useState(0);
-  const [quantities, setQuantities] = useState<Record<string, number>>({
+  const emptyQuantities: Record<string, number> = {
     "ATTACK": 0,
     "EXTRA LIFE": 0,
     "POISON": 0,
     "REVIVE": 0,
     "SKULL": 0,
     "CORPSE": 0
-  });
-  const [sellQuantities, setSellQuantities] = useState<Record<string, number>>({
-    "ATTACK": 0,
-    "EXTRA LIFE": 0,
-    "POISON": 0,
-    "REVIVE": 0,
-    "SKULL": 0,
-    "CORPSE": 0
-  });
-  const [selectedToken, setSelectedToken] = useState<string>('');
-  const [selectedReceiveToken, setSelectedReceiveToken] = useState<string>('');
-  const [purchaseInProgress, setPurchaseInProgress] = useState(false);
-  const [sellInProgress, setSellInProgress] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [receiveAnchorEl, setReceiveAnchorEl] = useState<null | HTMLElement>(null);
-  const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string; quote?: any }>>({
+  };
+
+  const emptyTokenQuotesState: Record<string, { amount: string; loading: boolean; error?: string; quote?: any }> = {
     "ATTACK": { amount: '', loading: false },
     "EXTRA LIFE": { amount: '', loading: false },
     "POISON": { amount: '', loading: false },
     "REVIVE": { amount: '', loading: false },
     "SKULL": { amount: '', loading: false },
     "CORPSE": { amount: '', loading: false }
-  });
+  };
+
+  const [quantities, setQuantities] = useState<Record<string, number>>(emptyQuantities);
+  const [sellQuantities, setSellQuantities] = useState<Record<string, number>>(emptyQuantities);
+  const [selectedToken, setSelectedToken] = useState<string>('');
+  const [selectedReceiveToken, setSelectedReceiveToken] = useState<string>('');
+  const [purchaseInProgress, setPurchaseInProgress] = useState(false);
+  const [sellInProgress, setSellInProgress] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [receiveAnchorEl, setReceiveAnchorEl] = useState<null | HTMLElement>(null);
+  const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string; quote?: any }>>(emptyTokenQuotesState);
 
   const routerContract = useMemo(
     () =>
@@ -164,20 +161,10 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       refreshTokenPrices();
 
       setQuantities({
-        "ATTACK": 0,
-        "EXTRA LIFE": 0,
-        "POISON": 0,
-        "REVIVE": 0,
-        "SKULL": 0,
-        "CORPSE": 0
+        ...emptyQuantities
       });
       setSellQuantities({
-        "ATTACK": 0,
-        "EXTRA LIFE": 0,
-        "POISON": 0,
-        "REVIVE": 0,
-        "SKULL": 0,
-        "CORPSE": 0
+        ...emptyQuantities
       });
 
       if (userTokens.length > 0) {
@@ -445,6 +432,11 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     handleReceiveTokenClose();
   };
 
+  const resetAfterAction = () => {
+    setQuantities({ ...emptyQuantities });
+    setSellQuantities({ ...emptyQuantities });
+  };
+
   const handlePurchase = async () => {
     if (!canAfford || !hasItems || !selectedTokenData) return;
     setPurchaseInProgress(true);
@@ -487,7 +479,18 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         if (result) {
           await delay(2000);
           fetchPaymentTokenBalances();
-          close();
+          refreshTokenPrices();
+          if (selectedToken) {
+            const interacted = POTIONS.filter(potion => quantities[potion.id] > 0);
+            if (interacted.length > 0) {
+              await Promise.all(
+                interacted.map(potion =>
+                  fetchPotionQuote(potion.id, selectedToken, quantities[potion.id])
+                )
+              );
+            }
+          }
+          resetAfterAction();
         }
       }
     } catch (error) {
@@ -542,7 +545,22 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         if (result) {
           await delay(2000);
           fetchPaymentTokenBalances();
-          close();
+          refreshTokenPrices();
+          if (selectedReceiveToken) {
+            const interacted = POTIONS.filter(potion => sellQuantities[potion.id] > 0);
+            if (interacted.length > 0) {
+              await Promise.all(
+                interacted.map(potion =>
+                  fetchSellQuote(
+                    potion.id,
+                    selectedReceiveToken,
+                    sellQuantities[potion.id]
+                  )
+                )
+              );
+            }
+          }
+          resetAfterAction();
         }
       }
     } catch (error) {
