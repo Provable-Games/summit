@@ -460,7 +460,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   };
 
   const applyOptimisticPrice = (potionId: string, quote?: any) => {
-    const impact = quote?.price_impact;
+    const impact = quote?.price_impact ?? quote?.impact;
     const base = tokenPrices[potionId];
     if (impact === undefined || base === undefined) return;
 
@@ -712,7 +712,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                         return 'No liquidity';
                       })()}
                     </Typography>
-                    {tokenQuotes[potion.id]?.quote?.price_impact !== undefined && (
+                    {tokenQuotes[potion.id]?.quote?.price_impact !== undefined ||
+                    tokenQuotes[potion.id]?.quote?.impact !== undefined ? (
                       <Box
                         component="span"
                         sx={{
@@ -722,13 +723,16 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                           borderRadius: '10px',
                           fontSize: '11px',
                           fontWeight: 600,
-                          bgcolor: getImpactColor(tokenQuotes[potion.id].quote.price_impact),
+                          bgcolor: getImpactColor(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact),
                           color: '#0d1511',
                         }}
                       >
-                        {`${tokenQuotes[potion.id].quote.price_impact > 0 ? '+' : ''}${(tokenQuotes[potion.id].quote.price_impact * 100).toFixed(1)}%`}
+                        {(() => {
+                          const val = tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0;
+                          return `${val > 0 ? '+' : ''}${(val * 100).toFixed(1)}%`;
+                        })()}
                       </Box>
-                    )}
+                    ) : null}
                   </Box>
                 </Box>
 

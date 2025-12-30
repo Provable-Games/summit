@@ -115,6 +115,7 @@ export const getSwapQuote = async (
       if (data.total_calculated) {
         return {
           impact: data?.price_impact || 0,
+          price_impact: data?.price_impact || 0,
           total: data?.total_calculated || 0,
           splits: data?.splits || [],
         };
