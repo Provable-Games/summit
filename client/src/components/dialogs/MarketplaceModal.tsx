@@ -192,7 +192,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     refreshTokenPrices();
     const intervalId = setInterval(() => {
       refreshTokenPrices();
-    }, 30000);
+    }, 60000);
 
     return () => clearInterval(intervalId);
   }, [open, refreshTokenPrices]);
