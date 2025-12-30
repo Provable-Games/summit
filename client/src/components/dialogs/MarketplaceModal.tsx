@@ -178,6 +178,17 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     }
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    refreshTokenPrices();
+    const intervalId = setInterval(() => {
+      refreshTokenPrices();
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [open, refreshTokenPrices]);
+
   const totalItems = activeTab === 0
     ? Object.values(quantities).reduce((sum, qty) => sum + qty, 0)
     : Object.values(sellQuantities).reduce((sum, qty) => sum + qty, 0);
@@ -209,6 +220,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   const canAfford = selectedTokenData && totalTokenCost <= Number(selectedTokenData.rawBalance);
   const toBaseUnits = (quantity: number) => BigInt(quantity) * 10n ** 18n;
+  const POST_TX_REFRESH_DELAY_MS = 9000;
 
   const fetchPotionQuote = useCallback(
     async (potionId: string, tokenSymbol: string, quantity: number) => {
@@ -477,7 +489,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         let result = await executeAction(calls, () => { });
 
         if (result) {
-          await delay(2000);
+          await delay(POST_TX_REFRESH_DELAY_MS);
           fetchPaymentTokenBalances();
           refreshTokenPrices();
           if (selectedToken) {
@@ -543,7 +555,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         const result = await executeAction(calls, () => { });
 
         if (result) {
-          await delay(2000);
+          await delay(POST_TX_REFRESH_DELAY_MS);
           fetchPaymentTokenBalances();
           refreshTokenPrices();
           if (selectedReceiveToken) {
