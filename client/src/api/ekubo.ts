@@ -42,15 +42,16 @@ interface SwapCall {
 }
 
 export const getSwapQuote = async (
-  amount: number,
+  amount: bigint | string,
   token: string,
   otherToken: string
 ): Promise<SwapQuote> => {
   const maxRetries = 10;
+  const amountParam = typeof amount === "bigint" ? amount.toString() : amount;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const response = await fetch(
-      `https://prod-api-quoter.ekubo.org/23448594291968334/${amount}/${token}/${otherToken}`
+      `https://prod-api-quoter.ekubo.org/23448594291968334/${amountParam}/${token}/${otherToken}`
     );
     const data = await response.json();
 

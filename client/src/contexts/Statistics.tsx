@@ -62,7 +62,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   };
 
   const fetchTokenPrice = async (token: any) => {
-    const swap = await getSwapQuote(-1e18, token.address, USDC_ADDRESS);
+    const swap = await getSwapQuote(-1n * 10n ** 18n, token.address, USDC_ADDRESS);
     setTokenPrices((prev) => ({ ...prev, [token.name]: ((swap.total * -1) / 1e18).toFixed(4) }));
   };
 
