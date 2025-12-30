@@ -15,6 +15,7 @@ import { gameColors } from '@/utils/themes';
 import { delay, formatAmount } from '@/utils/utils';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SellIcon from '@mui/icons-material/Sell';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
@@ -197,7 +198,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   useEffect(() => {
     // Reset quotes/optimistic prices when switching tabs to avoid showing stale data
     setTokenQuotes({ ...emptyTokenQuotesState });
-    setOptimisticPrices({});
   }, [activeTab]);
 
   useEffect(() => {
@@ -706,7 +706,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                   <Typography sx={styles.potionName}>{potion.name}</Typography>
                   <Typography sx={styles.potionDescription}>{potion.description}</Typography>
                   <Box sx={styles.potionPrice}>
-                    <Typography sx={styles.priceText}>
+                    <Typography sx={styles.priceText} component="span">
                       {(() => {
                         const priceStr = optimisticPrices[potion.id] ?? tokenPrices[potion.id] ?? undefined;
                         if (priceStr) {
@@ -715,6 +715,13 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                         return 'No liquidity';
                       })()}
                     </Typography>
+                    <IconButton
+                      size="small"
+                      sx={styles.refreshButton}
+                      onClick={() => selectedToken && fetchPotionQuote(potion.id, selectedToken, quantities[potion.id])}
+                    >
+                      <RefreshIcon sx={{ fontSize: '16px' }} />
+                    </IconButton>
                     {tokenQuotes[potion.id]?.quote?.price_impact !== undefined ||
                     tokenQuotes[potion.id]?.quote?.impact !== undefined || tokenQuotes[potion.id]?.error ? (
                       <Box
@@ -799,15 +806,22 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       Balance: {formatAmount(balance)}
                     </Typography>
                     <Box sx={styles.potionPrice}>
-                      <Typography sx={styles.priceText}>
-                        {(() => {
-                          const priceStr = optimisticPrices[potion.id] ?? tokenPrices[potion.id] ?? undefined;
-                          if (priceStr) {
-                            return `$${priceStr}`;
-                          }
-                          return 'No liquidity';
-                        })()}
-                      </Typography>
+                    <Typography sx={styles.priceText}>
+                      {(() => {
+                        const priceStr = optimisticPrices[potion.id] ?? tokenPrices[potion.id] ?? undefined;
+                        if (priceStr) {
+                          return `$${priceStr}`;
+                        }
+                        return 'No liquidity';
+                      })()}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      sx={styles.refreshButton}
+                      onClick={() => selectedReceiveToken && fetchSellQuote(potion.id, selectedReceiveToken, sellQuantities[potion.id])}
+                    >
+                      <RefreshIcon sx={{ fontSize: '16px' }} />
+                    </IconButton>
                       {(quoteImpact !== undefined || quoteError) && (
                         <Box
                           component="span"
@@ -1289,6 +1303,13 @@ const styles = {
     fontSize: '13px',
     fontWeight: 'bold',
     color: gameColors.yellow,
+  },
+  refreshButton: {
+    color: gameColors.accentGreen,
+    '&:hover': {
+      color: gameColors.yellow,
+      backgroundColor: `${gameColors.accentGreen}20`,
+    },
   },
   quantityControls: {
     display: 'flex',
