@@ -498,59 +498,26 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     if (!canAfford || !hasItems || !selectedTokenData) return;
     setPurchaseInProgress(true);
 
-    const quotePotions = async () => {
-      const quotedPotions: { id: string; quote: any; rawCost: number }[] = [];
-      let hasError = false;
+    try {
+      const calls: any[] = [];
+      const quotedPotions: { id: string; quote: any }[] = [];
 
       for (const potion of POTIONS) {
         const potionAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === potion.id)?.address!;
         const quantity = quantities[potion.id];
-        if (quantity > 0) {
-          try {
-            const quote = await getSwapQuote(
+        if (quantity > 0 && tokenQuotes[potion.id].amount) {
+          let quote = tokenQuotes[potion.id].quote;
+
+          if (!quote) {
+            quote = await getSwapQuote(
               -toBaseUnits(quantity),
               potionAddress,
               selectedTokenData.address
             );
-            const rawAmount = (quote.total * -1) / Math.pow(10, selectedTokenData.decimals || 18);
-            if (rawAmount === 0) {
-              hasError = true;
-              setTokenQuotes(prev => ({
-                ...prev,
-                [potion.id]: { amount: '', loading: false, error: 'Insufficient liquidity' }
-              }));
-            } else {
-              const amount = formatAmount(rawAmount);
-              quotedPotions.push({ id: potion.id, quote, rawCost: rawAmount });
-              setTokenQuotes(prev => ({
-                ...prev,
-                [potion.id]: { amount, loading: false, quote }
-              }));
-            }
-          } catch (error: any) {
-            hasError = true;
-            const emsg = (error?.message || '').toLowerCase();
-            const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
-              ? 'Insufficient liquidity'
-              : 'Failed to get quote';
-            setTokenQuotes(prev => ({
-              ...prev,
-              [potion.id]: { amount: '', loading: false, error: msg }
-            }));
           }
-        }
-      }
-      return { quotedPotions, hasError };
-    };
 
-    const buildCalls = (quotes: { id: string; quote: any }[]) => {
-      const calls: any[] = [];
-      for (const potion of POTIONS) {
-        const potionAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === potion.id)?.address!;
-        const quantity = quantities[potion.id];
-        if (quantity > 0) {
-          const quote = quotes.find(q => q.id === potion.id)?.quote;
           if (quote) {
+            quotedPotions.push({ id: potion.id, quote });
             const swapCalls = generateSwapCalls(
               routerContract,
               selectedTokenData.address,
@@ -564,68 +531,26 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           }
         }
       }
-      return calls;
-    };
 
-    try {
-      const { quotedPotions, hasError } = await quotePotions();
-      if (quotedPotions.length === 0 || hasError) {
-        setPurchaseInProgress(false);
-        return;
-      }
+      if (calls.length > 0) {
+        let result = await executeAction(calls, () => { });
 
-      const attemptSwap = async (quotes: { id: string; quote: any }[]) => {
-        const calls = buildCalls(quotes);
-        if (calls.length === 0) return false;
-        return await executeAction(calls, () => { });
-      };
-
-      let result = await attemptSwap(quotedPotions);
-
-      if (result) {
-        quotedPotions.forEach((q) => applyOptimisticPrice(q.id, q.quote));
-        await delay(POST_TX_REFRESH_DELAY_MS);
-        fetchPaymentTokenBalances();
-        refreshTokenPrices();
-        if (selectedToken) {
-          const interacted = POTIONS.filter(potion => quantities[potion.id] > 0);
-          if (interacted.length > 0) {
-            await Promise.all(
-              interacted.map(potion =>
-                fetchPotionQuote(potion.id, selectedToken, quantities[potion.id])
-              )
-            );
-          }
-        }
-        resetAfterAction();
-      } else {
-        // Retry once with fresh quotes and confirmation
-        const { quotedPotions: retryQuotes, hasError: retryError } = await quotePotions();
-        if (retryQuotes.length > 0 && !retryError) {
-          const newTotal = retryQuotes.reduce((sum, q) => sum + q.rawCost, 0);
-          const proceed = window.confirm(
-            `Price changed. New cost: ${formatAmount(newTotal)} ${selectedToken}. Proceed?`
-          );
-          if (proceed) {
-            const retryResult = await attemptSwap(retryQuotes);
-            if (retryResult) {
-              retryQuotes.forEach((q) => applyOptimisticPrice(q.id, q.quote));
-              await delay(POST_TX_REFRESH_DELAY_MS);
-              fetchPaymentTokenBalances();
-              refreshTokenPrices();
-              if (selectedToken) {
-                const interacted = POTIONS.filter(potion => quantities[potion.id] > 0);
-                if (interacted.length > 0) {
-                  await Promise.all(
-                    interacted.map(potion =>
-                      fetchPotionQuote(potion.id, selectedToken, quantities[potion.id])
-                    )
-                  );
-                }
-              }
-              resetAfterAction();
+        if (result) {
+          quotedPotions.forEach((q) => applyOptimisticPrice(q.id, q.quote));
+          await delay(POST_TX_REFRESH_DELAY_MS);
+          fetchPaymentTokenBalances();
+          refreshTokenPrices();
+          if (selectedToken) {
+            const interacted = POTIONS.filter(potion => quantities[potion.id] > 0);
+            if (interacted.length > 0) {
+              await Promise.all(
+                interacted.map(potion =>
+                  fetchPotionQuote(potion.id, selectedToken, quantities[potion.id])
+                )
+              );
             }
           }
+          resetAfterAction();
         }
       }
     } catch (error) {
@@ -640,146 +565,62 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     setSellInProgress(true);
 
     try {
-      const quotePotions = async () => {
-        const quotedPotions: { id: string; quote: any; rawReceive: number }[] = [];
-        let hasError = false;
+      const calls: any[] = [];
 
-        for (const potion of POTIONS) {
-          const potionAddress = currentNetworkConfig.tokens.erc20.find(
-            (token: any) => token.name === potion.id
-          )?.address!;
-          const quantity = sellQuantities[potion.id];
+      for (const potion of POTIONS) {
+        const potionAddress = currentNetworkConfig.tokens.erc20.find(
+          (token: any) => token.name === potion.id
+        )?.address!;
+        const quantity = sellQuantities[potion.id];
 
-          if (quantity > 0) {
-            try {
-              const quote = await getSwapQuote(
-                toBaseUnits(quantity),
-                potionAddress,
-                selectedReceiveTokenData.address,
-              );
-              const rawAmount = quote.total / Math.pow(10, selectedReceiveTokenData.decimals || 18);
-              if (rawAmount === 0) {
-                hasError = true;
-                setTokenQuotes(prev => ({
-                  ...prev,
-                  [potion.id]: { amount: '', loading: false, error: 'Insufficient liquidity' }
-                }));
-              } else {
-                const amount = formatAmount(rawAmount);
-                quotedPotions.push({ id: potion.id, quote, rawReceive: rawAmount });
-                setTokenQuotes(prev => ({
-                  ...prev,
-                  [potion.id]: { amount, loading: false, quote }
-                }));
-              }
-            } catch (error: any) {
-              hasError = true;
-              const emsg = (error?.message || '').toLowerCase();
-              const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
-                ? 'Insufficient liquidity'
-                : 'Failed to get quote';
-              setTokenQuotes(prev => ({
-                ...prev,
-                [potion.id]: { amount: '', loading: false, error: msg }
-              }));
-            }
-          }
-        }
-        return { quotedPotions, hasError };
-      };
+        if (quantity > 0) {
+          let quote = tokenQuotes[potion.id].quote;
 
-      const buildCalls = (quotes: { id: string; quote: any }[]) => {
-        const calls: any[] = [];
-
-        for (const potion of POTIONS) {
-          const potionAddress = currentNetworkConfig.tokens.erc20.find(
-            (token: any) => token.name === potion.id
-          )?.address!;
-          const quantity = sellQuantities[potion.id];
-
-          if (quantity > 0) {
-            const quote = quotes.find(q => q.id === potion.id)?.quote;
-            if (quote) {
-              const swapCalls = generateSwapCalls(
-                routerContract,
-                potionAddress,
-                {
-                  tokenAddress: selectedReceiveTokenData.address,
-                  minimumAmount: quantity,
-                  quote: quote
-                }
-              );
-              calls.push(...swapCalls);
-            }
-          }
-        }
-        return calls;
-      };
-
-      const { quotedPotions, hasError } = await quotePotions();
-      if (quotedPotions.length === 0 || hasError) {
-        setSellInProgress(false);
-        return;
-      }
-
-      const attemptSwap = async (quotes: { id: string; quote: any }[]) => {
-        const calls = buildCalls(quotes);
-        if (calls.length === 0) return false;
-        return await executeAction(calls, () => { });
-      };
-
-      let result = await attemptSwap(quotedPotions);
-
-      if (result) {
-        await delay(POST_TX_REFRESH_DELAY_MS);
-        fetchPaymentTokenBalances();
-        refreshTokenPrices();
-        if (selectedReceiveToken) {
-          const interacted = POTIONS.filter(potion => sellQuantities[potion.id] > 0);
-          if (interacted.length > 0) {
-            await Promise.all(
-              interacted.map(potion =>
-                fetchSellQuote(
-                  potion.id,
-                  selectedReceiveToken,
-                  sellQuantities[potion.id]
-                )
-              )
+          if (!quote) {
+            quote = await getSwapQuote(
+              toBaseUnits(quantity),
+              potionAddress,
+              selectedReceiveTokenData.address,
             );
           }
-        }
-        resetAfterAction();
-      } else {
-        // Retry once with fresh quotes and confirmation
-        const { quotedPotions: retryQuotes, hasError: retryError } = await quotePotions();
-        if (retryQuotes.length > 0 && !retryError) {
-          const newReceive = retryQuotes.reduce((sum, q) => sum + q.rawReceive, 0);
-          const proceed = window.confirm(
-            `Price changed. New proceeds: ${formatAmount(newReceive)} ${selectedReceiveToken}. Proceed?`
-          );
-          if (proceed) {
-            const retryResult = await attemptSwap(retryQuotes);
-            if (retryResult) {
-              await delay(POST_TX_REFRESH_DELAY_MS);
-              fetchPaymentTokenBalances();
-              refreshTokenPrices();
-              if (selectedReceiveToken) {
-                const interacted = POTIONS.filter(potion => sellQuantities[potion.id] > 0);
-                if (interacted.length > 0) {
-                  await Promise.all(
-                    interacted.map(potion =>
-                      fetchSellQuote(
-                        potion.id,
-                        selectedReceiveToken,
-                        sellQuantities[potion.id]
-                      )
-                    )
-                  );
-                }
+
+          if (quote) {
+            const swapCalls = generateSwapCalls(
+              routerContract,
+              potionAddress,
+              {
+                tokenAddress: selectedReceiveTokenData.address,
+                minimumAmount: quantity,
+                quote: quote
               }
-              resetAfterAction();
+            );
+            calls.push(...swapCalls);
+          }
+        }
+      }
+
+      if (calls.length > 0) {
+        const result = await executeAction(calls, () => { });
+
+        if (result) {
+          await delay(POST_TX_REFRESH_DELAY_MS);
+          fetchPaymentTokenBalances();
+          refreshTokenPrices();
+          if (selectedReceiveToken) {
+            const interacted = POTIONS.filter(potion => sellQuantities[potion.id] > 0);
+            if (interacted.length > 0) {
+              await Promise.all(
+                interacted.map(potion =>
+                  fetchSellQuote(
+                    potion.id,
+                    selectedReceiveToken,
+                    sellQuantities[potion.id]
+                  )
+                )
+              );
             }
           }
+          resetAfterAction();
         }
       }
     } catch (error) {
