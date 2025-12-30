@@ -92,7 +92,7 @@ const getImpactColor = (impact: number) => {
 
 const formatImpactLabel = (impact?: number) => {
   if (impact === undefined) return '';
-  const arrow = impact < 0 ? '↓' : '↑';
+  const arrow = impact < 0 ? '▼' : '▲';
   return `${arrow} ${(Math.abs(impact) * 100).toFixed(1)}%`;
 };
 
