@@ -85,8 +85,8 @@ const getImpactColor = (impact: number) => {
   // Negative impact means better execution; keep it green regardless of magnitude.
   if (impact < 0) return '#b7f7c8';
   const pct = Math.abs(impact);
-  if (pct >= 0.05) return '#f7b4b4'; // high impact - red tint
-  if (pct >= 0.02) return '#f7e3b4'; // medium impact - amber tint
+  if (pct >= 0.10) return '#f7b4b4'; // high impact - red tint
+  if (pct >= 0.03) return '#f7e3b4'; // medium impact - amber tint
   return '#b7f7c8'; // low impact - green tint
 };
 
