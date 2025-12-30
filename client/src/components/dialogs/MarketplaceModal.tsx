@@ -718,7 +718,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                     <IconButton
                       size="small"
                       sx={styles.refreshButton}
-                      onClick={() => selectedToken && fetchPotionQuote(potion.id, selectedToken, quantities[potion.id] || 1)}
+                      onClick={() => refreshTokenPrices()}
                     >
                       <RefreshIcon sx={{ fontSize: '16px' }} />
                     </IconButton>
@@ -818,7 +818,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                     <IconButton
                       size="small"
                       sx={styles.refreshButton}
-                      onClick={() => selectedReceiveToken && fetchSellQuote(potion.id, selectedReceiveToken, sellQuantities[potion.id] || 1)}
+                      onClick={() => refreshTokenPrices()}
                     >
                       <RefreshIcon sx={{ fontSize: '16px' }} />
                     </IconButton>
