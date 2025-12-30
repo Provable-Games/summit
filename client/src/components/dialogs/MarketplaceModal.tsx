@@ -221,6 +221,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   }, [sellQuantities, tokenQuotes, activeTab]);
 
   const canAfford = selectedTokenData && totalTokenCost <= Number(selectedTokenData.rawBalance);
+  const toBaseUnits = (quantity: number) => BigInt(quantity) * 10n ** 18n;
 
   const fetchPotionQuote = useCallback(
     async (potionId: string, tokenSymbol: string, quantity: number) => {
@@ -251,7 +252,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
       try {
         const quote = await getSwapQuote(
-          -quantity * 1e18,
+          -toBaseUnits(quantity),
           currentNetworkConfig.tokens.erc20.find(token => token.name === potionId)?.address!,
           selectedTokenData.address
         );
@@ -315,7 +316,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
       try {
         const quote = await getSwapQuote(
-          quantity * 1e18,
+          toBaseUnits(quantity),
           potionAddress,
           receiveTokenData.address,
         );
@@ -459,7 +460,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
           if (!quote) {
             quote = await getSwapQuote(
-              -quantity * 1e18,
+              -toBaseUnits(quantity),
               potionAddress,
               selectedTokenData.address
             );
@@ -514,7 +515,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
           if (!quote) {
             quote = await getSwapQuote(
-              quantity * 1e18,
+              toBaseUnits(quantity),
               potionAddress,
               selectedReceiveTokenData.address,
             );
