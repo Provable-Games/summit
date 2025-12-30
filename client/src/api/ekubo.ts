@@ -41,65 +41,101 @@ interface SwapCall {
   calldata: any[];
 }
 
+const inflightQuotes: Record<string, Promise<SwapQuote>> = {};
+let rateLimitUntil = 0;
+
 export const getSwapQuote = async (
   amount: bigint | string,
   token: string,
   otherToken: string
 ): Promise<SwapQuote> => {
-  const maxRetries = 10;
+  const maxRetries = 3;
   const amountParam = typeof amount === "bigint" ? amount.toString() : amount;
+  const cacheKey = `${amountParam}-${token}-${otherToken}`;
 
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const response = await fetch(
-      `https://prod-api-quoter.ekubo.org/23448594291968334/${amountParam}/${token}/${otherToken}`
-    );
-
-    if (!response.ok) {
-      // Avoid hammering on known client-side errors (e.g. 4xx like 429 rate limits).
-      if (response.status >= 400 && response.status < 500) {
-        console.warn(
-          `getSwapQuote: received ${response.status}, skipping retries`
-        );
-        break;
-      }
-      // Allow transient server errors to retry.
-      if (attempt < maxRetries - 1) {
-        await delay(2000);
-        continue;
-      }
-    }
-
-    let data: any;
-    try {
-      data = await response.json();
-    } catch (err) {
-      console.error("getSwapQuote: failed to parse response", err);
-      if (attempt < maxRetries - 1) {
-        await delay(2000);
-        continue;
-      }
-      break;
-    }
-
-    if (data.total_calculated) {
-      return {
-        impact: data?.price_impact || 0,
-        total: data?.total_calculated || 0,
-        splits: data?.splits || [],
-      };
-    }
-
-    // If total_calculated is missing and we still have retries left, wait and retry
-    if (attempt < maxRetries - 1) {
-      await delay(2000);
-    }
+  // Global cooldown after 429s
+  if (Date.now() < rateLimitUntil) {
+    throw new Error("Quoter temporarily rate limited");
   }
 
-  return {
-    impact: 0,
-    total: 0,
-    splits: [],
-  };
+  if (inflightQuotes[cacheKey]) {
+    return inflightQuotes[cacheKey];
+  }
+
+  inflightQuotes[cacheKey] = (async () => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      let response: Response;
+      try {
+        response = await fetch(
+          `https://prod-api-quoter.ekubo.org/23448594291968334/${amountParam}/${token}/${otherToken}`
+        );
+      } catch (err) {
+        // Network/CORS-style failures
+        if (attempt < maxRetries - 1) {
+          await delay(2000);
+          continue;
+        }
+        throw err;
+      }
+
+      if (!response.ok) {
+        // Avoid hammering on known client-side errors (e.g. 4xx like 429).
+        if (response.status === 429) {
+          rateLimitUntil = Date.now() + 60_000;
+          console.warn("getSwapQuote: rate limited (429), backing off 60s");
+          throw new Error("Quoter rate limited");
+        }
+        if (response.status >= 400 && response.status < 500) {
+          console.warn(
+            `getSwapQuote: received ${response.status}, skipping retries`
+          );
+          throw new Error(`Quoter error ${response.status}`);
+        }
+        // Allow transient server errors to retry.
+        if (attempt < maxRetries - 1) {
+          await delay(2000);
+          continue;
+        }
+      }
+
+      let data: any;
+      try {
+        data = await response.json();
+      } catch (err) {
+        console.error("getSwapQuote: failed to parse response", err);
+        if (attempt < maxRetries - 1) {
+          await delay(2000);
+          continue;
+        }
+        throw err;
+      }
+
+      if (data.total_calculated) {
+        return {
+          impact: data?.price_impact || 0,
+          total: data?.total_calculated || 0,
+          splits: data?.splits || [],
+        };
+      }
+
+      // If total_calculated is missing and we still have retries left, wait and retry
+      if (attempt < maxRetries - 1) {
+        await delay(2000);
+      }
+    }
+
+    return {
+      impact: 0,
+      total: 0,
+      splits: [],
+    };
+  })();
+
+  try {
+    return await inflightQuotes[cacheKey];
+  } finally {
+    delete inflightQuotes[cacheKey];
+  }
 };
 
 export const generateSwapCalls = (
