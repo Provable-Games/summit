@@ -283,7 +283,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         }
       } catch (error: any) {
         console.error('Error fetching quote:', error);
-        const msg = (error?.message || '').toLowerCase().includes('insufficient')
+        const emsg = (error?.message || '').toLowerCase();
+        const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
           ? 'Not enough inventory to quote this amount'
           : 'Failed to get quote';
         setTokenQuotes(prev => ({
@@ -355,7 +356,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         }
       } catch (error: any) {
         console.error('Error fetching sell quote:', error);
-        const msg = (error?.message || '').toLowerCase().includes('insufficient')
+        const emsg = (error?.message || '').toLowerCase();
+        const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
           ? 'Not enough inventory to quote this amount'
           : 'Failed to get quote';
         setTokenQuotes(prev => ({

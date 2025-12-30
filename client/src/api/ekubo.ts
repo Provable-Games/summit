@@ -88,16 +88,12 @@ export const getSwapQuote = async (
           );
           throw new Error("Quoter rate limited");
         }
-        if (response.status === 400) {
-          // Likely insufficient liquidity
-          const text = await response.text();
-          throw new Error(text || "Insufficient liquidity");
-        }
         if (response.status >= 400 && response.status < 500) {
+          const text = await response.text();
           console.warn(
             `getSwapQuote: received ${response.status}, skipping retries`
           );
-          throw new Error(`Quoter error ${response.status}`);
+          throw new Error(text || `Quoter error ${response.status}`);
         }
         // Allow transient server errors to retry.
         if (attempt < maxRetries - 1) {
