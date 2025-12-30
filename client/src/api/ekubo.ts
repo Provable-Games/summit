@@ -53,7 +53,33 @@ export const getSwapQuote = async (
     const response = await fetch(
       `https://prod-api-quoter.ekubo.org/23448594291968334/${amountParam}/${token}/${otherToken}`
     );
-    const data = await response.json();
+
+    if (!response.ok) {
+      // Avoid hammering on known client-side errors (e.g. 4xx like 429 rate limits).
+      if (response.status >= 400 && response.status < 500) {
+        console.warn(
+          `getSwapQuote: received ${response.status}, skipping retries`
+        );
+        break;
+      }
+      // Allow transient server errors to retry.
+      if (attempt < maxRetries - 1) {
+        await delay(2000);
+        continue;
+      }
+    }
+
+    let data: any;
+    try {
+      data = await response.json();
+    } catch (err) {
+      console.error("getSwapQuote: failed to parse response", err);
+      if (attempt < maxRetries - 1) {
+        await delay(2000);
+        continue;
+      }
+      break;
+    }
 
     if (data.total_calculated) {
       return {
