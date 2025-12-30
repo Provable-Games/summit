@@ -8,6 +8,7 @@ import {
   SetStateAction,
   useContext,
   useEffect,
+  useCallback,
   useState,
 } from "react";
 import { useDynamicConnector } from "./starknet";
@@ -61,27 +62,27 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     setTop5000Cutoff(result);
   };
 
-  const fetchTokenPrice = async (token: any) => {
+  const fetchTokenPrice = useCallback(async (token: any) => {
     const swap = await getSwapQuote(-1n * 10n ** 18n, token.address, USDC_ADDRESS);
     setTokenPrices((prev) => ({ ...prev, [token.name]: ((swap.total * -1) / 1e18).toFixed(4) }));
-  };
+  }, []);
 
-  const refreshBeastsAlive = () => {
+  const refreshBeastsAlive = useCallback(() => {
     fetchCollectedBeasts();
     fetchAliveBeasts();
-  };
+  }, []);
 
-  const refreshTop5000Cutoff = () => {
+  const refreshTop5000Cutoff = useCallback(() => {
     fetchTop5000Cutoff();
-  };
+  }, []);
 
-  const refreshTokenPrices = async () => {
+  const refreshTokenPrices = useCallback(async () => {
     const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON", "SKULL", "CORPSE"];
 
     for (const tokenName of tokenNames) {
       fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === tokenName));
     }
-  };
+  }, [currentNetworkConfig.tokens.erc20, fetchTokenPrice]);
 
   useEffect(() => {
     refreshBeastsAlive();
