@@ -242,7 +242,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   const canAfford = selectedTokenData && totalTokenCost <= Number(selectedTokenData.rawBalance);
   const toBaseUnits = (quantity: number) => BigInt(quantity) * 10n ** 18n;
-  const POST_TX_REFRESH_DELAY_MS = 9000;
 
   const fetchPotionQuote = useCallback(
     async (potionId: string, tokenSymbol: string, quantity: number) => {
@@ -542,19 +541,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
         if (result) {
           quotedPotions.forEach((q) => applyOptimisticPrice(q.id, q.quote));
-          await delay(POST_TX_REFRESH_DELAY_MS);
           fetchPaymentTokenBalances();
-          refreshTokenPrices();
-          if (selectedToken) {
-            const interacted = POTIONS.filter(potion => quantities[potion.id] > 0);
-            if (interacted.length > 0) {
-              await Promise.all(
-                interacted.map(potion =>
-                  fetchPotionQuote(potion.id, selectedToken, quantities[potion.id])
-                )
-              );
-            }
-          }
           resetAfterAction();
         }
       }
@@ -609,23 +596,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         const result = await executeAction(calls, () => { });
 
         if (result) {
-          await delay(POST_TX_REFRESH_DELAY_MS);
           fetchPaymentTokenBalances();
-          refreshTokenPrices();
-          if (selectedReceiveToken) {
-            const interacted = POTIONS.filter(potion => sellQuantities[potion.id] > 0);
-            if (interacted.length > 0) {
-              await Promise.all(
-                interacted.map(potion =>
-                  fetchSellQuote(
-                    potion.id,
-                    selectedReceiveToken,
-                    sellQuantities[potion.id]
-                  )
-                )
-              );
-            }
-          }
           resetAfterAction();
         }
       }
