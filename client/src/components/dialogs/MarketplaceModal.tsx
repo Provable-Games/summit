@@ -479,7 +479,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     setQuantities({ ...emptyQuantities });
     setSellQuantities({ ...emptyQuantities });
     setTokenQuotes({ ...emptyTokenQuotesState });
-    setOptimisticPrices({});
   };
 
   const applyOptimisticPrice = (potionId: string, quote?: any) => {
