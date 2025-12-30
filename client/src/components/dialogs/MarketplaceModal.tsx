@@ -541,7 +541,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
         if (result) {
           quotedPotions.forEach((q) => applyOptimisticPrice(q.id, q.quote));
-          fetchPaymentTokenBalances();
           resetAfterAction();
         }
       }
@@ -596,7 +595,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         const result = await executeAction(calls, () => { });
 
         if (result) {
-          fetchPaymentTokenBalances();
           resetAfterAction();
         }
       }
