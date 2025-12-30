@@ -799,7 +799,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               const balance = tokenBalances[potionName] || 0;
               const quoteImpact = tokenQuotes[potion.id]?.quote?.price_impact ?? tokenQuotes[potion.id]?.quote?.impact;
               const quoteError = tokenQuotes[potion.id]?.error;
-              const displayImpact = quoteImpact !== undefined ? -quoteImpact : undefined;
+              const displayImpact = quoteImpact;
               return (
                 <Box key={potion.id} sx={styles.potionCard}>
                   <Box sx={styles.potionImage}>
