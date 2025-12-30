@@ -746,7 +746,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                         }}
                       >
                           {tokenQuotes[potion.id]?.error
-                            ? 'Insufficient liquidity'
+                            ? 'insufficient liquidity'
                             : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
                       </Box>
                     ) : null}
@@ -835,7 +835,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                           }}
                         >
                           {quoteError
-                            ? 'Insufficient liquidity'
+                            ? 'insufficient liquidity'
                             : formatImpactLabel(quoteImpact)}
                         </Box>
                       )}
