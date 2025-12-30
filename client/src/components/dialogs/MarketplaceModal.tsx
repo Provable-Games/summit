@@ -81,6 +81,13 @@ const POTIONS: Potion[] = [
   }
 ];
 
+const getImpactColor = (impact: number) => {
+  const pct = Math.abs(impact);
+  if (pct >= 0.05) return '#f7b4b4'; // high impact - red tint
+  if (pct >= 0.02) return '#f7e3b4'; // medium impact - amber tint
+  return '#b7f7c8'; // low impact - green tint
+};
+
 export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { open, close } = props;
   const { currentNetworkConfig } = useDynamicConnector();
@@ -695,9 +702,9 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                 <Box sx={styles.potionInfo}>
                   <Typography sx={styles.potionName}>{potion.name}</Typography>
                   <Typography sx={styles.potionDescription}>{potion.description}</Typography>
-                    <Box sx={styles.potionPrice}>
-                      <Typography sx={styles.priceText}>
-                        {(() => {
+                  <Box sx={styles.potionPrice}>
+                    <Typography sx={styles.priceText}>
+                      {(() => {
                         const priceStr = optimisticPrices[potion.id] ?? tokenPrices[potion.id] ?? undefined;
                         if (priceStr) {
                           return `$${priceStr}`;
@@ -705,6 +712,23 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                         return 'No liquidity';
                       })()}
                     </Typography>
+                    {tokenQuotes[potion.id]?.quote?.price_impact !== undefined && (
+                      <Box
+                        component="span"
+                        sx={{
+                          ml: 1,
+                          px: 0.75,
+                          py: 0.25,
+                          borderRadius: '10px',
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          bgcolor: getImpactColor(tokenQuotes[potion.id].quote.price_impact),
+                          color: '#0d1511',
+                        }}
+                      >
+                        {`${tokenQuotes[potion.id].quote.price_impact > 0 ? '+' : ''}${(tokenQuotes[potion.id].quote.price_impact * 100).toFixed(1)}%`}
+                      </Box>
+                    )}
                   </Box>
                 </Box>
 
