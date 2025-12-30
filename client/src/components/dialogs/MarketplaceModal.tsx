@@ -195,6 +195,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   }, [open]);
 
   useEffect(() => {
+    // Reset quotes/optimistic prices when switching tabs to avoid showing stale data
+    setTokenQuotes({ ...emptyTokenQuotesState });
+    setOptimisticPrices({});
+  }, [activeTab]);
+
+  useEffect(() => {
     if (!open) return;
 
     refreshTokenPrices();
@@ -738,7 +744,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                           py: 0.25,
                           borderRadius: '10px',
                           fontSize: '11px',
-                          fontWeight: 600,
+                          fontWeight: 700,
                           bgcolor: tokenQuotes[potion.id]?.error
                             ? '#f7b4b4'
                             : getImpactColor(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact),
@@ -793,6 +799,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               const balance = tokenBalances[potionName] || 0;
               const quoteImpact = tokenQuotes[potion.id]?.quote?.price_impact ?? tokenQuotes[potion.id]?.quote?.impact;
               const quoteError = tokenQuotes[potion.id]?.error;
+              const displayImpact = quoteImpact !== undefined ? -quoteImpact : undefined;
               return (
                 <Box key={potion.id} sx={styles.potionCard}>
                   <Box sx={styles.potionImage}>
@@ -829,14 +836,14 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                             py: 0.25,
                             borderRadius: '10px',
                             fontSize: '11px',
-                            fontWeight: 600,
-                            bgcolor: quoteError ? '#f7b4b4' : getImpactColor(quoteImpact ?? 0),
+                            fontWeight: 700,
+                            bgcolor: quoteError ? '#f7b4b4' : getImpactColor(displayImpact ?? 0),
                             color: '#0d1511',
                           }}
                         >
                           {quoteError
                             ? 'insufficient liquidity'
-                            : formatImpactLabel(quoteImpact)}
+                            : formatImpactLabel(displayImpact)}
                         </Box>
                       )}
                     </Box>
