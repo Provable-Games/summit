@@ -665,6 +665,9 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         <IconButton onClick={close} sx={styles.closeButton}>
           <CloseIcon />
         </IconButton>
+        <IconButton onClick={refreshTokenPrices} sx={styles.headerRefreshButton}>
+          <RefreshIcon />
+        </IconButton>
 
         <Box sx={styles.header}>
           <Typography sx={styles.title}>MARKETPLACE</Typography>
@@ -715,13 +718,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                         return 'No liquidity';
                       })()}
                     </Typography>
-                    <IconButton
-                      size="small"
-                      sx={styles.refreshButton}
-                      onClick={() => refreshTokenPrices()}
-                    >
-                      <RefreshIcon sx={{ fontSize: '16px' }} />
-                    </IconButton>
                     {tokenQuotes[potion.id]?.quote?.price_impact !== undefined ||
                     tokenQuotes[potion.id]?.quote?.impact !== undefined || tokenQuotes[potion.id]?.error ? (
                       <Box
@@ -815,13 +811,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                         return 'No liquidity';
                       })()}
                     </Typography>
-                    <IconButton
-                      size="small"
-                      sx={styles.refreshButton}
-                      onClick={() => refreshTokenPrices()}
-                    >
-                      <RefreshIcon sx={{ fontSize: '16px' }} />
-                    </IconButton>
                       {(quoteImpact !== undefined || quoteError) && (
                         <Box
                           component="span"
@@ -1171,6 +1160,16 @@ const styles = {
     '&:hover': {
       color: gameColors.red,
       background: 'rgba(255, 0, 0, 0.1)',
+    },
+  },
+  headerRefreshButton: {
+    position: 'absolute',
+    top: '8px',
+    right: '44px',
+    color: gameColors.accentGreen,
+    '&:hover': {
+      color: gameColors.yellow,
+      backgroundColor: `${gameColors.accentGreen}20`,
     },
   },
   header: {
