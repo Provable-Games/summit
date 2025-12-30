@@ -271,7 +271,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           if (rawAmount === 0) {
             setTokenQuotes(prev => ({
               ...prev,
-              [potionId]: { amount: '', loading: false, error: 'No liquidity' }
+              [potionId]: { amount: '', loading: false, error: 'Not enough inventory to quote this amount' }
             }));
           } else {
             const amount = formatAmount(rawAmount);
@@ -281,15 +281,18 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             }));
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching quote:', error);
+        const msg = (error?.message || '').toLowerCase().includes('insufficient')
+          ? 'Not enough inventory to quote this amount'
+          : 'Failed to get quote';
         setTokenQuotes(prev => ({
           ...prev,
-          [potionId]: { amount: '', loading: false, error: 'Failed to get quote' }
+          [potionId]: { amount: '', loading: false, error: msg }
         }));
       }
     },
-    [userTokens]
+    [userTokens, currentNetworkConfig.tokens.erc20]
   );
 
   const fetchSellQuote = useCallback(
@@ -335,7 +338,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           if (rawAmount === 0) {
             setTokenQuotes(prev => ({
               ...prev,
-              [potionId]: { amount: '', loading: false, error: 'No liquidity' }
+              [potionId]: { amount: '', loading: false, error: 'Not enough inventory to quote this amount' }
             }));
           } else {
             const amount = formatAmount(rawAmount);
@@ -350,15 +353,18 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             [potionId]: { amount: '', loading: false, error: 'No quote available' }
           }));
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching sell quote:', error);
+        const msg = (error?.message || '').toLowerCase().includes('insufficient')
+          ? 'Not enough inventory to quote this amount'
+          : 'Failed to get quote';
         setTokenQuotes(prev => ({
           ...prev,
-          [potionId]: { amount: '', loading: false, error: 'Failed to get quote' }
+          [potionId]: { amount: '', loading: false, error: msg }
         }));
       }
     },
-    [userTokens]
+    [userTokens, currentNetworkConfig.tokens.erc20]
   );
 
   const adjustQuantity = (potionId: string, delta: number) => {

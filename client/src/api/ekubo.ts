@@ -3,6 +3,7 @@ import { num } from "starknet";
 
 interface SwapQuote {
   impact: number;
+  price_impact?: number;
   total: number;
   splits: SwapSplit[];
 }
@@ -86,6 +87,11 @@ export const getSwapQuote = async (
             "getSwapQuote: rate limited (429), backing off 60s for all quotes"
           );
           throw new Error("Quoter rate limited");
+        }
+        if (response.status === 400) {
+          // Likely insufficient liquidity
+          const text = await response.text();
+          throw new Error(text || "Insufficient liquidity");
         }
         if (response.status >= 400 && response.status < 500) {
           console.warn(
