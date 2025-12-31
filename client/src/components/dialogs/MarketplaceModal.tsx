@@ -1,5 +1,5 @@
 import ROUTER_ABI from '@/abi/router-abi.json';
-import { generateSwapCalls, getSwapQuote } from '@/api/ekubo';
+import { generateSwapCalls, getSwapQuote, SwapQuote } from '@/api/ekubo';
 import attackPotionImg from '@/assets/images/attack-potion.png';
 import corpseTokenImg from '@/assets/images/corpse-token.png';
 import killTokenImg from '@/assets/images/kill-token.png';
@@ -115,7 +115,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     "CORPSE": 0
   };
 
-  const emptyTokenQuotesState: Record<string, { amount: string; loading: boolean; error?: string; quote?: any }> = {
+  const emptyTokenQuotesState: Record<string, { amount: string; loading: boolean; error?: string; quote?: SwapQuote }> = {
     "ATTACK": { amount: '', loading: false },
     "EXTRA LIFE": { amount: '', loading: false },
     "POISON": { amount: '', loading: false },
@@ -132,7 +132,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const [sellInProgress, setSellInProgress] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [receiveAnchorEl, setReceiveAnchorEl] = useState<null | HTMLElement>(null);
-  const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string; quote?: any }>>(emptyTokenQuotesState);
+  const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string; quote?: SwapQuote }>>(emptyTokenQuotesState);
   const [optimisticPrices, setOptimisticPrices] = useState<Record<string, string>>({});
   const [optimisticPriceTimestamps, setOptimisticPriceTimestamps] = useState<Record<string, number>>({});
 
@@ -508,7 +508,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   const applyOptimisticPrice = (
     potionId: string,
-    quote?: any,
+    quote?: SwapQuote,
     direction: 'buy' | 'sell' = 'buy'
   ) => {
     const impact = quote?.price_impact ?? quote?.impact;

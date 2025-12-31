@@ -1,7 +1,7 @@
 import { delay } from "@/utils/utils";
 import { num } from "starknet";
 
-interface SwapQuote {
+export interface SwapQuote {
   impact: number;
   price_impact?: number;
   total: number;
