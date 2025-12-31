@@ -8,6 +8,7 @@ import {
   SetStateAction,
   useContext,
   useEffect,
+  useCallback,
   useState,
 } from "react";
 import { useDynamicConnector } from "./starknet";
@@ -46,48 +47,54 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   const [top5000Cutoff, setTop5000Cutoff] = useState<Top5000Cutoff | null>(null);
   const [tokenPrices, setTokenPrices] = useState<Record<string, string>>({});
 
-  const fetchCollectedBeasts = async () => {
+  const fetchCollectedBeasts = useCallback(async () => {
     const result = await countRegisteredBeasts();
     setBeastsRegistered(result);
-  };
+  }, [countRegisteredBeasts]);
 
-  const fetchAliveBeasts = async () => {
+  const fetchAliveBeasts = useCallback(async () => {
     const result = await countAliveBeasts();
     setBeastsAlive(result);
-  };
+  }, [countAliveBeasts]);
 
-  const fetchTop5000Cutoff = async () => {
+  const fetchTop5000Cutoff = useCallback(async () => {
     const result = await getTop5000Cutoff();
     setTop5000Cutoff(result);
-  };
+  }, [getTop5000Cutoff]);
 
-  const fetchTokenPrice = async (token: any) => {
-    const swap = await getSwapQuote(-1n * 10n ** 18n, token.address, USDC_ADDRESS);
-    setTokenPrices((prev) => ({ ...prev, [token.name]: ((swap.total * -1) / 1e18).toFixed(4) }));
-  };
+  const fetchTokenPrice = useCallback(async (token: any) => {
+    try {
+      const swap = await getSwapQuote(-1n * 10n ** 18n, token.address, USDC_ADDRESS);
+      setTokenPrices((prev) => ({ ...prev, [token.name]: ((swap.total * -1) / 1e18).toFixed(4) }));
+    } catch (err) {
+      console.warn("refreshTokenPrices: failed to fetch price", token?.name, err);
+    }
+  }, []);
 
-  const refreshBeastsAlive = () => {
+  const refreshBeastsAlive = useCallback(() => {
     fetchCollectedBeasts();
     fetchAliveBeasts();
-  };
+  }, [fetchCollectedBeasts, fetchAliveBeasts]);
 
-  const refreshTop5000Cutoff = () => {
+  const refreshTop5000Cutoff = useCallback(() => {
     fetchTop5000Cutoff();
-  };
+  }, [fetchTop5000Cutoff]);
 
-  const refreshTokenPrices = async () => {
+  const refreshTokenPrices = useCallback(async () => {
     const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON", "SKULL", "CORPSE"];
 
     for (const tokenName of tokenNames) {
-      fetchTokenPrice(currentNetworkConfig.tokens.erc20.find(token => token.name === tokenName));
+      const token = currentNetworkConfig.tokens.erc20.find(token => token.name === tokenName);
+      if (!token) continue;
+      await fetchTokenPrice(token);
     }
-  };
+  }, [currentNetworkConfig.tokens.erc20, fetchTokenPrice]);
 
   useEffect(() => {
     refreshBeastsAlive();
     refreshTop5000Cutoff();
     refreshTokenPrices();
-  }, []);
+  }, [refreshBeastsAlive, refreshTop5000Cutoff, refreshTokenPrices]);
 
   return (
     <StatisticsContext.Provider
