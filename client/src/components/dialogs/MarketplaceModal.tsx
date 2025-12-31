@@ -96,6 +96,7 @@ const formatImpactLabel = (impact?: number) => {
 };
 
 const SLIPPAGE_BPS = 100; // 1%
+const OPTIMISTIC_STALE_MS = 12_000;
 
 export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { open, close } = props;
@@ -133,6 +134,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const [receiveAnchorEl, setReceiveAnchorEl] = useState<null | HTMLElement>(null);
   const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string; quote?: any }>>(emptyTokenQuotesState);
   const [optimisticPrices, setOptimisticPrices] = useState<Record<string, string>>({});
+  const [optimisticPriceTimestamps, setOptimisticPriceTimestamps] = useState<Record<string, number>>({});
 
   const routerContract = useMemo(
     () =>
@@ -199,6 +201,29 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     // Reset quotes/optimistic prices when switching tabs to avoid showing stale data
     setTokenQuotes({ ...emptyTokenQuotesState });
   }, [activeTab]);
+
+  useEffect(() => {
+    // Drop optimistic prices once they've been stale long enough and a fresh price fetch has occurred
+    const now = Date.now();
+    let changed = false;
+    const nextPrices: Record<string, string> = {};
+    const nextTimestamps: Record<string, number> = {};
+
+    Object.entries(optimisticPrices).forEach(([id, price]) => {
+      const ts = optimisticPriceTimestamps[id];
+      if (ts && now - ts < OPTIMISTIC_STALE_MS) {
+        nextPrices[id] = price;
+        nextTimestamps[id] = ts;
+      } else {
+        changed = true;
+      }
+    });
+
+    if (changed) {
+      setOptimisticPrices(nextPrices);
+      setOptimisticPriceTimestamps(nextTimestamps);
+    }
+  }, [tokenPrices, optimisticPrices, optimisticPriceTimestamps]);
 
   useEffect(() => {
     if (!open) return;
@@ -481,7 +506,11 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     setTokenQuotes({ ...emptyTokenQuotesState });
   };
 
-  const applyOptimisticPrice = (potionId: string, quote?: any) => {
+  const applyOptimisticPrice = (
+    potionId: string,
+    quote?: any,
+    direction: 'buy' | 'sell' = 'buy'
+  ) => {
     const impact = quote?.price_impact ?? quote?.impact;
     const base = tokenPrices[potionId];
     if (impact === undefined || base === undefined) return;
@@ -489,10 +518,18 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     const baseNum = parseFloat(base);
     if (isNaN(baseNum)) return;
 
-    const updated = baseNum * (1 + impact);
+    const adjustedImpact = direction === 'sell' ? -impact : impact;
+    const multiplier = 1 + adjustedImpact;
+    if (multiplier <= 0) return;
+
+    const updated = baseNum * multiplier;
     setOptimisticPrices((prev) => ({
       ...prev,
       [potionId]: updated.toFixed(4),
+    }));
+    setOptimisticPriceTimestamps((prev) => ({
+      ...prev,
+      [potionId]: Date.now(),
     }));
   };
 
@@ -539,7 +576,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         let result = await executeAction(calls, () => { });
 
         if (result) {
-          quotedPotions.forEach((q) => applyOptimisticPrice(q.id, q.quote));
+          quotedPotions.forEach((q) => applyOptimisticPrice(q.id, q.quote, 'buy'));
           resetAfterAction();
         }
       }
@@ -599,7 +636,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             if (sellQuantities[potion.id] > 0) {
               const quote = tokenQuotes[potion.id]?.quote;
               if (quote) {
-                applyOptimisticPrice(potion.id, quote);
+                applyOptimisticPrice(potion.id, quote, 'sell');
               }
             }
           });
