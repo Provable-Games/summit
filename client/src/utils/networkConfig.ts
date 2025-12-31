@@ -34,7 +34,7 @@ export const NETWORKS = {
     manifest: manifest_mainnet,
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
-    torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
+    torii: "https://api.cartridge.gg/x/pg-temp/torii,
     subscriptionUrl: "https://api.cartridge.gg/x/summit-6/torii",
     tokens: {
       erc20: [
