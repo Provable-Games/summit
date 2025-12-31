@@ -61,7 +61,10 @@ export const useSystemCalls = () => {
     try {
       const receipt: any = await account!.waitForTransaction(
         txHash,
-        { retryInterval: 500, successStates: ["PRE_CONFIRMED", "ACCEPTED_ON_L2", "ACCEPTED_ON_L1"] }
+        {
+          retryInterval: 500,
+          successStates: ["PRE_CONFIRMED", "ACCEPTED_ON_L2", "ACCEPTED_ON_L1"],
+        }
       );
 
       return receipt;
