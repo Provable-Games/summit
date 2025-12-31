@@ -83,14 +83,15 @@ const ProfileCard = () => {
   }
 
   if (!address) {
-    return <>
+    return <Box sx={styles.container}>
       <Button sx={styles.connectButton} onClick={() => connect({ connector: cartridgeConnector })} size='large' startIcon={<SportsEsportsIcon htmlColor='white' />}>
         <Typography sx={styles.connectButtonText}>
           CONNECT WALLET
         </Typography>
       </Button>
+
       {RenderMarketplace()}
-    </>
+    </Box>
   }
 
   return (
@@ -195,6 +196,7 @@ const styles = {
     border: `1px solid ${gameColors.accentGreen}60`,
     borderRadius: '20px',
     padding: '8px 16px',
+    mb: 1,
     transition: 'all 0.2s ease',
     '&:hover': {
       background: `${gameColors.mediumGreen}`,

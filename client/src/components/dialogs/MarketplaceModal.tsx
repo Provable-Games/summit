@@ -706,7 +706,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         <IconButton onClick={close} sx={styles.closeButton}>
           <CloseIcon />
         </IconButton>
-        <IconButton onClick={refreshTokenPrices} sx={styles.headerRefreshButton}>
+        <IconButton onClick={() => refreshTokenPrices()} sx={styles.headerRefreshButton}>
           <RefreshIcon />
         </IconButton>
 
@@ -760,7 +760,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       })()}
                     </Typography>
                     {tokenQuotes[potion.id]?.quote?.price_impact !== undefined ||
-                    tokenQuotes[potion.id]?.quote?.impact !== undefined || tokenQuotes[potion.id]?.error ? (
+                      tokenQuotes[potion.id]?.quote?.impact !== undefined || tokenQuotes[potion.id]?.error ? (
                       <Box
                         component="span"
                         sx={{
@@ -775,10 +775,10 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                             : getImpactColor(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact),
                           color: '#0d1511',
                         }}
-                        >
-                          {tokenQuotes[potion.id]?.error
-                            ? 'insufficient liquidity'
-                            : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
+                      >
+                        {tokenQuotes[potion.id]?.error
+                          ? 'insufficient liquidity'
+                          : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
                       </Box>
                     ) : null}
                   </Box>
@@ -843,15 +843,15 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       Balance: {formatAmount(balance)}
                     </Typography>
                     <Box sx={styles.potionPrice}>
-                    <Typography sx={styles.priceText}>
-                      {(() => {
-                        const priceStr = optimisticPrices[potion.id] ?? tokenPrices[potion.id] ?? undefined;
-                        if (priceStr) {
-                          return `$${priceStr}`;
-                        }
-                        return 'No liquidity';
-                      })()}
-                    </Typography>
+                      <Typography sx={styles.priceText}>
+                        {(() => {
+                          const priceStr = optimisticPrices[potion.id] ?? tokenPrices[potion.id] ?? undefined;
+                          if (priceStr) {
+                            return `$${priceStr}`;
+                          }
+                          return 'No liquidity';
+                        })()}
+                      </Typography>
                       {(quoteImpact !== undefined || quoteError) && (
                         <Box
                           component="span"
