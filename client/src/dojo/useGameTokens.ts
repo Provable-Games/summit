@@ -3,12 +3,13 @@ import { Top5000Cutoff } from "@/contexts/Statistics";
 import { Beast } from "@/types/game";
 import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime, getEntityHash } from "@/utils/beasts";
+import { useCallback } from "react";
 import { addAddressPadding } from "starknet";
 
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
-  const getBeastCollection = async (accountAddress: string) => {
+  const getBeastCollection = useCallback(async (accountAddress: string) => {
     const contractAddress = currentNetworkConfig.beasts;
 
     // Step 1: Get token balances with hex IDs (fast query using index)
@@ -241,9 +242,9 @@ export const useGameTokens = () => {
     }).filter(Boolean) as Beast[];
 
     return beasts
-  }
+  }, [currentNetworkConfig]);
 
-  const getDungeonStats = async (specialHashes: string[]) => {
+  const getDungeonStats = useCallback(async (specialHashes: string[]) => {
     if (!specialHashes || specialHashes.length === 0) {
       return [];
     }
@@ -309,9 +310,9 @@ export const useGameTokens = () => {
       console.error("Error getting dungeon stats:", error);
       return [];
     }
-  }
+  }, [currentNetworkConfig]);
 
-  const countAliveBeasts = async () => {
+  const countAliveBeasts = useCallback(async () => {
     let q = `
       SELECT COUNT(DISTINCT attacking_beast_id) as count
       FROM "summit_relayer_3-BattleEvent"
@@ -334,9 +335,9 @@ export const useGameTokens = () => {
       console.error("Error counting beasts:", error);
       return 0;
     }
-  }
+  }, [currentNetworkConfig]);
 
-  const countRegisteredBeasts = async () => {
+  const countRegisteredBeasts = useCallback(async () => {
     let q = `
       SELECT COUNT(*) as count
       FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
@@ -357,9 +358,9 @@ export const useGameTokens = () => {
       console.error("Error counting beasts:", error);
       return 0;
     }
-  }
+  }, [currentNetworkConfig]);
 
-  const getLeaderboard = async () => {
+  const getLeaderboard = useCallback(async () => {
     // Fetch all rewards (within time window) and aggregate in JS since
     // the amount column is now stored as a hex string.
     const q = `
@@ -444,11 +445,9 @@ export const useGameTokens = () => {
       console.error("Error getting big five:", error);
       return [];
     }
-  }
+  }, [currentNetworkConfig]);
 
-
-
-  const getValidAdventurers = async (adventurerIds: number[]) => {
+  const getValidAdventurers = useCallback(async (adventurerIds: number[]) => {
     let q = `
       SELECT adventurer_id
       FROM "summit_relayer_3-CorpseEvent"
@@ -462,9 +461,9 @@ export const useGameTokens = () => {
 
     let data = await sql.json()
     return adventurerIds.filter((id: number) => !data.some((row: any) => parseInt(row.adventurer_id, 16) === id))
-  }
+  }, [currentNetworkConfig]);
 
-  const getTop5000Cutoff = async (): Promise<Top5000Cutoff | null> => {
+  const getTop5000Cutoff = useCallback(async (): Promise<Top5000Cutoff | null> => {
     try {
       // Query 1: Get blocks_held sorted DESC (fast, no joins)
       const statsQuery = `
@@ -508,9 +507,9 @@ export const useGameTokens = () => {
       console.error("Error getting top 5000 cutoff:", error);
       return null;
     }
-  }
+  }, [currentNetworkConfig]);
 
-  const countBeastsWithBlocksHeld = async () => {
+  const countBeastsWithBlocksHeld = useCallback(async () => {
     const q = `
       SELECT COUNT(*) as count
       FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
@@ -530,9 +529,9 @@ export const useGameTokens = () => {
       console.error("Error counting beasts with blocks_held:", error);
       return 0;
     }
-  };
+  }, [currentNetworkConfig]);
 
-  const getTopBeastsByBlocksHeld = async (limit: number, offset: number) => {
+  const getTopBeastsByBlocksHeld = useCallback(async (limit: number, offset: number) => {
     try {
       const q = `
         SELECT 
@@ -562,9 +561,9 @@ export const useGameTokens = () => {
       console.error("Error getting top beasts by blocks_held:", error);
       return [];
     }
-  }
+  }, [currentNetworkConfig]);
 
-  const getDiplomacy = async (beast: Beast) => {
+  const getDiplomacy = useCallback(async (beast: Beast) => {
     let q = `
       SELECT total_power, beast_token_ids
       FROM "${currentNetworkConfig.namespace}-DiplomacyEvent"
@@ -591,7 +590,7 @@ export const useGameTokens = () => {
         beast_token_ids: [],
       }
     }
-  }
+  }, [currentNetworkConfig]);
 
   return {
     getBeastCollection,

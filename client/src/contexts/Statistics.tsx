@@ -94,8 +94,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     refreshBeastsAlive();
     refreshTop5000Cutoff();
     refreshTokenPrices();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [refreshBeastsAlive, refreshTop5000Cutoff, refreshTokenPrices]);
 
   return (
     <StatisticsContext.Provider
