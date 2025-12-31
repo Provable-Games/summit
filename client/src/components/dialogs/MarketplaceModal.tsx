@@ -97,6 +97,29 @@ const formatImpactLabel = (impact?: number) => {
 
 const SLIPPAGE_BPS = 100; // 1%
 const OPTIMISTIC_STALE_MS = 12_000;
+const MAX_QUANTITY = 1_000_000;
+
+const EMPTY_QUANTITIES: Record<string, number> = {
+  "ATTACK": 0,
+  "EXTRA LIFE": 0,
+  "POISON": 0,
+  "REVIVE": 0,
+  "SKULL": 0,
+  "CORPSE": 0
+};
+
+const createEmptyQuantities = () => ({ ...EMPTY_QUANTITIES });
+
+const EMPTY_TOKEN_QUOTES_STATE: Record<string, { amount: string; loading: boolean; error?: string; quote?: SwapQuote }> = {
+  "ATTACK": { amount: '', loading: false },
+  "EXTRA LIFE": { amount: '', loading: false },
+  "POISON": { amount: '', loading: false },
+  "REVIVE": { amount: '', loading: false },
+  "SKULL": { amount: '', loading: false },
+  "CORPSE": { amount: '', loading: false }
+};
+
+const createEmptyTokenQuotesState = () => ({ ...EMPTY_TOKEN_QUOTES_STATE });
 
 export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { open, close } = props;
@@ -106,33 +129,15 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { provider } = useProvider();
   const { executeAction } = useSystemCalls();
   const [activeTab, setActiveTab] = useState(0);
-  const emptyQuantities: Record<string, number> = {
-    "ATTACK": 0,
-    "EXTRA LIFE": 0,
-    "POISON": 0,
-    "REVIVE": 0,
-    "SKULL": 0,
-    "CORPSE": 0
-  };
-
-  const emptyTokenQuotesState: Record<string, { amount: string; loading: boolean; error?: string; quote?: SwapQuote }> = {
-    "ATTACK": { amount: '', loading: false },
-    "EXTRA LIFE": { amount: '', loading: false },
-    "POISON": { amount: '', loading: false },
-    "REVIVE": { amount: '', loading: false },
-    "SKULL": { amount: '', loading: false },
-    "CORPSE": { amount: '', loading: false }
-  };
-
-  const [quantities, setQuantities] = useState<Record<string, number>>(emptyQuantities);
-  const [sellQuantities, setSellQuantities] = useState<Record<string, number>>(emptyQuantities);
+  const [quantities, setQuantities] = useState<Record<string, number>>(createEmptyQuantities());
+  const [sellQuantities, setSellQuantities] = useState<Record<string, number>>(createEmptyQuantities());
   const [selectedToken, setSelectedToken] = useState<string>('');
   const [selectedReceiveToken, setSelectedReceiveToken] = useState<string>('');
   const [purchaseInProgress, setPurchaseInProgress] = useState(false);
   const [sellInProgress, setSellInProgress] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [receiveAnchorEl, setReceiveAnchorEl] = useState<null | HTMLElement>(null);
-  const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string; quote?: SwapQuote }>>(emptyTokenQuotesState);
+  const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string; quote?: SwapQuote }>>(createEmptyTokenQuotesState());
   const [optimisticPrices, setOptimisticPrices] = useState<Record<string, string>>({});
   const [optimisticPriceTimestamps, setOptimisticPriceTimestamps] = useState<Record<string, number>>({});
 
@@ -179,12 +184,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       fetchPaymentTokenBalances();
       refreshTokenPrices();
 
-      setQuantities({
-        ...emptyQuantities
-      });
-      setSellQuantities({
-        ...emptyQuantities
-      });
+      setQuantities(createEmptyQuantities());
+      setSellQuantities(createEmptyQuantities());
 
       if (userTokens.length > 0) {
         if (!selectedToken) {
@@ -199,7 +200,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   useEffect(() => {
     // Reset quotes/optimistic prices when switching tabs to avoid showing stale data
-    setTokenQuotes({ ...emptyTokenQuotesState });
+    setTokenQuotes(createEmptyTokenQuotesState());
   }, [activeTab]);
 
   useEffect(() => {
@@ -409,7 +410,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   const adjustQuantity = (potionId: string, delta: number) => {
     setQuantities(prev => {
-      const newQuantity = Math.max(0, prev[potionId] + delta);
+      const newQuantity = Math.min(MAX_QUANTITY, Math.max(0, prev[potionId] + delta));
 
       if (activeTab === 0 && selectedToken) {
         fetchPotionQuote(potionId, selectedToken, newQuantity);
@@ -427,7 +428,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     const num = raw === '' ? 0 : parseInt(raw, 10);
 
     setQuantities(prev => {
-      const newQuantity = Math.max(0, isNaN(num) ? 0 : num);
+      const newQuantity = Math.min(MAX_QUANTITY, Math.max(0, isNaN(num) ? 0 : num));
 
       if (activeTab === 0 && selectedToken) {
         fetchPotionQuote(potionId, selectedToken, newQuantity);
@@ -443,7 +444,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const adjustSellQuantity = (potionId: string, delta: number) => {
     const balance = tokenBalances[potionId] || 0;
     setSellQuantities(prev => {
-      const newQuantity = Math.max(0, Math.min(balance, prev[potionId] + delta));
+      const newQuantity = Math.max(0, Math.min(balance, Math.min(MAX_QUANTITY, prev[potionId] + delta)));
 
       if (activeTab === 1 && selectedReceiveToken) {
         fetchSellQuote(potionId, selectedReceiveToken, newQuantity);
@@ -461,7 +462,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     const num = raw === '' ? 0 : parseInt(raw, 10);
     const balance = tokenBalances[potionId] || 0;
     setSellQuantities(prev => {
-      const newQuantity = Math.max(0, Math.min(balance, isNaN(num) ? 0 : num));
+      const newQuantity = Math.max(0, Math.min(balance, Math.min(MAX_QUANTITY, isNaN(num) ? 0 : num)));
 
       if (activeTab === 1 && selectedReceiveToken) {
         fetchSellQuote(potionId, selectedReceiveToken, newQuantity);
@@ -501,9 +502,9 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   };
 
   const resetAfterAction = () => {
-    setQuantities({ ...emptyQuantities });
-    setSellQuantities({ ...emptyQuantities });
-    setTokenQuotes({ ...emptyTokenQuotesState });
+    setQuantities(createEmptyQuantities());
+    setSellQuantities(createEmptyQuantities());
+    setTokenQuotes(createEmptyTokenQuotesState());
   };
 
   const applyOptimisticPrice = (

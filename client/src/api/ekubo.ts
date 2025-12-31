@@ -44,6 +44,7 @@ interface SwapCall {
 
 const inflightQuotes: Record<string, Promise<SwapQuote>> = {};
 let rateLimitUntil = 0;
+const RATE_LIMIT_COOLDOWN_MS = 60_000;
 
 const applySlippage = (value: bigint, slippageBps: number) => {
   const basis = 10_000n;
@@ -88,7 +89,7 @@ export const getSwapQuote = async (
       if (!response.ok) {
         // Avoid hammering on known client-side errors (e.g. 4xx like 429).
         if (response.status === 429) {
-          rateLimitUntil = Date.now() + 60_000;
+          rateLimitUntil = Date.now() + RATE_LIMIT_COOLDOWN_MS;
           console.warn(
             "getSwapQuote: rate limited (429), backing off 60s for all quotes"
           );
