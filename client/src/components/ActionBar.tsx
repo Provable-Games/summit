@@ -218,7 +218,7 @@ function ActionBar() {
     let myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
 
     if (myBeast) {
-      if (extraLifeStrategy === 'aggressive' && myBeast.extra_lives > 0 && myBeast.extra_lives < extraLifeReplenishTo) {
+      if (extraLifeStrategy === 'aggressive' && myBeast.extra_lives >= 0 && myBeast.extra_lives < extraLifeReplenishTo) {
         let extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeReplenishTo - myBeast.extra_lives);
         if (extraLifePotions > 0) {
           handleApplyExtraLife(extraLifePotions);
