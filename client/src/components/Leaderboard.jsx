@@ -79,7 +79,7 @@ function Leaderboard() {
     }
 
     fetchLeaderboard()
-  }, [summit?.beast?.token_id, summit?.owner])
+  }, [summit?.beast?.token_id])
 
   // Calculate summit owner's live score and rank
   useEffect(() => {
@@ -111,7 +111,14 @@ function Leaderboard() {
   }, [summit, currentBlock, leaderboard])
 
   const formatRewards = (rewards) => {
-    return rewards.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    const n = Number(rewards ?? 0);
+    const fractional = Math.abs(n % 1);
+    const hasNonZeroDecimal = fractional > 1e-9;
+
+    return n.toLocaleString(undefined, {
+      minimumFractionDigits: hasNonZeroDecimal ? 1 : 0,
+      maximumFractionDigits: 1,
+    });
   }
 
   const PlayerRow = ({ player, index, cartridgeName }) => {

@@ -377,7 +377,7 @@ export const useGameTokens = () => {
       let data = await sql.json()
       return data.length > 0 ? data.map((row: any) => ({
         owner: row.owner,
-        amount: row.amount / 1000,
+        amount: row.amount / 10000,
       })) : []
     } catch (error) {
       console.error("Error getting big five:", error);

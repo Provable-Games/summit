@@ -6,12 +6,14 @@ import {
   calculateMaxAttackPotions, calculateOptimalAttackPotions, getBeastCurrentHealth,
   getBeastRevivalTime, isBeastInTop5000, isBeastLocked
 } from '@/utils/beasts';
+import AddIcon from '@mui/icons-material/Add';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
+import RemoveIcon from '@mui/icons-material/Remove';
 import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
-import { Box, Link, Popover, TextField, Tooltip, Typography } from "@mui/material";
+import { Box, IconButton, Link, Popover, TextField, Tooltip, Typography } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -44,6 +46,18 @@ function BeastCollection() {
   const [attackSettingsBeastId, setAttackSettingsBeastId] = useState<number | null>(null)
   const [attackSettingsAnchorEl, setAttackSettingsAnchorEl] = useState<HTMLElement | null>(null)
   const [potionSettingsAnchorEl, setPotionSettingsAnchorEl] = useState<HTMLElement | null>(null)
+
+  const MAX_ATTACKS_PER_BEAST = 255;
+  const clampAttacks = (value: number) => Math.max(1, Math.min(MAX_ATTACKS_PER_BEAST, value));
+
+  const setBeastAttacks = useCallback((beastId: number, nextAttacks: number) => {
+    const next = clampAttacks(nextAttacks);
+    setSelectedBeasts((prev) =>
+      prev.map((selection) =>
+        selection[0].token_id === beastId ? [selection[0], next, selection[2]] : selection
+      )
+    );
+  }, [setSelectedBeasts]);
 
   const isStrongAgainst = (attackerType: string, defenderType: string): boolean => {
     return (
@@ -612,21 +626,40 @@ function BeastCollection() {
           <Box sx={styles.settingsPopover}>
             <Box sx={styles.settingsPopoverBody}>
               {(() => {
+                const rawAttacks = selectedBeasts.find(selection => selection[0].token_id === attackSettingsBeastId)?.[1];
+                const currentAttacks = clampAttacks(Number(rawAttacks) || 1);
                 return (
                   <Box sx={styles.popRow}>
                     <Typography sx={styles.popLabel}>Number of attacks</Typography>
-                    <TextField
-                      size="small"
-                      type="text"
-                      value={selectedBeasts.find(selection => selection[0].token_id === attackSettingsBeastId)?.[1]}
-                      onChange={(e) => {
-                        let next = parseInt(e.target.value, 10);
-                        if (isNaN(next)) next = 1;
-                        next = Math.max(1, next);
-                        setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], next, selection[2]] : selection));
-                      }}
-                      sx={styles.popInput}
-                    />
+                    <Box sx={styles.popStepperRow}>
+                      <IconButton
+                        size="small"
+                        disabled={currentAttacks <= 1}
+                        onClick={() => setBeastAttacks(attackSettingsBeastId, currentAttacks - 1)}
+                        sx={styles.popStepperButton}
+                      >
+                        <RemoveIcon sx={styles.popStepperIcon} />
+                      </IconButton>
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={currentAttacks}
+                        onChange={(e) => {
+                          const next = clampAttacks(parseInt(e.target.value, 10) || 1);
+                          setBeastAttacks(attackSettingsBeastId, next);
+                        }}
+                        inputProps={{ min: 1, max: MAX_ATTACKS_PER_BEAST, step: 1 }}
+                        sx={[styles.popInput, styles.popStepperInput]}
+                      />
+                      <IconButton
+                        size="small"
+                        disabled={currentAttacks >= MAX_ATTACKS_PER_BEAST}
+                        onClick={() => setBeastAttacks(attackSettingsBeastId, currentAttacks + 1)}
+                        sx={styles.popStepperButton}
+                      >
+                        <AddIcon sx={styles.popStepperIcon} />
+                      </IconButton>
+                    </Box>
                   </Box>
                 );
               })()}
@@ -1359,6 +1392,40 @@ const styles = {
       fontSize: '14px',
       fontWeight: 800,
       padding: '6px 8px',
+    },
+  },
+  popStepperRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  popStepperButton: {
+    width: '30px',
+    height: '30px',
+    borderRadius: '8px',
+    border: `1px solid ${gameColors.accentGreen}35`,
+    background: `${gameColors.darkGreen}B0`,
+    color: '#FFF',
+    '&:hover': {
+      border: `1px solid ${gameColors.accentGreen}70`,
+      background: `${gameColors.darkGreen}CC`,
+    },
+    '&.Mui-disabled': {
+      opacity: 0.45,
+    },
+  },
+  popStepperIcon: {
+    fontSize: '18px',
+  },
+  popStepperInput: {
+    width: '90px',
+    '& input': {
+      textAlign: 'center',
+      MozAppearance: 'textfield',
+    },
+    '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': {
+      WebkitAppearance: 'none',
+      margin: 0,
     },
   },
   popToggleGroup: {

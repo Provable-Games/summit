@@ -23,6 +23,7 @@ pub trait ISummitSystem<T> {
     fn add_beast_to_leaderboard(ref self: T, beast_token_id: u32, position: u32);
     fn distribute_beast_tokens(ref self: T, limit: u32);
 
+    fn set_summit_reward(ref self: T, amount: u128);
     fn set_start_timestamp(ref self: T, start_timestamp: u64);
     fn set_event_address(ref self: T, event_address: ContractAddress);
     fn set_attack_potion_address(ref self: T, attack_potion_address: ContractAddress);
@@ -442,6 +443,11 @@ pub mod summit_systems {
             }
 
             self.beast_tokens_distributed.write(current_position);
+        }
+
+        fn set_summit_reward(ref self: ContractState, amount: u128) {
+            self.ownable.assert_only_owner();
+            self.summit_reward_amount.write(amount);
         }
 
         fn set_start_timestamp(ref self: ContractState, start_timestamp: u64) {
