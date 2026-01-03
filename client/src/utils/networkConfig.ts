@@ -27,6 +27,16 @@ export enum ChainId {
   WP_PG_SLOT = "WP_PG_SLOT",
 }
 
+export const TOKEN_ADDRESS = {
+  ATTACK: "0x63eb1e13f9a5e237aa8b4a4b649db577a67641217ab9eb7cbbfd837bc4a11ee",
+  REVIVE: "0x2c90c8bfc60cbab2064fcd271039d633c7f30a0544f5727bbb06767d35bd3c0",
+  EXTRA_LIFE: "0x7fdef6a5d5376d346eb1d830ad28aead5bdc1f02e53c7fb4584a17288f4b20d",
+  POISON: "0x7664d9c661c2d794d0d227369821088b21003e8fd9bd8885b39b6a769be4f43",
+  SKULL: "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a",
+  CORPSE: "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105",
+  SURVIVOR: "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
+}
+
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
@@ -46,38 +56,32 @@ export const NETWORKS = {
         // },
         {
           name: "ATTACK",
-          address:
-            "0x63eb1e13f9a5e237aa8b4a4b649db577a67641217ab9eb7cbbfd837bc4a11ee",
+          address: TOKEN_ADDRESS.ATTACK,
           displayDecimals: 0,
         },
         {
           name: "REVIVE",
-          address:
-            "0x2c90c8bfc60cbab2064fcd271039d633c7f30a0544f5727bbb06767d35bd3c0",
+          address: TOKEN_ADDRESS.REVIVE,
           displayDecimals: 0,
         },
         {
           name: "EXTRA LIFE",
-          address:
-            "0x7fdef6a5d5376d346eb1d830ad28aead5bdc1f02e53c7fb4584a17288f4b20d",
+          address: TOKEN_ADDRESS.EXTRA_LIFE,
           displayDecimals: 0,
         },
         {
           name: "POISON",
-          address:
-            "0x7664d9c661c2d794d0d227369821088b21003e8fd9bd8885b39b6a769be4f43",
+          address: TOKEN_ADDRESS.POISON,
           displayDecimals: 0,
         },
         {
           name: "SKULL",
-          address:
-            "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a",
+          address: TOKEN_ADDRESS.SKULL,
           displayDecimals: 0,
         },
         {
           name: "CORPSE",
-          address:
-            "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105",
+          address: TOKEN_ADDRESS.CORPSE,
           displayDecimals: 0,
         }
       ],
@@ -99,38 +103,32 @@ export const NETWORKS = {
       },
       {
         name: "ATTACK",
-        address:
-          "0x63eb1e13f9a5e237aa8b4a4b649db577a67641217ab9eb7cbbfd837bc4a11ee",
+        address: TOKEN_ADDRESS.ATTACK,
         displayDecimals: 0,
       },
       {
         name: "REVIVE",
-        address:
-          "0x2c90c8bfc60cbab2064fcd271039d633c7f30a0544f5727bbb06767d35bd3c0",
+        address: TOKEN_ADDRESS.REVIVE,
         displayDecimals: 0,
       },
       {
         name: "EXTRA LIFE",
-        address:
-          "0x7fdef6a5d5376d346eb1d830ad28aead5bdc1f02e53c7fb4584a17288f4b20d",
+        address: TOKEN_ADDRESS.EXTRA_LIFE,
         displayDecimals: 0,
       },
       {
         name: "POISON",
-        address:
-          "0x7664d9c661c2d794d0d227369821088b21003e8fd9bd8885b39b6a769be4f43",
+        address: TOKEN_ADDRESS.POISON,
         displayDecimals: 0,
       },
       {
         name: "SKULL",
-        address:
-          "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a",
+        address: TOKEN_ADDRESS.SKULL,
         displayDecimals: 0,
       },
       {
         name: "CORPSE",
-        address:
-          "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105",
+        address: TOKEN_ADDRESS.CORPSE,
         displayDecimals: 0,
       }
       // {
@@ -216,7 +214,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           },
         ]
       },
-      "0x63eb1e13f9a5e237aa8b4a4b649db577a67641217ab9eb7cbbfd837bc4a11ee": {
+      [TOKEN_ADDRESS.ATTACK]: {
         "name": "Attack Potion",
         "description": "ERC 20 token for Attack Potion",
         "methods": [
@@ -229,7 +227,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x2c90c8bfc60cbab2064fcd271039d633c7f30a0544f5727bbb06767d35bd3c0": {
+      [TOKEN_ADDRESS.REVIVE]: {
         "name": "Revive Potion",
         "description": "ERC 20 token for Revive Potion",
         "methods": [
@@ -242,7 +240,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x7fdef6a5d5376d346eb1d830ad28aead5bdc1f02e53c7fb4584a17288f4b20d": {
+      [TOKEN_ADDRESS.EXTRA_LIFE]: {
         "name": "Extra Life Potion",
         "description": "ERC 20 token for Extra Life Potion",
         "methods": [
@@ -255,7 +253,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x7664d9c661c2d794d0d227369821088b21003e8fd9bd8885b39b6a769be4f43": {
+      [TOKEN_ADDRESS.POISON]: {
         "name": "Poison Potion",
         "description": "ERC 20 token for Poison Potion",
         "methods": [
@@ -268,7 +266,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x056747f477c306759134c89ed8fb9c477ca96a229e6c0fd2b44731878f58e66d": {
+      [TOKEN_ADDRESS.SKULL]: {
         "name": "Skull Token",
         "description": "ERC 20 token for Skull Token",
         "methods": [
@@ -286,7 +284,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x0773fc83a286a1a05131012d97c1e5970a930b5862641d750510959a7b8cb290": {
+      [TOKEN_ADDRESS.CORPSE]: {
         "name": "Corpse Token",
         "description": "ERC 20 token for Corpse Token",
         "methods": [

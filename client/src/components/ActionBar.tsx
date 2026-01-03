@@ -252,7 +252,7 @@ function ActionBar() {
 
       let totalSummitHealth = ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health;
       let totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
-      if (totalEstimatedDamage < (totalSummitHealth * 1.2)) {
+      if (totalEstimatedDamage < (totalSummitHealth * 1.1)) {
         return;
       }
 
