@@ -114,7 +114,7 @@ export default function RewardsRemainingBar({
     return (
       <Box sx={compactStyles.container}>
         <Box sx={compactStyles.headerRow}>
-          <Typography sx={compactStyles.title}>SURVIVOR REMAINING</Typography>
+          <Typography sx={compactStyles.title}>REWARDS REMAINING</Typography>
           <Typography sx={compactStyles.percent}>{percentText}</Typography>
         </Box>
         <Box sx={[compactStyles.barContainer, borderPulseFx]}>
@@ -133,7 +133,7 @@ export default function RewardsRemainingBar({
     <Box sx={panelStyles.container}>
       <Box sx={panelStyles.valueRow}>
         <Typography sx={panelStyles.value}>
-          SURVIVOR REMAINING
+          REWARDS REMAINING
         </Typography>
         <Typography sx={panelStyles.subtle}>{percentText}</Typography>
       </Box>
