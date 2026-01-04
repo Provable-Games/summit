@@ -1,7 +1,7 @@
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
-import { Badge, Box, Button, IconButton, Menu, MenuItem, Typography } from '@mui/material';
+import { Badge, Box, Button, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import ClaimCorpseReward from './dialogs/ClaimCorpseReward';
@@ -107,9 +107,13 @@ const ClaimRewardsButton = () => {
                 <Typography sx={styles.menuItemTitle}>Skulls</Typography>
                 <Typography sx={styles.menuItemSubtitle}>{unclaimedSkullTokens} available</Typography>
               </Box>
-              <Button sx={styles.claimButton} onClick={handleClaimSkullReward}>
-                <Typography sx={styles.claimButtonText}>CLAIM</Typography>
-              </Button>
+              <Tooltip title={<Box sx={styles.tooltip}>Coming Soon</Box>}>
+                <span>
+                  <Button disabled sx={[styles.claimButton, { opacity: 0.5 }]} onClick={handleClaimSkullReward}>
+                    <Typography sx={styles.claimButtonText}>CLAIM</Typography>
+                  </Button>
+                </span>
+              </Tooltip>
             </Box>
           </MenuItem>
         )}
@@ -121,9 +125,13 @@ const ClaimRewardsButton = () => {
                 <Typography sx={styles.menuItemTitle}>Corpse Token</Typography>
                 <Typography sx={styles.menuItemSubtitle}>{unclaimedCorpseTokens} available</Typography>
               </Box>
-              <Button sx={styles.claimButton} onClick={handleClaimCorpseReward}>
-                <Typography sx={styles.claimButtonText}>CLAIM</Typography>
-              </Button>
+              <Tooltip title={<Box sx={styles.tooltip}>Coming Soon</Box>}>
+                <span>
+                  <Button disabled sx={[styles.claimButton, { opacity: 0.5 }]} onClick={handleClaimCorpseReward}>
+                    <Typography sx={styles.claimButtonText}>CLAIM</Typography>
+                  </Button>
+                </span>
+              </Tooltip>
             </Box>
           </MenuItem>
         )}
@@ -247,5 +255,12 @@ const styles = {
     fontWeight: 'bold',
     textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
     textTransform: 'uppercase',
+  },
+  tooltip: {
+    background: `${gameColors.darkGreen}`,
+    padding: '4px 8px',
+    borderRadius: '4px',
+    border: `1px solid ${gameColors.accentGreen}60`,
+    color: '#ffedbb',
   },
 };
