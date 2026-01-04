@@ -475,9 +475,11 @@ function ActionBar() {
               <Box sx={[
                 styles.potionButton,
                 enablePoisonPotion && styles.potionButtonActive,
-                appliedPoisonCount > 0 && styles.potionButtonApplied
+                appliedPoisonCount > 0 && styles.potionButtonApplied,
+                { opacity: 0.5, cursor: 'not-allowed' } // TEMP: Disabled
               ]}
                 onClick={(event) => {
+                  return; // TEMP: Disabled
                   if (!enablePoisonPotion) return;
                   handleClick(event, 'poison');
                 }}>

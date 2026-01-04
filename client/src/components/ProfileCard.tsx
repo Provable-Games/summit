@@ -126,7 +126,7 @@ const ProfileCard = () => {
 
         {!summitEnded && <>
           <Box sx={styles.upgradeSection}>
-            <Button sx={[styles.upgradeButton, { animation: 'none', width: isMobile ? '100%' : '145px' }]} onClick={() => setBeastDexOpen(true)}>
+            <Button disabled sx={[styles.upgradeButton, { animation: 'none', width: isMobile ? '100%' : '145px', opacity: 0.5 }]} onClick={() => setBeastDexOpen(true)}>
               <Typography sx={styles.upgradeButtonText}>
                 UPGRADE BEASTS
               </Typography>
