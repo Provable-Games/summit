@@ -462,15 +462,7 @@ function ActionBar() {
             </Tooltip>
 
             <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
-              <Typography sx={styles.tooltipTitle}>Poison</Typography>
-              <Typography sx={styles.tooltipText}>
-                {appliedPoisonCount > 0
-                  ? `${appliedPoisonCount} poison potions applied`
-                  : 'Poison the summit'}
-              </Typography>
-              <Typography sx={styles.tooltipSubtext}>
-                Deals 1 damage per second
-              </Typography>
+              <Typography sx={styles.tooltipTitle}>Coming Soon</Typography>
             </Box>}>
               <Box sx={[
                 styles.potionButton,
