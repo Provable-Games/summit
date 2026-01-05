@@ -68,7 +68,6 @@ function MainPage() {
       {isMobile && <Box sx={{ position: 'absolute', top: '10px', width: '100%', boxSizing: 'border-box', px: 1, display: 'flex', justifyContent: 'center' }}>
         <Box pt={'12px'} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
           <Typography sx={styles.title}>SUMMIT</Typography>
-          <RewardsRemainingBar variant="compact" />
         </Box>
       </Box>
       }

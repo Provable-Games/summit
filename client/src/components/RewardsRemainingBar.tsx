@@ -114,7 +114,7 @@ export default function RewardsRemainingBar({
     return (
       <Box sx={compactStyles.container}>
         <Box sx={compactStyles.headerRow}>
-          <Typography sx={compactStyles.title}>REWARDS REMAINING</Typography>
+          <Typography sx={compactStyles.title}>SUMMIT REMAINING</Typography>
           <Typography sx={compactStyles.percent}>{percentText}</Typography>
         </Box>
         <Box sx={[compactStyles.barContainer, borderPulseFx]}>
@@ -133,7 +133,7 @@ export default function RewardsRemainingBar({
     <Box sx={panelStyles.container}>
       <Box sx={panelStyles.valueRow}>
         <Typography sx={panelStyles.value}>
-          REWARDS REMAINING
+          SUMMIT REMAINING
         </Typography>
         <Typography sx={panelStyles.subtle}>{percentText}</Typography>
       </Box>
@@ -214,16 +214,17 @@ const panelStyles = {
 
 const compactStyles = {
   container: {
-    width: 'min(360px, calc(100vw - 24px))',
+    width: '100%',
     background: `${gameColors.darkGreen}90`,
     backdropFilter: 'blur(12px) saturate(1.2)',
     border: `2px solid ${gameColors.accentGreen}60`,
     borderRadius: '12px',
+    boxSizing: 'border-box',
     boxShadow: `
       0 8px 24px rgba(0, 0, 0, 0.6),
       0 0 0 1px ${gameColors.darkGreen}
     `,
-    px: 2,
+    px: 1,
     py: 1.25,
   },
   headerRow: {

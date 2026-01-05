@@ -20,6 +20,7 @@ interface BeastCardProps {
   combat: Combat | null;
   selectionIndex: number;
   summitHealth: number;
+  attackMode: 'safe' | 'unsafe' | 'autopilot';
   onClick: () => void;
   onMouseEnter: (e: React.MouseEvent<HTMLElement>) => void;
   onMouseLeave: () => void;
@@ -34,6 +35,7 @@ const BeastCard = memo(({
   combat,
   selectionIndex,
   summitHealth,
+  attackMode,
   onClick,
   onMouseEnter,
   onMouseLeave,
@@ -213,6 +215,7 @@ const BeastCard = memo(({
 }, (prevProps, nextProps) => {
   // Custom comparison function for memo
   return (
+    prevProps.attackMode === nextProps.attackMode &&
     prevProps.beast.token_id === nextProps.beast.token_id &&
     prevProps.beast.current_health === nextProps.beast.current_health &&
     prevProps.beast.bonus_health === nextProps.beast.bonus_health &&

@@ -278,7 +278,6 @@ function ActionBar() {
 
   const stopAutopilot = () => {
     setAutopilotEnabled(false);
-    setAttackMode('safe');
   }
 
   const hasEnoughRevivePotions = (tokenBalances["REVIVE"] || 0) >= revivalPotionsRequired;
@@ -368,9 +367,9 @@ function ActionBar() {
         </Box>
       ) : (
         <>
-          <Box sx={{ minWidth: isBrowser ? '265px' : '120px' }}>
+          <Box sx={{ minWidth: isBrowser ? '265px' : '140px' }}>
             {(attackMode === 'autopilot' && autopilotEnabled) ? (
-              <Box sx={{ minWidth: isBrowser ? '120px' : '80px' }} />
+              <Box sx={{ minWidth: '120px' }} />
             ) : applyingPotions ? (
               <Box sx={styles.attackButton}>
                 <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
@@ -1256,6 +1255,7 @@ const styles = {
     backdropFilter: 'blur(12px) saturate(1.2)',
     border: `1px solid ${gameColors.accentGreen}40`,
     padding: '8px',
+    pb: isBrowser ? '8px' : '12px',
     marginBottom: '-1px',
     boxShadow: `
       inset 0 1px 0 ${gameColors.accentGreen}30,
@@ -1289,7 +1289,7 @@ const styles = {
     border: `2px solid ${gameColors.lightGreen}40`,
     cursor: 'pointer',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    minWidth: isBrowser ? '200px' : '120px',
+    minWidth: isBrowser ? '200px' : '140px',
     textAlign: 'center',
     opacity: 0.7,
     '&:hover': {

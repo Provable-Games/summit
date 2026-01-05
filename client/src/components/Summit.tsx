@@ -18,6 +18,7 @@ import { lookupAddressName } from '../utils/addressNameCache';
 import { BEAST_NAMES } from '../utils/BeastData';
 import { calculateBattleResult, fetchBeastImage, fetchBeastSound, fetchBeastSummitImage, getLuckCritChancePercent, normaliseHealth } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
+import { isMobile } from 'react-device-detect';
 
 function Summit() {
   const { collection, summit, attackInProgress, selectedBeasts, spectatorBattleEvents,
@@ -488,7 +489,7 @@ function Summit() {
         {showAttack && estimatedDamage > 0 && (
           <>
             {/* Expected Outcome Display */}
-            <Box sx={styles.estimatedDamageContainer}>
+            <Box sx={isMobile ? styles.estimatedDamageContainerMobile : styles.estimatedDamageContainer}>
               <Box sx={styles.damageBox}>
                 <Typography sx={styles.damageLabel}>Estimated outcome</Typography>
 
@@ -904,6 +905,14 @@ const styles = {
     left: 'calc(50% + 110px)',
     top: '30px',
     zIndex: 10,
+    filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5))',
+  },
+  estimatedDamageContainerMobile: {
+    position: 'fixed',
+    bottom: '300px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 102,
     filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5))',
   },
   damageBox: {

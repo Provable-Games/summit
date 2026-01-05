@@ -361,11 +361,11 @@ function BeastCollection() {
                 </Box>
               </Tooltip>
 
-              <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Select 75</Box>}>
+              {attackMode !== 'autopilot' && <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Select 75</Box>}>
                 <Box sx={[styles.utilityButton, maxBeastsSelected && styles.selectedItem]} onClick={() => selectAllBeasts()}>
                   <LibraryAddCheckIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />
                 </Box>
-              </Tooltip>
+              </Tooltip>}
             </Box>
 
             {/* Filter Panel - Expands to the right */}
@@ -537,6 +537,7 @@ function BeastCollection() {
                           combat={combat}
                           selectionIndex={selectionIndex}
                           summitHealth={summit?.beast.current_health || 0}
+                          attackMode={attackMode}
                           onClick={() => selectBeast(beast)}
                           onMouseEnter={(e) => handleHoverEnter(e, beast)}
                           onMouseLeave={handleHoverLeave}

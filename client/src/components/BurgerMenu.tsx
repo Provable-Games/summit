@@ -10,6 +10,7 @@ import Top5000BeastsModal from './dialogs/Top5000BeastsModal';
 import LeaderboardModal from './dialogs/LeaderboardModal';
 import { gameColors } from '@/utils/themes';
 import { useAccount } from '@starknet-react/core';
+import RewardsRemainingBar from './RewardsRemainingBar';
 
 const BurgerMenu = () => {
   const { address } = useAccount();
@@ -65,6 +66,10 @@ const BurgerMenu = () => {
 
           <Box sx={styles.profileContainer}>
             <ProfileCard />
+          </Box>
+
+          <Box sx={styles.rewardsContainer}>
+            <RewardsRemainingBar variant="compact" />
           </Box>
 
           {address && (
@@ -173,11 +178,15 @@ const styles = {
     alignItems: 'flex-start',
     marginBottom: '20px',
   },
+  rewardsContainer: {
+    boxSizing: 'border-box',
+    marginBottom: '20px',
+  },
   buttonContainer: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: '12px',
+    flexDirection: 'row',
+    gap: '10px',
     width: '100%',
-    padding: '0 8px',
+    justifyContent: 'space-evenly',
   },
 };
