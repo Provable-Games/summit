@@ -55,7 +55,7 @@ function MainPage() {
         {onboarding
           ? <Onboarding />
           : <>
-            {(attackInProgress && pauseUpdates && selectedBeasts.length > 0 && attackMode !== 'autopilot' && attackMode !== 'capture')
+            {(attackInProgress && pauseUpdates && selectedBeasts.length > 0 && attackMode !== 'autopilot')
               ? <AttackingBeasts />
               : <Box sx={styles.bottomContainer}>
                 <ActionBar />

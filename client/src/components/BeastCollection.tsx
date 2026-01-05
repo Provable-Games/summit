@@ -146,7 +146,7 @@ function BeastCollection() {
   }, [collection, summit, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, hideTop5000]);
 
   const selectBeast = useCallback((beast: Beast) => {
-    if (attackInProgress || attackMode === 'capture') return;
+    if (attackInProgress || attackMode === 'autopilot') return;
     if (isBeastLocked(beast)) return;
 
     if (selectedBeasts.find(selection => selection[0].token_id === beast.token_id)) {
