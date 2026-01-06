@@ -1125,9 +1125,14 @@ pub mod summit_systems {
             let beast_data_dispatcher = self.beast_data_dispatcher.read();
 
             let num_deaths = beast_data_dispatcher.get_collectable_count(self.dungeon_address.read(), beast_hash);
-            let collectable_entity = beast_data_dispatcher
-                .get_collectable(self.dungeon_address.read(), beast_hash, num_deaths - 1);
-            collectable_entity.timestamp
+            // Don't lock newly collected beasts
+            if num_deaths == 1 {
+                0
+            } else {
+                let collectable_entity = beast_data_dispatcher
+                    .get_collectable(self.dungeon_address.read(), beast_hash, num_deaths - 1);
+                collectable_entity.timestamp
+            }
         }
 
         /// @title beast_can_get_xp
