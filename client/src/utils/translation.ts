@@ -108,12 +108,12 @@ export const translateGameEvent = (event: any, manifest: any, address: string): 
   const eventDefinition = manifest.events.find((definition: any) => definition.selector === event.keys[1]) || manifest.models.find((model: any) => model.selector === event.keys[1]);
   let name = eventDefinition?.tag?.split('-')[1];
 
-  if (!name && event.from_address === address && event.data.length === 5) {
+  if (!name && event.from_address === address) {
     return {
       componentName: 'Summit',
-      attack_potions: parseInt(event.data[2], 16),
-      revival_potions: parseInt(event.data[3], 16),
-      extra_life_potions: parseInt(event.data[4], 16),
+      attack_potions: parseInt(event.data[event.data.length - 3], 16),
+      revival_potions: parseInt(event.data[event.data.length - 2], 16),
+      extra_life_potions: parseInt(event.data[event.data.length - 1], 16),
     }
   }
 

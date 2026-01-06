@@ -47,7 +47,7 @@ function BeastCollection() {
   const [attackSettingsAnchorEl, setAttackSettingsAnchorEl] = useState<HTMLElement | null>(null)
   const [potionSettingsAnchorEl, setPotionSettingsAnchorEl] = useState<HTMLElement | null>(null)
 
-  const MAX_ATTACKS_PER_BEAST = 255;
+  const MAX_ATTACKS_PER_BEAST = 65000;
   const clampAttacks = (value: number) => Math.max(1, Math.min(MAX_ATTACKS_PER_BEAST, value));
 
   const setBeastAttacks = useCallback((beastId: number, nextAttacks: number) => {
@@ -701,11 +701,11 @@ function BeastCollection() {
                                 setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], 0] : selection));
                               } else if (opt.key === 'optimal') {
                                 let optimalPotions = calculateOptimalAttackPotions(
-                                  selectedBeasts.find(selection => selection[0].token_id === attackSettingsBeastId)?.[0], summit, Math.min(tokenBalances["ATTACK"] || 0, 255));
+                                  selectedBeasts.find(selection => selection[0].token_id === attackSettingsBeastId), summit, Math.min(tokenBalances["ATTACK"] || 0, 255));
                                 setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], optimalPotions] : selection));
                               } else if (opt.key === 'max') {
                                 let maxPotions = calculateMaxAttackPotions(selectedBeasts.find(
-                                  selection => selection[0].token_id === attackSettingsBeastId)?.[0], summit, Math.min(tokenBalances["ATTACK"] || 0, 255));
+                                  selection => selection[0].token_id === attackSettingsBeastId), summit, Math.min(tokenBalances["ATTACK"] || 0, 255));
                                 setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], maxPotions] : selection));
                               }
                             }}

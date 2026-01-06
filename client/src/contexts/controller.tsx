@@ -169,7 +169,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
           },
           kills_claimed: Math.max(beast.kills_claimed, freshBeast.kills_claimed),
           revival_time: Math.min(beast.revival_time, freshBeast.revival_time),
-          current_health: Math.max(beast.current_health, freshBeast.current_health),
+          current_health: Math.min(beast.current_health, freshBeast.current_health),
           current_level: Math.max(beast.current_level, freshBeast.current_level),
           power: Math.max(beast.power, freshBeast.power),
         }
