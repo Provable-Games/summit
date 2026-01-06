@@ -796,8 +796,9 @@ pub mod summit_systems {
                 while (attack_index < attack_count) {
                     // check if it needs revival potions
                     let potions_required = Self::_revival_potions_required(@self, attacking_beast);
+                    let potions_required_u32: u32 = potions_required.into();
                     if potions_required > 0 {
-                        if remaining_revival_potions < potions_required {
+                        if remaining_revival_potions < potions_required_u32 {
                             if safe_attack {
                                 assert!(
                                     false,
@@ -814,7 +815,7 @@ pub mod summit_systems {
                             attacking_beast.live.revival_count += 1;
                         }
 
-                        remaining_revival_potions -= potions_required;
+                        remaining_revival_potions -= potions_required_u32;
                     }
 
                     // reset health to starting health plus any bonus health they have accrued
@@ -1015,6 +1016,11 @@ pub mod summit_systems {
 
             // update the live stats of the defending beast after all attacks
             self._save_beast(defending_beast, true);
+
+            // Burn consumables
+            if safe_attack {
+                assert(remaining_revival_potions == 0, 'Unused revival potions');
+            }
 
             let revival_potions_used = revival_potions - remaining_revival_potions;
             if revival_potions_used > 0 {
