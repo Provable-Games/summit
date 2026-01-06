@@ -132,6 +132,7 @@ mod tests {
     };
 
     #[test]
+    #[available_gas(gas: 55000)]
     fn test_calculate_blocks_held_normal() {
         // Taken at block 100, current 200, terminal 500
         let blocks = calculate_blocks_held(100, 200, 500);
@@ -139,6 +140,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 55000)]
     fn test_calculate_blocks_held_past_terminal() {
         // Taken at block 100, current 600, terminal 500
         // Should cap at terminal
@@ -147,6 +149,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 55000)]
     fn test_calculate_blocks_held_taken_at_terminal() {
         // Taken at terminal block
         let blocks = calculate_blocks_held(500, 600, 500);
@@ -154,6 +157,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 55000)]
     fn test_calculate_blocks_held_taken_after_terminal() {
         // Taken after terminal (showdown)
         let blocks = calculate_blocks_held(600, 700, 500);
@@ -161,6 +165,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 90000)]
     fn test_calculate_summit_rewards_no_diplomacy() {
         // 100 blocks held, 1000 total reward, 1000 duration, 0 diplomacy
         let dist = calculate_summit_rewards(100, 1000, 1000, 0);
@@ -172,6 +177,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 100000)]
     fn test_calculate_summit_rewards_with_diplomacy() {
         // 100 blocks held, 10000 total reward, 1000 duration, 3 diplomacy
         let dist = calculate_summit_rewards(100, 10000, 1000, 3);
@@ -185,6 +191,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 70000)]
     fn test_calculate_summit_rewards_zero_blocks() {
         let dist = calculate_summit_rewards(0, 10000, 1000, 3);
         assert!(dist.summit_reward == 0, "No reward for 0 blocks");
@@ -192,6 +199,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 80000)]
     fn test_get_potion_amount_tier1() {
         // Tier 1 beasts
         assert!(get_potion_amount(1) == 5, "ID 1 = 5 potions");
@@ -203,6 +211,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 60000)]
     fn test_get_potion_amount_tier2() {
         assert!(get_potion_amount(6) == 4, "ID 6 = 4 potions");
         assert!(get_potion_amount(10) == 4, "ID 10 = 4 potions");
@@ -210,18 +219,21 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 55000)]
     fn test_get_potion_amount_tier3() {
         assert!(get_potion_amount(11) == 3, "ID 11 = 3 potions");
         assert!(get_potion_amount(15) == 3, "ID 15 = 3 potions");
     }
 
     #[test]
+    #[available_gas(gas: 55000)]
     fn test_get_potion_amount_tier4() {
         assert!(get_potion_amount(16) == 2, "ID 16 = 2 potions");
         assert!(get_potion_amount(20) == 2, "ID 20 = 2 potions");
     }
 
     #[test]
+    #[available_gas(gas: 60000)]
     fn test_get_potion_amount_tier5() {
         assert!(get_potion_amount(21) == 1, "ID 21 = 1 potion");
         assert!(get_potion_amount(25) == 1, "ID 25 = 1 potion");
@@ -230,12 +242,14 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 55000)]
     fn test_calculate_diplomacy_bonus_no_allies() {
         let powers: Span<u16> = array![].span();
         assert!(calculate_diplomacy_bonus(powers) == 0, "No bonus with no allies");
     }
 
     #[test]
+    #[available_gas(gas: 55000)]
     fn test_calculate_diplomacy_bonus_single_ally() {
         // Only self, no allies
         let powers: Span<u16> = array![100].span();
@@ -243,6 +257,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 70000)]
     fn test_calculate_diplomacy_bonus_multiple_allies() {
         // Powers: [self=100, ally1=200, ally2=300]
         // Sum of allies = 200 + 300 = 500
@@ -252,6 +267,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 80000)]
     fn test_calculate_diplomacy_bonus_large_powers() {
         // Powers: [self=500, ally1=500, ally2=500, ally3=500]
         // Sum of allies = 500 + 500 + 500 = 1500
@@ -261,18 +277,21 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 65000)]
     fn test_calculate_total_diplomacy_power() {
         let powers: Span<u16> = array![100, 200, 300].span();
         assert!(calculate_total_diplomacy_power(powers) == 600_u32, "Total should be 600");
     }
 
     #[test]
+    #[available_gas(gas: 55000)]
     fn test_calculate_total_diplomacy_power_empty() {
         let powers: Span<u16> = array![].span();
         assert!(calculate_total_diplomacy_power(powers) == 0_u32, "Empty should be 0");
     }
 
     #[test]
+    #[available_gas(gas: 2500000)]
     fn test_calculate_total_diplomacy_power_overflow_safe() {
         // Test with many large powers that would overflow u16
         // 255 powers of 65000 each = 16,575,000 (exceeds u16::max of 65535)

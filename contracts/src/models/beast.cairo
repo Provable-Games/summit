@@ -240,6 +240,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 1200000)]
     fn pack_unpack_zero_values() {
         let stats = build_stats(
             0_u32, // token_id
@@ -278,6 +279,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 1200000)]
     fn pack_unpack_max_values() {
         // Bit-width maxima based on packing layout:
         // token_id: 17 bits → 2^17 - 1
@@ -329,6 +331,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 1200000)]
     fn pack_unpack_mixed_values() {
         let stats = build_stats(100_u32, 100, 100, 100, 9, 123456789, 7, 42, 1, 54321, 17, 96, 0, 1_u8, 0_u8);
         let packed = PackableLiveStatsStorePacking::pack(stats);
