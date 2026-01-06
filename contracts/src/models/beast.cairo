@@ -162,6 +162,9 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
 
 #[generate_trait]
 pub impl BeastUtilsImpl of BeastUtilsTrait {
+    /// Calculate critical hit chance based on luck stat
+    /// Called every battle round so must be fast
+    #[inline(always)]
     fn crit_chance(self: Beast) -> u8 {
         let points: u16 = self.live.stats.luck.into();
 
@@ -186,6 +189,9 @@ pub impl BeastUtilsImpl of BeastUtilsTrait {
         percent.try_into().unwrap()
     }
 
+    /// Calculate spirit reduction for revival time
+    /// Called for each attacking beast
+    #[inline(always)]
     fn spirit_reduction(self: Beast) -> u64 {
         let points: u64 = self.live.stats.spirit.into();
         let mut reduction: u64 = 0;

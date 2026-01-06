@@ -60,6 +60,7 @@ pub fn calculate_summit_rewards(
 ///
 /// @param beast_id The beast's type ID (1-75)
 /// @return Number of potions claimable (1-5)
+#[inline(always)]
 pub fn get_potion_amount(beast_id: u8) -> u8 {
     // Calculate position within a 25-beast type block (0-24)
     let position_in_type: u8 = (beast_id - 1) % 25;

@@ -122,11 +122,65 @@ These can be implemented in a future phase if needed.
 
 ---
 
+## Phase 2: Inline Hints (`#[inline(always)]`)
+
+Added `#[inline(always)]` to 14 hot-path functions to reduce function call overhead.
+
+### Functions with Inline Hints
+
+| File | Function | Purpose |
+|------|----------|---------|
+| combat.cairo | `apply_damage` | Called multiple times per battle round |
+| combat.cairo | `use_extra_life` | Called every battle round |
+| beast_utils.cairo | `get_level_from_xp` | Called when building combat specs |
+| beast_utils.cairo | `can_gain_xp` | Called per attacking beast |
+| beast_utils.cairo | `calculate_xp_gain` | Called per attacking beast |
+| beast_utils.cairo | `is_beast_stronger` | Called for leaderboard ranking |
+| revival.cairo | `calculate_revival_potions` | Called per attacking beast |
+| revival.cairo | `is_killed_recently` | Called for death mountain check |
+| revival.cairo | `increment_revival_count` | Called on beast death |
+| rewards.cairo | `get_potion_amount` | Called for potion claims |
+| utils.cairo | `felt_to_u32` | Called in randomness generation |
+| utils.cairo | `u32_to_u8s` | Called in randomness generation |
+| beast.cairo | `crit_chance` | Called every battle round |
+| beast.cairo | `spirit_reduction` | Called per attacking beast |
+
+### Additional Optimization: `felt_to_u32` Uses AND Mask
+
+Changed from modulo to bitwise AND for truncating felt252 to u32:
+```cairo
+// Before: (value_u256 % TWO_POW_32).try_into().unwrap()
+// After:  (value_u256 & MASK_32).try_into().unwrap()
+```
+
+### Phase 2 Gas Improvements
+
+| Test | Before (Phase 1) | After (Phase 2) | Savings | % |
+|------|------------------|-----------------|---------|---|
+| `test_get_battle_randomness_deterministic` | 156,360 | 134,792 | 21,568 | -13.8% |
+| `test_get_battle_randomness_different_counter` | 159,560 | 137,992 | 21,568 | -13.5% |
+| `test_is_beast_stronger_by_blocks` | 52,550 | 45,190 | 7,360 | -14.0% |
+| `test_is_beast_stronger_by_xp` | 55,910 | 48,550 | 7,360 | -13.2% |
+| `test_is_beast_stronger_by_death_timestamp` | 55,910 | 48,550 | 7,360 | -13.2% |
+| `test_revival_not_needed_after_full_time` | 52,890 | 47,020 | 5,870 | -11.1% |
+| `test_spirit_reduction_removes_need` | 62,140 | 56,870 | 5,270 | -8.5% |
+| `test_can_gain_xp_within_limit` | 78,130 | 75,730 | 2,400 | -3.1% |
+| `test_can_gain_xp_at_limit` | 78,930 | 76,530 | 2,400 | -3.0% |
+
+### Integration Test Gas Benchmarks
+
+| Test | L2 Gas | Sierra Gas |
+|------|--------|------------|
+| `test_attack_long_battle_gas_benchmark` | 49,952,251 | 49,921,531 |
+| `test_attack_multi_iteration_gas_benchmark` | 10,999,869 | 10,969,149 |
+
+---
+
 ## Verification
 
 All tests pass with the optimizations:
 ```
-Tests: 207 passed, 0 failed, 0 ignored, 0 filtered out
+Tests: 208 passed, 0 failed, 0 ignored, 0 filtered out
 ```
 
 All gas limit tests (`#[available_gas(gas: X)]`) pass, confirming optimizations stay within budget.

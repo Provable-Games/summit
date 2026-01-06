@@ -75,6 +75,7 @@ pub fn calculate_attack_damage(
 /// @param current_health Current health
 /// @param damage Damage to apply
 /// @return New health (minimum 0)
+#[inline(always)]
 pub fn apply_damage(current_health: u16, damage: u16) -> u16 {
     if damage >= current_health {
         0
@@ -89,6 +90,7 @@ pub fn apply_damage(current_health: u16, damage: u16) -> u16 {
 /// @param base_health Beast's base health from NFT
 /// @param bonus_health Beast's accumulated bonus health
 /// @return (new_health, new_extra_lives)
+#[inline(always)]
 pub fn use_extra_life(current_health: u16, extra_lives: u16, base_health: u16, bonus_health: u16) -> (u16, u16) {
     if current_health == 0 && extra_lives > 0 {
         let full_health = base_health + bonus_health;

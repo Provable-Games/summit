@@ -6,6 +6,7 @@ use summit::constants::{BASE_REVIVAL_TIME_SECONDS, DIPLOMACY_COST, SPECIALS_COST
 /// Calculate level from XP using square root
 /// @param xp The experience points
 /// @return The calculated level (minimum 1)
+#[inline(always)]
 pub fn get_level_from_xp(xp: u32) -> u16 {
     if xp == 0 {
         1
@@ -19,6 +20,7 @@ pub fn get_level_from_xp(xp: u32) -> u16 {
 /// @param bonus_xp The beast's current bonus XP
 /// @param max_bonus_levels Maximum bonus levels allowed
 /// @return true if beast can still gain XP
+#[inline(always)]
 pub fn can_gain_xp(base_level: u16, bonus_xp: u16, max_bonus_levels: u16) -> bool {
     // Use u32 to prevent overflow: (65535 + 40)^2 fits in u32
     // Cache base_level conversion to avoid redundant conversions
@@ -31,6 +33,7 @@ pub fn can_gain_xp(base_level: u16, bonus_xp: u16, max_bonus_levels: u16) -> boo
 /// @param attack_streak Current attack streak (0-10)
 /// @param beast_can_get_xp Whether the beast is eligible for XP
 /// @return XP gained (0 if not eligible)
+#[inline(always)]
 pub fn calculate_xp_gain(attack_streak: u8, beast_can_get_xp: bool) -> u16 {
     if beast_can_get_xp {
         10 + attack_streak.into()
@@ -65,6 +68,7 @@ pub fn update_attack_streak(
 /// Compare two beasts for leaderboard ranking
 /// Primary: blocks_held, Secondary: bonus_xp, Tertiary: last_death_timestamp
 /// @return true if beast1 is stronger than beast2
+#[inline(always)]
 pub fn is_beast_stronger(
     beast1_blocks_held: u32,
     beast1_bonus_xp: u16,
