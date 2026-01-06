@@ -1,12 +1,16 @@
 import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
+import { useAutopilotStore } from '@/stores/autopilotStore';
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SettingsIcon from '@mui/icons-material/Settings';
-import { Box, Button, IconButton, Menu, MenuItem, Slider, Tooltip, Typography, TextField } from '@mui/material';
+import {
+  Box, Button, IconButton, Menu, MenuItem, Slider,
+  TextField, Tooltip, Typography
+} from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { isBrowser } from 'react-device-detect';
 import attackPotionIcon from '../assets/images/attack-potion.png';
@@ -14,21 +18,52 @@ import heart from '../assets/images/heart.png';
 import lifePotionIcon from '../assets/images/life-potion.png';
 import poisonPotionIcon from '../assets/images/poison-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
+import {
+  calculateBattleResult, calculateOptimalAttackPotions, calculateRevivalRequired,
+  getBeastCurrentHealth, getBeastRevivalTime, isBeastLocked
+} from '../utils/beasts';
 import { gameColors } from '../utils/themes';
-import { calculateBattleResult, getBeastRevivalTime, getBeastCurrentHealth, isBeastLocked } from '../utils/beasts';
 import AutopilotConfigModal from './dialogs/AutopilotConfigModal';
-import { useAutopilotStore } from '@/stores/autopilotStore';
 
 function ActionBar() {
   const { executeGameAction } = useGameDirector();
   const { tokenBalances } = useController();
+  const reviveBalance = Number((tokenBalances as any)?.['REVIVE'] ?? 0) || 0;
+  const attackBalance = Number((tokenBalances as any)?.['ATTACK'] ?? 0) || 0;
+  const extraLifeBalance = Number((tokenBalances as any)?.['EXTRA LIFE'] ?? 0) || 0;
+  const poisonBalance = Number((tokenBalances as any)?.['POISON'] ?? 0) || 0;
 
   const { selectedBeasts, summit,
-    attackInProgress, appliedPotions, setAppliedPotions,
+    attackInProgress,
     applyingPotions, setApplyingPotions, appliedPoisonCount, setAppliedPoisonCount,
-    collection, collectionSyncing, setSelectedBeasts, attackMode, setAttackMode,
-    autopilotEnabled, setAutopilotEnabled } = useGameStore();
-  const { attackStrategy } = useAutopilotStore();
+    collection, collectionSyncing, setSelectedBeasts, attackMode, setAttackMode, autopilotLog, setAutopilotLog,
+    autopilotEnabled, setAutopilotEnabled, appliedExtraLifePotions, setAppliedExtraLifePotions } = useGameStore();
+  const {
+    attackStrategy,
+    extraLifeStrategy,
+    extraLifeMax,
+    extraLifeTotalMax,
+    extraLifeReplenishTo,
+    extraLifePotionsUsed,
+    useRevivePotions,
+    revivePotionMax,
+    revivePotionMaxPerBeast,
+    useAttackPotions,
+    attackPotionMax,
+    revivePotionsUsed,
+    attackPotionsUsed,
+    setRevivePotionsUsed,
+    setAttackPotionsUsed,
+    setExtraLifePotionsUsed,
+    setPoisonPotionsUsed,
+    poisonStrategy,
+    poisonTotalMax,
+    poisonPotionsUsed,
+    poisonConservativeExtraLivesTrigger,
+    poisonConservativeAmount,
+    poisonAggressiveAmount,
+    initializeMaxCapsFromBalances,
+  } = useAutopilotStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
@@ -52,82 +87,105 @@ function ActionBar() {
     executeGameAction({
       type: 'attack',
       pauseUpdates: true,
-      beastIds: selectedBeasts.map(beast => beast.token_id),
-      appliedPotions: appliedPotions,
+      beasts: selectedBeasts,
       safeAttack: attackMode === 'safe',
-      vrf: (selectedBeasts.find(beast => beast.stats.luck) || summit?.beast?.stats.luck) ? true : false
+      vrf: (selectedBeasts.find(selectedBeast => selectedBeast[0].stats.luck) || summit?.beast?.stats.luck) ? true : false,
+      attackPotions: appliedAttackPotions,
+      revivePotions: revivalPotionsRequired,
+      extraLifePotions: appliedExtraLifePotions,
     });
   }
 
   const collectionWithCombat = useMemo<Beast[]>(() => {
     if (summit && collection.length > 0) {
+      let revivePotionsEnabled = autopilotEnabled && useRevivePotions && revivePotionsUsed < revivePotionMax;
+      let attackPotionsEnabled = autopilotEnabled && useAttackPotions && attackPotionsUsed < attackPotionMax;
+
       let filtered = collection.map((beast: Beast) => {
         let newBeast = { ...beast }
         newBeast.revival_time = getBeastRevivalTime(newBeast);
-        newBeast.current_health = getBeastCurrentHealth(newBeast)
-        newBeast.combat = calculateBattleResult(newBeast, summit, 0)
+        newBeast.current_health = getBeastCurrentHealth(beast);
+        newBeast.combat = calculateBattleResult(newBeast, summit, 0);
         return newBeast
-      }).filter((beast: Beast) => beast.current_health > 0 && !isBeastLocked(beast));
+      }).filter((beast: Beast) => !isBeastLocked(beast));
 
-      return filtered.sort((a: Beast, b: Beast) => b.combat?.score - a.combat?.score)
+      filtered = filtered.sort((a: Beast, b: Beast) => b.combat?.score - a.combat?.score);
+
+      if (revivePotionsEnabled) {
+        let revivePotionsRemaining = revivePotionMax - revivePotionsUsed;
+        filtered = filtered.map((beast: Beast) => {
+          if (beast.current_health === 0) {
+            if (beast.revival_count >= revivePotionsRemaining || beast.revival_count >= revivePotionMaxPerBeast) {
+              return null;
+            } else {
+              revivePotionsRemaining -= beast.revival_count + 1;
+            }
+          }
+          return beast;
+        }).filter(Boolean);
+      } else {
+        filtered = filtered.filter((beast: Beast) => beast.current_health > 0);
+      }
+
+      if (attackPotionsEnabled) {
+        let attackPotions = calculateOptimalAttackPotions(filtered[0], summit, Math.min(attackPotionMax - attackPotionsUsed, 255));
+        let newCombat = calculateBattleResult(filtered[0], summit, attackPotions);
+        filtered[0].combat = newCombat;
+      }
+
+      return filtered
     }
 
     return [];
-  }, [summit?.beast?.token_id, collection.length]);
+  }, [summit?.beast?.token_id, collection.length, revivePotionsUsed, attackPotionsUsed]);
 
-  const handleAttackUntilCapture = () => {
+  const handleAttackUntilCapture = (extraLifePotions) => {
     if (!enableAttack) return;
 
     executeGameAction({
       type: 'attack_until_capture',
-      beastIds: collectionWithCombat.map((beast: Beast) => beast.token_id),
+      beasts: collectionWithCombat.map((beast: Beast) => [beast, 1, beast.combat?.attackPotions || 0]),
+      extraLifePotions
     });
   }
 
-  const handleAddExtraLife = () => {
-    if (applyingPotions || appliedPotions.extraLife === 0) return;
+  const handleApplyExtraLife = (amount: number) => {
+    if (!summit?.beast || !isSavage || applyingPotions || amount === 0) return;
 
     setApplyingPotions(true);
+    setAutopilotLog('Adding extra lives...')
 
     executeGameAction({
       type: 'add_extra_life',
-      beastId: selectedBeasts[0].token_id,
+      beastId: summit.beast.token_id,
+      extraLifePotions: amount,
     });
   }
 
-  const handleApplyPoison = () => {
-    if (!summit?.beast || applyingPotions || appliedPoisonCount === 0) return;
+  const handleApplyPoison = (amount: number) => {
+    if (!summit?.beast || applyingPotions || amount === 0) return;
 
     setApplyingPotions(true);
+    setAutopilotLog('Applying poison...')
 
     executeGameAction({
       type: 'apply_poison',
       beastId: summit.beast.token_id,
-      count: appliedPoisonCount,
+      count: amount,
     });
   }
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit?.beast?.token_id))
-  const isSavageSelected = Boolean(selectedBeasts.find((beast: any) => beast.token_id === summit?.beast?.token_id))
-  const deadBeasts = selectedBeasts.filter((beast: any) => beast.current_health === 0);
-  const revivalPotionsRequired = deadBeasts.reduce((sum: number, beast: any) => sum + beast.revival_count + 1, 0);
+  const revivalPotionsRequired = calculateRevivalRequired(selectedBeasts);
 
   useEffect(() => {
-    if (deadBeasts.length > 0 && appliedPotions.revive < revivalPotionsRequired) {
-      setAppliedPotions({
-        ...appliedPotions,
-        revive: Math.min(revivalPotionsRequired, tokenBalances["REVIVE"] || 0)
-      });
-    } else if (deadBeasts.length === 0 && appliedPotions.revive > 0) {
-      // Clear revive potions if no dead beasts selected
-      setAppliedPotions({ ...appliedPotions, revive: 0 });
-    }
-  }, [deadBeasts.length, revivalPotionsRequired, tokenBalances["REVIVE"]]);
+    initializeMaxCapsFromBalances(tokenBalances);
+  }, [reviveBalance, attackBalance, extraLifeBalance, poisonBalance]);
 
   useEffect(() => {
-    if (attackMode === 'capture' || attackMode === 'autopilot') {
+    if (attackMode === 'autopilot') {
       setSelectedBeasts([]);
-      setAppliedPotions({ revive: 0, attack: 0, extraLife: 0 });
+      setAppliedExtraLifePotions(0);
     }
 
     if (attackMode !== 'autopilot' && autopilotEnabled) {
@@ -136,361 +194,437 @@ function ActionBar() {
   }, [attackMode]);
 
   useEffect(() => {
+    if (autopilotEnabled && !attackInProgress && !applyingPotions) {
+      setAutopilotLog('Waiting for trigger...')
+    } else if (attackInProgress) {
+      setAutopilotLog('Attacking...')
+    }
+  }, [autopilotEnabled, attackInProgress, applyingPotions])
+
+  useEffect(() => {
+    if (!autopilotEnabled || poisonStrategy !== 'aggressive') return;
+    let myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
+    if (myBeast) return;
+
+    const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
+    const poisonBalance = tokenBalances?.["POISON"] || 0;
+    handleApplyPoison(Math.min(poisonAggressiveAmount, poisonBalance, remainingCap));
+  }, [summit?.beast?.token_id]);
+
+  useEffect(() => {
     if (!autopilotEnabled || attackInProgress || !collectionWithCombat) return;
     if (lastBeastAttacked === summit?.beast.token_id) return;
 
     let myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
-    if (myBeast) return;
 
-    if (attackStrategy === 'all_out') {
-      setLastBeastAttacked(summit?.beast.token_id);
-      handleAttackUntilCapture();
-    } else if (attackStrategy === 'guaranteed') {
-      let beastIds = collectionWithCombat.slice(0, 75)
-
-      let totalEstimatedDamage = beastIds.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
-      if (totalEstimatedDamage > ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health) {
-        setLastBeastAttacked(summit?.beast.token_id);
-        executeGameAction({
-          type: 'attack',
-          beastIds: beastIds.map((beast: Beast) => beast.token_id),
-          appliedPotions: { revive: 0, attack: 0, extraLife: 0 },
-          safeAttack: false,
-          vrf: true
-        });
+    if (myBeast) {
+      if (extraLifeStrategy === 'aggressive' && myBeast.extra_lives >= 0 && myBeast.extra_lives < extraLifeReplenishTo) {
+        let extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeReplenishTo - myBeast.extra_lives);
+        if (extraLifePotions > 0) {
+          handleApplyExtraLife(extraLifePotions);
+        }
       }
+
+      return;
+    };
+
+    if (poisonStrategy === 'conservative' && summit?.beast?.extra_lives >= poisonConservativeExtraLivesTrigger
+      && summit.poison_count < poisonConservativeAmount) {
+      const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
+      const poisonBalance = tokenBalances?.["POISON"] || 0;
+      handleApplyPoison(Math.min(poisonConservativeAmount - summit.poison_count, poisonBalance, remainingCap));
+    }
+
+    let extraLifePotions = 0;
+    if (extraLifeStrategy === 'after_capture') {
+      extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeMax);
+    } else if (extraLifeStrategy === 'aggressive') {
+      extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeReplenishTo);
+    }
+
+    if (attackStrategy === 'never') {
+      return;
+    } else if (attackStrategy === 'all_out') {
+      setLastBeastAttacked(summit?.beast.token_id);
+      handleAttackUntilCapture(extraLifePotions);
+    } else if (attackStrategy === 'guaranteed') {
+      let beasts = collectionWithCombat.slice(0, 75)
+
+      let totalSummitHealth = ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health;
+      let totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
+      if (totalEstimatedDamage < (totalSummitHealth * 1.1)) {
+        return;
+      }
+
+      setLastBeastAttacked(summit?.beast.token_id);
+      executeGameAction({
+        type: 'attack',
+        beasts: beasts.map((beast: Beast) => ([beast, 1, beast.combat?.attackPotions || 0])),
+        safeAttack: false,
+        vrf: true,
+        extraLifePotions: extraLifePotions,
+        attackPotions: beasts[0].combat?.attackPotions || 0
+      });
     }
   }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
 
+  const startAutopilot = () => {
+    setRevivePotionsUsed(0);
+    setAttackPotionsUsed(0);
+    setExtraLifePotionsUsed(0);
+    setPoisonPotionsUsed(0);
+    setAutopilotEnabled(true);
+  }
+
+  const stopAutopilot = () => {
+    setAutopilotEnabled(false);
+  }
+
   const hasEnoughRevivePotions = (tokenBalances["REVIVE"] || 0) >= revivalPotionsRequired;
-  const enableAttack = ((attackMode === 'capture' || attackMode === 'autopilot') && !attackInProgress) || ((!isSavage || attackMode !== 'safe') && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions);
+  const enableAttack = (attackMode === 'autopilot' && !attackInProgress) || ((!isSavage || attackMode !== 'safe') && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions);
   const highlightAttackButton = attackMode === 'autopilot' ? true : enableAttack;
 
   const enableExtraLifePotion = tokenBalances["EXTRA LIFE"] > 0;
-  const enableAttackPotion = tokenBalances["ATTACK"] > 0;
   const enablePoisonPotion = tokenBalances["POISON"] > 0;
   const enableApplyPoison = summit?.beast && !applyingPotions && appliedPoisonCount > 0;
-  const isappliedPotions = appliedPotions.revive + appliedPotions.attack + appliedPotions.extraLife + appliedPoisonCount > 0
+  const enableApplyExtraLife = isSavage && summit?.beast && !applyingPotions && appliedExtraLifePotions > 0;
+  const appliedAttackPotions = selectedBeasts.reduce((acc, beast) => acc + beast[2], 0)
+
+  function RenderRemainingPotion(icon: string, label: string, used: number, max: number) {
+    return (
+      <Box key={label} sx={styles.autopilotOverlayBudgetPill}>
+        <img src={icon} alt="" height={'18px'} />
+        <Typography sx={styles.autopilotOverlayBudgetPillLabel}>{label}</Typography>
+        <Typography sx={styles.autopilotOverlayBudgetPillValue}>{used} / {max}</Typography>
+      </Box>
+    )
+  }
 
   if (collection.length === 0) {
     return <Box sx={styles.container}>
     </Box>
   }
 
-  return <Box sx={styles.container}>
+  return <Box
+    sx={[
+      styles.container,
+      attackMode === 'autopilot' && autopilotEnabled && { height: 'auto', py: 1 },
+    ]}
+  >
     {(collection.length > 0 && collectionSyncing) && <Box sx={styles.collectionSyncing}>
       <Typography sx={styles.collectionSyncingText}>Syncing collection</Typography>
       <div className='dotLoader accentGreen' />
     </Box>}
 
     {/* Attack Button + Potions */}
-    <Box sx={styles.buttonGroup}>
-      {/* Section 1: Attack Button */}
-      <Box sx={{ minWidth: isBrowser ? '265px' : '120px' }}>
-        {appliedPoisonCount > 0
-          ? <Box sx={[styles.attackButton, enableApplyPoison && styles.attackButtonEnabled]}
-            onClick={handleApplyPoison}>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
-              {applyingPotions
-                ? <Box display={'flex'} alignItems={'baseline'}>
-                  <Typography variant="h5" sx={styles.buttonText}>Applying</Typography>
-                  <div className='dotLoader green' />
-                </Box>
-                : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                  <Typography sx={[styles.buttonText, !enableApplyPoison && styles.disabledText]} variant="h5">
-                    Apply Poison
+    <Box sx={[styles.buttonGroup, (attackMode === 'autopilot' && autopilotEnabled) && styles.autopilotButtonGroup]}>
+      {attackMode === 'autopilot' && autopilotEnabled ? (
+        <Box sx={styles.autopilotOverlay}>
+          <Box sx={styles.autopilotOverlayInner}>
+            <Box sx={styles.autopilotOverlayHeader}>
+              <Box sx={styles.autopilotOverlayTitleWrap}>
+                <Box sx={styles.autopilotStatusDot} />
+                <Box>
+                  <Typography sx={styles.autopilotOverlayTitle}>
+                    AUTOPILOT
                   </Typography>
                 </Box>
-              }
-
-              {isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
-                {appliedPoisonCount > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
-                  <Typography sx={styles.potionCount}>{appliedPoisonCount}</Typography>
-                  <img src={poisonPotionIcon} alt='' height={'14px'} />
-                </Box>}
               </Box>
-              }
+
+              <Box sx={{ flex: 1 }} />
+
+              <Button
+                onClick={stopAutopilot}
+                sx={styles.autopilotOverlayStopButton}
+              >
+                Stop Autopilot
+              </Button>
+            </Box>
+
+            <Box sx={styles.autopilotOverlayContent}>
+              <Box sx={styles.autopilotOverlayBudgetsHeader}>
+                <Box>
+                  <Typography sx={styles.autopilotOverlayBudgetsTitle}>Potions Used</Typography>
+                </Box>
+                <Box sx={styles.autopilotOverlayBudgets}>
+                  {useRevivePotions && RenderRemainingPotion(revivePotionIcon, 'Revive', revivePotionsUsed, revivePotionMax)}
+                  {useAttackPotions && RenderRemainingPotion(attackPotionIcon, 'Attack', attackPotionsUsed, attackPotionMax)}
+                  {extraLifeStrategy !== 'disabled' && RenderRemainingPotion(lifePotionIcon, 'Life', extraLifePotionsUsed, extraLifeTotalMax)}
+                  {poisonStrategy !== 'disabled' && RenderRemainingPotion(poisonPotionIcon, 'Poison', poisonPotionsUsed, poisonTotalMax)}
+                </Box>
+              </Box>
+
+              <Box sx={styles.autopilotOverlayLog}>
+                <Box sx={styles.autopilotOverlayLogBody}>
+                  <Typography sx={styles.autopilotOverlayLogLine}>
+                    <span style={{ opacity: 0.65, marginRight: 8 }}>{'>'}</span>
+                    {autopilotLog}
+                  </Typography>
+                </Box>
+              </Box>
             </Box>
           </Box>
-          : isSavageSelected
-            ? <Box sx={[styles.attackButton, appliedPotions.extraLife > 0 && styles.attackButtonEnabled]}
-              onClick={handleAddExtraLife}>
-              <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
-                {applyingPotions
-                  ? <Box display={'flex'} alignItems={'baseline'}>
+        </Box>
+      ) : (
+        <>
+          <Box sx={{ minWidth: isBrowser ? '265px' : '140px' }}>
+            {(attackMode === 'autopilot' && autopilotEnabled) ? (
+              <Box sx={{ minWidth: '120px' }} />
+            ) : applyingPotions ? (
+              <Box sx={styles.attackButton}>
+                <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
+                  <Box display={'flex'} alignItems={'baseline'}>
                     <Typography variant="h5" sx={styles.buttonText}>Applying</Typography>
                     <div className='dotLoader green' />
                   </Box>
-                  : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                    <Typography sx={[styles.buttonText, !(appliedPotions.extraLife > 0) && styles.disabledText]} variant="h5">
-                      Add Extra Life
-                    </Typography>
-                  </Box>
-                }
-
-                {isappliedPotions && isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
-                  {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'} gap={'2px'}>
-                    <Typography sx={styles.potionCount}>{appliedPotions.extraLife}</Typography>
-                    <img src={heart} alt='' height={'12px'} />
-                  </Box>}
                 </Box>
-                }
               </Box>
-            </Box>
-
-            : <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <Box sx={styles.attackButtonGroup}>
-                <Box
-                  sx={[
-                    styles.attackButton,
-                    highlightAttackButton && styles.attackButtonEnabled,
-                    styles.attackButtonMain
-                  ]}
-                  onClick={() => {
-                    if (attackMode === 'autopilot') {
-                      setAutopilotEnabled(!autopilotEnabled);
-                    } else if (attackMode === 'capture') {
-                      handleAttackUntilCapture();
-                    } else {
-                      handleAttack();
-                    }
-                  }}>
-                  <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
-                    {attackMode === 'autopilot'
-                      ? (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
-                          <Typography
-                            sx={[
-                              styles.buttonText,
-                              autopilotEnabled ? styles.autopilotOnText : styles.autopilotOffText,
-                            ]}
-                            variant="h5"
-                          >
-                            {`Autopilot: ${autopilotEnabled ? 'ON' : 'OFF'}`}
-                          </Typography>
-                        </Box>
-                      )
-                      : attackInProgress
-                        ? <Box display={'flex'} alignItems={'baseline'}>
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={styles.attackButtonGroup}>
+                  <Box
+                    sx={[
+                      styles.attackButton,
+                      highlightAttackButton && styles.attackButtonEnabled,
+                      styles.attackButtonMain
+                    ]}
+                    onClick={() => {
+                      if (attackMode === 'autopilot') {
+                        startAutopilot();
+                      } else {
+                        handleAttack();
+                      }
+                    }}>
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
+                      {attackInProgress ? (
+                        <Box display={'flex'} alignItems={'baseline'}>
                           <Typography variant="h5" sx={styles.buttonText}>Attacking</Typography>
                           <div className='dotLoader green' />
                         </Box>
-                        : <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                      ) : (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
                           <Typography sx={[styles.buttonText, !enableAttack && styles.disabledText]} variant="h5">
                             {attackMode === 'safe'
                               ? 'Safe Attack'
                               : attackMode === 'unsafe'
                                 ? 'Unsafe Attack'
-                                : 'Attack until Capture'}
+                                : 'Start Autopilot'}
                           </Typography>
                         </Box>
-                    }
+                      )}
 
-                    {isappliedPotions && isBrowser && <Box sx={{ display: 'flex', gap: 0.5 }}>
-                      {appliedPotions.revive > 0 && <Box display={'flex'} alignItems={'center'}>
-                        <Typography sx={styles.potionCount}>{appliedPotions.revive}</Typography>
-                        <img src={revivePotionIcon} alt='' height={'14px'} />
-                      </Box>}
-                      {appliedPotions.attack > 0 && <Box display={'flex'} alignItems={'center'}>
-                        <Typography sx={styles.potionCount}>{appliedPotions.attack}</Typography>
-                        <img src={attackPotionIcon} alt='' height={'14px'} />
-                      </Box>}
-                      {appliedPotions.extraLife > 0 && <Box display={'flex'} alignItems={'center'}>
-                        <Typography sx={styles.potionCount}>{appliedPotions.extraLife}</Typography>
-                        <img src={heart} alt='' height={'12px'} />
-                      </Box>}
-                      {appliedPoisonCount > 0 && <Box display={'flex'} alignItems={'center'}>
-                        <Typography sx={styles.potionCount}>{appliedPoisonCount}</Typography>
-                        <img src={poisonPotionIcon} alt='' height={'14px'} />
-                      </Box>}
+                      {isBrowser && (
+                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                          {revivalPotionsRequired > 0 && (
+                            <Box display={'flex'} alignItems={'center'}>
+                              <Typography sx={styles.potionCount}>{revivalPotionsRequired}</Typography>
+                              <img src={revivePotionIcon} alt='' height={'14px'} />
+                            </Box>
+                          )}
+                          {appliedAttackPotions > 0 && (
+                            <Box display={'flex'} alignItems={'center'}>
+                              <Typography sx={styles.potionCount}>{appliedAttackPotions}</Typography>
+                              <img src={attackPotionIcon} alt='' height={'14px'} />
+                            </Box>
+                          )}
+                          {(!isSavage && appliedExtraLifePotions > 0) && (
+                            <Box display={'flex'} alignItems={'center'}>
+                              <Typography sx={styles.potionCount}>{appliedExtraLifePotions}</Typography>
+                              <img src={heart} alt='' height={'12px'} />
+                            </Box>
+                          )}
+                        </Box>
+                      )}
                     </Box>
-                    }
+                  </Box>
+                  <Box
+                    sx={[styles.attackDropdownButton]}
+                    onClick={(event) => setAttackDropdownAnchor(event.currentTarget)}
+                  >
+                    <ArrowDropDownIcon sx={{ fontSize: '21px', color: gameColors.yellow }} />
                   </Box>
                 </Box>
-                <Box
-                  sx={[
-                    styles.attackDropdownButton,
-                  ]}
-                  onClick={(event) => setAttackDropdownAnchor(event.currentTarget)}
+              </Box>
+            )}
+          </Box>
+
+          {attackMode === 'autopilot' ? (
+            <>
+              {/* Divider 1 */}
+              <Box sx={styles.divider} />
+
+              {/* Autopilot Configuration Button */}
+              <Box sx={styles.potionSubGroup}>
+                <Tooltip
+                  leaveDelay={300}
+                  placement="top"
+                  title={(
+                    <Box sx={styles.tooltip}>
+                      <Typography sx={styles.tooltipTitle}>Autopilot Settings</Typography>
+                      <Typography sx={styles.tooltipText}>
+                        Configure when Autopilot should attack and spend potions.
+                      </Typography>
+                    </Box>
+                  )}
                 >
-                  <ArrowDropDownIcon sx={{ fontSize: '21px', color: gameColors.yellow }} />
-                </Box>
+                  <Box
+                    sx={styles.configButton}
+                    onClick={() => setAutopilotConfigOpen(true)}
+                  >
+                    <SettingsIcon sx={{ fontSize: 22, color: gameColors.brightGreen }} />
+                  </Box>
+                </Tooltip>
               </Box>
-            </Box>
-        }
-      </Box>
+            </>
+          ) : (
+            <>
+              <Box sx={styles.divider} />
 
-      {attackMode === 'autopilot' ? (
-        <>
-          {/* Divider 1 */}
-          <Box sx={styles.divider} />
-
-          {/* Autopilot Configuration Button */}
-          <Box sx={styles.potionSubGroup}>
-            <Tooltip
-              leaveDelay={300}
-              placement="top"
-              title={(
-                <Box sx={styles.tooltip}>
-                  <Typography sx={styles.tooltipTitle}>Autopilot Settings</Typography>
+              <Box sx={styles.potionSubGroup}>
+                <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+                  <Typography sx={styles.tooltipTitle}>Extra Life</Typography>
                   <Typography sx={styles.tooltipText}>
-                    Configure when Autopilot should attack and spend potions.
+                    {appliedExtraLifePotions > 0
+                      ? `${appliedExtraLifePotions} extra lives applied`
+                      : 'Grant additional lives'}
                   </Typography>
-                </Box>
-              )}
-            >
-              <Box
-                sx={styles.configButton}
-                onClick={() => setAutopilotConfigOpen(true)}
-              >
-                <SettingsIcon sx={{ fontSize: 22, color: gameColors.brightGreen }} />
-              </Box>
-            </Tooltip>
-          </Box>
-        </>
-      ) : (
-        <>
-          {/* Divider 1 */}
-          <Box sx={styles.divider} />
-
-          {/* Section 2: Potion Buttons */}
-          <Box sx={styles.potionSubGroup}>
-            <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
-              <Typography sx={styles.tooltipTitle}>Revive Potions</Typography>
-              <Typography sx={styles.tooltipText}>
-                {revivalPotionsRequired > 0
-                  ? `${revivalPotionsRequired} required for dead beasts`
-                  : 'Attack with your dead beasts'}
-              </Typography>
-              {revivalPotionsRequired > tokenBalances["REVIVE"] && (
-                <Typography sx={styles.tooltipWarning}>
-                  ⚠️ Not enough potions!
-                </Typography>
-              )}
-            </Box>}>
-              <Box sx={[
-                styles.potionButton,
-                revivalPotionsRequired > 0 && styles.potionButtonActive,
-                revivalPotionsRequired > tokenBalances["REVIVE"] && styles.potionButtonInsufficient
-              ]}>
-                <img src={revivePotionIcon} alt='' height={'24px'} />
-                {revivalPotionsRequired > 0 && (
-                  <Box sx={styles.requiredIndicator}>
-                    <Typography sx={styles.requiredText}>
-                      {revivalPotionsRequired}
-                    </Typography>
+                  <Typography sx={styles.tooltipSubtext}>
+                    Applied after you take the Summit
+                  </Typography>
+                </Box>}>
+                  <Box sx={[
+                    styles.potionButton,
+                    enableExtraLifePotion && styles.potionButtonActive,
+                    appliedExtraLifePotions > 0 && styles.potionButtonApplied
+                  ]}
+                    onClick={(event) => {
+                      if (!enableExtraLifePotion) return;
+                      handleClick(event, 'extraLife');
+                    }}>
+                    <img src={lifePotionIcon} alt='' height={'24px'} />
+                    {appliedExtraLifePotions > 0 && (
+                      <Box sx={styles.appliedIndicator}>
+                        <Typography sx={styles.appliedText}>
+                          {appliedExtraLifePotions}
+                        </Typography>
+                      </Box>
+                    )}
+                    <Box sx={styles.count}>
+                      <Typography sx={styles.countText}>
+                        {tokenBalances["EXTRA LIFE"]}
+                      </Typography>
+                    </Box>
                   </Box>
-                )}
-                <Box sx={styles.count}>
-                  <Typography sx={styles.countText}>
-                    {tokenBalances["REVIVE"]}
-                  </Typography>
-                </Box>
-              </Box>
-            </Tooltip>
+                </Tooltip>
 
-            <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
-              <Typography sx={styles.tooltipTitle}>Attack Potion</Typography>
-              <Typography sx={styles.tooltipText}>
-                {appliedPotions.attack > 0
-                  ? `${appliedPotions.attack * 10}% damage boost applied`
-                  : 'Add 10% damage boost per potion'}
-              </Typography>
-              <Typography sx={styles.tooltipSubtext}>
-                Applied on next attack
-              </Typography>
-            </Box>}>
-              <Box sx={[
-                styles.potionButton,
-                enableAttackPotion && styles.potionButtonActive,
-                appliedPotions.attack > 0 && styles.potionButtonApplied
-              ]}
-                onClick={(event) => {
-                  if (!enableAttackPotion) return;
-                  handleClick(event, 'attack');
-                }}>
-                <img src={attackPotionIcon} alt='' height={'24px'} />
-                {appliedPotions.attack > 0 && (
-                  <Box sx={styles.appliedIndicator}>
-                    <Typography sx={styles.appliedText}>
-                      {appliedPotions.attack}
-                    </Typography>
-                  </Box>
-                )}
-                <Box sx={styles.count}>
-                  <Typography sx={styles.countText}>
-                    {tokenBalances["ATTACK"]}
+                <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+                  <Typography sx={styles.tooltipTitle}>Poison</Typography>
+                  <Typography sx={styles.tooltipText}>
+                    {appliedPoisonCount > 0
+                      ? `${appliedPoisonCount} poison potions applied`
+                      : 'Poison the summit'}
                   </Typography>
-                </Box>
+                  <Typography sx={styles.tooltipSubtext}>
+                    Deals 1 damage per second
+                  </Typography>
+                </Box>}>
+                  <Box sx={[
+                    styles.potionButton,
+                    enablePoisonPotion && styles.potionButtonActive,
+                    appliedPoisonCount > 0 && styles.potionButtonApplied
+                  ]}
+                    onClick={(event) => {
+                      if (!enablePoisonPotion) return;
+                      handleClick(event, 'poison');
+                    }}>
+                    <img src={poisonPotionIcon} alt='' height={'24px'} />
+                    {appliedPoisonCount > 0 && (
+                      <Box sx={styles.appliedIndicator}>
+                        <Typography sx={styles.appliedText}>
+                          {appliedPoisonCount}
+                        </Typography>
+                      </Box>
+                    )}
+                    <Box sx={styles.count}>
+                      <Typography sx={styles.countText}>
+                        {tokenBalances["POISON"]}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Tooltip>
               </Box>
-            </Tooltip>
 
-            <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
-              <Typography sx={styles.tooltipTitle}>Extra Life</Typography>
-              <Typography sx={styles.tooltipText}>
-                {appliedPotions.extraLife > 0
-                  ? `${appliedPotions.extraLife} extra lives applied`
-                  : 'Grant additional lives'}
-              </Typography>
-              <Typography sx={styles.tooltipSubtext}>
-                Applied after you take the Summit
-              </Typography>
-            </Box>}>
-              <Box sx={[
-                styles.potionButton,
-                enableExtraLifePotion && styles.potionButtonActive,
-                appliedPotions.extraLife > 0 && styles.potionButtonApplied
-              ]}
-                onClick={(event) => {
-                  if (!enableExtraLifePotion) return;
-                  handleClick(event, 'extraLife');
-                }}>
-                <img src={lifePotionIcon} alt='' height={'24px'} />
-                {appliedPotions.extraLife > 0 && (
-                  <Box sx={styles.appliedIndicator}>
-                    <Typography sx={styles.appliedText}>
-                      {appliedPotions.extraLife}
-                    </Typography>
-                  </Box>
-                )}
-                <Box sx={styles.count}>
-                  <Typography sx={styles.countText}>
-                    {tokenBalances["EXTRA LIFE"]}
-                  </Typography>
-                </Box>
-              </Box>
-            </Tooltip>
+              <Box sx={styles.divider} />
 
-            <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
-              <Typography sx={styles.tooltipTitle}>Coming Soon</Typography>
-            </Box>}>
-              <Box sx={[
-                styles.potionButton,
-                enablePoisonPotion && styles.potionButtonActive,
-                appliedPoisonCount > 0 && styles.potionButtonApplied,
-                { opacity: 0.5, cursor: 'not-allowed' } // TEMP: Disabled
-              ]}
-                onClick={(event) => {
-                  return; // TEMP: Disabled
-                  if (!enablePoisonPotion) return;
-                  handleClick(event, 'poison');
-                }}>
-                <img src={poisonPotionIcon} alt='' height={'24px'} />
-                {appliedPoisonCount > 0 && (
-                  <Box sx={styles.appliedIndicator}>
-                    <Typography sx={styles.appliedText}>
-                      {appliedPoisonCount}
-                    </Typography>
-                  </Box>
-                )}
-                <Box sx={styles.count}>
-                  <Typography sx={styles.countText}>
-                    {tokenBalances["POISON"]}
+              <Box sx={styles.potionSubGroup}>
+                <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+                  <Typography sx={styles.tooltipTitle}>Revive Potions</Typography>
+                  <Typography sx={styles.tooltipText}>
+                    {revivalPotionsRequired > 0
+                      ? `${revivalPotionsRequired} required for attack`
+                      : 'Attack with your dead beasts'}
                   </Typography>
-                </Box>
+                  {revivalPotionsRequired > tokenBalances["REVIVE"] && (
+                    <Typography sx={styles.tooltipWarning}>
+                      ⚠️ Not enough potions!
+                    </Typography>
+                  )}
+                </Box>}>
+                  <Box sx={[
+                    styles.potionButton,
+                    revivalPotionsRequired > 0 && styles.potionButtonActive,
+                    revivalPotionsRequired > tokenBalances["REVIVE"] && styles.potionButtonInsufficient
+                  ]}>
+                    <img src={revivePotionIcon} alt='' height={'24px'} />
+                    {revivalPotionsRequired > 0 && (
+                      <Box sx={styles.requiredIndicator}>
+                        <Typography sx={styles.requiredText}>
+                          {revivalPotionsRequired}
+                        </Typography>
+                      </Box>
+                    )}
+                    <Box sx={styles.count}>
+                      <Typography sx={styles.countText}>
+                        {tokenBalances["REVIVE"]}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Tooltip>
+
+                <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+                  <Typography sx={styles.tooltipTitle}>Attack Potion</Typography>
+                  <Typography sx={styles.tooltipText}>
+                    {appliedAttackPotions > 0
+                      ? `${appliedAttackPotions * 10}% damage boost applied`
+                      : 'Add 10% damage boost per potion'}
+                  </Typography>
+                  <Typography sx={styles.tooltipSubtext}>
+                    Applied on next attack
+                  </Typography>
+                </Box>}>
+                  <Box sx={[
+                    styles.potionButton,
+                    appliedAttackPotions > 0 && styles.potionButtonActive,
+                    appliedAttackPotions > 0 && styles.potionButtonApplied,
+                  ]}>
+                    <img src={attackPotionIcon} alt='' height={'24px'} />
+                    {appliedAttackPotions > 0 && (
+                      <Box sx={styles.appliedIndicator}>
+                        <Typography sx={styles.appliedText}>
+                          {appliedAttackPotions}
+                        </Typography>
+                      </Box>
+                    )}
+                    <Box sx={styles.count}>
+                      <Typography sx={styles.countText}>
+                        {tokenBalances["ATTACK"]}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Tooltip>
               </Box>
-            </Tooltip>
-          </Box>
+            </>
+          )}
         </>
       )}
     </Box>
@@ -563,23 +697,6 @@ function ActionBar() {
       </MenuItem>
       <MenuItem
         onClick={() => {
-          setAttackMode('capture');
-          setAttackDropdownAnchor(null);
-        }}
-        sx={{
-          ...styles.menuItem,
-          backgroundColor: attackMode === 'capture' ? `${gameColors.brightGreen}20` : 'transparent',
-        }}
-      >
-        <Box>
-          <Typography sx={styles.menuItemTitle}>Attack until Capture</Typography>
-          <Typography sx={styles.menuItemDescription}>
-            Attack with all your beasts until you capture <br /> the Summit or all your beasts are dead
-          </Typography>
-        </Box>
-      </MenuItem>
-      <MenuItem
-        onClick={() => {
           setAttackMode('autopilot');
           setAttackDropdownAnchor(null);
         }}
@@ -603,7 +720,7 @@ function ActionBar() {
         '& .MuiPaper-root': {
           backgroundColor: '#1a1f1a',
           backdropFilter: 'blur(10px)',
-          border: `1px solid ${gameColors.gameYellow}`,
+          border: `1px solid ${gameColors.brightGreen}`,
           borderRadius: '8px',
           boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
           overflow: 'visible',
@@ -621,17 +738,28 @@ function ActionBar() {
         horizontal: 'center',
       }}
     >
-      <Box width={'160px'} display={'flex'} alignItems={'center'} flexDirection={'column'} p={1} gap={0.5}>
-        <Typography
-          variant='body1'
-          sx={{
-            color: gameColors.gameYellow,
-            fontWeight: 500,
-            mb: 1,
-            fontSize: '14px',
-          }}
-        >
-          {potion === 'attack' ? 'Attack Potion' : potion === 'extraLife' ? 'Extra Life' : 'Poison Potion'}
+      <Box width={'220px'} display={'flex'} flexDirection={'column'} p={1.25} gap={0.5}>
+        <Box display="flex" alignItems="center" justifyContent="space-between" gap={1}>
+          <Box display="flex" alignItems="center" gap={1} minWidth={0}>
+            <img
+              src={potion === 'extraLife' ? lifePotionIcon : poisonPotionIcon}
+              alt=""
+              height={'18px'}
+              style={{ opacity: 0.95 }}
+            />
+            <Typography sx={styles.menuItemTitle} noWrap>
+              {potion === 'extraLife' ? 'Extra Life' : 'Poison Summit Beast'}
+            </Typography>
+          </Box>
+        </Box>
+
+        <Typography sx={{ ...styles.menuItemDescription, opacity: 0.9, my: 1 }}>
+          {potion === 'poison'
+            ? 'Select amount to apply'
+            : isSavage
+              ? 'Select amount to apply to the Summit'
+              : 'Select amount to apply after you take the Summit'
+          }
         </Typography>
 
         <Box
@@ -639,7 +767,6 @@ function ActionBar() {
           alignItems={'center'}
           justifyContent={'space-between'}
           width={'100%'}
-          gap={1}
           mb={1}
         >
           <IconButton
@@ -659,11 +786,8 @@ function ActionBar() {
             onClick={() => {
               if (potion === 'poison') {
                 setAppliedPoisonCount(Math.max(0, appliedPoisonCount - 1));
-              } else {
-                setAppliedPotions({
-                  ...appliedPotions,
-                  [potion]: Math.max(0, appliedPotions[potion] - 1)
-                });
+              } else if (potion === 'extraLife') {
+                setAppliedExtraLifePotions(Math.max(0, appliedExtraLifePotions - 1));
               }
             }}>
             <RemoveIcon fontSize="small" />
@@ -671,52 +795,43 @@ function ActionBar() {
 
           <Typography
             component={'div'}
-            sx={{ mx: 1, display: 'flex', alignItems: 'center' }}
+            sx={{ display: 'flex', alignItems: 'center' }}
           >
             <TextField
               type="text"
               size="small"
               variant="outlined"
-              value={potion === 'attack' ? appliedPotions.attack : potion === 'extraLife' ? appliedPotions.extraLife : appliedPoisonCount}
+              value={potion === 'extraLife' ? appliedExtraLifePotions : appliedPoisonCount}
               onChange={(e) => {
                 const raw = e.target.value;
                 let next = parseInt(raw, 10);
                 if (isNaN(next)) next = 0;
                 next = Math.max(0, next);
                 const maxCap =
-                  potion === 'attack'
-                    ? Math.min(tokenBalances["ATTACK"] || 0, 255)
-                    : potion === 'extraLife'
-                      ? Math.min(
-                        tokenBalances["EXTRA LIFE"] || 0,
-                        Math.max(0, 4000 - ((selectedBeasts[0]?.extra_lives as number) || 0))
-                      )
-                      : Math.min(tokenBalances["POISON"] || 0, 2050);
+                  potion === 'extraLife'
+                    ? Math.min(tokenBalances["EXTRA LIFE"] || 4000)
+                    : Math.min(tokenBalances["POISON"] || 0, 2050);
                 next = Math.min(next, maxCap);
                 if (potion === 'poison') {
                   setAppliedPoisonCount(next);
-                } else {
-                  setAppliedPotions({
-                    ...appliedPotions,
-                    [potion]: next
-                  });
+                } else if (potion === 'extraLife') {
+                  setAppliedExtraLifePotions(next);
                 }
               }}
-              inputProps={{
-                min: 0,
-                max:
-                  potion === 'attack'
-                    ? Math.min(tokenBalances["ATTACK"] || 0, 255)
-                    : potion === 'extraLife'
-                      ? Math.min(
-                        tokenBalances["EXTRA LIFE"] || 0,
-                        Math.max(0, 4000 - ((selectedBeasts[0]?.extra_lives as number) || 0))
-                      )
-                      : Math.min(tokenBalances["POISON"] || 0, 2050),
-                inputMode: 'numeric',
+              slotProps={{
+                input: {
+                  inputProps: {
+                    min: 0,
+                    max:
+                      potion === 'extraLife'
+                        ? Math.min(tokenBalances["EXTRA LIFE"] || 4000)
+                        : Math.min(tokenBalances["POISON"] || 0, 2050),
+                    inputMode: 'numeric',
+                  }
+                }
               }}
               sx={{
-                width: 64,
+                width: 96,
                 '& .MuiInputBase-input': {
                   color: gameColors.gameYellow,
                   textAlign: 'center',
@@ -754,148 +869,31 @@ function ActionBar() {
             onClick={() => {
               if (potion === 'poison') {
                 setAppliedPoisonCount(Math.min(appliedPoisonCount + 1, Math.min(tokenBalances["POISON"], 2050)));
-              } else {
-                setAppliedPotions({
-                  ...appliedPotions,
-                  [potion]: Math.min(
-                    appliedPotions[potion] + 1,
-                    potion === 'attack'
-                      ? Math.min(tokenBalances["ATTACK"] || 0, 255)
-                      : potion === 'extraLife'
-                        ? Math.min(
-                          tokenBalances["EXTRA LIFE"] || 0,
-                          Math.max(0, 4000 - ((selectedBeasts[0]?.extra_lives as number) || 0))
-                        )
-                        : 255
-                  )
-                })
+              } else if (potion === 'extraLife') {
+                setAppliedExtraLifePotions(Math.min(appliedExtraLifePotions + 1, Math.min(tokenBalances["EXTRA LIFE"] || 4000)));
               }
             }}>
             <AddIcon fontSize="small" />
           </IconButton>
         </Box>
 
-        {potion === 'attack' && summit?.beast && selectedBeasts.length > 0 && (
-          <Box
-            display={'flex'}
-            alignItems={'center'}
-            justifyContent={'center'}
-            gap={1}
-            width={'100%'}
-          >
-            <Button
-              size="small"
-              variant="outlined"
-              sx={{
-                flex: 1,
-                color: gameColors.gameYellow,
-                borderColor: `${gameColors.gameYellow}80`,
-                textTransform: 'none',
-                fontSize: '11px',
-                padding: '2px 8px',
-                minWidth: 0,
-                '&:hover': {
-                  color: gameColors.gameYellow,
-                  borderColor: gameColors.gameYellow,
-                  backgroundColor: `${gameColors.gameYellow}15`,
-                }
-              }}
-              onClick={() => {
-                const target = (summit.beast.extra_lives > 0)
-                  ? (summit.beast.health + summit.beast.bonus_health)
-                  : Math.max(1, summit.beast.current_health || 0);
-                const maxAllowed = Math.min(tokenBalances["ATTACK"] || 0, 255);
-                let bestRequired = Number.POSITIVE_INFINITY;
-                const beast = selectedBeasts[0] as Beast | undefined;
-                if (beast && beast.current_health > 0) {
-                  for (let n = 0; n <= maxAllowed; n++) {
-                    const combat = calculateBattleResult(beast, summit, n);
-                    if (combat.estimatedDamage >= target) {
-                      bestRequired = n;
-                      break;
-                    }
-                  }
-                }
-                const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
-                setAppliedPotions({
-                  ...appliedPotions,
-                  attack: value
-                });
-              }}
-            >
-              Optimal
-            </Button>
-            <Button
-              size="small"
-              variant="outlined"
-              sx={{
-                flex: 1,
-                color: gameColors.gameYellow,
-                borderColor: `${gameColors.gameYellow}80`,
-                textTransform: 'none',
-                fontSize: '11px',
-                padding: '2px 8px',
-                minWidth: 0,
-                '&:hover': {
-                  color: gameColors.gameYellow,
-                  borderColor: gameColors.gameYellow,
-                  backgroundColor: `${gameColors.gameYellow}15`,
-                }
-              }}
-              onClick={() => {
-                const target = (summit.beast.extra_lives > 0)
-                  ? (summit.beast.health + summit.beast.bonus_health)
-                  : Math.max(1, summit.beast.current_health || 0);
-                const maxAllowed = Math.min(tokenBalances["ATTACK"] || 0, 255);
-                let bestRequired = Number.POSITIVE_INFINITY;
-                const beast = selectedBeasts[0] as Beast | undefined;
-                if (beast && beast.current_health > 0) {
-                  for (let n = 0; n <= maxAllowed; n++) {
-                    const combat = calculateBattleResult(beast, summit, n);
-                    if (combat.attack >= target) {
-                      bestRequired = n;
-                      break;
-                    }
-                  }
-                }
-                const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
-                setAppliedPotions({
-                  ...appliedPotions,
-                  attack: value
-                });
-              }}
-            >
-              MAX
-            </Button>
-          </Box>
-        )}
-
-        <Box sx={{ width: '100%', px: 0.5 }}>
+        <Box sx={{ width: '100%', px: 1, boxSizing: 'border-box' }}>
           <Slider
-            value={potion === 'attack' ? appliedPotions.attack : potion === 'extraLife' ? appliedPotions.extraLife : appliedPoisonCount}
+            value={potion === 'extraLife' ? appliedExtraLifePotions : appliedPoisonCount}
             step={1}
             min={0}
             max={
               Math.min(
-                potion === 'attack'
-                  ? (tokenBalances["ATTACK"] || 0)
-                  : potion === 'extraLife'
-                    ? Math.min(
-                      (tokenBalances["EXTRA LIFE"] || 0),
-                      Math.max(0, 4000 - ((selectedBeasts[0]?.extra_lives as number) || 0))
-                    )
-                    : (tokenBalances["POISON"] || 0),
-                (potion === 'poison' ? 2050 : potion === 'extraLife' ? 4000 : 255)
+                potion === 'extraLife'
+                  ? Math.min(tokenBalances["EXTRA LIFE"] || 4000)
+                  : Math.min(tokenBalances["POISON"] || 0, 2050)
               )
             }
             onChange={(e, value) => {
               if (potion === 'poison') {
                 setAppliedPoisonCount(value);
-              } else {
-                setAppliedPotions({
-                  ...appliedPotions,
-                  [potion]: value
-                })
+              } else if (potion === 'extraLife') {
+                setAppliedExtraLifePotions(value);
               }
             }}
             size='small'
@@ -942,6 +940,7 @@ function ActionBar() {
             display: 'flex',
             justifyContent: 'space-between',
             width: '100%',
+            boxSizing: 'border-box',
             px: 0.5,
           }}
         >
@@ -951,19 +950,77 @@ function ActionBar() {
           <Typography sx={{ fontSize: '11px', color: gameColors.gameYellow, opacity: 0.6 }}>
             {
               Math.min(
-                potion === 'attack'
-                  ? (tokenBalances["ATTACK"] || 0)
-                  : potion === 'extraLife'
-                    ? Math.min(
-                      (tokenBalances["EXTRA LIFE"] || 0),
-                      Math.max(0, 4000 - ((selectedBeasts[0]?.extra_lives as number) || 0))
-                    )
-                    : (tokenBalances["POISON"] || 0),
-                (potion === 'poison' ? 2050 : potion === 'extraLife' ? 4000 : 255)
+                potion === 'extraLife'
+                  ? Math.min(tokenBalances["EXTRA LIFE"] || 4000)
+                  : Math.min(tokenBalances["POISON"] || 0, 2050)
               )
             }
           </Typography>
         </Box>
+
+        {potion === 'poison' && (
+          <Button
+            fullWidth
+            variant="contained"
+            disabled={!enableApplyPoison}
+            onClick={() => {
+              handleApplyPoison(appliedPoisonCount);
+              handleClose();
+            }}
+            sx={{
+              mt: 1,
+              background: `linear-gradient(135deg, ${gameColors.mediumGreen}30 0%, ${gameColors.darkGreen}70 100%)`,
+              border: `1px solid ${gameColors.brightGreen}`,
+              borderRadius: '5px',
+              color: '#ffedbb',
+              fontWeight: 'bold',
+              textTransform: 'none',
+              '&:hover': {
+                color: '#ffedbb',
+                background: `linear-gradient(135deg, ${gameColors.lightGreen}40 0%, ${gameColors.mediumGreen}80 100%)`,
+              },
+              '&.Mui-disabled': {
+                borderColor: `${gameColors.lightGreen}40`,
+                color: `${gameColors.lightGreen}`,
+                opacity: 0.7,
+              },
+            }}
+          >
+            {applyingPotions ? 'Applying…' : 'Apply Poison'}
+          </Button>
+        )}
+
+        {potion === 'extraLife' && isSavage && (
+          <Button
+            fullWidth
+            variant="contained"
+            disabled={!enableApplyExtraLife}
+            onClick={() => {
+              handleApplyExtraLife(appliedExtraLifePotions);
+              handleClose();
+            }}
+            sx={{
+              mt: 1,
+              background: `linear-gradient(135deg, ${gameColors.mediumGreen}30 0%, ${gameColors.darkGreen}70 100%)`,
+              border: `1px solid ${gameColors.brightGreen}`,
+              borderRadius: '5px',
+              color: '#ffedbb',
+              fontWeight: 'bold',
+              textTransform: 'none',
+              '&:hover': {
+                color: '#ffedbb',
+                background: `linear-gradient(135deg, ${gameColors.lightGreen}40 0%, ${gameColors.mediumGreen}80 100%)`,
+              },
+              '&.Mui-disabled': {
+                borderColor: `${gameColors.lightGreen}40`,
+                color: `${gameColors.lightGreen}`,
+                opacity: 0.7,
+              },
+            }}
+          >
+            {applyingPotions ? 'Applying…' : 'Apply Extra Life'}
+          </Button>
+        )}
       </Box>
     </Menu>}
   </Box>
@@ -984,6 +1041,193 @@ const styles = {
     overflowX: 'auto',
     overflowY: 'hidden',
     position: 'relative',
+  },
+  autopilotOverlay: {
+    width: '100%',
+    backdropFilter: 'blur(12px) saturate(1.2)',
+    boxShadow: `
+    inset 0 1px 0 ${gameColors.accentGreen}30,
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 0 0 1px ${gameColors.darkGreen}60
+  `,
+  },
+  autopilotOverlayInner: {
+    borderRadius: '18px',
+    border: `1px solid ${gameColors.brightGreen}70`,
+    backdropFilter: 'blur(14px) saturate(1.25)',
+    boxShadow: `
+      0 18px 42px rgba(0, 0, 0, 0.55),
+      0 0 36px ${gameColors.brightGreen}25,
+      inset 0 1px 0 ${gameColors.accentGreen}35,
+      inset 0 0 0 1px ${gameColors.darkGreen}70
+    `,
+    overflow: 'hidden',
+    position: 'relative' as const,
+    '@keyframes autopilotGlowBig': {
+      '0%': { filter: 'brightness(1)' },
+      '50%': { filter: 'brightness(1.06)' },
+      '100%': { filter: 'brightness(1)' },
+    },
+    animation: 'autopilotGlowBig 2.6s ease-in-out infinite',
+    '&::before': {
+      content: '""',
+      position: 'absolute',
+      inset: 0,
+      background: `linear-gradient(90deg, transparent 0%, ${gameColors.brightGreen}14 35%, transparent 70%)`,
+      transform: 'translateX(-60%)',
+      '@keyframes autopilotScanBig': {
+        '0%': { transform: 'translateX(-60%)' },
+        '100%': { transform: 'translateX(60%)' },
+      },
+      animation: 'autopilotScanBig 2.2s linear infinite',
+      pointerEvents: 'none',
+      opacity: 0.55,
+    },
+    '&::after': {
+      content: '""',
+      position: 'absolute',
+      inset: 0,
+      backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)',
+      backgroundSize: '100% 3px',
+      opacity: 0.10,
+      pointerEvents: 'none',
+    },
+  },
+  autopilotOverlayHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1.5,
+    px: 1.6,
+    py: 1.1,
+    borderBottom: `1px solid ${gameColors.accentGreen}35`,
+    position: 'relative' as const,
+  },
+  autopilotOverlayTitleWrap: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1.2,
+    minWidth: 0,
+  },
+  autopilotOverlayTitle: {
+    fontSize: isBrowser ? '14px' : '13px',
+    fontWeight: 1000,
+    letterSpacing: '1.2px',
+    color: '#ffedbb',
+    lineHeight: 1.05,
+    textShadow: `0 0 18px ${gameColors.brightGreen}35`,
+  },
+  autopilotOverlayStatus: {
+    fontSize: '11px',
+    fontWeight: 900,
+    letterSpacing: '0.9px',
+    color: gameColors.accentGreen,
+    opacity: 0.95,
+    mt: 0.25,
+  },
+  autopilotOverlayStopButton: {
+    textTransform: 'none' as const,
+    color: '#ffedbb',
+    fontWeight: 1000,
+    letterSpacing: '0.2px',
+    borderRadius: '12px',
+    height: '36px',
+    px: 1.4,
+    background: `linear-gradient(135deg, ${gameColors.red}55 50%, ${gameColors.darkGreen}30 100%)`,
+    border: `1px solid ${gameColors.red}`,
+    '&:hover': {
+      color: '#ffedbb',
+      background: `linear-gradient(135deg, ${gameColors.red}70 0%, ${gameColors.darkGreen}95 100%)`,
+    },
+  },
+  autopilotOverlayContent: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '6px',
+    px: 1.6,
+    py: 1,
+    position: 'relative' as const,
+  },
+  autopilotOverlayBudgetsHeader: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 0.4,
+  },
+  autopilotOverlayBudgetsTitle: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: gameColors.accentGreen,
+    opacity: 0.8,
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase' as const,
+  },
+  autopilotOverlayBudgets: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 1,
+    flexWrap: 'wrap' as const,
+  },
+  autopilotOverlayBudgetPill: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    borderRadius: '999px',
+    border: `1px solid ${gameColors.accentGreen}45`,
+    background: `${gameColors.darkGreen}70`,
+    boxShadow: `inset 0 1px 0 ${gameColors.accentGreen}18`,
+    height: '30px',
+    px: 1.2,
+  },
+  autopilotOverlayBudgetPillLabel: {
+    fontSize: '12px',
+    fontWeight: 900,
+    color: '#ffedbb',
+    letterSpacing: '0.2px',
+  },
+  autopilotOverlayBudgetPillValue: {
+    fontSize: '12px',
+    fontWeight: 1000,
+    color: gameColors.brightGreen,
+    minWidth: '22px',
+    textAlign: 'right' as const,
+    textShadow: `0 0 14px ${gameColors.brightGreen}22`,
+    marginLeft: '2px',
+  },
+  autopilotOverlayLog: {
+    borderRadius: '14px',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    background: `${gameColors.darkGreen}6A`,
+    boxShadow: `inset 0 1px 0 ${gameColors.accentGreen}18`,
+    overflow: 'hidden',
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column' as const,
+    maxHeight: isBrowser ? '150px' : '130px',
+  },
+  autopilotOverlayLogBody: {
+    px: 1.2,
+    py: 0.9,
+    overflowY: 'auto' as const,
+    overflowX: 'hidden' as const,
+    flex: 1,
+    '@keyframes autopilotCursorBig': {
+      '0%': { opacity: 0.2 },
+      '50%': { opacity: 1 },
+      '100%': { opacity: 0.2 },
+    },
+  },
+  autopilotOverlayLogLine: {
+    fontSize: '12px',
+    fontWeight: 800,
+    color: gameColors.accentGreen,
+    lineHeight: 1.35,
+    textShadow: `0 0 12px ${gameColors.brightGreen}15`,
+    wordBreak: 'break-word' as const,
+    '&:last-of-type::after': {
+      content: '"▌"',
+      marginLeft: '8px',
+      color: gameColors.brightGreen,
+      animation: 'autopilotCursorBig 1.0s ease-in-out infinite',
+    },
   },
   collectionSyncing: {
     position: 'absolute',
@@ -1011,12 +1255,21 @@ const styles = {
     backdropFilter: 'blur(12px) saturate(1.2)',
     border: `1px solid ${gameColors.accentGreen}40`,
     padding: '8px',
+    pb: isBrowser ? '8px' : '12px',
     marginBottom: '-1px',
     boxShadow: `
       inset 0 1px 0 ${gameColors.accentGreen}30,
       0 4px 16px rgba(0, 0, 0, 0.4),
       0 0 0 1px ${gameColors.darkGreen}60
     `,
+  },
+  autopilotButtonGroup: {
+    border: 'none',
+    backdropFilter: 'none',
+    boxShadow: 'none',
+    background: 'transparent',
+    padding: '0px',
+    px: 1,
   },
   potionSubGroup: {
     display: 'flex',
@@ -1036,7 +1289,7 @@ const styles = {
     border: `2px solid ${gameColors.lightGreen}40`,
     cursor: 'pointer',
     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-    minWidth: isBrowser ? '200px' : '120px',
+    minWidth: isBrowser ? '200px' : '140px',
     textAlign: 'center',
     opacity: 0.7,
     '&:hover': {
@@ -1232,6 +1485,20 @@ const styles = {
     background: `linear-gradient(to bottom, transparent 0%, ${gameColors.accentGreen}60 25%, ${gameColors.accentGreen}60 75%, transparent 100%)`,
     opacity: 0.6,
   },
+  // Autopilot UI moved to fixed overlay (see autopilotOverlay*)
+  autopilotStatusDot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '999px',
+    background: gameColors.brightGreen,
+    boxShadow: `0 0 10px ${gameColors.brightGreen}90`,
+    '@keyframes autopilotBeat': {
+      '0%': { transform: 'scale(1)', opacity: 0.85 },
+      '50%': { transform: 'scale(1.25)', opacity: 1 },
+      '100%': { transform: 'scale(1)', opacity: 0.85 },
+    },
+    animation: 'autopilotBeat 1.15s ease-in-out infinite',
+  },
   potionButtonInsufficient: {
     border: `2px solid ${gameColors.red}`,
     background: `linear-gradient(135deg, ${gameColors.red}20 0%, ${gameColors.darkGreen}80 100%)`,
@@ -1312,7 +1579,6 @@ const styles = {
     color: gameColors.brightGreen,
     fontWeight: 'bold',
     fontSize: '14px',
-    mb: '2px'
   },
   menuItemDescription: {
     color: gameColors.accentGreen,
