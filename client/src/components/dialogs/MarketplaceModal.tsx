@@ -12,7 +12,7 @@ import { useStatistics } from '@/contexts/Statistics';
 import { useSystemCalls } from '@/dojo/useSystemCalls';
 import { NETWORKS } from '@/utils/networkConfig';
 import { gameColors } from '@/utils/themes';
-import { delay, formatAmount } from '@/utils/utils';
+import { formatAmount } from '@/utils/utils';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';

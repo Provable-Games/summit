@@ -501,7 +501,7 @@ function ActionBar() {
                       if (!enableExtraLifePotion) return;
                       handleClick(event, 'extraLife');
                     }}>
-                    <img src={lifePotionIcon} alt='' height={'24px'} />
+                    <img src={lifePotionIcon} alt='' height={'32px'} />
                     {appliedExtraLifePotions > 0 && (
                       <Box sx={styles.appliedIndicator}>
                         <Typography sx={styles.appliedText}>
@@ -537,7 +537,7 @@ function ActionBar() {
                       if (!enablePoisonPotion) return;
                       handleClick(event, 'poison');
                     }}>
-                    <img src={poisonPotionIcon} alt='' height={'24px'} />
+                    <img src={poisonPotionIcon} alt='' height={'32px'} />
                     {appliedPoisonCount > 0 && (
                       <Box sx={styles.appliedIndicator}>
                         <Typography sx={styles.appliedText}>
@@ -575,7 +575,7 @@ function ActionBar() {
                     revivalPotionsRequired > 0 && styles.potionButtonActive,
                     revivalPotionsRequired > tokenBalances["REVIVE"] && styles.potionButtonInsufficient
                   ]}>
-                    <img src={revivePotionIcon} alt='' height={'24px'} />
+                    <img src={revivePotionIcon} alt='' height={'32px'} />
                     {revivalPotionsRequired > 0 && (
                       <Box sx={styles.requiredIndicator}>
                         <Typography sx={styles.requiredText}>
@@ -607,7 +607,7 @@ function ActionBar() {
                     appliedAttackPotions > 0 && styles.potionButtonActive,
                     appliedAttackPotions > 0 && styles.potionButtonApplied,
                   ]}>
-                    <img src={attackPotionIcon} alt='' height={'24px'} />
+                    <img src={attackPotionIcon} alt='' height={'32px'} />
                     {appliedAttackPotions > 0 && (
                       <Box sx={styles.appliedIndicator}>
                         <Typography sx={styles.appliedText}>

@@ -39,7 +39,7 @@ const ProfileCard = () => {
     const price = tokenPrices[tokenName]
 
     return <Box sx={styles.potionItem}>
-      <img src={imgSrc} alt={tokenName} style={{ width: '20px', height: '20px' }} />
+      <img src={imgSrc} alt={tokenName} style={{ width: '24px', height: '24px' }} />
       {price
         ? <Typography sx={styles.potionPrice}>${price}</Typography>
         : <Skeleton variant="text" width={40} sx={{ bgcolor: 'grey.700' }} />
@@ -552,7 +552,6 @@ const styles = {
   potionItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: 0.5,
     background: `${gameColors.darkGreen}60`,
     border: `1px solid ${gameColors.accentGreen}30`,
     borderRadius: '4px',

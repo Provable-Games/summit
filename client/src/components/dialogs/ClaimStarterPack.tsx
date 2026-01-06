@@ -161,7 +161,7 @@ function ClaimStarterPack(props) {
 
                   <Box sx={styles.itemContent}>
                     <Box sx={styles.imageContainer}>
-                      <img src={potion.icon} alt='' width={'90%'} />
+                      <img src={potion.icon} alt='' width={'95%'} />
                     </Box>
 
                     <Box display={'flex'} flexDirection={'column'} gap={0.5}>
@@ -323,7 +323,7 @@ const styles = {
     gap: 2
   },
   itemContainer: {
-    width: '180px',
+    width: '200px',
     minWidth: '180px',
     display: 'flex',
     flexDirection: 'column',
