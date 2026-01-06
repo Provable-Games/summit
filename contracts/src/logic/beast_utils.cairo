@@ -1,5 +1,6 @@
+use core::hash::HashStateTrait;
 use core::num::traits::Sqrt;
-use core::poseidon::poseidon_hash_span;
+use core::poseidon::PoseidonTrait;
 use summit::constants::{BASE_REVIVAL_TIME_SECONDS, DIPLOMACY_COST, SPECIALS_COST, WISDOM_COST};
 
 /// Calculate level from XP using square root
@@ -20,10 +21,10 @@ pub fn get_level_from_xp(xp: u32) -> u16 {
 /// @return true if beast can still gain XP
 pub fn can_gain_xp(base_level: u16, bonus_xp: u16, max_bonus_levels: u16) -> bool {
     // Use u32 to prevent overflow: (65535 + 40)^2 fits in u32
-    let base_xp: u32 = base_level.into() * base_level.into();
-    let max_level: u32 = base_level.into() + max_bonus_levels.into();
-    let max_xp: u32 = max_level * max_level;
-    bonus_xp.into() < max_xp - base_xp
+    // Cache base_level conversion to avoid redundant conversions
+    let base: u32 = base_level.into();
+    let max_level: u32 = base + max_bonus_levels.into();
+    bonus_xp.into() < (max_level * max_level) - (base * base)
 }
 
 /// Calculate XP gain from an attack
@@ -82,14 +83,14 @@ pub fn is_beast_stronger(
 }
 
 /// Generate hash for diplomacy grouping based on prefix and suffix
+/// Optimized: Uses PoseidonTrait chaining instead of array allocation
 /// @param prefix Beast's prefix special
 /// @param suffix Beast's suffix special
 /// @return Poseidon hash of the specials
 pub fn get_specials_hash(prefix: u8, suffix: u8) -> felt252 {
-    let mut hash_span = ArrayTrait::<felt252>::new();
-    hash_span.append(prefix.into());
-    hash_span.append(suffix.into());
-    poseidon_hash_span(hash_span.span()).into()
+    let prefix_felt: felt252 = prefix.into();
+    let suffix_felt: felt252 = suffix.into();
+    PoseidonTrait::new().update(prefix_felt).update(suffix_felt).finalize()
 }
 
 /// Calculate total cost for stat upgrades

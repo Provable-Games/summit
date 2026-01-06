@@ -1,4 +1,5 @@
-use core::poseidon::poseidon_hash_span;
+use core::hash::HashStateTrait;
+use core::poseidon::PoseidonTrait;
 use death_mountain_beast::beast::ImplBeast;
 use death_mountain_combat::combat::{CombatSpec, ImplCombat, SpecialPowers};
 use summit::logic::beast_utils::get_level_from_xp;
@@ -98,6 +99,7 @@ pub fn use_extra_life(current_health: u16, extra_lives: u16, base_health: u16, b
 }
 
 /// Generate battle randomness from hash inputs
+/// Optimized: Uses PoseidonTrait chaining instead of array allocation
 /// @param token_id The attacking beast's token ID
 /// @param seed VRF seed (0 if VRF disabled)
 /// @param last_death_timestamp Attacker's last death timestamp
@@ -110,13 +112,17 @@ pub fn get_battle_randomness(
         return (0, 0, 0, 0);
     }
 
-    let mut hash_span = ArrayTrait::<felt252>::new();
-    hash_span.append(token_id.into());
-    hash_span.append(seed);
-    hash_span.append(last_death_timestamp.into());
-    hash_span.append(battle_counter.into());
+    let token_id_felt: felt252 = token_id.into();
+    let timestamp_felt: felt252 = last_death_timestamp.into();
+    let counter_felt: felt252 = battle_counter.into();
 
-    let poseidon = poseidon_hash_span(hash_span.span());
+    let poseidon = PoseidonTrait::new()
+        .update(token_id_felt)
+        .update(seed)
+        .update(timestamp_felt)
+        .update(counter_felt)
+        .finalize();
+
     let rnd1_u64 = felt_to_u32(poseidon);
     u32_to_u8s(rnd1_u64)
 }
