@@ -48,6 +48,7 @@ pub fn calculate_xp_gain(attack_streak: u8, beast_can_get_xp: bool) -> u16 {
 /// @param current_timestamp Current block timestamp
 /// @param max_streak Maximum streak value (typically 10)
 /// @return New attack streak value
+#[inline(always)]
 pub fn update_attack_streak(
     current_streak: u8, last_death_timestamp: u64, current_timestamp: u64, max_streak: u8,
 ) -> u8 {
@@ -91,6 +92,7 @@ pub fn is_beast_stronger(
 /// @param prefix Beast's prefix special
 /// @param suffix Beast's suffix special
 /// @return Poseidon hash of the specials
+#[inline(always)]
 pub fn get_specials_hash(prefix: u8, suffix: u8) -> felt252 {
     let prefix_felt: felt252 = prefix.into();
     let suffix_felt: felt252 = suffix.into();

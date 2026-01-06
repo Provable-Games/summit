@@ -13,6 +13,7 @@ use summit::utils::{felt_to_u32, u32_to_u8s};
 /// @param bonus_xp The beast's accumulated bonus XP
 /// @param include_specials Whether to include special powers in combat
 /// @return CombatSpec for use in damage calculations
+#[inline(always)]
 pub fn build_combat_spec(
     beast_id: u8, base_level: u16, prefix: u8, suffix: u8, bonus_xp: u16, include_specials: bool,
 ) -> CombatSpec {
@@ -49,6 +50,7 @@ pub fn build_combat_spec(
 /// @param critical_hit_chance Attacker's crit chance (0-100)
 /// @param critical_hit_rnd Random value for crit determination
 /// @return (total_damage, is_critical_hit)
+#[inline(always)]
 pub fn calculate_attack_damage(
     attacker_spec: CombatSpec,
     defender_spec: CombatSpec,
@@ -132,6 +134,7 @@ pub fn get_battle_randomness(
 /// Get the attack power of a beast (used for diplomacy calculations)
 /// @param combat_spec The beast's CombatSpec
 /// @return Attack HP value
+#[inline(always)]
 pub fn get_attack_power(combat_spec: CombatSpec) -> u16 {
     ImplCombat::get_attack_hp(combat_spec)
 }
