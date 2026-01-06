@@ -19,7 +19,15 @@ pub fn build_combat_spec(
     let beast_type = ImplBeast::get_type(beast_id);
 
     // Calculate effective XP: base_level^2 + bonus_xp
-    let beast_xp: u32 = base_level.into() * base_level.into() + bonus_xp.into();
+    // Use u64 to prevent overflow: 65535^2 + 65535 can exceed u32::max
+    let base_xp: u64 = base_level.into() * base_level.into();
+    let total_xp: u64 = base_xp + bonus_xp.into();
+    // Cap at u32::max for level calculation
+    let beast_xp: u32 = if total_xp > 0xFFFFFFFF {
+        0xFFFFFFFF
+    } else {
+        total_xp.try_into().unwrap()
+    };
     let level = get_level_from_xp(beast_xp);
 
     let specials = if include_specials {

@@ -97,11 +97,12 @@ pub fn calculate_diplomacy_bonus(ally_powers: Span<u16>) -> u8 {
         return 0;
     }
 
-    let mut total_power: u16 = 0;
+    // Use u32 to prevent overflow when summing many u16 powers
+    let mut total_power: u32 = 0;
     let mut i: u32 = 1; // Start at 1 to skip self
 
     while i < ally_powers.len() {
-        total_power += *ally_powers.at(i);
+        total_power += (*ally_powers.at(i)).into();
         i += 1;
     }
 
@@ -110,13 +111,13 @@ pub fn calculate_diplomacy_bonus(ally_powers: Span<u16>) -> u8 {
 
 /// Calculate total diplomacy power for event emission
 /// @param ally_powers Array of attack powers for each diplomacy beast
-/// @return Total power sum
-pub fn calculate_total_diplomacy_power(ally_powers: Span<u16>) -> u16 {
-    let mut total: u16 = 0;
+/// @return Total power sum (u32 to prevent overflow with many allies)
+pub fn calculate_total_diplomacy_power(ally_powers: Span<u16>) -> u32 {
+    let mut total: u32 = 0;
     let mut i: u32 = 0;
 
     while i < ally_powers.len() {
-        total += *ally_powers.at(i);
+        total += (*ally_powers.at(i)).into();
         i += 1;
     }
 
@@ -262,12 +263,27 @@ mod tests {
     #[test]
     fn test_calculate_total_diplomacy_power() {
         let powers: Span<u16> = array![100, 200, 300].span();
-        assert!(calculate_total_diplomacy_power(powers) == 600, "Total should be 600");
+        assert!(calculate_total_diplomacy_power(powers) == 600_u32, "Total should be 600");
     }
 
     #[test]
     fn test_calculate_total_diplomacy_power_empty() {
         let powers: Span<u16> = array![].span();
-        assert!(calculate_total_diplomacy_power(powers) == 0, "Empty should be 0");
+        assert!(calculate_total_diplomacy_power(powers) == 0_u32, "Empty should be 0");
+    }
+
+    #[test]
+    fn test_calculate_total_diplomacy_power_overflow_safe() {
+        // Test with many large powers that would overflow u16
+        // 255 powers of 65000 each = 16,575,000 (exceeds u16::max of 65535)
+        let mut powers_arr: Array<u16> = array![];
+        let mut i: u32 = 0;
+        while i < 255 {
+            powers_arr.append(65000);
+            i += 1;
+        }
+        let powers = powers_arr.span();
+        let total = calculate_total_diplomacy_power(powers);
+        assert!(total == 255_u32 * 65000_u32, "Should handle large sums without overflow");
     }
 }

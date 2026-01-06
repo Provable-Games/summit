@@ -19,9 +19,11 @@ pub fn get_level_from_xp(xp: u32) -> u16 {
 /// @param max_bonus_levels Maximum bonus levels allowed
 /// @return true if beast can still gain XP
 pub fn can_gain_xp(base_level: u16, bonus_xp: u16, max_bonus_levels: u16) -> bool {
-    let base_xp = base_level * base_level;
-    let max_xp = (base_level + max_bonus_levels) * (base_level + max_bonus_levels);
-    bonus_xp < max_xp - base_xp
+    // Use u32 to prevent overflow: (65535 + 40)^2 fits in u32
+    let base_xp: u32 = base_level.into() * base_level.into();
+    let max_level: u32 = base_level.into() + max_bonus_levels.into();
+    let max_xp: u32 = max_level * max_level;
+    bonus_xp.into() < max_xp - base_xp
 }
 
 /// Calculate XP gain from an attack
@@ -70,13 +72,13 @@ pub fn is_beast_stronger(
     beast2_bonus_xp: u16,
     beast2_last_death: u64,
 ) -> bool {
-    if beast1_blocks_held == beast2_blocks_held {
-        if beast1_bonus_xp == beast2_bonus_xp {
-            return beast1_last_death > beast2_last_death;
-        }
+    if beast1_blocks_held != beast2_blocks_held {
+        return beast1_blocks_held > beast2_blocks_held;
+    }
+    if beast1_bonus_xp != beast2_bonus_xp {
         return beast1_bonus_xp > beast2_bonus_xp;
     }
-    beast1_blocks_held > beast2_blocks_held
+    beast1_last_death > beast2_last_death
 }
 
 /// Generate hash for diplomacy grouping based on prefix and suffix
