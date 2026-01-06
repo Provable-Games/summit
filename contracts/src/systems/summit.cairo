@@ -110,8 +110,8 @@ pub mod summit_systems {
         upgradeable: UpgradeableComponent::Storage,
         summit_beast_token_id: u32,
         live_beast_stats: Map<u32, LiveBeastStats>,
-        poison_timestamp: u64,
-        poison_count: u16,
+        // Packed poison state: timestamp (64 bits) | count (16 bits)
+        poison_state: felt252,
         summit_history: Map<u32, u64>,
         showdown_taken_at: u64,
         diplomacy_beast: Map<felt252, Map<u8, u32>>, // (prefix-suffix hash) -> (index) -> beast token id
@@ -349,15 +349,18 @@ pub mod summit_systems {
 
             let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
 
-            let current_poison_count = self.poison_count.read();
+            // Read current poison state and apply damage
             let damage = self._apply_poison_damage(ref beast);
 
             if damage > 0 {
                 self._save_beast(beast, false);
             }
 
+            // Update poison count (timestamp was already updated in _apply_poison_damage)
+            let (current_timestamp, current_count) = poison::unpack_poison_state(self.poison_state.read());
+            self.poison_state.write(poison::pack_poison_state(current_timestamp, current_count + count));
+
             self.poison_potion_dispatcher.read().burn_from(get_caller_address(), count.into() * TOKEN_DECIMALS);
-            self.poison_count.write(current_poison_count + count);
 
             self.summit_events_dispatcher.read().emit_poison_event(beast_token_id, count, get_caller_address());
         }
@@ -380,11 +383,9 @@ pub mod summit_systems {
 
         fn add_beast_to_leaderboard(ref self: ContractState, beast_token_id: u32, position: u32) {
             let current_block = get_block_number();
-            assert(current_block >= self.terminal_block.read(), 'Summit not over');
-            assert(
-                current_block < self.terminal_block.read() + self.beast_submission_blocks.read(),
-                'Submission period over',
-            );
+            let terminal_block = self.terminal_block.read();
+            assert(current_block >= terminal_block, 'Summit not over');
+            assert(current_block < terminal_block + self.beast_submission_blocks.read(), 'Submission period over');
 
             assert(position > 0 && position <= self.beast_top_spots.read(), 'Invalid position');
 
@@ -553,8 +554,7 @@ pub mod summit_systems {
             let summit_owner = self.beast_dispatcher.read().owner_of(token_id.into());
             let specials_hash = InternalSummitImpl::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
 
-            let poison_count = self.poison_count.read();
-            let poison_timestamp = self.poison_timestamp.read();
+            let (poison_timestamp, poison_count) = poison::unpack_poison_state(self.poison_state.read());
 
             (beast, taken_at, summit_owner, poison_count, poison_timestamp, specials_hash)
         }
@@ -996,8 +996,8 @@ pub mod summit_systems {
                         // update the live stats of the attacking beast
                         self._save_beast(attacking_beast, true);
 
-                        // remove poison count
-                        self.poison_count.write(0);
+                        // reset poison state (count = 0, timestamp = current)
+                        self.poison_state.write(poison::pack_poison_state(get_block_timestamp(), 0));
 
                         // emit summit event
                         event_dispatcher.emit_summit_event(attacking_beast.fixed, attacking_beast.live, beast_owner);
@@ -1166,8 +1166,9 @@ pub mod summit_systems {
         }
 
         fn _apply_poison_damage(ref self: ContractState, ref beast: Beast) -> u64 {
-            let poison_count = self.poison_count.read();
-            let time_since_poison = get_block_timestamp() - self.poison_timestamp.read();
+            let (poison_timestamp, poison_count) = poison::unpack_poison_state(self.poison_state.read());
+            let current_time = get_block_timestamp();
+            let time_since_poison = current_time - poison_timestamp;
 
             // Use pure function for damage calculation
             let result = poison::calculate_poison_damage(
@@ -1183,8 +1184,8 @@ pub mod summit_systems {
             beast.live.current_health = result.new_health;
             beast.live.extra_lives = result.new_extra_lives;
 
-            // Update storage
-            self.poison_timestamp.write(get_block_timestamp());
+            // Update storage with packed state (timestamp updated, count unchanged)
+            self.poison_state.write(poison::pack_poison_state(current_time, poison_count));
 
             result.damage
         }

@@ -1,3 +1,33 @@
+/// Packed poison state: timestamp (64 bits) | count (16 bits)
+/// Total: 80 bits - fits in a single felt252
+#[derive(Drop, Copy)]
+pub struct PoisonState {
+    pub timestamp: u64,
+    pub count: u16,
+}
+
+// Bit shift constants for packing
+const TWO_POW_16: felt252 = 0x10000; // 2^16
+
+/// Pack poison state into a single felt252
+/// Layout: [timestamp (64 bits)][count (16 bits)]
+#[inline(always)]
+pub fn pack_poison_state(timestamp: u64, count: u16) -> felt252 {
+    let timestamp_felt: felt252 = timestamp.into();
+    let count_felt: felt252 = count.into();
+    timestamp_felt * TWO_POW_16 + count_felt
+}
+
+/// Unpack poison state from a single felt252
+/// @return (timestamp, count)
+#[inline(always)]
+pub fn unpack_poison_state(packed: felt252) -> (u64, u16) {
+    let packed_u256: u256 = packed.into();
+    let count: u16 = (packed_u256 & 0xFFFF).try_into().unwrap();
+    let timestamp: u64 = ((packed_u256 / 0x10000) & 0xFFFFFFFFFFFFFFFF).try_into().unwrap();
+    (timestamp, count)
+}
+
 /// Result of poison damage calculation
 #[derive(Drop, Copy)]
 pub struct PoisonResult {
@@ -78,7 +108,7 @@ pub fn calculate_poison_damage(
 
 #[cfg(test)]
 mod tests {
-    use super::calculate_poison_damage;
+    use super::{calculate_poison_damage, pack_poison_state, unpack_poison_state};
 
     #[test]
     fn test_no_poison_damage() {
@@ -181,5 +211,51 @@ mod tests {
         // 100 base health + 10 lives * 100 full health = 1100 total
     // 1000 damage uses: 100 current + 9*100 = 1000
     // Should have 1 life left and 100 HP (or 1 HP if calculation differs)
+    }
+
+    // Pack/unpack tests
+    #[test]
+    fn test_pack_unpack_zero_values() {
+        let packed = pack_poison_state(0, 0);
+        let (timestamp, count) = unpack_poison_state(packed);
+        assert!(timestamp == 0, "Timestamp should be 0");
+        assert!(count == 0, "Count should be 0");
+    }
+
+    #[test]
+    fn test_pack_unpack_typical_values() {
+        let timestamp: u64 = 1704067200; // Jan 1, 2024
+        let count: u16 = 100;
+        let packed = pack_poison_state(timestamp, count);
+        let (unpacked_timestamp, unpacked_count) = unpack_poison_state(packed);
+        assert!(unpacked_timestamp == timestamp, "Timestamp mismatch");
+        assert!(unpacked_count == count, "Count mismatch");
+    }
+
+    #[test]
+    fn test_pack_unpack_max_count() {
+        let timestamp: u64 = 1000000;
+        let count: u16 = 65535; // max u16
+        let packed = pack_poison_state(timestamp, count);
+        let (unpacked_timestamp, unpacked_count) = unpack_poison_state(packed);
+        assert!(unpacked_timestamp == timestamp, "Timestamp mismatch");
+        assert!(unpacked_count == count, "Count mismatch");
+    }
+
+    #[test]
+    fn test_pack_unpack_large_timestamp() {
+        let timestamp: u64 = 0xFFFFFFFFFFFFFFFF; // max u64
+        let count: u16 = 500;
+        let packed = pack_poison_state(timestamp, count);
+        let (unpacked_timestamp, unpacked_count) = unpack_poison_state(packed);
+        assert!(unpacked_timestamp == timestamp, "Timestamp mismatch");
+        assert!(unpacked_count == count, "Count mismatch");
+    }
+
+    #[test]
+    fn test_pack_deterministic() {
+        let packed1 = pack_poison_state(12345, 100);
+        let packed2 = pack_poison_state(12345, 100);
+        assert!(packed1 == packed2, "Same inputs should produce same output");
     }
 }
