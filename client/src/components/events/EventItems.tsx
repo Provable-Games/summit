@@ -123,9 +123,21 @@ export const SummitEventItem = memo(({ event, playerNames }: { event: SummitEven
         <Box component="span" sx={[compactStyles.eventIcon, { color: gameColors.brightGreen }]}>👑</Box>
         <PlayerName address={event.owner} playerNames={playerNames} />
         {' claimed summit with '}
-        <Box component="span" sx={compactStyles.highlight}>
-          {fullName}
-        </Box>
+        {event.beast_token_id ? (
+          <Box 
+            component="a" 
+            href={`https://beast-dex.vercel.app/beasts/${event.beast_token_id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            sx={compactStyles.beastLink}
+          >
+            {fullName}
+          </Box>
+        ) : (
+          <Box component="span" sx={compactStyles.highlight}>
+            {fullName}
+          </Box>
+        )}
         <Box component="span" sx={compactStyles.timestamp}> • {timeAgo}</Box>
       </Typography>
     </Box>
@@ -228,5 +240,13 @@ const compactStyles = {
   detail: {
     color: '#aaa',
     fontSize: '10px',
+  },
+  beastLink: {
+    color: gameColors.brightGreen,
+    fontWeight: 'bold',
+    textDecoration: 'none',
+    '&:hover': {
+      textDecoration: 'underline',
+    },
   },
 };

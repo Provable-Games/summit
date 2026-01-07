@@ -38,6 +38,7 @@ export interface SummitEvent {
   type: "summit";
   taken_at: number;
   beast_id: number;
+  beast_token_id: number;
   beast_level: number;
   beast_health: number;
   beast_prefix: number;
@@ -202,6 +203,7 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
           SELECT 
             taken_at,
             "beast.id" as beast_id,
+            "live_stats.token_id" as beast_token_id,
             "beast.level" as beast_level,
             "beast.health" as beast_health,
             "beast.prefix" as beast_prefix,
@@ -226,6 +228,7 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
               type: "summit" as const,
               taken_at: parseInt(row.taken_at, 16),
               beast_id: parseInt(row.beast_id),
+              beast_token_id: parseInt(row.beast_token_id),
               beast_level: parseInt(row.beast_level),
               beast_health: parseInt(row.beast_health),
               beast_prefix: parseInt(row.beast_prefix),
