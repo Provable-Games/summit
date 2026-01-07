@@ -898,7 +898,7 @@ const styles = {
   statButton: {
     width: { xs: '44px', sm: '32px' },
     height: { xs: '44px', sm: '32px' },
-    minWidth: { xs: '44px', sm: '24px' },
+    minWidth: { xs: '44px', sm: '32px' },
     background: `${gameColors.mediumGreen}60`,
     border: `1px solid ${gameColors.accentGreen}40`,
     color: '#fff',
