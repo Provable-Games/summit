@@ -14,7 +14,7 @@ interface LeaderboardModalProps {
 
 export default function LeaderboardModal({ open, onClose }: LeaderboardModalProps) {
   const { leaderboard } = useGameStore();
-  const { getTopBeastsByBlocksHeld, countBeastsWithBlocksHeld } = useGameTokens();
+  const { getTopBeastsWithMetadata, countBeastsWithBlocksHeld } = useGameTokens();
 
   const [activeTab, setActiveTab] = useState<'players' | 'beasts'>('players');
 
@@ -26,9 +26,10 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
   // Beasts tab state
   const [beastsPage, setBeastsPage] = useState(1);
   const beastsPageSize = 25;
-  const [beasts, setBeasts] = useState<Array<{ token_id: number; blocks_held: number; bonus_xp: number; last_death_timestamp: number }>>([]);
+  const [beasts, setBeasts] = useState<Array<{ token_id: number; blocks_held: number; bonus_xp: number; last_death_timestamp: number; owner: string; beast_name: string; prefix: string; suffix: string; full_name: string }>>([]);
   const [beastsLoading, setBeastsLoading] = useState(false);
   const [beastsTotal, setBeastsTotal] = useState<number | null>(null);
+  const [beastOwnerNames, setBeastOwnerNames] = useState<Record<string, string | null>>({});
 
   const playersTotalPages = Math.max(1, Math.ceil(leaderboard.length / playersPageSize));
 
@@ -88,8 +89,32 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
       setBeastsLoading(true);
       try {
         const offset = (beastsPage - 1) * beastsPageSize;
-        const data = await getTopBeastsByBlocksHeld(beastsPageSize, offset);
+        const data = await getTopBeastsWithMetadata(beastsPageSize, offset);
         setBeasts(data || []);
+
+        // Fetch owner names for the beasts
+        if (data && data.length > 0) {
+          const ownerAddresses = data
+            .map((beast) => beast.owner)
+            .filter((owner) => owner && beastOwnerNames[owner] === undefined);
+
+          if (ownerAddresses.length > 0) {
+            try {
+              const addressMap = await lookupAddressNames(ownerAddresses);
+              
+              setBeastOwnerNames((prev) => {
+                const updated = { ...prev };
+                for (const addr of ownerAddresses) {
+                  const normalized = addr.replace(/^0x0+/, '0x').toLowerCase();
+                  updated[addr] = addressMap.get(normalized) || null;
+                }
+                return updated;
+              });
+            } catch (error) {
+              console.error('Error fetching beast owner names:', error);
+            }
+          }
+        }
       } catch (error) {
         console.error('Error fetching beasts leaderboard page:', error);
         setBeasts([]);
@@ -113,6 +138,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
   const handleClose = () => {
     setPlayersPage(1);
     setBeastsPage(1);
+    setBeastOwnerNames({});
     setActiveTab('players');
     onClose();
   };
@@ -215,23 +241,17 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                                 {name}
                               </Typography>
                               <Typography
-                                sx={styles.playerAddress}
+                                sx={styles.collectionLink}
                                 component="a"
-                                href={`https://voyager.online/contract/${player.owner}`}
+                                href={`https://beast-dex.vercel.app/collection/${encodeURIComponent(name)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                               >
-                                {formatAddress(player.owner)}
+                                view collection
                               </Typography>
                             </>
                           ) : (
-                            <Typography
-                              sx={styles.playerAddress}
-                              component="a"
-                              href={`https://voyager.online/contract/${player.owner}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                            >
+                            <Typography sx={styles.playerAddress}>
                               {formatAddress(player.owner)}
                             </Typography>
                           )}
@@ -274,7 +294,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                   #
                 </Typography>
                 <Typography sx={[styles.headerCell, { flex: '1 1 auto' }]}>
-                  BEAST ID
+                  BEAST
                 </Typography>
                 <Typography sx={[styles.headerCell, { flex: '0 0 140px', textAlign: 'right' }]}>
                   BLOCKS HELD
@@ -302,6 +322,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                   beasts.length > 0 &&
                   beasts.map((row, index) => {
                     const globalRank = (beastsPage - 1) * beastsPageSize + index + 1;
+                    const ownerName = row.owner ? beastOwnerNames[row.owner] : null;
                     return (
                       <Box
                         key={`${row.token_id}-${index}`}
@@ -311,9 +332,26 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                           {globalRank}.
                         </Typography>
                         <Box sx={styles.beastCell}>
-                          <Typography sx={styles.beastId}>
-                            Beast #{row.token_id}
+                          <Typography
+                            sx={styles.beastName}
+                            component="a"
+                            href={`https://beast-dex.vercel.app/beasts/${row.token_id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {row.full_name || `Beast #${row.token_id}`}
                           </Typography>
+                          {row.owner && ownerName && (
+                            <Typography
+                              sx={styles.ownerName}
+                              component="a"
+                              href={`https://beast-dex.vercel.app/collection/${encodeURIComponent(ownerName)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {ownerName}
+                            </Typography>
+                          )}
                         </Box>
                         <Typography sx={styles.blocksCell}>
                           {row.blocks_held?.toLocaleString() ?? '0'}
@@ -489,10 +527,16 @@ const styles = {
     fontSize: '11px',
     color: '#bbb',
     fontFamily: 'monospace',
+  },
+  collectionLink: {
+    fontSize: '11px',
+    color: gameColors.accentGreen,
     textDecoration: 'none',
     cursor: 'pointer',
+    fontWeight: 'normal' as const,
     '&:hover': {
       textDecoration: 'underline !important',
+      color: gameColors.brightGreen,
     },
   },
   rewardsCell: {
@@ -505,12 +549,58 @@ const styles = {
   beastCell: {
     flex: '1 1 auto',
     display: 'flex',
-    alignItems: 'center',
+    flexDirection: 'column' as const,
+    justifyContent: 'center',
   },
   beastId: {
     fontSize: '13px',
     fontWeight: 'bold',
     color: '#ffedbb',
+  },
+  beastName: {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: '#ffedbb',
+    maxWidth: '100%',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+    textDecoration: 'none',
+    cursor: 'pointer',
+    '&:hover': {
+      textDecoration: 'underline !important',
+      color: gameColors.brightGreen,
+    },
+  },
+  ownerInfo: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    mt: 0.5,
+  },
+  ownerName: {
+    fontSize: '11px',
+    fontWeight: 'bold',
+    color: '#bbb',
+    maxWidth: '100%',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap' as const,
+    textDecoration: 'none',
+    cursor: 'pointer',
+    '&:hover': {
+      textDecoration: 'underline !important',
+      color: gameColors.accentGreen,
+    },
+  },
+  ownerAddress: {
+    fontSize: '10px',
+    color: '#888',
+    fontFamily: 'monospace',
+    textDecoration: 'none',
+    cursor: 'pointer',
+    '&:hover': {
+      textDecoration: 'underline !important',
+    },
   },
   blocksCell: {
     flex: '0 0 140px',
