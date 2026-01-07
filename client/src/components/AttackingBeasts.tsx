@@ -453,8 +453,8 @@ function AttackingBeasts() {
             }}
             style={{
               position: 'fixed',
-              top: damage.type === 'attack' ? `calc(50% - 100px)` : `calc(100% - 120px)`,
-              left: damage.type === 'attack' ? 'calc(50% + 120px)' : '180px',
+              top: damage.type === 'attack' ? `calc(50% - 80px)` : `calc(100% - 100px)`,
+              left: damage.type === 'attack' ? 'calc(50% + 80px)' : 'clamp(100px, 15vw, 180px)',
               zIndex: 100,
               pointerEvents: 'none',
             }}
@@ -598,12 +598,12 @@ const styles: any = {
     gap: 0.5
   },
   activeBeastCard: {
-    width: '140px',
+    width: { xs: '100px', sm: '120px', md: '140px' },
     border: `2px solid ${gameColors.accentGreen}`,
     boxShadow: `0 6px 16px rgba(127, 255, 0, 0.3)`,
   },
   waitingBeastCard: {
-    width: '120px',
+    width: { xs: '80px', sm: '100px', md: '120px' },
     filter: 'brightness(0.85)',
   },
   attackingCard: {
@@ -614,7 +614,7 @@ const styles: any = {
   imageContainer: {
     position: 'relative',
     width: '100%',
-    height: '80px',
+    height: { xs: '60px', sm: '70px', md: '80px' },
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
@@ -628,7 +628,7 @@ const styles: any = {
     height: '90%',
   },
   beastName: {
-    fontSize: '14px',
+    fontSize: { xs: '11px', sm: '12px', md: '14px' },
     fontWeight: 'bold',
     color: '#FFF',
     textAlign: 'center',
@@ -692,7 +692,7 @@ const styles: any = {
     fontWeight: 'bold',
   },
   damageNumber: {
-    fontSize: '32px',
+    fontSize: { xs: '24px', sm: '28px', md: '32px' },
     fontWeight: 'bold',
     textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)',
   },

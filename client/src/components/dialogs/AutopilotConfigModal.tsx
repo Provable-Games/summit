@@ -663,8 +663,8 @@ const styles = {
     boxSizing: 'border-box' as const,
   },
   closeButton: {
-    minWidth: '32px',
-    height: '32px',
+    minWidth: { xs: '44px', sm: '32px' },
+    height: { xs: '44px', sm: '32px' },
     borderRadius: '999px',
     background: `${gameColors.darkGreen}80`,
     border: `1px solid ${gameColors.accentGreen}40`,
@@ -723,6 +723,16 @@ const styles = {
     display: 'flex',
     flexDirection: 'column' as const,
     gap: 1,
+    maxHeight: { xs: 'calc(100vh - 200px)', sm: 'calc(100vh - 180px)' },
+    overflowY: 'auto' as const,
+    WebkitOverflowScrolling: 'touch',
+    '&::-webkit-scrollbar': {
+      width: { xs: 0, sm: '6px' },
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: 'rgba(255,255,255,0.3)',
+      borderRadius: 3,
+    },
   },
   row: {
     background: `${gameColors.darkGreen}80`,

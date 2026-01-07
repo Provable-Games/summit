@@ -159,9 +159,12 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
               0 8px 24px rgba(0, 0, 0, 0.6),
               0 0 16px ${gameColors.accentGreen}30
             `,
-            width: '800px',
-            maxWidth: '96vw',
+            width: { xs: '95vw', sm: '90vw', md: 800 },
+            maxWidth: 800,
+            height: { xs: '90vh', sm: '85vh', md: '80vh' },
             position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
           },
         },
         backdrop: {
@@ -391,8 +394,12 @@ const styles = {
   container: {
     position: 'relative',
     color: '#fff',
-    p: 2.5,
-    pt: 2,
+    p: { xs: 1.5, sm: 2, md: 2.5 },
+    pt: { xs: 1.5, sm: 2 },
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    overflow: 'hidden',
   },
   closeButton: {
     position: 'absolute',
@@ -457,6 +464,10 @@ const styles = {
     border: `1px solid ${gameColors.accentGreen}40`,
     background: `${gameColors.darkGreen}60`,
     overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
   },
   tableHeader: {
     display: 'flex',
@@ -473,10 +484,11 @@ const styles = {
     textTransform: 'uppercase' as const,
   },
   tableBody: {
-    maxHeight: '60vh',
+    flex: 1,
     overflowY: 'auto' as const,
+    WebkitOverflowScrolling: 'touch',
     '&::-webkit-scrollbar': {
-      width: '8px',
+      width: { xs: 0, sm: '8px' },
     },
     '&::-webkit-scrollbar-track': {
       background: `${gameColors.darkGreen}40`,

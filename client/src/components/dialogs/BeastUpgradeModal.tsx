@@ -216,9 +216,12 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
               0 8px 24px rgba(0, 0, 0, 0.6),
               0 0 16px ${gameColors.accentGreen}30
             `,
-            width: '900px',
-            maxWidth: '95vw',
+            width: { xs: '95vw', sm: '90vw', md: '85vw', lg: 900 },
+            maxWidth: 900,
+            height: { xs: '95vh', sm: '90vh', md: '85vh' },
             position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
           }
         },
         backdrop: {
@@ -642,6 +645,10 @@ const styles = {
   container: {
     position: 'relative',
     color: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    overflow: 'hidden',
   },
   closeButton: {
     position: 'absolute',
@@ -679,15 +686,25 @@ const styles = {
   content: {
     display: 'flex',
     gap: 2,
-    p: 2,
+    p: { xs: 1.5, sm: 2 },
     pt: 1,
     flexDirection: { xs: 'column', md: 'row' },
     overflowY: 'auto',
+    flex: 1,
     WebkitOverflowScrolling: 'touch',
-    alignItems: 'center',
+    alignItems: { xs: 'stretch', md: 'flex-start' },
+    minHeight: 0,
+    '&::-webkit-scrollbar': {
+      width: { xs: 0, sm: '6px' },
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: 'rgba(255,255,255,0.3)',
+      borderRadius: 3,
+    },
   },
   leftPanel: {
-    width: '240px',
+    width: { xs: '100%', md: '240px' },
+    minWidth: { md: '240px' },
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
@@ -886,12 +903,15 @@ const styles = {
     alignItems: 'center',
   },
   statButton: {
-    width: '24px',
-    height: '24px',
-    minWidth: '24px',
+    width: { xs: '44px', sm: '32px' },
+    height: { xs: '44px', sm: '32px' },
+    minWidth: { xs: '44px', sm: '32px' },
     background: `${gameColors.mediumGreen}60`,
     border: `1px solid ${gameColors.accentGreen}40`,
     color: '#fff',
+    '& svg': {
+      fontSize: { xs: '20px', sm: '16px' },
+    },
     '&:hover': {
       background: gameColors.mediumGreen,
       borderColor: gameColors.accentGreen,

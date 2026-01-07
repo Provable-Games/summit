@@ -690,9 +690,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               0 8px 24px rgba(0, 0, 0, 0.6),
               0 0 16px ${gameColors.accentGreen}30
             `,
-            width: '600px',
-            maxWidth: '95vw',
+            width: { xs: '95vw', sm: '90vw', md: 600 },
+            maxWidth: 600,
+            height: { xs: '95vh', sm: '90vh', md: '85vh' },
             position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
           }
         },
         backdrop: {
@@ -1191,6 +1194,10 @@ const styles = {
   container: {
     position: 'relative',
     color: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    overflow: 'hidden',
   },
   closeButton: {
     position: 'absolute',
@@ -1268,12 +1275,14 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: 1,
-    p: 2,
+    p: { xs: 1.5, sm: 2 },
     pt: 1,
-    maxHeight: 'calc(80vh - 260px)',
+    flex: 1,
     overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    minHeight: 0,
     '&::-webkit-scrollbar': {
-      width: '8px',
+      width: { xs: 0, sm: '8px' },
     },
     '&::-webkit-scrollbar-track': {
       background: `${gameColors.darkGreen}40`,
@@ -1357,12 +1366,15 @@ const styles = {
     gap: 0.5,
   },
   quantityButton: {
-    width: '28px',
-    height: '28px',
-    minWidth: '28px',
+    width: { xs: '44px', sm: '32px', md: '28px' },
+    height: { xs: '44px', sm: '32px', md: '28px' },
+    minWidth: { xs: '44px', sm: '32px', md: '28px' },
     background: `${gameColors.mediumGreen}60`,
     border: `1px solid ${gameColors.accentGreen}40`,
     color: '#fff',
+    '& svg': {
+      fontSize: { xs: '20px', sm: '16px' },
+    },
     '&:hover': {
       background: gameColors.mediumGreen,
       borderColor: gameColors.accentGreen,
