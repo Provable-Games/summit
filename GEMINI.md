@@ -1,108 +1,82 @@
-# Savage Summit Project Context
+# Savage Summit - Developer Context
 
 ## Project Overview
-"Savage Summit" is a blockchain-based "King of the Hill" style game on Starknet. It involves collectible NFT beasts from [Loot Survivor](https://lootsurvivor.io) battling to hold the summit and earn `$SURVIVOR` tokens.
 
-The project consists of three main components:
-1.  **Client (`client/`)**: A React-based web frontend for the game.
-2.  **Contracts (`contracts/`)**: Cairo smart contracts implementing the core game logic (combat, beast progression, rewards).
-3.  **Dojo (`dojo/`)**: Dojo Engine integration for event handling and world state.
+**Savage Summit** is a king-of-the-hill style strategy game built on **Starknet**. Players use NFT beasts from [Loot Survivor](https://lootsurvivor.io) to battle for control of the "Summit". The reigning beast earns **$SURVIVOR** tokens per block until defeated.
 
-## Architecture & Tech Stack
+*   **Core Mechanics:** Turn-based combat, beast progression (stats/leveling), consumable potions, and a diplomacy system for beasts with matching names.
+*   **Blockchain:** Starknet Mainnet.
+*   **Engine:** Custom Cairo contracts with Dojo used for event indexing/relay.
 
-### Frontend (`client/`)
-*   **Framework**: React 18 + Vite (TypeScript)
-*   **UI Library**: Material UI (MUI) + Framer Motion
-*   **State Management**: Zustand (stores), React Context
-*   **Blockchain Interaction**: 
-    *   `@starknet-react/core` & `starknet.js`
-    *   `@cartridge/connector` (Wallet connection)
-    *   `@dojoengine/sdk` (Game state sync)
-*   **Build Tool**: Vite
+## Architecture
 
-### Smart Contracts (`contracts/`)
-*   **Language**: Cairo (v2.13.1)
-*   **Framework**: Scarb (Build tool), Starknet Foundry (Testing)
-*   **Dependencies**: OpenZeppelin (Token, Access, Upgrades)
-*   **Key Logic**: Combat system, Beast stats, Token distribution
+The project is a monorepo structured into three main components:
 
-### Dojo (`dojo/`)
-*   **Engine**: Dojo Engine (v1.8.0)
-*   **Purpose**: Manages world state and event emission for the game.
+| Directory | Component | Tech Stack | Purpose |
+| :--- | :--- | :--- | :--- |
+| **`client/`** | Frontend | React 18, TypeScript, Vite, Material UI, Zustand | The web interface for players to connect wallets, view the leaderboard, and interact with the game. |
+| **`contracts/`** | Smart Contracts | Cairo, Scarb, Starknet Foundry | The core game logic (combat, rewards, state management) running on Starknet. |
+| **`dojo/`** | Indexing Layer | Dojo Engine (Cairo) | Acts as an event emitter/relay to facilitate efficient indexing by Torii for the frontend. |
 
-## Key Directories & Files
+## Development Environment
 
-### `/client`
-*   `src/components/`: Reusable UI components (Beast display, Leaderboard, etc.).
-*   `src/contexts/`: React Context providers (`GameDirector`, `controller`).
-*   `src/dojo/`: Dojo-specific logic and system calls.
-*   `src/api/`: Wrappers for external APIs (Ekubo, Starknet).
-*   `src/stores/`: Zustand stores for global state.
-*   `package.json`: Dependencies and scripts.
-*   `.env`: Environment variables (Chain ID, Contract Addresses).
+### Prerequisites
+*   **Node.js:** v20+
+*   **Package Manager:** pnpm
+*   **Cairo Toolchain:**
+    *   `scarb` (v2.13.1)
+    *   `snforge` (Starknet Foundry v0.54.0)
+    *   `sozo` (Dojo v1.8.3)
 
-### `/contracts`
-*   `src/systems/`: Core game logic (Summit, Combat).
-*   `src/models/`: Beast and game data structures.
-*   `src/constants.cairo`: Game configuration (Revival time, Damage, Costs).
-*   `tests/`: Starknet Foundry tests (`test_summit.cairo`).
-*   `Scarb.toml`: Contract dependencies and build config.
+*Note: Check `.tool-versions` for exact version pinning.*
 
-### `/dojo`
-*   `src/systems/`: Event emitters.
-*   `src/models/`: Event structures.
-*   `Scarb.toml`: Dojo configuration.
+### Key Commands
 
-## Development Workflow
+#### Client (`/client`)
 
-### Client
-1.  **Install Dependencies**:
-    ```bash
-    cd client
-    pnpm install
-    ```
-2.  **Start Development Server**:
-    ```bash
-    pnpm dev
-    ```
-    Runs at `http://localhost:5173`.
-3.  **Build**:
-    ```bash
-    pnpm build
-    ```
-4.  **Lint**:
-    ```bash
-    pnpm lint
-    ```
+| Action | Command | Description |
+| :--- | :--- | :--- |
+| **Install** | `pnpm install` | Install dependencies. |
+| **Run Dev** | `pnpm dev` | Start the local dev server (default port 5173). |
+| **Build** | `pnpm build` | Type-check and build for production. |
+| **Lint** | `pnpm lint` | Run ESLint. |
 
-### Contracts
-1.  **Build**:
-    ```bash
-    cd contracts
-    scarb build
-    ```
-2.  **Test**:
-    ```bash
-    scarb test
-    ```
-    Uses `snforge` for testing.
-3.  **Format**:
-    ```bash
-    scarb fmt --check
-    ```
+*   **Environment:** Requires `.env` with `VITE_PUBLIC_CHAIN` and `VITE_PUBLIC_SUMMIT_ADDRESS`.
+*   **State Management:** Uses Zustand (`stores/`) and React Context (`contexts/`).
+*   **Wallet:** Integrated via Cartridge Controller.
 
-## Configuration
+#### Contracts (`/contracts`)
 
-### Client Environment Variables (`client/.env`)
-*   `VITE_PUBLIC_CHAIN`: Chain ID (e.g., `SN_MAIN`).
-*   `VITE_PUBLIC_SUMMIT_ADDRESS`: Address of the main Summit contract.
+| Action | Command | Description |
+| :--- | :--- | :--- |
+| **Test** | `scarb test` | Run Cairo unit and integration tests via `snforge`. |
+| **Build** | `scarb build` | Compile contracts. |
+| **Format** | `scarb fmt` | Format Cairo code. |
 
-### Contract Constants (`contracts/src/constants.cairo`)
-*   `BASE_REVIVAL_TIME_SECONDS`: 86400 (24h)
-*   `BEAST_MAX_EXTRA_LIVES`: 4000
-*   `MINIMUM_DAMAGE`: 4
+*   **Testing:** Uses `snforge` with mainnet forking capabilities configured in `Scarb.toml`.
+*   **Key Files:**
+    *   `src/systems/summit.cairo`: Main game loop and entry points.
+    *   `src/models/beast.cairo`: Beast data structures.
+    *   `src/constants.cairo`: Game balancing constants (damage, health caps, etc.).
+
+#### Dojo (`/dojo`)
+
+This directory is primarily for event definitions to support client-side indexing.
+*   **Build:** `sozo build`
+*   **Test:** `sozo test`
+
+## Game Mechanics Reference
+
+Understanding these terms helps when reading the code:
+
+*   **Summit:** The central position to hold. Only one beast can be here.
+*   **King:** The current holder of the Summit.
+*   **Kill Tokens:** Currency earned from Loot Survivor kills, used to upgrade stats (Luck, Spirit, etc.).
+*   **Corpse Tokens:** Currency from dead adventurers, used to buy Bonus Health.
+*   **Potions:** Consumables like Poison (DOT), Revival (cooldown reduction), and Extra Lives.
 
 ## Conventions
-*   **Frontend**: Use `useGameStore` for beast/player data. Use `useSystemCalls` for blockchain writes. Follow MUI styling patterns.
-*   **Contracts**: Modularize logic into systems and models. Use `snforge` for comprehensive testing.
-*   **State Updates**: Optimistic updates are encouraged where possible, confirmed by event subscriptions.
+
+*   **Cairo:** Follow strict formatting. Use `scarb fmt` before committing.
+*   **React:** Functional components with hooks. Styling primarily via Material UI (`@mui/material`) and Emotion.
+*   **Git:** Monorepo structure. Ensure changes are atomic to their respective directories where possible.

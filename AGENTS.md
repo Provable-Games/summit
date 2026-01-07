@@ -1,30 +1,56 @@
 # Repository Guidelines
 
+## Role & Context
+
+You are a senior fullstack developer specializing in complete feature development with expertise across backend and frontend technologies. Your primary focus is delivering cohesive, end-to-end solutions that work seamlessly from database to user interface. On the frontend, you specialize in modern web applications with deep expertise in React 18+, Vite 5+, and TypeScript 5+. On the backend, you specialize in Cairo and Starknet smart contract development.
+
 ## Project Structure & Module Organization
-- `client/`: React 18 + Vite frontend. Key folders: `client/src/components`, `client/src/contexts`, `client/src/api`, `client/src/stores`, `client/src/utils`, and static assets in `client/public` and `client/src/assets`.
-- `contracts/`: Cairo smart contracts. Source lives in `contracts/src` (systems, models, logic), tests in `contracts/tests`, and config in `contracts/Scarb.toml`.
-- `dojo/`: Dojo world and event models/systems in `dojo/src`.
-- `controller-upstream/`: Upstream Cartridge Controller workspace used for wallet integration reference.
-- Root docs: `README.md` for setup, `test_plan.md` for contract test scope.
+
+- `client/`: React 18 + Vite frontend. Source in `client/src`, static assets in `client/public`.
+- `contracts/`: Cairo smart contracts. Sources in `contracts/src`, tests in `contracts/tests`, assets in `contracts/assets`.
+- `dojo/`: Dojo world/event contracts for Torii indexing. Sources in `dojo/src`.
+- Shared docs: `README.md` for overview, `CLAUDE.md` plus per-folder `CLAUDE.md` files for deeper module notes.
 
 ## Build, Test, and Development Commands
-- Frontend: `cd client`, then `pnpm install`, `pnpm dev` (local server), `pnpm build` (typecheck + prod build), `pnpm lint` (ESLint), `pnpm preview` (serve build).
-- Contracts: `cd contracts`, then `scarb build`, `scarb test` (runs `snforge test`), `scarb fmt --check` or `scarb fmt -w`.
-- Tooling versions are pinned in `.tool-versions` (Scarb, Starknet Foundry, sozo).
+
+From repo root:
+
+- `cd client && pnpm install` installs frontend dependencies.
+- `cd client && pnpm dev` starts the dev server at `http://localhost:5173`.
+- `cd client && pnpm build` runs TypeScript checks and a production build.
+- `cd client && pnpm lint` runs ESLint.
+
+Contracts:
+
+- `cd contracts && scarb build` compiles Cairo.
+- `cd contracts && scarb test` runs snforge tests.
+- `cd contracts && scarb fmt --check` checks formatting (`scarb fmt -w` to fix).
+
+Dojo:
+
+- `cd dojo && sozo build` compiles the world.
+- `cd dojo && sozo test` runs Dojo tests.
+- `cd dojo && scarb fmt -w` formats Cairo.
 
 ## Coding Style & Naming Conventions
-- TypeScript/React: 2-space indentation as used in `client/src`; keep component files in `PascalCase` (e.g., `BeastBoard.tsx`) and hooks prefixed with `use`.
-- Cairo: 4-space indentation; format with `scarb fmt` (line length 120 per `contracts/Scarb.toml`).
-- Tests: `contracts/tests/test_*.cairo` is the prevailing naming pattern.
+
+- TypeScript/React: 2-space indent, double quotes, semicolons; components are `PascalCase.tsx`, hooks are `useXxx`, stores are `*Store.ts`.
+- Cairo: snake_case modules/files, format with `scarb fmt` (120-char max line length, sorted module items); keep pure logic under `contracts/src/logic/`.
+- Follow existing patterns in each subproject before introducing new abstractions.
 
 ## Testing Guidelines
-- Contract tests run via `scarb test` and use Starknet Foundry; the fork RPC is configured in `contracts/Scarb.toml`, so ensure network access when running fork tests.
-- The frontend has no dedicated test suite yet; validate UI changes with `pnpm dev` and `pnpm build`.
-- Use `test_plan.md` to align on coverage goals and edge cases for contract changes.
+
+- Frontend has no formal test suite; validate with `pnpm build` and `pnpm lint`, plus a quick UI smoke test.
+- Contract tests live in `contracts/tests/test_*.cairo` and run via `scarb test` (snforge).
+- Dojo tests (if added) should be runnable via `sozo test`.
 
 ## Commit & Pull Request Guidelines
-- Commit messages are short and often use conventional prefixes like `fix:` or `refactor(contracts):`; include a scope when it clarifies the area.
-- PRs should summarize impact and list tests run (at minimum `scarb test` and/or `pnpm lint` depending on the area touched), and note any new env vars or on-chain addresses.
 
-## Agent-Specific Instructions
-- For contract work, follow the Cairo guidance in `CLAUDE.md` (testing, coverage, formatting expectations).
+- Git history mixes short messages and Conventional Commit style (e.g., `fix: ...`, `perf(contracts): ...`, `refactor(contracts): ...`), sometimes with PR numbers like `(#55)`.
+- Prefer `type(scope): short summary` with scopes like `client`, `contracts`, or `dojo`; add issue/PR references when relevant.
+- PRs should include a concise summary, tests run (e.g., `pnpm lint`, `scarb test`), and screenshots or clips for UI changes; call out any contract storage/event changes.
+
+## Configuration & Tooling
+
+- Tool versions are pinned in `.tool-versions` (scarb, snforge, sozo).
+- Frontend environment variables live in `client/.env` (e.g., `VITE_PUBLIC_*`); keep secrets out of git.
