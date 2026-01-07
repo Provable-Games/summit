@@ -218,8 +218,10 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
             `,
             width: { xs: '95vw', sm: '90vw', md: '85vw', lg: 900 },
             maxWidth: 900,
-            maxHeight: { xs: '95vh', sm: '90vh', md: '85vh' },
+            height: { xs: '95vh', sm: '90vh', md: '85vh' },
             position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
           }
         },
         backdrop: {
@@ -643,6 +645,10 @@ const styles = {
   container: {
     position: 'relative',
     color: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    overflow: 'hidden',
   },
   closeButton: {
     position: 'absolute',
@@ -684,9 +690,10 @@ const styles = {
     pt: 1,
     flexDirection: { xs: 'column', md: 'row' },
     overflowY: 'auto',
-    maxHeight: { xs: 'calc(95vh - 140px)', sm: 'calc(90vh - 140px)', md: 'calc(85vh - 140px)' },
+    flex: 1,
     WebkitOverflowScrolling: 'touch',
     alignItems: { xs: 'stretch', md: 'flex-start' },
+    minHeight: 0,
     '&::-webkit-scrollbar': {
       width: { xs: 0, sm: '6px' },
     },

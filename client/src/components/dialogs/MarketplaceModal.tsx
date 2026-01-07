@@ -692,8 +692,10 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             `,
             width: { xs: '95vw', sm: '90vw', md: 600 },
             maxWidth: 600,
-            maxHeight: { xs: '95vh', sm: '90vh', md: '85vh' },
+            height: { xs: '95vh', sm: '90vh', md: '85vh' },
             position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
           }
         },
         backdrop: {
@@ -1192,6 +1194,10 @@ const styles = {
   container: {
     position: 'relative',
     color: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    overflow: 'hidden',
   },
   closeButton: {
     position: 'absolute',
@@ -1271,9 +1277,10 @@ const styles = {
     gap: 1,
     p: { xs: 1.5, sm: 2 },
     pt: 1,
-    maxHeight: { xs: 'calc(95vh - 280px)', sm: 'calc(90vh - 270px)', md: 'calc(85vh - 260px)' },
+    flex: 1,
     overflowY: 'auto',
     WebkitOverflowScrolling: 'touch',
+    minHeight: 0,
     '&::-webkit-scrollbar': {
       width: { xs: 0, sm: '8px' },
     },

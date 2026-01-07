@@ -161,8 +161,10 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
             `,
             width: { xs: '95vw', sm: '90vw', md: 800 },
             maxWidth: 800,
-            maxHeight: { xs: '90vh', sm: '85vh', md: '80vh' },
+            height: { xs: '90vh', sm: '85vh', md: '80vh' },
             position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
           },
         },
         backdrop: {
@@ -394,6 +396,10 @@ const styles = {
     color: '#fff',
     p: { xs: 1.5, sm: 2, md: 2.5 },
     pt: { xs: 1.5, sm: 2 },
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    overflow: 'hidden',
   },
   closeButton: {
     position: 'absolute',
@@ -458,6 +464,10 @@ const styles = {
     border: `1px solid ${gameColors.accentGreen}40`,
     background: `${gameColors.darkGreen}60`,
     overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
   },
   tableHeader: {
     display: 'flex',
@@ -474,7 +484,7 @@ const styles = {
     textTransform: 'uppercase' as const,
   },
   tableBody: {
-    maxHeight: { xs: '50vh', sm: '55vh', md: '60vh' },
+    flex: 1,
     overflowY: 'auto' as const,
     WebkitOverflowScrolling: 'touch',
     '&::-webkit-scrollbar': {

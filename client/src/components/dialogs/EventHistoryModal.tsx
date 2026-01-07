@@ -68,8 +68,10 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
             `,
             width: { xs: '95vw', sm: '90vw', md: 700 },
             maxWidth: 700,
-            maxHeight: { xs: '90vh', sm: '85vh', md: '80vh' },
+            height: { xs: '90vh', sm: '85vh', md: '80vh' },
             position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
           },
         },
       }}
@@ -162,6 +164,10 @@ const styles = {
     color: '#fff',
     p: { xs: 1.5, sm: 2, md: 2.5 },
     pt: { xs: 1.5, sm: 2 },
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    overflow: 'hidden',
   },
   closeButton: {
     position: 'absolute',
@@ -213,10 +219,11 @@ const styles = {
     },
   },
   eventsContainer: {
-    maxHeight: { xs: '55vh', sm: '60vh', md: '65vh' },
+    flex: 1,
     overflowY: 'auto' as const,
     WebkitOverflowScrolling: 'touch',
     pr: 0.5,
+    minHeight: 0,
     '&::-webkit-scrollbar': {
       width: { xs: 0, sm: '6px' },
     },
