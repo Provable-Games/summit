@@ -2,7 +2,6 @@ import EventItem from '@/components/events/EventItems';
 import { useEventHistory } from '@/dojo/useEventHistory';
 import { gameColors } from '@/utils/themes';
 import CloseIcon from '@mui/icons-material/Close';
-import HistoryIcon from '@mui/icons-material/History';
 import { Box, Dialog, IconButton, Pagination, Tab, Tabs, Typography } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -19,7 +18,6 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
 
   const pageSize = 40; // Increased since events are very compact single-row items
 
-  // Memoize the calculation values to prevent re-renders
   const queryParams = useMemo(() => {
     const offset = (page - 1) * pageSize;
     const eventTypes = activeTab === 'battle'
@@ -60,7 +58,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
       slotProps={{
         paper: {
           sx: {
-            background: `${gameColors.darkGreen}95`,
+            background: `${gameColors.darkGreen}`,
             backdropFilter: 'blur(12px) saturate(1.2)',
             border: `2px solid ${gameColors.accentGreen}60`,
             borderRadius: '12px',
@@ -82,7 +80,6 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
         </IconButton>
 
         <Box sx={styles.header}>
-          <HistoryIcon sx={styles.icon} />
           <Typography sx={styles.title}>EVENT LOG</Typography>
 
           <Tabs
@@ -132,21 +129,14 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
           {!loading && filteredEvents.length > 0 && (
             <Box sx={styles.eventsList}>
               {filteredEvents.map((event, index) => {
-                // Create a stable key that won't change during re-renders
-                const eventKey = `${event.type}-${event.timestamp}-${'attacking_beast_owner' in event ? event.attacking_beast_owner :
-                    'player' in event ? event.player :
-                      'owner' in event ? event.owner :
-                        'specials_hash' in event ? event.specials_hash :
-                          'unknown'
-                  }-${index}`;
-                return <EventItem key={eventKey} event={event} playerNames={playerNames} />;
+                return <EventItem key={index} event={event} playerNames={playerNames} />;
               })}
             </Box>
           )}
         </Box>
 
         {/* Pagination */}
-        {!loading && (totalPages > 1 || page > 1) && (
+        {!loading && (
           <Box sx={styles.footer}>
             <Pagination
               count={totalPages}

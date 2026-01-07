@@ -38,6 +38,7 @@ export interface SummitEvent {
   type: "summit";
   taken_at: number;
   beast_id: number;
+  beast_token_id: number;
   beast_level: number;
   beast_health: number;
   beast_prefix: number;
@@ -62,10 +63,7 @@ export type GameEvent = BattleEvent | PoisonEvent | DiplomacyEvent | SummitEvent
 interface UseEventHistoryOptions {
   limit?: number;
   offset?: number;
-  beastTokenId?: number;
-  playerAddress?: string;
   eventTypes?: ("battle" | "poison" | "diplomacy" | "summit" | "reward")[];
-  enabled?: boolean;
 }
 
 export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
@@ -75,18 +73,15 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const {
     limit = 50,
     offset = 0,
-    beastTokenId,
-    playerAddress,
     eventTypes = ["battle", "poison", "diplomacy", "summit", "reward"],
-    enabled = true
   } = options;
 
   const fetchEvents = useCallback(async () => {
-    if (!enabled || !currentNetworkConfig?.toriiUrl || !currentNetworkConfig?.namespace) {
+    if (!currentNetworkConfig?.toriiUrl || !currentNetworkConfig?.namespace) {
       return;
     }
 
@@ -109,20 +104,19 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
             critical_attack_damage,
             counter_attack_damage,
             critical_counter_attack_damage,
-            internal_created_at
+            internal_updated_at
           FROM "${currentNetworkConfig.namespace}-BattleEvent"
-          ${beastTokenId ? `WHERE (attacking_beast_token_id = ${beastTokenId} OR defending_beast_token_id = ${beastTokenId})` : ""}
-          ORDER BY internal_created_at DESC
+          ORDER BY internal_updated_at DESC
           LIMIT ${limit}
           OFFSET ${offset}
         `;
-        
+
         const battlePromise = fetch(
           `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(battleQuery)}`,
           { method: "GET", headers: { "Content-Type": "application/json" } }
         )
           .then(res => res.json())
-          .then(data => 
+          .then(data =>
             (Array.isArray(data) ? data : []).map((row: any) => ({
               type: "battle" as const,
               attacking_beast_token_id: parseInt(row.attacking_beast_token_id),
@@ -135,7 +129,7 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
               critical_attack_damage: parseInt(row.critical_attack_damage),
               counter_attack_damage: parseInt(row.counter_attack_damage),
               critical_counter_attack_damage: parseInt(row.critical_counter_attack_damage),
-              timestamp: new Date(row.internal_created_at).getTime()
+              timestamp: new Date(row.internal_updated_at).getTime()
             }))
           );
         eventPromises.push(battlePromise);
@@ -150,19 +144,17 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
             player,
             internal_created_at
           FROM "${currentNetworkConfig.namespace}-PoisonEvent"
-          ${beastTokenId ? `WHERE beast_token_id = ${beastTokenId}` : ""}
-          ${playerAddress ? `${beastTokenId ? 'AND' : 'WHERE'} player = '${addAddressPadding(playerAddress.toLowerCase())}'` : ""}
           ORDER BY internal_created_at DESC
           LIMIT ${limit}
           OFFSET ${offset}
         `;
-        
+
         const poisonPromise = fetch(
           `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(poisonQuery)}`,
           { method: "GET", headers: { "Content-Type": "application/json" } }
         )
           .then(res => res.json())
-          .then(data => 
+          .then(data =>
             (Array.isArray(data) ? data : []).map((row: any) => ({
               type: "poison" as const,
               beast_token_id: parseInt(row.beast_token_id),
@@ -187,13 +179,13 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
           LIMIT ${limit}
           OFFSET ${offset}
         `;
-        
+
         const diplomacyPromise = fetch(
           `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(diplomacyQuery)}`,
           { method: "GET", headers: { "Content-Type": "application/json" } }
         )
           .then(res => res.json())
-          .then(data => 
+          .then(data =>
             (Array.isArray(data) ? data : []).map((row: any) => ({
               type: "diplomacy" as const,
               specials_hash: row.specials_hash,
@@ -211,6 +203,7 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
           SELECT 
             taken_at,
             "beast.id" as beast_id,
+            "live_stats.token_id" as beast_token_id,
             "beast.level" as beast_level,
             "beast.health" as beast_health,
             "beast.prefix" as beast_prefix,
@@ -220,22 +213,22 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
             owner,
             internal_created_at
           FROM "${currentNetworkConfig.namespace}-SummitEvent"
-          ${playerAddress ? `WHERE owner = '${addAddressPadding(playerAddress.toLowerCase())}'` : ""}
           ORDER BY internal_created_at DESC
           LIMIT ${limit}
           OFFSET ${offset}
         `;
-        
+
         const summitPromise = fetch(
           `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(summitQuery)}`,
           { method: "GET", headers: { "Content-Type": "application/json" } }
         )
           .then(res => res.json())
-          .then(data => 
+          .then(data =>
             (Array.isArray(data) ? data : []).map((row: any) => ({
               type: "summit" as const,
               taken_at: parseInt(row.taken_at, 16),
               beast_id: parseInt(row.beast_id),
+              beast_token_id: parseInt(row.beast_token_id),
               beast_level: parseInt(row.beast_level),
               beast_health: parseInt(row.beast_health),
               beast_prefix: parseInt(row.beast_prefix),
@@ -259,19 +252,17 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
             amount,
             internal_created_at
           FROM "${currentNetworkConfig.namespace}-RewardEvent"
-          ${beastTokenId ? `WHERE beast_token_id = ${beastTokenId}` : ""}
-          ${playerAddress ? `${beastTokenId ? 'AND' : 'WHERE'} owner = '${addAddressPadding(playerAddress.toLowerCase())}'` : ""}
           ORDER BY internal_created_at DESC
           LIMIT ${limit}
           OFFSET ${offset}
         `;
-        
+
         const rewardPromise = fetch(
           `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(rewardQuery)}`,
           { method: "GET", headers: { "Content-Type": "application/json" } }
         )
           .then(res => res.json())
-          .then(data => 
+          .then(data =>
             (Array.isArray(data) ? data : []).map((row: any) => ({
               type: "reward" as const,
               block_number: parseInt(row.block_number, 16),
@@ -287,13 +278,13 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
       // Fetch all events in parallel
       const allEvents = await Promise.all(eventPromises);
       const mergedEvents = allEvents.flat();
-      
+
       // Sort by timestamp descending
       mergedEvents.sort((a, b) => b.timestamp - a.timestamp);
-      
+
       // Take only the requested limit
       const limitedEvents = mergedEvents.slice(0, limit);
-      
+
       // Extract all unique addresses from events
       const addresses = new Set<string>();
       limitedEvents.forEach(event => {
@@ -314,7 +305,7 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
           const nameMap = await lookupAddressNames(Array.from(addresses));
           const namesObject: { [address: string]: string | null } = {};
           nameMap.forEach((name, address) => {
-            namesObject[address] = name;
+            namesObject[addAddressPadding(address.toLowerCase())] = name;
           });
           setPlayerNames(namesObject);
         } catch (error) {
@@ -322,7 +313,7 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
           setPlayerNames({});
         }
       }
-      
+
       setEvents(limitedEvents);
       setHasMore(mergedEvents.length === limit);
     } catch (error) {

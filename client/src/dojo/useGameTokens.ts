@@ -513,6 +513,161 @@ export const useGameTokens = () => {
     }
   }
 
+  const getTopBeastsWithMetadata = async (limit: number, offset: number) => {
+    try {
+      const contractAddress = currentNetworkConfig.beasts;
+
+      // Step 1: Get the top beasts by blocks_held (simple query)
+      const topBeastsQuery = `
+        SELECT 
+          token_id,
+          "live_stats.blocks_held" as blocks_held,
+          "live_stats.bonus_xp" as bonus_xp,
+          "live_stats.last_death_timestamp" as last_death_timestamp
+        FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+        WHERE "live_stats.blocks_held" > 0
+        ORDER BY 
+          "live_stats.blocks_held" DESC,
+          "live_stats.bonus_xp" DESC,
+          "live_stats.last_death_timestamp" DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+
+      const topBeastsUrl = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(topBeastsQuery)}`;
+      const topBeastsResponse = await fetch(topBeastsUrl, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+
+      const topBeastsData = await topBeastsResponse.json();
+      if (!Array.isArray(topBeastsData) || topBeastsData.length === 0) {
+        return [];
+      }
+
+      // Step 2: Get token IDs and convert to hex for metadata lookup
+      const tokenIds = topBeastsData.map(row => parseInt(row.token_id));
+      const tokenHexMap = new Map<number, string>();
+      
+      tokenIds.forEach(tokenId => {
+        const hexId = tokenId.toString(16);
+        tokenHexMap.set(tokenId, hexId);
+      });
+
+      // Step 3: Get metadata for these tokens (use proper hex format with padding)
+      const hexIds = Array.from(tokenHexMap.values());
+      const paddedHexIds = hexIds.map(hex => {
+        // Pad to 64 characters (32 bytes)
+        const padded = hex.padStart(64, '0');
+        return `0x${padded}`;
+      });
+
+      const metadataQuery = `
+        SELECT token_id, metadata
+        FROM tokens
+        WHERE contract_address = '${contractAddress}'
+          AND token_id IN (${paddedHexIds.map(hex => `'${hex}'`).join(',')})
+      `;
+
+      // Step 4: Get owners for these tokens
+      const ownerQuery = `
+        SELECT 
+          token_id,
+          account_address,
+          SUBSTR(token_id, INSTR(token_id, ':')+1) AS extracted_hex
+        FROM token_balances
+        WHERE contract_address = '${contractAddress}'
+          AND balance = '0x0000000000000000000000000000000000000000000000000000000000000001'
+          AND SUBSTR(token_id, INSTR(token_id, ':')+1) IN (${paddedHexIds.map(hex => `'${hex}'`).join(',')})
+      `;
+
+      // Execute metadata and owner queries in parallel
+      const [metadataResponse, ownerResponse] = await Promise.all([
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(metadataQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        }),
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(ownerQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        })
+      ]);
+
+      const [metadataData, ownerData] = await Promise.all([
+        metadataResponse.ok ? metadataResponse.json() : [],
+        ownerResponse.ok ? ownerResponse.json() : []
+      ]);
+
+      // Create lookup maps
+      const metadataMap = new Map<string, any>();
+      (Array.isArray(metadataData) ? metadataData : []).forEach((row: any) => {
+        if (row.metadata && row.token_id) {
+          const tokenIdNum = parseInt(row.token_id, 16);
+          metadataMap.set(tokenIdNum.toString(), row.metadata);
+        }
+      });
+
+      const ownerMap = new Map<string, string>();
+      (Array.isArray(ownerData) ? ownerData : []).forEach((row: any) => {
+        if (row.extracted_hex && row.account_address) {
+          // Remove 0x prefix if present and parse
+          const cleanHex = row.extracted_hex.replace(/^0x/, '');
+          const tokenIdNum = parseInt(cleanHex, 16);
+          ownerMap.set(tokenIdNum.toString(), row.account_address);
+        }
+      });
+
+      // Step 5: Combine all data
+      const enrichedData = topBeastsData.map(row => {
+        const tokenId = parseInt(row.token_id);
+        const tokenIdStr = tokenId.toString();
+        const rawMetadata = metadataMap.get(tokenIdStr);
+        const owner = ownerMap.get(tokenIdStr);
+
+        let beastName = '';
+        let prefix = '';
+        let suffix = '';
+
+        if (rawMetadata) {
+          try {
+            const metadata = typeof rawMetadata === 'string' ? JSON.parse(rawMetadata) : rawMetadata;
+            
+            // Parse attributes array into a map
+            const attrs: { [key: string]: string } = {};
+            if (metadata.attributes && Array.isArray(metadata.attributes)) {
+              metadata.attributes.forEach((attr: any) => {
+                attrs[attr.trait_type] = attr.value;
+              });
+            }
+
+            beastName = attrs["Beast"]?.replace(" ", "") || "";
+            prefix = attrs["Prefix"] || "";
+            suffix = attrs["Suffix"] || "";
+          } catch (e) {
+            console.error("Failed to parse beast metadata:", e);
+          }
+        }
+
+        return {
+          token_id: tokenId,
+          blocks_held: parseInt(row.blocks_held, 16) || 0,
+          bonus_xp: parseInt(row.bonus_xp, 16) || 0,
+          last_death_timestamp: parseInt(row.last_death_timestamp, 16) || 0,
+          owner: owner || null,
+          beast_name: beastName,
+          prefix: prefix,
+          suffix: suffix,
+          full_name: prefix && suffix && beastName ? `"${prefix} ${suffix}" ${beastName}` : beastName || `Beast #${tokenId}`
+        };
+      });
+
+      return enrichedData;
+    } catch (error) {
+      console.error("Error getting top beasts with metadata:", error);
+      return [];
+    }
+  }
+
   const getDiplomacy = async (beast: Beast) => {
     let q = `
       SELECT total_power, beast_token_ids
@@ -551,6 +706,7 @@ export const useGameTokens = () => {
     getTop5000Cutoff,
     getDiplomacy,
     getTopBeastsByBlocksHeld,
+    getTopBeastsWithMetadata,
     countBeastsWithBlocksHeld,
     getDungeonStats
   };
