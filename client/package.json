@@ -79,7 +79,7 @@
       "@babel/runtime": ">=7.26.10",
       "nanoid": ">=3.3.8",
       "brace-expansion": ">=1.1.12",
-      "esbuild": "0.25.0",
+      "esbuild": "0.26.0",
       "@dojoengine/sdk": "1.7.3",
       "@dojoengine/core": "1.7.2",
       "@dojoengine/utils": "1.7.2",
