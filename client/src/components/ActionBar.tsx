@@ -744,7 +744,7 @@ function ActionBar() {
             <img
               src={potion === 'extraLife' ? lifePotionIcon : poisonPotionIcon}
               alt=""
-              height={'18px'}
+              height={'24px'}
               style={{ opacity: 0.95 }}
             />
             <Typography sx={styles.menuItemTitle} noWrap>
@@ -957,6 +957,54 @@ function ActionBar() {
             }
           </Typography>
         </Box>
+
+        {potion === 'poison' && summit && appliedPoisonCount > 0 && (() => {
+          // Calculate total health pool
+          const maxHealth = summit.beast.health + summit.beast.bonus_health;
+          const totalHealthPool = (summit.beast.extra_lives || 0) * maxHealth + summit.beast.current_health;
+          
+          // Calculate damage per second (including existing poison)
+          const totalPoisonDps = summit.poison_count + appliedPoisonCount;
+          
+          // Calculate time to kill
+          const secondsToKill = Math.ceil(totalHealthPool / totalPoisonDps);
+          
+          // Format time
+          const hours = Math.floor(secondsToKill / 3600);
+          const minutes = Math.floor((secondsToKill % 3600) / 60);
+          const seconds = secondsToKill % 60;
+          
+          let timeString = '';
+          if (hours > 0) {
+            timeString = `${hours}h ${minutes}m ${seconds}s`;
+          } else if (minutes > 0) {
+            timeString = `${minutes}m ${seconds}s`;
+          } else {
+            timeString = `${seconds}s`;
+          }
+
+          return (
+            <Box sx={{ 
+              width: '100%', 
+              mt: 1, 
+              px: 1,
+              py: 0.5,
+              boxSizing: 'border-box',
+              backgroundColor: `${gameColors.brightGreen}10`,
+              border: `1px solid ${gameColors.brightGreen}30`,
+              borderRadius: '4px',
+            }}>
+              <Typography sx={{ 
+                fontSize: '12px', 
+                color: gameColors.brightGreen,
+                textAlign: 'center',
+                fontWeight: 500,
+              }}>
+                Time to kill: {timeString}
+              </Typography>
+            </Box>
+          );
+        })()}
 
         {potion === 'poison' && (
           <Button
