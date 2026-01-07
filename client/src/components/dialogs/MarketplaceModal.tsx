@@ -690,8 +690,9 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               0 8px 24px rgba(0, 0, 0, 0.6),
               0 0 16px ${gameColors.accentGreen}30
             `,
-            width: '600px',
-            maxWidth: '95vw',
+            width: { xs: '95vw', sm: '90vw', md: 600 },
+            maxWidth: 600,
+            maxHeight: { xs: '95vh', sm: '90vh', md: '85vh' },
             position: 'relative',
           }
         },
@@ -1268,12 +1269,13 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: 1,
-    p: 2,
+    p: { xs: 1.5, sm: 2 },
     pt: 1,
-    maxHeight: 'calc(80vh - 260px)',
+    maxHeight: { xs: 'calc(95vh - 280px)', sm: 'calc(90vh - 270px)', md: 'calc(85vh - 260px)' },
     overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
     '&::-webkit-scrollbar': {
-      width: '8px',
+      width: { xs: 0, sm: '8px' },
     },
     '&::-webkit-scrollbar-track': {
       background: `${gameColors.darkGreen}40`,
@@ -1357,12 +1359,15 @@ const styles = {
     gap: 0.5,
   },
   quantityButton: {
-    width: '28px',
-    height: '28px',
-    minWidth: '28px',
+    width: { xs: '44px', sm: '32px', md: '28px' },
+    height: { xs: '44px', sm: '32px', md: '28px' },
+    minWidth: { xs: '44px', sm: '32px', md: '28px' },
     background: `${gameColors.mediumGreen}60`,
     border: `1px solid ${gameColors.accentGreen}40`,
     color: '#fff',
+    '& svg': {
+      fontSize: { xs: '20px', sm: '16px' },
+    },
     '&:hover': {
       background: gameColors.mediumGreen,
       borderColor: gameColors.accentGreen,

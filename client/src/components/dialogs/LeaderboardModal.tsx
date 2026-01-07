@@ -133,8 +133,9 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
               0 8px 24px rgba(0, 0, 0, 0.6),
               0 0 16px ${gameColors.accentGreen}30
             `,
-            width: '800px',
-            maxWidth: '96vw',
+            width: { xs: '95vw', sm: '90vw', md: 800 },
+            maxWidth: 800,
+            maxHeight: { xs: '90vh', sm: '85vh', md: '80vh' },
             position: 'relative',
           },
         },
@@ -353,8 +354,8 @@ const styles = {
   container: {
     position: 'relative',
     color: '#fff',
-    p: 2.5,
-    pt: 2,
+    p: { xs: 1.5, sm: 2, md: 2.5 },
+    pt: { xs: 1.5, sm: 2 },
   },
   closeButton: {
     position: 'absolute',
@@ -435,10 +436,11 @@ const styles = {
     textTransform: 'uppercase' as const,
   },
   tableBody: {
-    maxHeight: '60vh',
+    maxHeight: { xs: '50vh', sm: '55vh', md: '60vh' },
     overflowY: 'auto' as const,
+    WebkitOverflowScrolling: 'touch',
     '&::-webkit-scrollbar': {
-      width: '8px',
+      width: { xs: 0, sm: '8px' },
     },
     '&::-webkit-scrollbar-track': {
       background: `${gameColors.darkGreen}40`,

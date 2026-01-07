@@ -68,8 +68,9 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
               0 8px 24px rgba(0, 0, 0, 0.6),
               0 0 16px ${gameColors.accentGreen}30
             `,
-            width: '700px',
-            maxWidth: '96vw',
+            width: { xs: '95vw', sm: '90vw', md: 700 },
+            maxWidth: 700,
+            maxHeight: { xs: '90vh', sm: '85vh', md: '80vh' },
             position: 'relative',
           },
         },
@@ -169,8 +170,8 @@ const styles = {
   container: {
     position: 'relative',
     color: '#fff',
-    p: 2.5,
-    pt: 2,
+    p: { xs: 1.5, sm: 2, md: 2.5 },
+    pt: { xs: 1.5, sm: 2 },
   },
   closeButton: {
     position: 'absolute',
@@ -222,8 +223,17 @@ const styles = {
     },
   },
   eventsContainer: {
+    maxHeight: { xs: '55vh', sm: '60vh', md: '65vh' },
     overflowY: 'auto' as const,
+    WebkitOverflowScrolling: 'touch',
     pr: 0.5,
+    '&::-webkit-scrollbar': {
+      width: { xs: 0, sm: '6px' },
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: 'rgba(255,255,255,0.3)',
+      borderRadius: 3,
+    },
   },
   eventsList: {
     // Render all items in DOM - no virtualization

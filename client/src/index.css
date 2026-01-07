@@ -1,3 +1,11 @@
+/* Safe area CSS variables for notched devices */
+:root {
+  --safe-area-inset-top: env(safe-area-inset-top, 0px);
+  --safe-area-inset-right: env(safe-area-inset-right, 0px);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-area-inset-left: env(safe-area-inset-left, 0px);
+}
+
 body {
   overflow: hidden;
   margin: 0;
@@ -8,6 +16,19 @@ body {
   -ms-user-select: none;
   /* Internet Explorer/Edge */
   user-select: none;
+}
+
+/* Apply safe area to main container */
+.app-container {
+  padding-top: var(--safe-area-inset-top);
+  padding-bottom: var(--safe-area-inset-bottom);
+  padding-left: var(--safe-area-inset-left);
+  padding-right: var(--safe-area-inset-right);
+}
+
+/* For fixed bottom navigation/action bars */
+.fixed-bottom {
+  padding-bottom: calc(16px + var(--safe-area-inset-bottom));
 }
 
 a {
@@ -228,4 +249,26 @@ input:-webkit-autofill {
 * {
   scrollbar-width: thin;
   scrollbar-color: #58b000 #1A1A1A;
+}
+
+/* Mobile-optimized scroll containers */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Hide scrollbar on mobile for cleaner look */
+@media (max-width: 599px) {
+  .mobile-scroll::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+}
+
+/* Responsive dialog improvements */
+@media (max-width: 599px) {
+  .MuiDialog-paper {
+    margin: 8px !important;
+    max-height: calc(100vh - 16px) !important;
+  }
 }
