@@ -11,9 +11,11 @@ import BurgerMenu from '../components/BurgerMenu'
 import ClaimRewardsButton from '../components/ClaimRewardsButton'
 import Leaderboard from '../components/Leaderboard'
 import LeaderboardButton from '../components/LeaderboardButton'
+import EventHistoryButton from '../components/EventHistoryButton'
 import BeastBoard from '../components/BeastBoard'
 import Top5000BeastsModal from '../components/dialogs/Top5000BeastsModal'
 import LeaderboardModal from '../components/dialogs/LeaderboardModal'
+import EventHistoryModal from '../components/dialogs/EventHistoryModal'
 import Onboarding from '../components/Onboarding'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
@@ -27,6 +29,7 @@ function MainPage() {
   const { pauseUpdates } = useGameDirector();
   const [top5000ModalOpen, setTop5000ModalOpen] = useState(false);
   const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false);
+  const [eventHistoryModalOpen, setEventHistoryModalOpen] = useState(false);
 
   return <>
     <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
@@ -38,7 +41,10 @@ function MainPage() {
         {isBrowser && <Box sx={styles.sideContainer}>
           <Box sx={styles.leaderboardSection}>
             <Leaderboard />
-            <LeaderboardButton onClick={() => setLeaderboardModalOpen(true)} />
+            <Box sx={styles.buttonsContainer}>
+              <LeaderboardButton onClick={() => setLeaderboardModalOpen(true)} />
+              <EventHistoryButton onClick={() => setEventHistoryModalOpen(true)} />
+            </Box>
           </Box>
         </Box>}
 
@@ -88,6 +94,13 @@ function MainPage() {
       <LeaderboardModal
         open={leaderboardModalOpen}
         onClose={() => setLeaderboardModalOpen(false)}
+      />
+    )}
+
+    {eventHistoryModalOpen && (
+      <EventHistoryModal
+        open={eventHistoryModalOpen}
+        onClose={() => setEventHistoryModalOpen(false)}
       />
     )}
   </>
@@ -151,6 +164,11 @@ const styles = {
   leaderboardSection: {
     display: 'flex',
     alignItems: 'flex-start',
+    gap: 1,
+  },
+  buttonsContainer: {
+    display: 'flex',
+    flexDirection: 'column',
     gap: 1,
   },
 }
