@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { shallow } from 'zustand/shallow';
 import { Summit, Beast, Adventurer, BattleEvent, Leaderboard, PoisonEvent, selection } from '@/types/game';
 
 export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'blocks held';
@@ -162,3 +163,72 @@ export const useGameStore = create<GameState>((set, get) => ({
   setTypeFilter: (typeFilter: BeastTypeFilter) => set({ typeFilter }),
   setNameMatchFilter: (nameMatchFilter: boolean) => set({ nameMatchFilter }),
 }));
+
+// ============================================================================
+// Selectors for optimized re-renders
+// ============================================================================
+
+// Individual state selectors
+export const selectSummit = (state: GameState) => state.summit;
+export const selectSummitEnded = (state: GameState) => state.summitEnded;
+export const selectOnboarding = (state: GameState) => state.onboarding;
+export const selectLeaderboard = (state: GameState) => state.leaderboard;
+export const selectBattleEvents = (state: GameState) => state.battleEvents;
+export const selectSpectatorBattleEvents = (state: GameState) => state.spectatorBattleEvents;
+export const selectPoisonEvent = (state: GameState) => state.poisonEvent;
+export const selectKilledByAdventurers = (state: GameState) => state.killedByAdventurers;
+export const selectCollection = (state: GameState) => state.collection;
+export const selectCollectionSyncing = (state: GameState) => state.collectionSyncing;
+export const selectLoadingCollection = (state: GameState) => state.loadingCollection;
+export const selectAttackInProgress = (state: GameState) => state.attackInProgress;
+export const selectApplyingPotions = (state: GameState) => state.applyingPotions;
+export const selectSelectedBeasts = (state: GameState) => state.selectedBeasts;
+export const selectAdventurerCollection = (state: GameState) => state.adventurerCollection;
+export const selectSelectedAdventurers = (state: GameState) => state.selectedAdventurers;
+export const selectAppliedPoisonCount = (state: GameState) => state.appliedPoisonCount;
+export const selectAppliedExtraLifePotions = (state: GameState) => state.appliedExtraLifePotions;
+export const selectAttackMode = (state: GameState) => state.attackMode;
+export const selectAutopilotEnabled = (state: GameState) => state.autopilotEnabled;
+export const selectAutopilotLog = (state: GameState) => state.autopilotLog;
+
+// Filter selectors
+export const selectHideDeadBeasts = (state: GameState) => state.hideDeadBeasts;
+export const selectHideTop5000 = (state: GameState) => state.hideTop5000;
+export const selectSortMethod = (state: GameState) => state.sortMethod;
+export const selectTypeFilter = (state: GameState) => state.typeFilter;
+export const selectNameMatchFilter = (state: GameState) => state.nameMatchFilter;
+
+// Setter selectors
+export const selectSetSummit = (state: GameState) => state.setSummit;
+export const selectSetBattleEvents = (state: GameState) => state.setBattleEvents;
+export const selectSetCollection = (state: GameState) => state.setCollection;
+export const selectSetSelectedBeasts = (state: GameState) => state.setSelectedBeasts;
+export const selectSetAttackInProgress = (state: GameState) => state.setAttackInProgress;
+export const selectSetApplyingPotions = (state: GameState) => state.setApplyingPotions;
+
+// Composite selectors for common combinations
+export const selectGameState = (state: GameState) => ({
+  summit: state.summit,
+  attackInProgress: state.attackInProgress,
+  selectedBeasts: state.selectedBeasts,
+  attackMode: state.attackMode,
+});
+
+export const selectCollectionState = (state: GameState) => ({
+  collection: state.collection,
+  loadingCollection: state.loadingCollection,
+  collectionSyncing: state.collectionSyncing,
+});
+
+export const selectFilterState = (state: GameState) => ({
+  hideDeadBeasts: state.hideDeadBeasts,
+  hideTop5000: state.hideTop5000,
+  sortMethod: state.sortMethod,
+  typeFilter: state.typeFilter,
+  nameMatchFilter: state.nameMatchFilter,
+});
+
+// Hook helpers with shallow comparison for multi-value selects
+export const useGameStateShallow = () => useGameStore(selectGameState, shallow);
+export const useCollectionStateShallow = () => useGameStore(selectCollectionState, shallow);
+export const useFilterStateShallow = () => useGameStore(selectFilterState, shallow);
