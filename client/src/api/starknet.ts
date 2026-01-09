@@ -1,8 +1,22 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { Summit } from "@/types/game";
 import { getBeastCurrentLevel, getBeastDetails } from "@/utils/beasts";
+import { logger } from "@/utils/logger";
 import { parseBalances } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
+
+/**
+ * Validates that the summit RPC response has the expected format.
+ */
+function isValidSummitResponse(data: unknown): data is { result: string[] } {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'result' in data &&
+    Array.isArray((data as { result: unknown }).result) &&
+    (data as { result: string[] }).result.length >= 26
+  );
+}
 
 export const useStarknetApi = () => {
   const { currentNetworkConfig } = useDynamicConnector();
@@ -34,7 +48,7 @@ export const useStarknetApi = () => {
     return parseBalances(data || [], tokens);
   }
 
-  const getSummitData = async (): Promise<Summit> => {
+  const getSummitData = async (): Promise<Summit | null> => {
     try {
       const response = await fetch(currentNetworkConfig.rpcUrl, {
         method: "POST",
@@ -56,52 +70,65 @@ export const useStarknetApi = () => {
         }),
       });
 
+      if (!response.ok) {
+        logger.error('Summit RPC request failed:', response.status, response.statusText);
+        return null;
+      }
+
       const data = await response.json();
-      let beast: any = {
-        id: parseInt(data?.result[0], 16),
-        prefix: parseInt(data?.result[1], 16),
-        suffix: parseInt(data?.result[2], 16),
-        level: parseInt(data?.result[3], 16),
-        health: parseInt(data?.result[4], 16),
-        shiny: parseInt(data?.result[5], 16),
-        animated: parseInt(data?.result[6], 16),
-        token_id: parseInt(data?.result[7], 16),
-        current_health: parseInt(data?.result[8], 16),
-        bonus_health: parseInt(data?.result[9], 16),
-        bonus_xp: parseInt(data?.result[10], 16),
-        attack_streak: parseInt(data?.result[11], 16),
-        last_death_timestamp: parseInt(data?.result[12], 16),
-        revival_count: parseInt(data?.result[13], 16),
-        extra_lives: parseInt(data?.result[14], 16),
-        has_claimed_potions: Boolean(parseInt(data?.result[15], 16)),
-        blocks_held: parseInt(data?.result[16], 16),
+
+      // Validate response format
+      if (!isValidSummitResponse(data)) {
+        logger.error('Invalid summit response format:', data);
+        return null;
+      }
+
+      const result = data.result;
+      const beast = {
+        id: parseInt(result[0], 16),
+        prefix: parseInt(result[1], 16),
+        suffix: parseInt(result[2], 16),
+        level: parseInt(result[3], 16),
+        health: parseInt(result[4], 16),
+        shiny: parseInt(result[5], 16),
+        animated: parseInt(result[6], 16),
+        token_id: parseInt(result[7], 16),
+        current_health: parseInt(result[8], 16),
+        bonus_health: parseInt(result[9], 16),
+        bonus_xp: parseInt(result[10], 16),
+        attack_streak: parseInt(result[11], 16),
+        last_death_timestamp: parseInt(result[12], 16),
+        revival_count: parseInt(result[13], 16),
+        extra_lives: parseInt(result[14], 16),
+        has_claimed_potions: Boolean(parseInt(result[15], 16)),
+        blocks_held: parseInt(result[16], 16),
         stats: {
-          spirit: parseInt(data?.result[17], 16),
-          luck: parseInt(data?.result[18], 16),
-          specials: Boolean(parseInt(data?.result[19], 16)),
-          wisdom: Boolean(parseInt(data?.result[20], 16)),
-          diplomacy: Boolean(parseInt(data?.result[21], 16)),
+          spirit: parseInt(result[17], 16),
+          luck: parseInt(result[18], 16),
+          specials: Boolean(parseInt(result[19], 16)),
+          wisdom: Boolean(parseInt(result[20], 16)),
+          diplomacy: Boolean(parseInt(result[21], 16)),
         },
         kills_claimed: 0,
-      }
+        current_level: 0, // Will be calculated below
+      };
       beast.current_level = getBeastCurrentLevel(beast.level, beast.bonus_xp);
-      
+
       return {
         beast: {
           ...beast,
           ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.current_level),
           revival_time: 0,
         },
-        taken_at: parseInt(data?.result[22], 16),
-        owner: data?.result[23],
-        poison_count: parseInt(data?.result[24], 16),
-        poison_timestamp: parseInt(data?.result[25], 16),
-      }
+        taken_at: parseInt(result[22], 16),
+        owner: result[23],
+        poison_count: parseInt(result[24], 16),
+        poison_timestamp: parseInt(result[25], 16),
+      };
     } catch (error) {
-      console.log('error', error)
+      logger.error('Error fetching summit data:', error);
+      return null;
     }
-
-    return null;
   }
 
   const getCurrentBlock = async (): Promise<number> => {
@@ -119,10 +146,15 @@ export const useStarknetApi = () => {
         }),
       });
 
+      if (!response.ok) {
+        logger.error('Block number request failed:', response.status);
+        return 0;
+      }
+
       const data = await response.json();
       return data?.result || 0;
     } catch (error) {
-      console.log('error fetching block number', error);
+      logger.error('Error fetching block number:', error);
       return 0;
     }
   }
