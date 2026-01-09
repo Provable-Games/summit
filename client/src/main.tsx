@@ -14,6 +14,8 @@ import { DojoSdkProvider } from "@dojoengine/sdk/react";
 import { Analytics } from "@vercel/analytics/react";
 import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useState } from "react";
+import { Box, CircularProgress, Typography } from "@mui/material";
+import { logger } from "@/utils/logger";
 import "./index.css";
 
 const options = {
@@ -21,9 +23,34 @@ const options = {
   defaults: "2025-05-24" as const,
 };
 
+/**
+ * Loading screen component displayed while the SDK initializes.
+ */
+function LoadingScreen() {
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        backgroundColor: '#1a1a2e',
+        gap: 2,
+      }}
+    >
+      <CircularProgress sx={{ color: '#ffd700' }} />
+      <Typography sx={{ color: '#fff', fontSize: '1.1rem' }}>
+        Initializing game...
+      </Typography>
+    </Box>
+  );
+}
+
 function DojoApp() {
   const { currentNetworkConfig } = useDynamicConnector();
   const [sdk, setSdk] = useState<any>(null);
+  const [initError, setInitError] = useState<string | null>(null);
 
   useEffect(() => {
     async function initializeSdk() {
@@ -41,8 +68,10 @@ function DojoApp() {
           },
         });
         setSdk(initializedSdk);
+        setInitError(null);
       } catch (error) {
-        console.error("Failed to initialize SDK:", error);
+        logger.error("Failed to initialize SDK:", error);
+        setInitError("Failed to connect to game server. Please refresh the page.");
       }
     }
 
@@ -51,8 +80,43 @@ function DojoApp() {
     }
   }, [currentNetworkConfig]);
 
+  if (initError) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100vh',
+          backgroundColor: '#1a1a2e',
+          gap: 2,
+          padding: 3,
+        }}
+      >
+        <Typography sx={{ color: '#ff6b6b', fontSize: '1.1rem', textAlign: 'center' }}>
+          {initError}
+        </Typography>
+        <button
+          onClick={() => window.location.reload()}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#2d5a2d',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '1rem',
+          }}
+        >
+          Retry
+        </button>
+      </Box>
+    );
+  }
+
   if (!sdk) {
-    return null;
+    return <LoadingScreen />;
   }
 
   return (
