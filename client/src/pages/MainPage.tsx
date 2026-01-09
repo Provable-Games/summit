@@ -2,9 +2,9 @@ import AttackingBeasts from "@/components/AttackingBeasts"
 import Countdown from "@/components/Countdown"
 import { useGameDirector } from "@/contexts/GameDirector"
 import { useGameStore } from "@/stores/gameStore"
-import { Box, Typography } from '@mui/material'
+import { Box, Typography, CircularProgress } from '@mui/material'
 import { isBrowser, isMobile } from 'react-device-detect'
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import ActionBar from '../components/ActionBar'
 import BeastCollection from '../components/BeastCollection'
 import BurgerMenu from '../components/BurgerMenu'
@@ -13,15 +13,35 @@ import Leaderboard from '../components/Leaderboard'
 import LeaderboardButton from '../components/LeaderboardButton'
 import EventHistoryButton from '../components/EventHistoryButton'
 import BeastBoard from '../components/BeastBoard'
-import Top5000BeastsModal from '../components/dialogs/Top5000BeastsModal'
-import LeaderboardModal from '../components/dialogs/LeaderboardModal'
-import EventHistoryModal from '../components/dialogs/EventHistoryModal'
 import Onboarding from '../components/Onboarding'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
 import { useAccount } from "@starknet-react/core"
 import RewardsRemainingBar from '../components/RewardsRemainingBar'
+
+// Lazy load modal dialogs to reduce initial bundle size
+const Top5000BeastsModal = lazy(() => import('../components/dialogs/Top5000BeastsModal'))
+const LeaderboardModal = lazy(() => import('../components/dialogs/LeaderboardModal'))
+const EventHistoryModal = lazy(() => import('../components/dialogs/EventHistoryModal'))
+
+// Loading fallback for lazy-loaded modals
+const ModalLoadingFallback = () => (
+  <Box sx={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 9999,
+  }}>
+    <CircularProgress sx={{ color: gameColors.yellow }} />
+  </Box>
+)
 
 function MainPage() {
   const { address } = useAccount()
@@ -84,24 +104,30 @@ function MainPage() {
     </Box >
 
     {top5000ModalOpen && (
-      <Top5000BeastsModal
-        open={top5000ModalOpen}
-        onClose={() => setTop5000ModalOpen(false)}
-      />
+      <Suspense fallback={<ModalLoadingFallback />}>
+        <Top5000BeastsModal
+          open={top5000ModalOpen}
+          onClose={() => setTop5000ModalOpen(false)}
+        />
+      </Suspense>
     )}
 
     {leaderboardModalOpen && (
-      <LeaderboardModal
-        open={leaderboardModalOpen}
-        onClose={() => setLeaderboardModalOpen(false)}
-      />
+      <Suspense fallback={<ModalLoadingFallback />}>
+        <LeaderboardModal
+          open={leaderboardModalOpen}
+          onClose={() => setLeaderboardModalOpen(false)}
+        />
+      </Suspense>
     )}
 
     {eventHistoryModalOpen && (
-      <EventHistoryModal
-        open={eventHistoryModalOpen}
-        onClose={() => setEventHistoryModalOpen(false)}
-      />
+      <Suspense fallback={<ModalLoadingFallback />}>
+        <EventHistoryModal
+          open={eventHistoryModalOpen}
+          onClose={() => setEventHistoryModalOpen(false)}
+        />
+      </Suspense>
     )}
   </>
 }
