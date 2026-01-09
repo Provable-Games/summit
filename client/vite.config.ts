@@ -1,4 +1,4 @@
-import react from "@vitejs/plugin-react";
+import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { defineConfig } from "vite";
 import checker from "vite-plugin-checker";
@@ -26,6 +26,9 @@ export default defineConfig({
 
         // Use esbuild for faster minification
         minify: "esbuild",
+
+        // Skip gzip size computation (saves ~8s, doesn't affect actual compression)
+        reportCompressedSize: false,
 
         // Optimize chunk splitting for better caching
         rollupOptions: {
