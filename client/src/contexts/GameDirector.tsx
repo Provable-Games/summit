@@ -9,11 +9,14 @@ import {
   applyPoisonDamage, calculateBattleResult, calculateOptimalAttackPotions, getBeastCurrentHealth,
   getBeastCurrentLevel, getBeastDetails, getBeastRevivalTime
 } from "@/utils/beasts";
+import { logger } from "@/utils/logger";
+import { validateBeastSelection, validateClaimAction, validateFeedAction, validatePoisonAction } from "@/utils/validation";
 import { useQueries } from '@/utils/queries';
 import { useDojoSDK } from '@dojoengine/sdk/react';
 import {
   createContext,
   PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
   useReducer,
@@ -32,9 +35,8 @@ export interface GameDirectorContext {
 export const START_TIMESTAMP = 1760947200;
 export const TERMINAL_BLOCK = 6000000;
 
-const GameDirectorContext = createContext<GameDirectorContext>(
-  {} as GameDirectorContext
-);
+// Create context with null default to catch usage outside provider
+const GameDirectorContext = createContext<GameDirectorContext | null>(null);
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
@@ -63,10 +65,32 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const [eventQueue, setEventQueue] = useState<any[]>([]);
   const [pauseUpdates, setPauseUpdates] = useState(false);
 
+  // Initial data fetch and subscription setup with proper cleanup
   useEffect(() => {
     fetchSummitData();
     subscribeSummitUpdates();
     subscribeDungeonUpdates();
+
+    // Cleanup function to cancel subscriptions on unmount
+    return () => {
+      if (dungeonSubscriptionRef.current) {
+        try {
+          dungeonSubscriptionRef.current.cancel();
+        } catch (e) {
+          logger.warn('Failed to cancel dungeon subscription:', e);
+        }
+      }
+      if (summitSubscriptionRef.current) {
+        try {
+          summitSubscriptionRef.current.cancel();
+        } catch (e) {
+          logger.warn('Failed to cancel summit subscription:', e);
+        }
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -188,7 +212,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         query: dungeonStatsQuery(),
         callback: ({ data, error }: { data?: any[]; error?: Error }) => {
           if (error) {
-            console.error("Dungeon subscription error:", error);
+            logger.error("Dungeon subscription error:", error);
             return;
           }
 
@@ -212,7 +236,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
       dungeonSubscriptionRef.current = sub;
     } catch (error) {
-      console.error("Failed to subscribe to dungeon updates:", error);
+      logger.error("Failed to subscribe to dungeon updates:", error);
       setTimeout(() => {
         subscribeDungeonUpdates();
       }, 30000);
@@ -288,7 +312,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
       summitSubscriptionRef.current = sub;
     } catch (error) {
-      console.error("Failed to subscribe to summit updates:", error);
+      logger.error("Failed to subscribe to summit updates:", error);
       retryCountRef.current += 1;
       const delay = Math.min(30000, 2000 * retryCountRef.current);
       if (reconnectTimeoutRef.current) {
@@ -489,6 +513,14 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   );
 };
 
+/**
+ * Hook to access the GameDirector context.
+ * Throws an error if used outside of the GameDirector provider.
+ */
 export const useGameDirector = () => {
-  return useContext(GameDirectorContext);
+  const context = useContext(GameDirectorContext);
+  if (!context) {
+    throw new Error('useGameDirector must be used within a GameDirector provider');
+  }
+  return context;
 };
