@@ -13,4 +13,28 @@ export default defineConfig({
             "@": path.resolve(__dirname, "./src"),
         },
     },
+    build: {
+        // Disable source maps in production for faster builds
+        sourcemap: false,
+
+        // Use esbuild for faster minification
+        minify: "esbuild",
+
+        // Optimize chunk splitting for better caching
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    "vendor-react": ["react", "react-dom", "react-router-dom"],
+                    "vendor-mui": ["@mui/material", "@mui/icons-material"],
+                    "vendor-starknet": ["starknet", "@starknet-react/core"],
+                    "vendor-dojo": [
+                        "@dojoengine/core",
+                        "@dojoengine/sdk",
+                        "@dojoengine/utils",
+                    ],
+                    "vendor-animation": ["framer-motion", "lottie-react"],
+                },
+            },
+        },
+    },
 });

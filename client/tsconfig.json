@@ -26,6 +26,10 @@
         "noImplicitThis": false,
         "strictNullChecks": false,
         "allowSyntheticDefaultImports": true,
+
+        /* Build optimization */
+        "incremental": true,
+        "tsBuildInfoFile": "./node_modules/.cache/tsbuildinfo"
     },
     "include": ["src"],
     "exclude": ["node_modules", "dist", "build"]

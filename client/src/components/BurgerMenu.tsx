@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Box, IconButton, Drawer, Typography } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
@@ -6,11 +6,13 @@ import ProfileCard from './ProfileCard';
 import ClaimRewardsButton from './ClaimRewardsButton';
 import BeastBoard from './BeastBoard';
 import LeaderboardButton from './LeaderboardButton';
-import Top5000BeastsModal from './dialogs/Top5000BeastsModal';
-import LeaderboardModal from './dialogs/LeaderboardModal';
 import { gameColors } from '@/utils/themes';
 import { useAccount } from '@starknet-react/core';
 import RewardsRemainingBar from './RewardsRemainingBar';
+
+// Lazy load modal dialogs - they are only rendered when opened
+const Top5000BeastsModal = lazy(() => import('./dialogs/Top5000BeastsModal'));
+const LeaderboardModal = lazy(() => import('./dialogs/LeaderboardModal'));
 
 const BurgerMenu = () => {
   const { address } = useAccount();
@@ -89,17 +91,21 @@ const BurgerMenu = () => {
       </Drawer>
 
       {top5000ModalOpen && (
-        <Top5000BeastsModal
-          open={top5000ModalOpen}
-          onClose={() => setTop5000ModalOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <Top5000BeastsModal
+            open={top5000ModalOpen}
+            onClose={() => setTop5000ModalOpen(false)}
+          />
+        </Suspense>
       )}
 
       {leaderboardModalOpen && (
-        <LeaderboardModal
-          open={leaderboardModalOpen}
-          onClose={() => setLeaderboardModalOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <LeaderboardModal
+            open={leaderboardModalOpen}
+            onClose={() => setLeaderboardModalOpen(false)}
+          />
+        </Suspense>
       )}
     </>
   );
