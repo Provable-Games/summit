@@ -25,6 +25,8 @@ export const fetchBeastSound = (beastId: number): SoundName => {
   } else if (beastId <= 75) {
     return "bludgeon";
   }
+  // Default fallback for beastId > 75
+  return "blade";
 }
 
 export const fetchBeastImage = (beast: Beast) => {
