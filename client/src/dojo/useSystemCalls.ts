@@ -2,7 +2,14 @@ import { useDynamicConnector } from "@/contexts/starknet";
 import { useGameStore } from "@/stores/gameStore";
 import { selection, Stats } from "@/types/game";
 import { calculateRevivalRequired } from "@/utils/beasts";
+import { logger } from "@/utils/logger";
 import { translateGameEvent } from "@/utils/translation";
+import {
+  validateBeastSelection,
+  isValidTokenId,
+  isValidPositiveInteger,
+  validateTokenIdArray
+} from "@/utils/validation";
 import { delay } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
 import { useSnackbar } from "notistack";
@@ -48,7 +55,7 @@ export const useSystemCalls = () => {
 
       return translatedEvents.filter(Boolean);
     } catch (error) {
-      console.error("Error executing action:", error);
+      logger.error("Error executing action:", error);
       forceResetAction();
     }
   };
@@ -69,18 +76,29 @@ export const useSystemCalls = () => {
 
       return receipt;
     } catch (error) {
-      console.error("Error waiting for transaction :", error);
+      logger.error("Error waiting for transaction :", error);
       await delay(500);
       return waitForTransaction(txHash, retries + 1);
     }
   }
 
   /**
-   * Explores the world, optionally until encountering a beast.
+   * Feeds a beast to increase its health.
    * @param beastId The ID of the beast
-   * @param tillBeast Whether to explore until encountering a beast
+   * @param amount Amount of health to add
+   * @param corpseRequired Number of corpse tokens required
    */
   const feed = (beastId: number, amount: number, corpseRequired: number) => {
+    // Validate inputs
+    if (!isValidTokenId(beastId)) {
+      logger.error('Invalid beast ID for feed:', beastId);
+      return [];
+    }
+    if (!isValidPositiveInteger(amount, 100000)) {
+      logger.error('Invalid feed amount:', amount);
+      return [];
+    }
+
     let txs: any[] = [];
 
     // if (corpseRequired > 0) {
@@ -99,11 +117,24 @@ export const useSystemCalls = () => {
 
   /**
    * Attacks a beast, optionally fighting to the death.
-   * @param beasts The beasts to attack
+   * @param beasts The beasts to attack with
    * @param safeAttack Whether to attack safely
    * @param vrf Whether to use VRF
+   * @param extraLifePotions Number of extra life potions to use
    */
   const attack = (beasts: selection, safeAttack: boolean, vrf: boolean, extraLifePotions: number) => {
+    // Validate beast selection
+    const validation = validateBeastSelection(beasts);
+    if (!validation.valid) {
+      logger.error('Invalid beast selection for attack:', validation.error);
+      return [];
+    }
+
+    if (!isValidPositiveInteger(extraLifePotions, 10000)) {
+      logger.error('Invalid extra life potions count:', extraLifePotions);
+      return [];
+    }
+
     let txs: any[] = [];
 
     let revivalPotions = calculateRevivalRequired(beasts);
@@ -145,6 +176,16 @@ export const useSystemCalls = () => {
   };
 
   const addExtraLife = (beastId: number, extraLifePotions: number) => {
+    // Validate inputs
+    if (!isValidTokenId(beastId)) {
+      logger.error('Invalid beast ID for addExtraLife:', beastId);
+      return [];
+    }
+    if (!isValidPositiveInteger(extraLifePotions, 10000)) {
+      logger.error('Invalid extra life potions count:', extraLifePotions);
+      return [];
+    }
+
     let txs: any[] = [];
 
     // if (extraLifePotions > 0) {
@@ -162,6 +203,16 @@ export const useSystemCalls = () => {
   };
 
   const applyStatPoints = (beastId: number, stats: Stats, skullRequired: number) => {
+    // Validate inputs
+    if (!isValidTokenId(beastId)) {
+      logger.error('Invalid beast ID for applyStatPoints:', beastId);
+      return [];
+    }
+    if (!isValidPositiveInteger(skullRequired, 100000)) {
+      logger.error('Invalid skull count:', skullRequired);
+      return [];
+    }
+
     let txs: any[] = [];
 
     // if (skullRequired > 0) {
@@ -187,6 +238,12 @@ export const useSystemCalls = () => {
   };
 
   const claimBeastReward = (beastIds: number[]) => {
+    // Validate beast IDs
+    if (!validateTokenIdArray(beastIds)) {
+      logger.error('Invalid beast IDs for claimBeastReward:', beastIds);
+      return { contractAddress: '', entrypoint: '', calldata: [] };
+    }
+
     return {
       contractAddress: SUMMIT_ADDRESS,
       entrypoint: "claim_beast_reward",
@@ -211,6 +268,16 @@ export const useSystemCalls = () => {
   };
 
   const applyPoison = (beastId: number, count: number) => {
+    // Validate inputs
+    if (!isValidTokenId(beastId)) {
+      logger.error('Invalid beast ID for applyPoison:', beastId);
+      return [];
+    }
+    if (!isValidPositiveInteger(count, 1000)) {
+      logger.error('Invalid poison count:', count);
+      return [];
+    }
+
     let txs: any[] = [];
 
     // if (count > 0) {

@@ -1,7 +1,9 @@
 import { useDynamicConnector } from "@/contexts/starknet";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { addAddressPadding } from "starknet";
 import { lookupAddressNames } from "@/utils/addressNameCache";
+import { logger } from "@/utils/logger";
+import { isValidStarknetAddress, isValidTokenId, isValidQueryLimit } from "@/utils/validation";
 
 export interface BattleEvent {
   type: "battle";
@@ -85,8 +87,31 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
     enabled = true
   } = options;
 
+  // Memoize eventTypes key to avoid unnecessary re-fetches
+  const eventTypesKey = useMemo(() => eventTypes.slice().sort().join(','), [eventTypes]);
+
   const fetchEvents = useCallback(async () => {
     if (!enabled || !currentNetworkConfig?.toriiUrl || !currentNetworkConfig?.namespace) {
+      return;
+    }
+
+    // Validate query parameters
+    if (!isValidQueryLimit(limit) || !isValidQueryLimit(offset)) {
+      logger.error('Invalid limit or offset values:', { limit, offset });
+      setError('Invalid query parameters');
+      return;
+    }
+
+    // Validate optional parameters if provided
+    if (beastTokenId !== undefined && !isValidTokenId(beastTokenId)) {
+      logger.error('Invalid beast token ID:', beastTokenId);
+      setError('Invalid beast token ID');
+      return;
+    }
+
+    if (playerAddress !== undefined && !isValidStarknetAddress(playerAddress)) {
+      logger.error('Invalid player address:', playerAddress);
+      setError('Invalid player address');
       return;
     }
 
@@ -318,7 +343,7 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
           });
           setPlayerNames(namesObject);
         } catch (error) {
-          console.error("Error loading player names:", error);
+          logger.error("Error loading player names:", error);
           setPlayerNames({});
         }
       }
@@ -326,13 +351,13 @@ export const useEventHistory = (options: UseEventHistoryOptions = {}) => {
       setEvents(limitedEvents);
       setHasMore(mergedEvents.length === limit);
     } catch (error) {
-      console.error("Error fetching event history:", error);
+      logger.error("Error fetching event history:", error);
       setError("Failed to load events");
       setEvents([]);
     } finally {
       setLoading(false);
     }
-  }, [limit, offset, JSON.stringify(eventTypes)]);
+  }, [limit, offset, eventTypesKey, beastTokenId, playerAddress, enabled, currentNetworkConfig]);
 
   useEffect(() => {
     fetchEvents();
