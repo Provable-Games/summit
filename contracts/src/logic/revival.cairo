@@ -1,6 +1,7 @@
 use summit::constants::BASE_REVIVAL_TIME_SECONDS;
 
 /// Calculate the number of revival potions required to revive a beast
+/// Inlined for performance in attack loop
 /// Revival potions are needed if:
 /// 1. Time since death is less than BASE_REVIVAL_TIME_SECONDS
 /// 2. After applying spirit reduction, still not enough time has passed
@@ -11,6 +12,7 @@ use summit::constants::BASE_REVIVAL_TIME_SECONDS;
 /// @param revival_count How many times beast has been revived (0-31)
 /// @param spirit_reduction Seconds reduced from revival time due to spirit stat
 /// @return Number of potions required (0 if beast can attack freely)
+#[inline(always)]
 pub fn calculate_revival_potions(
     last_death_timestamp: u64, current_timestamp: u64, revival_count: u8, spirit_reduction: u64,
 ) -> u16 {
@@ -44,6 +46,7 @@ pub fn calculate_revival_potions(
 /// @param current_timestamp Current block timestamp
 /// @param cooldown_seconds The cooldown period (typically DAY_SECONDS)
 /// @return true if beast is still on cooldown
+#[inline(always)]
 pub fn is_killed_recently(last_killed_timestamp: u64, current_timestamp: u64, cooldown_seconds: u64) -> bool {
     last_killed_timestamp > current_timestamp - cooldown_seconds
 }
@@ -54,6 +57,7 @@ pub fn is_killed_recently(last_killed_timestamp: u64, current_timestamp: u64, co
 /// @param current_count Current revival count
 /// @param max_count Maximum revival count (typically 31)
 /// @return New revival count
+#[inline(always)]
 pub fn increment_revival_count(current_count: u8, max_count: u8) -> u8 {
     if current_count < max_count {
         current_count + 1
@@ -68,6 +72,7 @@ mod tests {
     use super::{calculate_revival_potions, increment_revival_count, is_killed_recently};
 
     #[test]
+    #[available_gas(gas: 70000)]
     fn test_revival_not_needed_after_full_time() {
         let current = BASE_REVIVAL_TIME_SECONDS + 1000;
         let last_death = 0;
@@ -76,6 +81,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 65000)]
     fn test_revival_not_needed_exactly_at_time() {
         let current = BASE_REVIVAL_TIME_SECONDS;
         let last_death = 0;
@@ -84,6 +90,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 70000)]
     fn test_revival_needed_before_time() {
         let current = BASE_REVIVAL_TIME_SECONDS - 1;
         let last_death = 0;
@@ -92,6 +99,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 150000)]
     fn test_revival_cost_increases() {
         let current = BASE_REVIVAL_TIME_SECONDS - 1;
         let last_death = 0;
@@ -103,6 +111,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 70000)]
     fn test_spirit_reduction_removes_need() {
         let current = BASE_REVIVAL_TIME_SECONDS - 1000;
         let last_death = 0;
@@ -114,6 +123,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 65000)]
     fn test_spirit_reduction_partial() {
         let current: u64 = 10000;
         let last_death: u64 = 0;
@@ -129,6 +139,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 70000)]
     fn test_spirit_reduction_exceeds_base() {
         let current: u64 = 100;
         let last_death: u64 = 0;
@@ -140,6 +151,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 60000)]
     fn test_is_killed_recently_true() {
         let current: u64 = 100000;
         let last_killed = current - DAY_SECONDS + 1; // Just within cooldown
@@ -148,6 +160,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 60000)]
     fn test_is_killed_recently_false() {
         let current: u64 = 100000;
         let last_killed = current - DAY_SECONDS - 1; // Just past cooldown
@@ -156,6 +169,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 55000)]
     fn test_is_killed_recently_exactly_at_boundary() {
         let current: u64 = 100000;
         let last_killed = current - DAY_SECONDS; // Exactly at boundary
@@ -164,6 +178,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 70000)]
     fn test_increment_revival_count_normal() {
         assert!(increment_revival_count(0, 31) == 1, "0 -> 1");
         assert!(increment_revival_count(15, 31) == 16, "15 -> 16");
@@ -171,6 +186,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 60000)]
     fn test_increment_revival_count_at_max() {
         assert!(increment_revival_count(31, 31) == 31, "Should stay at max");
         assert!(increment_revival_count(31, 31) == 31, "Should stay at max (retry)");

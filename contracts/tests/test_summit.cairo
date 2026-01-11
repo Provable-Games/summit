@@ -2205,3 +2205,24 @@ fn test_attack_long_battle_gas_benchmark() {
 
     stop_cheat_caller_address(summit.contract_address);
 }
+
+// ===========================================
+// GAS BENCHMARK: Multiple attack iterations
+// ===========================================
+
+#[test]
+#[fork("mainnet")]
+fn test_attack_multi_iteration_gas_benchmark() {
+    let summit = deploy_summit_and_start();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_revive_potion_address(), true);
+
+    // Beast 1 is the initial summit beast
+    // Attack with beast 60989 using 10 attack iterations
+    // Each iteration creates the attacking beast, checks revival, runs battle loop
+    let attacking_beasts = array![(60989, 10, 0)].span();
+    summit.attack(0, attacking_beasts, 100, 0, false);
+
+    stop_cheat_caller_address(summit.contract_address);
+}

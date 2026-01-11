@@ -52,6 +52,16 @@ mod pow {
     pub const TWO_POW_177: u256 = 0x200000000000000000000000000000000000000000000;
     pub const TWO_POW_178: u256 = 0x400000000000000000000000000000000000000000000;
     pub const TWO_POW_179: u256 = 0x800000000000000000000000000000000000000000000;
+
+    // Mask constants for optimized unpacking (value = 2^N - 1)
+    pub const MASK_1: u256 = 0x1;
+    pub const MASK_4: u256 = 0xF;
+    pub const MASK_6: u256 = 0x3F;
+    pub const MASK_8: u256 = 0xFF;
+    pub const MASK_12: u256 = 0xFFF;
+    pub const MASK_16: u256 = 0xFFFF;
+    pub const MASK_17: u256 = 0x1FFFF;
+    pub const MASK_64: u256 = 0xFFFFFFFFFFFFFFFF;
 }
 
 // Storage packing implementation for PackableBeast
@@ -80,60 +90,57 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
     fn unpack(value: felt252) -> LiveBeastStats {
         let mut packed: u256 = value.into();
 
-        // Extract id (7 bits)
-        let token_id = (packed % pow::TWO_POW_17).try_into().expect('unpack token_id');
+        // Extract token_id (17 bits)
+        let token_id = (packed & pow::MASK_17).try_into().expect('unpack token_id');
         packed = packed / pow::TWO_POW_17;
 
         // Extract current_health (12 bits)
-        let current_health = (packed % pow::TWO_POW_12).try_into().expect('unpack current_health');
+        let current_health = (packed & pow::MASK_12).try_into().expect('unpack current_health');
         packed = packed / pow::TWO_POW_12;
 
         // Extract bonus_health (12 bits)
-        let bonus_health = (packed % pow::TWO_POW_12).try_into().expect('unpack bonus_health');
+        let bonus_health = (packed & pow::MASK_12).try_into().expect('unpack bonus_health');
         packed = packed / pow::TWO_POW_12;
 
         // Extract bonus_xp (16 bits)
-        let bonus_xp = (packed % pow::TWO_POW_16).try_into().expect('unpack bonus_xp');
+        let bonus_xp = (packed & pow::MASK_16).try_into().expect('unpack bonus_xp');
         packed = packed / pow::TWO_POW_16;
 
         // Extract attack_streak (4 bits)
-        let attack_streak = (packed % pow::TWO_POW_4).try_into().expect('unpack attack_streak');
+        let attack_streak = (packed & pow::MASK_4).try_into().expect('unpack attack_streak');
         packed = packed / pow::TWO_POW_4;
 
         // Extract last_death_timestamp (64 bits)
-        let last_death_timestamp = (packed % pow::TWO_POW_64).try_into().expect('unpack last_death_timestamp');
+        let last_death_timestamp = (packed & pow::MASK_64).try_into().expect('unpack last_death_timestamp');
         packed = packed / pow::TWO_POW_64;
 
         // Extract revival_count (6 bits)
-        let revival_count = (packed % pow::TWO_POW_6).try_into().expect('unpack revival_count');
+        let revival_count = (packed & pow::MASK_6).try_into().expect('unpack revival_count');
         packed = packed / pow::TWO_POW_6;
 
-        // Extract extra_lives (8 bits)
-        let extra_lives = (packed % pow::TWO_POW_12).try_into().expect('unpack extra_lives');
+        // Extract extra_lives (12 bits)
+        let extra_lives = (packed & pow::MASK_12).try_into().expect('unpack extra_lives');
         packed = packed / pow::TWO_POW_12;
 
         // Extract has_claimed_potions (1 bit)
-        let has_claimed_potions = (packed % 2_u256).try_into().expect('unpack has_claimed_potions');
+        let has_claimed_potions = (packed & pow::MASK_1).try_into().expect('unpack has_claimed_potions');
         packed = packed / 2_u256;
 
         // Extract blocks_held (17 bits)
-        let blocks_held = (packed % pow::TWO_POW_17).try_into().expect('unpack blocks_held');
+        let blocks_held = (packed & pow::MASK_17).try_into().expect('unpack blocks_held');
         packed = packed / pow::TWO_POW_17;
 
-        let spirit = (packed % pow::TWO_POW_8).try_into().expect('unpack spirit');
+        let spirit = (packed & pow::MASK_8).try_into().expect('unpack spirit');
         packed = packed / pow::TWO_POW_8;
 
-        let luck = (packed % pow::TWO_POW_8).try_into().expect('unpack luck');
+        let luck = (packed & pow::MASK_8).try_into().expect('unpack luck');
         packed = packed / pow::TWO_POW_8;
 
-        let specials = (packed % 2_u256).try_into().expect('unpack specials');
-        packed = packed / 2_u256;
-
-        let wisdom = (packed % 2_u256).try_into().expect('unpack wisdom');
-        packed = packed / 2_u256;
-
-        let diplomacy = (packed % 2_u256).try_into().expect('unpack diplomacy');
-        packed = packed / 2_u256;
+        // Extract all 3 flags at once
+        let flags = packed & 7_u256; // 0b111 = 7
+        let specials = (flags & 1_u256).try_into().expect('unpack specials');
+        let wisdom = ((flags / 2_u256) & 1_u256).try_into().expect('unpack wisdom');
+        let diplomacy = ((flags / 4_u256) & 1_u256).try_into().expect('unpack diplomacy');
 
         let stats = Stats { spirit, luck, specials, wisdom, diplomacy };
 
@@ -155,6 +162,9 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
 
 #[generate_trait]
 pub impl BeastUtilsImpl of BeastUtilsTrait {
+    /// Calculate critical hit chance based on luck stat
+    /// Called every battle round so must be fast
+    #[inline(always)]
     fn crit_chance(self: Beast) -> u8 {
         let points: u16 = self.live.stats.luck.into();
 
@@ -179,6 +189,9 @@ pub impl BeastUtilsImpl of BeastUtilsTrait {
         percent.try_into().unwrap()
     }
 
+    /// Calculate spirit reduction for revival time
+    /// Called for each attacking beast
+    #[inline(always)]
     fn spirit_reduction(self: Beast) -> u64 {
         let points: u64 = self.live.stats.spirit.into();
         let mut reduction: u64 = 0;
@@ -240,6 +253,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 1200000)]
     fn pack_unpack_zero_values() {
         let stats = build_stats(
             0_u32, // token_id
@@ -278,6 +292,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 1200000)]
     fn pack_unpack_max_values() {
         // Bit-width maxima based on packing layout:
         // token_id: 17 bits → 2^17 - 1
@@ -329,6 +344,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 1200000)]
     fn pack_unpack_mixed_values() {
         let stats = build_stats(100_u32, 100, 100, 100, 9, 123456789, 7, 42, 1, 54321, 17, 96, 0, 1_u8, 0_u8);
         let packed = PackableLiveStatsStorePacking::pack(stats);

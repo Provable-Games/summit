@@ -1,10 +1,12 @@
+use core::hash::HashStateTrait;
 use core::num::traits::Sqrt;
-use core::poseidon::poseidon_hash_span;
+use core::poseidon::PoseidonTrait;
 use summit::constants::{BASE_REVIVAL_TIME_SECONDS, DIPLOMACY_COST, SPECIALS_COST, WISDOM_COST};
 
 /// Calculate level from XP using square root
 /// @param xp The experience points
 /// @return The calculated level (minimum 1)
+#[inline(always)]
 pub fn get_level_from_xp(xp: u32) -> u16 {
     if xp == 0 {
         1
@@ -18,18 +20,20 @@ pub fn get_level_from_xp(xp: u32) -> u16 {
 /// @param bonus_xp The beast's current bonus XP
 /// @param max_bonus_levels Maximum bonus levels allowed
 /// @return true if beast can still gain XP
+#[inline(always)]
 pub fn can_gain_xp(base_level: u16, bonus_xp: u16, max_bonus_levels: u16) -> bool {
     // Use u32 to prevent overflow: (65535 + 40)^2 fits in u32
-    let base_xp: u32 = base_level.into() * base_level.into();
-    let max_level: u32 = base_level.into() + max_bonus_levels.into();
-    let max_xp: u32 = max_level * max_level;
-    bonus_xp.into() < max_xp - base_xp
+    // Cache base_level conversion to avoid redundant conversions
+    let base: u32 = base_level.into();
+    let max_level: u32 = base + max_bonus_levels.into();
+    bonus_xp.into() < (max_level * max_level) - (base * base)
 }
 
 /// Calculate XP gain from an attack
 /// @param attack_streak Current attack streak (0-10)
 /// @param beast_can_get_xp Whether the beast is eligible for XP
 /// @return XP gained (0 if not eligible)
+#[inline(always)]
 pub fn calculate_xp_gain(attack_streak: u8, beast_can_get_xp: bool) -> u16 {
     if beast_can_get_xp {
         10 + attack_streak.into()
@@ -44,6 +48,7 @@ pub fn calculate_xp_gain(attack_streak: u8, beast_can_get_xp: bool) -> u16 {
 /// @param current_timestamp Current block timestamp
 /// @param max_streak Maximum streak value (typically 10)
 /// @return New attack streak value
+#[inline(always)]
 pub fn update_attack_streak(
     current_streak: u8, last_death_timestamp: u64, current_timestamp: u64, max_streak: u8,
 ) -> u8 {
@@ -64,6 +69,7 @@ pub fn update_attack_streak(
 /// Compare two beasts for leaderboard ranking
 /// Primary: blocks_held, Secondary: bonus_xp, Tertiary: last_death_timestamp
 /// @return true if beast1 is stronger than beast2
+#[inline(always)]
 pub fn is_beast_stronger(
     beast1_blocks_held: u32,
     beast1_bonus_xp: u16,
@@ -82,14 +88,15 @@ pub fn is_beast_stronger(
 }
 
 /// Generate hash for diplomacy grouping based on prefix and suffix
+/// Optimized: Uses PoseidonTrait chaining instead of array allocation
 /// @param prefix Beast's prefix special
 /// @param suffix Beast's suffix special
 /// @return Poseidon hash of the specials
+#[inline(always)]
 pub fn get_specials_hash(prefix: u8, suffix: u8) -> felt252 {
-    let mut hash_span = ArrayTrait::<felt252>::new();
-    hash_span.append(prefix.into());
-    hash_span.append(suffix.into());
-    poseidon_hash_span(hash_span.span()).into()
+    let prefix_felt: felt252 = prefix.into();
+    let suffix_felt: felt252 = suffix.into();
+    PoseidonTrait::new().update(prefix_felt).update(suffix_felt).finalize()
 }
 
 /// Calculate total cost for stat upgrades
@@ -126,11 +133,13 @@ mod tests {
     };
 
     #[test]
+    #[available_gas(gas: 50000)]
     fn test_get_level_from_xp_zero() {
         assert!(get_level_from_xp(0) == 1, "Zero XP should return level 1");
     }
 
     #[test]
+    #[available_gas(gas: 60000)]
     fn test_get_level_from_xp_perfect_squares() {
         assert!(get_level_from_xp(1) == 1, "1 XP should return level 1");
         assert!(get_level_from_xp(4) == 2, "4 XP should return level 2");
@@ -139,6 +148,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 55000)]
     fn test_get_level_from_xp_non_perfect_squares() {
         assert!(get_level_from_xp(5) == 2, "5 XP should return level 2");
         assert!(get_level_from_xp(10) == 3, "10 XP should return level 3");
@@ -146,6 +156,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 90000)]
     fn test_can_gain_xp_within_limit() {
         // base_level=10, max_bonus=40 => max_xp=(50)^2=2500, base_xp=100
         // max_bonus_xp = 2500-100 = 2400
@@ -154,6 +165,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 90000)]
     fn test_can_gain_xp_at_limit() {
         // base_level=10, max_bonus=40 => max_bonus_xp = 2400
         assert!(!can_gain_xp(10, 2400, 40), "Should not gain XP at limit");
@@ -161,6 +173,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 65000)]
     fn test_calculate_xp_gain_eligible() {
         assert!(calculate_xp_gain(0, true) == 10, "Base XP should be 10");
         assert!(calculate_xp_gain(5, true) == 15, "XP with streak 5 should be 15");
@@ -168,12 +181,14 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 55000)]
     fn test_calculate_xp_gain_not_eligible() {
         assert!(calculate_xp_gain(0, false) == 0, "No XP if not eligible");
         assert!(calculate_xp_gain(10, false) == 0, "No XP if not eligible even with streak");
     }
 
     #[test]
+    #[available_gas(gas: 110000)]
     fn test_update_attack_streak_increment() {
         // Recent death, streak should increment
         let current_time = 1000000;
@@ -185,6 +200,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 70000)]
     fn test_update_attack_streak_at_max() {
         let current_time = 1000000;
         let last_death = current_time - 1000;
@@ -193,6 +209,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 100000)]
     fn test_update_attack_streak_reset() {
         // Old death (more than 2x revival time ago)
         let current_time: u64 = 1000000;
@@ -204,12 +221,14 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 60000)]
     fn test_is_beast_stronger_by_blocks() {
         assert!(is_beast_stronger(100, 50, 1000, 99, 100, 2000), "More blocks should win");
         assert!(!is_beast_stronger(99, 100, 2000, 100, 50, 1000), "Fewer blocks should lose");
     }
 
     #[test]
+    #[available_gas(gas: 60000)]
     fn test_is_beast_stronger_by_xp() {
         // Same blocks, compare by XP
         assert!(is_beast_stronger(100, 60, 1000, 100, 50, 2000), "More XP should win");
@@ -217,6 +236,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 60000)]
     fn test_is_beast_stronger_by_death_timestamp() {
         // Same blocks and XP, compare by death timestamp
         assert!(is_beast_stronger(100, 50, 2000, 100, 50, 1000), "Later death should win");
@@ -224,6 +244,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 90000)]
     fn test_get_specials_hash_deterministic() {
         let hash1 = get_specials_hash(5, 10);
         let hash2 = get_specials_hash(5, 10);
@@ -231,6 +252,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 120000)]
     fn test_get_specials_hash_different_inputs() {
         let hash1 = get_specials_hash(5, 10);
         let hash2 = get_specials_hash(10, 5);
@@ -240,6 +262,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 80000)]
     fn test_calculate_upgrade_cost_all_unlocks() {
         // 10 + 20 + 15 = 45
         let cost = calculate_upgrade_cost(true, true, true, 0, 0);
@@ -247,12 +270,14 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 80000)]
     fn test_calculate_upgrade_cost_points_only() {
         let cost = calculate_upgrade_cost(false, false, false, 10, 5);
         assert!(cost == 15, "10 spirit + 5 luck should cost 15");
     }
 
     #[test]
+    #[available_gas(gas: 80000)]
     fn test_calculate_upgrade_cost_mixed() {
         // specials(10) + spirit(3) + luck(2) = 15
         let cost = calculate_upgrade_cost(true, false, false, 3, 2);
@@ -260,6 +285,7 @@ mod tests {
     }
 
     #[test]
+    #[available_gas(gas: 80000)]
     fn test_calculate_upgrade_cost_zero() {
         let cost = calculate_upgrade_cost(false, false, false, 0, 0);
         assert!(cost == 0, "No upgrades should cost 0");
