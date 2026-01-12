@@ -27,10 +27,20 @@ export enum ChainId {
   WP_PG_SLOT = "WP_PG_SLOT",
 }
 
+export const TOKEN_ADDRESS = {
+  ATTACK: "0x00d6e434c85750498492e1ed983a13357166b94e8762bbd28f1ed5d8e4ccbfc6",
+  REVIVE: "0x062901fa8278203cfc5bcc499259345d35dfdef72b6e5033caae0899255d873f",
+  EXTRA_LIFE: "0x02cfc6f4ab7b9e062bb4576495408cc6516d98727a0b7d094952910961ab1825",
+  POISON: "0x0705a687dcbc563ffdd372038920dcbcbcbf5e976cdc2f4202d848b30841f101",
+  SKULL: "0x05169f2f5a20fdb8db9fa59a2014b35c31e6d8440d5f782a373cb1fe6cbc83e5",
+  CORPSE: "0x06504fb9d64cda31aaa7bfa425b410ae86ceb0ee154f2c85a61d145155eab1bc",
+  SURVIVOR: "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
+}
+
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_relayer_3",
+    namespace: "summit_relayer_6",
     manifest: manifest_mainnet,
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
@@ -46,38 +56,32 @@ export const NETWORKS = {
         // },
         {
           name: "ATTACK",
-          address:
-            "0x63eb1e13f9a5e237aa8b4a4b649db577a67641217ab9eb7cbbfd837bc4a11ee",
+          address: TOKEN_ADDRESS.ATTACK,
           displayDecimals: 0,
         },
         {
           name: "REVIVE",
-          address:
-            "0x2c90c8bfc60cbab2064fcd271039d633c7f30a0544f5727bbb06767d35bd3c0",
+          address: TOKEN_ADDRESS.REVIVE,
           displayDecimals: 0,
         },
         {
           name: "EXTRA LIFE",
-          address:
-            "0x7fdef6a5d5376d346eb1d830ad28aead5bdc1f02e53c7fb4584a17288f4b20d",
+          address: TOKEN_ADDRESS.EXTRA_LIFE,
           displayDecimals: 0,
         },
         {
           name: "POISON",
-          address:
-            "0x7664d9c661c2d794d0d227369821088b21003e8fd9bd8885b39b6a769be4f43",
+          address: TOKEN_ADDRESS.POISON,
           displayDecimals: 0,
         },
         {
           name: "SKULL",
-          address:
-            "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a",
+          address: TOKEN_ADDRESS.SKULL,
           displayDecimals: 0,
         },
         {
           name: "CORPSE",
-          address:
-            "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105",
+          address: TOKEN_ADDRESS.CORPSE,
           displayDecimals: 0,
         }
       ],
@@ -99,38 +103,32 @@ export const NETWORKS = {
       },
       {
         name: "ATTACK",
-        address:
-          "0x63eb1e13f9a5e237aa8b4a4b649db577a67641217ab9eb7cbbfd837bc4a11ee",
+        address: TOKEN_ADDRESS.ATTACK,
         displayDecimals: 0,
       },
       {
         name: "REVIVE",
-        address:
-          "0x2c90c8bfc60cbab2064fcd271039d633c7f30a0544f5727bbb06767d35bd3c0",
+        address: TOKEN_ADDRESS.REVIVE,
         displayDecimals: 0,
       },
       {
         name: "EXTRA LIFE",
-        address:
-          "0x7fdef6a5d5376d346eb1d830ad28aead5bdc1f02e53c7fb4584a17288f4b20d",
+        address: TOKEN_ADDRESS.EXTRA_LIFE,
         displayDecimals: 0,
       },
       {
         name: "POISON",
-        address:
-          "0x7664d9c661c2d794d0d227369821088b21003e8fd9bd8885b39b6a769be4f43",
+        address: TOKEN_ADDRESS.POISON,
         displayDecimals: 0,
       },
       {
         name: "SKULL",
-        address:
-          "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a",
+        address: TOKEN_ADDRESS.SKULL,
         displayDecimals: 0,
       },
       {
         name: "CORPSE",
-        address:
-          "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105",
+        address: TOKEN_ADDRESS.CORPSE,
         displayDecimals: 0,
       }
       // {
@@ -216,7 +214,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           },
         ]
       },
-      "0x63eb1e13f9a5e237aa8b4a4b649db577a67641217ab9eb7cbbfd837bc4a11ee": {
+      [TOKEN_ADDRESS.ATTACK]: {
         "name": "Attack Potion",
         "description": "ERC 20 token for Attack Potion",
         "methods": [
@@ -229,7 +227,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x2c90c8bfc60cbab2064fcd271039d633c7f30a0544f5727bbb06767d35bd3c0": {
+      [TOKEN_ADDRESS.REVIVE]: {
         "name": "Revive Potion",
         "description": "ERC 20 token for Revive Potion",
         "methods": [
@@ -242,7 +240,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x7fdef6a5d5376d346eb1d830ad28aead5bdc1f02e53c7fb4584a17288f4b20d": {
+      [TOKEN_ADDRESS.EXTRA_LIFE]: {
         "name": "Extra Life Potion",
         "description": "ERC 20 token for Extra Life Potion",
         "methods": [
@@ -255,7 +253,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x7664d9c661c2d794d0d227369821088b21003e8fd9bd8885b39b6a769be4f43": {
+      [TOKEN_ADDRESS.POISON]: {
         "name": "Poison Potion",
         "description": "ERC 20 token for Poison Potion",
         "methods": [
@@ -268,7 +266,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a": {
+      [TOKEN_ADDRESS.SKULL]: {
         "name": "Skull Token",
         "description": "ERC 20 token for Skull Token",
         "methods": [
@@ -286,7 +284,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           }
         ]
       },
-      "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105": {
+      [TOKEN_ADDRESS.CORPSE]: {
         "name": "Corpse Token",
         "description": "ERC 20 token for Corpse Token",
         "methods": [
@@ -328,7 +326,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     namespace: network.namespace,
     manifest: network.manifest,
     slot: network.slot,
-    preset: "savage-summit_2",
+    preset: "savage-summit",
     policies: policies,
     rpcUrl: network.rpcUrl,
     toriiUrl: network.torii,

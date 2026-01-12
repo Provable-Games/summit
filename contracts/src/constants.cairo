@@ -13,7 +13,7 @@ pub const BEAST_MAX_EXTRA_LIVES: u16 = 4000;
 pub const BEAST_MAX_BONUS_HEALTH: u16 = 2000;
 pub const BEAST_MAX_BONUS_LVLS: u16 = 40;
 pub const BEAST_MAX_ATTRIBUTES: u8 = 100;
-pub const MAX_REVIVAL_COUNT: u8 = 31;
+pub const MAX_REVIVAL_COUNT: u8 = 63;
 pub const SPECIALS_COST: u16 = 10;
 pub const DIPLOMACY_COST: u16 = 15;
 pub const WISDOM_COST: u16 = 20;
@@ -29,7 +29,7 @@ pub mod errors {
     pub const BEAST_MAX_BONUS_HEALTH: felt252 = 'beast has max bonus health';
     pub const BEAST_MAX_ATTRIBUTES: felt252 = 'beast has max attributes';
     pub const BEAST_ALIVE: felt252 = 'beast is alive';
-    pub const BEAST_MAX_EXTRA_LIVES: felt252 = 'Max 2000 extra lives';
+    pub const BEAST_MAX_EXTRA_LIVES: felt252 = 'Max 4000 extra lives';
     pub const MAX_ATTACK_POTION: felt252 = 'Max 255 attack potions';
 
     pub const ADVENTURER_ALIVE: felt252 = 'adventurer is alive';

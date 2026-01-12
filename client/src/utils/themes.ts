@@ -41,47 +41,47 @@ export const mainTheme = createTheme({
       color: gameColors.brightGreen
     },
     h1: {
-      fontSize: '42px',
+      fontSize: 'clamp(1.75rem, 4vw + 1rem, 2.625rem)', // 28px to 42px
       color: gameColors.brightGreen,
       textTransform: 'uppercase',
       letterSpacing: '2px'
     },
     h2: {
-      fontSize: '26px',
+      fontSize: 'clamp(1.25rem, 2vw + 0.75rem, 1.625rem)', // 20px to 26px
       color: gameColors.brightGreen,
       textTransform: 'uppercase',
       letterSpacing: '1.5px'
     },
     h3: {
-      fontSize: '22px',
+      fontSize: 'clamp(1.125rem, 1.5vw + 0.5rem, 1.375rem)', // 18px to 22px
       color: gameColors.accentGreen
     },
     h4: {
-      fontSize: '20px',
+      fontSize: 'clamp(1rem, 1vw + 0.5rem, 1.25rem)', // 16px to 20px
       color: gameColors.accentGreen
     },
     h5: {
-      fontSize: '16px',
+      fontSize: 'clamp(0.875rem, 0.5vw + 0.5rem, 1rem)', // 14px to 16px
       color: gameColors.brightGreen
     },
     h6: {
-      fontSize: '15px',
+      fontSize: 'clamp(0.8125rem, 0.5vw + 0.5rem, 0.9375rem)', // 13px to 15px
       color: gameColors.brightGreen
     },
     body1: {
-      fontSize: '14px',
-      lineHeight: '18px',
+      fontSize: 'clamp(0.875rem, 0.25vw + 0.5rem, 1rem)', // 14px to 16px
+      lineHeight: '1.4',
       color: gameColors.accentGreen
     },
     subtitle1: {
-      fontSize: '14px',
-      lineHeight: '18px',
+      fontSize: 'clamp(0.875rem, 0.25vw + 0.5rem, 1rem)', // 14px to 16px
+      lineHeight: '1.4',
       color: gameColors.lightGreen
     },
     subtitle2: {
       color: gameColors.lightGreen,
       fontStyle: 'italic',
-      fontSize: '12px',
+      fontSize: 'clamp(0.75rem, 0.25vw + 0.5rem, 0.875rem)', // 12px to 14px
       letterSpacing: '0.5px'
     }
   },
@@ -108,6 +108,18 @@ export const mainTheme = createTheme({
     },
   },
   components: {
+    MuiIconButton: {
+      styleOverrides: {
+        root: {
+          minWidth: 44,
+          minHeight: 44,
+          '@media (min-width: 600px)': {
+            minWidth: 'unset',
+            minHeight: 'unset',
+          },
+        },
+      },
+    },
     MuiButton: {
       styleOverrides: {
         root: {
@@ -117,6 +129,10 @@ export const mainTheme = createTheme({
           border: `2px solid ${gameColors.brightGreen}`,
           background: 'transparent',
           textTransform: 'uppercase',
+          minHeight: 44,
+          '@media (min-width: 600px)': {
+            minHeight: 36,
+          },
           '&:hover': {
             background: gameColors.brightGreen,
             color: gameColors.darkGreen

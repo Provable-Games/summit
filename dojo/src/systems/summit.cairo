@@ -9,6 +9,7 @@ trait ISummitEvents<T> {
         ref self: T,
         attacking_beast_owner: ContractAddress,
         attacking_beast_token_id: u32,
+        attack_index: u16,
         attacking_beast_id: u8,
         shiny: u8,
         animated: u8,
@@ -24,7 +25,7 @@ trait ISummitEvents<T> {
         attack_potions: u8,
         xp_gained: u8,
     );
-    fn emit_reward_event(ref self: T, beast_token_id: u32, owner: ContractAddress, amount: u128);
+    fn emit_reward_event(ref self: T, beast_token_id: u32, owner: ContractAddress, amount: u32);
     fn emit_poison_event(ref self: T, beast_token_id: u32, count: u16, player: ContractAddress);
     fn emit_diplomacy_event(ref self: T, specials_hash: felt252, beast_token_ids: Span<u32>, total_power: u16);
     fn emit_summit_event(ref self: T, beast: BeastEvent, live_stats: LiveBeastStats, owner: ContractAddress);
@@ -79,6 +80,7 @@ pub mod summit_events {
             ref self: ContractState,
             attacking_beast_owner: ContractAddress,
             attacking_beast_token_id: u32,
+            attack_index: u16,
             attacking_beast_id: u8,
             shiny: u8,
             animated: u8,
@@ -99,9 +101,10 @@ pub mod summit_events {
             world
                 .emit_event(
                     @BattleEvent {
-                        attacking_beast_owner,
                         attacking_beast_token_id,
+                        attack_index,
                         attacking_beast_id,
+                        attacking_beast_owner,
                         shiny,
                         animated,
                         defending_beast_token_id,
@@ -119,7 +122,7 @@ pub mod summit_events {
                 );
         }
 
-        fn emit_reward_event(ref self: ContractState, beast_token_id: u32, owner: ContractAddress, amount: u128) {
+        fn emit_reward_event(ref self: ContractState, beast_token_id: u32, owner: ContractAddress, amount: u32) {
             self.validate_caller_is_summit();
             let mut world: WorldStorage = self.world(@DEFAULT_NS());
             world

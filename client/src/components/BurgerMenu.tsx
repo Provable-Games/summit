@@ -3,10 +3,20 @@ import { Box, IconButton, Drawer, Typography } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import ProfileCard from './ProfileCard';
+import ClaimRewardsButton from './ClaimRewardsButton';
+import BeastBoard from './BeastBoard';
+import LeaderboardButton from './LeaderboardButton';
+import Top5000BeastsModal from './dialogs/Top5000BeastsModal';
+import LeaderboardModal from './dialogs/LeaderboardModal';
 import { gameColors } from '@/utils/themes';
+import { useAccount } from '@starknet-react/core';
+import RewardsRemainingBar from './RewardsRemainingBar';
 
 const BurgerMenu = () => {
+  const { address } = useAccount();
   const [isOpen, setIsOpen] = useState(false);
+  const [top5000ModalOpen, setTop5000ModalOpen] = useState(false);
+  const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false);
 
   const toggleDrawer = (open: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
     if (
@@ -57,8 +67,40 @@ const BurgerMenu = () => {
           <Box sx={styles.profileContainer}>
             <ProfileCard />
           </Box>
+
+          <Box sx={styles.rewardsContainer}>
+            <RewardsRemainingBar variant="compact" />
+          </Box>
+
+          {address && (
+            <Box sx={styles.buttonContainer}>
+              <ClaimRewardsButton />
+              <BeastBoard onClick={() => {
+                setIsOpen(false);
+                setTop5000ModalOpen(true);
+              }} />
+              <LeaderboardButton onClick={() => {
+                setIsOpen(false);
+                setLeaderboardModalOpen(true);
+              }} />
+            </Box>
+          )}
         </Box>
       </Drawer>
+
+      {top5000ModalOpen && (
+        <Top5000BeastsModal
+          open={top5000ModalOpen}
+          onClose={() => setTop5000ModalOpen(false)}
+        />
+      )}
+
+      {leaderboardModalOpen && (
+        <LeaderboardModal
+          open={leaderboardModalOpen}
+          onClose={() => setLeaderboardModalOpen(false)}
+        />
+      )}
     </>
   );
 };
@@ -134,6 +176,17 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'flex-start',
-    flex: 1,
+    marginBottom: '20px',
+  },
+  rewardsContainer: {
+    boxSizing: 'border-box',
+    marginBottom: '20px',
+  },
+  buttonContainer: {
+    display: 'flex',
+    flexDirection: 'row',
+    gap: '10px',
+    width: '100%',
+    justifyContent: 'space-evenly',
   },
 };

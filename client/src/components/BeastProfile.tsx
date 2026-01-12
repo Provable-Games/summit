@@ -8,7 +8,7 @@ import revivePotionIcon from '../assets/images/revive-potion.png';
 import { fetchBeastImage, isBeastInTop5000, normaliseHealth } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 
-const MAX_HEALTH = 1023;
+const MAX_HEALTH = 2000;
 const MAX_LEVELS = 40;
 
 interface BeastProfileProps {
@@ -65,39 +65,13 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
               </Typography>
             </Box>
           </Box>
-
-          <Box sx={styles.beastRankContainer}>
-            <Box sx={styles.rankIconContainer}>
-              {beast.rank === 1 ? (
-                <svg width="16" height="16" viewBox="0 0 20 20">
-                  <g id="crown" fill="#e6c56e" stroke="#af8a3c" strokeWidth="1">
-                    <path d="M2 14h16l-1.5 4h-13z" />
-                    <path d="m2 14 2-9 3 5 4-5 3 5 2-5 2 9Z" strokeLinejoin="round" strokeLinecap="round" />
-                    <circle cx="5" cy="5" r="1.2" fill="#fff3c4" />
-                    <circle cx="12" cy="5" r="1.2" fill="#fff3c4" />
-                    <circle cx="17" cy="5" r="1.2" fill="#fff3c4" />
-                  </g>
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 20 20">
-                  <g id="trophy" fill="#c0c0c0" stroke="#8a8a8a" strokeWidth="1">
-                    <rect x="4" y="6" width="10" height="8" rx="1" />
-                    <rect x="2" y="7" width="2" height="3" />
-                    <rect x="14" y="7" width="2" height="3" />
-                    <rect x="6" y="13" width="6" height="4" />
-                  </g>
-                </svg>
-              )}
-            </Box>
-            <Typography sx={styles.pixelRankValue}>{beast.rank}</Typography>
-          </Box>
         </Box>
 
         {/* Main Content Area */}
         <Box sx={styles.mainContent}>
           {/* Beast Image */}
           <Box sx={styles.beastImageSection}>
-            <img src={fetchBeastImage(beast)} alt='' height={'100%'} />
+            <img src={fetchBeastImage(beast)} alt='' height={'90%'} />
           </Box>
 
           {/* Stats Section */}
@@ -331,7 +305,6 @@ const styles = {
   // Beast name container
   beastNameContainer: {
     textAlign: 'center',
-    marginBottom: '4px',
     padding: '6px 8px',
   },
 
@@ -366,6 +339,7 @@ const styles = {
     background: '#000',
     display: 'flex',
     justifyContent: 'center',
+    alignItems: 'center',
     width: '100%',
     height: '120px',
     borderRadius: '8px',
@@ -592,7 +566,6 @@ const styles = {
   pixelMaxedText: {
     fontSize: '10px',
     color: '#FFF',
-    textShadow: '1px 1px 0px #000000, 0 0 4px #FFF',
     letterSpacing: '1px',
     textTransform: 'uppercase',
     fontWeight: 'bold',

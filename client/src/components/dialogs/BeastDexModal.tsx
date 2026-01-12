@@ -125,7 +125,10 @@ export default function BeastDexModal(props: BeastDexModalProps) {
             `,
             width: '900px',
             maxWidth: '96vw',
+            maxHeight: '90vh',
             position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
           }
         },
         backdrop: {
@@ -370,6 +373,10 @@ const styles = {
     color: '#fff',
     p: 1.5,
     pt: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    overflow: 'hidden',
   },
   closeButton: {
     position: 'absolute',
@@ -540,9 +547,10 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))',
     gap: 1,
-    maxHeight: '65vh',
+    flex: 1,
     overflowY: 'auto',
     p: 0.5,
+    minHeight: 0,
   },
   card: {
     position: 'relative',

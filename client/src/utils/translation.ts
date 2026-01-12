@@ -64,6 +64,7 @@ const parseComponent = (values: string[], componentType: string): any => {
 export const components: any = {
   'BattleEvent': {
     attacking_beast_token_id: 'number',
+    attack_index: 'number',
     attacking_beast_owner: null,
     attacking_beast_id: 'number',
     shiny: 'number',
@@ -100,12 +101,21 @@ export const components: any = {
     specials: 'boolean',
     wisdom: 'boolean',
     diplomacy: 'boolean',
-  }
+  },
 }
 
-export const translateGameEvent = (event: any, manifest: any): any => {
+export const translateGameEvent = (event: any, manifest: any, address: string): any => {
   const eventDefinition = manifest.events.find((definition: any) => definition.selector === event.keys[1]) || manifest.models.find((model: any) => model.selector === event.keys[1]);
-  const name = eventDefinition?.tag?.split('-')[1];
+  let name = eventDefinition?.tag?.split('-')[1];
+
+  if (!name && event.from_address === address) {
+    return {
+      componentName: 'Summit',
+      attack_potions: parseInt(event.data[event.data.length - 3], 16),
+      revival_potions: parseInt(event.data[event.data.length - 2], 16),
+      extra_life_potions: parseInt(event.data[event.data.length - 1], 16),
+    }
+  }
 
   if (!components[name]) return;
 

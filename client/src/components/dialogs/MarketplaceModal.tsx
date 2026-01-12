@@ -12,7 +12,7 @@ import { useStatistics } from '@/contexts/Statistics';
 import { useSystemCalls } from '@/dojo/useSystemCalls';
 import { NETWORKS } from '@/utils/networkConfig';
 import { gameColors } from '@/utils/themes';
-import { delay, formatAmount } from '@/utils/utils';
+import { formatAmount } from '@/utils/utils';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -594,6 +594,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
     try {
       const calls: any[] = [];
+      const tradedPotionIds: string[] = [];
+      const isPotionTokenName = (name: string) => POTIONS.some((p) => p.id === name);
 
       for (const potion of POTIONS) {
         const potionAddress = currentNetworkConfig.tokens.erc20.find(
@@ -624,6 +626,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               SLIPPAGE_BPS
             );
             calls.push(...swapCalls);
+            tradedPotionIds.push(potion.id);
           }
         }
       }
@@ -687,9 +690,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               0 8px 24px rgba(0, 0, 0, 0.6),
               0 0 16px ${gameColors.accentGreen}30
             `,
-            width: '600px',
-            maxWidth: '95vw',
+            width: { xs: '95vw', sm: '90vw', md: 600 },
+            maxWidth: 600,
+            height: { xs: '95vh', sm: '90vh', md: '85vh' },
             position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
           }
         },
         backdrop: {
@@ -703,7 +709,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         <IconButton onClick={close} sx={styles.closeButton}>
           <CloseIcon />
         </IconButton>
-        <IconButton onClick={refreshTokenPrices} sx={styles.headerRefreshButton}>
+        <IconButton onClick={() => refreshTokenPrices()} sx={styles.headerRefreshButton}>
           <RefreshIcon />
         </IconButton>
 
@@ -757,7 +763,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       })()}
                     </Typography>
                     {tokenQuotes[potion.id]?.quote?.price_impact !== undefined ||
-                    tokenQuotes[potion.id]?.quote?.impact !== undefined || tokenQuotes[potion.id]?.error ? (
+                      tokenQuotes[potion.id]?.quote?.impact !== undefined || tokenQuotes[potion.id]?.error ? (
                       <Box
                         component="span"
                         sx={{
@@ -772,10 +778,10 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                             : getImpactColor(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact),
                           color: '#0d1511',
                         }}
-                        >
-                          {tokenQuotes[potion.id]?.error
-                            ? 'insufficient liquidity'
-                            : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
+                      >
+                        {tokenQuotes[potion.id]?.error
+                          ? 'insufficient liquidity'
+                          : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
                       </Box>
                     ) : null}
                   </Box>
@@ -840,15 +846,15 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       Balance: {formatAmount(balance)}
                     </Typography>
                     <Box sx={styles.potionPrice}>
-                    <Typography sx={styles.priceText}>
-                      {(() => {
-                        const priceStr = optimisticPrices[potion.id] ?? tokenPrices[potion.id] ?? undefined;
-                        if (priceStr) {
-                          return `$${priceStr}`;
-                        }
-                        return 'No liquidity';
-                      })()}
-                    </Typography>
+                      <Typography sx={styles.priceText}>
+                        {(() => {
+                          const priceStr = optimisticPrices[potion.id] ?? tokenPrices[potion.id] ?? undefined;
+                          if (priceStr) {
+                            return `$${priceStr}`;
+                          }
+                          return 'No liquidity';
+                        })()}
+                      </Typography>
                       {(quoteImpact !== undefined || quoteError) && (
                         <Box
                           component="span"
@@ -1188,6 +1194,10 @@ const styles = {
   container: {
     position: 'relative',
     color: '#fff',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    overflow: 'hidden',
   },
   closeButton: {
     position: 'absolute',
@@ -1265,12 +1275,14 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: 1,
-    p: 2,
+    p: { xs: 1.5, sm: 2 },
     pt: 1,
-    maxHeight: 'calc(80vh - 260px)',
+    flex: 1,
     overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
+    minHeight: 0,
     '&::-webkit-scrollbar': {
-      width: '8px',
+      width: { xs: 0, sm: '8px' },
     },
     '&::-webkit-scrollbar-track': {
       background: `${gameColors.darkGreen}40`,
@@ -1354,12 +1366,15 @@ const styles = {
     gap: 0.5,
   },
   quantityButton: {
-    width: '28px',
-    height: '28px',
-    minWidth: '28px',
+    width: { xs: '44px', sm: '32px', md: '28px' },
+    height: { xs: '44px', sm: '32px', md: '28px' },
+    minWidth: { xs: '44px', sm: '32px', md: '28px' },
     background: `${gameColors.mediumGreen}60`,
     border: `1px solid ${gameColors.accentGreen}40`,
     color: '#fff',
+    '& svg': {
+      fontSize: { xs: '20px', sm: '16px' },
+    },
     '&:hover': {
       background: gameColors.mediumGreen,
       borderColor: gameColors.accentGreen,

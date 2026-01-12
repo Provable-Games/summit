@@ -3,9 +3,7 @@ import { useGameTokens } from "@/dojo/useGameTokens";
 import { NETWORKS } from "@/utils/networkConfig";
 import {
   createContext,
-  Dispatch,
   PropsWithChildren,
-  SetStateAction,
   useContext,
   useEffect,
   useCallback,
@@ -25,7 +23,7 @@ export interface StatisticsContext {
   top5000Cutoff: Top5000Cutoff | null;
   refreshBeastsAlive: () => void;
   refreshTop5000Cutoff: () => void;
-  refreshTokenPrices: () => Promise<void>;
+  refreshTokenPrices: (tokenNames?: string[]) => Promise<void>;
   tokenPrices: Record<string, string>;
 }
 

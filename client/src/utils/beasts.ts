@@ -1,4 +1,4 @@
-import { Beast, Combat, Summit } from '@/types/game';
+import { Beast, Combat, Summit, selection } from '@/types/game';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
 import { SoundName } from '@/contexts/sound';
 import * as starknet from "@scure/starknet";
@@ -95,7 +95,10 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
   let beastAverageDamage = beastCritChance > 0 ? (beastDamage * (100 - beastCritChance) + beastCritDamage * beastCritChance) / 100 : beastDamage;
   let summitAverageDamage = summitCritChance > 0 ? (summitDamage * (100 - summitCritChance) + summitCritDamage * summitCritChance) / 100 : summitDamage;
 
-  let estimatedDamage = Math.max(MINIMUM_DAMAGE, Math.floor(Math.ceil(beast.current_health / summitAverageDamage) * beastAverageDamage));
+  let beastAttackCount = Math.ceil((beast.health + beast.bonus_health) / summitAverageDamage);
+  beastAverageDamage = Math.min(beastAverageDamage, summit.health + summit.bonus_health);
+
+  let estimatedDamage = Math.max(MINIMUM_DAMAGE, beastAverageDamage) * beastAttackCount;
 
   return {
     attack: beastDamage,
@@ -104,6 +107,7 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
     defenseCritDamage: summitCritDamage,
     score: beastDamage - summitDamage,
     estimatedDamage,
+    attackPotions: potions
   }
 }
 
@@ -299,4 +303,63 @@ export const isBeastInTop5000 = (beast: Beast, top5000Cutoff: Top5000Cutoff): bo
   return beast.blocks_held > top5000Cutoff.blocks_held
     || (beast.blocks_held === top5000Cutoff.blocks_held && beast.bonus_xp > top5000Cutoff.bonus_xp)
     || (beast.blocks_held === top5000Cutoff.blocks_held && beast.bonus_xp === top5000Cutoff.bonus_xp && beast.last_death_timestamp > top5000Cutoff.last_death_timestamp);
+}
+
+export const calculateOptimalAttackPotions = (selection: any, summit: Summit, maxAllowed: number) => {
+  const beast = selection[0];
+  const attacks = selection[1];
+
+  const targetDamage = ((summit.beast.health + summit.beast.bonus_health) * summit.beast.extra_lives)
+    + Math.max(1, summit.beast.current_health || 0);
+  const target = (summit.beast.extra_lives > 0)
+    ? (summit.beast.health + summit.beast.bonus_health)
+    : Math.max(1, summit.beast.current_health || 0);
+
+
+  let bestRequired = Number.POSITIVE_INFINITY;
+  if (beast) {
+    for (let n = 0; n <= maxAllowed; n++) {
+      const combat = calculateBattleResult(beast, summit, n);
+      if ((combat.estimatedDamage * attacks) > targetDamage || combat.attack >= target) {
+        bestRequired = n;
+        break;
+      }
+    }
+  }
+
+  const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
+  return value;
+}
+
+export const calculateMaxAttackPotions = (selection: any, summit: Summit, maxAllowed: number) => {
+  const beast = selection[0];
+  const attacks = selection[1];
+
+  const target = (summit.beast.extra_lives > 0)
+    ? (summit.beast.health + summit.beast.bonus_health)
+    : Math.max(1, summit.beast.current_health || 0);
+  let bestRequired = Number.POSITIVE_INFINITY;
+  if (beast && beast.current_health > 0) {
+    for (let n = 0; n <= maxAllowed; n++) {
+      const combat = calculateBattleResult(beast, summit, n);
+      if ((combat.attack * attacks) >= target) {
+        bestRequired = n;
+        break;
+      }
+    }
+  }
+  const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
+  return value;
+}
+
+export const calculateRevivalRequired = (selectedBeasts: selection) => {
+  return selectedBeasts.reduce((sum: number, selectedBeast) => {
+    const [beast, attacks] = selectedBeast;
+    if (beast.current_health === 0) {
+      return sum + (attacks * beast.revival_count) + (attacks * (attacks + 1) / 2);
+    } else {
+      let revivals = attacks - 1;
+      return sum + (revivals * beast.revival_count) + (revivals * (revivals + 1) / 2);
+    }
+  }, 0);
 }

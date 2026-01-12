@@ -7,7 +7,7 @@ import { gameColors } from '@/utils/themes';
 import { Box, Button, Dialog, Typography } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 
-const LIMIT = 300;
+const LIMIT = 200;
 
 function ClaimSkullReward(props) {
   const { open, close, isOnboarding = false } = props;

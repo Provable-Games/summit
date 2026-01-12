@@ -18,10 +18,11 @@ import { lookupAddressName } from '../utils/addressNameCache';
 import { BEAST_NAMES } from '../utils/BeastData';
 import { calculateBattleResult, fetchBeastImage, fetchBeastSound, fetchBeastSummitImage, getLuckCritChancePercent, normaliseHealth } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
+import { isMobile } from 'react-device-detect';
 
 function Summit() {
   const { collection, summit, attackInProgress, selectedBeasts, spectatorBattleEvents,
-    poisonEvent, setSpectatorBattleEvents, setSummit, setPoisonEvent, appliedPotions } = useGameStore()
+    poisonEvent, setSpectatorBattleEvents, setSummit, setPoisonEvent } = useGameStore()
   const { pauseUpdates } = useGameDirector()
   const { play } = useSound()
 
@@ -149,11 +150,24 @@ function Summit() {
 
   useEffect(() => {
     if (summit) {
-      setEstimatedDamage(
-        selectedBeasts.reduce((acc, beast) => acc + calculateBattleResult(beast, summit, appliedPotions.attack).estimatedDamage, 0)
-      )
+      setEstimatedDamage(selectedBeasts.reduce((acc: number, selectedBeast: any, idx: number) => {
+        const [beast, attacks] = selectedBeast;
+        return acc + calculateBattleResult(beast, summit, selectedBeast[2]).estimatedDamage * attacks;
+      }, 0))
     }
-  }, [selectedBeasts, summit, appliedPotions.attack])
+  }, [selectedBeasts, summit])
+
+  const summitMaxHealth = summit.beast.health + summit.beast.bonus_health;
+  const summitTotalPoolBefore =
+    (summit.beast.extra_lives || 0) * summitMaxHealth + summit.beast.current_health;
+  const summitTotalPoolAfter = summitTotalPoolBefore - estimatedDamage;
+  const expectedTakeSummit = estimatedDamage > 0 && summitTotalPoolAfter <= 0;
+  const expectedExtraLivesAfter = expectedTakeSummit
+    ? 0
+    : Math.floor((summitTotalPoolAfter - 1) / summitMaxHealth);
+  const expectedExtraLivesLost = expectedTakeSummit
+    ? (summit.beast.extra_lives || 0)
+    : Math.max(0, (summit.beast.extra_lives || 0) - expectedExtraLivesAfter);
 
   const processSpectatorQueue = async () => {
     if (processingSpectatorRef.current) return;
@@ -474,16 +488,42 @@ function Summit() {
         {/* Attack Effects */}
         {showAttack && estimatedDamage > 0 && (
           <>
-            {/* Estimated Damage Display */}
-            <Box sx={styles.estimatedDamageContainer}>
+            {/* Expected Outcome Display */}
+            <Box sx={isMobile ? styles.estimatedDamageContainerMobile : styles.estimatedDamageContainer}>
               <Box sx={styles.damageBox}>
-                <Typography sx={styles.damageLabel}>ESTIMATED DAMAGE</Typography>
-                <Box sx={styles.damageValueContainer}>
-                  <Box sx={styles.swordIcon}>
-                    <img src={'/images/sword.png'} alt='' height={'24px'} />
+                <Typography sx={styles.damageLabel}>Estimated outcome</Typography>
+
+                <Box sx={styles.outcomeRow}>
+                  <Typography sx={styles.outcomeKey}>Damage</Typography>
+                  <Box sx={styles.outcomeValueRow}>
+                    <Box sx={styles.swordIcon}>
+                      <img src={'/images/sword.png'} alt='' height={'18px'} />
+                    </Box>
+                    <Typography sx={styles.outcomeNumber}>
+                      {estimatedDamage}
+                    </Typography>
                   </Box>
-                  <Typography sx={styles.damageValue}>
-                    {estimatedDamage}
+                </Box>
+
+                <Box sx={styles.outcomeRow}>
+                  <Typography sx={styles.outcomeKey}>Extra lives lost</Typography>
+                  <Box sx={styles.outcomeValueRow}>
+                    <img src={heart} alt='Extra life' style={styles.outcomeHeartIcon} />
+                    <Typography sx={styles.outcomeNumber}>
+                      {expectedExtraLivesLost}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={styles.outcomeRow}>
+                  <Typography sx={styles.outcomeKey}>Lethal Hit</Typography>
+                  <Typography
+                    sx={[
+                      styles.outcomeTakeSummit,
+                      expectedTakeSummit ? styles.outcomeTakeSummitYes : styles.outcomeTakeSummitNo
+                    ]}
+                  >
+                    {expectedTakeSummit ? 'YES' : 'NO'}
                   </Typography>
                 </Box>
               </Box>
@@ -867,16 +907,25 @@ const styles = {
     zIndex: 10,
     filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5))',
   },
+  estimatedDamageContainerMobile: {
+    position: 'fixed',
+    bottom: '300px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    zIndex: 102,
+    filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5))',
+  },
   damageBox: {
     background: `linear-gradient(135deg, ${gameColors.darkGreen}dd 0%, ${gameColors.mediumGreen}dd 100%)`,
     border: `2px solid ${gameColors.accentGreen}`,
     borderRadius: '12px',
-    padding: '10px 16px',
+    padding: '12px 14px',
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
+    alignItems: 'stretch',
     gap: '8px',
     position: 'relative',
+    minWidth: '190px',
   },
   damageLabel: {
     fontSize: '10px',
@@ -886,6 +935,56 @@ const styles = {
     textTransform: 'uppercase',
     textShadow: `0 2px 4px rgba(0, 0, 0, 0.8), 0 0 8px ${gameColors.accentGreen}40`,
     lineHeight: '1',
+  },
+  outcomeRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+  },
+  outcomeKey: {
+    fontSize: '10px',
+    color: '#ffedbb',
+    fontWeight: 700,
+    letterSpacing: '0.6px',
+    textTransform: 'uppercase',
+    opacity: 0.9,
+    flexShrink: 0,
+  },
+  outcomeValueRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  outcomeNumber: {
+    fontSize: '18px',
+    color: '#FFD700',
+    fontWeight: 'bold',
+    textShadow: `
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 10px rgba(255, 215, 0, 0.35)
+    `,
+    lineHeight: '1',
+    fontFamily: 'monospace',
+  },
+  outcomeHeartIcon: {
+    width: '16px',
+    height: '16px',
+    filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6))',
+  },
+  outcomeTakeSummit: {
+    fontSize: '12px',
+    fontWeight: 900,
+    letterSpacing: '1px',
+    textTransform: 'uppercase',
+    lineHeight: '1',
+    textShadow: `0 2px 4px rgba(0, 0, 0, 0.8)`,
+  },
+  outcomeTakeSummitYes: {
+    color: '#FF5252',
+  },
+  outcomeTakeSummitNo: {
+    color: '#00E676',
   },
   damageValueContainer: {
     display: 'flex',

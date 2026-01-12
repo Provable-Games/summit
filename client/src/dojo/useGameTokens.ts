@@ -313,9 +313,9 @@ export const useGameTokens = () => {
 
   const countAliveBeasts = async () => {
     let q = `
-      SELECT COUNT(DISTINCT attacking_beast_id) as count
-      FROM "summit_relayer_3-BattleEvent"
-      WHERE internal_created_at > datetime('now', '-24 hours');
+      SELECT COUNT(DISTINCT attacking_beast_token_id) as count
+      FROM "summit_relayer_6-BattleEvent"
+      WHERE internal_updated_at > datetime('now', '-24 hours')
     `
 
     let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
@@ -360,99 +360,45 @@ export const useGameTokens = () => {
   }
 
   const getLeaderboard = async () => {
-    // Fetch all rewards (within time window) and aggregate in JS since
-    // the amount column is now stored as a hex string.
     const q = `
-      SELECT owner, amount
-      FROM "${currentNetworkConfig.namespace}-RewardEvent"
-      WHERE internal_created_at > '2025-12-10 18:00:00'
-    `;
+        SELECT owner, SUM(amount) AS amount
+        FROM "${currentNetworkConfig.namespace}-RewardEvent"
+        WHERE internal_created_at > '2025-11-21 16:20:00'
+        GROUP BY owner
+        ORDER BY amount DESC
+      `;
 
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-
     try {
       const sql = await fetch(url, {
         method: "GET",
         headers: { "Content-Type": "application/json" }
-      });
-
-      const rows: any[] = await sql.json();
-
-      // Aggregate totals per owner using BigInt for precise hex handling.
-      const totals = new Map<string, bigint>();
-
-      for (const row of rows) {
-        const owner = row.owner;
-        const rawAmount = row.amount;
-
-        if (!owner || rawAmount == null) continue;
-
-        let valueBigInt: bigint | null = null;
-
-        if (typeof rawAmount === "string") {
-          // Handle hex strings like "0x0000..."
-          if (/^0x[0-9a-fA-F]+$/.test(rawAmount)) {
-            try {
-              valueBigInt = BigInt(rawAmount);
-            } catch {
-              valueBigInt = null;
-            }
-          } else {
-            // Fallback for decimal strings
-            try {
-              valueBigInt = BigInt(rawAmount);
-            } catch {
-              const numVal = Number(rawAmount);
-              if (!Number.isNaN(numVal) && Number.isFinite(numVal)) {
-                valueBigInt = BigInt(Math.floor(numVal));
-              }
-            }
-          }
-        } else if (typeof rawAmount === "number") {
-          if (Number.isFinite(rawAmount)) {
-            valueBigInt = BigInt(Math.floor(rawAmount));
-          }
-        }
-
-        if (valueBigInt === null) continue;
-
-        const prev = totals.get(owner) ?? 0n;
-        totals.set(owner, prev + valueBigInt);
-      }
-
-      // Convert to the expected Leaderboard shape with numeric amounts.
-      //
-      // Amounts are currently in 18‑decimals (wei-style). The UI expects
-      // `amount` to be scaled such that `amount / 100` gives the final
-      // whole-number display value. To achieve:
-      //   1e18 (wei) -> 1 (display),
-      // we first divide by 1e16 here, then the UI divides by 1e2.
-      const scaleDivisor = 10000000000000000n; // 10^16
-
-      const leaderboard = Array.from(totals.entries())
-        .map(([owner, total]) => {
-          const scaled = total / scaleDivisor;
-          return {
-            owner,
-            amount: Number(scaled),
-          };
-        })
-        .sort((a, b) => b.amount - a.amount);
-
-      return leaderboard;
+      })
+      let data = await sql.json()
+      return data.length > 0 ? data.map((row: any) => ({
+        owner: row.owner,
+        amount: row.amount / 10000,
+      })) : []
     } catch (error) {
       console.error("Error getting big five:", error);
       return [];
     }
   }
 
+  const getValidAdventurers = async (owner: string) => {
+    let namespace = "relayer_0_0_1"
 
-
-  const getValidAdventurers = async (adventurerIds: number[]) => {
     let q = `
-      SELECT adventurer_id
-      FROM "summit_relayer_3-CorpseEvent"
-      WHERE adventurer_id IN (${adventurerIds.map((id: number) => `'0x${id.toString(16).padStart(16, '0')}'`).join(',')})
+      SELECT o.token_id, tm.minted_by, tm.id, tm.game_over, ce.adventurer_id, s.score
+      FROM '${namespace}-TokenMetadataUpdate' tm
+      LEFT JOIN '${namespace}-TokenScoreUpdate' s on s.id = tm.id
+      LEFT JOIN '${namespace}-OwnersUpdate' o ON o.token_id = tm.id
+      LEFT JOIN '${namespace}-MinterRegistryUpdate' mr ON mr.id = tm.minted_by
+      LEFT JOIN '${currentNetworkConfig.namespace}-CorpseEvent' ce ON ce.adventurer_id = tm.id
+      WHERE o.owner = "${addAddressPadding(owner.toLowerCase())}"
+      AND mr.minter_address = "${addAddressPadding(currentNetworkConfig.dungeon)}"
+      AND tm.game_over = 1
+      AND ce.adventurer_id IS NULL
     `
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
     const sql = await fetch(url, {
@@ -461,7 +407,10 @@ export const useGameTokens = () => {
     })
 
     let data = await sql.json()
-    return adventurerIds.filter((id: number) => !data.some((row: any) => parseInt(row.adventurer_id, 16) === id))
+    return data.map((row: any) => ({
+      token_id: parseInt(row.token_id, 16),
+      score: parseInt(row.score, 16),
+    }))
   }
 
   const getTop5000Cutoff = async (): Promise<Top5000Cutoff | null> => {
@@ -564,6 +513,161 @@ export const useGameTokens = () => {
     }
   }
 
+  const getTopBeastsWithMetadata = async (limit: number, offset: number) => {
+    try {
+      const contractAddress = currentNetworkConfig.beasts;
+
+      // Step 1: Get the top beasts by blocks_held (simple query)
+      const topBeastsQuery = `
+        SELECT 
+          token_id,
+          "live_stats.blocks_held" as blocks_held,
+          "live_stats.bonus_xp" as bonus_xp,
+          "live_stats.last_death_timestamp" as last_death_timestamp
+        FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+        WHERE "live_stats.blocks_held" > 0
+        ORDER BY 
+          "live_stats.blocks_held" DESC,
+          "live_stats.bonus_xp" DESC,
+          "live_stats.last_death_timestamp" DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+
+      const topBeastsUrl = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(topBeastsQuery)}`;
+      const topBeastsResponse = await fetch(topBeastsUrl, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+
+      const topBeastsData = await topBeastsResponse.json();
+      if (!Array.isArray(topBeastsData) || topBeastsData.length === 0) {
+        return [];
+      }
+
+      // Step 2: Get token IDs and convert to hex for metadata lookup
+      const tokenIds = topBeastsData.map(row => parseInt(row.token_id));
+      const tokenHexMap = new Map<number, string>();
+      
+      tokenIds.forEach(tokenId => {
+        const hexId = tokenId.toString(16);
+        tokenHexMap.set(tokenId, hexId);
+      });
+
+      // Step 3: Get metadata for these tokens (use proper hex format with padding)
+      const hexIds = Array.from(tokenHexMap.values());
+      const paddedHexIds = hexIds.map(hex => {
+        // Pad to 64 characters (32 bytes)
+        const padded = hex.padStart(64, '0');
+        return `0x${padded}`;
+      });
+
+      const metadataQuery = `
+        SELECT token_id, metadata
+        FROM tokens
+        WHERE contract_address = '${contractAddress}'
+          AND token_id IN (${paddedHexIds.map(hex => `'${hex}'`).join(',')})
+      `;
+
+      // Step 4: Get owners for these tokens
+      const ownerQuery = `
+        SELECT 
+          token_id,
+          account_address,
+          SUBSTR(token_id, INSTR(token_id, ':')+1) AS extracted_hex
+        FROM token_balances
+        WHERE contract_address = '${contractAddress}'
+          AND balance = '0x0000000000000000000000000000000000000000000000000000000000000001'
+          AND SUBSTR(token_id, INSTR(token_id, ':')+1) IN (${paddedHexIds.map(hex => `'${hex}'`).join(',')})
+      `;
+
+      // Execute metadata and owner queries in parallel
+      const [metadataResponse, ownerResponse] = await Promise.all([
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(metadataQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        }),
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(ownerQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        })
+      ]);
+
+      const [metadataData, ownerData] = await Promise.all([
+        metadataResponse.ok ? metadataResponse.json() : [],
+        ownerResponse.ok ? ownerResponse.json() : []
+      ]);
+
+      // Create lookup maps
+      const metadataMap = new Map<string, any>();
+      (Array.isArray(metadataData) ? metadataData : []).forEach((row: any) => {
+        if (row.metadata && row.token_id) {
+          const tokenIdNum = parseInt(row.token_id, 16);
+          metadataMap.set(tokenIdNum.toString(), row.metadata);
+        }
+      });
+
+      const ownerMap = new Map<string, string>();
+      (Array.isArray(ownerData) ? ownerData : []).forEach((row: any) => {
+        if (row.extracted_hex && row.account_address) {
+          // Remove 0x prefix if present and parse
+          const cleanHex = row.extracted_hex.replace(/^0x/, '');
+          const tokenIdNum = parseInt(cleanHex, 16);
+          ownerMap.set(tokenIdNum.toString(), row.account_address);
+        }
+      });
+
+      // Step 5: Combine all data
+      const enrichedData = topBeastsData.map(row => {
+        const tokenId = parseInt(row.token_id);
+        const tokenIdStr = tokenId.toString();
+        const rawMetadata = metadataMap.get(tokenIdStr);
+        const owner = ownerMap.get(tokenIdStr);
+
+        let beastName = '';
+        let prefix = '';
+        let suffix = '';
+
+        if (rawMetadata) {
+          try {
+            const metadata = typeof rawMetadata === 'string' ? JSON.parse(rawMetadata) : rawMetadata;
+            
+            // Parse attributes array into a map
+            const attrs: { [key: string]: string } = {};
+            if (metadata.attributes && Array.isArray(metadata.attributes)) {
+              metadata.attributes.forEach((attr: any) => {
+                attrs[attr.trait_type] = attr.value;
+              });
+            }
+
+            beastName = attrs["Beast"]?.replace(" ", "") || "";
+            prefix = attrs["Prefix"] || "";
+            suffix = attrs["Suffix"] || "";
+          } catch (e) {
+            console.error("Failed to parse beast metadata:", e);
+          }
+        }
+
+        return {
+          token_id: tokenId,
+          blocks_held: parseInt(row.blocks_held, 16) || 0,
+          bonus_xp: parseInt(row.bonus_xp, 16) || 0,
+          last_death_timestamp: parseInt(row.last_death_timestamp, 16) || 0,
+          owner: owner || null,
+          beast_name: beastName,
+          prefix: prefix,
+          suffix: suffix,
+          full_name: prefix && suffix && beastName ? `"${prefix} ${suffix}" ${beastName}` : beastName || `Beast #${tokenId}`
+        };
+      });
+
+      return enrichedData;
+    } catch (error) {
+      console.error("Error getting top beasts with metadata:", error);
+      return [];
+    }
+  }
+
   const getDiplomacy = async (beast: Beast) => {
     let q = `
       SELECT total_power, beast_token_ids
@@ -602,6 +706,7 @@ export const useGameTokens = () => {
     getTop5000Cutoff,
     getDiplomacy,
     getTopBeastsByBlocksHeld,
+    getTopBeastsWithMetadata,
     countBeastsWithBlocksHeld,
     getDungeonStats
   };

@@ -11,14 +11,17 @@ import BurgerMenu from '../components/BurgerMenu'
 import ClaimRewardsButton from '../components/ClaimRewardsButton'
 import Leaderboard from '../components/Leaderboard'
 import LeaderboardButton from '../components/LeaderboardButton'
+import EventHistoryButton from '../components/EventHistoryButton'
 import BeastBoard from '../components/BeastBoard'
 import Top5000BeastsModal from '../components/dialogs/Top5000BeastsModal'
 import LeaderboardModal from '../components/dialogs/LeaderboardModal'
+import EventHistoryModal from '../components/dialogs/EventHistoryModal'
 import Onboarding from '../components/Onboarding'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
 import { useAccount } from "@starknet-react/core"
+import RewardsRemainingBar from '../components/RewardsRemainingBar'
 
 function MainPage() {
   const { address } = useAccount()
@@ -26,6 +29,7 @@ function MainPage() {
   const { pauseUpdates } = useGameDirector();
   const [top5000ModalOpen, setTop5000ModalOpen] = useState(false);
   const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false);
+  const [eventHistoryModalOpen, setEventHistoryModalOpen] = useState(false);
 
   return <>
     <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
@@ -37,7 +41,10 @@ function MainPage() {
         {isBrowser && <Box sx={styles.sideContainer}>
           <Box sx={styles.leaderboardSection}>
             <Leaderboard />
-            <LeaderboardButton onClick={() => setLeaderboardModalOpen(true)} />
+            <Box sx={styles.buttonsContainer}>
+              <LeaderboardButton onClick={() => setLeaderboardModalOpen(true)} />
+              <EventHistoryButton onClick={() => setEventHistoryModalOpen(true)} />
+            </Box>
           </Box>
         </Box>}
 
@@ -54,7 +61,7 @@ function MainPage() {
         {onboarding
           ? <Onboarding />
           : <>
-            {(attackInProgress && pauseUpdates && selectedBeasts.length > 0 && attackMode !== 'autopilot' && attackMode !== 'capture')
+            {(attackInProgress && pauseUpdates && selectedBeasts.length > 0 && attackMode !== 'autopilot')
               ? <AttackingBeasts />
               : <Box sx={styles.bottomContainer}>
                 <ActionBar />
@@ -65,7 +72,7 @@ function MainPage() {
       </>
 
       {isMobile && <Box sx={{ position: 'absolute', top: '10px', width: '100%', boxSizing: 'border-box', px: 1, display: 'flex', justifyContent: 'center' }}>
-        <Box pt={'12px'}>
+        <Box pt={'12px'} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
           <Typography sx={styles.title}>SUMMIT</Typography>
         </Box>
       </Box>
@@ -87,6 +94,13 @@ function MainPage() {
       <LeaderboardModal
         open={leaderboardModalOpen}
         onClose={() => setLeaderboardModalOpen(false)}
+      />
+    )}
+
+    {eventHistoryModalOpen && (
+      <EventHistoryModal
+        open={eventHistoryModalOpen}
+        onClose={() => setEventHistoryModalOpen(false)}
       />
     )}
   </>
@@ -113,11 +127,13 @@ const styles = {
   },
   bottomContainer: {
     width: '100%',
-    height: '271px',
+    minHeight: '266px',
     position: 'absolute',
     bottom: 0,
     background: `linear-gradient(to bottom, transparent, ${gameColors.darkGreen})`,
-    zIndex: 101
+    zIndex: 101,
+    display: 'flex',
+    flexDirection: 'column',
   },
   sideContainer: {
     display: 'flex',
@@ -148,6 +164,11 @@ const styles = {
   leaderboardSection: {
     display: 'flex',
     alignItems: 'flex-start',
+    gap: 1,
+  },
+  buttonsContainer: {
+    display: 'flex',
+    flexDirection: 'column',
     gap: 1,
   },
 }

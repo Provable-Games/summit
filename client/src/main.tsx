@@ -3,19 +3,18 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 
 // Dojo related imports
-import { init } from "@dojoengine/sdk";
-import { DojoSdkProvider } from "@dojoengine/sdk/react";
-import { MetagameProvider } from "@/contexts/metagame.tsx";
+import { SoundProvider } from "@/contexts/sound";
 import {
   DynamicConnectorProvider,
   useDynamicConnector,
 } from "@/contexts/starknet.tsx";
 import { createDojoConfig } from "@dojoengine/core";
-import { useEffect, useState } from "react";
+import { init } from "@dojoengine/sdk";
+import { DojoSdkProvider } from "@dojoengine/sdk/react";
 import { Analytics } from "@vercel/analytics/react";
-import "./index.css";
 import { PostHogProvider } from "posthog-js/react";
-import { SoundProvider } from "@/contexts/sound";
+import { useEffect, useState } from "react";
+import "./index.css";
 
 const options = {
   api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
@@ -52,17 +51,19 @@ function DojoApp() {
     }
   }, [currentNetworkConfig]);
 
+  if (!sdk) {
+    return null;
+  }
+
   return (
     <DojoSdkProvider
       sdk={sdk}
       dojoConfig={createDojoConfig(currentNetworkConfig)}
       clientFn={() => { }}
     >
-      <MetagameProvider>
-        <SoundProvider>
-          <App />
-        </SoundProvider>
-      </MetagameProvider>
+      <SoundProvider>
+        <App />
+      </SoundProvider>
     </DojoSdkProvider>
   );
 }

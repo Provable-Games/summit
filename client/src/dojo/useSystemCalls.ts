@@ -1,6 +1,7 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { useGameStore } from "@/stores/gameStore";
-import { AppliedPotions, Stats } from "@/types/game";
+import { selection, Stats } from "@/types/game";
+import { calculateRevivalRequired } from "@/utils/beasts";
 import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
@@ -42,7 +43,7 @@ export const useSystemCalls = () => {
       }
 
       const translatedEvents = receipt.events.map((event: any) =>
-        translateGameEvent(event, currentNetworkConfig.manifest)
+        translateGameEvent(event, currentNetworkConfig.manifest, account!.address)
       );
 
       return translatedEvents.filter(Boolean);
@@ -82,10 +83,10 @@ export const useSystemCalls = () => {
   const feed = (beastId: number, amount: number, corpseRequired: number) => {
     let txs: any[] = [];
 
-    if (corpseRequired > 0) {
-      let corpseTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE")?.address;
-      txs.push(approveTokens(corpseTokenAddress, corpseRequired));
-    }
+    // if (corpseRequired > 0) {
+    //   let corpseTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE")?.address;
+    //   txs.push(approveTokens(corpseTokenAddress, corpseRequired));
+    // }
 
     txs.push({
       contractAddress: SUMMIT_ADDRESS,
@@ -98,44 +99,47 @@ export const useSystemCalls = () => {
 
   /**
    * Attacks a beast, optionally fighting to the death.
-   * @param beastIds The IDs of the beasts to attack
-   * @param appliedPotions The potions to apply to the beasts
+   * @param beasts The beasts to attack
+   * @param safeAttack Whether to attack safely
+   * @param vrf Whether to use VRF
    */
-  const attack = (beastIds: number[], appliedPotions: AppliedPotions, safeAttack: boolean, vrf: boolean) => {
+  const attack = (beasts: selection, safeAttack: boolean, vrf: boolean, extraLifePotions: number) => {
     let txs: any[] = [];
 
-    if (appliedPotions.revive > 0) {
-      let reviveAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "REVIVE")?.address;
-      txs.push(approveTokens(reviveAddress, appliedPotions.revive));
-    }
+    let revivalPotions = calculateRevivalRequired(beasts);
 
-    if (appliedPotions.attack > 0) {
-      let attackAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "ATTACK")?.address;
-      txs.push(approveTokens(attackAddress, appliedPotions.attack));
-    }
+    // if (revivalPotions > 0) {
+    //   let reviveAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "REVIVE")?.address;
+    //   txs.push(approveTokens(reviveAddress, revivalPotions));
+    // }
 
-    if (appliedPotions.extraLife > 0) {
-      let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
-      txs.push(approveTokens(extraLifeAddress, appliedPotions.extraLife));
-    }
+    // if (attackPotions > 0) {
+    //   let attackAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "ATTACK")?.address;
+    //   txs.push(approveTokens(attackAddress, attackPotions));
+    // }
+
+    // if (extraLifePotions > 0) {
+    //   let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
+    //   txs.push(approveTokens(extraLifeAddress, extraLifePotions));
+    // }
 
     if (vrf || !safeAttack) {
       txs.push(requestRandom());
     }
 
-    if (safeAttack) {
-      txs.push({
-        contractAddress: SUMMIT_ADDRESS,
-        entrypoint: "attack",
-        calldata: CallData.compile([summit.beast.token_id, beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife, vrf]),
-      });
-    } else {
-      txs.push({
-        contractAddress: SUMMIT_ADDRESS,
-        entrypoint: "attack_unsafe",
-        calldata: CallData.compile([beastIds, appliedPotions.revive, appliedPotions.attack, appliedPotions.extraLife]),
-      });
-    }
+    const beastsData = beasts.map(beast => [beast[0].token_id, beast[1], beast[2]]);
+    txs.push({
+      contractAddress: SUMMIT_ADDRESS,
+      entrypoint: "attack",
+      calldata: [
+        safeAttack ? summit.beast.token_id : 0,
+        beastsData.length,
+        ...beastsData.flat(),
+        revivalPotions,
+        extraLifePotions,
+        vrf ? 1 : 0,
+      ],
+    });
 
     return txs;
   };
@@ -143,10 +147,10 @@ export const useSystemCalls = () => {
   const addExtraLife = (beastId: number, extraLifePotions: number) => {
     let txs: any[] = [];
 
-    if (extraLifePotions > 0) {
-      let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
-      txs.push(approveTokens(extraLifeAddress, extraLifePotions));
-    }
+    // if (extraLifePotions > 0) {
+    //   let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
+    //   txs.push(approveTokens(extraLifeAddress, extraLifePotions));
+    // }
 
     txs.push({
       contractAddress: SUMMIT_ADDRESS,
@@ -160,10 +164,10 @@ export const useSystemCalls = () => {
   const applyStatPoints = (beastId: number, stats: Stats, skullRequired: number) => {
     let txs: any[] = [];
 
-    if (skullRequired > 0) {
-      let skullTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL")?.address;
-      txs.push(approveTokens(skullTokenAddress, skullRequired));
-    }
+    // if (skullRequired > 0) {
+    //   let skullTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL")?.address;
+    //   txs.push(approveTokens(skullTokenAddress, skullRequired));
+    // }
 
     txs.push({
       contractAddress: SUMMIT_ADDRESS,
@@ -209,10 +213,10 @@ export const useSystemCalls = () => {
   const applyPoison = (beastId: number, count: number) => {
     let txs: any[] = [];
 
-    if (count > 0) {
-      let poisonAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "POISON")?.address;
-      txs.push(approveTokens(poisonAddress, count));
-    }
+    // if (count > 0) {
+    //   let poisonAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "POISON")?.address;
+    //   txs.push(approveTokens(poisonAddress, count));
+    // }
 
     txs.push({
       contractAddress: SUMMIT_ADDRESS,

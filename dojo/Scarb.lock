@@ -3,24 +3,27 @@ version = 1
 
 [[package]]
 name = "dojo"
-version = "1.6.0"
-source = "git+https://github.com/dojoengine/dojo?tag=v1.6.0#c7d8b321abc711c14bddcf76f41587f6ef21c356"
+version = "1.8.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:a9c35305a81e68a49de85b8f07c1f8a93e27492c6b16c304d1f7961dcd5d350f"
 dependencies = [
- "dojo_plugin",
+ "dojo_cairo_macros",
 ]
+
+[[package]]
+name = "dojo_cairo_macros"
+version = "1.8.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:c4aa04037a0c5029b05b78229dae22bf02269b9912e8a8c12f8af34aa6b72051"
 
 [[package]]
 name = "dojo_cairo_test"
-version = "1.6.0"
-source = "git+https://github.com/dojoengine/dojo?tag=v1.6.0#c7d8b321abc711c14bddcf76f41587f6ef21c356"
+version = "1.8.0"
+source = "registry+https://scarbs.xyz/"
+checksum = "sha256:0cab4c86390b6ee9c3969b82d27f46ecd7f14e686b9868528506103944638465"
 dependencies = [
  "dojo",
 ]
-
-[[package]]
-name = "dojo_plugin"
-version = "2.10.1"
-source = "git+https://github.com/dojoengine/dojo?tag=v1.6.0#c7d8b321abc711c14bddcf76f41587f6ef21c356"
 
 [[package]]
 name = "summit"

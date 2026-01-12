@@ -3,7 +3,6 @@ import {
   getNetworkConfig,
   NetworkConfig,
 } from "@/utils/networkConfig";
-import { stringToFelt } from "@/utils/utils";
 import ControllerConnector from "@cartridge/connector/controller";
 import { mainnet, sepolia } from "@starknet-react/chains";
 import { argent, braavos, jsonRpcProvider, StarknetConfig, useInjectedConnectors, voyager } from "@starknet-react/core";
@@ -33,10 +32,7 @@ const cartridgeController =
       slot: controllerConfig.slot,
       preset: controllerConfig.preset,
       chains: controllerConfig.chains,
-      defaultChainId: stringToFelt(controllerConfig.chainId).toString(),
-      tokens: {
-        erc20: []
-      },
+      shouldOverridePresetPolicies: true,
     })
     : null;
 

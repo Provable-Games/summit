@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import { Summit, Beast, Adventurer, AppliedPotions, BattleEvent, Leaderboard, PoisonEvent } from '@/types/game';
+import { Summit, Beast, Adventurer, BattleEvent, Leaderboard, PoisonEvent, selection } from '@/types/game';
 
-export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'rewards earned';
+export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'blocks held';
 export type BeastTypeFilter = 'all' | 'strong';
 
 interface GameState {
@@ -18,13 +18,14 @@ interface GameState {
   loadingCollection: boolean;
   attackInProgress: boolean;
   applyingPotions: boolean;
-  selectedBeasts: Beast[];
+  selectedBeasts: selection;
   adventurerCollection: Adventurer[];
   selectedAdventurers: Adventurer[];
-  appliedPotions: AppliedPotions;
   appliedPoisonCount: number;
-  attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot';
+  appliedExtraLifePotions: number;
+  attackMode: 'safe' | 'unsafe' | 'autopilot';
   autopilotEnabled: boolean;
+  autopilotLog: string;
 
   // Beast Collection Filters
   hideDeadBeasts: boolean;
@@ -47,12 +48,13 @@ interface GameState {
   setCollectionSyncing: (collectionSyncing: boolean) => void;
   setAttackInProgress: (attackInProgress: boolean) => void;
   setApplyingPotions: (applyingPotions: boolean) => void;
-  setSelectedBeasts: (selectedBeasts: Beast[] | ((prev: Beast[]) => Beast[])) => void;
+  setSelectedBeasts: (selectedBeasts: selection | ((prev: selection) => selection)) => void;
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => void;
-  setAppliedPotions: (appliedPotions: AppliedPotions) => void;
   setAppliedPoisonCount: (appliedPoisonCount: number) => void;
-  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot') => void;
+  setAppliedExtraLifePotions: (appliedExtraLifePotions: number) => void;
+  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'autopilot') => void;
   setAutopilotEnabled: (autopilotEnabled: boolean) => void;
+  setAutopilotLog: (autopilotLog: string) => void;
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => void;
@@ -81,14 +83,11 @@ export const useGameStore = create<GameState>((set, get) => ({
   applyingPotions: false,
   selectedBeasts: [],
   selectedAdventurers: [],
-  appliedPotions: {
-    revive: 0,
-    attack: 0,
-    extraLife: 0,
-  },
   appliedPoisonCount: 0,
+  appliedExtraLifePotions: 0,
   attackMode: 'safe',
   autopilotEnabled: false,
+  autopilotLog: '',
 
   // Beast Collection Filters - Default Values
   hideDeadBeasts: false,
@@ -115,11 +114,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       applyingPotions: false,
       selectedBeasts: [],
       selectedAdventurers: [],
-      appliedPotions: {
-        revive: 0,
-        attack: 0,
-        extraLife: 0,
-      },
+      appliedExtraLifePotions: 0,
       appliedPoisonCount: 0,
       attackMode: 'safe',
       autopilotEnabled: false,
@@ -127,6 +122,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       hideDeadBeasts: false,
       typeFilter: 'all',
       nameMatchFilter: false,
+      autopilotLog: ''
     });
   },
 
@@ -146,14 +142,15 @@ export const useGameStore = create<GameState>((set, get) => ({
   setCollectionSyncing: (collectionSyncing: boolean) => set({ collectionSyncing }),
   setAttackInProgress: (attackInProgress: boolean) => set({ attackInProgress }),
   setApplyingPotions: (applyingPotions: boolean) => set({ applyingPotions }),
-  setSelectedBeasts: (selectedBeasts: Beast[] | ((prev: Beast[]) => Beast[])) =>
+  setSelectedBeasts: (selectedBeasts: selection | ((prev: selection) => selection)) =>
     set(state => ({ selectedBeasts: typeof selectedBeasts === 'function' ? selectedBeasts(state.selectedBeasts) : selectedBeasts })),
   setSelectedAdventurers: (selectedAdventurers: Adventurer[]) => set({ selectedAdventurers }),
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => set({ adventurerCollection }),
-  setAppliedPotions: (appliedPotions: AppliedPotions) => set({ appliedPotions }),
   setAppliedPoisonCount: (appliedPoisonCount: number) => set({ appliedPoisonCount }),
-  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'capture' | 'autopilot') => set({ attackMode }),
+  setAppliedExtraLifePotions: (appliedExtraLifePotions: number) => set({ appliedExtraLifePotions }),
+  setAttackMode: (attackMode: 'safe' | 'unsafe' | 'autopilot') => set({ attackMode }),
   setAutopilotEnabled: (autopilotEnabled: boolean) => set({ autopilotEnabled }),
+  setAutopilotLog: (autopilotLog: string) => set({ autopilotLog }),
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => set({ hideDeadBeasts }),

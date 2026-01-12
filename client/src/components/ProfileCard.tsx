@@ -39,7 +39,7 @@ const ProfileCard = () => {
     const price = tokenPrices[tokenName]
 
     return <Box sx={styles.potionItem}>
-      <img src={imgSrc} alt={tokenName} style={{ width: '20px', height: '20px' }} />
+      <img src={imgSrc} alt={tokenName} style={{ width: '24px', height: '24px' }} />
       {price
         ? <Typography sx={styles.potionPrice}>${price}</Typography>
         : <Skeleton variant="text" width={40} sx={{ bgcolor: 'grey.700' }} />
@@ -55,14 +55,43 @@ const ProfileCard = () => {
     }
   }
 
-  if (!address) {
+  const RenderMarketplace = () => {
     return <>
+      <Box sx={styles.potionsSection}>
+        <Box sx={styles.potionPrices}>
+          <Box sx={styles.potionRow}>
+            {renderPotionItem(attackPotionImg, "ATTACK")}
+            {renderPotionItem(lifePotionImg, "EXTRA LIFE")}
+          </Box>
+          <Box sx={styles.potionRow}>
+            {renderPotionItem(poisonPotionImg, "POISON")}
+            {renderPotionItem(revivePotionImg, "REVIVE")}
+          </Box>
+          <Box sx={styles.potionRow}>
+            {renderPotionItem(killTokenImg, "SKULL")}
+            {renderPotionItem(corpseTokenImg, "CORPSE")}
+          </Box>
+        </Box>
+        <Button sx={[styles.buyPotionsButton, { width: isMobile ? '100%' : '145px' }]} onClick={() => setPotionShopOpen(true)}>
+          <Typography sx={styles.buyPotionsButtonText}>
+            MARKETPLACE
+          </Typography>
+        </Button>
+      </Box>
+      {potionShopOpen && <MarketplaceModal open={potionShopOpen} close={() => setPotionShopOpen(false)} />}
+    </>
+  }
+
+  if (!address) {
+    return <Box sx={styles.container}>
       <Button sx={styles.connectButton} onClick={() => connect({ connector: cartridgeConnector })} size='large' startIcon={<SportsEsportsIcon htmlColor='white' />}>
         <Typography sx={styles.connectButtonText}>
           CONNECT WALLET
         </Typography>
       </Button>
-    </>
+
+      {RenderMarketplace()}
+    </Box>
   }
 
   return (
@@ -93,7 +122,7 @@ const ProfileCard = () => {
 
             <Box display={'flex'} alignItems={'start'}>
               <Typography sx={styles.infoValue}>
-                {formatRewardNumber((leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount || 0) / 10)}
+                {formatRewardNumber((leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount || 0))}
               </Typography>
             </Box>
           </Box>
@@ -137,31 +166,10 @@ const ProfileCard = () => {
             </Tooltip>
           </Box>
 
-          <Box sx={styles.potionsSection}>
-            <Box sx={styles.potionPrices}>
-              <Box sx={styles.potionRow}>
-                {renderPotionItem(attackPotionImg, "ATTACK")}
-                {renderPotionItem(lifePotionImg, "EXTRA LIFE")}
-              </Box>
-              <Box sx={styles.potionRow}>
-                {renderPotionItem(poisonPotionImg, "POISON")}
-                {renderPotionItem(revivePotionImg, "REVIVE")}
-              </Box>
-              <Box sx={styles.potionRow}>
-                {renderPotionItem(killTokenImg, "SKULL")}
-                {renderPotionItem(corpseTokenImg, "CORPSE")}
-              </Box>
-            </Box>
-            <Button sx={[styles.buyPotionsButton, { width: isMobile ? '100%' : '145px' }]} onClick={() => setPotionShopOpen(true)}>
-              <Typography sx={styles.buyPotionsButtonText}>
-                MARKETPLACE
-              </Typography>
-            </Button>
-          </Box>
+          {RenderMarketplace()}
         </>}
 
         {beastDexOpen && <BeastDexModal open={beastDexOpen} close={() => setBeastDexOpen(false)} />}
-        {potionShopOpen && <MarketplaceModal open={potionShopOpen} close={() => setPotionShopOpen(false)} />}
       </>}
     </Box>
   )
@@ -192,6 +200,7 @@ const styles = {
     border: `1px solid ${gameColors.accentGreen}60`,
     borderRadius: '20px',
     padding: '8px 16px',
+    mb: 1,
     transition: 'all 0.2s ease',
     '&:hover': {
       background: `${gameColors.mediumGreen}`,
@@ -547,7 +556,6 @@ const styles = {
   potionItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: 0.5,
     background: `${gameColors.darkGreen}60`,
     border: `1px solid ${gameColors.accentGreen}30`,
     borderRadius: '4px',

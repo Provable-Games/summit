@@ -69,6 +69,7 @@ export interface Combat {
   defenseCritDamage: number;
   score: number;
   estimatedDamage: number;
+  attackPotions?: number;
 }
 
 export interface Adventurer {
@@ -79,19 +80,15 @@ export interface Adventurer {
   soulbound: boolean;
 }
 
-export interface AppliedPotions {
-  revive: number;
-  attack: number;
-  extraLife: number;
-}
 
+export type selection = [Beast, number, number][];
 export interface GameAction {
   type: string;
   pauseUpdates?: boolean;
+  beasts?: selection;
   beastId?: number;
   beastIds?: number[];
   adventurerIds?: number[];
-  appliedPotions?: AppliedPotions;
   safeAttack?: boolean;
   vrf?: boolean;
   stats?: Stats;
@@ -99,10 +96,14 @@ export interface GameAction {
   bonusHealth?: number;
   killTokens?: number;
   corpseTokens?: number;
+  extraLifePotions?: number;
+  attackPotions?: number;
+  revivePotions?: number;
 }
 
 export interface BattleEvent {
   attacking_beast_token_id: number;
+  attack_index: number;
   attacking_beast_owner: string | null;
   attacking_beast_id: number;
   attacking_beast_shiny: number;
