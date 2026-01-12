@@ -4,9 +4,10 @@ import { useGameTokens } from "@/dojo/useGameTokens";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
-import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, getEntityModel, selection, Summit } from "@/types/game";
+import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, getEntityModel, Summit } from "@/types/game";
 import {
-  applyPoisonDamage, calculateBattleResult, calculateOptimalAttackPotions, getBeastCurrentHealth,
+  applyPoisonDamage,
+  getBeastCurrentHealth,
   getBeastCurrentLevel, getBeastDetails, getBeastRevivalTime
 } from "@/utils/beasts";
 import { useQueries } from '@/utils/queries';
@@ -30,7 +31,7 @@ export interface GameDirectorContext {
 }
 
 export const START_TIMESTAMP = 1760947200;
-export const TERMINAL_BLOCK = 6000000;
+export const TERMINAL_BLOCK = 7000000;
 
 const GameDirectorContext = createContext<GameDirectorContext>(
   {} as GameDirectorContext

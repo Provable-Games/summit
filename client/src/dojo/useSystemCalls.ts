@@ -9,7 +9,7 @@ import { useSnackbar } from "notistack";
 import { CallData } from "starknet";
 
 export const useSystemCalls = () => {
-  const { summit, appliedExtraLifePotions } = useGameStore()
+  const { summit } = useGameStore()
   const { enqueueSnackbar } = useSnackbar();
   const { account } = useAccount();
   const { currentNetworkConfig } = useDynamicConnector();

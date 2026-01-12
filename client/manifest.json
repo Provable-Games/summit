@@ -1328,7 +1328,7 @@
   },
   "contracts": [
     {
-      "address": "0x463c634c53930f97ec0e6f68768c610f8a17fea5849fa129183ae42994d7656",
+      "address": "0x6511ce5b21c492c73d532c424cbbf40fac3ea1bd8fc80d6e24cb60732a29dad",
       "class_hash": "0x1da1336e1d3dda562f527bf5dc7299dd8cb68bf1e3526adcbd8f8e679bfca30",
       "abi": [
         {
@@ -1874,7 +1874,7 @@
         "0x061b9d0477476fb87b84fdb33f7742595fb14352762367c63c45b5dd2207f105",
         "0x0168acb060a52a3acdf8b844afaf8172c0709a1469bee07f251d7ea21b1a436a"
       ],
-      "tag": "summit_relayer_5-summit_events",
+      "tag": "summit_relayer_6-summit_events",
       "selector": "0x7e99d193db0e2c3e5183d062ff2f762c3e7aa92bdfd3c24bcdc6ee082411293",
       "systems": [
         "dojo_init",
@@ -1896,56 +1896,56 @@
     {
       "members": [],
       "class_hash": "0x1cef31aa19672419dc67105b81beb9d04182ccb702a8c67da387c421654c6e3",
-      "tag": "summit_relayer_5-BattleEvent",
-      "selector": "0x563fdbea05f75a3a001bbb32ac7fa37820d05e3679c20db498fad3b823e728a"
+      "tag": "summit_relayer_6-BattleEvent",
+      "selector": "0x4feeb6166c6acedfc4b317f2d72d487474ca1d3e045e74f903a3e896b5c0b70"
     },
     {
       "members": [],
       "class_hash": "0x33e498a5bd2db633569aea2d1d831f700b403f3523fbf6cdc7a1480a6019768",
-      "tag": "summit_relayer_5-BeastEvent",
-      "selector": "0x149affc08e838292cc65f609fa204c65e66c6bc477fc8736d0832371f09db13"
+      "tag": "summit_relayer_6-BeastEvent",
+      "selector": "0x5827297d7a83e9dd14670e658215f37b3dad91775538ec25173733921ecea09"
     },
     {
       "members": [],
       "class_hash": "0x6ff9b4d8164a40b3dd56e95dca1295650edc1a3c7d010d180f8141152bc5e4d",
-      "tag": "summit_relayer_5-CorpseEvent",
-      "selector": "0x6161a4065873aa715b6849cb1cc33e537210b86dc3ae2fbbcd25ead797b773e"
+      "tag": "summit_relayer_6-CorpseEvent",
+      "selector": "0x34b342f3698297a6ca1976c09d69dca2b08e40b065dfd55a1af6b6614ecdb5e"
     },
     {
       "members": [],
       "class_hash": "0x6493118ec20e23c677cbc1a70c5dafcd7073f3ce992fc8903e000e0685a9dcc",
-      "tag": "summit_relayer_5-DiplomacyEvent",
-      "selector": "0x3b410530675e623063f5c6fe53e08eaed25ac8d3befe96ddad817a31e46568e"
+      "tag": "summit_relayer_6-DiplomacyEvent",
+      "selector": "0x5dd698129202c0d61be2cb8c5bedb23a65ae79b407b01106fb41766f705ff4a"
     },
     {
       "members": [],
       "class_hash": "0x2f27bcd0feab890e4633560d75df6519eb1c953194d2edbb02a1b8f53a5953c",
-      "tag": "summit_relayer_5-LiveBeastStatsEvent",
-      "selector": "0x36234671aa0df3d9cffa0ec04c0411d58211919cba2a0be6369f45512fe1c79"
+      "tag": "summit_relayer_6-LiveBeastStatsEvent",
+      "selector": "0x218165b0d95e5329bbd184770ba6a66f996a0d85bd28b3ed61af42c8887f5"
     },
     {
       "members": [],
       "class_hash": "0x2113a0250bda87df1c499705a0bcbfcbd08af16d4c6659565b64f6539a36280",
-      "tag": "summit_relayer_5-PoisonEvent",
-      "selector": "0x283c2246605ba66165c324e31b1d99f6a2e6bdc895d7e459af4efe045bb0fb5"
+      "tag": "summit_relayer_6-PoisonEvent",
+      "selector": "0x5dae6b34b586140c01c303c90e40bf63e256804615a83a72cf773c49dd13c29"
     },
     {
       "members": [],
       "class_hash": "0x6f28a0dd1400e5f713cf225c8eb18630a9e78b0e57a38ba14d9829eb931a6e",
-      "tag": "summit_relayer_5-RewardEvent",
-      "selector": "0x1bec6b2bfdec98dbd1c4322a64e6ed4864fe64d891b04bab9af6c9f4ae18900"
+      "tag": "summit_relayer_6-RewardEvent",
+      "selector": "0x459c5a9ba18dfdca3f78623c4ae5a07fe77eddf753a93e202dd6cdbc77ff51d"
     },
     {
       "members": [],
       "class_hash": "0x780a3fc15457579fb2c2f4300aab377e3007f887b6d6723f39ec188aa58be07",
-      "tag": "summit_relayer_5-SkullEvent",
-      "selector": "0x386a434edf9505a8df1e3a8047b5143da487bd2061adfef716182083d44bd1e"
+      "tag": "summit_relayer_6-SkullEvent",
+      "selector": "0x11db1f75878dbcd6626b9414f1e84eb8d1a18c804cfedd93d5e8782d22a36d0"
     },
     {
       "members": [],
       "class_hash": "0x4b6deecc9d634060c5d31bc1fde1c49414fc90e2f54a60c0f1c37f2acf7e2ae",
-      "tag": "summit_relayer_5-SummitEvent",
-      "selector": "0x68c3aacc8221d0e4a5e39563dc910479d05d7a61520b7ae2a41b429dafe477b"
+      "tag": "summit_relayer_6-SummitEvent",
+      "selector": "0x32897b1341eb34a788f1c102a94ead8b7e0ccf9e8403c6d98b0c64c47b86028"
     }
   ],
   "external_contracts": []

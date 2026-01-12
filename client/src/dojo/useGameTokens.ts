@@ -314,7 +314,7 @@ export const useGameTokens = () => {
   const countAliveBeasts = async () => {
     let q = `
       SELECT COUNT(DISTINCT attacking_beast_token_id) as count
-      FROM "summit_relayer_5-BattleEvent"
+      FROM "summit_relayer_6-BattleEvent"
       WHERE internal_updated_at > datetime('now', '-24 hours')
     `
 

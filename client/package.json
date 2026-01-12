@@ -11,8 +11,8 @@
     "serve": "vite preview"
   },
   "dependencies": {
-    "@cartridge/connector": "^0.10.1",
-    "@cartridge/controller": "^0.10.1",
+    "@cartridge/connector": "^0.12.1",
+    "@cartridge/controller": "^0.12.1",
     "@cloudflare/stream-react": "^1.9.3",
     "@dojoengine/core": "^1.7.1",
     "@dojoengine/sdk": "^1.7.2",
@@ -84,8 +84,8 @@
       "@dojoengine/core": "1.7.2",
       "@dojoengine/utils": "1.7.2",
       "@dojoengine/torii-client": "1.7.2",
-      "@cartridge/controller": "0.10.5",
-      "@cartridge/connector": "0.10.5"
+      "@cartridge/controller": "0.12.1",
+      "@cartridge/connector": "0.12.1"
     }
   }
 }

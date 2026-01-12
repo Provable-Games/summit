@@ -1,4 +1,4 @@
-export const SUMMIT_START_BLOCK = 4748206;
+export const SUMMIT_START_BLOCK = 5483220;
 export const SUMMIT_TOTAL_REWARDS = 100000;
 export const SUMMIT_REWARD_PER_BLOCK = 0.1;
 

@@ -28,19 +28,19 @@ export enum ChainId {
 }
 
 export const TOKEN_ADDRESS = {
-  ATTACK: "0x63eb1e13f9a5e237aa8b4a4b649db577a67641217ab9eb7cbbfd837bc4a11ee",
-  REVIVE: "0x2c90c8bfc60cbab2064fcd271039d633c7f30a0544f5727bbb06767d35bd3c0",
-  EXTRA_LIFE: "0x7fdef6a5d5376d346eb1d830ad28aead5bdc1f02e53c7fb4584a17288f4b20d",
-  POISON: "0x7664d9c661c2d794d0d227369821088b21003e8fd9bd8885b39b6a769be4f43",
-  SKULL: "0x056747f477c306759134c89ed8fb9c477ca96a229e6c0fd2b44731878f58e66d",
-  CORPSE: "0x0773fc83a286a1a05131012d97c1e5970a930b5862641d750510959a7b8cb290",
+  ATTACK: "0x00d6e434c85750498492e1ed983a13357166b94e8762bbd28f1ed5d8e4ccbfc6",
+  REVIVE: "0x062901fa8278203cfc5bcc499259345d35dfdef72b6e5033caae0899255d873f",
+  EXTRA_LIFE: "0x02cfc6f4ab7b9e062bb4576495408cc6516d98727a0b7d094952910961ab1825",
+  POISON: "0x0705a687dcbc563ffdd372038920dcbcbcbf5e976cdc2f4202d848b30841f101",
+  SKULL: "0x05169f2f5a20fdb8db9fa59a2014b35c31e6d8440d5f782a373cb1fe6cbc83e5",
+  CORPSE: "0x06504fb9d64cda31aaa7bfa425b410ae86ceb0ee154f2c85a61d145155eab1bc",
   SURVIVOR: "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
 }
 
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_relayer_5",
+    namespace: "summit_relayer_6",
     manifest: manifest_mainnet,
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
@@ -326,7 +326,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     namespace: network.namespace,
     manifest: network.manifest,
     slot: network.slot,
-    preset: "savage-summit_2",
+    preset: "savage-summit",
     policies: policies,
     rpcUrl: network.rpcUrl,
     toriiUrl: network.torii,
