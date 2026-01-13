@@ -84,9 +84,7 @@ pub mod summit_systems {
         TOKEN_DECIMALS, WISDOM_COST, errors,
     };
     use summit::erc20::interface::{SummitERC20Dispatcher, SummitERC20DispatcherTrait};
-    use summit::interfaces::{
-        IBeastSystemsDispatcher, IBeastSystemsDispatcherTrait, ISummitEventsDispatcher, ISummitEventsDispatcherTrait,
-    };
+    use summit::interfaces::{IBeastSystemsDispatcher, IBeastSystemsDispatcherTrait, ISummitEventsDispatcher};
     use summit::logic::{beast_utils, combat, poison, revival, rewards};
     use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, Stats};
     use summit::vrf::VRFImpl;
@@ -150,6 +148,85 @@ pub mod summit_systems {
         OwnableEvent: OwnableComponent::Event,
         #[flat]
         UpgradeableEvent: UpgradeableComponent::Event,
+        LiveBeastStatsEvent: LiveBeastStatsEvent,
+        BattleEvent: BattleEvent,
+        RewardEvent: RewardEvent,
+        PoisonEvent: PoisonEvent,
+        DiplomacyEvent: DiplomacyEvent,
+        SummitEvent: SummitEvent,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct LiveBeastStatsEvent {
+        #[key]
+        pub token_id: u32,
+        pub live_stats: LiveBeastStats,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct BattleEvent {
+        #[key]
+        pub attacking_beast_token_id: u32,
+        #[key]
+        pub attack_index: u16,
+        pub attacking_beast_owner: ContractAddress,
+        pub attacking_beast_id: u8,
+        pub shiny: u8,
+        pub animated: u8,
+        pub defending_beast_token_id: u32,
+        pub attack_count: u16,
+        pub attack_damage: u16,
+        pub critical_attack_count: u16,
+        pub critical_attack_damage: u16,
+        pub counter_attack_count: u16,
+        pub counter_attack_damage: u16,
+        pub critical_counter_attack_count: u16,
+        pub critical_counter_attack_damage: u16,
+        pub attack_potions: u8,
+        pub xp_gained: u8,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct RewardEvent {
+        #[key]
+        pub block_number: u64,
+        #[key]
+        pub beast_token_id: u32,
+        pub owner: ContractAddress,
+        pub amount: u32,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct PoisonEvent {
+        #[key]
+        pub beast_token_id: u32,
+        #[key]
+        pub block_timestamp: u64,
+        pub count: u16,
+        pub player: ContractAddress,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct DiplomacyEvent {
+        #[key]
+        pub specials_hash: felt252,
+        pub beast_token_ids: Span<u32>,
+        pub total_power: u16,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct SummitEvent {
+        #[key]
+        pub beast_token_id: u32,
+        pub beast_id: u8,
+        pub prefix: u8,
+        pub suffix: u8,
+        pub level: u16,
+        pub health: u16,
+        pub shiny: u8,
+        pub animated: u8,
+        pub live_stats: LiveBeastStats,
+        pub owner: ContractAddress,
     }
 
     #[constructor]
@@ -362,7 +439,12 @@ pub mod summit_systems {
 
             self.poison_potion_dispatcher.read().burn_from(get_caller_address(), count.into() * TOKEN_DECIMALS);
 
-            self.summit_events_dispatcher.read().emit_poison_event(beast_token_id, count, get_caller_address());
+            self
+                .emit(
+                    PoisonEvent {
+                        beast_token_id, block_timestamp: get_block_timestamp(), count, player: get_caller_address(),
+                    },
+                );
         }
 
         fn start_summit(ref self: ContractState) {
@@ -652,11 +734,11 @@ pub mod summit_systems {
         fn _save_beast(ref self: ContractState, beast: Beast, update_diplomacy: bool) {
             self.live_beast_stats.entry(beast.live.token_id).write(beast.live);
 
-            self.summit_events_dispatcher.read().emit_beast_event(beast.live);
+            self.emit(LiveBeastStatsEvent { token_id: beast.live.token_id, live_stats: beast.live });
 
             if update_diplomacy && beast.live.stats.diplomacy == 1 {
                 let (specials_hash, total_power, beast_token_ids) = Self::_get_diplomacy_data(@self, beast);
-                self.summit_events_dispatcher.read().emit_diplomacy_event(specials_hash, beast_token_ids, total_power);
+                self.emit(DiplomacyEvent { specials_hash, beast_token_ids, total_power });
             }
         }
 
@@ -750,7 +832,6 @@ pub mod summit_systems {
             assert(extra_life_potions <= BEAST_MAX_EXTRA_LIVES, errors::BEAST_MAX_EXTRA_LIVES);
 
             let beast_dispatcher = self.beast_dispatcher.read();
-            let event_dispatcher = self.summit_events_dispatcher.read();
 
             let summit_owner = beast_dispatcher.owner_of(summit_beast_token_id.into());
             assert(get_caller_address() != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
@@ -932,25 +1013,27 @@ pub mod summit_systems {
                     beast_attacked = true;
 
                     // emit battle event
-                    event_dispatcher
-                        .emit_battle_event(
-                            beast_owner,
-                            attacking_beast_token_id,
-                            attack_index,
-                            attacking_beast.fixed.id,
-                            attacking_beast.fixed.shiny,
-                            attacking_beast.fixed.animated,
-                            summit_beast_token_id,
-                            attack_count,
-                            attack_damage,
-                            critical_attack_count,
-                            critical_attack_damage,
-                            counter_attack_count,
-                            counter_attack_damage,
-                            critical_counter_attack_count,
-                            critical_counter_attack_damage,
-                            attack_potions,
-                            xp_gained,
+                    self
+                        .emit(
+                            BattleEvent {
+                                attacking_beast_token_id,
+                                attack_index,
+                                attacking_beast_owner: beast_owner,
+                                attacking_beast_id: attacking_beast.fixed.id,
+                                shiny: attacking_beast.fixed.shiny,
+                                animated: attacking_beast.fixed.animated,
+                                defending_beast_token_id: summit_beast_token_id,
+                                attack_count,
+                                attack_damage,
+                                critical_attack_count,
+                                critical_attack_damage,
+                                counter_attack_count,
+                                counter_attack_damage,
+                                critical_counter_attack_count,
+                                critical_counter_attack_damage,
+                                attack_potions,
+                                xp_gained,
+                            },
                         );
 
                     if attacking_beast.live.current_health == 0 {
@@ -1000,7 +1083,21 @@ pub mod summit_systems {
                         self.poison_state.write(poison::pack_poison_state(get_block_timestamp(), 0));
 
                         // emit summit event
-                        event_dispatcher.emit_summit_event(attacking_beast.fixed, attacking_beast.live, beast_owner);
+                        self
+                            .emit(
+                                SummitEvent {
+                                    beast_token_id: attacking_beast.live.token_id,
+                                    beast_id: attacking_beast.fixed.id,
+                                    prefix: attacking_beast.fixed.prefix,
+                                    suffix: attacking_beast.fixed.suffix,
+                                    level: attacking_beast.fixed.level,
+                                    health: attacking_beast.fixed.health,
+                                    shiny: attacking_beast.fixed.shiny,
+                                    animated: attacking_beast.fixed.animated,
+                                    live_stats: attacking_beast.live,
+                                    owner: beast_owner,
+                                },
+                            );
 
                         break;
                     }
@@ -1253,7 +1350,12 @@ pub mod summit_systems {
             // self.reward_dispatcher.read().transfer(beast_owner, reward_amount);
 
             let reward_amount_u32: u32 = (reward_amount / 100_000_000_000_000).try_into().unwrap();
-            self.summit_events_dispatcher.read().emit_reward_event(beast_token_id, beast_owner, reward_amount_u32);
+            self
+                .emit(
+                    RewardEvent {
+                        block_number: get_block_number(), beast_token_id, owner: beast_owner, amount: reward_amount_u32,
+                    },
+                );
         }
     }
 
