@@ -361,18 +361,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     if (action.type === 'attack_until_capture') {
-      setBattleEvents([]);
-      setAttackInProgress(true);
-
-      let beasts = action.beasts.slice(0, 75);
-
-      if (beasts.length === 0) {
+      if (action.beasts.length === 0) {
         setActionFailed();
         return false;
       }
 
       txs.push(
-        ...attack(beasts, false, true, action.extraLifePotions)
+        ...attack(action.beasts, false, true, action.extraLifePotions)
       );
     }
 
@@ -440,16 +435,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       } else {
         setAttackInProgress(false);
       }
-    } else if (action.type === 'attack_until_capture') {
-      if (!captured) {
-        executeGameAction({
-          type: 'attack_until_capture',
-          beasts: action.beasts.slice(75),
-          extraLifePotions: action.extraLifePotions
-        });
-      } else {
-        setAttackInProgress(false);
-      }
+    } else if (action.type === 'attack_until_capture' && captured) {
+      setAttackInProgress(false);
+      return false;
     } else if (action.type === 'add_extra_life') {
       setTokenBalances({
         ...tokenBalances,

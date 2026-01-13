@@ -53,20 +53,26 @@ function ClaimSkullReward(props) {
     try {
       const totalSkulls = getTotalSkullTokens();
       const beastIds = unclaimedSkullBeasts.map(beast => beast.token_id);
+      const promises: Promise<unknown>[] = [];
 
-      let allSucceeded = true;
       for (let i = 0; i < beastIds.length; i += LIMIT) {
         const batch = beastIds.slice(i, i + LIMIT);
-        const res = await executeGameAction({
-          type: 'claim_skull_reward',
-          beastIds: batch,
-        });
-
-        if (!res) {
-          allSucceeded = false;
-          break;
+        // Fire the call without awaiting
+        promises.push(
+          executeGameAction({
+            type: 'claim_skull_reward',
+            beastIds: batch,
+          })
+        );
+        // Wait 500ms before firing the next batch
+        if (i + LIMIT < beastIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
+
+      // Wait for all calls to complete
+      const results = await Promise.all(promises);
+      const allSucceeded = results.every(res => res);
 
       if (allSucceeded) {
         // Update local token balances

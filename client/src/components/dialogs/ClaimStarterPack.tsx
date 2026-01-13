@@ -84,18 +84,25 @@ function ClaimStarterPack(props) {
 
     try {
       const beastIds = unclaimedBeasts.map(beast => beast.token_id);
+      const promises: Promise<unknown>[] = []
 
       for (let i = 0; i < beastIds.length; i += LIMIT) {
         const batch = beastIds.slice(i, i + LIMIT)
-        const res = await executeGameAction({
-          type: "claim_beast_reward",
-          beastIds: batch
-        })
-
-        if (!res) {
-          break
+        // Fire the call without awaiting
+        promises.push(
+          executeGameAction({
+            type: "claim_beast_reward",
+            beastIds: batch
+          })
+        )
+        // Wait 500ms before firing the next batch
+        if (i + LIMIT < beastIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 500))
         }
       }
+
+      // Wait for all calls to complete
+      await Promise.all(promises)
     } catch (ex) {
       console.log(ex)
     } finally {

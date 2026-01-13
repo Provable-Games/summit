@@ -37,8 +37,8 @@ export const useSystemCalls = () => {
       let receipt: any = await waitForTransaction(tx.transaction_hash, 0);
 
       if (receipt.execution_status === "REVERTED") {
+        console.log('action failed reverted', receipt);
         forceResetAction();
-        enqueueSnackbar('Action failed', { variant: 'warning', anchorOrigin: { vertical: 'top', horizontal: 'center' } })
         return
       }
 

@@ -35,7 +35,7 @@ function ActionBar() {
 
   const { selectedBeasts, summit,
     attackInProgress,
-    applyingPotions, setApplyingPotions, appliedPoisonCount, setAppliedPoisonCount,
+    applyingPotions, setApplyingPotions, appliedPoisonCount, setAppliedPoisonCount, setBattleEvents, setAttackInProgress,
     collection, collectionSyncing, setSelectedBeasts, attackMode, setAttackMode, autopilotLog, setAutopilotLog,
     autopilotEnabled, setAutopilotEnabled, appliedExtraLifePotions, setAppliedExtraLifePotions } = useGameStore();
   const {
@@ -139,14 +139,52 @@ function ActionBar() {
     return [];
   }, [summit?.beast?.token_id, collection.length, revivePotionsUsed, attackPotionsUsed]);
 
-  const handleAttackUntilCapture = (extraLifePotions) => {
+  const handleAttackUntilCapture = async (extraLifePotions) => {
     if (!enableAttack) return;
 
-    executeGameAction({
-      type: 'attack_until_capture',
-      beasts: collectionWithCombat.map((beast: Beast) => [beast, 1, beast.combat?.attackPotions || 0]),
-      extraLifePotions
-    });
+    setBattleEvents([]);
+    setAttackInProgress(true);
+
+    const BATCH_SIZE = 75;
+    const CONCURRENT_BATCHES = 10;
+    const allBeasts: [Beast, number, number][] = collectionWithCombat.map((beast: Beast) => [beast, 1, beast.combat?.attackPotions || 0]);
+
+    // Split into batches of 75
+    const batches: [Beast, number, number][][] = [];
+    for (let i = 0; i < allBeasts.length; i += BATCH_SIZE) {
+      batches.push(allBeasts.slice(i, i + BATCH_SIZE));
+    }
+
+    // Process batches in groups of 10
+    for (let groupStart = 0; groupStart < batches.length; groupStart += CONCURRENT_BATCHES) {
+      const groupBatches = batches.slice(groupStart, groupStart + CONCURRENT_BATCHES);
+      const promises: Promise<unknown>[] = [];
+
+      for (let i = 0; i < groupBatches.length; i++) {
+        // Fire the call without awaiting
+        promises.push(
+          executeGameAction({
+            type: 'attack_until_capture',
+            beasts: groupBatches[i],
+            extraLifePotions
+          })
+        );
+        // Wait 500ms before firing the next batch
+        if (i < groupBatches.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
+      // Wait for all calls in this group to complete
+      const results = await Promise.all(promises);
+      const allSucceeded = results.every(res => res);
+
+      // If any failed, stop processing
+      if (!allSucceeded) {
+        setAttackInProgress(false);
+        break;
+      }
+    }
   }
 
   const handleApplyExtraLife = (amount: number) => {

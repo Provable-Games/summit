@@ -107,13 +107,9 @@ const ClaimRewardsButton = () => {
                 <Typography sx={styles.menuItemTitle}>Skulls</Typography>
                 <Typography sx={styles.menuItemSubtitle}>{unclaimedSkullTokens} available</Typography>
               </Box>
-              <Tooltip title={<Box sx={styles.tooltip}>Coming Soon</Box>}>
-                <span>
-                  <Button disabled sx={[styles.claimButton, { opacity: 0.5 }]} onClick={handleClaimSkullReward}>
-                    <Typography sx={styles.claimButtonText}>CLAIM</Typography>
-                  </Button>
-                </span>
-              </Tooltip>
+              <Button sx={styles.claimButton} onClick={handleClaimSkullReward}>
+                <Typography sx={styles.claimButtonText}>CLAIM</Typography>
+              </Button>
             </Box>
           </MenuItem>
         )}
@@ -125,13 +121,9 @@ const ClaimRewardsButton = () => {
                 <Typography sx={styles.menuItemTitle}>Corpse Token</Typography>
                 <Typography sx={styles.menuItemSubtitle}>{unclaimedCorpseTokens} available</Typography>
               </Box>
-              <Tooltip title={<Box sx={styles.tooltip}>Coming Soon</Box>}>
-                <span>
-                  <Button disabled sx={[styles.claimButton, { opacity: 0.5 }]} onClick={handleClaimCorpseReward}>
-                    <Typography sx={styles.claimButtonText}>CLAIM</Typography>
-                  </Button>
-                </span>
-              </Tooltip>
+              <Button sx={styles.claimButton} onClick={handleClaimCorpseReward}>
+                <Typography sx={styles.claimButtonText}>CLAIM</Typography>
+              </Button>
             </Box>
           </MenuItem>
         )}

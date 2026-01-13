@@ -37,19 +37,26 @@ function claimCorpses(props) {
     try {
       const tokenAmount = getTotalCorpseTokens();
       const adventurerIds = adventurerCollection.map(adv => adv.id)
+      const promises: Promise<unknown>[] = []
 
-      let allSucceeded = true;
       for (let i = 0; i < adventurerIds.length; i += LIMIT) {
         const batch = adventurerIds.slice(i, i + LIMIT);
-        const res = await executeGameAction({
-          type: "claim_corpse_reward",
-          adventurerIds: batch
-        });
-        if (!res) {
-          allSucceeded = false;
-          break;
+        // Fire the call without awaiting
+        promises.push(
+          executeGameAction({
+            type: "claim_corpse_reward",
+            adventurerIds: batch
+          })
+        );
+        // Wait 500ms before firing the next batch
+        if (i + LIMIT < adventurerIds.length) {
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
+
+      // Wait for all calls to complete
+      const results = await Promise.all(promises);
+      const allSucceeded = results.every(res => res);
 
       if (allSucceeded) {
         setTokenBalances({

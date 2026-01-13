@@ -240,9 +240,10 @@ pub mod summit_systems {
             let mut i = 0;
             while (i < beast_token_ids.len()) {
                 let beast_token_id = *beast_token_ids.at(i);
-                assert(
-                    beast_dispatcher.owner_of(beast_token_id.into()) == get_caller_address(), errors::NOT_TOKEN_OWNER,
-                );
+                if (beast_dispatcher.owner_of(beast_token_id.into()) != get_caller_address()) {
+                    i += 1;
+                    continue;
+                }
 
                 let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
                 assert(beast.live.has_claimed_potions == 0, 'Already claimed potions');
@@ -254,15 +255,14 @@ pub mod summit_systems {
                 i += 1;
             }
 
+            assert(potion_rewards > 0, 'No potions to claim');
+
             self.attack_potion_dispatcher.read().transfer(get_caller_address(), 3 * potion_rewards * TOKEN_DECIMALS);
             self.poison_potion_dispatcher.read().transfer(get_caller_address(), 3 * potion_rewards * TOKEN_DECIMALS);
             self.revive_potion_dispatcher.read().transfer(get_caller_address(), 2 * potion_rewards * TOKEN_DECIMALS);
             self.extra_life_potion_dispatcher.read().transfer(get_caller_address(), potion_rewards * TOKEN_DECIMALS);
 
-            self
-                .test_money_dispatcher
-                .read()
-                .transfer(get_caller_address(), beast_token_ids.len().into() * TOKEN_DECIMALS);
+            self.test_money_dispatcher.read().transfer(get_caller_address(), potion_rewards * TOKEN_DECIMALS);
         }
 
         fn add_extra_life(ref self: ContractState, beast_token_id: u32, extra_life_potions: u16) {
