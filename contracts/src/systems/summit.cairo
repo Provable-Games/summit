@@ -25,7 +25,6 @@ pub trait ISummitSystem<T> {
 
     fn set_summit_reward(ref self: T, amount: u128);
     fn set_start_timestamp(ref self: T, start_timestamp: u64);
-    fn set_event_address(ref self: T, event_address: ContractAddress);
     fn set_attack_potion_address(ref self: T, attack_potion_address: ContractAddress);
     fn set_revive_potion_address(ref self: T, revive_potion_address: ContractAddress);
     fn set_extra_life_potion_address(ref self: T, extra_life_potion_address: ContractAddress);
@@ -54,7 +53,6 @@ pub trait ISummitSystem<T> {
     fn get_beast_submission_blocks(self: @T) -> u64;
     fn get_beast_top_spots(self: @T) -> u32;
 
-    fn get_event_address(self: @T) -> ContractAddress;
     fn get_dungeon_address(self: @T) -> ContractAddress;
     fn get_beast_address(self: @T) -> ContractAddress;
     fn get_beast_data_address(self: @T) -> ContractAddress;
@@ -86,9 +84,13 @@ pub mod summit_systems {
         TOKEN_DECIMALS, WISDOM_COST, errors,
     };
     use summit::erc20::interface::{SummitERC20Dispatcher, SummitERC20DispatcherTrait};
-    use summit::interfaces::{IBeastSystemsDispatcher, IBeastSystemsDispatcherTrait, ISummitEventsDispatcher};
+    use summit::interfaces::{IBeastSystemsDispatcher, IBeastSystemsDispatcherTrait};
     use summit::logic::{beast_utils, combat, poison, revival, rewards};
     use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, Stats};
+    use summit::models::events::{
+        BattleEvent, BattleEventData, BattleEventsEvent, CorpseEvent, DiplomacyEvent, LiveBeastStatsEvent,
+        LiveBeastStatsEventsEvent, PoisonEvent, RewardEvent, SkullEvent, SummitEvent,
+    };
     use summit::vrf::VRFImpl;
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
@@ -139,7 +141,6 @@ pub mod summit_systems {
         poison_potion_dispatcher: SummitERC20Dispatcher,
         skull_token_dispatcher: SummitERC20Dispatcher,
         corpse_token_dispatcher: SummitERC20Dispatcher,
-        summit_events_dispatcher: ISummitEventsDispatcher,
         test_money_dispatcher: IERC20Dispatcher,
     }
 
@@ -152,6 +153,8 @@ pub mod summit_systems {
         UpgradeableEvent: UpgradeableComponent::Event,
         LiveBeastStatsEvent: LiveBeastStatsEvent,
         BattleEvent: BattleEvent,
+        BattleEventsEvent: BattleEventsEvent,
+        LiveBeastStatsEventsEvent: LiveBeastStatsEventsEvent,
         RewardEvent: RewardEvent,
         PoisonEvent: PoisonEvent,
         DiplomacyEvent: DiplomacyEvent,
@@ -159,94 +162,6 @@ pub mod summit_systems {
         CorpseEvent: CorpseEvent,
         SkullEvent: SkullEvent,
     }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct LiveBeastStatsEvent {
-        #[key]
-        pub token_id: u32,
-        pub live_stats: LiveBeastStats,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct BattleEvent {
-        #[key]
-        pub attacking_beast_token_id: u32,
-        #[key]
-        pub attack_index: u16,
-        pub attacking_beast_owner: ContractAddress,
-        pub attacking_beast_id: u8,
-        pub shiny: u8,
-        pub animated: u8,
-        pub defending_beast_token_id: u32,
-        pub attack_count: u16,
-        pub attack_damage: u16,
-        pub critical_attack_count: u16,
-        pub critical_attack_damage: u16,
-        pub counter_attack_count: u16,
-        pub counter_attack_damage: u16,
-        pub critical_counter_attack_count: u16,
-        pub critical_counter_attack_damage: u16,
-        pub attack_potions: u8,
-        pub xp_gained: u8,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct RewardEvent {
-        #[key]
-        pub block_number: u64,
-        #[key]
-        pub beast_token_id: u32,
-        pub owner: ContractAddress,
-        pub amount: u32,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct PoisonEvent {
-        #[key]
-        pub beast_token_id: u32,
-        #[key]
-        pub block_timestamp: u64,
-        pub count: u16,
-        pub player: ContractAddress,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct DiplomacyEvent {
-        #[key]
-        pub specials_hash: felt252,
-        pub beast_token_ids: Span<u32>,
-        pub total_power: u16,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct SummitEvent {
-        #[key]
-        pub beast_token_id: u32,
-        pub beast_id: u8,
-        pub prefix: u8,
-        pub suffix: u8,
-        pub level: u16,
-        pub health: u16,
-        pub shiny: u8,
-        pub animated: u8,
-        pub live_stats: LiveBeastStats,
-        pub owner: ContractAddress,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct CorpseEvent {
-        #[key]
-        pub adventurer_id: u64,
-        pub player: ContractAddress,
-    }
-
-    #[derive(Drop, starknet::Event)]
-    pub struct SkullEvent {
-        #[key]
-        pub beast_token_id: u32,
-        pub skulls: u64,
-    }
-
 
     #[constructor]
     fn constructor(
@@ -556,11 +471,6 @@ pub mod summit_systems {
             self.start_timestamp.write(start_timestamp);
         }
 
-        fn set_event_address(ref self: ContractState, event_address: ContractAddress) {
-            self.ownable.assert_only_owner();
-            self.summit_events_dispatcher.write(ISummitEventsDispatcher { contract_address: event_address });
-        }
-
         fn set_attack_potion_address(ref self: ContractState, attack_potion_address: ContractAddress) {
             self.ownable.assert_only_owner();
             self.attack_potion_dispatcher.write(SummitERC20Dispatcher { contract_address: attack_potion_address });
@@ -618,10 +528,6 @@ pub mod summit_systems {
 
         fn get_start_timestamp(self: @ContractState) -> u64 {
             self.start_timestamp.read()
-        }
-
-        fn get_event_address(self: @ContractState) -> ContractAddress {
-            self.summit_events_dispatcher.read().contract_address
         }
 
         fn get_terminal_block(self: @ContractState) -> u64 {
@@ -767,7 +673,17 @@ pub mod summit_systems {
 
             self.emit(LiveBeastStatsEvent { token_id: beast.live.token_id, live_stats: beast.live });
 
-            if update_diplomacy && beast.live.stats.diplomacy == 1 {
+            if update_diplomacy {
+                self._emit_diplomacy_if_applicable(beast);
+            }
+        }
+
+        fn _write_beast(ref self: ContractState, beast: Beast) {
+            self.live_beast_stats.entry(beast.live.token_id).write(beast.live);
+        }
+
+        fn _emit_diplomacy_if_applicable(ref self: ContractState, beast: Beast) {
+            if beast.live.stats.diplomacy == 1 {
                 let (specials_hash, total_power, beast_token_ids) = Self::_get_diplomacy_data(@self, beast);
                 self.emit(DiplomacyEvent { specials_hash, beast_token_ids, total_power });
             }
@@ -879,6 +795,10 @@ pub mod summit_systems {
             };
 
             let current_time = get_block_timestamp();
+
+            // Arrays to collect events for batch emission at the end
+            let mut battle_events: Array<BattleEventData> = array![];
+            let mut live_stats_events: Array<LiveBeastStats> = array![];
 
             let mut total_attack_potions: u32 = 0;
             let mut remaining_revival_potions = revival_potions;
@@ -1043,10 +963,10 @@ pub mod summit_systems {
 
                     beast_attacked = true;
 
-                    // emit battle event
-                    self
-                        .emit(
-                            BattleEvent {
+                    // collect battle event for batch emission
+                    battle_events
+                        .append(
+                            BattleEventData {
                                 attacking_beast_token_id,
                                 attack_index,
                                 attacking_beast_owner: beast_owner,
@@ -1077,8 +997,10 @@ pub mod summit_systems {
                         }
                         // set death timestamp for prev summit beast
                         attacking_beast.live.last_death_timestamp = current_time;
-                        // update the live stats of the attacking beast
-                        self._save_beast(attacking_beast, true);
+                        // write beast and collect live stats for batch emission
+                        self._write_beast(attacking_beast);
+                        live_stats_events.append(attacking_beast.live);
+                        self._emit_diplomacy_if_applicable(attacking_beast);
                     } else if defending_beast.live.current_health == 0 {
                         // finalize the summit history for prev summit beast
                         self._finalize_summit_history(ref defending_beast, summit_owner);
@@ -1107,8 +1029,10 @@ pub mod summit_systems {
                                 .burn_from(get_caller_address(), extra_life_potions.into() * TOKEN_DECIMALS);
                         }
 
-                        // update the live stats of the attacking beast
-                        self._save_beast(attacking_beast, true);
+                        // write beast and collect live stats for batch emission
+                        self._write_beast(attacking_beast);
+                        live_stats_events.append(attacking_beast.live);
+                        self._emit_diplomacy_if_applicable(attacking_beast);
 
                         // reset poison state (count = 0, timestamp = current)
                         self.poison_state.write(poison::pack_poison_state(get_block_timestamp(), 0));
@@ -1142,8 +1066,19 @@ pub mod summit_systems {
 
             assert(beast_attacked, 'No beast attacked');
 
-            // update the live stats of the defending beast after all attacks
-            self._save_beast(defending_beast, true);
+            // write defending beast and collect live stats for batch emission
+            self._write_beast(defending_beast);
+            live_stats_events.append(defending_beast.live);
+            self._emit_diplomacy_if_applicable(defending_beast);
+
+            // emit batch events
+            self.emit(BattleEventsEvent { caller: get_caller_address(), battle_events: battle_events.span() });
+            self
+                .emit(
+                    LiveBeastStatsEventsEvent {
+                        caller: get_caller_address(), live_stats_events: live_stats_events.span(),
+                    },
+                );
 
             // Burn consumables
             if safe_attack {
