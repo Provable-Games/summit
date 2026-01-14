@@ -34,6 +34,8 @@ pub trait ISummitSystem<T> {
     fn set_corpse_token_address(ref self: T, corpse_token_address: ContractAddress);
     fn set_test_money_address(ref self: T, test_money_address: ContractAddress);
     fn withdraw_funds(ref self: T, token_address: ContractAddress, amount: u256);
+    fn emit_skull_event(ref self: T, beast_token_id: u32, skulls: u64);
+    fn emit_corpse_event(ref self: T, adventurer_id: u64, player: ContractAddress);
 
     fn get_summit_data(ref self: T) -> (Beast, u64, ContractAddress, u16, u64, felt252);
     fn get_summit_beast_token_id(self: @T) -> u32;
@@ -154,6 +156,8 @@ pub mod summit_systems {
         PoisonEvent: PoisonEvent,
         DiplomacyEvent: DiplomacyEvent,
         SummitEvent: SummitEvent,
+        CorpseEvent: CorpseEvent,
+        SkullEvent: SkullEvent,
     }
 
     #[derive(Drop, starknet::Event)]
@@ -228,6 +232,21 @@ pub mod summit_systems {
         pub live_stats: LiveBeastStats,
         pub owner: ContractAddress,
     }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct CorpseEvent {
+        #[key]
+        pub adventurer_id: u64,
+        pub player: ContractAddress,
+    }
+
+    #[derive(Drop, starknet::Event)]
+    pub struct SkullEvent {
+        #[key]
+        pub beast_token_id: u32,
+        pub skulls: u64,
+    }
+
 
     #[constructor]
     fn constructor(
@@ -583,6 +602,18 @@ pub mod summit_systems {
             self.ownable.assert_only_owner();
             let token = IERC20Dispatcher { contract_address: token_address };
             token.transfer(self.ownable.Ownable_owner.read(), amount);
+        }
+
+        fn emit_corpse_event(ref self: ContractState, adventurer_id: u64, player: ContractAddress) {
+            let corpse_address = self.corpse_token_dispatcher.read().contract_address;
+            assert(corpse_address == starknet::get_caller_address(), 'Invalid caller');
+            self.emit(CorpseEvent { adventurer_id, player });
+        }
+
+        fn emit_skull_event(ref self: ContractState, beast_token_id: u32, skulls: u64) {
+            let skull_address = self.skull_token_dispatcher.read().contract_address;
+            assert(skull_address == starknet::get_caller_address(), 'Invalid caller');
+            self.emit(SkullEvent { beast_token_id, skulls });
         }
 
         fn get_start_timestamp(self: @ContractState) -> u64 {
