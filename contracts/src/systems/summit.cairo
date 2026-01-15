@@ -244,6 +244,7 @@ pub mod summit_systems {
         fn claim_beast_reward(ref self: ContractState, beast_token_ids: Span<u32>) {
             assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
 
+            let caller = get_caller_address();
             let beast_dispatcher = self.beast_dispatcher.read();
 
             let mut potion_rewards: u256 = 0;
@@ -251,7 +252,7 @@ pub mod summit_systems {
             let mut i = 0;
             while (i < beast_token_ids.len()) {
                 let beast_token_id = *beast_token_ids.at(i);
-                if (beast_dispatcher.owner_of(beast_token_id.into()) != get_caller_address()) {
+                if (beast_dispatcher.owner_of(beast_token_id.into()) != caller) {
                     i += 1;
                     continue;
                 }
@@ -268,12 +269,12 @@ pub mod summit_systems {
 
             assert(potion_rewards > 0, 'No potions to claim');
 
-            self.attack_potion_dispatcher.read().transfer(get_caller_address(), 3 * potion_rewards * TOKEN_DECIMALS);
-            self.poison_potion_dispatcher.read().transfer(get_caller_address(), 3 * potion_rewards * TOKEN_DECIMALS);
-            self.revive_potion_dispatcher.read().transfer(get_caller_address(), 2 * potion_rewards * TOKEN_DECIMALS);
-            self.extra_life_potion_dispatcher.read().transfer(get_caller_address(), potion_rewards * TOKEN_DECIMALS);
+            self.attack_potion_dispatcher.read().transfer(caller, 3 * potion_rewards * TOKEN_DECIMALS);
+            self.poison_potion_dispatcher.read().transfer(caller, 3 * potion_rewards * TOKEN_DECIMALS);
+            self.revive_potion_dispatcher.read().transfer(caller, 2 * potion_rewards * TOKEN_DECIMALS);
+            self.extra_life_potion_dispatcher.read().transfer(caller, potion_rewards * TOKEN_DECIMALS);
 
-            self.test_money_dispatcher.read().transfer(get_caller_address(), potion_rewards * TOKEN_DECIMALS);
+            self.test_money_dispatcher.read().transfer(caller, potion_rewards * TOKEN_DECIMALS);
         }
 
         fn add_extra_life(ref self: ContractState, beast_token_id: u32, extra_life_potions: u16) {
@@ -355,6 +356,8 @@ pub mod summit_systems {
             assert(count > 0, 'No poison to apply');
             assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
 
+            let caller = get_caller_address();
+
             let summit_beast_token_id = self.summit_beast_token_id.read();
             assert(beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
 
@@ -371,12 +374,12 @@ pub mod summit_systems {
             let (current_timestamp, current_count) = poison::unpack_poison_state(self.poison_state.read());
             self.poison_state.write(poison::pack_poison_state(current_timestamp, current_count + count));
 
-            self.poison_potion_dispatcher.read().burn_from(get_caller_address(), count.into() * TOKEN_DECIMALS);
+            self.poison_potion_dispatcher.read().burn_from(caller, count.into() * TOKEN_DECIMALS);
 
             self
                 .emit(
                     PoisonEvent {
-                        beast_token_id, block_timestamp: get_block_timestamp(), count, player: get_caller_address(),
+                        beast_token_id, block_timestamp: get_block_timestamp(), count, player: caller,
                     },
                 );
         }
@@ -765,6 +768,7 @@ pub mod summit_systems {
             defending_beast_token_id: u32,
         ) -> (u32, u32, u16) {
             let summit_beast_token_id = self.summit_beast_token_id.read();
+            let caller = get_caller_address();
 
             assert(summit_beast_token_id != 0, 'Summit not started');
             Self::_summit_playable(@self);
@@ -781,7 +785,7 @@ pub mod summit_systems {
             let beast_dispatcher = self.beast_dispatcher.read();
 
             let summit_owner = beast_dispatcher.owner_of(summit_beast_token_id.into());
-            assert(get_caller_address() != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
+            assert(caller != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
 
             let mut defending_beast = Self::_get_beast(@self, summit_beast_token_id);
             let diplomacy_bonus = Self::_get_diplomacy_bonus(@self, defending_beast);
@@ -810,7 +814,7 @@ pub mod summit_systems {
                 assert!(attack_count > 0, "Attack count must be greater than 0");
                 // assert the caller owns the beast they attacking with
                 let beast_owner = beast_dispatcher.owner_of(attacking_beast_token_id.into());
-                assert(beast_owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
+                assert(beast_owner == caller, errors::NOT_TOKEN_OWNER);
 
                 // get stats for the beast that is attacking
                 let mut attacking_beast = Self::_get_beast(@self, attacking_beast_token_id);
@@ -1026,7 +1030,7 @@ pub mod summit_systems {
                             self
                                 .extra_life_potion_dispatcher
                                 .read()
-                                .burn_from(get_caller_address(), extra_life_potions.into() * TOKEN_DECIMALS);
+                                .burn_from(caller, extra_life_potions.into() * TOKEN_DECIMALS);
                         }
 
                         // write beast and collect live stats for batch emission
@@ -1087,17 +1091,11 @@ pub mod summit_systems {
 
             let revival_potions_used = revival_potions - remaining_revival_potions;
             if revival_potions_used > 0 {
-                self
-                    .revive_potion_dispatcher
-                    .read()
-                    .burn_from(get_caller_address(), revival_potions_used.into() * TOKEN_DECIMALS);
+                self.revive_potion_dispatcher.read().burn_from(caller, revival_potions_used.into() * TOKEN_DECIMALS);
             }
 
             if total_attack_potions > 0 {
-                self
-                    .attack_potion_dispatcher
-                    .read()
-                    .burn_from(get_caller_address(), total_attack_potions.into() * TOKEN_DECIMALS);
+                self.attack_potion_dispatcher.read().burn_from(caller, total_attack_potions.into() * TOKEN_DECIMALS);
             }
 
             let extra_life_potions_used = if defending_beast.live.current_health == 0 {
