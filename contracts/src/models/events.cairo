@@ -23,7 +23,6 @@ pub struct RewardEvent {
 pub struct RewardsClaimedEvent {
     #[key]
     pub player: ContractAddress,
-    pub beast_token_ids: Span<u32>,
     pub amount: u256,
 }
 

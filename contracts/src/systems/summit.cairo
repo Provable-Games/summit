@@ -248,8 +248,9 @@ pub mod summit_systems {
 
             let mut total_claimable: u256 = 0;
             let mut beast_updates: Array<felt252> = array![];
-            let mut claimed_beast_ids: Array<u32> = array![];
 
+
+            // TODO: add minimum claim 5 survivor or summit over
             let mut i = 0;
             while i < beast_token_ids.len() {
                 let beast_token_id = *beast_token_ids.at(i);
@@ -272,7 +273,6 @@ pub mod summit_systems {
                     // Write beast and collect packed stats
                     let packed = self._write_beast(beast);
                     beast_updates.append(packed);
-                    claimed_beast_ids.append(beast_token_id);
                 }
 
                 i += 1;
@@ -288,12 +288,7 @@ pub mod summit_systems {
 
             // Emit events
             self.emit(BeastUpdatesEvent { beast_updates: beast_updates.span() });
-            self
-                .emit(
-                    RewardsClaimedEvent {
-                        player: caller, beast_token_ids: claimed_beast_ids.span(), amount: transfer_amount,
-                    },
-                );
+            self.emit(RewardsClaimedEvent { player: caller, amount: transfer_amount });
         }
 
         fn claim_beast_reward(ref self: ContractState, beast_token_ids: Span<u32>) {

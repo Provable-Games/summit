@@ -1,0 +1,40 @@
+{
+  "name": "@summit/indexer",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "apibara dev",
+    "build": "apibara build",
+    "start": "apibara start",
+    "check-dna": "tsx scripts/check-dna-status.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "keywords": [
+    "starknet",
+    "dojo",
+    "summit",
+    "indexer",
+    "apibara"
+  ],
+  "author": "",
+  "license": "MIT",
+  "description": "Savage Summit Dojo event indexer using Apibara with PostgreSQL persistence",
+  "dependencies": {
+    "@apibara/indexer": "next",
+    "@apibara/plugin-drizzle": "next",
+    "@apibara/starknet": "next",
+    "apibara": "next",
+    "drizzle-orm": "^0.38.0",
+    "pg": "^8.13.0",
+    "starknet": "^7.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.0",
+    "drizzle-kit": "^0.30.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
