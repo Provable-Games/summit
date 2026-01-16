@@ -1,4 +1,5 @@
 use starknet::ContractAddress;
+use summit::models::beast::LiveBeastStats;
 
 #[derive(Drop, starknet::Event)]
 pub struct BeastUpdatesEvent {
@@ -16,6 +17,14 @@ pub struct RewardEvent {
     pub beast_token_id: u32,
     pub owner: ContractAddress,
     pub amount: u32,
+}
+
+#[derive(Drop, starknet::Event)]
+pub struct RewardsClaimedEvent {
+    #[key]
+    pub player: ContractAddress,
+    pub beast_token_ids: Span<u32>,
+    pub amount: u256,
 }
 
 #[derive(Drop, starknet::Event)]
@@ -59,7 +68,7 @@ pub struct SkullEvent {
     pub skulls: u64,
 }
 
-#[derive(Copy, Drop, Serde, starknet::Store)]
+#[derive(Copy, Drop, Serde, starknet::Event, starknet::Store)]
 pub struct BattleEvent {
     pub attacking_beast_token_id: u32,
     pub attack_index: u16,

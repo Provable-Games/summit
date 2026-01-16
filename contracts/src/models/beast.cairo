@@ -13,6 +13,8 @@ pub struct LiveBeastStats {
     pub has_claimed_potions: u8, // 1 bit
     pub blocks_held: u32, // 17 bits
     pub stats: Stats,
+    pub rewards_earned: u32, // 32 bits
+    pub rewards_claimed: u32 // 32 bits
 }
 
 #[derive(Copy, Drop, Serde)]
@@ -52,6 +54,8 @@ mod pow {
     pub const TWO_POW_177: u256 = 0x200000000000000000000000000000000000000000000;
     pub const TWO_POW_178: u256 = 0x400000000000000000000000000000000000000000000;
     pub const TWO_POW_179: u256 = 0x800000000000000000000000000000000000000000000;
+    pub const TWO_POW_180: u256 = 0x1000000000000000000000000000000000000000000000;
+    pub const TWO_POW_212: u256 = 0x10000000000000000000000000000000000000000000000000000;
 
     // Mask constants for optimized unpacking (value = 2^N - 1)
     pub const MASK_1: u256 = 0x1;
@@ -61,6 +65,7 @@ mod pow {
     pub const MASK_12: u256 = 0xFFF;
     pub const MASK_16: u256 = 0xFFFF;
     pub const MASK_17: u256 = 0x1FFFF;
+    pub const MASK_32: u256 = 0xFFFFFFFF;
     pub const MASK_64: u256 = 0xFFFFFFFFFFFFFFFF;
 }
 
@@ -68,6 +73,7 @@ mod pow {
 pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking<LiveBeastStats, felt252> {
     fn pack(value: LiveBeastStats) -> felt252 {
         // Pack according to structure:
+        // Total bits: 17+12+12+16+4+64+6+12+1+17+8+8+1+1+1+32+32 = 244 bits (fits in felt252's 251 bits)
         (value.token_id.into()
             + value.current_health.into() * pow::TWO_POW_17
             + value.bonus_health.into() * pow::TWO_POW_29
@@ -82,7 +88,9 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
             + value.stats.luck.into() * pow::TWO_POW_169
             + value.stats.specials.into() * pow::TWO_POW_177
             + value.stats.wisdom.into() * pow::TWO_POW_178
-            + value.stats.diplomacy.into() * pow::TWO_POW_179)
+            + value.stats.diplomacy.into() * pow::TWO_POW_179
+            + value.rewards_earned.into() * pow::TWO_POW_180
+            + value.rewards_claimed.into() * pow::TWO_POW_212)
             .try_into()
             .expect('pack beast overflow')
     }
@@ -141,6 +149,14 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
         let specials = (flags & 1_u256).try_into().expect('unpack specials');
         let wisdom = ((flags / 2_u256) & 1_u256).try_into().expect('unpack wisdom');
         let diplomacy = ((flags / 4_u256) & 1_u256).try_into().expect('unpack diplomacy');
+        packed = packed / 8_u256; // shift past 3 flag bits
+
+        // Extract rewards_earned (32 bits)
+        let rewards_earned = (packed & pow::MASK_32).try_into().expect('unpack rewards_earned');
+        packed = packed / 0x100000000_u256; // TWO_POW_32
+
+        // Extract rewards_claimed (32 bits)
+        let rewards_claimed = (packed & pow::MASK_32).try_into().expect('unpack rewards_claimed');
 
         let stats = Stats { spirit, luck, specials, wisdom, diplomacy };
 
@@ -156,6 +172,8 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
             has_claimed_potions,
             blocks_held,
             stats,
+            rewards_earned,
+            rewards_claimed,
         }
     }
 }
@@ -236,6 +254,8 @@ mod tests {
         specials: u8,
         wisdom: u8,
         diplomacy: u8,
+        rewards_earned: u32,
+        rewards_claimed: u32,
     ) -> LiveBeastStats {
         LiveBeastStats {
             token_id,
@@ -249,6 +269,8 @@ mod tests {
             has_claimed_potions,
             blocks_held,
             stats: Stats { spirit, luck, specials, wisdom, diplomacy },
+            rewards_earned,
+            rewards_claimed,
         }
     }
 
@@ -270,7 +292,9 @@ mod tests {
             0_u8, // luck
             0_u8, // specials
             0_u8, // wisdom
-            0_u8 // diplomacy
+            0_u8, // diplomacy
+            0_u32, // rewards_earned
+            0_u32 // rewards_claimed
         );
         let packed = PackableLiveStatsStorePacking::pack(stats);
         let unpacked = PackableLiveStatsStorePacking::unpack(packed);
@@ -289,24 +313,27 @@ mod tests {
         assert(unpacked.stats.specials == 0, 'zero specials');
         assert(unpacked.stats.wisdom == 0, 'zero wisdom');
         assert(unpacked.stats.diplomacy == 0, 'zero diplomacy');
+        assert(unpacked.rewards_earned == 0, 'zero rewards_earned');
+        assert(unpacked.rewards_claimed == 0, 'zero rewards_claimed');
     }
 
     #[test]
     #[available_gas(gas: 1200000)]
     fn pack_unpack_max_values() {
         // Bit-width maxima based on packing layout:
-        // token_id: 17 bits → 2^17 - 1
-        // current_health: 12 bits → 2^12 - 1
-        // bonus_health: 12 bits → 2^12 - 1
-        // bonus_xp: 16 bits → 2^16 - 1
-        // attack_streak: 4 bits → 2^4 - 1
-        // last_death_timestamp: 64 bits → 2^64 - 1
-        // revival_count: 6 bits → 2^6 - 1
-        // extra_lives: 12 bits → 2^12 - 1
-        // has_claimed_potions: 1 bit → 1
-        // blocks_held: 17 bits → 2^17 - 1
-        // spirit, luck: 8 bits → 255
-        // specials, wisdom, diplomacy: 1 bit → 1
+        // token_id: 17 bits -> 2^17 - 1
+        // current_health: 12 bits -> 2^12 - 1
+        // bonus_health: 12 bits -> 2^12 - 1
+        // bonus_xp: 16 bits -> 2^16 - 1
+        // attack_streak: 4 bits -> 2^4 - 1
+        // last_death_timestamp: 64 bits -> 2^64 - 1
+        // revival_count: 6 bits -> 2^6 - 1
+        // extra_lives: 12 bits -> 2^12 - 1
+        // has_claimed_potions: 1 bit -> 1
+        // blocks_held: 17 bits -> 2^17 - 1
+        // spirit, luck: 8 bits -> 255
+        // specials, wisdom, diplomacy: 1 bit -> 1
+        // rewards_earned, rewards_claimed: 32 bits -> 2^32 - 1
         let stats = build_stats(
             131070_u32, // (2^17 - 1) - 1
             4094_u16, // (2^12 - 1) - 1
@@ -322,7 +349,9 @@ mod tests {
             100, // (2^8 - 1) - 1
             1_u8, // 1-bit remains 1 for max
             1_u8, // 1-bit remains 1 for max
-            1_u8 // 1-bit remains 1 for max
+            1_u8, // 1-bit remains 1 for max
+            0xFFFFFFFE_u32, // (2^32 - 1) - 1
+            0xFFFFFFFE_u32 // (2^32 - 1) - 1
         );
         let packed = PackableLiveStatsStorePacking::pack(stats);
         let unpacked = PackableLiveStatsStorePacking::unpack(packed);
@@ -341,12 +370,16 @@ mod tests {
         assert(unpacked.stats.specials == 1_u8, 'max specials');
         assert(unpacked.stats.wisdom == 1_u8, 'max wisdom');
         assert(unpacked.stats.diplomacy == 1_u8, 'max diplomacy');
+        assert(unpacked.rewards_earned == 0xFFFFFFFE_u32, 'max rewards_earned');
+        assert(unpacked.rewards_claimed == 0xFFFFFFFE_u32, 'max rewards_claimed');
     }
 
     #[test]
     #[available_gas(gas: 1200000)]
     fn pack_unpack_mixed_values() {
-        let stats = build_stats(100_u32, 100, 100, 100, 9, 123456789, 7, 42, 1, 54321, 17, 96, 0, 1_u8, 0_u8);
+        let stats = build_stats(
+            100_u32, 100, 100, 100, 9, 123456789, 7, 42, 1, 54321, 17, 96, 0, 1_u8, 0_u8, 1000000_u32, 500000_u32,
+        );
         let packed = PackableLiveStatsStorePacking::pack(stats);
         let unpacked = PackableLiveStatsStorePacking::unpack(packed);
 
@@ -365,5 +398,7 @@ mod tests {
         assert(unpacked.stats.specials == 0_u8, 'mixed specials');
         assert(unpacked.stats.wisdom == 1_u8, 'mixed wisdom');
         assert(unpacked.stats.diplomacy == 0_u8, 'mixed diplomacy');
+        assert(unpacked.rewards_earned == 1000000_u32, 'mixed rewards_earned');
+        assert(unpacked.rewards_claimed == 500000_u32, 'mixed rewards_claimed');
     }
 }

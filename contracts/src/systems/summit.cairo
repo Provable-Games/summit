@@ -13,6 +13,7 @@ pub trait ISummitSystem<T> {
         vrf: bool,
     ) -> (u32, u32, u16);
     fn feed(ref self: T, beast_token_id: u32, amount: u16);
+    fn claim_rewards(ref self: T, beast_token_ids: Span<u32>);
     fn claim_beast_reward(ref self: T, beast_token_ids: Span<u32>);
 
     fn add_extra_life(ref self: T, beast_token_id: u32, extra_life_potions: u16);
@@ -86,10 +87,10 @@ pub mod summit_systems {
     use summit::erc20::interface::{SummitERC20Dispatcher, SummitERC20DispatcherTrait};
     use summit::interfaces::{IBeastSystemsDispatcher, IBeastSystemsDispatcherTrait};
     use summit::logic::{beast_utils, combat, poison, revival, rewards};
-    use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, Stats};
+    use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, PackableLiveStatsStorePacking, Stats};
     use summit::models::events::{
-        BattleEvent, BattleEvent, CorpseEvent, DiplomacyEvent, LiveBeastStatsEvent,
-        BeastUpdatesEvent, PoisonEvent, RewardEvent, SkullEvent, SummitEvent,
+        BattleEvent, BeastUpdatesEvent, CorpseEvent, DiplomacyEvent, LiveBeastStatsEvent, PoisonEvent, RewardEvent,
+        RewardsClaimedEvent, SkullEvent, SummitEvent,
     };
     use summit::vrf::VRFImpl;
 
@@ -111,7 +112,7 @@ pub mod summit_systems {
         #[substorage(v0)]
         upgradeable: UpgradeableComponent::Storage,
         summit_beast_token_id: u32,
-        live_beast_stats: Map<u32, LiveBeastStats>,
+        live_beast_stats: Map<u32, felt252>,
         // Packed poison state: timestamp (64 bits) | count (16 bits)
         poison_state: felt252,
         summit_history: Map<u32, u64>,
@@ -153,9 +154,9 @@ pub mod summit_systems {
         UpgradeableEvent: UpgradeableComponent::Event,
         LiveBeastStatsEvent: LiveBeastStatsEvent,
         BattleEvent: BattleEvent,
-        BattleEventsEvent: BattleEventsEvent,
         BeastUpdatesEvent: BeastUpdatesEvent,
         RewardEvent: RewardEvent,
+        RewardsClaimedEvent: RewardsClaimedEvent,
         PoisonEvent: PoisonEvent,
         DiplomacyEvent: DiplomacyEvent,
         SummitEvent: SummitEvent,
@@ -239,6 +240,60 @@ pub mod summit_systems {
 
             self.corpse_token_dispatcher.read().burn_from(get_caller_address(), amount.into() * TOKEN_DECIMALS);
             self._save_beast(beast, false);
+        }
+
+        fn claim_rewards(ref self: ContractState, beast_token_ids: Span<u32>) {
+            let caller = get_caller_address();
+            let beast_dispatcher = self.beast_dispatcher.read();
+
+            let mut total_claimable: u256 = 0;
+            let mut beast_updates: Array<felt252> = array![];
+            let mut claimed_beast_ids: Array<u32> = array![];
+
+            let mut i = 0;
+            while i < beast_token_ids.len() {
+                let beast_token_id = *beast_token_ids.at(i);
+
+                // Verify caller owns the beast
+                let beast_owner = beast_dispatcher.owner_of(beast_token_id.into());
+                assert(beast_owner == caller, errors::NOT_TOKEN_OWNER);
+
+                // Get beast and calculate claimable rewards
+                let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
+                let claimable = beast.live.rewards_earned - beast.live.rewards_claimed;
+
+                if claimable > 0 {
+                    // Update rewards_claimed
+                    beast.live.rewards_claimed = beast.live.rewards_earned;
+
+                    // Add to total (will convert to full decimals later)
+                    total_claimable += claimable.into();
+
+                    // Write beast and collect packed stats
+                    let packed = self._write_beast(beast);
+                    beast_updates.append(packed);
+                    claimed_beast_ids.append(beast_token_id);
+                }
+
+                i += 1;
+            }
+
+            assert(total_claimable > 0, 'No rewards to claim');
+
+            // Convert back to 18 decimals (add back the 14 decimals we removed)
+            let transfer_amount: u256 = total_claimable * 100_000_000_000_000;
+
+            // Transfer rewards to caller
+            self.reward_dispatcher.read().transfer(caller, transfer_amount);
+
+            // Emit events
+            self.emit(BeastUpdatesEvent { beast_updates: beast_updates.span() });
+            self
+                .emit(
+                    RewardsClaimedEvent {
+                        player: caller, beast_token_ids: claimed_beast_ids.span(), amount: transfer_amount,
+                    },
+                );
         }
 
         fn claim_beast_reward(ref self: ContractState, beast_token_ids: Span<u32>) {
@@ -596,7 +651,8 @@ pub mod summit_systems {
             let mut i = 0;
             while i < beast_token_ids.len() {
                 let token_id = *beast_token_ids.at(i);
-                let live_stat: LiveBeastStats = self.live_beast_stats.entry(token_id).read();
+                let packed = self.live_beast_stats.entry(token_id).read();
+                let live_stat: LiveBeastStats = PackableLiveStatsStorePacking::unpack(packed);
                 live_stats.append(live_stat);
                 i += 1;
             }
@@ -663,13 +719,15 @@ pub mod summit_systems {
         /// @return Beast the beast
         fn _get_beast(self: @ContractState, token_id: u32) -> Beast {
             let fixed: PackableBeast = self.beast_nft_dispatcher.read().get_beast(token_id.into());
-            let mut live: LiveBeastStats = self.live_beast_stats.entry(token_id).read();
+            let packed = self.live_beast_stats.entry(token_id).read();
+            let mut live: LiveBeastStats = PackableLiveStatsStorePacking::unpack(packed);
             live.token_id = token_id;
             Beast { fixed, live }
         }
 
         fn _save_beast(ref self: ContractState, beast: Beast, update_diplomacy: bool) {
-            let packed_beast = self.live_beast_stats.entry(beast.live.token_id).write(beast.live);
+            let packed_beast = PackableLiveStatsStorePacking::pack(beast.live);
+            self.live_beast_stats.entry(beast.live.token_id).write(packed_beast);
 
             self.emit(LiveBeastStatsEvent { live_stats: packed_beast });
 
@@ -679,7 +737,9 @@ pub mod summit_systems {
         }
 
         fn _write_beast(ref self: ContractState, beast: Beast) -> felt252 {
-            self.live_beast_stats.entry(beast.live.token_id).write(beast.live)
+            let packed = PackableLiveStatsStorePacking::pack(beast.live);
+            self.live_beast_stats.entry(beast.live.token_id).write(packed);
+            packed
         }
 
         fn _emit_diplomacy_if_applicable(ref self: ContractState, beast: Beast) {
@@ -753,6 +813,10 @@ pub mod summit_systems {
 
                 let summit_reward_amount = total_reward_amount - (diplomacy_reward_amount * diplomacy_count.into());
                 Self::_reward_beast(ref self, beast.live.token_id, summit_owner, summit_reward_amount);
+
+                // Store rewards earned with 14 decimals removed
+                let reward_amount_u32: u32 = (summit_reward_amount / 100_000_000_000_000).try_into().unwrap();
+                beast.live.rewards_earned += reward_amount_u32;
             }
         }
 
@@ -796,9 +860,8 @@ pub mod summit_systems {
 
             let current_time = get_block_timestamp();
 
-            // Arrays to collect events for batch emission at the end
-            let mut battle_events: Array<BattleEvent> = array![];
-            let mut beast_updates: Array<LiveBeastStats> = array![];
+            // Array to collect beast updates for batch emission at the end
+            let mut beast_updates: Array<felt252> = array![];
 
             let mut total_attack_potions: u32 = 0;
             let mut remaining_revival_potions = revival_potions;
@@ -963,9 +1026,9 @@ pub mod summit_systems {
 
                     beast_attacked = true;
 
-                    // collect battle event for batch emission
-                    battle_events
-                        .append(
+                    // emit battle event
+                    self
+                        .emit(
                             BattleEvent {
                                 attacking_beast_token_id,
                                 attack_index,
@@ -1068,13 +1131,7 @@ pub mod summit_systems {
             self._emit_diplomacy_if_applicable(defending_beast);
 
             // emit batch events
-            self.emit(BattleEventsEvent { caller: get_caller_address(), battle_events: battle_events.span() });
-            self
-                .emit(
-                    BeastUpdatesEvent {
-                        beast_updates: beast_updates.span(),
-                    },
-                );
+            self.emit(BeastUpdatesEvent { beast_updates: beast_updates.span() });
 
             // Burn consumables
             if safe_attack {
