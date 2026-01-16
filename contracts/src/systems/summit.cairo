@@ -88,8 +88,8 @@ pub mod summit_systems {
     use summit::logic::{beast_utils, combat, poison, revival, rewards};
     use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, Stats};
     use summit::models::events::{
-        BattleEvent, BattleEventData, BattleEventsEvent, CorpseEvent, DiplomacyEvent, LiveBeastStatsEvent,
-        LiveBeastStatsEventsEvent, PoisonEvent, RewardEvent, SkullEvent, SummitEvent,
+        BattleEvent, BattleEvent, CorpseEvent, DiplomacyEvent, LiveBeastStatsEvent,
+        BeastUpdatesEvent, PoisonEvent, RewardEvent, SkullEvent, SummitEvent,
     };
     use summit::vrf::VRFImpl;
 
@@ -154,7 +154,7 @@ pub mod summit_systems {
         LiveBeastStatsEvent: LiveBeastStatsEvent,
         BattleEvent: BattleEvent,
         BattleEventsEvent: BattleEventsEvent,
-        LiveBeastStatsEventsEvent: LiveBeastStatsEventsEvent,
+        BeastUpdatesEvent: BeastUpdatesEvent,
         RewardEvent: RewardEvent,
         PoisonEvent: PoisonEvent,
         DiplomacyEvent: DiplomacyEvent,
@@ -669,17 +669,17 @@ pub mod summit_systems {
         }
 
         fn _save_beast(ref self: ContractState, beast: Beast, update_diplomacy: bool) {
-            self.live_beast_stats.entry(beast.live.token_id).write(beast.live);
+            let packed_beast = self.live_beast_stats.entry(beast.live.token_id).write(beast.live);
 
-            self.emit(LiveBeastStatsEvent { token_id: beast.live.token_id, live_stats: beast.live });
+            self.emit(LiveBeastStatsEvent { live_stats: packed_beast });
 
             if update_diplomacy {
                 self._emit_diplomacy_if_applicable(beast);
             }
         }
 
-        fn _write_beast(ref self: ContractState, beast: Beast) {
-            self.live_beast_stats.entry(beast.live.token_id).write(beast.live);
+        fn _write_beast(ref self: ContractState, beast: Beast) -> felt252 {
+            self.live_beast_stats.entry(beast.live.token_id).write(beast.live)
         }
 
         fn _emit_diplomacy_if_applicable(ref self: ContractState, beast: Beast) {
@@ -797,8 +797,8 @@ pub mod summit_systems {
             let current_time = get_block_timestamp();
 
             // Arrays to collect events for batch emission at the end
-            let mut battle_events: Array<BattleEventData> = array![];
-            let mut live_stats_events: Array<LiveBeastStats> = array![];
+            let mut battle_events: Array<BattleEvent> = array![];
+            let mut beast_updates: Array<LiveBeastStats> = array![];
 
             let mut total_attack_potions: u32 = 0;
             let mut remaining_revival_potions = revival_potions;
@@ -966,13 +966,9 @@ pub mod summit_systems {
                     // collect battle event for batch emission
                     battle_events
                         .append(
-                            BattleEventData {
+                            BattleEvent {
                                 attacking_beast_token_id,
                                 attack_index,
-                                attacking_beast_owner: beast_owner,
-                                attacking_beast_id: attacking_beast.fixed.id,
-                                shiny: attacking_beast.fixed.shiny,
-                                animated: attacking_beast.fixed.animated,
                                 defending_beast_token_id: summit_beast_token_id,
                                 attack_count,
                                 attack_damage,
@@ -998,8 +994,8 @@ pub mod summit_systems {
                         // set death timestamp for prev summit beast
                         attacking_beast.live.last_death_timestamp = current_time;
                         // write beast and collect live stats for batch emission
-                        self._write_beast(attacking_beast);
-                        live_stats_events.append(attacking_beast.live);
+                        let packed_attacking_beast = self._write_beast(attacking_beast);
+                        beast_updates.append(packed_attacking_beast);
                         self._emit_diplomacy_if_applicable(attacking_beast);
                     } else if defending_beast.live.current_health == 0 {
                         // finalize the summit history for prev summit beast
@@ -1030,8 +1026,8 @@ pub mod summit_systems {
                         }
 
                         // write beast and collect live stats for batch emission
-                        self._write_beast(attacking_beast);
-                        live_stats_events.append(attacking_beast.live);
+                        let packed_attacking_beast = self._write_beast(attacking_beast);
+                        beast_updates.append(packed_attacking_beast);
                         self._emit_diplomacy_if_applicable(attacking_beast);
 
                         // reset poison state (count = 0, timestamp = current)
@@ -1067,16 +1063,16 @@ pub mod summit_systems {
             assert(beast_attacked, 'No beast attacked');
 
             // write defending beast and collect live stats for batch emission
-            self._write_beast(defending_beast);
-            live_stats_events.append(defending_beast.live);
+            let packed_defending_beast = self._write_beast(defending_beast);
+            beast_updates.append(packed_defending_beast);
             self._emit_diplomacy_if_applicable(defending_beast);
 
             // emit batch events
             self.emit(BattleEventsEvent { caller: get_caller_address(), battle_events: battle_events.span() });
             self
                 .emit(
-                    LiveBeastStatsEventsEvent {
-                        caller: get_caller_address(), live_stats_events: live_stats_events.span(),
+                    BeastUpdatesEvent {
+                        beast_updates: beast_updates.span(),
                     },
                 );
 
