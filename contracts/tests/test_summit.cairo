@@ -29,10 +29,6 @@ fn REWARD_ADDRESS() -> ContractAddress {
     0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B.try_into().unwrap()
 }
 
-fn EVENT_ADDRESS() -> ContractAddress {
-    0x0.try_into().unwrap()
-}
-
 // Deploy summit contract without starting it
 fn deploy_summit() -> ISummitSystemDispatcher {
     let contract = declare("summit_systems").unwrap().contract_class();
@@ -64,11 +60,6 @@ fn deploy_summit() -> ISummitSystemDispatcher {
     let (contract_address, _) = contract.deploy(@calldata).unwrap();
     let summit = ISummitSystemDispatcher { contract_address };
 
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    summit.set_event_address(EVENT_ADDRESS());
-    stop_cheat_caller_address(summit.contract_address);
-
-    mock_summit_events();
     summit
 }
 
@@ -89,16 +80,6 @@ fn mock_erc20_mint(token_address: ContractAddress, success: bool) {
 
 fn mock_erc20_transfer(token_address: ContractAddress, success: bool) {
     mock_call(token_address, selector!("transfer"), success, 1000);
-}
-
-fn mock_summit_events() {
-    mock_call(EVENT_ADDRESS(), selector!("emit_beast_event"), (), 1000);
-    mock_call(EVENT_ADDRESS(), selector!("emit_diplomacy_event"), (), 1000);
-    mock_call(EVENT_ADDRESS(), selector!("emit_corpse_event"), (), 1000);
-    mock_call(EVENT_ADDRESS(), selector!("emit_poison_event"), (), 1000);
-    mock_call(EVENT_ADDRESS(), selector!("emit_battle_event"), (), 1000);
-    mock_call(EVENT_ADDRESS(), selector!("emit_summit_event"), (), 1000);
-    mock_call(EVENT_ADDRESS(), selector!("emit_reward_event"), (), 1000);
 }
 
 // ===========================================
@@ -449,27 +430,11 @@ fn test_set_start_timestamp() {
     let summit = ISummitSystemDispatcher { contract_address };
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    summit.set_event_address(EVENT_ADDRESS());
-    mock_summit_events();
 
     let new_timestamp = 9999999998_u64; // Still future but different
     summit.set_start_timestamp(new_timestamp);
 
     assert(summit.get_start_timestamp() == new_timestamp, 'Timestamp not updated');
-    stop_cheat_caller_address(summit.contract_address);
-}
-
-#[test]
-#[fork("mainnet")]
-fn test_set_event_address() {
-    let summit = deploy_summit();
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-
-    let new_address: ContractAddress = 0x456.try_into().unwrap();
-    summit.set_event_address(new_address);
-
-    assert(summit.get_event_address() == new_address, 'Event address not updated');
     stop_cheat_caller_address(summit.contract_address);
 }
 
@@ -685,6 +650,8 @@ fn create_test_beast(luck: u8, spirit: u8) -> Beast {
         has_claimed_potions: 0,
         blocks_held: 0,
         stats: summit::models::beast::Stats { spirit, luck, specials: 0, wisdom: 0, diplomacy: 0 },
+        rewards_earned: 0,
+        rewards_claimed: 0,
     };
 
     Beast { fixed, live }
@@ -1449,14 +1416,6 @@ fn test_multiple_beasts_attack_summit() {
 
 #[test]
 #[fork("mainnet")]
-fn test_get_event_address() {
-    let summit = deploy_summit();
-    let event_address = summit.get_event_address();
-    assert(event_address == EVENT_ADDRESS(), 'Event address mismatch');
-}
-
-#[test]
-#[fork("mainnet")]
 fn test_feed_max_bonus_health() {
     let summit = deploy_summit_and_start();
 
@@ -1570,21 +1529,6 @@ fn test_set_start_timestamp_non_owner() {
     let fake_owner: ContractAddress = 0x123.try_into().unwrap();
     start_cheat_caller_address(summit.contract_address, fake_owner);
     summit.set_start_timestamp(1000_u64);
-    stop_cheat_caller_address(summit.contract_address);
-}
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: ('Caller is not the owner',))]
-fn test_set_event_address_non_owner() {
-    let summit = deploy_summit();
-
-    let fake_owner: ContractAddress = 0x123.try_into().unwrap();
-    start_cheat_caller_address(summit.contract_address, fake_owner);
-
-    let new_address: ContractAddress = 0x456.try_into().unwrap();
-    summit.set_event_address(new_address);
-
     stop_cheat_caller_address(summit.contract_address);
 }
 
