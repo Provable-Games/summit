@@ -826,7 +826,7 @@ pub mod summit_systems {
             let summit_beast_token_id = self.summit_beast_token_id.read();
 
             assert(summit_beast_token_id != 0, 'Summit not started');
-            Self::_summit_playable(@self);
+            assert(Self::_summit_playable(@self), 'Summit not playable');
 
             let safe_attack = defending_beast_token_id != 0;
 
