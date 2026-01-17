@@ -3,12 +3,20 @@ import { Top5000Cutoff } from "@/contexts/Statistics";
 import { Beast } from "@/types/game";
 import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import { getBeastCurrentHealth, getBeastCurrentLevel, getBeastRevivalTime, getEntityHash } from "@/utils/beasts";
+import { logger } from "@/utils/logger";
+import { isValidStarknetAddress, isValidQueryLimit, isValidEntityHash, validateTokenIdArray, isValidTokenId } from "@/utils/validation";
 import { addAddressPadding } from "starknet";
 
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
   const getBeastCollection = async (accountAddress: string) => {
+    // Validate address format to prevent SQL injection
+    if (!isValidStarknetAddress(accountAddress)) {
+      logger.error('Invalid account address format:', accountAddress);
+      return [];
+    }
+
     const contractAddress = currentNetworkConfig.beasts;
 
     // Step 1: Get token balances with hex IDs (fast query using index)
@@ -36,14 +44,14 @@ export const useGameTokens = () => {
       });
 
       if (!tokenBalancesResponse.ok) {
-        console.error("Failed to fetch token balances:", tokenBalancesResponse.status);
+        logger.error("Failed to fetch token balances:", tokenBalancesResponse.status);
         return [];
       }
 
       const result = await tokenBalancesResponse.json();
       tokenBalancesData = Array.isArray(result) ? result : [];
     } catch (error) {
-      console.error("Error fetching token balances:", error);
+      logger.error("Error fetching token balances:", error);
       return [];
     }
 
@@ -143,7 +151,7 @@ export const useGameTokens = () => {
       skullsData = Array.isArray(results[1]) ? results[1] : [];
       metadataData = Array.isArray(results[2]) ? results[2] : [];
     } catch (error) {
-      console.error("Error fetching beast collection data:", error);
+      logger.error("Error fetching beast collection data:", error);
       return [];
     }
 
@@ -183,7 +191,7 @@ export const useGameTokens = () => {
       try {
         metadata = typeof rawMetadata === 'string' ? JSON.parse(rawMetadata) : rawMetadata;
       } catch (e) {
-        console.error("Failed to parse beast metadata:", e, rawMetadata);
+        logger.error("Failed to parse beast metadata:", e, rawMetadata);
         return null;
       }
 
@@ -248,12 +256,21 @@ export const useGameTokens = () => {
       return [];
     }
 
+    // Validate all hashes to prevent SQL injection
+    const validHashes = specialHashes.filter(hash => isValidEntityHash(hash));
+    if (validHashes.length !== specialHashes.length) {
+      logger.warn('Some entity hashes were invalid and filtered out');
+    }
+    if (validHashes.length === 0) {
+      return [];
+    }
+
     const BATCH_SIZE = 800;
     const allResults: any[] = [];
 
     try {
-      for (let i = 0; i < specialHashes.length; i += BATCH_SIZE) {
-        const batch = specialHashes.slice(i, i + BATCH_SIZE);
+      for (let i = 0; i < validHashes.length; i += BATCH_SIZE) {
+        const batch = validHashes.slice(i, i + BATCH_SIZE);
         if (batch.length === 0) continue;
 
         const valuesClause = batch
@@ -306,7 +323,7 @@ export const useGameTokens = () => {
 
       return allResults;
     } catch (error) {
-      console.error("Error getting dungeon stats:", error);
+      logger.error("Error getting dungeon stats:", error);
       return [];
     }
   }
@@ -331,7 +348,7 @@ export const useGameTokens = () => {
       let data = await sql.json()
       return data[0].count || 0;
     } catch (error) {
-      console.error("Error counting beasts:", error);
+      logger.error("Error counting beasts:", error);
       return 0;
     }
   }
@@ -354,7 +371,7 @@ export const useGameTokens = () => {
       let data = await sql.json()
       return data[0].count || 0;
     } catch (error) {
-      console.error("Error counting beasts:", error);
+      logger.error("Error counting beasts:", error);
       return 0;
     }
   }
@@ -380,7 +397,7 @@ export const useGameTokens = () => {
         amount: row.amount / 10000,
       })) : []
     } catch (error) {
-      console.error("Error getting big five:", error);
+      logger.error("Error getting big five:", error);
       return [];
     }
   }
@@ -454,7 +471,7 @@ export const useGameTokens = () => {
         last_death_timestamp: lastBeast.last_death_timestamp,
       }
     } catch (error) {
-      console.error("Error getting top 5000 cutoff:", error);
+      logger.error("Error getting top 5000 cutoff:", error);
       return null;
     }
   }
@@ -476,12 +493,18 @@ export const useGameTokens = () => {
       const data = await sql.json();
       return data[0]?.count || 0;
     } catch (error) {
-      console.error("Error counting beasts with blocks_held:", error);
+      logger.error("Error counting beasts with blocks_held:", error);
       return 0;
     }
   };
 
   const getTopBeastsByBlocksHeld = async (limit: number, offset: number) => {
+    // Validate limit and offset to prevent SQL injection
+    if (!isValidQueryLimit(limit) || !isValidQueryLimit(offset)) {
+      logger.error('Invalid limit or offset values:', { limit, offset });
+      return [];
+    }
+
     try {
       const q = `
         SELECT 
@@ -508,7 +531,7 @@ export const useGameTokens = () => {
       const data = await sql.json();
       return data || [];
     } catch (error) {
-      console.error("Error getting top beasts by blocks_held:", error);
+      logger.error("Error getting top beasts by blocks_held:", error);
       return [];
     }
   }
