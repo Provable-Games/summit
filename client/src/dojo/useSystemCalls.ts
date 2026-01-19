@@ -8,6 +8,10 @@ import { useAccount } from "@starknet-react/core";
 import { useSnackbar } from "notistack";
 import { CallData } from "starknet";
 
+export type ExecuteResult =
+  | { success: true; events: any[] }
+  | { success: false; error: 'gas_limit' | 'reverted' | 'unknown' };
+
 export const useSystemCalls = () => {
   const { summit } = useGameStore()
   const { enqueueSnackbar } = useSnackbar();
@@ -31,25 +35,28 @@ export const useSystemCalls = () => {
    *   - drop: Function to drop items
    *   - levelUp: Function to level up and purchase items
    */
-  const executeAction = async (calls: any[], forceResetAction: () => void) => {
+  const executeAction = async (calls: any[]): Promise<ExecuteResult> => {
     try {
       let tx = await account!.execute(calls);
       let receipt: any = await waitForTransaction(tx.transaction_hash, 0);
 
       if (receipt.execution_status === "REVERTED") {
-        forceResetAction();
-        enqueueSnackbar('Action failed', { variant: 'warning', anchorOrigin: { vertical: 'top', horizontal: 'center' } })
-        return
+        // Check if this is a gas limit error (can be in failure_reason or revert_reason)
+        const failureReason = receipt.failure_reason || receipt.revert_reason || '';
+        if (failureReason.includes('Insufficient max L2Gas')) {
+          return { success: false, error: 'gas_limit' };
+        }
+        return { success: false, error: 'reverted' };
       }
 
       const translatedEvents = receipt.events.map((event: any) =>
         translateGameEvent(event, currentNetworkConfig.manifest, account!.address)
       );
 
-      return translatedEvents.filter(Boolean);
+      return { success: true, events: translatedEvents.filter(Boolean) };
     } catch (error) {
       console.error("Error executing action:", error);
-      forceResetAction();
+      return { success: false, error: 'unknown' };
     }
   };
 

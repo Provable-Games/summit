@@ -1,7 +1,7 @@
 import { useStarknetApi } from "@/api/starknet";
 import { useSound } from "@/contexts/sound";
 import { useGameTokens } from "@/dojo/useGameTokens";
-import { useSystemCalls } from "@/dojo/useSystemCalls";
+import { useSystemCalls, ExecuteResult } from "@/dojo/useSystemCalls";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
 import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, getEntityModel, Summit } from "@/types/game";
@@ -24,7 +24,7 @@ import {
 import { useController } from "./controller";
 
 export interface GameDirectorContext {
-  executeGameAction: (action: GameAction) => Promise<boolean>;
+  executeGameAction: (action: GameAction, beastLimit?: number) => Promise<boolean>;
   actionFailed: number;
   setPauseUpdates: (pause: boolean) => void;
   pauseUpdates: boolean;
@@ -345,8 +345,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }));
   }
 
-  const executeGameAction = async (action: GameAction) => {
+  const executeGameAction = async (action: GameAction, beastLimit: number = 200) => {
     let txs: any[] = [];
+    let beastsUsedInAttack: any[] = [];
 
     if (action.pauseUpdates) {
       setPauseUpdates(true);
@@ -355,8 +356,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (action.type === 'attack') {
       setBattleEvents([]);
       setAttackInProgress(true);
+      beastsUsedInAttack = action.beasts.slice(0, beastLimit);
       txs.push(
-        ...attack(action.beasts, action.safeAttack, action.vrf, action.extraLifePotions)
+        ...attack(beastsUsedInAttack, action.safeAttack, action.vrf, action.extraLifePotions)
       );
     }
 
@@ -364,15 +366,15 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       setBattleEvents([]);
       setAttackInProgress(true);
 
-      let beasts = action.beasts.slice(0, 75);
+      beastsUsedInAttack = action.beasts.slice(0, beastLimit);
 
-      if (beasts.length === 0) {
+      if (beastsUsedInAttack.length === 0) {
         setActionFailed();
         return false;
       }
 
       txs.push(
-        ...attack(beasts, false, true, action.extraLifePotions)
+        ...attack(beastsUsedInAttack, false, true, action.extraLifePotions)
       );
     }
 
@@ -405,12 +407,25 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       txs.push(...applyPoison(action.beastId, action.count));
     }
 
-    const events = await executeAction(txs, setActionFailed);
+    const result = await executeAction(txs);
 
-    if (!events) {
+    if (result.success === false) {
+      // Handle gas limit errors for attack actions
+      if (result.error === 'gas_limit' && (action.type === 'attack' || action.type === 'attack_until_capture')) {
+        const usedCount = beastsUsedInAttack.length;
+        const reducedCount = usedCount - 50;
+
+        if (reducedCount >= 1) {
+          // Retry with fewer beasts
+          return executeGameAction(action, reducedCount);
+        }
+      }
+
       setActionFailed();
       return false;
     }
+
+    const events = result.events;
 
     updateLiveStats(events.filter((event: any) => event.componentName === 'LiveBeastStatsEvent'));
     let captured = events.filter((event: any) => event.componentName === 'BattleEvent')
@@ -444,9 +459,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       if (!captured) {
         executeGameAction({
           type: 'attack_until_capture',
-          beasts: action.beasts.slice(75),
+          beasts: action.beasts.slice(beastLimit),
           extraLifePotions: action.extraLifePotions
-        });
+        }, beastLimit);
       } else {
         setAttackInProgress(false);
       }
