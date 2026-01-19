@@ -76,8 +76,6 @@ services:
         fromDatabase:
           name: summit-db
           property: connectionString
-      - key: CORS_ORIGIN
-        value: "*"
 
 # ===========================================
 # Environment Variable Groups
