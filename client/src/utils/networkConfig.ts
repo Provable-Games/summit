@@ -48,8 +48,8 @@ export const NETWORKS = {
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
     subscriptionUrl: "https://api.cartridge.gg/x/summit-6/torii",
-    apiUrl: "https://summit-api.onrender.com",
-    wsUrl: "wss://summit-api.onrender.com/ws",
+    apiUrl: "https://summit-api-oxwa.onrender.com",
+    wsUrl: "wss://summit-api-oxwa.onrender.com/ws",
     tokens: {
       erc20: [
         // {
