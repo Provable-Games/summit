@@ -14,6 +14,7 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import StarIcon from '@mui/icons-material/Star';
 import { Box, Button, Dialog, IconButton, InputBase, Typography } from '@mui/material';
+import { useSnackbar } from 'notistack';
 import { useEffect, useState } from 'react';
 
 const UPGRADE_COSTS = {
@@ -40,6 +41,7 @@ function SummitGiftModal(props: SummitGiftModalProps) {
   const { open, close, beast, ownerName, isSavage } = props;
   const { tokenBalances, setTokenBalances } = useController();
   const { executeAction, feed, applyStatPoints, addExtraLife } = useSystemCalls();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [giftInProgress, setGiftInProgress] = useState(false);
   const [luckGift, setLuckGift] = useState(0);
@@ -190,6 +192,8 @@ function SummitGiftModal(props: SummitGiftModalProps) {
         });
 
         close();
+      } else if (result.success === false) {
+        enqueueSnackbar(`Transaction failed with error: ${result.error}`, { variant: 'error' });
       }
     } catch (error) {
       console.error('Failed to send gift', error);

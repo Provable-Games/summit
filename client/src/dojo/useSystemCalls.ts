@@ -5,7 +5,6 @@ import { calculateRevivalRequired } from "@/utils/beasts";
 import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
-import { useSnackbar } from "notistack";
 import { CallData } from "starknet";
 
 export type ExecuteResult =
@@ -14,7 +13,6 @@ export type ExecuteResult =
 
 export const useSystemCalls = () => {
   const { summit } = useGameStore()
-  const { enqueueSnackbar } = useSnackbar();
   const { account } = useAccount();
   const { currentNetworkConfig } = useDynamicConnector();
 

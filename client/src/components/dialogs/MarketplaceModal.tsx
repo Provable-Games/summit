@@ -21,6 +21,7 @@ import SellIcon from '@mui/icons-material/Sell';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import { Box, Button, Dialog, IconButton, InputBase, Menu, MenuItem, Skeleton, Tab, Tabs, Typography } from '@mui/material';
 import { useProvider } from '@starknet-react/core';
+import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Contract } from 'starknet';
 
@@ -128,6 +129,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { tokenPrices, refreshTokenPrices } = useStatistics();
   const { provider } = useProvider();
   const { executeAction } = useSystemCalls();
+  const { enqueueSnackbar } = useSnackbar();
   const [activeTab, setActiveTab] = useState(0);
   const [quantities, setQuantities] = useState<Record<string, number>>(createEmptyQuantities());
   const [sellQuantities, setSellQuantities] = useState<Record<string, number>>(createEmptyQuantities());
@@ -579,6 +581,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         if (result.success) {
           quotedPotions.forEach((q) => applyOptimisticPrice(q.id, q.quote, 'buy'));
           resetAfterAction();
+        } else if (result.success === false) {
+          enqueueSnackbar(`Transaction failed with error: ${result.error}`, { variant: 'error' });
         }
       }
     } catch (error) {
@@ -645,6 +649,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             }
           });
           resetAfterAction();
+        } else if (result.success === false) {
+          enqueueSnackbar(`Transaction failed with error: ${result.error}`, { variant: 'error' });
         }
       }
     } catch (error) {

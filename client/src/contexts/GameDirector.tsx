@@ -4,7 +4,7 @@ import { useGameTokens } from "@/dojo/useGameTokens";
 import { useSystemCalls, ExecuteResult } from "@/dojo/useSystemCalls";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
-import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, getEntityModel, Summit } from "@/types/game";
+import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, getEntityModel, selection, Summit } from "@/types/game";
 import {
   applyPoisonDamage,
   getBeastCurrentHealth,
@@ -347,7 +347,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   const executeGameAction = async (action: GameAction, beastLimit: number = 200) => {
     let txs: any[] = [];
-    let beastsUsedInAttack: any[] = [];
+    let beastsUsedInAttack: selection = [];
 
     if (action.pauseUpdates) {
       setPauseUpdates(true);
