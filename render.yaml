@@ -4,7 +4,7 @@
 # Services:
 #   - PostgreSQL database (managed)
 #   - Indexer (background worker - processes Dojo events)
-#   - API server (web service - commented out for future use)
+#   - API server (web service - REST + WebSocket)
 #
 # Build Filters:
 #   Each service only rebuilds when its specific files change.
@@ -77,7 +77,7 @@ services:
           name: summit-db
           property: connectionString
       - key: CORS_ORIGIN
-        sync: false # Set manually in dashboard
+        value: "*"
 
 # ===========================================
 # Environment Variable Groups
