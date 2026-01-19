@@ -4,6 +4,7 @@ import { useGameTokens } from "@/dojo/useGameTokens";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, getEntityModel, Summit } from "@/types/game";
 import {
   applyPoisonDamage,
@@ -43,6 +44,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent,
     setAppliedExtraLifePotions, setSelectedBeasts } = useGameStore();
   const { setRevivePotionsUsed, setAttackPotionsUsed, setExtraLifePotionsUsed, setPoisonPotionsUsed } = useAutopilotStore();
+  const { bulkAttackLimit } = useSettingsStore();
   const { gameEventsQuery, dungeonStatsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimBeastReward, claimCorpses, claimSkulls, addExtraLife, applyStatPoints, applyPoison } = useSystemCalls();
@@ -364,7 +366,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       setBattleEvents([]);
       setAttackInProgress(true);
 
-      let beasts = action.beasts.slice(0, 75);
+      let beasts = action.beasts.slice(0, bulkAttackLimit);
 
       if (beasts.length === 0) {
         setActionFailed();
@@ -444,7 +446,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       if (!captured) {
         executeGameAction({
           type: 'attack_until_capture',
-          beasts: action.beasts.slice(75),
+          beasts: action.beasts.slice(bulkAttackLimit),
           extraLifePotions: action.extraLifePotions
         });
       } else {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, IconButton, Drawer, Typography } from '@mui/material';
+import { Box, IconButton, Drawer, Typography, Slider, TextField } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import ProfileCard from './ProfileCard';
@@ -11,12 +11,25 @@ import LeaderboardModal from './dialogs/LeaderboardModal';
 import { gameColors } from '@/utils/themes';
 import { useAccount } from '@starknet-react/core';
 import RewardsRemainingBar from './RewardsRemainingBar';
+import { useSettingsStore, MIN_BULK_ATTACK_LIMIT, MAX_BULK_ATTACK_LIMIT } from '@/stores/settingsStore';
 
 const BurgerMenu = () => {
   const { address } = useAccount();
   const [isOpen, setIsOpen] = useState(false);
   const [top5000ModalOpen, setTop5000ModalOpen] = useState(false);
   const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false);
+  const { bulkAttackLimit, setBulkAttackLimit } = useSettingsStore();
+
+  const handleBulkAttackLimitChange = (_: Event, value: number | number[]) => {
+    setBulkAttackLimit(value as number);
+  };
+
+  const handleBulkAttackInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value, 10);
+    if (!isNaN(value)) {
+      setBulkAttackLimit(Math.min(MAX_BULK_ATTACK_LIMIT, Math.max(MIN_BULK_ATTACK_LIMIT, value)));
+    }
+  };
 
   const toggleDrawer = (open: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
     if (
@@ -85,6 +98,34 @@ const BurgerMenu = () => {
               }} />
             </Box>
           )}
+
+          <Box sx={styles.settingsSection}>
+            <Typography sx={styles.settingsTitle}>Settings</Typography>
+            <Box sx={styles.settingRow}>
+              <Typography sx={styles.settingLabel}>Bulk Attack Limit</Typography>
+              <Box sx={styles.sliderContainer}>
+                <Slider
+                  value={bulkAttackLimit}
+                  onChange={handleBulkAttackLimitChange}
+                  min={MIN_BULK_ATTACK_LIMIT}
+                  max={MAX_BULK_ATTACK_LIMIT}
+                  step={1}
+                  sx={styles.slider}
+                />
+                <TextField
+                  type="number"
+                  size="small"
+                  value={bulkAttackLimit}
+                  onChange={handleBulkAttackInputChange}
+                  inputProps={{ min: MIN_BULK_ATTACK_LIMIT, max: MAX_BULK_ATTACK_LIMIT }}
+                  sx={styles.numberInput}
+                />
+              </Box>
+              <Typography sx={styles.settingHint}>
+                Max beasts per attack batch (1-500)
+              </Typography>
+            </Box>
+          </Box>
         </Box>
       </Drawer>
 
@@ -188,5 +229,73 @@ const styles = {
     gap: '10px',
     width: '100%',
     justifyContent: 'space-evenly',
+  },
+  settingsSection: {
+    marginTop: 'auto',
+    paddingTop: '20px',
+    borderTop: `1px solid ${gameColors.accentGreen}40`,
+  },
+  settingsTitle: {
+    color: gameColors.gameYellow,
+    fontWeight: 'bold',
+    fontSize: '14px',
+    letterSpacing: '1px',
+    marginBottom: '12px',
+  },
+  settingRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  settingLabel: {
+    color: '#fff',
+    fontSize: '12px',
+    fontWeight: 500,
+  },
+  sliderContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  slider: {
+    flex: 1,
+    color: gameColors.brightGreen,
+    '& .MuiSlider-thumb': {
+      backgroundColor: gameColors.gameYellow,
+      '&:hover, &.Mui-focusVisible': {
+        boxShadow: `0 0 0 8px ${gameColors.brightGreen}30`,
+      },
+    },
+    '& .MuiSlider-track': {
+      backgroundColor: gameColors.brightGreen,
+    },
+    '& .MuiSlider-rail': {
+      backgroundColor: `${gameColors.accentGreen}60`,
+    },
+  },
+  numberInput: {
+    width: '70px',
+    '& .MuiInputBase-input': {
+      color: gameColors.gameYellow,
+      padding: '6px 8px',
+      fontSize: '12px',
+      fontWeight: 600,
+      textAlign: 'center',
+    },
+    '& .MuiOutlinedInput-root': {
+      background: `${gameColors.darkGreen}80`,
+      borderRadius: '6px',
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      borderColor: `${gameColors.accentGreen}40`,
+    },
+    '&:hover .MuiOutlinedInput-notchedOutline': {
+      borderColor: gameColors.brightGreen,
+    },
+  },
+  settingHint: {
+    color: `${gameColors.accentGreen}`,
+    fontSize: '10px',
+    fontStyle: 'italic',
   },
 };
