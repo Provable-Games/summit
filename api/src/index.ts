@@ -16,6 +16,7 @@ import battlesRoute from "./routes/battles.js";
 import summitRoute from "./routes/summit.js";
 import rewardsRoute from "./routes/rewards.js";
 import eventsRoute from "./routes/events.js";
+import diplomacyRoute from "./routes/diplomacy.js";
 import { checkDatabaseHealth, pool } from "./db/client.js";
 import { getSubscriptionHub } from "./ws/subscriptions.js";
 
@@ -189,6 +190,7 @@ app.route("/battles", battlesRoute);
 app.route("/summit", summitRoute);
 app.route("/rewards", rewardsRoute);
 app.route("/events", eventsRoute);
+app.route("/diplomacy", diplomacyRoute);
 
 // Root endpoint
 app.get("/", (c) => {
@@ -198,10 +200,12 @@ app.get("/", (c) => {
       list: "GET /beasts",
       leaderboard: "GET /beasts/leaderboard",
       get: "GET /beasts/:tokenId",
+      bulk: "POST /beasts/bulk",
     },
     battles: {
       list: "GET /battles",
       byBeast: "GET /battles/beast/:tokenId",
+      stats: "GET /battles/stats",
     },
     summit: {
       current: "GET /summit/current",
@@ -211,10 +215,14 @@ app.get("/", (c) => {
     },
     rewards: {
       list: "GET /rewards",
+      leaderboard: "GET /rewards/leaderboard",
       byPlayer: "GET /rewards/player/:address",
       byBeast: "GET /rewards/beast/:tokenId",
       claimed: "GET /rewards/claimed",
       claimedByPlayer: "GET /rewards/claimed/player/:address",
+    },
+    diplomacy: {
+      bySpecialsHash: "GET /diplomacy/:specialsHash",
     },
     events: {
       poison: "GET /events/poison",
@@ -225,6 +233,7 @@ app.get("/", (c) => {
       skull: "GET /events/skull",
       skullByBeast: "GET /events/skull/beast/:tokenId",
       skullLeaderboard: "GET /events/skull/leaderboard",
+      skullBulk: "POST /events/skull/bulk",
     },
     websocket: "WS /ws",
   };

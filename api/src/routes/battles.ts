@@ -5,7 +5,7 @@
 import { Hono } from "hono";
 import { db } from "../db/client.js";
 import { battles } from "../db/schema.js";
-import { eq, desc, or, sql } from "drizzle-orm";
+import { eq, desc, or, sql, gte } from "drizzle-orm";
 
 const app = new Hono();
 
@@ -126,6 +126,32 @@ app.get("/beast/:tokenId", async (c) => {
       total,
       hasMore: offset + results.length < total,
     },
+  });
+});
+
+/**
+ * GET /stats - Get battle statistics
+ *
+ * Returns:
+ * - activeBeasts24h: Count of distinct attacking beasts in last 24 hours
+ * - totalBattles: Total number of battles
+ */
+app.get("/stats", async (c) => {
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  const [activeResult, totalResult] = await Promise.all([
+    db
+      .select({
+        count: sql<number>`COUNT(DISTINCT ${battles.attackingBeastTokenId})`,
+      })
+      .from(battles)
+      .where(gte(battles.createdAt, oneDayAgo)),
+    db.select({ count: sql<number>`count(*)` }).from(battles),
+  ]);
+
+  return c.json({
+    activeBeasts24h: Number(activeResult[0]?.count ?? 0),
+    totalBattles: Number(totalResult[0]?.count ?? 0),
   });
 });
 

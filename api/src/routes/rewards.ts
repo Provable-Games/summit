@@ -234,4 +234,33 @@ app.get("/claimed/player/:address", async (c) => {
   });
 });
 
+/**
+ * GET /leaderboard - Player rewards leaderboard
+ * Aggregates rewards by owner, sorted by total amount
+ *
+ * Query params:
+ * - limit: Number of results (default: 100, max: 500)
+ */
+app.get("/leaderboard", async (c) => {
+  const limit = Math.min(parseInt(c.req.query("limit") || "100", 10), 500);
+
+  const results = await db
+    .select({
+      owner: rewards.owner,
+      amount: sql<number>`SUM(${rewards.amount})`.as("amount"),
+    })
+    .from(rewards)
+    .groupBy(rewards.owner)
+    .orderBy(sql`SUM(${rewards.amount}) DESC`)
+    .limit(limit);
+
+  return c.json({
+    data: results.map((row, index) => ({
+      rank: index + 1,
+      owner: row.owner,
+      amount: Number(row.amount) / 10000, // Convert to display units
+    })),
+  });
+});
+
 export default app;

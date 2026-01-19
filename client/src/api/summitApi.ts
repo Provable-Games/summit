@@ -109,6 +109,18 @@ export interface BattleResponse {
   eventIndex: number;
 }
 
+export interface SkullEventResponse {
+  id: string;
+  beastTokenId: number;
+  skulls: string;
+  createdAt: string;
+  indexedAt: string;
+  insertedAt: string | null;
+  blockNumber: string;
+  transactionHash: string;
+  eventIndex: number;
+}
+
 export const useSummitApi = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
@@ -308,15 +320,112 @@ export const useSummitApi = () => {
     return response.json();
   };
 
+  /**
+   * Get battle statistics
+   */
+  const getBattleStats = async (): Promise<{
+    activeBeasts24h: number;
+    totalBattles: number;
+  }> => {
+    const response = await fetch(
+      `${currentNetworkConfig.apiUrl}/battles/stats`
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch battle stats: ${response.status}`);
+    }
+    return response.json();
+  };
+
+  /**
+   * Get rewards leaderboard
+   */
+  const getRewardsLeaderboard = async (
+    limit: number = 100
+  ): Promise<{
+    data: { rank: number; owner: string; amount: number }[];
+  }> => {
+    const response = await fetch(
+      `${currentNetworkConfig.apiUrl}/rewards/leaderboard?limit=${limit}`
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch rewards leaderboard: ${response.status}`);
+    }
+    return response.json();
+  };
+
+  /**
+   * Get diplomacy group by specials hash
+   */
+  const getDiplomacy = async (
+    specialsHash: string
+  ): Promise<{
+    specials_hash: string;
+    total_power: number;
+    beast_token_ids: number[];
+  }> => {
+    const response = await fetch(
+      `${currentNetworkConfig.apiUrl}/diplomacy/${specialsHash}`
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch diplomacy: ${response.status}`);
+    }
+    return response.json();
+  };
+
+  /**
+   * Get multiple beasts by token IDs (bulk fetch)
+   */
+  const getBeastsBulk = async (
+    tokenIds: number[]
+  ): Promise<{ data: BeastResponse[] }> => {
+    const response = await fetch(
+      `${currentNetworkConfig.apiUrl}/beasts/bulk`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tokenIds }),
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch beasts bulk: ${response.status}`);
+    }
+    return response.json();
+  };
+
+  /**
+   * Get skull events for multiple beasts (bulk fetch)
+   */
+  const getSkullsBulk = async (
+    tokenIds: number[]
+  ): Promise<{ data: SkullEventResponse[] }> => {
+    const response = await fetch(
+      `${currentNetworkConfig.apiUrl}/events/skull/bulk`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tokenIds }),
+      }
+    );
+    if (!response.ok) {
+      throw new Error(`Failed to fetch skulls bulk: ${response.status}`);
+    }
+    return response.json();
+  };
+
   return {
     getBeasts,
     getBeast,
+    getBeastsBulk,
     getBeastLeaderboard,
     getBattles,
     getBattlesByBeast,
+    getBattleStats,
     getCurrentSummit,
     getSummitHistory,
     getSummitByBeast,
     getSummitByOwner,
+    getRewardsLeaderboard,
+    getDiplomacy,
+    getSkullsBulk,
   };
 };

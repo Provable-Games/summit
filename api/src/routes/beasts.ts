@@ -5,7 +5,7 @@
 import { Hono } from "hono";
 import { db } from "../db/client.js";
 import { beastStats } from "../db/schema.js";
-import { eq, desc, asc, sql } from "drizzle-orm";
+import { eq, desc, asc, sql, inArray } from "drizzle-orm";
 
 const app = new Hono();
 
@@ -117,6 +117,37 @@ app.get("/leaderboard", async (c) => {
       rank: index + 1,
       ...serializeBeast(beast),
     })),
+  });
+});
+
+/**
+ * POST /bulk - Get multiple beasts by token IDs
+ *
+ * Body: { tokenIds: number[] }
+ * Returns beasts for the specified token IDs (max 1000)
+ */
+app.post("/bulk", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const tokenIds = body.tokenIds;
+
+  if (!Array.isArray(tokenIds) || tokenIds.length === 0) {
+    return c.json({ error: "tokenIds must be a non-empty array" }, 400);
+  }
+
+  // Limit to 1000 token IDs to prevent abuse
+  const limitedTokenIds = tokenIds.slice(0, 1000).map(Number).filter(id => !isNaN(id));
+
+  if (limitedTokenIds.length === 0) {
+    return c.json({ data: [] });
+  }
+
+  const results = await db
+    .select()
+    .from(beastStats)
+    .where(inArray(beastStats.tokenId, limitedTokenIds));
+
+  return c.json({
+    data: results.map(serializeBeast),
   });
 });
 

@@ -63,37 +63,7 @@ export const useGameTokens = () => {
       integerIds.push(intId);
     }
 
-    // Step 3: Query stats and skulls in parallel with integer IDs (uses index)
-    const integerIdsList = integerIds.join(',');
-
-    const statsQuery = `
-      SELECT
-        token_id,
-        "live_stats.attack_streak",
-        "live_stats.bonus_health",
-        "live_stats.bonus_xp",
-        "live_stats.current_health",
-        "live_stats.extra_lives",
-        "live_stats.has_claimed_potions",
-        "live_stats.last_death_timestamp",
-        "live_stats.stats.luck",
-        "live_stats.stats.spirit",
-        "live_stats.stats.specials",
-        "live_stats.revival_count",
-        "live_stats.blocks_held",
-        "live_stats.stats.wisdom",
-        "live_stats.stats.diplomacy"
-      FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
-      WHERE token_id IN (${integerIdsList})
-    `;
-
-    const skullsQuery = `
-      SELECT beast_token_id, skulls
-      FROM "${currentNetworkConfig.namespace}-SkullEvent"
-      WHERE beast_token_id IN (${integerIdsList})
-    `;
-
-    // Step 4: Get metadata (uses existing join pattern which is fast)
+    // Step 3: Fetch stats from Summit API and metadata from Torii in parallel
     const metadataQuery = `
       WITH tbf AS (
         SELECT
@@ -114,52 +84,42 @@ export const useGameTokens = () => {
         AND t.token_id = ('0x' || tbf.token_hex64)
     `;
 
-    // Execute all three queries in parallel
+    // Execute API calls and metadata query in parallel
     let statsData: any[] = [];
     let skullsData: any[] = [];
     let metadataData: any[] = [];
 
     try {
       const [statsResponse, skullsResponse, metadataResponse] = await Promise.all([
-        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(statsQuery)}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" }
-        }),
-        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(skullsQuery)}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" }
-        }),
+        // Fetch stats from Summit API
+        summitApi.getBeastsBulk(integerIds),
+        // Fetch skulls from Summit API
+        summitApi.getSkullsBulk(integerIds),
+        // Fetch metadata from Torii (NFT metadata still lives there)
         fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(metadataQuery)}`, {
           method: "GET",
           headers: { "Content-Type": "application/json" }
         })
       ]);
 
-      const results = await Promise.all([
-        statsResponse.ok ? statsResponse.json() : [],
-        skullsResponse.ok ? skullsResponse.json() : [],
-        metadataResponse.ok ? metadataResponse.json() : []
-      ]);
-
-      statsData = Array.isArray(results[0]) ? results[0] : [];
-      skullsData = Array.isArray(results[1]) ? results[1] : [];
-      metadataData = Array.isArray(results[2]) ? results[2] : [];
+      statsData = statsResponse.data || [];
+      skullsData = skullsResponse.data || [];
+      metadataData = metadataResponse.ok ? await metadataResponse.json() : [];
+      metadataData = Array.isArray(metadataData) ? metadataData : [];
     } catch (error) {
       console.error("Error fetching beast collection data:", error);
       return [];
     }
 
     // Build lookup maps for O(1) access
-    // Note: SQL JSON responses may return numeric IDs as strings, so we
-    // explicitly convert to Number to ensure consistent Map key types
     const statsMap = new Map<number, any>();
     for (const row of statsData) {
-      statsMap.set(Number(row.token_id), row);
+      statsMap.set(row.tokenId, row);
     }
 
     const skullsMap = new Map<number, string>();
     for (const row of skullsData) {
-      skullsMap.set(Number(row.beast_token_id), row.skulls);
+      skullsMap.set(row.beastTokenId, row.skulls);
     }
 
     const metadataMap = new Map<string, any>();
@@ -211,22 +171,24 @@ export const useGameTokens = () => {
         shiny: Number(attrs["Shiny"]),
         animated: Number(attrs["Animated"]),
         rank: Number(attrs["Rank"]),
-        attack_streak: stats["live_stats.attack_streak"] || 0,
-        bonus_health: stats["live_stats.bonus_health"] || 0,
-        bonus_xp: stats["live_stats.bonus_xp"] || 0,
-        current_health: stats["live_stats.current_health"] ?? null,
-        extra_lives: stats["live_stats.extra_lives"] || 0,
-        has_claimed_potions: Boolean(stats["live_stats.has_claimed_potions"]),
-        last_death_timestamp: stats["live_stats.last_death_timestamp"] ? parseInt(stats["live_stats.last_death_timestamp"], 16) : 0,
-        revival_count: stats["live_stats.revival_count"] || 0,
-        blocks_held: parseInt(stats["live_stats.blocks_held"], 16) || 0,
+        // Stats from Summit API (camelCase format, already numeric)
+        attack_streak: stats.attackStreak || 0,
+        bonus_health: stats.bonusHealth || 0,
+        bonus_xp: stats.bonusXp || 0,
+        current_health: stats.currentHealth ?? null,
+        extra_lives: stats.extraLives || 0,
+        has_claimed_potions: Boolean(stats.hasClaimedPotions),
+        last_death_timestamp: stats.lastDeathTimestamp ? parseInt(stats.lastDeathTimestamp) : 0,
+        revival_count: stats.revivalCount || 0,
+        blocks_held: stats.blocksHeld || 0,
         revival_time: 0,
-        spirit: stats["live_stats.stats.spirit"] || 0,
-        luck: stats["live_stats.stats.luck"] || 0,
-        specials: Boolean(stats["live_stats.stats.specials"]),
-        wisdom: Boolean(stats["live_stats.stats.wisdom"]),
-        diplomacy: Boolean(stats["live_stats.stats.diplomacy"]),
-        kills_claimed: parseInt(skulls || "0", 16),
+        spirit: stats.spirit || 0,
+        luck: stats.luck || 0,
+        specials: Boolean(stats.specials),
+        wisdom: Boolean(stats.wisdom),
+        diplomacy: Boolean(stats.diplomacy),
+        // Skulls from Summit API (skulls is a string)
+        kills_claimed: parseInt(skulls || "0"),
       }
       beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)
@@ -312,24 +274,9 @@ export const useGameTokens = () => {
   }
 
   const countAliveBeasts = async () => {
-    let q = `
-      SELECT COUNT(DISTINCT attacking_beast_token_id) as count
-      FROM "summit_relayer_6-BattleEvent"
-      WHERE internal_updated_at > datetime('now', '-24 hours')
-    `
-
-    let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-
     try {
-      const sql = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json"
-        }
-      })
-
-      let data = await sql.json()
-      return data[0].count || 0;
+      const stats = await summitApi.getBattleStats();
+      return stats.activeBeasts24h;
     } catch (error) {
       console.error("Error counting beasts:", error);
       return 0;
@@ -347,27 +294,14 @@ export const useGameTokens = () => {
   }
 
   const getLeaderboard = async () => {
-    const q = `
-        SELECT owner, SUM(amount) AS amount
-        FROM "${currentNetworkConfig.namespace}-RewardEvent"
-        WHERE internal_created_at > '2025-11-21 16:20:00'
-        GROUP BY owner
-        ORDER BY amount DESC
-      `;
-
-    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
     try {
-      const sql = await fetch(url, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      })
-      let data = await sql.json()
-      return data.length > 0 ? data.map((row: any) => ({
+      const response = await summitApi.getRewardsLeaderboard(500);
+      return response.data.map((row) => ({
         owner: row.owner,
-        amount: row.amount / 10000,
-      })) : []
+        amount: row.amount,
+      }));
     } catch (error) {
-      console.error("Error getting big five:", error);
+      console.error("Error getting leaderboard:", error);
       return [];
     }
   }
@@ -431,21 +365,14 @@ export const useGameTokens = () => {
   }
 
   const countBeastsWithBlocksHeld = async () => {
-    const q = `
-      SELECT COUNT(*) as count
-      FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
-      WHERE "live_stats.blocks_held" > 0
-    `;
-
     try {
-      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-      const sql = await fetch(url, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
+      // Use the beasts API with a filter - get just count via pagination
+      const response = await summitApi.getBeasts({
+        sortBy: "blocks_held",
+        sortOrder: "desc",
+        limit: 1,
       });
-
-      const data = await sql.json();
-      return data[0]?.count || 0;
+      return response.pagination.total;
     } catch (error) {
       console.error("Error counting beasts with blocks_held:", error);
       return 0;
@@ -630,31 +557,21 @@ export const useGameTokens = () => {
   }
 
   const getDiplomacy = async (beast: Beast) => {
-    let q = `
-      SELECT total_power, beast_token_ids
-      FROM "${currentNetworkConfig.namespace}-DiplomacyEvent"
-      WHERE specials_hash = '${beast.specials_hash}'
-    `
     try {
-      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-      const sql = await fetch(url, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
-      })
-
-      let data = await sql.json()
-
-      return {
-        specials_hash: beast.specials_hash,
-        total_power: data[0].total_power,
-        beast_token_ids: JSON.parse(data[0].beast_token_ids),
+      if (!beast.specials_hash) {
+        return {
+          specials_hash: beast.specials_hash || "",
+          total_power: 0,
+          beast_token_ids: [],
+        };
       }
+      return await summitApi.getDiplomacy(beast.specials_hash);
     } catch (error) {
       return {
-        specials_hash: beast.specials_hash,
+        specials_hash: beast.specials_hash || "",
         total_power: 0,
         beast_token_ids: [],
-      }
+      };
     }
   }
 

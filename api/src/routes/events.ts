@@ -6,7 +6,7 @@
 import { Hono } from "hono";
 import { db } from "../db/client.js";
 import { poisonEvents, corpseEvents, skullEvents } from "../db/schema.js";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, inArray } from "drizzle-orm";
 
 const app = new Hono();
 
@@ -326,6 +326,50 @@ app.get("/skull/leaderboard", async (c) => {
       rank: index + 1,
       ...serializeSkullEvent(event),
     })),
+  });
+});
+
+/**
+ * POST /skull/bulk - Get latest skull counts for multiple beasts
+ *
+ * Body: { tokenIds: number[] }
+ * Returns the latest skull event for each beast (max 1000)
+ */
+app.post("/skull/bulk", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const tokenIds = body.tokenIds;
+
+  if (!Array.isArray(tokenIds) || tokenIds.length === 0) {
+    return c.json({ error: "tokenIds must be a non-empty array" }, 400);
+  }
+
+  // Limit to 1000 token IDs to prevent abuse
+  const limitedTokenIds = tokenIds
+    .slice(0, 1000)
+    .map(Number)
+    .filter((id) => !isNaN(id));
+
+  if (limitedTokenIds.length === 0) {
+    return c.json({ data: [] });
+  }
+
+  // Get latest skull event for each beast using a subquery
+  const results = await db
+    .select()
+    .from(skullEvents)
+    .where(inArray(skullEvents.beastTokenId, limitedTokenIds))
+    .orderBy(desc(skullEvents.createdAt));
+
+  // Keep only the latest event per beast
+  const latestByBeast = new Map<number, (typeof results)[0]>();
+  for (const event of results) {
+    if (!latestByBeast.has(event.beastTokenId)) {
+      latestByBeast.set(event.beastTokenId, event);
+    }
+  }
+
+  return c.json({
+    data: Array.from(latestByBeast.values()).map(serializeSkullEvent),
   });
 });
 
