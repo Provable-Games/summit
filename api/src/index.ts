@@ -29,6 +29,8 @@ app.use("*", logger());
 
 // CORS Configuration
 const corsOrigins = process.env.CORS_ORIGIN?.split(",");
+const allowAllOrigins = corsOrigins?.includes("*");
+
 if (!corsOrigins && !isDevelopment) {
   console.warn(
     "[CORS] WARNING: CORS_ORIGIN not set in production. Using development fallback origins (localhost)."
@@ -38,12 +40,16 @@ if (!corsOrigins && !isDevelopment) {
 app.use(
   "*",
   cors({
-    origin: corsOrigins || [
-      "http://localhost:5173",
-      "https://localhost:5173",
-      "http://localhost:3000",
-      "https://localhost:3000",
-    ],
+    // When CORS_ORIGIN includes "*", dynamically allow the requesting origin
+    // This is required because credentials:true doesn't work with literal "*"
+    origin: allowAllOrigins
+      ? (origin) => origin || "*"
+      : corsOrigins || [
+          "http://localhost:5173",
+          "https://localhost:5173",
+          "http://localhost:3000",
+          "https://localhost:3000",
+        ],
     credentials: true,
   })
 );
