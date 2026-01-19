@@ -43,7 +43,11 @@ export interface Beast {
   extra_lives: number;
   has_claimed_potions: boolean;
   blocks_held: number;
-  stats: Stats;
+  spirit: number;
+  luck: number;
+  specials: boolean;
+  wisdom: boolean;
+  diplomacy: boolean;
   kills_claimed: number;
   entity_hash?: string;
   specials_hash?: string;

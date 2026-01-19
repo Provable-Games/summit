@@ -2,9 +2,16 @@ import { useStarknetApi } from "@/api/starknet";
 import { useSound } from "@/contexts/sound";
 import { useGameTokens } from "@/dojo/useGameTokens";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
+import {
+  BattleData,
+  BeastUpdateData,
+  PoisonData,
+  SummitData,
+  useWebSocket,
+} from "@/hooks/useWebSocket";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
-import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, getEntityModel, Summit } from "@/types/game";
+import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, Summit } from "@/types/game";
 import {
   applyPoisonDamage,
   getBeastCurrentHealth,
@@ -15,6 +22,7 @@ import { useDojoSDK } from '@dojoengine/sdk/react';
 import {
   createContext,
   PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
   useReducer,
@@ -22,6 +30,7 @@ import {
   useState,
 } from "react";
 import { useController } from "./controller";
+import { useDynamicConnector } from "./starknet";
 
 export interface GameDirectorContext {
   executeGameAction: (action: GameAction) => Promise<boolean>;
@@ -39,11 +48,12 @@ const GameDirectorContext = createContext<GameDirectorContext>(
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { sdk } = useDojoSDK();
+  const { currentNetworkConfig } = useDynamicConnector();
   const { summit, setSummit, setAttackInProgress, collection, setCollection,
     setBattleEvents, setSpectatorBattleEvents, setApplyingPotions, setPoisonEvent, poisonEvent,
     setAppliedExtraLifePotions, setSelectedBeasts } = useGameStore();
   const { setRevivePotionsUsed, setAttackPotionsUsed, setExtraLifePotionsUsed, setPoisonPotionsUsed } = useAutopilotStore();
-  const { gameEventsQuery, dungeonStatsQuery } = useQueries();
+  const { dungeonStatsQuery } = useQueries();
   const { getSummitData } = useStarknetApi();
   const { executeAction, attack, feed, claimBeastReward, claimCorpses, claimSkulls, addExtraLife, applyStatPoints, applyPoison } = useSystemCalls();
   const { tokenBalances, setTokenBalances } = useController();
@@ -56,17 +66,107 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const [entityStats, setEntityStats] = useState<any>();
 
   const dungeonSubscriptionRef = useRef<any | null>(null);
-  const summitSubscriptionRef = useRef<any | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const retryCountRef = useRef(0);
   const [actionFailed, setActionFailed] = useReducer((x) => x + 1, 0);
   const [eventQueue, setEventQueue] = useState<any[]>([]);
   const [pauseUpdates, setPauseUpdates] = useState(false);
 
+  // WebSocket callbacks for real-time updates
+  const handleBeastUpdate = useCallback((data: BeastUpdateData) => {
+    // Data is already in snake_case format with flattened stats
+    const liveStats = {
+      token_id: data.token_id,
+      current_health: data.current_health,
+      bonus_health: data.bonus_health,
+      bonus_xp: data.bonus_xp,
+      attack_streak: data.attack_streak,
+      last_death_timestamp: parseInt(data.last_death_timestamp),
+      revival_count: data.revival_count,
+      extra_lives: data.extra_lives,
+      has_claimed_potions: Boolean(data.has_claimed_potions),
+      blocks_held: data.blocks_held,
+      spirit: data.spirit,
+      luck: data.luck,
+      specials: Boolean(data.specials),
+      wisdom: Boolean(data.wisdom),
+      diplomacy: Boolean(data.diplomacy),
+    };
+    setEventQueue((prev) => [...prev, liveStats]);
+  }, []);
+
+  const handleSummit = useCallback((data: SummitData) => {
+    const newSummitBeast = {
+      id: data.beast_id,
+      prefix: data.beast_prefix,
+      suffix: data.beast_suffix,
+      level: data.beast_level,
+      health: data.beast_health,
+      shiny: data.beast_shiny,
+      animated: data.beast_animated,
+      token_id: data.beast_token_id,
+      current_health: data.current_health,
+      bonus_health: data.bonus_health,
+      bonus_xp: 0, // Not provided in summit event
+      attack_streak: 0,
+      last_death_timestamp: 0,
+      revival_count: 0,
+      extra_lives: 0,
+      has_claimed_potions: false,
+      blocks_held: data.blocks_held,
+      spirit: 0,
+      luck: 0,
+      specials: false,
+      wisdom: false,
+      diplomacy: false,
+      kills_claimed: 0,
+    };
+
+    const currentLevel = getBeastCurrentLevel(newSummitBeast.level, newSummitBeast.bonus_xp);
+
+    setNextSummit({
+      beast: {
+        ...newSummitBeast,
+        current_level: currentLevel,
+        ...getBeastDetails(newSummitBeast.id, newSummitBeast.prefix, newSummitBeast.suffix, currentLevel),
+        revival_time: 0,
+      },
+      taken_at: new Date(data.created_at).getTime() / 1000,
+      owner: data.owner,
+      poison_count: 0,
+      poison_timestamp: 0,
+    });
+  }, []);
+
+  const handleBattle = useCallback((data: BattleData) => {
+    // Data is already in snake_case format matching BattleEvent type
+    setSpectatorBattleEvents((prev) => [...prev, data as unknown as BattleEvent]);
+  }, [setSpectatorBattleEvents]);
+
+  const handlePoison = useCallback((data: PoisonData) => {
+    // Data is already in snake_case format
+    setPoisonEvent({
+      beast_token_id: data.beast_token_id,
+      count: data.count,
+      player: data.player,
+      block_timestamp: parseInt(data.block_timestamp),
+    });
+  }, [setPoisonEvent]);
+
+  // WebSocket subscription for real-time game updates
+  useWebSocket({
+    url: currentNetworkConfig.wsUrl,
+    channels: ["beast_update", "battle", "summit", "poison"],
+    onBeastUpdate: handleBeastUpdate,
+    onBattle: handleBattle,
+    onSummit: handleSummit,
+    onPoison: handlePoison,
+    onConnectionChange: (state) => {
+      console.log("[GameDirector] WebSocket connection state:", state);
+    },
+  });
+
   useEffect(() => {
     fetchSummitData();
-    subscribeSummitUpdates();
     subscribeDungeonUpdates();
   }, []);
 
@@ -115,7 +215,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       const diplomacy = await getDiplomacy(newSummit.beast);
       newSummit.diplomacy = {
         ...diplomacy,
-        bonus: newSummit.beast.stats.diplomacy
+        bonus: newSummit.beast.diplomacy
           ? Math.floor((diplomacy.total_power - newSummit.beast.power) / 250)
           : Math.floor(diplomacy.total_power / 250),
       };
@@ -137,7 +237,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         ...prevSummit,
         diplomacy: {
           ...diplomacyEvent,
-          bonus: prevSummit.beast.stats.diplomacy
+          bonus: prevSummit.beast.diplomacy
             ? Math.floor((diplomacyEvent.total_power - prevSummit.beast.power) / 250)
             : Math.floor(diplomacyEvent.total_power / 250),
         },
@@ -219,87 +319,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       }, 30000);
     }
   }
-
-  const subscribeSummitUpdates = async () => {
-    if (summitSubscriptionRef.current) {
-      try {
-        summitSubscriptionRef.current.cancel();
-      } catch (error) { }
-    }
-
-    try {
-      const [_, sub] = await sdk.subscribeEventQuery({
-        query: gameEventsQuery(),
-        callback: ({ data, error }: { data?: any[]; error?: Error }) => {
-          if (data && data.length > 0) {
-            // Successful event received; reset retry counter
-            retryCountRef.current = 0;
-
-            let liveBeastStatsEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "LiveBeastStatsEvent")))
-              .map((entity: any) => getEntityModel(entity, "LiveBeastStatsEvent"))
-
-            let summitEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "SummitEvent")))
-              .map((entity: any) => getEntityModel(entity, "SummitEvent"))
-
-            let battleEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "BattleEvent")))
-              .map((entity: any) => getEntityModel(entity, "BattleEvent"))
-
-            let poison_event = data.filter((entity: any) => Boolean(getEntityModel(entity, "PoisonEvent")))
-              .map((entity: any) => getEntityModel(entity, "PoisonEvent"))
-
-            let diplomacyEvent = data.filter((entity: any) => Boolean(getEntityModel(entity, "DiplomacyEvent")))
-              .map((entity: any) => getEntityModel(entity, "DiplomacyEvent"))
-
-            if (diplomacyEvent.length > 0) {
-              setDiplomacyEvent(diplomacyEvent[0]);
-            }
-
-            if (liveBeastStatsEvent.length > 0) {
-              setEventQueue((prev) => [...prev, ...liveBeastStatsEvent.map(liveStatEvent => liveStatEvent.live_stats)]);
-            }
-
-            if (poison_event.length > 0) {
-              setPoisonEvent(poison_event[0]);
-            }
-
-            if (battleEvent.length > 0) {
-              setSpectatorBattleEvents(prev => [...prev, ...battleEvent]);
-            }
-
-            if (summitEvent.length > 0) {
-              let summit = summitEvent[0];
-              let newSummitBeast = { ...summit.beast, ...summit.live_stats };
-              newSummitBeast.current_level = getBeastCurrentLevel(newSummitBeast.level, newSummitBeast.bonus_xp);
-
-              setNextSummit({
-                beast: {
-                  ...newSummitBeast,
-                  ...getBeastDetails(newSummitBeast.id, newSummitBeast.prefix, newSummitBeast.suffix, newSummitBeast.current_level),
-                  revival_time: 0,
-                },
-                taken_at: summit.taken_at,
-                owner: summit.owner,
-                poison_count: 0,
-                poison_timestamp: 0,
-              })
-            }
-          }
-        },
-      });
-
-      summitSubscriptionRef.current = sub;
-    } catch (error) {
-      console.error("Failed to subscribe to summit updates:", error);
-      retryCountRef.current += 1;
-      const delay = Math.min(30000, 2000 * retryCountRef.current);
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      reconnectTimeoutRef.current = setTimeout(() => {
-        subscribeSummitUpdates();
-      }, delay);
-    }
-  };
 
   const processSummitUpdate = (update: any) => {
     if (update.token_id === summit?.beast.token_id) {

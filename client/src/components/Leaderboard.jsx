@@ -90,7 +90,7 @@ function Leaderboard() {
 
     // Calculate bonus points from blocks held (1 point per block)
     const blocksHeld = (currentBlock - summit.taken_at)
-    const diplomacyCount = (summit?.diplomacy?.beast_token_ids.length || 0) - (summit.beast.stats.diplomacy ? 1 : 0);
+    const diplomacyCount = (summit?.diplomacy?.beast_token_ids.length || 0) - (summit.beast.diplomacy ? 1 : 0);
     const diplomacyRewards = (SUMMIT_REWARD_PER_BLOCK / 100 * diplomacyCount);
 
     // Find summit owner in leaderboard

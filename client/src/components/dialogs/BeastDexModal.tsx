@@ -272,25 +272,25 @@ export default function BeastDexModal(props: BeastDexModalProps) {
                     <Typography sx={styles.beastName}>{beast.name}</Typography>
 
                     <Box sx={styles.badgesRow}>
-                      <Box sx={[styles.abilityIcon, beast.stats?.specials ? styles.abilityIconOn : styles.abilityIconOff]}>
-                        <StarIcon sx={{ fontSize: '18px', color: beast.stats?.specials ? '#ffd700' : '#888'}} />
+                      <Box sx={[styles.abilityIcon, beast.specials ? styles.abilityIconOn : styles.abilityIconOff]}>
+                        <StarIcon sx={{ fontSize: '18px', color: beast.specials ? '#ffd700' : '#888'}} />
                       </Box>
-                      <Box sx={[styles.abilityIcon, beast.stats?.diplomacy ? styles.abilityIconOn : styles.abilityIconOff]}>
-                        <HandshakeIcon sx={{ fontSize: '18px', color: beast.stats?.diplomacy ? '#a78bfa' : '#888'}} />
+                      <Box sx={[styles.abilityIcon, beast.diplomacy ? styles.abilityIconOn : styles.abilityIconOff]}>
+                        <HandshakeIcon sx={{ fontSize: '18px', color: beast.diplomacy ? '#a78bfa' : '#888'}} />
                       </Box>
-                      <Box sx={[styles.abilityIcon, beast.stats?.wisdom ? styles.abilityIconOn : styles.abilityIconOff]}>
-                        <PsychologyIcon sx={{ fontSize: '18px', color: beast.stats?.wisdom ? '#60a5fa' : '#888'}} />
+                      <Box sx={[styles.abilityIcon, beast.wisdom ? styles.abilityIconOn : styles.abilityIconOff]}>
+                        <PsychologyIcon sx={{ fontSize: '18px', color: beast.wisdom ? '#60a5fa' : '#888'}} />
                       </Box>
                     </Box>
 
                     <Box sx={styles.badgesRow}>
                       <Box sx={styles.pointChip}>
                         <CasinoIcon sx={{ fontSize: '18px', color: '#ff69b4' }} />
-                        <Typography sx={styles.pointText}>{beast.stats?.luck || 0}</Typography>
+                        <Typography sx={styles.pointText}>{beast.luck || 0}</Typography>
                       </Box>
                       <Box sx={styles.pointChip}>
                         <EnergyIcon sx={{ fontSize: '18px', color: '#00ffff' }} />
-                        <Typography sx={styles.pointText}>{beast.stats?.spirit || 0}</Typography>
+                        <Typography sx={styles.pointText}>{beast.spirit || 0}</Typography>
                       </Box>
                     </Box>
                   </Box>

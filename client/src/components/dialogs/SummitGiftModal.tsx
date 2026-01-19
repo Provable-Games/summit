@@ -78,13 +78,13 @@ function SummitGiftModal(props: SummitGiftModalProps) {
     killTokenCost += luckGift * UPGRADE_COSTS.luck_per_level;
     killTokenCost += spiritGift * UPGRADE_COSTS.spirit_per_level;
 
-    if (diplomacyGift && !beast.stats?.diplomacy) {
+    if (diplomacyGift && !beast.diplomacy) {
       killTokenCost += UPGRADE_COSTS.diplomacy;
     }
-    if (specialsGift && !beast.stats?.specials) {
+    if (specialsGift && !beast.specials) {
       killTokenCost += UPGRADE_COSTS.specials;
     }
-    if (wisdomGift && !beast.stats?.wisdom) {
+    if (wisdomGift && !beast.wisdom) {
       killTokenCost += UPGRADE_COSTS.wisdom;
     }
 
@@ -116,14 +116,14 @@ function SummitGiftModal(props: SummitGiftModalProps) {
   const onLuckInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     const num = raw === '' ? 0 : parseInt(raw, 10);
-    const max = Math.max(0, MAX_ATTRIBUTES - (beast.stats?.luck || 0));
+    const max = Math.max(0, MAX_ATTRIBUTES - (beast.luck || 0));
     setLuckGift(Math.max(0, Math.min(max, isNaN(num) ? 0 : num)));
   };
 
   const onSpiritInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value.replace(/\D/g, '');
     const num = raw === '' ? 0 : parseInt(raw, 10);
-    const max = Math.max(0, MAX_ATTRIBUTES - (beast.stats?.spirit || 0));
+    const max = Math.max(0, MAX_ATTRIBUTES - (beast.spirit || 0));
     setSpiritGift(Math.max(0, Math.min(max, isNaN(num) ? 0 : num)));
   };
 
@@ -160,9 +160,9 @@ function SummitGiftModal(props: SummitGiftModalProps) {
         const statsDelta: Stats = {
           spirit: spiritGift,
           luck: luckGift,
-          specials: !beast.stats?.specials && specialsGift,
-          wisdom: !beast.stats?.wisdom && wisdomGift,
-          diplomacy: !beast.stats?.diplomacy && diplomacyGift,
+          specials: !beast.specials && specialsGift,
+          wisdom: !beast.wisdom && wisdomGift,
+          diplomacy: !beast.diplomacy && diplomacyGift,
         };
 
         calls.push(...applyStatPoints(beast.token_id, statsDelta, killTokenCost));
@@ -324,7 +324,7 @@ function SummitGiftModal(props: SummitGiftModalProps) {
               <Box sx={styles.mainColumn}>
                 <Typography sx={styles.fieldLabel}>Luck</Typography>
                 <Typography sx={styles.fieldHint}>
-                  Current: {beast.stats?.luck ?? 0} / {MAX_ATTRIBUTES}
+                  Current: {beast.luck ?? 0} / {MAX_ATTRIBUTES}
                 </Typography>
               </Box>
               <Box sx={styles.inputColumn}>
@@ -350,7 +350,7 @@ function SummitGiftModal(props: SummitGiftModalProps) {
               <Box sx={styles.mainColumn}>
                 <Typography sx={styles.fieldLabel}>Spirit</Typography>
                 <Typography sx={styles.fieldHint}>
-                  Current: {beast.stats?.spirit ?? 0} / {MAX_ATTRIBUTES}
+                  Current: {beast.spirit ?? 0} / {MAX_ATTRIBUTES}
                 </Typography>
               </Box>
               <Box sx={styles.inputColumn}>
@@ -403,11 +403,11 @@ function SummitGiftModal(props: SummitGiftModalProps) {
               <Box
                 sx={{
                   ...styles.abilityCard,
-                  ...(beast.stats?.specials ? styles.abilityUnlocked : {}),
-                  ...(!beast.stats?.specials && specialsGift ? styles.abilitySelected : {}),
+                  ...(beast.specials ? styles.abilityUnlocked : {}),
+                  ...(!beast.specials && specialsGift ? styles.abilitySelected : {}),
                 }}
                 onClick={() => {
-                  if (beast.stats?.specials) return;
+                  if (beast.specials) return;
                   setSpecialsGift(!specialsGift);
                 }}
               >
@@ -418,11 +418,11 @@ function SummitGiftModal(props: SummitGiftModalProps) {
               <Box
                 sx={{
                   ...styles.abilityCard,
-                  ...(beast.stats?.diplomacy ? styles.abilityUnlocked : {}),
-                  ...(!beast.stats?.diplomacy && diplomacyGift ? styles.abilitySelected : {}),
+                  ...(beast.diplomacy ? styles.abilityUnlocked : {}),
+                  ...(!beast.diplomacy && diplomacyGift ? styles.abilitySelected : {}),
                 }}
                 onClick={() => {
-                  if (beast.stats?.diplomacy) return;
+                  if (beast.diplomacy) return;
                   setDiplomacyGift(!diplomacyGift);
                 }}
               >
@@ -433,11 +433,11 @@ function SummitGiftModal(props: SummitGiftModalProps) {
               <Box
                 sx={{
                   ...styles.abilityCard,
-                  ...(beast.stats?.wisdom ? styles.abilityUnlocked : {}),
-                  ...(!beast.stats?.wisdom && wisdomGift ? styles.abilitySelected : {}),
+                  ...(beast.wisdom ? styles.abilityUnlocked : {}),
+                  ...(!beast.wisdom && wisdomGift ? styles.abilitySelected : {}),
                 }}
                 onClick={() => {
-                  if (beast.stats?.wisdom) return;
+                  if (beast.wisdom) return;
                   setWisdomGift(!wisdomGift);
                 }}
               >

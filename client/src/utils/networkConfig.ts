@@ -10,6 +10,8 @@ export interface NetworkConfig {
   rpcUrl: string;
   toriiUrl: string;
   subscriptionUrl: string;
+  apiUrl: string;
+  wsUrl: string;
   chains: Array<{
     rpcUrl: string;
   }>;
@@ -46,6 +48,8 @@ export const NETWORKS = {
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
     subscriptionUrl: "https://api.cartridge.gg/x/summit-6/torii",
+    apiUrl: "https://summit-api.onrender.com",
+    wsUrl: "wss://summit-api.onrender.com/ws",
     tokens: {
       erc20: [
         // {
@@ -331,6 +335,8 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     rpcUrl: network.rpcUrl,
     toriiUrl: network.torii,
     subscriptionUrl: network.subscriptionUrl,
+    apiUrl: network.apiUrl,
+    wsUrl: network.wsUrl,
     chains: [{ rpcUrl: network.rpcUrl }],
     tokens: network.tokens,
     denshokan: network.denshokan,

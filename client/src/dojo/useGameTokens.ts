@@ -1,3 +1,4 @@
+import { useSummitApi } from "@/api/summitApi";
 import { useDynamicConnector } from "@/contexts/starknet";
 import { Top5000Cutoff } from "@/contexts/Statistics";
 import { Beast } from "@/types/game";
@@ -7,6 +8,7 @@ import { addAddressPadding } from "starknet";
 
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
+  const summitApi = useSummitApi();
 
   const getBeastCollection = async (accountAddress: string) => {
     const contractAddress = currentNetworkConfig.beasts;
@@ -219,13 +221,11 @@ export const useGameTokens = () => {
         revival_count: stats["live_stats.revival_count"] || 0,
         blocks_held: parseInt(stats["live_stats.blocks_held"], 16) || 0,
         revival_time: 0,
-        stats: {
-          spirit: stats["live_stats.stats.spirit"] || 0,
-          luck: stats["live_stats.stats.luck"] || 0,
-          specials: Boolean(stats["live_stats.stats.specials"]),
-          wisdom: Boolean(stats["live_stats.stats.wisdom"]),
-          diplomacy: Boolean(stats["live_stats.stats.diplomacy"]),
-        },
+        spirit: stats["live_stats.stats.spirit"] || 0,
+        luck: stats["live_stats.stats.luck"] || 0,
+        specials: Boolean(stats["live_stats.stats.specials"]),
+        wisdom: Boolean(stats["live_stats.stats.wisdom"]),
+        diplomacy: Boolean(stats["live_stats.stats.diplomacy"]),
         kills_claimed: parseInt(skulls || "0", 16),
       }
       beast.revival_time = getBeastRevivalTime(beast);
@@ -337,22 +337,9 @@ export const useGameTokens = () => {
   }
 
   const countRegisteredBeasts = async () => {
-    let q = `
-      SELECT COUNT(*) as count
-      FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
-    `
-    let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-
     try {
-      const sql = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json"
-        }
-      })
-
-      let data = await sql.json()
-      return data[0].count || 0;
+      const response = await summitApi.getBeasts({ limit: 1 });
+      return response.pagination.total;
     } catch (error) {
       console.error("Error counting beasts:", error);
       return 0;
@@ -415,44 +402,28 @@ export const useGameTokens = () => {
 
   const getTop5000Cutoff = async (): Promise<Top5000Cutoff | null> => {
     try {
-      // Query 1: Get blocks_held sorted DESC (fast, no joins)
-      const statsQuery = `
-        SELECT 
-          "live_stats.blocks_held" as blocks_held,
-          "live_stats.bonus_xp" as bonus_xp,
-          "live_stats.last_death_timestamp" as last_death_timestamp
-        FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
-        WHERE "live_stats.blocks_held" > 0
-        ORDER BY 
-          "live_stats.blocks_held" DESC,
-          "live_stats.bonus_xp" DESC,
-          "live_stats.last_death_timestamp" DESC
-        LIMIT 5000
-      `;
-
-      const statsUrl = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(statsQuery)}`;
-      const statsResponse = await fetch(statsUrl, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
+      // Get the 5000th beast (offset 4999 with limit 1)
+      const response = await summitApi.getBeasts({
+        sortBy: "blocks_held",
+        sortOrder: "desc",
+        limit: 1,
+        offset: 4999,
       });
-      const statsData = await statsResponse.json();
 
-      if (!statsData || statsData.length < 5000) {
+      if (response.data.length === 0 || response.pagination.total < 5000) {
         return {
           blocks_held: 0,
           bonus_xp: 0,
           last_death_timestamp: 0,
-        }
+        };
       }
 
-      // Get the 5000th beast's blocks_held
-      const lastBeast = statsData[4999];
-
+      const beast = response.data[0];
       return {
-        blocks_held: lastBeast.blocks_held,
-        bonus_xp: lastBeast.bonus_xp,
-        last_death_timestamp: lastBeast.last_death_timestamp,
-      }
+        blocks_held: beast.blocksHeld,
+        bonus_xp: beast.bonusXp,
+        last_death_timestamp: parseInt(beast.lastDeathTimestamp),
+      };
     } catch (error) {
       console.error("Error getting top 5000 cutoff:", error);
       return null;
@@ -483,30 +454,20 @@ export const useGameTokens = () => {
 
   const getTopBeastsByBlocksHeld = async (limit: number, offset: number) => {
     try {
-      const q = `
-        SELECT 
-          token_id,
-          "live_stats.blocks_held" as blocks_held,
-          "live_stats.bonus_xp" as bonus_xp,
-          "live_stats.last_death_timestamp" as last_death_timestamp
-        FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
-        WHERE "live_stats.blocks_held" > 0
-        ORDER BY 
-          "live_stats.blocks_held" DESC,
-          "live_stats.bonus_xp" DESC,
-          "live_stats.last_death_timestamp" DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `;
-
-      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-      const sql = await fetch(url, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" }
+      const response = await summitApi.getBeasts({
+        sortBy: "blocks_held",
+        sortOrder: "desc",
+        limit,
+        offset,
       });
 
-      const data = await sql.json();
-      return data || [];
+      // Map API response to expected format
+      return response.data.map((beast) => ({
+        token_id: beast.tokenId,
+        blocks_held: beast.blocksHeld,
+        bonus_xp: beast.bonusXp,
+        last_death_timestamp: beast.lastDeathTimestamp,
+      }));
     } catch (error) {
       console.error("Error getting top beasts by blocks_held:", error);
       return [];

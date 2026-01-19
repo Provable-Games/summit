@@ -94,29 +94,29 @@ const BeastCard = memo(({
         )}
 
         {/* Upgrade Icons */}
-        {(beast.stats.spirit || beast.stats.luck || beast.stats.specials || beast.stats.wisdom || beast.stats.diplomacy) && (
+        {(beast.spirit || beast.luck || beast.specials || beast.wisdom || beast.diplomacy) && (
           <Box sx={styles.upgradeIconsContainer}>
-            {beast.stats.luck > 0 && (
+            {beast.luck > 0 && (
               <Box sx={{ color: '#ff69b4' }}>
                 <CasinoIcon sx={{ fontSize: '14px' }} />
               </Box>
             )}
-            {beast.stats.specials ? (
+            {beast.specials ? (
               <Box sx={{ color: '#ffd700' }}>
                 <StarIcon sx={{ fontSize: '14px' }} />
               </Box>
             ) : null}
-            {beast.stats.wisdom ? (
+            {beast.wisdom ? (
               <Box sx={{ color: '#60a5fa' }}>
                 <PsychologyIcon sx={{ fontSize: '14px' }} />
               </Box>
             ) : null}
-            {beast.stats.diplomacy ? (
+            {beast.diplomacy ? (
               <Box sx={{ color: '#a78bfa' }}>
                 <HandshakeIcon sx={{ fontSize: '14px' }} />
               </Box>
             ) : null}
-            {beast.stats.spirit > 0 && (
+            {beast.spirit > 0 && (
               <Box sx={{ color: '#00ffff' }}>
                 <EnergyIcon sx={{ fontSize: '14px' }} />
               </Box>
@@ -219,11 +219,11 @@ const BeastCard = memo(({
     prevProps.beast.token_id === nextProps.beast.token_id &&
     prevProps.beast.current_health === nextProps.beast.current_health &&
     prevProps.beast.bonus_health === nextProps.beast.bonus_health &&
-    prevProps.beast.stats.luck === nextProps.beast.stats.luck &&
-    prevProps.beast.stats.spirit === nextProps.beast.stats.spirit &&
-    prevProps.beast.stats.specials === nextProps.beast.stats.specials &&
-    prevProps.beast.stats.wisdom === nextProps.beast.stats.wisdom &&
-    prevProps.beast.stats.diplomacy === nextProps.beast.stats.diplomacy &&
+    prevProps.beast.luck === nextProps.beast.luck &&
+    prevProps.beast.spirit === nextProps.beast.spirit &&
+    prevProps.beast.specials === nextProps.beast.specials &&
+    prevProps.beast.wisdom === nextProps.beast.wisdom &&
+    prevProps.beast.diplomacy === nextProps.beast.diplomacy &&
     prevProps.isSelected === nextProps.isSelected &&
     prevProps.isSavage === nextProps.isSavage &&
     prevProps.isDead === nextProps.isDead &&

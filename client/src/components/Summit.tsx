@@ -297,9 +297,9 @@ function Summit() {
             </Box>
 
             <Box sx={styles.abilitiesContainer}>
-              {Boolean(summit.beast.stats.specials) && <StarIcon sx={{ fontSize: '16px', color: '#ffd700', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
-              {Boolean(summit.beast.stats.wisdom) && <PsychologyIcon sx={{ fontSize: '16px', color: '#60a5fa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
-              {Boolean(summit.beast.stats.diplomacy) && <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {Boolean(summit.beast.specials) && <StarIcon sx={{ fontSize: '16px', color: '#ffd700', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {Boolean(summit.beast.wisdom) && <PsychologyIcon sx={{ fontSize: '16px', color: '#60a5fa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {Boolean(summit.beast.diplomacy) && <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
             </Box>
           </Box>
 
@@ -352,7 +352,7 @@ function Summit() {
                   <Typography sx={[styles.statLabel, { fontSize: '12px' }]}>LUCK</Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                     <CasinoIcon sx={{ fontSize: '16px', color: '#ff69b4' }} />
-                    <Typography sx={styles.levelValue}>{Math.max(0, Math.floor(summit.beast.stats.luck))}</Typography>
+                    <Typography sx={styles.levelValue}>{Math.max(0, Math.floor(summit.beast.luck))}</Typography>
                   </Box>
                 </Box>
               </Box>
@@ -363,7 +363,7 @@ function Summit() {
               <Typography sx={styles.statLabel}>CRIT</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                 <Typography sx={styles.levelValue}>
-                  {getLuckCritChancePercent(summit.beast.stats.luck)}%
+                  {getLuckCritChancePercent(summit.beast.luck)}%
                 </Typography>
               </Box>
             </Box>
@@ -402,7 +402,7 @@ function Summit() {
                       <Typography sx={[styles.statLabel, { fontSize: '11px', opacity: 0.85 }]}>
                         Total power
                       </Typography>
-                      {summit.beast.stats.diplomacy ? <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
+                      {summit.beast.diplomacy ? <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
                         {summit.diplomacy.total_power}({summit.diplomacy.total_power - summit.beast.power})
                       </Typography> : <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
                         {summit.diplomacy.total_power}

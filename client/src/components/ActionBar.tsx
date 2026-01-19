@@ -89,7 +89,7 @@ function ActionBar() {
       pauseUpdates: true,
       beasts: selectedBeasts,
       safeAttack: attackMode === 'safe',
-      vrf: (selectedBeasts.find(selectedBeast => selectedBeast[0].stats.luck) || summit?.beast?.stats.luck) ? true : false,
+      vrf: (selectedBeasts.find(selectedBeast => selectedBeast[0].luck) || summit?.beast?.luck) ? true : false,
       attackPotions: appliedAttackPotions,
       revivePotions: revivalPotionsRequired,
       extraLifePotions: appliedExtraLifePotions,

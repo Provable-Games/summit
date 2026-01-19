@@ -60,7 +60,7 @@ function elementalDamage(attacker: any, defender: any): number {
 function nameMatchBonus(attacker: Beast, defender: Beast, elementalDamage: number): number {
   let damage = 0;
 
-  if (!attacker.stats.specials) return damage;
+  if (!attacker.specials) return damage;
 
   if (attacker.prefix === defender.prefix) {
     damage += elementalDamage * 2
@@ -86,8 +86,8 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
   let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((elemental * (1 + 0.1 * potions) + beastNameMatch) - summit.power))
   let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental * (1 + 0.1 * diplomacyBonus) + summitNameMatch) - beast.power)
 
-  let beastCritChance = getLuckCritChancePercent(beast.stats.luck);
-  let summitCritChance = getLuckCritChancePercent(summit.stats.luck);
+  let beastCritChance = getLuckCritChancePercent(beast.luck);
+  let summitCritChance = getLuckCritChancePercent(summit.luck);
 
   let beastCritDamage = beastCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor(((elemental * 2) * (1 + 0.1 * potions) + beastNameMatch) - summit.power)) : 0;
   let summitCritDamage = summitCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) * (1 + 0.1 * diplomacyBonus) + summitNameMatch) - beast.power) : 0;
@@ -114,8 +114,8 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
 export const getBeastRevivalTime = (beast: Beast): number => {
   let revivalTime = 86400000;
 
-  if (beast.stats.spirit > 0) {
-    revivalTime -= getSpiritRevivalReductionSeconds(beast.stats.spirit) * 1000;
+  if (beast.spirit > 0) {
+    revivalTime -= getSpiritRevivalReductionSeconds(beast.spirit) * 1000;
   }
 
   return revivalTime;
