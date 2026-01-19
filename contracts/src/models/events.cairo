@@ -13,7 +13,7 @@ pub struct LiveBeastStatsEvent {
 
 #[derive(Drop, starknet::Event)]
 pub struct RewardEvent {
-    pub block_number: u64,
+    // pub block_number: u64,
     pub beast_token_id: u32,
     pub owner: ContractAddress,
     pub amount: u32,
@@ -29,7 +29,7 @@ pub struct RewardsClaimedEvent {
 #[derive(Drop, starknet::Event)]
 pub struct PoisonEvent {
     pub beast_token_id: u32,
-    pub block_timestamp: u64,
+    // pub block_timestamp: u64,
     pub count: u16,
     pub player: ContractAddress,
 }
@@ -44,14 +44,6 @@ pub struct DiplomacyEvent {
 #[derive(Drop, starknet::Event)]
 pub struct SummitEvent {
     pub beast_token_id: u32,
-    pub beast_id: u8,
-    pub prefix: u8,
-    pub suffix: u8,
-    pub level: u16,
-    pub health: u16,
-    pub shiny: u8,
-    pub animated: u8,
-    pub live_stats: LiveBeastStats,
     pub owner: ContractAddress,
 }
 

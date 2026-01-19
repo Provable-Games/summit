@@ -6,6 +6,7 @@
 --
 -- Channels:
 -- - beast_update: Beast stat changes
+-- - beast_upgrade: Beast skill upgrades (spirit, luck, specials, wisdom, diplomacy)
 -- - battle: Combat events
 -- - summit: Summit takeover events
 -- - poison: Poison attack events
@@ -52,6 +53,31 @@ CREATE TRIGGER beast_stats_notify
   EXECUTE FUNCTION notify_beast_update();
 
 -- ===========================================
+-- Beast Upgrade Notifications (UPDATE on beast_stats skill columns)
+-- ===========================================
+CREATE OR REPLACE FUNCTION notify_beast_upgrade() RETURNS trigger AS $$
+BEGIN
+  PERFORM pg_notify('beast_upgrade', json_build_object(
+    'token_id', NEW.token_id,
+    'spirit', NEW.spirit - OLD.spirit,
+    'luck', NEW.luck - OLD.luck,
+    'specials', NEW.specials - OLD.specials,
+    'wisdom', NEW.wisdom - OLD.wisdom,
+    'diplomacy', NEW.diplomacy - OLD.diplomacy,
+    'block_number', NEW.block_number::text,
+    'transaction_hash', NEW.transaction_hash
+  )::text);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS beast_upgrade_notify ON beast_stats;
+CREATE TRIGGER beast_upgrade_notify
+  AFTER UPDATE OF spirit, luck, specials, wisdom, diplomacy ON beast_stats
+  FOR EACH ROW
+  EXECUTE FUNCTION notify_beast_upgrade();
+
+-- ===========================================
 -- Battle Notifications (INSERT on battles)
 -- ===========================================
 CREATE OR REPLACE FUNCTION notify_battle() RETURNS trigger AS $$
@@ -70,11 +96,11 @@ BEGIN
     'critical_counter_attack_damage', NEW.critical_counter_attack_damage,
     'attack_potions', NEW.attack_potions,
     'xp_gained', NEW.xp_gained,
-    'block_number', NEW.block_number::text,
-    'transaction_hash', NEW.transaction_hash,
-    'created_at', NEW.created_at,
-    'indexed_at', NEW.indexed_at,
-    'inserted_at', NEW.inserted_at
+    -- 'block_number', NEW.block_number::text,
+    -- 'transaction_hash', NEW.transaction_hash,
+    -- 'created_at', NEW.created_at,
+    -- 'indexed_at', NEW.indexed_at,
+    -- 'inserted_at', NEW.inserted_at
   )::text);
   RETURN NEW;
 END;
@@ -104,11 +130,11 @@ BEGIN
     'bonus_health', NEW.bonus_health,
     'blocks_held', NEW.blocks_held,
     'owner', NEW.owner,
-    'block_number', NEW.block_number::text,
-    'transaction_hash', NEW.transaction_hash,
-    'created_at', NEW.created_at,
-    'indexed_at', NEW.indexed_at,
-    'inserted_at', NEW.inserted_at
+    -- 'block_number', NEW.block_number::text,
+    -- 'transaction_hash', NEW.transaction_hash,
+    -- 'created_at', NEW.created_at,
+    -- 'indexed_at', NEW.indexed_at,
+    -- 'inserted_at', NEW.inserted_at
   )::text);
   RETURN NEW;
 END;

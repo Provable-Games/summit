@@ -163,14 +163,13 @@ CREATE TABLE "summit_history" (
 	"event_index" integer NOT NULL
 );
 --> statement-breakpoint
+--> TODO: CHECK ALL INDEXES ARE CORRECT
 CREATE UNIQUE INDEX "battles_block_tx_event_idx" ON "battles" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
 CREATE INDEX "battles_attacking_beast_idx" ON "battles" USING btree ("attacking_beast_token_id");--> statement-breakpoint
 CREATE INDEX "battles_defending_beast_idx" ON "battles" USING btree ("defending_beast_token_id");--> statement-breakpoint
 CREATE INDEX "battles_created_at_idx" ON "battles" USING btree ("created_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "battles_block_number_idx" ON "battles" USING btree ("block_number");--> statement-breakpoint
-CREATE INDEX "beast_stats_current_health_idx" ON "beast_stats" USING btree ("current_health");--> statement-breakpoint
 CREATE INDEX "beast_stats_blocks_held_idx" ON "beast_stats" USING btree ("blocks_held" DESC NULLS LAST);--> statement-breakpoint
-CREATE INDEX "beast_stats_updated_at_idx" ON "beast_stats" USING btree ("updated_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE UNIQUE INDEX "corpse_events_block_tx_event_idx" ON "corpse_events" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
 CREATE INDEX "corpse_events_adventurer_id_idx" ON "corpse_events" USING btree ("adventurer_id");--> statement-breakpoint
 CREATE INDEX "corpse_events_player_idx" ON "corpse_events" USING btree ("player");--> statement-breakpoint
