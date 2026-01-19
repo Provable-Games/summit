@@ -32,6 +32,7 @@ export interface GameDirectorContext {
 
 export const START_TIMESTAMP = 1760947200;
 export const TERMINAL_BLOCK = 7000000;
+export const BULK_ATTACK_LIMIT = 200;
 
 const GameDirectorContext = createContext<GameDirectorContext>(
   {} as GameDirectorContext
@@ -345,7 +346,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }));
   }
 
-  const executeGameAction = async (action: GameAction, beastLimit: number = 200) => {
+  const executeGameAction = async (action: GameAction, beastLimit: number = BULK_ATTACK_LIMIT) => {
     let txs: any[] = [];
     let beastsUsedInAttack: selection = [];
 

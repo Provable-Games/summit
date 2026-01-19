@@ -1,4 +1,5 @@
 import { useController } from '@/contexts/controller';
+import { BULK_ATTACK_LIMIT } from '@/contexts/GameDirector';
 import { useStatistics } from '@/contexts/Statistics';
 import { BeastTypeFilter, SortMethod, useGameStore } from '@/stores/gameStore';
 import { Beast, selection } from '@/types/game';
@@ -160,7 +161,7 @@ function BeastCollection() {
     if (attackInProgress) return;
 
     const allBeasts = collectionWithCombat.filter((beast: Beast) => !isBeastLocked(beast));
-    const maxBeasts = Math.min(75, allBeasts.length);
+    const maxBeasts = Math.min(BULK_ATTACK_LIMIT, allBeasts.length);
 
     if (selectedBeasts.length >= maxBeasts) {
       setSelectedBeasts([])
@@ -177,7 +178,7 @@ function BeastCollection() {
 
   const maxBeastsSelected = useMemo(() => {
     const allBeasts = collectionWithCombat.filter((beast: Beast) => !isBeastLocked(beast));
-    const maxBeasts = Math.min(75, allBeasts.length);
+    const maxBeasts = Math.min(BULK_ATTACK_LIMIT, allBeasts.length);
     return allBeasts.length > 0 && selectedBeasts.length >= maxBeasts;
   }, [collectionWithCombat, selectedBeasts]);
 
@@ -361,7 +362,7 @@ function BeastCollection() {
                 </Box>
               </Tooltip>
 
-              {attackMode !== 'autopilot' && <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Select 75</Box>}>
+              {attackMode !== 'autopilot' && <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Select {BULK_ATTACK_LIMIT}</Box>}>
                 <Box sx={[styles.utilityButton, maxBeastsSelected && styles.selectedItem]} onClick={() => selectAllBeasts()}>
                   <LibraryAddCheckIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />
                 </Box>
