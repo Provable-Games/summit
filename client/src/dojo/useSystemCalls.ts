@@ -41,8 +41,8 @@ export const useSystemCalls = () => {
       let receipt: any = await waitForTransaction(tx.transaction_hash, 0);
 
       if (receipt.execution_status === "REVERTED") {
-        // Check if this is a gas limit error
-        const failureReason = receipt.failure_reason || '';
+        // Check if this is a gas limit error (can be in failure_reason or revert_reason)
+        const failureReason = receipt.failure_reason || receipt.revert_reason || '';
         if (failureReason.includes('Insufficient max L2Gas')) {
           return { success: false, error: 'gas_limit' };
         }
