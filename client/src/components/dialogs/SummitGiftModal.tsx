@@ -178,11 +178,9 @@ function SummitGiftModal(props: SummitGiftModalProps) {
         return;
       }
 
-      const result = await executeAction(calls, () => {
-        setGiftInProgress(false);
-      });
+      const result = await executeAction(calls);
 
-      if (result) {
+      if (result.success) {
         // Optimistically update local token balances
         setTokenBalances({
           ...tokenBalances,

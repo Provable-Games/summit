@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 const STORAGE_KEY = 'summit_settings_v1';
 
-const DEFAULT_BULK_ATTACK_LIMIT = 75;
+const DEFAULT_BULK_ATTACK_LIMIT = 250;
 const MIN_BULK_ATTACK_LIMIT = 1;
 const MAX_BULK_ATTACK_LIMIT = 500;
 

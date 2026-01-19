@@ -1,10 +1,11 @@
 import { useStarknetApi } from "@/api/starknet";
 import { useSound } from "@/contexts/sound";
 import { useGameTokens } from "@/dojo/useGameTokens";
-import { useSystemCalls } from "@/dojo/useSystemCalls";
+import { ExecuteResult, useSystemCalls } from "@/dojo/useSystemCalls";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useSnackbar } from "notistack";
 import { BattleEvent, Beast, Diplomacy, GameAction, getDeathMountainModel, getEntityModel, Summit } from "@/types/game";
 import {
   applyPoisonDamage,
@@ -51,6 +52,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const { tokenBalances, setTokenBalances } = useController();
   const { play } = useSound();
   const { getDiplomacy } = useGameTokens();
+  const { enqueueSnackbar } = useSnackbar();
 
   const [nextSummit, setNextSummit] = useState<Summit | null>(null);
   const [diplomacyEvent, setDiplomacyEvent] = useState<Diplomacy>();
@@ -347,8 +349,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }));
   }
 
-  const executeGameAction = async (action: GameAction) => {
+  const executeGameAction = async (action: GameAction, currentBeastCount?: number): Promise<boolean> => {
     let txs: any[] = [];
+    let beastsUsedInAttack: typeof action.beasts = [];
 
     if (action.pauseUpdates) {
       setPauseUpdates(true);
@@ -357,8 +360,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (action.type === 'attack') {
       setBattleEvents([]);
       setAttackInProgress(true);
+      // Use currentBeastCount if provided (for retries), otherwise use all beasts
+      const beastCount = currentBeastCount ?? action.beasts.length;
+      beastsUsedInAttack = action.beasts.slice(0, beastCount);
       txs.push(
-        ...attack(action.beasts, action.safeAttack, action.vrf, action.extraLifePotions)
+        ...attack(beastsUsedInAttack, action.safeAttack, action.vrf, action.extraLifePotions)
       );
     }
 
@@ -366,15 +372,17 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       setBattleEvents([]);
       setAttackInProgress(true);
 
-      let beasts = action.beasts.slice(0, bulkAttackLimit);
+      // Use currentBeastCount if provided (for retries), otherwise use bulkAttackLimit
+      const beastCount = currentBeastCount ?? bulkAttackLimit;
+      beastsUsedInAttack = action.beasts.slice(0, beastCount);
 
-      if (beasts.length === 0) {
+      if (beastsUsedInAttack.length === 0) {
         setActionFailed();
         return false;
       }
 
       txs.push(
-        ...attack(beasts, false, true, action.extraLifePotions)
+        ...attack(beastsUsedInAttack, false, true, action.extraLifePotions)
       );
     }
 
@@ -407,12 +415,33 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       txs.push(...applyPoison(action.beastId, action.count));
     }
 
-    const events = await executeAction(txs, setActionFailed);
+    const result = await executeAction(txs);
 
-    if (!events) {
+    // Handle gas limit errors for attack actions with automatic retry
+    if (result.success === false) {
+      if (result.error === 'gas_limit' && (action.type === 'attack' || action.type === 'attack_until_capture')) {
+        const usedCount = beastsUsedInAttack.length;
+        const reducedCount = usedCount - 25;
+
+        if (reducedCount >= 1) {
+          enqueueSnackbar(`Reducing batch to ${reducedCount} beasts due to gas limits`, {
+            variant: 'info',
+            anchorOrigin: { vertical: 'top', horizontal: 'center' }
+          });
+          return executeGameAction(action, reducedCount);
+        }
+      }
+
+      // For non-retryable errors, show message and fail
+      enqueueSnackbar('Action failed', {
+        variant: 'warning',
+        anchorOrigin: { vertical: 'top', horizontal: 'center' }
+      });
       setActionFailed();
       return false;
     }
+
+    const events = result.events;
 
     updateLiveStats(events.filter((event: any) => event.componentName === 'LiveBeastStatsEvent'));
     let captured = events.filter((event: any) => event.componentName === 'BattleEvent')
@@ -444,9 +473,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       }
     } else if (action.type === 'attack_until_capture') {
       if (!captured) {
+        // Use the actual number of beasts that were used in this batch (may have been reduced due to gas limits)
+        const beastsUsedCount = currentBeastCount ?? bulkAttackLimit;
         executeGameAction({
           type: 'attack_until_capture',
-          beasts: action.beasts.slice(bulkAttackLimit),
+          beasts: action.beasts.slice(beastsUsedCount),
           extraLifePotions: action.extraLifePotions
         });
       } else {
