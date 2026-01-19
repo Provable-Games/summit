@@ -44,11 +44,11 @@ services:
           name: summit-db
           property: connectionString
       - key: CONTRACT_ADDRESS
-        value: "0x06015596D10cBc6DD695a964827eEe290d3487ffFCF60d02264b81524Dd275E4"
+        value: "0x00345c2653c11eaecb138c49322a55a1a33a7fc13954b04e1aea701578e72609"
       - key: STREAM_URL
         value: "https://mainnet.starknet.a5a.ch"
       - key: STARTING_BLOCK
-        value: "2125240" # Summit deployment block - update if contract was redeployed
+        value: "5769929" # Summit deployment block - update if contract was redeployed
       - key: DNA_TOKEN
         sync: false # Set manually (Apibara auth token)
 
