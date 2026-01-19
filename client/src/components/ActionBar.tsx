@@ -2,6 +2,7 @@ import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useAutopilotStore } from '@/stores/autopilotStore';
 import { useGameStore } from '@/stores/gameStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { Beast } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
@@ -64,6 +65,7 @@ function ActionBar() {
     poisonAggressiveAmount,
     initializeMaxCapsFromBalances,
   } = useAutopilotStore();
+  const { bulkAttackLimit } = useSettingsStore();
 
   const [anchorEl, setAnchorEl] = useState(null);
   const [potion, setPotion] = useState(null)
@@ -248,7 +250,7 @@ function ActionBar() {
       setLastBeastAttacked(summit?.beast.token_id);
       handleAttackUntilCapture(extraLifePotions);
     } else if (attackStrategy === 'guaranteed') {
-      let beasts = collectionWithCombat.slice(0, 75)
+      let beasts = collectionWithCombat.slice(0, bulkAttackLimit)
 
       let totalSummitHealth = ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health;
       let totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
