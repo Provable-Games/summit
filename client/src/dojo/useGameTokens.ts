@@ -85,16 +85,21 @@ export const useGameTokens = () => {
     `;
 
     // Execute API calls and metadata query in parallel
+    // Use allSettled so failures don't break the entire fetch
     let statsData: any[] = [];
     let skullsData: any[] = [];
     let metadataData: any[] = [];
 
     try {
-      const [statsResponse, skullsResponse, metadataResponse] = await Promise.all([
-        // Fetch stats from Summit API
-        summitApi.getBeastsBulk(integerIds),
-        // Fetch skulls from Summit API
-        summitApi.getSkullsBulk(integerIds),
+      const [statsResult, skullsResult, metadataResult] = await Promise.allSettled([
+        // Fetch stats from Summit API (may fail if no game data exists yet)
+        currentNetworkConfig.apiUrl
+          ? summitApi.getBeastsBulk(integerIds)
+          : Promise.resolve({ data: [] }),
+        // Fetch skulls from Summit API (may fail if no game data exists yet)
+        currentNetworkConfig.apiUrl
+          ? summitApi.getSkullsBulk(integerIds)
+          : Promise.resolve({ data: [] }),
         // Fetch metadata from Torii (NFT metadata still lives there)
         fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(metadataQuery)}`, {
           method: "GET",
@@ -102,10 +107,28 @@ export const useGameTokens = () => {
         })
       ]);
 
-      statsData = statsResponse.data || [];
-      skullsData = skullsResponse.data || [];
-      metadataData = metadataResponse.ok ? await metadataResponse.json() : [];
-      metadataData = Array.isArray(metadataData) ? metadataData : [];
+      // Extract stats data (graceful fallback to empty array)
+      if (statsResult.status === 'fulfilled') {
+        statsData = statsResult.value.data || [];
+      } else {
+        console.warn("Failed to fetch beast stats from API:", statsResult.reason);
+      }
+
+      // Extract skulls data (graceful fallback to empty array)
+      if (skullsResult.status === 'fulfilled') {
+        skullsData = skullsResult.value.data || [];
+      } else {
+        console.warn("Failed to fetch skulls from API:", skullsResult.reason);
+      }
+
+      // Extract metadata (this is critical - return early if it fails)
+      if (metadataResult.status === 'fulfilled' && metadataResult.value.ok) {
+        const metadataJson = await metadataResult.value.json();
+        metadataData = Array.isArray(metadataJson) ? metadataJson : [];
+      } else {
+        console.error("Failed to fetch beast metadata from Torii");
+        return [];
+      }
     } catch (error) {
       console.error("Error fetching beast collection data:", error);
       return [];
