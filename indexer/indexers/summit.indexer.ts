@@ -42,7 +42,6 @@ import {
   decodeRewardsClaimedEvent,
   decodePoisonEvent,
   decodeDiplomacyEvent,
-  decodeSummitEvent,
   decodeCorpseEvent,
   decodeSkullEvent,
   unpackLiveBeastStats,
@@ -293,12 +292,11 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
             case EVENT_SELECTORS.RewardEvent: {
               const decoded = decodeRewardEvent(keys, data);
-              logger.info(`RewardEvent: beast=${decoded.beastTokenId}, owner=${decoded.owner}, amount=${decoded.amount}`);
+              logger.info(`RewardEvent: beast=${decoded.beastTokenId}, player=${decoded.player}, amount=${decoded.amount}`);
 
-              await db.insert(schema.rewards).values({
-                rewardBlockNumber: decoded.blockNumber,
+              await db.insert(schema.rewardsEarned).values({
                 beastTokenId: decoded.beastTokenId,
-                owner: decoded.owner,
+                player: decoded.player,
                 amount: decoded.amount,
                 createdAt: blockTimestamp,
                 indexedAt: indexedAt,
@@ -311,12 +309,11 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
             case EVENT_SELECTORS.RewardsClaimedEvent: {
               const decoded = decodeRewardsClaimedEvent(keys, data);
-              logger.info(`RewardsClaimedEvent: player=${decoded.player}, beasts=${decoded.beastTokenIds.length}, amount=${decoded.amount}`);
+              logger.info(`RewardsClaimedEvent: player=${decoded.player}, amount=${decoded.amount}`);
 
               await db.insert(schema.rewardsClaimed).values({
                 player: decoded.player,
-                beastTokenIds: decoded.beastTokenIds.join(","),
-                amount: decoded.amount.toString(),
+                amount: decoded.amount,
                 createdAt: blockTimestamp,
                 indexedAt: indexedAt,
                 blockNumber,
@@ -332,7 +329,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
               await db.insert(schema.poisonEvents).values({
                 beastTokenId: decoded.beastTokenId,
-                blockTimestamp: decoded.blockTimestamp,
                 count: decoded.count,
                 player: decoded.player,
                 createdAt: blockTimestamp,
@@ -363,38 +359,11 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
             case EVENT_SELECTORS.SummitEvent: {
               const decoded = decodeSummitEvent(keys, data);
-              logger.info(`SummitEvent: beast_token_id=${decoded.beastTokenId}, owner=${decoded.owner}`);
+              logger.info(`SummitEvent: beast_token_id=${decoded.beastTokenId}, player=${decoded.player}`);
 
-              await db.insert(schema.summitHistory).values({
-                // Beast identifiers
+              await db.insert(schema.summitHistory).values({  
                 beastTokenId: decoded.beastTokenId,
-                beastId: decoded.beastId,
-                beastPrefix: decoded.prefix,
-                beastSuffix: decoded.suffix,
-                beastLevel: decoded.level,
-                beastHealth: decoded.health,
-                beastShiny: decoded.shiny,
-                beastAnimated: decoded.animated,
-                // LiveBeastStats fields
-                tokenId: decoded.liveStats.tokenId,
-                currentHealth: decoded.liveStats.currentHealth,
-                bonusHealth: decoded.liveStats.bonusHealth,
-                bonusXp: decoded.liveStats.bonusXp,
-                attackStreak: decoded.liveStats.attackStreak,
-                lastDeathTimestamp: decoded.liveStats.lastDeathTimestamp,
-                revivalCount: decoded.liveStats.revivalCount,
-                extraLives: decoded.liveStats.extraLives,
-                hasClaimedPotions: decoded.liveStats.hasClaimedPotions,
-                blocksHeld: decoded.liveStats.blocksHeld,
-                spirit: decoded.liveStats.spirit,
-                luck: decoded.liveStats.luck,
-                specials: decoded.liveStats.specials,
-                wisdom: decoded.liveStats.wisdom,
-                diplomacyStat: decoded.liveStats.diplomacy,
-                rewardsEarned: decoded.liveStats.rewardsEarned,
-                rewardsClaimed: decoded.liveStats.rewardsClaimed,
-                // Owner
-                owner: decoded.owner,
+                player: decoded.player,
                 createdAt: blockTimestamp,
                 indexedAt: indexedAt,
                 blockNumber,

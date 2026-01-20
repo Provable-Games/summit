@@ -80,7 +80,7 @@ Entry point `main.tsx` sets up providers in order:
 1. **Wallet**: `DynamicConnectorProvider` manages Cartridge Controller connection
 2. **Network Config**: `utils/networkConfig.ts` defines RPC endpoints, token addresses, contract policies
 3. **Game State**: `GameDirector.tsx` coordinates polling summit data and beast collection
-4. **Contract Calls**: `useSystemCalls.ts` wraps Dojo SDK for `attack()`, `feed()`, `claim_beast_reward()`, etc.
+4. **Contract Calls**: `useSystemCalls.ts` wraps Dojo SDK for `attack()`, `feed()`, `claim_starter_pack()`, etc.
 
 ### Network Configuration
 

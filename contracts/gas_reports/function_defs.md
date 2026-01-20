@@ -273,7 +273,7 @@ Total files analyzed: 8 source files (excluding tests and interfaces)
 | `start_summit` | external | Write | No |
 | `attack` | external | Read/Write | Yes (via dispatcher) |
 | `feed` | external | Read/Write | Yes |
-| `claim_beast_reward` | external | Read/Write | Yes |
+| `claim_starter_pack` | external | Read/Write | Yes |
 | `add_extra_life` | external | Read/Write | Yes |
 | `apply_stat_points` | external | Read/Write | Yes |
 | `apply_poison` | external | Read/Write | Yes |

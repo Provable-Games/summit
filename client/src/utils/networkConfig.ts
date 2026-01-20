@@ -194,7 +194,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           {
             "name": "Claim Beast Reward",
             "description": "Claim beast rewards",
-            "entrypoint": "claim_beast_reward"
+            "entrypoint": "claim_starter_pack"
           },
           {
             "name": "Add Extra Life",

@@ -390,7 +390,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       );
     }
 
-    if (action.type === 'claim_beast_reward') {
+    if (action.type === 'claim_starter_pack') {
       txs.push(claimBeastReward(action.beastIds));
     }
 

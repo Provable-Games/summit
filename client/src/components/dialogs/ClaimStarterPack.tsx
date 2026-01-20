@@ -91,7 +91,7 @@ function ClaimStarterPack(props) {
         // Fire the call without awaiting
         promises.push(
           executeGameAction({
-            type: "claim_beast_reward",
+            type: "claim_starter_pack",
             beastIds: batch
           })
         )

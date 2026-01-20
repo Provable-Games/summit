@@ -22,7 +22,6 @@
  * - RewardsClaimedEvent: Rewards claimed by player
  * - PoisonEvent: Poison attacks
  * - DiplomacyEvent: Diplomacy group formations
- * - SummitEvent: Summit takeovers
  * - CorpseEvent: Corpse creation
  * - SkullEvent: Skull claims
  * - BattleEvent: Combat results
@@ -41,7 +40,6 @@ export const EVENT_SELECTORS = {
   RewardsClaimedEvent: hash.getSelectorFromName("RewardsClaimedEvent"),
   PoisonEvent: hash.getSelectorFromName("PoisonEvent"),
   DiplomacyEvent: hash.getSelectorFromName("DiplomacyEvent"),
-  SummitEvent: hash.getSelectorFromName("SummitEvent"),
   CorpseEvent: hash.getSelectorFromName("CorpseEvent"),
   SkullEvent: hash.getSelectorFromName("SkullEvent"),
   BattleEvent: hash.getSelectorFromName("BattleEvent"),
@@ -170,11 +168,11 @@ export interface BattleEventData {
   criticalCounterAttackCount: number;
   criticalCounterAttackDamage: number;
   attackPotions: number;
+  revivePotions: number;
   xpGained: number;
 }
 
 export interface RewardEventData {
-  blockNumber: bigint;
   beastTokenId: number;
   owner: string;
   amount: number;
@@ -182,13 +180,11 @@ export interface RewardEventData {
 
 export interface RewardsClaimedEventData {
   player: string;
-  beastTokenIds: number[];
-  amount: bigint;
+  amount: number;
 }
 
 export interface PoisonEventData {
   beastTokenId: number;
-  blockTimestamp: bigint;
   count: number;
   player: string;
 }
@@ -197,19 +193,6 @@ export interface DiplomacyEventData {
   specialsHash: string;
   beastTokenIds: number[];
   totalPower: number;
-}
-
-export interface SummitEventData {
-  beastTokenId: number;
-  beastId: number;
-  prefix: number;
-  suffix: number;
-  level: number;
-  health: number;
-  shiny: number;
-  animated: number;
-  liveStats: LiveBeastStats;
-  owner: string;
 }
 
 export interface CorpseEventData {
@@ -373,49 +356,44 @@ export function decodeBattleEvent(keys: string[], data: string[]): BattleEventDa
     criticalCounterAttackCount: hexToNumber(data[9]),
     criticalCounterAttackDamage: hexToNumber(data[10]),
     attackPotions: hexToNumber(data[11]),
-    xpGained: hexToNumber(data[12]),
+    revivePotions: hexToNumber(data[12]),
+    xpGained: hexToNumber(data[13]),
   };
 }
 
 /**
  * Decode RewardEvent
- * Data: block_number, beast_token_id, owner, amount
+ * Data: beast_token_id, owner, amount
  */
 export function decodeRewardEvent(keys: string[], data: string[]): RewardEventData {
   return {
-    blockNumber: hexToBigInt(data[0]),
-    beastTokenId: hexToNumber(data[1]),
-    owner: feltToHex(data[2]),
-    amount: hexToNumber(data[3]),
+    beastTokenId: hexToNumber(data[0]),
+    owner: feltToHex(data[1]),
+    amount: hexToNumber(data[2]),
   };
 }
 
 /**
  * Decode RewardsClaimedEvent
- * Keys: [selector, player]
- * Data: beast_token_ids (Span<u32>), amount (u256 = low + high)
+ * Data: player, amount
+ * Data: amount (u32)
  */
 export function decodeRewardsClaimedEvent(keys: string[], data: string[]): RewardsClaimedEventData {
-  const player = feltToHex(keys[1]);
-  const { values: beastTokenIds, consumed } = decodeSpanU32(data, 0);
-  // u256 is serialized as two felt252s (low, high)
-  const amountLow = hexToBigInt(data[consumed]);
-  const amountHigh = hexToBigInt(data[consumed + 1]);
-  const amount = amountLow + (amountHigh << 128n);
+  const player = feltToHex(data[0]);
+  const amount = hexToNumber(data[1]);
 
-  return { player, beastTokenIds, amount };
+  return { player, amount };
 }
 
 /**
  * Decode PoisonEvent
- * Data: beast_token_id, block_timestamp, count, player
+ * Data: beast_token_id, count, player
  */
 export function decodePoisonEvent(keys: string[], data: string[]): PoisonEventData {
   return {
     beastTokenId: hexToNumber(data[0]),
-    blockTimestamp: hexToBigInt(data[1]),
-    count: hexToNumber(data[2]),
-    player: feltToHex(data[3]),
+    count: hexToNumber(data[1]),
+    player: feltToHex(data[2]),
   };
 }
 
@@ -432,76 +410,6 @@ export function decodeDiplomacyEvent(keys: string[], data: string[]): DiplomacyE
     specialsHash,
     beastTokenIds,
     totalPower,
-  };
-}
-
-/**
- * Decode SummitEvent
- * Data: beast_token_id, beast_id, prefix, suffix, level, health, shiny, animated,
- *       live_stats (LiveBeastStats struct - serialized), owner
- */
-export function decodeSummitEvent(keys: string[], data: string[]): SummitEventData {
-  const beastTokenId = hexToNumber(data[0]);
-  const beastId = hexToNumber(data[1]);
-  const prefix = hexToNumber(data[2]);
-  const suffix = hexToNumber(data[3]);
-  const level = hexToNumber(data[4]);
-  const health = hexToNumber(data[5]);
-  const shiny = hexToNumber(data[6]);
-  const animated = hexToNumber(data[7]);
-
-  // LiveBeastStats is Serde-serialized (17 fields)
-  let idx = 8;
-  const tokenId = hexToNumber(data[idx++]);
-  const currentHealth = hexToNumber(data[idx++]);
-  const bonusHealth = hexToNumber(data[idx++]);
-  const bonusXp = hexToNumber(data[idx++]);
-  const attackStreak = hexToNumber(data[idx++]);
-  const lastDeathTimestamp = hexToBigInt(data[idx++]);
-  const revivalCount = hexToNumber(data[idx++]);
-  const extraLives = hexToNumber(data[idx++]);
-  const hasClaimedPotions = hexToNumber(data[idx++]);
-  const blocksHeld = hexToNumber(data[idx++]);
-  // Stats struct inline
-  const spirit = hexToNumber(data[idx++]);
-  const luck = hexToNumber(data[idx++]);
-  const specials = hexToNumber(data[idx++]);
-  const wisdom = hexToNumber(data[idx++]);
-  const diplomacy = hexToNumber(data[idx++]);
-  const rewardsEarned = hexToNumber(data[idx++]);
-  const rewardsClaimed = hexToNumber(data[idx++]);
-
-  const owner = feltToHex(data[idx]);
-
-  return {
-    beastTokenId,
-    beastId,
-    prefix,
-    suffix,
-    level,
-    health,
-    shiny,
-    animated,
-    liveStats: {
-      tokenId,
-      currentHealth,
-      bonusHealth,
-      bonusXp,
-      attackStreak,
-      lastDeathTimestamp,
-      revivalCount,
-      extraLives,
-      hasClaimedPotions,
-      blocksHeld,
-      spirit,
-      luck,
-      specials,
-      wisdom,
-      diplomacy,
-      rewardsEarned,
-      rewardsClaimed,
-    },
-    owner,
   };
 }
 

@@ -325,7 +325,7 @@ fn test_apply_poison() {
 
 #[test]
 #[fork("mainnet")]
-fn test_claim_beast_reward_basic() {
+fn test_claim_starter_pack_basic() {
     let summit = deploy_summit_and_start();
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
@@ -336,7 +336,7 @@ fn test_claim_beast_reward_basic() {
     mock_erc20_mint(summit.get_skull_token_address(), true);
 
     let beast_token_ids = array![60989].span();
-    summit.claim_beast_reward(beast_token_ids);
+    summit.claim_starter_pack(beast_token_ids);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -344,14 +344,14 @@ fn test_claim_beast_reward_basic() {
 #[test]
 #[fork("mainnet")]
 #[should_panic(expected: ('Not token owner',))]
-fn test_claim_beast_reward_not_owner() {
+fn test_claim_starter_pack_not_owner() {
     let summit = deploy_summit_and_start();
 
     let fake_owner: ContractAddress = 0x123.try_into().unwrap();
     start_cheat_caller_address(summit.contract_address, fake_owner);
 
     let beast_token_ids = array![60989].span();
-    summit.claim_beast_reward(beast_token_ids);
+    summit.claim_starter_pack(beast_token_ids);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1153,7 +1153,7 @@ fn test_apply_poison_not_summit_beast() {
 #[test]
 #[fork("mainnet")]
 #[should_panic(expected: ('Already claimed potions',))]
-fn test_claim_beast_reward_twice() {
+fn test_claim_starter_pack_twice() {
     let summit = deploy_summit_and_start();
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
@@ -1164,10 +1164,10 @@ fn test_claim_beast_reward_twice() {
     mock_erc20_mint(summit.get_skull_token_address(), true);
 
     let beast_token_ids = array![60989].span();
-    summit.claim_beast_reward(beast_token_ids);
+    summit.claim_starter_pack(beast_token_ids);
 
     // Try to claim again
-    summit.claim_beast_reward(beast_token_ids);
+    summit.claim_starter_pack(beast_token_ids);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1481,11 +1481,11 @@ fn test_withdraw_funds_non_owner() {
     stop_cheat_caller_address(summit.contract_address);
 }
 
-// Note: test_claim_beast_reward_multiple_beasts - requires multiple beasts owned by same player.
+// Note: test_claim_starter_pack_multiple_beasts - requires multiple beasts owned by same player.
 // REAL_PLAYER owns beast 60989 on mainnet. Testing with multiple beasts would need either:
 // - A player who owns multiple beasts, or
 // - Mocking the NFT ownership check
-// The single-beast claim is already tested in test_claim_beast_reward_basic.
+// The single-beast claim is already tested in test_claim_starter_pack_basic.
 
 // ==========================
 // P0 TESTS: ACCESS CONTROL
@@ -1625,7 +1625,7 @@ fn test_attack_unused_revival_potions() {
 // Note: Full blocks_held tracking requires multi-player scenarios where one beast takes
 // the summit from another, which updates blocks_held. With single-player fork testing,
 // we can only verify the basic attack flow. The blocks_held accumulation is implicitly
-// tested by test_claim_beast_reward_basic which requires blocks_held > 0.
+// tested by test_claim_starter_pack_basic which requires blocks_held > 0.
 #[test]
 #[fork("mainnet")]
 fn test_summit_beast_can_be_attacked() {

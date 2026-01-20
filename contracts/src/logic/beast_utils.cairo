@@ -15,6 +15,16 @@ pub fn get_level_from_xp(xp: u32) -> u16 {
     }
 }
 
+#[inline(always)]
+pub fn level_up(base_level: u16, bonus_xp: u16, xp_gained: u16) -> bool {
+    let base: u32 = base_level.into();
+    let total_xp = base * base + bonus_xp.into();
+
+    let previous_level = get_level_from_xp(total_xp - xp_gained.into());
+    let level = get_level_from_xp(total_xp);
+    level > previous_level
+}
+
 /// Check if beast can still gain XP based on max bonus levels
 /// @param base_level The beast's base level from NFT
 /// @param bonus_xp The beast's current bonus XP
