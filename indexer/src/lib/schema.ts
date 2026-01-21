@@ -1,16 +1,19 @@
 /**
  * Summit Indexer Database Schema
  *
- * 9 tables for all contract events:
+ * 12 tables for all contract events:
  * 1. beast_stats - Current beast state (upsert on token_id)
  * 2. battles - Combat history (append-only)
- * 3. rewards - Reward distribution (append-only)
+ * 3. rewards_earned - Reward distribution (append-only)
  * 4. rewards_claimed - Rewards claimed by players (append-only)
  * 5. poison_events - Poison attacks (append-only)
  * 6. diplomacy_groups - Diplomacy configurations (append-only)
- * 7. summit_history - Summit takeovers (append-only)
- * 8. corpse_events - Corpse creation (append-only)
- * 9. skull_events - Skull claims (append-only)
+ * 7. corpse_events - Corpse creation (append-only)
+ * 8. skull_events - Skull claims (append-only)
+ * 9. beast_owners - Current NFT ownership (upsert on token_id)
+ * 10. beasts - NFT metadata (insert once)
+ * 11. beast_data - Dojo event data (upsert on entity_hash)
+ * 12. summit_log - Unified activity feed (append-only with derived events)
  *
  * All tables include:
  * - UUID primary key (required by Apibara Drizzle plugin for reorg handling)
@@ -28,6 +31,7 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -84,6 +88,7 @@ export const battles = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     attackingBeastTokenId: integer("attacking_beast_token_id").notNull(),
+    attackingPlayer: text("attacking_player"), // Owner of attacking beast (joined from beast_owners)
     attackIndex: smallint("attack_index").notNull(),
     defendingBeastTokenId: integer("defending_beast_token_id").notNull(),
     attackCount: smallint("attack_count").notNull(),
@@ -95,6 +100,7 @@ export const battles = pgTable(
     criticalCounterAttackCount: smallint("critical_counter_attack_count").notNull(),
     criticalCounterAttackDamage: smallint("critical_counter_attack_damage").notNull(),
     attackPotions: smallint("attack_potions").notNull(),
+    revivePotions: smallint("revive_potions").notNull(),
     xpGained: smallint("xp_gained").notNull(),
     // Timestamps
     createdAt: timestamp("created_at").notNull(),
@@ -108,6 +114,7 @@ export const battles = pgTable(
     // Unique constraint for idempotent re-indexing
     uniqueIndex("battles_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
     index("battles_attacking_beast_idx").on(table.attackingBeastTokenId),
+    index("battles_attacking_player_idx").on(table.attackingPlayer),
     index("battles_defending_beast_idx").on(table.defendingBeastTokenId),
     index("battles_created_at_idx").on(table.createdAt.desc()),
     index("battles_block_number_idx").on(table.blockNumber),
@@ -115,17 +122,16 @@ export const battles = pgTable(
 );
 
 /**
- * Rewards table - token reward distribution
+ * Rewards Earned table - token reward distribution
  *
- * Append-only history of rewards.
+ * Append-only history of rewards earned.
  */
-export const rewards = pgTable(
-  "rewards",
+export const rewardsEarned = pgTable(
+  "rewards_earned",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    rewardBlockNumber: bigint("reward_block_number", { mode: "bigint" }).notNull(),
     beastTokenId: integer("beast_token_id").notNull(),
-    owner: text("owner").notNull(),
+    owner: text("owner"), // Owner of the beast (joined from beast_owners)
     amount: integer("amount").notNull(),
     // Timestamps
     createdAt: timestamp("created_at").notNull(),
@@ -137,10 +143,10 @@ export const rewards = pgTable(
   },
   (table) => [
     // Unique constraint for idempotent re-indexing
-    uniqueIndex("rewards_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
-    index("rewards_owner_idx").on(table.owner),
-    index("rewards_beast_token_id_idx").on(table.beastTokenId),
-    index("rewards_created_at_idx").on(table.createdAt.desc()),
+    uniqueIndex("rewards_earned_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
+    index("rewards_earned_owner_idx").on(table.owner),
+    index("rewards_earned_beast_token_id_idx").on(table.beastTokenId),
+    index("rewards_earned_created_at_idx").on(table.createdAt.desc()),
   ]
 );
 
@@ -232,63 +238,6 @@ export const diplomacyGroups = pgTable(
 );
 
 /**
- * Summit History table - summit takeover history
- *
- * Append-only history of summit ownership changes.
- */
-export const summitHistory = pgTable(
-  "summit_history",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    // Beast identifiers
-    beastTokenId: integer("beast_token_id").notNull(),
-    beastId: smallint("beast_id").notNull(),
-    beastPrefix: smallint("beast_prefix").notNull(),
-    beastSuffix: smallint("beast_suffix").notNull(),
-    beastLevel: smallint("beast_level").notNull(),
-    beastHealth: smallint("beast_health").notNull(),
-    beastShiny: smallint("beast_shiny").notNull(),
-    beastAnimated: smallint("beast_animated").notNull(),
-    // LiveBeastStats fields
-    tokenId: integer("token_id").notNull(),
-    currentHealth: smallint("current_health").notNull(),
-    bonusHealth: smallint("bonus_health").notNull(),
-    bonusXp: smallint("bonus_xp").notNull(),
-    attackStreak: smallint("attack_streak").notNull(),
-    lastDeathTimestamp: bigint("last_death_timestamp", { mode: "bigint" }).notNull(),
-    revivalCount: smallint("revival_count").notNull(),
-    extraLives: smallint("extra_lives").notNull(),
-    hasClaimedPotions: smallint("has_claimed_potions").notNull(),
-    blocksHeld: integer("blocks_held").notNull(),
-    // Stats struct fields
-    spirit: smallint("spirit").notNull(),
-    luck: smallint("luck").notNull(),
-    specials: smallint("specials").notNull(),
-    wisdom: smallint("wisdom").notNull(),
-    diplomacyStat: smallint("diplomacy_stat").notNull(),
-    // Rewards
-    rewardsEarned: integer("rewards_earned").notNull(),
-    rewardsClaimed: integer("rewards_claimed").notNull(),
-    // Owner
-    owner: text("owner").notNull(),
-    // Timestamps
-    createdAt: timestamp("created_at").notNull(),
-    indexedAt: timestamp("indexed_at").notNull(),
-    insertedAt: timestamp("inserted_at").defaultNow(),
-    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-    transactionHash: text("transaction_hash").notNull(),
-    eventIndex: integer("event_index").notNull(),
-  },
-  (table) => [
-    // Unique constraint for idempotent re-indexing
-    uniqueIndex("summit_history_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
-    index("summit_history_beast_token_id_idx").on(table.beastTokenId),
-    index("summit_history_owner_idx").on(table.owner),
-    index("summit_history_created_at_idx").on(table.createdAt.desc()),
-  ]
-);
-
-/**
  * Corpse Events table - corpse creation history
  *
  * Append-only history of corpse collection.
@@ -327,6 +276,7 @@ export const skullEvents = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     beastTokenId: integer("beast_token_id").notNull(),
     skulls: bigint("skulls", { mode: "bigint" }).notNull(),
+    player: text("player"), // Owner of the beast (joined from beast_owners)
     // Timestamps
     createdAt: timestamp("created_at").notNull(),
     indexedAt: timestamp("indexed_at").notNull(),
@@ -340,7 +290,124 @@ export const skullEvents = pgTable(
     uniqueIndex("skull_events_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
     index("skull_events_beast_token_id_idx").on(table.beastTokenId),
     index("skull_events_skulls_idx").on(table.skulls.desc()),
+    index("skull_events_player_idx").on(table.player),
     index("skull_events_created_at_idx").on(table.createdAt.desc()),
+  ]
+);
+
+/**
+ * Beast Owners table - current ownership of Beasts NFTs
+ *
+ * Upserted on each Transfer event from Beasts contract.
+ * Primary key is token_id since we only care about current owner.
+ */
+export const beastOwners = pgTable(
+  "beast_owners",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tokenId: integer("token_id").notNull().unique(),
+    owner: text("owner").notNull(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("beast_owners_owner_idx").on(table.owner),
+  ]
+);
+
+/**
+ * Beasts table - NFT metadata (immutable)
+ *
+ * Inserted once when a beast is first seen via Transfer event.
+ * Metadata is fetched via RPC and stored permanently.
+ */
+export const beasts = pgTable(
+  "beasts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tokenId: integer("token_id").notNull().unique(),
+    // Unpacked beast metadata
+    beastId: smallint("beast_id").notNull(), // Species 1-75 (7 bits)
+    prefix: smallint("prefix").notNull(), // Name prefix (7 bits)
+    suffix: smallint("suffix").notNull(), // Name suffix (5 bits)
+    level: smallint("level").notNull(), // Level (16 bits)
+    health: smallint("health").notNull(), // Health (16 bits)
+    shiny: smallint("shiny").notNull(), // Visual trait (1 bit)
+    animated: smallint("animated").notNull(), // Visual trait (1 bit)
+    // Timestamps
+    createdAt: timestamp("created_at").notNull(),
+    indexedAt: timestamp("indexed_at").notNull(),
+    insertedAt: timestamp("inserted_at").defaultNow(),
+  },
+  (table) => [
+    index("beasts_token_id_idx").on(table.tokenId),
+    index("beasts_beast_id_idx").on(table.beastId),
+    index("beasts_prefix_idx").on(table.prefix),
+    index("beasts_suffix_idx").on(table.suffix),
+    index("beasts_level_idx").on(table.level.desc()),
+  ]
+);
+
+/**
+ * Beast Data table - Dojo event data linked to beasts
+ *
+ * Stores data from Loot Survivor Dojo events:
+ * - EntityStats: adventurers_killed count
+ * - CollectableEntity: last_death_timestamp
+ *
+ * Linked to beasts table via entity_hash (poseidon_hash(id, prefix, suffix))
+ */
+export const beastData = pgTable(
+  "beast_data",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityHash: text("entity_hash").notNull().unique(),
+    adventurersKilled: bigint("adventurers_killed", { mode: "bigint" }).notNull(),
+    lastDeathTimestamp: bigint("last_death_timestamp", { mode: "bigint" }).notNull(),
+    tokenId: integer("token_id"), // Nullable, linked after beast mint
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("beast_data_token_id_idx").on(table.tokenId),
+    index("beast_data_adventurers_killed_idx").on(table.adventurersKilled.desc()),
+    index("beast_data_updated_at_idx").on(table.updatedAt.desc()),
+  ]
+);
+
+/**
+ * Summit Log table - unified activity feed
+ *
+ * Consolidates all game events into a single table for activity feeds.
+ * Categories: Battle, Beast Upgrade, Rewards, Arriving to Summit, LS Events
+ * Includes both direct events and derived events (stat changes detected by comparing old vs new state).
+ */
+export const summitLog = pgTable(
+  "summit_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
+    eventIndex: integer("event_index").notNull(),
+    category: text("category").notNull(),
+    subCategory: text("sub_category").notNull(),
+    data: jsonb("data").notNull(),
+    player: text("player"), // Nullable, for filtering
+    tokenId: integer("token_id"), // Nullable, for filtering
+    transactionHash: text("transaction_hash").notNull(),
+    // Timestamps
+    createdAt: timestamp("created_at").notNull(), // Starknet block timestamp
+    indexedAt: timestamp("indexed_at").notNull(), // When DNA delivered block
+    insertedAt: timestamp("inserted_at").defaultNow(), // When row inserted
+  },
+  (table) => [
+    // Unique constraint for idempotent re-indexing
+    uniqueIndex("summit_log_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
+    // Ordering index
+    index("summit_log_order_idx").on(table.blockNumber.desc(), table.eventIndex.desc()),
+    // Filter indexes
+    index("summit_log_category_idx").on(table.category),
+    index("summit_log_player_idx").on(table.player),
+    index("summit_log_token_id_idx").on(table.tokenId),
+    // Combined index for player activity feed
+    index("summit_log_player_order_idx").on(table.player, table.blockNumber.desc(), table.eventIndex.desc()),
   ]
 );
 
@@ -348,11 +415,14 @@ export const skullEvents = pgTable(
 export const schema = {
   beastStats,
   battles,
-  rewards,
+  rewardsEarned,
   rewardsClaimed,
   poisonEvents,
   diplomacyGroups,
-  summitHistory,
   corpseEvents,
   skullEvents,
+  beastOwners,
+  beasts,
+  beastData,
+  summitLog,
 };

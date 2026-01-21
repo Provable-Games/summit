@@ -1,6 +1,6 @@
 {
-  "id": "96b70b83-76ac-4c3a-a73e-d1ad1a9f6dc1",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "5b0b4af8-d6df-4629-8249-3268585d95f7",
+  "prevId": "fbb3ff03-e8f1-449c-b3bb-0850b635f124",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -20,6 +20,12 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "attacking_player": {
+          "name": "attacking_player",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "attack_index": {
           "name": "attack_index",
@@ -83,6 +89,12 @@
         },
         "attack_potions": {
           "name": "attack_potions",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revive_potions": {
+          "name": "revive_potions",
           "type": "smallint",
           "primaryKey": false,
           "notNull": true
@@ -174,6 +186,21 @@
           "method": "btree",
           "with": {}
         },
+        "battles_attacking_player_idx": {
+          "name": "battles_attacking_player_idx",
+          "columns": [
+            {
+              "expression": "attacking_player",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "battles_defending_beast_idx": {
           "name": "battles_defending_beast_idx",
           "columns": [
@@ -223,6 +250,174 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.beast_data": {
+      "name": "beast_data",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "entity_hash": {
+          "name": "entity_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "adventurers_killed": {
+          "name": "adventurers_killed",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_death_timestamp": {
+          "name": "last_death_timestamp",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_id": {
+          "name": "token_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "beast_data_token_id_idx": {
+          "name": "beast_data_token_id_idx",
+          "columns": [
+            {
+              "expression": "token_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "beast_data_adventurers_killed_idx": {
+          "name": "beast_data_adventurers_killed_idx",
+          "columns": [
+            {
+              "expression": "adventurers_killed",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "beast_data_updated_at_idx": {
+          "name": "beast_data_updated_at_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "beast_data_entity_hash_unique": {
+          "name": "beast_data_entity_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "entity_hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.beast_owners": {
+      "name": "beast_owners",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "token_id": {
+          "name": "token_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner": {
+          "name": "owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "beast_owners_owner_idx": {
+          "name": "beast_owners_owner_idx",
+          "columns": [
+            {
+              "expression": "owner",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "beast_owners_token_id_unique": {
+          "name": "beast_owners_token_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -431,6 +626,177 @@
       "uniqueConstraints": {
         "beast_stats_token_id_unique": {
           "name": "beast_stats_token_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.beasts": {
+      "name": "beasts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "token_id": {
+          "name": "token_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "beast_id": {
+          "name": "beast_id",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prefix": {
+          "name": "prefix",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "suffix": {
+          "name": "suffix",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "level": {
+          "name": "level",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "health": {
+          "name": "health",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shiny": {
+          "name": "shiny",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "animated": {
+          "name": "animated",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "indexed_at": {
+          "name": "indexed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inserted_at": {
+          "name": "inserted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "beasts_token_id_idx": {
+          "name": "beasts_token_id_idx",
+          "columns": [
+            {
+              "expression": "token_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "beasts_beast_id_idx": {
+          "name": "beasts_beast_id_idx",
+          "columns": [
+            {
+              "expression": "beast_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "beasts_prefix_idx": {
+          "name": "beasts_prefix_idx",
+          "columns": [
+            {
+              "expression": "prefix",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "beasts_suffix_idx": {
+          "name": "beasts_suffix_idx",
+          "columns": [
+            {
+              "expression": "suffix",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "beasts_level_idx": {
+          "name": "beasts_level_idx",
+          "columns": [
+            {
+              "expression": "level",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "beasts_token_id_unique": {
+          "name": "beasts_token_id_unique",
           "nullsNotDistinct": false,
           "columns": [
             "token_id"
@@ -870,160 +1236,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.rewards": {
-      "name": "rewards",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "reward_block_number": {
-          "name": "reward_block_number",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "beast_token_id": {
-          "name": "beast_token_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "owner": {
-          "name": "owner",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount": {
-          "name": "amount",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "indexed_at": {
-          "name": "indexed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "inserted_at": {
-          "name": "inserted_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
-        },
-        "block_number": {
-          "name": "block_number",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "transaction_hash": {
-          "name": "transaction_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "event_index": {
-          "name": "event_index",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "rewards_block_tx_event_idx": {
-          "name": "rewards_block_tx_event_idx",
-          "columns": [
-            {
-              "expression": "block_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "transaction_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "event_index",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "rewards_owner_idx": {
-          "name": "rewards_owner_idx",
-          "columns": [
-            {
-              "expression": "owner",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "rewards_beast_token_id_idx": {
-          "name": "rewards_beast_token_id_idx",
-          "columns": [
-            {
-              "expression": "beast_token_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "rewards_created_at_idx": {
-          "name": "rewards_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": false,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.rewards_claimed": {
       "name": "rewards_claimed",
       "schema": "",
@@ -1157,6 +1369,154 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.rewards_earned": {
+      "name": "rewards_earned",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "beast_token_id": {
+          "name": "beast_token_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner": {
+          "name": "owner",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "amount": {
+          "name": "amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "indexed_at": {
+          "name": "indexed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inserted_at": {
+          "name": "inserted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "block_number": {
+          "name": "block_number",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "transaction_hash": {
+          "name": "transaction_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_index": {
+          "name": "event_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "rewards_earned_block_tx_event_idx": {
+          "name": "rewards_earned_block_tx_event_idx",
+          "columns": [
+            {
+              "expression": "block_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "transaction_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "event_index",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rewards_earned_owner_idx": {
+          "name": "rewards_earned_owner_idx",
+          "columns": [
+            {
+              "expression": "owner",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rewards_earned_beast_token_id_idx": {
+          "name": "rewards_earned_beast_token_id_idx",
+          "columns": [
+            {
+              "expression": "beast_token_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "rewards_earned_created_at_idx": {
+          "name": "rewards_earned_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.skull_events": {
       "name": "skull_events",
       "schema": "",
@@ -1179,6 +1539,12 @@
           "type": "bigint",
           "primaryKey": false,
           "notNull": true
+        },
+        "player": {
+          "name": "player",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -1276,6 +1642,21 @@
           "method": "btree",
           "with": {}
         },
+        "skull_events_player_idx": {
+          "name": "skull_events_player_idx",
+          "columns": [
+            {
+              "expression": "player",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "skull_events_created_at_idx": {
           "name": "skull_events_created_at_idx",
           "columns": [
@@ -1299,8 +1680,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.summit_history": {
-      "name": "summit_history",
+    "public.summit_log": {
+      "name": "summit_log",
       "schema": "",
       "columns": {
         "id": {
@@ -1310,158 +1691,50 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "beast_token_id": {
-          "name": "beast_token_id",
+        "block_number": {
+          "name": "block_number",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_index": {
+          "name": "event_index",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "beast_id": {
-          "name": "beast_id",
-          "type": "smallint",
+        "category": {
+          "name": "category",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "beast_prefix": {
-          "name": "beast_prefix",
-          "type": "smallint",
+        "sub_category": {
+          "name": "sub_category",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "beast_suffix": {
-          "name": "beast_suffix",
-          "type": "smallint",
+        "data": {
+          "name": "data",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": true
         },
-        "beast_level": {
-          "name": "beast_level",
-          "type": "smallint",
+        "player": {
+          "name": "player",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
-        },
-        "beast_health": {
-          "name": "beast_health",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "beast_shiny": {
-          "name": "beast_shiny",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "beast_animated": {
-          "name": "beast_animated",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "token_id": {
           "name": "token_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "current_health": {
-          "name": "current_health",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bonus_health": {
-          "name": "bonus_health",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bonus_xp": {
-          "name": "bonus_xp",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "attack_streak": {
-          "name": "attack_streak",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "last_death_timestamp": {
-          "name": "last_death_timestamp",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "revival_count": {
-          "name": "revival_count",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "extra_lives": {
-          "name": "extra_lives",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "has_claimed_potions": {
-          "name": "has_claimed_potions",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "blocks_held": {
-          "name": "blocks_held",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "spirit": {
-          "name": "spirit",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "luck": {
-          "name": "luck",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "specials": {
-          "name": "specials",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "wisdom": {
-          "name": "wisdom",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "diplomacy_stat": {
-          "name": "diplomacy_stat",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "rewards_earned": {
-          "name": "rewards_earned",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "rewards_claimed": {
-          "name": "rewards_claimed",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "owner": {
-          "name": "owner",
+        "transaction_hash": {
+          "name": "transaction_hash",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -1484,29 +1757,11 @@
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
-        },
-        "block_number": {
-          "name": "block_number",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "transaction_hash": {
-          "name": "transaction_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "event_index": {
-          "name": "event_index",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
         }
       },
       "indexes": {
-        "summit_history_block_tx_event_idx": {
-          "name": "summit_history_block_tx_event_idx",
+        "summit_log_block_tx_event_idx": {
+          "name": "summit_log_block_tx_event_idx",
           "columns": [
             {
               "expression": "block_number",
@@ -1532,11 +1787,32 @@
           "method": "btree",
           "with": {}
         },
-        "summit_history_beast_token_id_idx": {
-          "name": "summit_history_beast_token_id_idx",
+        "summit_log_order_idx": {
+          "name": "summit_log_order_idx",
           "columns": [
             {
-              "expression": "beast_token_id",
+              "expression": "block_number",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "event_index",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "summit_log_category_idx": {
+          "name": "summit_log_category_idx",
+          "columns": [
+            {
+              "expression": "category",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1547,11 +1823,11 @@
           "method": "btree",
           "with": {}
         },
-        "summit_history_owner_idx": {
-          "name": "summit_history_owner_idx",
+        "summit_log_player_idx": {
+          "name": "summit_log_player_idx",
           "columns": [
             {
-              "expression": "owner",
+              "expression": "player",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1562,11 +1838,38 @@
           "method": "btree",
           "with": {}
         },
-        "summit_history_created_at_idx": {
-          "name": "summit_history_created_at_idx",
+        "summit_log_token_id_idx": {
+          "name": "summit_log_token_id_idx",
           "columns": [
             {
-              "expression": "created_at",
+              "expression": "token_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "summit_log_player_order_idx": {
+          "name": "summit_log_player_order_idx",
+          "columns": [
+            {
+              "expression": "player",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "block_number",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "event_index",
               "isExpression": false,
               "asc": false,
               "nulls": "last"

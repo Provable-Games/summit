@@ -2,16 +2,15 @@
  * Summit API Database Schema
  *
  * Copy of the indexer schema for API queries.
- * 9 tables for all contract events:
+ * 8 tables for all contract events:
  * 1. beast_stats - Current beast state (upsert on token_id)
  * 2. battles - Combat history (append-only)
  * 3. rewards - Reward distribution (append-only)
  * 4. rewards_claimed - Rewards claimed by players (append-only)
  * 5. poison_events - Poison attacks (append-only)
  * 6. diplomacy_groups - Diplomacy configurations (append-only)
- * 7. summit_history - Summit takeovers (append-only)
- * 8. corpse_events - Corpse creation (append-only)
- * 9. skull_events - Skull claims (append-only)
+ * 7. corpse_events - Corpse creation (append-only)
+ * 8. skull_events - Skull claims (append-only)
  */
 
 import {
@@ -221,58 +220,6 @@ export const diplomacyGroups = pgTable(
 );
 
 /**
- * Summit History table - summit takeover history
- */
-export const summitHistory = pgTable(
-  "summit_history",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    beastTokenId: integer("beast_token_id").notNull(),
-    beastId: smallint("beast_id").notNull(),
-    beastPrefix: smallint("beast_prefix").notNull(),
-    beastSuffix: smallint("beast_suffix").notNull(),
-    beastLevel: smallint("beast_level").notNull(),
-    beastHealth: smallint("beast_health").notNull(),
-    beastShiny: smallint("beast_shiny").notNull(),
-    beastAnimated: smallint("beast_animated").notNull(),
-    tokenId: integer("token_id").notNull(),
-    currentHealth: smallint("current_health").notNull(),
-    bonusHealth: smallint("bonus_health").notNull(),
-    bonusXp: smallint("bonus_xp").notNull(),
-    attackStreak: smallint("attack_streak").notNull(),
-    lastDeathTimestamp: bigint("last_death_timestamp", { mode: "bigint" }).notNull(),
-    revivalCount: smallint("revival_count").notNull(),
-    extraLives: smallint("extra_lives").notNull(),
-    hasClaimedPotions: smallint("has_claimed_potions").notNull(),
-    blocksHeld: integer("blocks_held").notNull(),
-    spirit: smallint("spirit").notNull(),
-    luck: smallint("luck").notNull(),
-    specials: smallint("specials").notNull(),
-    wisdom: smallint("wisdom").notNull(),
-    diplomacyStat: smallint("diplomacy_stat").notNull(),
-    rewardsEarned: integer("rewards_earned").notNull(),
-    rewardsClaimed: integer("rewards_claimed").notNull(),
-    owner: text("owner").notNull(),
-    createdAt: timestamp("created_at").notNull(),
-    indexedAt: timestamp("indexed_at").notNull(),
-    insertedAt: timestamp("inserted_at").defaultNow(),
-    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-    transactionHash: text("transaction_hash").notNull(),
-    eventIndex: integer("event_index").notNull(),
-  },
-  (table) => [
-    uniqueIndex("summit_history_block_tx_event_idx").on(
-      table.blockNumber,
-      table.transactionHash,
-      table.eventIndex
-    ),
-    index("summit_history_beast_token_id_idx").on(table.beastTokenId),
-    index("summit_history_owner_idx").on(table.owner),
-    index("summit_history_created_at_idx").on(table.createdAt.desc()),
-  ]
-);
-
-/**
  * Corpse Events table - corpse creation history
  */
 export const corpseEvents = pgTable(
@@ -336,7 +283,6 @@ export const schema = {
   rewardsClaimed,
   poisonEvents,
   diplomacyGroups,
-  summitHistory,
   corpseEvents,
   skullEvents,
 };

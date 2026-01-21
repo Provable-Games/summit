@@ -36,13 +36,31 @@ import { hash } from "starknet";
 export const EVENT_SELECTORS = {
   BeastUpdatesEvent: hash.getSelectorFromName("BeastUpdatesEvent"),
   LiveBeastStatsEvent: hash.getSelectorFromName("LiveBeastStatsEvent"),
-  RewardEvent: hash.getSelectorFromName("RewardEvent"),
+  RewardsEarnedEvent: hash.getSelectorFromName("RewardsEarnedEvent"),
   RewardsClaimedEvent: hash.getSelectorFromName("RewardsClaimedEvent"),
   PoisonEvent: hash.getSelectorFromName("PoisonEvent"),
   DiplomacyEvent: hash.getSelectorFromName("DiplomacyEvent"),
   CorpseEvent: hash.getSelectorFromName("CorpseEvent"),
   SkullEvent: hash.getSelectorFromName("SkullEvent"),
   BattleEvent: hash.getSelectorFromName("BattleEvent"),
+} as const;
+
+/**
+ * Event selectors for Beasts NFT contract (ERC721)
+ */
+export const BEAST_EVENT_SELECTORS = {
+  Transfer: hash.getSelectorFromName("Transfer"),
+} as const;
+
+/**
+ * Event selectors for Dojo world contract (Loot Survivor)
+ * These are computed using sn_keccak(namespace-ModelName)
+ */
+export const DOJO_EVENT_SELECTORS = {
+  // ls_0_0_9-EntityStats
+  EntityStats: "0x2a0c5aad9abbdc1dc6e66e354de0e81f1ea7f15727a953ca574272e2375afbe",
+  // ls_0_0_9-CollectableEntity
+  CollectableEntity: "0x271c6c270a891f9c3b18d5094aaf469f85dd489402cb0caa297969818b416d2",
 } as const;
 
 /**
@@ -172,9 +190,8 @@ export interface BattleEventData {
   xpGained: number;
 }
 
-export interface RewardEventData {
+export interface RewardsEarnedEventData {
   beastTokenId: number;
-  owner: string;
   amount: number;
 }
 
@@ -340,7 +357,7 @@ export function decodeLiveBeastStatsEvent(keys: string[], data: string[]): LiveB
  *       attack_count, attack_damage, critical_attack_count, critical_attack_damage,
  *       counter_attack_count, counter_attack_damage,
  *       critical_counter_attack_count, critical_counter_attack_damage,
- *       attack_potions, xp_gained
+ *       attack_potions, revive_potions, xp_gained
  */
 export function decodeBattleEvent(keys: string[], data: string[]): BattleEventData {
   return {
@@ -362,14 +379,13 @@ export function decodeBattleEvent(keys: string[], data: string[]): BattleEventDa
 }
 
 /**
- * Decode RewardEvent
- * Data: beast_token_id, owner, amount
+ * Decode RewardsEarnedEvent
+ * Data: beast_token_id, amount
  */
-export function decodeRewardEvent(keys: string[], data: string[]): RewardEventData {
+export function decodeRewardsEarnedEvent(keys: string[], data: string[]): RewardsEarnedEventData {
   return {
     beastTokenId: hexToNumber(data[0]),
-    owner: feltToHex(data[1]),
-    amount: hexToNumber(data[2]),
+    amount: hexToNumber(data[1]),
   };
 }
 
@@ -433,4 +449,170 @@ export function decodeSkullEvent(keys: string[], data: string[]): SkullEventData
     beastTokenId: hexToNumber(data[0]),
     skulls: hexToBigInt(data[1]),
   };
+}
+
+// ============ Beasts NFT Data Interfaces ============
+
+export interface TransferEventData {
+  from: string;
+  to: string;
+  tokenId: bigint;
+}
+
+export interface PackableBeast {
+  id: number; // Beast species 1-75 (7 bits)
+  prefix: number; // Name prefix (7 bits)
+  suffix: number; // Name suffix (5 bits)
+  level: number; // Level (16 bits)
+  health: number; // Health (16 bits)
+  shiny: number; // Visual trait (1 bit)
+  animated: number; // Visual trait (1 bit)
+}
+
+// ============ Beasts NFT Decoders ============
+
+// Bit masks for PackableBeast unpacking
+const MASK_5 = 0x1Fn;
+const MASK_7 = 0x7Fn;
+
+const TWO_POW_5 = 0x20n;
+const TWO_POW_7 = 0x80n;
+
+/**
+ * Unpack PackableBeast from a single felt252
+ * Bit layout (total 53 bits):
+ * - bits 0-6: id (7 bits) - beast species
+ * - bits 7-13: prefix (7 bits) - name prefix
+ * - bits 14-18: suffix (5 bits) - name suffix
+ * - bits 19-34: level (16 bits)
+ * - bits 35-50: health (16 bits)
+ * - bit 51: shiny (1 bit)
+ * - bit 52: animated (1 bit)
+ */
+export function unpackPackableBeast(packedFelt: string): PackableBeast {
+  let packed = hexToBigInt(packedFelt);
+
+  // Extract id (7 bits)
+  const id = Number(packed & MASK_7);
+  packed = packed / TWO_POW_7;
+
+  // Extract prefix (7 bits)
+  const prefix = Number(packed & MASK_7);
+  packed = packed / TWO_POW_7;
+
+  // Extract suffix (5 bits)
+  const suffix = Number(packed & MASK_5);
+  packed = packed / TWO_POW_5;
+
+  // Extract level (16 bits)
+  const level = Number(packed & MASK_16);
+  packed = packed / TWO_POW_16;
+
+  // Extract health (16 bits)
+  const health = Number(packed & MASK_16);
+  packed = packed / TWO_POW_16;
+
+  // Extract shiny (1 bit)
+  const shiny = Number(packed & MASK_1);
+  packed = packed / 2n;
+
+  // Extract animated (1 bit)
+  const animated = Number(packed & MASK_1);
+
+  return {
+    id,
+    prefix,
+    suffix,
+    level,
+    health,
+    shiny,
+    animated,
+  };
+}
+
+/**
+ * Decode ERC721 Transfer event
+ * Keys: [selector, from, to, token_id_low, token_id_high]
+ * Note: token_id is u256, split into low/high parts in keys for indexed events
+ */
+export function decodeTransferEvent(keys: string[], data: string[]): TransferEventData {
+  // For ERC721 Transfer events, the from/to/tokenId are in keys (indexed)
+  // Keys format: [selector, from, to, tokenId_low, tokenId_high]
+  const from = feltToHex(keys[1]);
+  const to = feltToHex(keys[2]);
+  // token_id is u256, combine low and high parts
+  const tokenIdLow = hexToBigInt(keys[3]);
+  const tokenIdHigh = hexToBigInt(keys[4] ?? "0x0");
+  const tokenId = tokenIdLow + (tokenIdHigh * (2n ** 128n));
+
+  return {
+    from,
+    to,
+    tokenId,
+  };
+}
+
+// ============ Dojo Event Data Interfaces ============
+
+export interface EntityStatsEventData {
+  entityHash: string;
+  adventurersKilled: bigint;
+}
+
+export interface CollectableEntityEventData {
+  entityHash: string;
+  timestamp: bigint;
+}
+
+// ============ Dojo Event Decoders ============
+
+/**
+ * Decode EntityStats Dojo event
+ * Keys: [selector, dungeon, entity_hash]
+ * Data: [adventurers_killed_low, adventurers_killed_high] (u64 as u256)
+ */
+export function decodeEntityStatsEvent(keys: string[], data: string[]): EntityStatsEventData {
+  // Keys: [selector, dungeon, entity_hash]
+  const entityHash = feltToHex(keys[2]);
+
+  // Data: adventurers_killed as u64 (stored as u256 low/high parts)
+  const adventurersKilledLow = hexToBigInt(data[0]);
+  const adventurersKilledHigh = hexToBigInt(data[1] ?? "0x0");
+  const adventurersKilled = adventurersKilledLow + (adventurersKilledHigh * (2n ** 128n));
+
+  return {
+    entityHash,
+    adventurersKilled,
+  };
+}
+
+/**
+ * Decode CollectableEntity Dojo event
+ * Keys: [selector, dungeon, entity_hash, index_low, index_high]
+ * Data: [seed, id, level, health, prefix, suffix, killed_by, timestamp] (packed)
+ *
+ * The timestamp is the last field and represents when the entity was collected (death time)
+ */
+export function decodeCollectableEntityEvent(keys: string[], data: string[]): CollectableEntityEventData {
+  // Keys: [selector, dungeon, entity_hash, index_low, index_high]
+  const entityHash = feltToHex(keys[2]);
+
+  // Data layout: [seed, id, level, health, prefix, suffix, killed_by, timestamp]
+  // Each field is a separate felt252, timestamp is at index 7
+  const timestamp = hexToBigInt(data[7]);
+
+  return {
+    entityHash,
+    timestamp,
+  };
+}
+
+/**
+ * Compute entity hash from beast id, prefix, and suffix
+ * Uses Poseidon hash: poseidon_hash(id, prefix, suffix)
+ */
+export function computeEntityHash(id: number, prefix: number, suffix: number): string {
+  // Use starknet.js Poseidon hash
+  const entityHash = hash.computePoseidonHashOnElements([id, prefix, suffix]);
+  return feltToHex(entityHash);
 }
