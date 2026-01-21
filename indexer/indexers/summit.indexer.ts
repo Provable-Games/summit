@@ -518,6 +518,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
         const selector = feltToHex(keys[0]);
 
+        // DEBUG: Log every event to see what's coming through
+        logger.info(`[DEBUG] Event from ${eventAddress} selector=${selector}`);
+
         try {
           // Beasts NFT contract - Transfer events
           if (eventAddress === normalizedBeastsAddress && selector === BEAST_EVENT_SELECTORS.Transfer) {
