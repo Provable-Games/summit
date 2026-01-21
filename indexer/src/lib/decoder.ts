@@ -54,13 +54,13 @@ export const BEAST_EVENT_SELECTORS = {
 
 /**
  * Event selectors for Dojo world contract (Loot Survivor)
- * These are computed using sn_keccak(namespace-ModelName)
+ * These are the actual on-chain selectors from the Dojo world events
  */
 export const DOJO_EVENT_SELECTORS = {
-  // ls_0_0_9-EntityStats
-  EntityStats: "0x2a0c5aad9abbdc1dc6e66e354de0e81f1ea7f15727a953ca574272e2375afbe",
-  // ls_0_0_9-CollectableEntity
-  CollectableEntity: "0x271c6c270a891f9c3b18d5094aaf469f85dd489402cb0caa297969818b416d2",
+  // EntityStats event selector
+  EntityStats: "0x29d69b1d6c3d402e03d5394145fba858744dc4e0ca8ffcc22729acbfe71dd4a",
+  // CollectableEntity event selector
+  CollectableEntity: "0x3b1af01c5bd9e48f92fa49ba31d96b18a03ac4eb4a389c0a694a11c8aa733df",
 } as const;
 
 /**
