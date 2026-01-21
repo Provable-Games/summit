@@ -572,8 +572,8 @@ export interface CollectableEntityEventData {
  * Data: [adventurers_killed_low, adventurers_killed_high] (u64 as u256)
  */
 export function decodeEntityStatsEvent(keys: string[], data: string[]): EntityStatsEventData {
-  // Keys: [selector, dungeon, entity_hash]
-  const entityHash = feltToHex(keys[2]);
+  // Keys: [selector, system_address, dungeon, entity_hash]
+  const entityHash = feltToHex(keys[3]);
 
   // Data: adventurers_killed as u64 (stored as u256 low/high parts)
   const adventurersKilledLow = hexToBigInt(data[0]);
@@ -594,8 +594,8 @@ export function decodeEntityStatsEvent(keys: string[], data: string[]): EntitySt
  * The timestamp is the last field and represents when the entity was collected (death time)
  */
 export function decodeCollectableEntityEvent(keys: string[], data: string[]): CollectableEntityEventData {
-  // Keys: [selector, dungeon, entity_hash, index_low, index_high]
-  const entityHash = feltToHex(keys[2]);
+  // Keys: [selector, system_address, dungeon, entity_hash, index_low, index_high]
+  const entityHash = feltToHex(keys[3]);
 
   // Data layout: [seed, id, level, health, prefix, suffix, killed_by, timestamp]
   // Each field is a separate felt252, timestamp is at index 7

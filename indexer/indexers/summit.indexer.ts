@@ -485,21 +485,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           address: beastsContractAddress.toLowerCase() as `0x${string}`,
           keys: [BEAST_EVENT_SELECTORS.Transfer as `0x${string}`],
         },
-        // Dojo World contract - EntityStats events (filter by selector + system)
+        // Dojo World contract - ALL events (temporarily no key filter for debugging)
         {
           address: dojoWorldAddress.toLowerCase() as `0x${string}`,
-          keys: [
-            DOJO_EVENT_SELECTORS.EntityStats as `0x${string}`,
-            "0x74abc15c0ddef39bdf1ede2a643c07968d3ed5bacb0123db2d5b7154fbb35c7" as `0x${string}`,
-          ],
-        },
-        // Dojo World contract - CollectableEntity events (filter by selector + system)
-        {
-          address: dojoWorldAddress.toLowerCase() as `0x${string}`,
-          keys: [
-            DOJO_EVENT_SELECTORS.CollectableEntity as `0x${string}`,
-            "0x74abc15c0ddef39bdf1ede2a643c07968d3ed5bacb0123db2d5b7154fbb35c7" as `0x${string}`,
-          ],
         },
       ],
     },
@@ -642,7 +630,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           // Dojo World contract - EntityStats events
           if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt && selector === DOJO_EVENT_SELECTORS.EntityStats) {
             // Filter by dungeon address (keys[1])
-            const dungeonAddress = feltToHex(keys[1]);
+            const dungeonAddress = feltToHex(keys[2]);
             if (addressToBigInt(dungeonAddress) !== entityStatsDungeonBigInt) {
               logger.debug(`Skipping EntityStats from non-target dungeon: ${dungeonAddress}`);
               continue;
@@ -687,7 +675,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           // Dojo World contract - CollectableEntity events
           if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt && selector === DOJO_EVENT_SELECTORS.CollectableEntity) {
             // Filter by dungeon address (keys[1])
-            const dungeonAddress = feltToHex(keys[1]);
+            const dungeonAddress = feltToHex(keys[2]);
             if (addressToBigInt(dungeonAddress) !== collectableEntityDungeonBigInt) {
               logger.debug(`Skipping CollectableEntity from non-target dungeon: ${dungeonAddress}`);
               continue;
