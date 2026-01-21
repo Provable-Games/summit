@@ -387,12 +387,15 @@ async function upsertBeastStats(
 }
 
 /**
- * Normalize contract address to lowercase with 0x prefix
+ * Normalize contract address to lowercase with 0x prefix, stripping leading zeros
+ * This ensures addresses match regardless of zero-padding differences
  */
 function normalizeAddress(address: string): string {
-  return address.toLowerCase().startsWith("0x")
-    ? address.toLowerCase()
-    : `0x${address.toLowerCase()}`;
+  // Remove 0x prefix, convert to BigInt to strip leading zeros, back to hex
+  const hex = address.toLowerCase().startsWith("0x")
+    ? address.slice(2).toLowerCase()
+    : address.toLowerCase();
+  return `0x${BigInt(`0x${hex}`).toString(16)}`;
 }
 
 export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
