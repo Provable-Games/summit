@@ -371,15 +371,11 @@ async function upsertBeastStats(
 }
 
 /**
- * Normalize contract address to lowercase with 0x prefix, stripping leading zeros
- * This ensures addresses match regardless of zero-padding differences
+ * Convert address string to BigInt for comparison
+ * This handles any formatting differences (leading zeros, case, etc.)
  */
-function normalizeAddress(address: string): string {
-  // Remove 0x prefix, convert to BigInt to strip leading zeros, back to hex
-  const hex = address.toLowerCase().startsWith("0x")
-    ? address.slice(2).toLowerCase()
-    : address.toLowerCase();
-  return `0x${BigInt(`0x${hex}`).toString(16)}`;
+function addressToBigInt(address: string): bigint {
+  return BigInt(address);
 }
 
 export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
@@ -398,12 +394,12 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   } = config;
   const startingBlock = BigInt(startBlockStr);
 
-  // Normalize contract addresses
-  const normalizedSummitAddress = normalizeAddress(summitContractAddress);
-  const normalizedBeastsAddress = normalizeAddress(beastsContractAddress);
-  const normalizedDojoWorldAddress = normalizeAddress(dojoWorldAddress);
-  const normalizedEntityStatsDungeon = normalizeAddress(entityStatsDungeon);
-  const normalizedCollectableEntityDungeon = normalizeAddress(collectableEntityDungeon);
+  // Convert contract addresses to BigInt for comparison
+  const summitAddressBigInt = addressToBigInt(summitContractAddress);
+  const beastsAddressBigInt = addressToBigInt(beastsContractAddress);
+  const dojoWorldAddressBigInt = addressToBigInt(dojoWorldAddress);
+  const entityStatsDungeonBigInt = addressToBigInt(entityStatsDungeon);
+  const collectableEntityDungeonBigInt = addressToBigInt(collectableEntityDungeon);
 
   // Log configuration on startup
   console.log("[Summit Indexer] Summit Contract:", summitContractAddress);
@@ -480,22 +476,23 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     filter: {
       events: [
         // Summit contract - all events
+        // Use original addresses for filter (DNA needs full format)
         {
-          address: normalizedSummitAddress as `0x${string}`,
+          address: summitContractAddress.toLowerCase() as `0x${string}`,
         },
         // Beasts NFT contract - Transfer events only
         {
-          address: normalizedBeastsAddress as `0x${string}`,
+          address: beastsContractAddress.toLowerCase() as `0x${string}`,
           keys: [BEAST_EVENT_SELECTORS.Transfer as `0x${string}`],
         },
         // Dojo World contract - EntityStats events
         {
-          address: normalizedDojoWorldAddress as `0x${string}`,
+          address: dojoWorldAddress.toLowerCase() as `0x${string}`,
           keys: [DOJO_EVENT_SELECTORS.EntityStats as `0x${string}`],
         },
         // Dojo World contract - CollectableEntity events
         {
-          address: normalizedDojoWorldAddress as `0x${string}`,
+          address: dojoWorldAddress.toLowerCase() as `0x${string}`,
           keys: [DOJO_EVENT_SELECTORS.CollectableEntity as `0x${string}`],
         },
       ],
@@ -563,7 +560,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
         try {
           // Beasts NFT contract - Transfer events
-          if (eventAddress === normalizedBeastsAddress && selector === BEAST_EVENT_SELECTORS.Transfer) {
+          if (addressToBigInt(eventAddress) === beastsAddressBigInt && selector === BEAST_EVENT_SELECTORS.Transfer) {
             const decoded = decodeTransferEvent([...keys], [...data]);
             const tokenId = Number(decoded.tokenId);
 
@@ -637,10 +634,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           }
 
           // Dojo World contract - EntityStats events
-          if (eventAddress === normalizedDojoWorldAddress && selector === DOJO_EVENT_SELECTORS.EntityStats) {
+          if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt && selector === DOJO_EVENT_SELECTORS.EntityStats) {
             // Filter by dungeon address (keys[1])
             const dungeonAddress = feltToHex(keys[1]);
-            if (dungeonAddress !== normalizedEntityStatsDungeon) {
+            if (addressToBigInt(dungeonAddress) !== entityStatsDungeonBigInt) {
               logger.debug(`Skipping EntityStats from non-target dungeon: ${dungeonAddress}`);
               continue;
             }
@@ -682,10 +679,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           }
 
           // Dojo World contract - CollectableEntity events
-          if (eventAddress === normalizedDojoWorldAddress && selector === DOJO_EVENT_SELECTORS.CollectableEntity) {
+          if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt && selector === DOJO_EVENT_SELECTORS.CollectableEntity) {
             // Filter by dungeon address (keys[1])
             const dungeonAddress = feltToHex(keys[1]);
-            if (dungeonAddress !== normalizedCollectableEntityDungeon) {
+            if (addressToBigInt(dungeonAddress) !== collectableEntityDungeonBigInt) {
               logger.debug(`Skipping CollectableEntity from non-target dungeon: ${dungeonAddress}`);
               continue;
             }
@@ -727,7 +724,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           }
 
           // Summit contract events
-          if (eventAddress !== normalizedSummitAddress) continue;
+          if (addressToBigInt(eventAddress) !== summitAddressBigInt) continue;
 
           switch (selector) {
             case EVENT_SELECTORS.BeastUpdatesEvent: {
