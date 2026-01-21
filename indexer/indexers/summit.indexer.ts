@@ -34,7 +34,6 @@ import {
   drizzleStorage,
   useDrizzleStorage,
 } from "@apibara/plugin-drizzle";
-import { RpcProvider, Contract } from "starknet";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 
 import { eq } from "drizzle-orm";
@@ -77,21 +76,6 @@ const fetchedTokens = new Set<number>();
 
 // Zero address for burn detection
 const ZERO_ADDRESS = "0x0";
-
-// Beasts contract ABI for getBeast function
-const BEASTS_ABI = [
-  {
-    name: "getBeast",
-    type: "function",
-    inputs: [{ name: "token_id", type: "core::integer::u256" }],
-    outputs: [
-      {
-        type: "(core::integer::u8, core::integer::u8, core::integer::u8, core::integer::u16, core::integer::u16, core::bool, core::bool)",
-      },
-    ],
-    state_mutability: "view",
-  },
-];
 
 /**
  * Helper to look up beast owner from beast_owners table
@@ -432,9 +416,62 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   // Create Drizzle database instance
   const database = drizzle({ schema, connectionString: databaseUrl });
 
-  // Create RPC provider for fetching beast metadata
-  const provider = new RpcProvider({ nodeUrl: rpcUrl });
-  const beastsContract = new Contract(BEASTS_ABI, beastsContractAddress, provider);
+  // getBeast selector: starknet_keccak("getBeast")
+  const GET_BEAST_SELECTOR = "0x0385b69551f247794fe651459651cdabc76b6cdf4abacafb5b28ceb3b1ac2e98";
+
+  /**
+   * Fetch beast metadata via raw RPC call
+   */
+  async function fetchBeastMetadata(tokenId: number): Promise<{
+    id: number;
+    prefix: number;
+    suffix: number;
+    level: number;
+    health: number;
+    shiny: number;
+    animated: number;
+  } | null> {
+    try {
+      const response = await fetch(rpcUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          method: "starknet_call",
+          params: {
+            request: {
+              contract_address: beastsContractAddress,
+              entry_point_selector: GET_BEAST_SELECTOR,
+              calldata: [`0x${tokenId.toString(16)}`, "0x0"], // u256: low, high
+            },
+            block_id: "latest",
+          },
+          id: 1,
+        }),
+      });
+
+      const json = await response.json();
+      if (json.error) {
+        console.error(`RPC error for token ${tokenId}:`, json.error);
+        return null;
+      }
+
+      // Result is array of felt252: [id, prefix, suffix, level, health, shiny, animated]
+      const result = json.result as string[];
+      return {
+        id: Number(BigInt(result[0])),
+        prefix: Number(BigInt(result[1])),
+        suffix: Number(BigInt(result[2])),
+        level: Number(BigInt(result[3])),
+        health: Number(BigInt(result[4])),
+        shiny: Number(BigInt(result[5])),
+        animated: Number(BigInt(result[6])),
+      };
+    } catch (error) {
+      console.error(`Failed to fetch metadata for token ${tokenId}:`, error);
+      return null;
+    }
+  }
 
   return defineIndexer(StarknetStream)({
     streamUrl,
@@ -553,22 +590,12 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
             // Check if we need to fetch metadata (only once per token)
             if (!fetchedTokens.has(tokenId)) {
-              try {
-                // Fetch beast metadata via RPC
-                logger.info(`Fetching metadata for token ${tokenId}`);
-                const beastData = await beastsContract.getBeast(
-                  { low: BigInt(tokenId), high: 0n },
-                  { blockIdentifier: 'latest' }
-                );
+              // Fetch beast metadata via RPC
+              logger.info(`Fetching metadata for token ${tokenId}`);
+              const beastData = await fetchBeastMetadata(tokenId);
 
-                // getBeast returns struct with named fields: id, prefix, suffix, level, health, shiny, animated
-                const id = Number(beastData.id);
-                const prefix = Number(beastData.prefix);
-                const suffix = Number(beastData.suffix);
-                const level = Number(beastData.level);
-                const health = Number(beastData.health);
-                const shiny = beastData.shiny ? 1 : 0;
-                const animated = beastData.animated ? 1 : 0;
+              if (beastData) {
+                const { id, prefix, suffix, level, health, shiny, animated } = beastData;
 
                 // Insert beast metadata (ignore if already exists)
                 await db.insert(schema.beasts).values({
@@ -604,8 +631,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 // Mark as fetched in cache
                 fetchedTokens.add(tokenId);
                 logger.info(`Stored metadata for token ${tokenId}: beast_id=${id}, level=${level}`);
-              } catch (rpcError) {
-                logger.error(`Failed to fetch metadata for token ${tokenId}: ${rpcError}`);
               }
             }
             continue;
