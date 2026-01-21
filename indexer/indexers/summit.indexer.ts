@@ -556,10 +556,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               try {
                 // Fetch beast metadata via RPC
                 logger.info(`Fetching metadata for token ${tokenId}`);
-                const beastData = await beastsContract.getBeast({
-                  low: BigInt(tokenId),
-                  high: 0n,
-                });
+                const beastData = await beastsContract.getBeast(
+                  { low: BigInt(tokenId), high: 0n },
+                  { blockIdentifier: 'latest' }
+                );
 
                 // getBeast returns struct with named fields: id, prefix, suffix, level, health, shiny, animated
                 const id = Number(beastData.id);
