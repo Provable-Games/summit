@@ -485,15 +485,21 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           address: beastsContractAddress.toLowerCase() as `0x${string}`,
           keys: [BEAST_EVENT_SELECTORS.Transfer as `0x${string}`],
         },
-        // Dojo World contract - EntityStats events
+        // Dojo World contract - EntityStats events (filter by selector + system)
         {
           address: dojoWorldAddress.toLowerCase() as `0x${string}`,
-          keys: [DOJO_EVENT_SELECTORS.EntityStats as `0x${string}`],
+          keys: [
+            DOJO_EVENT_SELECTORS.EntityStats as `0x${string}`,
+            "0x74abc15c0ddef39bdf1ede2a643c07968d3ed5bacb0123db2d5b7154fbb35c7" as `0x${string}`,
+          ],
         },
-        // Dojo World contract - CollectableEntity events
+        // Dojo World contract - CollectableEntity events (filter by selector + system)
         {
           address: dojoWorldAddress.toLowerCase() as `0x${string}`,
-          keys: [DOJO_EVENT_SELECTORS.CollectableEntity as `0x${string}`],
+          keys: [
+            DOJO_EVENT_SELECTORS.CollectableEntity as `0x${string}`,
+            "0x74abc15c0ddef39bdf1ede2a643c07968d3ed5bacb0123db2d5b7154fbb35c7" as `0x${string}`,
+          ],
         },
       ],
     },
