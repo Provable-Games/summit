@@ -550,7 +550,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         const selector = feltToHex(keys[0]);
 
         // DEBUG: Log every event to see what's coming through
-        logger.info(`[DEBUG] Event from ${eventAddress} selector=${selector}`);
+        logger.info(`[DEBUG] Event from ${eventAddress} selector=${selector} keys=${JSON.stringify(keys.map(k => feltToHex(k)))}`);
 
         try {
           // Beasts NFT contract - Transfer events
