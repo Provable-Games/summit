@@ -571,16 +571,14 @@ export interface CollectableEntityEventData {
 /**
  * Decode EntityStats Dojo event
  * Keys: [StoreSetRecord, EntityStats_model, entity_hash]
- * Data: [adventurers_killed_low, adventurers_killed_high] (u64 as u256)
+ * Data: [adventurers_killed, dungeon_id, ...]
  */
 export function decodeEntityStatsEvent(keys: string[], data: string[]): EntityStatsEventData {
   // Keys: [StoreSetRecord, EntityStats_model, entity_hash]
   const entityHash = feltToHex(keys[2]);
 
-  // Data: adventurers_killed as u64 (stored as u256 low/high parts)
-  const adventurersKilledLow = hexToBigInt(data[0]);
-  const adventurersKilledHigh = hexToBigInt(data[1] ?? "0x0");
-  const adventurersKilled = adventurersKilledLow + (adventurersKilledHigh * (2n ** 128n));
+  // Data[0] = adventurers_killed (single felt252, not u256)
+  const adventurersKilled = hexToBigInt(data[0]);
 
   return {
     entityHash,
