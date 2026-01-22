@@ -15,7 +15,6 @@
  * - RewardsEarnedEvent: Token rewards earned
  * - RewardsClaimedEvent: Rewards claimed by player
  * - PoisonEvent: Poison attacks
- * - DiplomacyEvent: Diplomacy group formations
  * - CorpseEvent: Corpse creation
  * - SkullEvent: Skull claims
  *
@@ -48,7 +47,6 @@ import {
   decodeRewardsEarnedEvent,
   decodeRewardsClaimedEvent,
   decodePoisonEvent,
-  decodeDiplomacyEvent,
   decodeCorpseEvent,
   decodeSkullEvent,
   decodeTransferEvent,
@@ -547,8 +545,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
       const blockNumber = header.blockNumber ?? 0n;
       const blockTimestamp = header.timestamp ?? new Date();
 
-      // Log current block to show progress
-      logger.info(`[BLOCK] ${blockNumber} (${events.length} events)`);
+      // Only log blocks with events
+      if (events.length > 0) {
+        logger.info(`Block ${blockNumber}: ${events.length} events`);
+      }
 
       // Process all events in order
       for (const event of events) {
@@ -654,14 +654,12 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             const decoded = decodeEntityStatsEvent([...keys], [...data]);
 
             // Filter by dungeon - only process Beast dungeon (0x6) events
-            // Dungeon is padded to 64 chars by feltToHex
             const BEAST_DUNGEON = "0x0000000000000000000000000000000000000000000000000000000000000006";
             if (decoded.dungeon !== BEAST_DUNGEON) {
-              logger.debug(`Skipping EntityStats from dungeon ${decoded.dungeon}, expected ${BEAST_DUNGEON}`);
               continue;
             }
 
-            logger.info(`EntityStats: dungeon=${decoded.dungeon}, entity_hash=${decoded.entityHash}, adventurers_killed=${decoded.adventurersKilled}`);
+            logger.info(`EntityStats: adventurers_killed=${decoded.adventurersKilled}`);
 
             // Upsert beast_data with adventurers_killed
             await db.insert(schema.beastData).values({
@@ -701,22 +699,15 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
               modelSelector === DOJO_EVENT_SELECTORS.CollectableEntity) {
 
-            // DEBUG: Log raw event structure to verify CollectableEntity format
-            logger.info(`[CollectableEntity] data.length=${data.length}`);
-            for (let i = 0; i < Math.min(data.length, 10); i++) {
-              logger.info(`[CollectableEntity] data[${i}]=${feltToHex(data[i])}`);
-            }
-
             const decoded = decodeCollectableEntityEvent([...keys], [...data]);
 
             // Filter by dungeon - only process Loot Survivor dungeon events
             const LS_DUNGEON = "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42";
             if (decoded.dungeon !== LS_DUNGEON) {
-              logger.debug(`Skipping CollectableEntity from dungeon ${decoded.dungeon}, expected ${LS_DUNGEON}`);
               continue;
             }
 
-            logger.info(`CollectableEntity: dungeon=${decoded.dungeon}, entity_hash=${decoded.entityHash}, timestamp=${decoded.timestamp}`);
+            logger.info(`CollectableEntity: timestamp=${decoded.timestamp}`);
 
             // Upsert beast_data with last_death_timestamp
             await db.insert(schema.beastData).values({
@@ -1020,23 +1011,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 createdAt: blockTimestamp,
                 indexedAt,
               });
-              break;
-            }
-
-            case EVENT_SELECTORS.DiplomacyEvent: {
-              const decoded = decodeDiplomacyEvent([...keys], [...data]);
-              // logger.info(`DiplomacyEvent: specials_hash=${decoded.specialsHash}, beasts=${decoded.beastTokenIds.length}, power=${decoded.totalPower}`);
-
-              await db.insert(schema.diplomacyGroups).values({
-                specialsHash: decoded.specialsHash,
-                beastTokenIds: decoded.beastTokenIds.join(","),
-                totalPower: decoded.totalPower,
-                createdAt: blockTimestamp,
-                indexedAt: indexedAt,
-                blockNumber,
-                transactionHash,
-                eventIndex,
-              }).onConflictDoNothing();
               break;
             }
 

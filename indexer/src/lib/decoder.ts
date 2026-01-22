@@ -21,7 +21,6 @@
  * - RewardEvent: Token rewards
  * - RewardsClaimedEvent: Rewards claimed by player
  * - PoisonEvent: Poison attacks
- * - DiplomacyEvent: Diplomacy group formations
  * - CorpseEvent: Corpse creation
  * - SkullEvent: Skull claims
  * - BattleEvent: Combat results
@@ -39,7 +38,6 @@ export const EVENT_SELECTORS = {
   RewardsEarnedEvent: hash.getSelectorFromName("RewardsEarnedEvent"),
   RewardsClaimedEvent: hash.getSelectorFromName("RewardsClaimedEvent"),
   PoisonEvent: hash.getSelectorFromName("PoisonEvent"),
-  DiplomacyEvent: hash.getSelectorFromName("DiplomacyEvent"),
   CorpseEvent: hash.getSelectorFromName("CorpseEvent"),
   SkullEvent: hash.getSelectorFromName("SkullEvent"),
   BattleEvent: hash.getSelectorFromName("BattleEvent"),
@@ -207,12 +205,6 @@ export interface PoisonEventData {
   beastTokenId: number;
   count: number;
   player: string;
-}
-
-export interface DiplomacyEventData {
-  specialsHash: string;
-  beastTokenIds: number[];
-  totalPower: number;
 }
 
 export interface CorpseEventData {
@@ -413,22 +405,6 @@ export function decodePoisonEvent(keys: string[], data: string[]): PoisonEventDa
     beastTokenId: hexToNumber(data[0]),
     count: hexToNumber(data[1]),
     player: feltToHex(data[2]),
-  };
-}
-
-/**
- * Decode DiplomacyEvent
- * Data: specials_hash, beast_token_ids (Span<u32>), total_power
- */
-export function decodeDiplomacyEvent(keys: string[], data: string[]): DiplomacyEventData {
-  const specialsHash = feltToHex(data[0]);
-  const { values: beastTokenIds, consumed } = decodeSpanU32(data, 1);
-  const totalPower = hexToNumber(data[1 + consumed]);
-
-  return {
-    specialsHash,
-    beastTokenIds,
-    totalPower,
   };
 }
 
