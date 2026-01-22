@@ -555,9 +555,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
       const blockNumber = header.blockNumber ?? 0n;
       const blockTimestamp = header.timestamp ?? new Date();
 
-      // if (events.length > 0) {
-      //   logger.info(`Processing ${events.length} events at block ${blockNumber}`);
-      // }
+      // Log current block to show progress
+      logger.info(`[BLOCK] ${blockNumber} (${events.length} events)`);
 
       // Process all events in order
       for (const event of events) {
@@ -656,6 +655,14 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
           // Dojo World contract - EntityStats events (keys[0]=StoreSetRecord, keys[1]=EntityStats model, keys[2]=dungeon, keys[3]=entity_hash)
           const modelSelector = feltToHex(keys[1]);
+
+          // DEBUG: Log ANY event from Dojo World address
+          if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt) {
+            logger.info(`[DOJO] Event from Dojo World! selector=${selector}, modelSelector=${modelSelector}`);
+            logger.info(`[DOJO] Expected StoreSetRecord=${DOJO_EVENT_SELECTORS.StoreSetRecord}`);
+            logger.info(`[DOJO] Expected EntityStats=${DOJO_EVENT_SELECTORS.EntityStats}`);
+          }
+
           if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt &&
               selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
               modelSelector === DOJO_EVENT_SELECTORS.EntityStats) {
