@@ -217,7 +217,7 @@ async function logBeastStatChanges(
   transactionHash: string,
   blockTimestamp: Date,
   indexedAt: Date,
-  logger: any
+  _logger: any // eslint-disable-line @typescript-eslint/no-unused-vars
 ): Promise<number> {
   let derivedOffset = 0;
 
@@ -260,7 +260,7 @@ async function logBeastStatChanges(
         indexedAt,
       });
 
-      logger.info(`[Summit Log] ${category}/${subCategory}: token ${newStats.tokenId} ${oldValue} -> ${newValue}`);
+      // logger.info(`[Summit Log] ${category}/${subCategory}: token ${newStats.tokenId} ${oldValue} -> ${newValue}`);
     }
   }
 
@@ -288,7 +288,7 @@ async function logBeastStatChanges(
       indexedAt,
     });
 
-    logger.info(`[Summit Log] Arriving to Summit/Claimed Potions: token ${newStats.tokenId}`);
+    // logger.info(`[Summit Log] Arriving to Summit/Claimed Potions: token ${newStats.tokenId}`);
   }
 
   return derivedOffset;
@@ -516,7 +516,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     plugins: [
       drizzleStorage({
         db: database,
-        persistState: true,
+        persistState: false, // Always start from startingBlock, don't resume from checkpoint
         indexerName: "summit",
         idColumn: "id",
         migrate: {
@@ -555,9 +555,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
       const blockNumber = header.blockNumber ?? 0n;
       const blockTimestamp = header.timestamp ?? new Date();
 
-      if (events.length > 0) {
-        logger.info(`Processing ${events.length} events at block ${blockNumber}`);
-      }
+      // if (events.length > 0) {
+      //   logger.info(`Processing ${events.length} events at block ${blockNumber}`);
+      // }
 
       // Process all events in order
       for (const event of events) {
@@ -571,8 +571,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
         const selector = feltToHex(keys[0]);
 
-        // DEBUG: Log every event to see what's coming through
-        logger.info(`[DEBUG] Event from ${eventAddress} selector=${selector} keys=${JSON.stringify(keys.map(k => feltToHex(k)))}`);
+        // DEBUG: Uncomment to log every event
+        // logger.info(`[DEBUG] Event from ${eventAddress} selector=${selector} keys=${JSON.stringify(keys.map(k => feltToHex(k)))}`);
 
         try {
           // Beasts NFT contract - Transfer events
@@ -591,7 +591,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               continue;
             }
 
-            logger.info(`Transfer: token ${tokenId} from ${decoded.from} to ${decoded.to}`);
+            // logger.info(`Transfer: token ${tokenId} from ${decoded.from} to ${decoded.to}`);
 
             // Upsert beast_owners with new owner
             await db.insert(schema.beastOwners).values({
@@ -609,7 +609,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             // Check if we need to fetch metadata (only once per token)
             if (!fetchedTokens.has(tokenId)) {
               // Fetch beast metadata via RPC
-              logger.info(`Fetching metadata for token ${tokenId}`);
+              // logger.info(`Fetching metadata for token ${tokenId}`);
               const beastData = await fetchBeastMetadata(tokenId);
 
               if (beastData) {
@@ -644,11 +644,11 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                     updatedAt: blockTimestamp,
                   },
                 });
-                logger.info(`Linked token ${tokenId} to entity_hash ${entityHash}`);
+                // logger.info(`Linked token ${tokenId} to entity_hash ${entityHash}`);
 
                 // Mark as fetched in cache
                 fetchedTokens.add(tokenId);
-                logger.info(`Stored metadata for token ${tokenId}: beast_id=${id}, level=${level}`);
+                // logger.info(`Stored metadata for token ${tokenId}: beast_id=${id}, level=${level}`);
               }
             }
             continue;
@@ -660,15 +660,27 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
               modelSelector === DOJO_EVENT_SELECTORS.EntityStats) {
 
+            // DEBUG: Log raw event data for EntityStats
+            logger.info(`[DOJO EntityStats] Raw keys: ${JSON.stringify(keys)}`);
+            logger.info(`[DOJO EntityStats] Raw data: ${JSON.stringify(data)}`);
+            logger.info(`[DOJO EntityStats] keys as hex: ${JSON.stringify(keys.map(k => feltToHex(k)))}`);
+            logger.info(`[DOJO EntityStats] data as hex: ${JSON.stringify(data.map(d => feltToHex(d)))}`);
+
             const decoded = decodeEntityStatsEvent([...keys], [...data]);
+
+            // DEBUG: Log decoded values
+            logger.info(`[DOJO EntityStats] Decoded dungeon: ${decoded.dungeon}`);
+            logger.info(`[DOJO EntityStats] Decoded entity_hash: ${decoded.entityHash}`);
+            logger.info(`[DOJO EntityStats] Decoded adventurers_killed: ${decoded.adventurersKilled}`);
+            logger.info(`[DOJO EntityStats] Expected dungeon: ${normalizedEntityStatsDungeon}`);
 
             // Filter by dungeon - only process Beast dungeon events
             if (decoded.dungeon !== normalizedEntityStatsDungeon) {
-              logger.debug(`Skipping EntityStats from dungeon ${decoded.dungeon}, expected ${normalizedEntityStatsDungeon}`);
+              logger.info(`[DOJO EntityStats] SKIPPING - dungeon mismatch`);
               continue;
             }
 
-            logger.info(`EntityStats: entity_hash=${decoded.entityHash}, adventurers_killed=${decoded.adventurersKilled}`);
+            logger.info(`[DOJO EntityStats] PROCESSING - dungeon matched`);
 
             // Upsert beast_data with adventurers_killed
             await db.insert(schema.beastData).values({
@@ -708,15 +720,26 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
               modelSelector === DOJO_EVENT_SELECTORS.CollectableEntity) {
 
+            // DEBUG: Log raw event data for CollectableEntity
+            logger.info(`[DOJO CollectableEntity] Raw keys: ${JSON.stringify(keys)}`);
+            logger.info(`[DOJO CollectableEntity] Raw data: ${JSON.stringify(data)}`);
+            logger.info(`[DOJO CollectableEntity] keys as hex: ${JSON.stringify(keys.map(k => feltToHex(k)))}`);
+
             const decoded = decodeCollectableEntityEvent([...keys], [...data]);
+
+            // DEBUG: Log decoded values
+            logger.info(`[DOJO CollectableEntity] Decoded dungeon: ${decoded.dungeon}`);
+            logger.info(`[DOJO CollectableEntity] Decoded entity_hash: ${decoded.entityHash}`);
+            logger.info(`[DOJO CollectableEntity] Decoded timestamp: ${decoded.timestamp}`);
+            logger.info(`[DOJO CollectableEntity] Expected dungeon: ${normalizedCollectableEntityDungeon}`);
 
             // Filter by dungeon - only process Loot Survivor dungeon events
             if (decoded.dungeon !== normalizedCollectableEntityDungeon) {
-              logger.debug(`Skipping CollectableEntity from dungeon ${decoded.dungeon}, expected ${normalizedCollectableEntityDungeon}`);
+              logger.info(`[DOJO CollectableEntity] SKIPPING - dungeon mismatch`);
               continue;
             }
 
-            logger.info(`CollectableEntity: entity_hash=${decoded.entityHash}, timestamp=${decoded.timestamp}`);
+            logger.info(`[DOJO CollectableEntity] PROCESSING - dungeon matched`);
 
             // Upsert beast_data with last_death_timestamp
             await db.insert(schema.beastData).values({
@@ -757,7 +780,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           switch (selector) {
             case EVENT_SELECTORS.BeastUpdatesEvent: {
               const decoded = decodeBeastUpdatesEvent([...keys], [...data]);
-              logger.info(`BeastUpdatesEvent: ${decoded.packedUpdates.length} updates`);
+              // logger.info(`BeastUpdatesEvent: ${decoded.packedUpdates.length} updates`);
 
               for (let i = 0; i < decoded.packedUpdates.length; i++) {
                 const packed = decoded.packedUpdates[i];
@@ -816,7 +839,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                     createdAt: blockTimestamp,
                     indexedAt,
                   });
-                  logger.info(`[Summit Log] Battle/Summit Change: ${stats.tokenId} took summit from ${stats.tokenId}`);
+                  // logger.info(`[Summit Log] Battle/Summit Change: ${stats.tokenId} took summit from ${stats.tokenId}`);
                 }
               }
               break;
@@ -825,7 +848,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             case EVENT_SELECTORS.LiveBeastStatsEvent: {
               const decoded = decodeLiveBeastStatsEvent([...keys], [...data]);
               const stats = decoded.liveStats;
-              logger.info(`LiveBeastStatsEvent: token_id=${stats.tokenId}, health=${stats.currentHealth}`);
+              // logger.info(`LiveBeastStatsEvent: token_id=${stats.tokenId}, health=${stats.currentHealth}`);
 
               // Get previous stats for derived event detection
               const prevStats = await getPreviousBeastStats(db, stats.tokenId);
@@ -866,7 +889,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               const decoded = decodeBattleEvent([...keys], [...data]);
               // Look up attacking player from beast_owners
               const attackingPlayer = await getBeastOwner(db, decoded.attackingBeastTokenId);
-              logger.info(`BattleEvent: attacker=${decoded.attackingBeastTokenId} (${attackingPlayer}), defender=${decoded.defendingBeastTokenId}, damage=${decoded.attackDamage}`);
+              // logger.info(`BattleEvent: attacker=${decoded.attackingBeastTokenId} (${attackingPlayer}), defender=${decoded.defendingBeastTokenId}, damage=${decoded.attackDamage}`);
 
               await db.insert(schema.battles).values({
                 attackingBeastTokenId: decoded.attackingBeastTokenId,
@@ -920,7 +943,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               const decoded = decodeRewardsEarnedEvent([...keys], [...data]);
               // Look up owner from beast_owners
               const owner = await getBeastOwner(db, decoded.beastTokenId);
-              logger.info(`RewardsEarnedEvent: beast=${decoded.beastTokenId} (${owner}), amount=${decoded.amount}`);
+              // logger.info(`RewardsEarnedEvent: beast=${decoded.beastTokenId} (${owner}), amount=${decoded.amount}`);
 
               await db.insert(schema.rewardsEarned).values({
                 beastTokenId: decoded.beastTokenId,
@@ -955,7 +978,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
             case EVENT_SELECTORS.RewardsClaimedEvent: {
               const decoded = decodeRewardsClaimedEvent([...keys], [...data]);
-              logger.info(`RewardsClaimedEvent: player=${decoded.player}, amount=${decoded.amount}`);
+              // logger.info(`RewardsClaimedEvent: player=${decoded.player}, amount=${decoded.amount}`);
 
               await db.insert(schema.rewardsClaimed).values({
                 player: decoded.player,
@@ -989,7 +1012,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
             case EVENT_SELECTORS.PoisonEvent: {
               const decoded = decodePoisonEvent([...keys], [...data]);
-              logger.info(`PoisonEvent: beast=${decoded.beastTokenId}, player=${decoded.player}, count=${decoded.count}`);
+              // logger.info(`PoisonEvent: beast=${decoded.beastTokenId}, player=${decoded.player}, count=${decoded.count}`);
 
               await db.insert(schema.poisonEvents).values({
                 beastTokenId: decoded.beastTokenId,
@@ -1025,7 +1048,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
             case EVENT_SELECTORS.DiplomacyEvent: {
               const decoded = decodeDiplomacyEvent([...keys], [...data]);
-              logger.info(`DiplomacyEvent: specials_hash=${decoded.specialsHash}, beasts=${decoded.beastTokenIds.length}, power=${decoded.totalPower}`);
+              // logger.info(`DiplomacyEvent: specials_hash=${decoded.specialsHash}, beasts=${decoded.beastTokenIds.length}, power=${decoded.totalPower}`);
 
               await db.insert(schema.diplomacyGroups).values({
                 specialsHash: decoded.specialsHash,
@@ -1042,7 +1065,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
             case EVENT_SELECTORS.CorpseEvent: {
               const decoded = decodeCorpseEvent([...keys], [...data]);
-              logger.info(`CorpseEvent: adventurer_id=${decoded.adventurerId}, player=${decoded.player}`);
+              // logger.info(`CorpseEvent: adventurer_id=${decoded.adventurerId}, player=${decoded.player}`);
 
               await db.insert(schema.corpseEvents).values({
                 adventurerId: decoded.adventurerId,
@@ -1077,7 +1100,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               const decoded = decodeSkullEvent([...keys], [...data]);
               // Look up player from beast_owners
               const skullPlayer = await getBeastOwner(db, decoded.beastTokenId);
-              logger.info(`SkullEvent: beast=${decoded.beastTokenId} (${skullPlayer}), skulls=${decoded.skulls}`);
+              // logger.info(`SkullEvent: beast=${decoded.beastTokenId} (${skullPlayer}), skulls=${decoded.skulls}`);
 
               await db.insert(schema.skullEvents).values({
                 beastTokenId: decoded.beastTokenId,
@@ -1128,10 +1151,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
       }
 
       // Log processing duration for latency diagnostics
-      if (events.length > 0) {
-        const processingMs = Date.now() - indexedAt.getTime();
-        logger.info(`[TIMING] Block ${blockNumber}: ${events.length} events processed in ${processingMs}ms`);
-      }
+      // if (events.length > 0) {
+      //   const processingMs = Date.now() - indexedAt.getTime();
+      //   logger.info(`[TIMING] Block ${blockNumber}: ${events.length} events processed in ${processingMs}ms`);
+      // }
     },
   });
 }
