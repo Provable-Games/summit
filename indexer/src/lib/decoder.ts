@@ -558,6 +558,7 @@ export function decodeTransferEvent(keys: string[], data: string[]): TransferEve
 // ============ Dojo Event Data Interfaces ============
 
 export interface EntityStatsEventData {
+  dungeon: string;
   entityHash: string;
   adventurersKilled: bigint;
 }
@@ -571,19 +572,21 @@ export interface CollectableEntityEventData {
 
 /**
  * Decode EntityStats Dojo event
- * Keys: [StoreSetRecord, EntityStats_model, entity_hash]
- * Data: [adventurers_killed_low, adventurers_killed_high] (u64 as u256)
+ * Keys: [StoreSetRecord, EntityStats_model, key_hash]
+ * Data: [field_count, dungeon, entity_hash, adventurers_killed, ...]
  */
-export function decodeEntityStatsEvent(keys: string[], data: string[]): EntityStatsEventData {
-  // Keys: [StoreSetRecord, EntityStats_model, entity_hash]
-  const entityHash = feltToHex(keys[2]);
-
-  // Data: adventurers_killed as u64 (stored as u256 low/high parts)
-  const adventurersKilledLow = hexToBigInt(data[0]);
-  const adventurersKilledHigh = hexToBigInt(data[1]);
-  const adventurersKilled = adventurersKilledLow + (adventurersKilledHigh << 128n);
+export function decodeEntityStatsEvent(_keys: string[], data: string[]): EntityStatsEventData {
+  // Data layout:
+  // data[0] = field_count (skip)
+  // data[1] = dungeon
+  // data[2] = entity_hash
+  // data[3] = adventurers_killed
+  const dungeon = feltToHex(data[1]);
+  const entityHash = feltToHex(data[2]);
+  const adventurersKilled = hexToBigInt(data[3]);
 
   return {
+    dungeon,
     entityHash,
     adventurersKilled,
   };

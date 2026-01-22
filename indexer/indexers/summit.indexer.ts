@@ -651,18 +651,15 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
               modelSelector === DOJO_EVENT_SELECTORS.EntityStats) {
 
-            // DEBUG: Log raw event structure to understand dungeon position
-            logger.info(`[EntityStats] keys.length=${keys.length}`);
-            for (let i = 0; i < keys.length; i++) {
-              logger.info(`[EntityStats] keys[${i}]=${feltToHex(keys[i])}`);
-            }
-            logger.info(`[EntityStats] data.length=${data.length}`);
-            for (let i = 0; i < Math.min(data.length, 5); i++) {
-              logger.info(`[EntityStats] data[${i}]=${feltToHex(data[i])}`);
+            const decoded = decodeEntityStatsEvent([...keys], [...data]);
+
+            // Filter by dungeon - only process Beast dungeon (0x6) events
+            if (decoded.dungeon !== "0x6") {
+              logger.debug(`Skipping EntityStats from dungeon ${decoded.dungeon}, expected 0x6`);
+              continue;
             }
 
-            const decoded = decodeEntityStatsEvent([...keys], [...data]);
-            logger.info(`[EntityStats] decoded entity_hash=${decoded.entityHash}, adventurers_killed=${decoded.adventurersKilled}`);
+            logger.info(`EntityStats: dungeon=${decoded.dungeon}, entity_hash=${decoded.entityHash}, adventurers_killed=${decoded.adventurersKilled}`);
 
             // Upsert beast_data with adventurers_killed
             await db.insert(schema.beastData).values({
