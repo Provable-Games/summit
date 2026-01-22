@@ -4,26 +4,26 @@ export default defineConfig({
   runtimeConfig: {
     summit: {
       // Summit game contract address (mainnet)
-      summitContractAddress: (process.env.SUMMIT_CONTRACT_ADDRESS ?? "0x07fdb19e6dd3a89806c9261bb2f5988f662ccba757581a360d159e158e9d365c").trim(),
+      summitContractAddress: "0x078f99886a4f2abfa8dab4fe43f3f7e0fbb87aa53b49b91d5a2b4ab101fe316d",
       // Beasts NFT contract address (mainnet)
-      beastsContractAddress: (process.env.BEASTS_CONTRACT_ADDRESS ?? "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4").trim(),
+      beastsContractAddress: "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
       // Dojo World contract address (Loot Survivor mainnet)
-      dojoWorldAddress: (process.env.DOJO_WORLD_ADDRESS ?? "0x02ef591697f0fd9adc0ba9dbe0ca04dabad80cf95f08ba02e435d9cb6698a28a").trim(),
+      dojoWorldAddress: "0x02ef591697f0fd9adc0ba9dbe0ca04dabad80cf95f08ba02e435d9cb6698a28a",
       // EntityStats dungeon filter (Beast dungeon)
-      entityStatsDungeon: (process.env.ENTITY_STATS_DUNGEON ?? "0x0000000000000000000000000000000000000000000000000000000000000006").trim(),
+      entityStatsDungeon: "0x0000000000000000000000000000000000000000000000000000000000000006",
       // CollectableEntity dungeon filter (Loot Survivor dungeon)
-      collectableEntityDungeon: (process.env.COLLECTABLE_ENTITY_DUNGEON ?? "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42").trim(),
+      collectableEntityDungeon: "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42",
       // Mainnet DNA stream URL
-      streamUrl: (process.env.STREAM_URL ?? "https://mainnet.starknet.a5a.ch").trim(),
+      streamUrl: process.env.STREAM_URL,
       // Starting block - use earliest block needed for Dojo events
-      startingBlock: (process.env.STARTING_BLOCK ?? "2021270").trim(),
+      startingBlock: "2021270",
       // PostgreSQL connection string
-      databaseUrl: (process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/summit").trim(),
+      databaseUrl: process.env.DATABASE_URL,
       // RPC URL for fetching beast metadata
-      rpcUrl: (process.env.RPC_URL ?? "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10").trim(),
+      rpcUrl: process.env.RPC_URL,
       // Optional: skip beast Transfer events before this block (for reindexing Dojo events only)
       // Set via SKIP_BEASTS_BEFORE_BLOCK env var when you want to reindex from scratch without re-fetching beasts
-      skipBeastsBeforeBlock: process.env.SKIP_BEASTS_BEFORE_BLOCK?.trim(),
+      skipBeastsBeforeBlock: process.env.SKIP_BEASTS_BEFORE_BLOCK,
     },
   },
 });
