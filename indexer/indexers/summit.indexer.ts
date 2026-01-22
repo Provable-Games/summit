@@ -654,8 +654,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             const decoded = decodeEntityStatsEvent([...keys], [...data]);
 
             // Filter by dungeon - only process Beast dungeon (0x6) events
-            if (decoded.dungeon !== "0x6") {
-              logger.debug(`Skipping EntityStats from dungeon ${decoded.dungeon}, expected 0x6`);
+            // Dungeon is padded to 64 chars by feltToHex
+            const BEAST_DUNGEON = "0x0000000000000000000000000000000000000000000000000000000000000006";
+            if (decoded.dungeon !== BEAST_DUNGEON) {
+              logger.debug(`Skipping EntityStats from dungeon ${decoded.dungeon}, expected ${BEAST_DUNGEON}`);
               continue;
             }
 

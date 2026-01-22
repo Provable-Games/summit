@@ -57,12 +57,12 @@ export const BEAST_EVENT_SELECTORS = {
  * Dojo events have structure: keys[0]=StoreSelector, keys[1]=ModelSelector, keys[2+]=ModelKeys
  */
 export const DOJO_EVENT_SELECTORS = {
-  // Dojo StoreSetRecord event selector (keys[0])
-  StoreSetRecord: "0x1a2f334228cee715f1f0f54053bb6b5eac54fa336e0bc1aacf7516decb0471d",
-  // EntityStats model selector (keys[1])
-  EntityStats: "0x29d69b1d6c3d402e03d5394145fba858744dc4e0ca8ffcc22729acbfe71dd4a",
-  // CollectableEntity model selector (keys[1])
-  CollectableEntity: "0x3b1af01c5bd9e48f92fa49ba31d96b18a03ac4eb4a389c0a694a11c8aa733df",
+  // Dojo StoreSetRecord event selector (keys[0]) - padded to 64 hex chars
+  StoreSetRecord: "0x01a2f334228cee715f1f0f54053bb6b5eac54fa336e0bc1aacf7516decb0471d",
+  // EntityStats model selector (keys[1]) - padded to 64 hex chars
+  EntityStats: "0x029d69b1d6c3d402e03d5394145fba858744dc4e0ca8ffcc22729acbfe71dd4a",
+  // CollectableEntity model selector (keys[1]) - padded to 64 hex chars
+  CollectableEntity: "0x03b1af01c5bd9e48f92fa49ba31d96b18a03ac4eb4a389c0a694a11c8aa733df",
 } as const;
 
 /**
@@ -81,13 +81,13 @@ export function hexToNumber(hex: string | undefined | null): number {
 }
 
 /**
- * Convert felt252 to string (for contract addresses)
- * Normalizes to unpadded lowercase hex (e.g., "0x2e0a..." not "0x02e0a...")
+ * Convert felt252 to string (for contract addresses and hashes)
+ * Normalizes to padded lowercase hex (64 chars after 0x) for consistent comparison
  */
 export function feltToHex(felt: string | undefined | null): string {
   if (!felt) return "0x0";
-  // No padding - just normalize to lowercase hex
-  return `0x${BigInt(felt).toString(16)}`;
+  // Pad to 64 chars for consistent hash/address comparison
+  return `0x${BigInt(felt).toString(16).padStart(64, '0')}`;
 }
 
 /**
