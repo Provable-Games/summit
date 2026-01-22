@@ -23,7 +23,7 @@ export default defineConfig({
       rpcUrl: process.env.RPC_URL,
       // Optional: skip beast Transfer events before this block (for reindexing Dojo events only)
       // Set via SKIP_BEASTS_BEFORE_BLOCK env var when you want to reindex from scratch without re-fetching beasts
-      skipBeastsBeforeBlock: process.env.SKIP_BEASTS_BEFORE_BLOCK,
+      skipBeastsBeforeBlock: "5900000",
     },
   },
 });
