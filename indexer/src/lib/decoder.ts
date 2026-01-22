@@ -86,8 +86,8 @@ export function hexToNumber(hex: string | undefined | null): number {
  */
 export function feltToHex(felt: string | undefined | null): string {
   if (!felt) return "0x0";
-  // Pad to 64 chars to ensure consistent formatting (handles leading zeros)
-  return `0x${BigInt(felt).toString(16).padStart(64, '0')}`;
+  // No padding - just normalize to lowercase hex
+  return `0x${BigInt(felt).toString(16)}`;
 }
 
 /**
@@ -558,13 +558,11 @@ export function decodeTransferEvent(keys: string[], data: string[]): TransferEve
 // ============ Dojo Event Data Interfaces ============
 
 export interface EntityStatsEventData {
-  dungeon: string;
   entityHash: string;
   adventurersKilled: bigint;
 }
 
 export interface CollectableEntityEventData {
-  dungeon: string;
   entityHash: string;
   timestamp: bigint;
 }
@@ -573,19 +571,19 @@ export interface CollectableEntityEventData {
 
 /**
  * Decode EntityStats Dojo event
- * Keys: [StoreSetRecord, EntityStats_model, dungeon, entity_hash]
- * Data: [field_count, adventurers_killed, ...]
+ * Keys: [StoreSetRecord, EntityStats_model, entity_hash]
+ * Data: [adventurers_killed_low, adventurers_killed_high] (u64 as u256)
  */
 export function decodeEntityStatsEvent(keys: string[], data: string[]): EntityStatsEventData {
-  // Keys: [StoreSetRecord, EntityStats_model, dungeon, entity_hash]
-  const dungeon = feltToHex(keys[2]);
-  const entityHash = feltToHex(keys[3]);
+  // Keys: [StoreSetRecord, EntityStats_model, entity_hash]
+  const entityHash = feltToHex(keys[2]);
 
-  // Data[0] = field count (skip), Data[1] = adventurers_killed
-  const adventurersKilled = hexToBigInt(data[1]);
+  // Data: adventurers_killed as u64 (stored as u256 low/high parts)
+  const adventurersKilledLow = hexToBigInt(data[0]);
+  const adventurersKilledHigh = hexToBigInt(data[1]);
+  const adventurersKilled = adventurersKilledLow + (adventurersKilledHigh << 128n);
 
   return {
-    dungeon,
     entityHash,
     adventurersKilled,
   };
@@ -593,22 +591,20 @@ export function decodeEntityStatsEvent(keys: string[], data: string[]): EntitySt
 
 /**
  * Decode CollectableEntity Dojo event
- * Keys: [StoreSetRecord, CollectableEntity_model, dungeon, entity_hash, index_low, index_high]
- * Data: [field_count, seed, id, level, health, prefix, suffix, killed_by, timestamp] (packed)
+ * Keys: [StoreSetRecord, CollectableEntity_model, entity_hash, index_low, index_high]
+ * Data: [seed, id, level, health, prefix, suffix, killed_by, timestamp] (packed)
  *
  * The timestamp is the last field and represents when the entity was collected (death time)
  */
 export function decodeCollectableEntityEvent(keys: string[], data: string[]): CollectableEntityEventData {
-  // Keys: [StoreSetRecord, CollectableEntity_model, dungeon, entity_hash, index_low, index_high]
-  const dungeon = feltToHex(keys[2]);
-  const entityHash = feltToHex(keys[3]);
+  // Keys: [StoreSetRecord, CollectableEntity_model, entity_hash, index_low, index_high]
+  const entityHash = feltToHex(keys[2]);
 
-  // Data[0] = field count (skip), then [seed, id, level, health, prefix, suffix, killed_by, timestamp]
-  // timestamp is at index 8 (after field count)
-  const timestamp = hexToBigInt(data[8]);
+  // Data layout: [seed, id, level, health, prefix, suffix, killed_by, timestamp]
+  // Each field is a separate felt252, timestamp is at index 7
+  const timestamp = hexToBigInt(data[7]);
 
   return {
-    dungeon,
     entityHash,
     timestamp,
   };

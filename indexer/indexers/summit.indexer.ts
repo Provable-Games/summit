@@ -63,8 +63,6 @@ interface SummitConfig {
   summitContractAddress: string;
   beastsContractAddress: string;
   dojoWorldAddress: string;
-  entityStatsDungeon: string;
-  collectableEntityDungeon: string;
   streamUrl: string;
   startingBlock: string;
   databaseUrl: string;
@@ -387,8 +385,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     summitContractAddress,
     beastsContractAddress,
     dojoWorldAddress,
-    entityStatsDungeon,
-    collectableEntityDungeon,
     streamUrl,
     startingBlock: startBlockStr,
     databaseUrl,
@@ -402,10 +398,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   // Convert contract addresses to BigInt for comparison
   const summitAddressBigInt = addressToBigInt(summitContractAddress);
   const beastsAddressBigInt = addressToBigInt(beastsContractAddress);
-
-  // Normalize dungeon addresses for comparison
-  const normalizedEntityStatsDungeon = `0x${BigInt(entityStatsDungeon).toString(16).padStart(64, '0')}`;
-  const normalizedCollectableEntityDungeon = `0x${BigInt(collectableEntityDungeon).toString(16).padStart(64, '0')}`;
   const dojoWorldAddressBigInt = addressToBigInt(dojoWorldAddress);
 
   // Log configuration on startup
@@ -653,41 +645,24 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             continue;
           }
 
-          // Dojo World contract - EntityStats events (keys[0]=StoreSetRecord, keys[1]=EntityStats model, keys[2]=dungeon, keys[3]=entity_hash)
+          // Dojo World contract - EntityStats events
           const modelSelector = feltToHex(keys[1]);
-
-          // DEBUG: Log ANY event from Dojo World address
-          if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt) {
-            logger.info(`[DOJO] Event from Dojo World! selector=${selector}, modelSelector=${modelSelector}`);
-            logger.info(`[DOJO] Expected StoreSetRecord=${DOJO_EVENT_SELECTORS.StoreSetRecord}`);
-            logger.info(`[DOJO] Expected EntityStats=${DOJO_EVENT_SELECTORS.EntityStats}`);
-          }
-
           if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt &&
               selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
               modelSelector === DOJO_EVENT_SELECTORS.EntityStats) {
 
-            // DEBUG: Log raw event data for EntityStats
-            logger.info(`[DOJO EntityStats] Raw keys: ${JSON.stringify(keys)}`);
-            logger.info(`[DOJO EntityStats] Raw data: ${JSON.stringify(data)}`);
-            logger.info(`[DOJO EntityStats] keys as hex: ${JSON.stringify(keys.map(k => feltToHex(k)))}`);
-            logger.info(`[DOJO EntityStats] data as hex: ${JSON.stringify(data.map(d => feltToHex(d)))}`);
-
-            const decoded = decodeEntityStatsEvent([...keys], [...data]);
-
-            // DEBUG: Log decoded values
-            logger.info(`[DOJO EntityStats] Decoded dungeon: ${decoded.dungeon}`);
-            logger.info(`[DOJO EntityStats] Decoded entity_hash: ${decoded.entityHash}`);
-            logger.info(`[DOJO EntityStats] Decoded adventurers_killed: ${decoded.adventurersKilled}`);
-            logger.info(`[DOJO EntityStats] Expected dungeon: ${normalizedEntityStatsDungeon}`);
-
-            // Filter by dungeon - only process Beast dungeon events
-            if (decoded.dungeon !== normalizedEntityStatsDungeon) {
-              logger.info(`[DOJO EntityStats] SKIPPING - dungeon mismatch`);
-              continue;
+            // DEBUG: Log raw event structure to understand dungeon position
+            logger.info(`[EntityStats] keys.length=${keys.length}`);
+            for (let i = 0; i < keys.length; i++) {
+              logger.info(`[EntityStats] keys[${i}]=${feltToHex(keys[i])}`);
+            }
+            logger.info(`[EntityStats] data.length=${data.length}`);
+            for (let i = 0; i < Math.min(data.length, 5); i++) {
+              logger.info(`[EntityStats] data[${i}]=${feltToHex(data[i])}`);
             }
 
-            logger.info(`[DOJO EntityStats] PROCESSING - dungeon matched`);
+            const decoded = decodeEntityStatsEvent([...keys], [...data]);
+            logger.info(`[EntityStats] decoded entity_hash=${decoded.entityHash}, adventurers_killed=${decoded.adventurersKilled}`);
 
             // Upsert beast_data with adventurers_killed
             await db.insert(schema.beastData).values({
@@ -722,31 +697,13 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             continue;
           }
 
-          // Dojo World contract - CollectableEntity events (keys[0]=StoreSetRecord, keys[1]=CollectableEntity model, keys[2]=dungeon, keys[3]=entity_hash)
+          // Dojo World contract - CollectableEntity events (keys[0]=StoreSetRecord, keys[1]=CollectableEntity model, keys[2]=entity_hash)
           if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt &&
               selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
               modelSelector === DOJO_EVENT_SELECTORS.CollectableEntity) {
 
-            // DEBUG: Log raw event data for CollectableEntity
-            logger.info(`[DOJO CollectableEntity] Raw keys: ${JSON.stringify(keys)}`);
-            logger.info(`[DOJO CollectableEntity] Raw data: ${JSON.stringify(data)}`);
-            logger.info(`[DOJO CollectableEntity] keys as hex: ${JSON.stringify(keys.map(k => feltToHex(k)))}`);
-
             const decoded = decodeCollectableEntityEvent([...keys], [...data]);
-
-            // DEBUG: Log decoded values
-            logger.info(`[DOJO CollectableEntity] Decoded dungeon: ${decoded.dungeon}`);
-            logger.info(`[DOJO CollectableEntity] Decoded entity_hash: ${decoded.entityHash}`);
-            logger.info(`[DOJO CollectableEntity] Decoded timestamp: ${decoded.timestamp}`);
-            logger.info(`[DOJO CollectableEntity] Expected dungeon: ${normalizedCollectableEntityDungeon}`);
-
-            // Filter by dungeon - only process Loot Survivor dungeon events
-            if (decoded.dungeon !== normalizedCollectableEntityDungeon) {
-              logger.info(`[DOJO CollectableEntity] SKIPPING - dungeon mismatch`);
-              continue;
-            }
-
-            logger.info(`[DOJO CollectableEntity] PROCESSING - dungeon matched`);
+            logger.info(`CollectableEntity: entity_hash=${decoded.entityHash}, timestamp=${decoded.timestamp}`);
 
             // Upsert beast_data with last_death_timestamp
             await db.insert(schema.beastData).values({
