@@ -30,13 +30,6 @@ pub struct PoisonEvent {
 }
 
 #[derive(Drop, starknet::Event)]
-pub struct DiplomacyEvent {
-    pub specials_hash: felt252,
-    pub beast_token_ids: Span<u32>,
-    pub total_power: u16,
-}
-
-#[derive(Drop, starknet::Event)]
 pub struct CorpseEvent {
     pub adventurer_id: u64,
     pub player: ContractAddress,

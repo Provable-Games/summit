@@ -69,6 +69,8 @@ interface SummitConfig {
   startingBlock: string;
   databaseUrl: string;
   rpcUrl: string;
+  // Optional: skip beast Transfer events before this block (for reindexing Dojo events only)
+  skipBeastsBeforeBlock?: string;
 }
 
 // In-memory cache to track tokens we've already fetched metadata for
@@ -385,26 +387,28 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     summitContractAddress,
     beastsContractAddress,
     dojoWorldAddress,
-    entityStatsDungeon,
-    collectableEntityDungeon,
     streamUrl,
     startingBlock: startBlockStr,
     databaseUrl,
     rpcUrl,
+    skipBeastsBeforeBlock: skipBeastsBeforeBlockStr,
   } = config;
   const startingBlock = BigInt(startBlockStr);
+  // Optional: skip beast Transfer events before this block (for reindexing Dojo events only)
+  const skipBeastsBeforeBlock = skipBeastsBeforeBlockStr ? BigInt(skipBeastsBeforeBlockStr) : null;
 
   // Convert contract addresses to BigInt for comparison
   const summitAddressBigInt = addressToBigInt(summitContractAddress);
   const beastsAddressBigInt = addressToBigInt(beastsContractAddress);
   const dojoWorldAddressBigInt = addressToBigInt(dojoWorldAddress);
-  const entityStatsDungeonBigInt = addressToBigInt(entityStatsDungeon);
-  const collectableEntityDungeonBigInt = addressToBigInt(collectableEntityDungeon);
 
   // Log configuration on startup
   console.log("[Summit Indexer] Summit Contract:", summitContractAddress);
   console.log("[Summit Indexer] Beasts Contract:", beastsContractAddress);
   console.log("[Summit Indexer] Dojo World:", dojoWorldAddress);
+  if (skipBeastsBeforeBlock) {
+    console.log("[Summit Indexer] Skip beasts before block:", skipBeastsBeforeBlock.toString());
+  }
   console.log("[Summit Indexer] Stream:", streamUrl);
   console.log("[Summit Indexer] Starting Block:", startingBlock.toString());
   console.log("[Summit Indexer] RPC URL:", rpcUrl);
@@ -485,9 +489,21 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           address: beastsContractAddress.toLowerCase() as `0x${string}`,
           keys: [BEAST_EVENT_SELECTORS.Transfer as `0x${string}`],
         },
-        // Dojo World contract - ALL events (temporarily no key filter for debugging)
+        // Dojo World contract - EntityStats events (keys[0]=StoreSetRecord, keys[1]=EntityStats model)
         {
           address: dojoWorldAddress.toLowerCase() as `0x${string}`,
+          keys: [
+            DOJO_EVENT_SELECTORS.StoreSetRecord as `0x${string}`,
+            DOJO_EVENT_SELECTORS.EntityStats as `0x${string}`,
+          ],
+        },
+        // Dojo World contract - CollectableEntity events (keys[0]=StoreSetRecord, keys[1]=CollectableEntity model)
+        {
+          address: dojoWorldAddress.toLowerCase() as `0x${string}`,
+          keys: [
+            DOJO_EVENT_SELECTORS.StoreSetRecord as `0x${string}`,
+            DOJO_EVENT_SELECTORS.CollectableEntity as `0x${string}`,
+          ],
         },
       ],
     },
@@ -555,6 +571,11 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         try {
           // Beasts NFT contract - Transfer events
           if (addressToBigInt(eventAddress) === beastsAddressBigInt && selector === BEAST_EVENT_SELECTORS.Transfer) {
+            // Skip Transfer events before skipBeastsBeforeBlock (for reindexing Dojo events only)
+            if (skipBeastsBeforeBlock && blockNumber < skipBeastsBeforeBlock) {
+              continue;
+            }
+
             const decoded = decodeTransferEvent([...keys], [...data]);
             const tokenId = Number(decoded.tokenId);
 
@@ -627,14 +648,11 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             continue;
           }
 
-          // Dojo World contract - EntityStats events
-          if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt && selector === DOJO_EVENT_SELECTORS.EntityStats) {
-            // Filter by dungeon address (keys[1])
-            const dungeonAddress = feltToHex(keys[2]);
-            if (addressToBigInt(dungeonAddress) !== entityStatsDungeonBigInt) {
-              logger.debug(`Skipping EntityStats from non-target dungeon: ${dungeonAddress}`);
-              continue;
-            }
+          // Dojo World contract - EntityStats events (keys[0]=StoreSetRecord, keys[1]=EntityStats model, keys[2]=entity_hash)
+          const modelSelector = feltToHex(keys[1]);
+          if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt &&
+              selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
+              modelSelector === DOJO_EVENT_SELECTORS.EntityStats) {
 
             const decoded = decodeEntityStatsEvent([...keys], [...data]);
             logger.info(`EntityStats: entity_hash=${decoded.entityHash}, adventurers_killed=${decoded.adventurersKilled}`);
@@ -672,14 +690,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             continue;
           }
 
-          // Dojo World contract - CollectableEntity events
-          if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt && selector === DOJO_EVENT_SELECTORS.CollectableEntity) {
-            // Filter by dungeon address (keys[1])
-            const dungeonAddress = feltToHex(keys[2]);
-            if (addressToBigInt(dungeonAddress) !== collectableEntityDungeonBigInt) {
-              logger.debug(`Skipping CollectableEntity from non-target dungeon: ${dungeonAddress}`);
-              continue;
-            }
+          // Dojo World contract - CollectableEntity events (keys[0]=StoreSetRecord, keys[1]=CollectableEntity model, keys[2]=entity_hash)
+          if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt &&
+              selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
+              modelSelector === DOJO_EVENT_SELECTORS.CollectableEntity) {
 
             const decoded = decodeCollectableEntityEvent([...keys], [...data]);
             logger.info(`CollectableEntity: entity_hash=${decoded.entityHash}, timestamp=${decoded.timestamp}`);

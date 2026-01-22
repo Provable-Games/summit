@@ -89,8 +89,8 @@ pub mod summit_systems {
     use summit::logic::{beast_utils, combat, poison, revival, rewards};
     use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, PackableLiveStatsStorePacking, Stats};
     use summit::models::events::{
-        BattleEvent, BeastUpdatesEvent, CorpseEvent, DiplomacyEvent, LiveBeastStatsEvent, PoisonEvent,
-        RewardsClaimedEvent, RewardsEarnedEvent, SkullEvent,
+        BattleEvent, BeastUpdatesEvent, CorpseEvent, LiveBeastStatsEvent, PoisonEvent, RewardsClaimedEvent,
+        RewardsEarnedEvent, SkullEvent,
     };
     use summit::vrf::VRFImpl;
 
@@ -158,7 +158,6 @@ pub mod summit_systems {
         RewardsEarnedEvent: RewardsEarnedEvent,
         RewardsClaimedEvent: RewardsClaimedEvent,
         PoisonEvent: PoisonEvent,
-        DiplomacyEvent: DiplomacyEvent,
         CorpseEvent: CorpseEvent,
         SkullEvent: SkullEvent,
     }
@@ -297,6 +296,7 @@ pub mod summit_systems {
 
             let caller = get_caller_address();
             let beast_dispatcher = self.beast_dispatcher.read();
+            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
 
             let mut potion_rewards: u256 = 0;
             let mut beast_updates: Array<felt252> = array![];
@@ -306,7 +306,7 @@ pub mod summit_systems {
                 let beast_token_id = *beast_token_ids.at(i);
                 assert(beast_dispatcher.owner_of(beast_token_id.into()) == caller, errors::NOT_TOKEN_OWNER);
 
-                let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
+                let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id, beast_nft_dispatcher);
                 assert(beast.live.has_claimed_potions == 0, 'Already claimed potions');
 
                 potion_rewards += InternalSummitImpl::get_potion_amount(beast.fixed.id).into();
@@ -337,7 +337,8 @@ pub mod summit_systems {
 
             assert(extra_life_potions <= BEAST_MAX_EXTRA_LIVES, errors::BEAST_MAX_EXTRA_LIVES);
 
-            let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
+            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
+            let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id, beast_nft_dispatcher);
 
             // Apply extra life potions
             let mut potions_to_use = extra_life_potions;
@@ -365,7 +366,8 @@ pub mod summit_systems {
         fn apply_stat_points(ref self: ContractState, beast_token_id: u32, stats: Stats) {
             assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
 
-            let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
+            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
+            let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id, beast_nft_dispatcher);
 
             let mut tokens_required: u16 = 0;
             if stats.specials == 1 {
@@ -390,7 +392,6 @@ pub mod summit_systems {
                 beast.live.stats.diplomacy = 1;
 
                 tokens_required += DIPLOMACY_COST;
-                self._emit_diplomacy_event(beast);
             }
 
             beast.live.stats.spirit += stats.spirit;
@@ -415,7 +416,8 @@ pub mod summit_systems {
             let summit_beast_token_id = self.summit_beast_token_id.read();
             assert(beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
 
-            let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id);
+            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
+            let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id, beast_nft_dispatcher);
 
             // Read current poison state and apply damage
             let damage = self._apply_poison_damage(ref beast);
@@ -621,7 +623,8 @@ pub mod summit_systems {
 
         fn get_summit_data(ref self: ContractState) -> (Beast, u64, ContractAddress, u16, u64, felt252) {
             let token_id = self.summit_beast_token_id.read();
-            let beast = InternalSummitImpl::_get_beast(@self, token_id);
+            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
+            let beast = InternalSummitImpl::_get_beast(@self, token_id, beast_nft_dispatcher);
             let taken_at: u64 = self.summit_history.entry(token_id).read();
             let summit_owner = self.beast_dispatcher.read().owner_of(token_id.into());
             let specials_hash = InternalSummitImpl::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
@@ -637,11 +640,13 @@ pub mod summit_systems {
 
         fn get_summit_beast(self: @ContractState) -> Beast {
             let token_id = self.summit_beast_token_id.read();
-            InternalSummitImpl::_get_beast(self, token_id)
+            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
+            InternalSummitImpl::_get_beast(self, token_id, beast_nft_dispatcher)
         }
 
         fn get_beast(self: @ContractState, beast_token_id: u32) -> Beast {
-            InternalSummitImpl::_get_beast(self, beast_token_id)
+            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
+            InternalSummitImpl::_get_beast(self, beast_token_id, beast_nft_dispatcher)
         }
 
         fn get_live_stats(self: @ContractState, beast_token_ids: Span<u32>) -> Span<LiveBeastStats> {
@@ -715,8 +720,8 @@ pub mod summit_systems {
         /// @notice this function is used to get a beast from the contract
         /// @param token_id the id of the beast
         /// @return Beast the beast
-        fn _get_beast(self: @ContractState, token_id: u32) -> Beast {
-            let fixed: PackableBeast = self.beast_nft_dispatcher.read().get_beast(token_id.into());
+        fn _get_beast(self: @ContractState, token_id: u32, beast_nft_dispatcher: IBeastsDispatcher) -> Beast {
+            let fixed: PackableBeast = beast_nft_dispatcher.get_beast(token_id.into());
             let packed = self.live_beast_stats.entry(token_id).read();
             let mut live: LiveBeastStats = PackableLiveStatsStorePacking::unpack(packed);
             live.token_id = token_id;
@@ -734,11 +739,6 @@ pub mod summit_systems {
             let packed = PackableLiveStatsStorePacking::pack(live_stats);
             self.live_beast_stats.entry(live_stats.token_id).write(packed);
             packed
-        }
-
-        fn _emit_diplomacy_event(ref self: ContractState, beast: Beast) {
-            let (specials_hash, total_power, beast_token_ids) = Self::_get_diplomacy_data(@self, beast);
-            self.emit(DiplomacyEvent { specials_hash, beast_token_ids, total_power });
         }
 
         fn get_combat_spec(self: Beast, include_specials: bool) -> CombatSpec {
@@ -843,12 +843,13 @@ pub mod summit_systems {
 
             let caller = get_caller_address();
             let beast_dispatcher = self.beast_dispatcher.read();
+            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
 
             let summit_owner = beast_dispatcher.owner_of(summit_beast_token_id.into());
             assert(caller != summit_owner, errors::BEAST_ATTACKING_OWN_BEAST);
 
-            let mut defending_beast = Self::_get_beast(@self, summit_beast_token_id);
-            let diplomacy_bonus = Self::_get_diplomacy_bonus(@self, defending_beast);
+            let mut defending_beast = Self::_get_beast(@self, summit_beast_token_id, beast_nft_dispatcher);
+            let diplomacy_bonus = Self::_get_diplomacy_bonus(@self, defending_beast, beast_nft_dispatcher);
             let defender_has_specials = defending_beast.live.stats.specials == 1;
             let defender_crit_chance = defending_beast.crit_chance();
 
@@ -878,7 +879,7 @@ pub mod summit_systems {
                 assert(beast_owner == caller, errors::NOT_TOKEN_OWNER);
 
                 // get stats for the beast that is attacking
-                let mut attacking_beast = Self::_get_beast(@self, attacking_beast_token_id);
+                let mut attacking_beast = Self::_get_beast(@self, attacking_beast_token_id, beast_nft_dispatcher);
 
                 if Self::_is_killed_recently_in_death_mountain(@self, attacking_beast) {
                     if safe_attack {
@@ -1032,12 +1033,6 @@ pub mod summit_systems {
                     if Self::_beast_can_get_xp(attacking_beast) {
                         xp_gained = 10 + attacking_beast.live.attack_streak.into();
                         attacking_beast.live.bonus_xp += xp_gained;
-                        if attacking_beast.live.stats.diplomacy == 1
-                            && beast_utils::level_up(
-                                attacking_beast.fixed.level, attacking_beast.live.bonus_xp, xp_gained,
-                            ) {
-                            self._emit_diplomacy_event(attacking_beast);
-                        }
                     }
 
                     // increase attack streak if less than 10
@@ -1073,12 +1068,6 @@ pub mod summit_systems {
                         if defending_beast.live.stats.wisdom == 1 && Self::_beast_can_get_xp(defending_beast) {
                             let xp_gained = ImplCombat::get_attack_hp(attacking_beast.get_combat_spec(false)) / 100;
                             defending_beast.live.bonus_xp += xp_gained;
-                            if defending_beast.live.stats.wisdom == 1
-                                && beast_utils::level_up(
-                                    defending_beast.fixed.level, defending_beast.live.bonus_xp, xp_gained,
-                                ) {
-                                self._emit_diplomacy_event(defending_beast);
-                            }
                         }
 
                         // set death timestamp for prev summit beast
@@ -1160,54 +1149,6 @@ pub mod summit_systems {
                 0
             };
             (total_attack_potions, revival_potions_used, extra_life_potions_used)
-        }
-
-        /// @notice this function is used to process a beast attacking another beast
-        /// @param attacker_combat_spec precomputed combat spec for the attacker
-        /// @param defender_combat_spec precomputed combat spec for the defender
-        /// @param defender a ref to the beast that is defending
-        /// @param attack_potions number of attack potions to use
-        /// @param critical_hit_rnd random number for critical hit calculation
-        /// @param critical_hit_chance precomputed critical hit chance for the attacker
-        /// @param vrf whether VRF is being used
-        /// @return a tuple containing the combat result and a bool indicating if the defender died
-        /// @dev this function only mutates the defender
-        fn _attack(
-            ref self: ContractState,
-            attacker_combat_spec: CombatSpec,
-            defender_combat_spec: CombatSpec,
-            ref defender: Beast,
-            attack_potions: u8,
-            critical_hit_rnd: u8,
-            critical_hit_chance: u8,
-            vrf: bool,
-        ) -> (u16, bool) {
-            let minimum_damage = MINIMUM_DAMAGE;
-
-            let attacker_strength = attack_potions;
-            let defender_strength = 0;
-
-            if (critical_hit_chance > 0) {
-                assert(vrf, 'missing VRF seed');
-            }
-
-            let combat_result = ImplCombat::calculate_damage(
-                attacker_combat_spec,
-                defender_combat_spec,
-                minimum_damage,
-                attacker_strength,
-                defender_strength,
-                critical_hit_chance,
-                critical_hit_rnd,
-            );
-
-            if combat_result.total_damage >= defender.live.current_health {
-                defender.live.current_health = 0;
-            } else {
-                defender.live.current_health -= combat_result.total_damage;
-            }
-
-            (combat_result.total_damage, combat_result.critical_hit_bonus > 0)
         }
 
         fn _is_killed_recently_in_death_mountain(self: @ContractState, beast: Beast) -> bool {
@@ -1307,33 +1248,7 @@ pub mod summit_systems {
             result.damage
         }
 
-        fn _get_diplomacy_data(self: @ContractState, beast: Beast) -> (felt252, u16, Span<u32>) {
-            let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
-            let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
-
-            let mut index = 0;
-            let mut total_power = 0;
-            let mut beast_token_ids = array![];
-
-            loop {
-                if index >= diplomacy_count {
-                    break;
-                }
-
-                let diplomacy_beast_token_id = self.diplomacy_beast.entry(specials_hash).entry(index).read();
-                beast_token_ids.append(diplomacy_beast_token_id);
-
-                let diplomacy_beast = Self::_get_beast(self, diplomacy_beast_token_id);
-                let power = ImplCombat::get_attack_hp(diplomacy_beast.get_combat_spec(false));
-                total_power += power;
-
-                index += 1;
-            }
-
-            (specials_hash, total_power, beast_token_ids.span())
-        }
-
-        fn _get_diplomacy_bonus(self: @ContractState, beast: Beast) -> u8 {
+        fn _get_diplomacy_bonus(self: @ContractState, beast: Beast, beast_nft_dispatcher: IBeastsDispatcher) -> u8 {
             let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
             let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
 
@@ -1352,7 +1267,7 @@ pub mod summit_systems {
                 let diplomacy_beast_token_id = self.diplomacy_beast.entry(specials_hash).entry(index).read();
 
                 if diplomacy_beast_token_id != beast.live.token_id {
-                    let diplomacy_beast = Self::_get_beast(self, diplomacy_beast_token_id);
+                    let diplomacy_beast = Self::_get_beast(self, diplomacy_beast_token_id, beast_nft_dispatcher);
                     let power = ImplCombat::get_attack_hp(diplomacy_beast.get_combat_spec(false));
 
                     bonus += power;

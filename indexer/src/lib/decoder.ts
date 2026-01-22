@@ -54,12 +54,14 @@ export const BEAST_EVENT_SELECTORS = {
 
 /**
  * Event selectors for Dojo world contract (Loot Survivor)
- * These are the actual on-chain selectors from the Dojo world events
+ * Dojo events have structure: keys[0]=StoreSelector, keys[1]=ModelSelector, keys[2+]=ModelKeys
  */
 export const DOJO_EVENT_SELECTORS = {
-  // EntityStats event selector
+  // Dojo StoreSetRecord event selector (keys[0])
+  StoreSetRecord: "0x1a2f334228cee715f1f0f54053bb6b5eac54fa336e0bc1aacf7516decb0471d",
+  // EntityStats model selector (keys[1])
   EntityStats: "0x29d69b1d6c3d402e03d5394145fba858744dc4e0ca8ffcc22729acbfe71dd4a",
-  // CollectableEntity event selector
+  // CollectableEntity model selector (keys[1])
   CollectableEntity: "0x3b1af01c5bd9e48f92fa49ba31d96b18a03ac4eb4a389c0a694a11c8aa733df",
 } as const;
 
@@ -568,12 +570,12 @@ export interface CollectableEntityEventData {
 
 /**
  * Decode EntityStats Dojo event
- * Keys: [selector, dungeon, entity_hash]
+ * Keys: [StoreSetRecord, EntityStats_model, entity_hash]
  * Data: [adventurers_killed_low, adventurers_killed_high] (u64 as u256)
  */
 export function decodeEntityStatsEvent(keys: string[], data: string[]): EntityStatsEventData {
-  // Keys: [selector, system_address, dungeon, entity_hash]
-  const entityHash = feltToHex(keys[3]);
+  // Keys: [StoreSetRecord, EntityStats_model, entity_hash]
+  const entityHash = feltToHex(keys[2]);
 
   // Data: adventurers_killed as u64 (stored as u256 low/high parts)
   const adventurersKilledLow = hexToBigInt(data[0]);
@@ -588,14 +590,14 @@ export function decodeEntityStatsEvent(keys: string[], data: string[]): EntitySt
 
 /**
  * Decode CollectableEntity Dojo event
- * Keys: [selector, dungeon, entity_hash, index_low, index_high]
+ * Keys: [StoreSetRecord, CollectableEntity_model, entity_hash, index_low, index_high]
  * Data: [seed, id, level, health, prefix, suffix, killed_by, timestamp] (packed)
  *
  * The timestamp is the last field and represents when the entity was collected (death time)
  */
 export function decodeCollectableEntityEvent(keys: string[], data: string[]): CollectableEntityEventData {
-  // Keys: [selector, system_address, dungeon, entity_hash, index_low, index_high]
-  const entityHash = feltToHex(keys[3]);
+  // Keys: [StoreSetRecord, CollectableEntity_model, entity_hash, index_low, index_high]
+  const entityHash = feltToHex(keys[2]);
 
   // Data layout: [seed, id, level, health, prefix, suffix, killed_by, timestamp]
   // Each field is a separate felt252, timestamp is at index 7

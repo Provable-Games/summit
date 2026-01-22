@@ -21,6 +21,9 @@ export default defineConfig({
       databaseUrl: (process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/summit").trim(),
       // RPC URL for fetching beast metadata
       rpcUrl: (process.env.RPC_URL ?? "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10").trim(),
+      // Optional: skip beast Transfer events before this block (for reindexing Dojo events only)
+      // Set via SKIP_BEASTS_BEFORE_BLOCK env var when you want to reindex from scratch without re-fetching beasts
+      skipBeastsBeforeBlock: process.env.SKIP_BEASTS_BEFORE_BLOCK?.trim(),
     },
   },
 });
