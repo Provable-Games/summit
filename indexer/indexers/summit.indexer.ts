@@ -387,6 +387,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     summitContractAddress,
     beastsContractAddress,
     dojoWorldAddress,
+    entityStatsDungeon,
+    collectableEntityDungeon,
     streamUrl,
     startingBlock: startBlockStr,
     databaseUrl,
@@ -400,6 +402,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   // Convert contract addresses to BigInt for comparison
   const summitAddressBigInt = addressToBigInt(summitContractAddress);
   const beastsAddressBigInt = addressToBigInt(beastsContractAddress);
+
+  // Normalize dungeon addresses for comparison
+  const normalizedEntityStatsDungeon = `0x${BigInt(entityStatsDungeon).toString(16).padStart(64, '0')}`;
+  const normalizedCollectableEntityDungeon = `0x${BigInt(collectableEntityDungeon).toString(16).padStart(64, '0')}`;
   const dojoWorldAddressBigInt = addressToBigInt(dojoWorldAddress);
 
   // Log configuration on startup
@@ -648,13 +654,20 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             continue;
           }
 
-          // Dojo World contract - EntityStats events (keys[0]=StoreSetRecord, keys[1]=EntityStats model, keys[2]=entity_hash)
+          // Dojo World contract - EntityStats events (keys[0]=StoreSetRecord, keys[1]=EntityStats model, keys[2]=dungeon, keys[3]=entity_hash)
           const modelSelector = feltToHex(keys[1]);
           if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt &&
               selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
               modelSelector === DOJO_EVENT_SELECTORS.EntityStats) {
 
             const decoded = decodeEntityStatsEvent([...keys], [...data]);
+
+            // Filter by dungeon - only process Beast dungeon events
+            if (decoded.dungeon !== normalizedEntityStatsDungeon) {
+              logger.debug(`Skipping EntityStats from dungeon ${decoded.dungeon}, expected ${normalizedEntityStatsDungeon}`);
+              continue;
+            }
+
             logger.info(`EntityStats: entity_hash=${decoded.entityHash}, adventurers_killed=${decoded.adventurersKilled}`);
 
             // Upsert beast_data with adventurers_killed
@@ -690,12 +703,19 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             continue;
           }
 
-          // Dojo World contract - CollectableEntity events (keys[0]=StoreSetRecord, keys[1]=CollectableEntity model, keys[2]=entity_hash)
+          // Dojo World contract - CollectableEntity events (keys[0]=StoreSetRecord, keys[1]=CollectableEntity model, keys[2]=dungeon, keys[3]=entity_hash)
           if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt &&
               selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
               modelSelector === DOJO_EVENT_SELECTORS.CollectableEntity) {
 
             const decoded = decodeCollectableEntityEvent([...keys], [...data]);
+
+            // Filter by dungeon - only process Loot Survivor dungeon events
+            if (decoded.dungeon !== normalizedCollectableEntityDungeon) {
+              logger.debug(`Skipping CollectableEntity from dungeon ${decoded.dungeon}, expected ${normalizedCollectableEntityDungeon}`);
+              continue;
+            }
+
             logger.info(`CollectableEntity: entity_hash=${decoded.entityHash}, timestamp=${decoded.timestamp}`);
 
             // Upsert beast_data with last_death_timestamp
