@@ -564,6 +564,7 @@ export interface EntityStatsEventData {
 }
 
 export interface CollectableEntityEventData {
+  dungeon: string;
   entityHash: string;
   timestamp: bigint;
 }
@@ -594,20 +595,25 @@ export function decodeEntityStatsEvent(_keys: string[], data: string[]): EntityS
 
 /**
  * Decode CollectableEntity Dojo event
- * Keys: [StoreSetRecord, CollectableEntity_model, entity_hash, index_low, index_high]
- * Data: [seed, id, level, health, prefix, suffix, killed_by, timestamp] (packed)
+ * Keys: [StoreSetRecord, CollectableEntity_model, key_hash]
+ * Data: [field_count, dungeon, entity_hash, ...other_fields, timestamp]
  *
  * The timestamp is the last field and represents when the entity was collected (death time)
  */
-export function decodeCollectableEntityEvent(keys: string[], data: string[]): CollectableEntityEventData {
-  // Keys: [StoreSetRecord, CollectableEntity_model, entity_hash, index_low, index_high]
-  const entityHash = feltToHex(keys[2]);
-
-  // Data layout: [seed, id, level, health, prefix, suffix, killed_by, timestamp]
-  // Each field is a separate felt252, timestamp is at index 7
-  const timestamp = hexToBigInt(data[7]);
+export function decodeCollectableEntityEvent(_keys: string[], data: string[]): CollectableEntityEventData {
+  // Data layout (similar to EntityStats):
+  // data[0] = field_count
+  // data[1] = dungeon
+  // data[2] = entity_hash
+  // ... other fields
+  // timestamp at the end
+  const dungeon = feltToHex(data[1]);
+  const entityHash = feltToHex(data[2]);
+  // Timestamp position needs to be verified with debug logging
+  const timestamp = hexToBigInt(data[data.length - 1]); // Last field
 
   return {
+    dungeon,
     entityHash,
     timestamp,
   };

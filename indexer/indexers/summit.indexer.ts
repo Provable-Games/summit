@@ -696,13 +696,27 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             continue;
           }
 
-          // Dojo World contract - CollectableEntity events (keys[0]=StoreSetRecord, keys[1]=CollectableEntity model, keys[2]=entity_hash)
+          // Dojo World contract - CollectableEntity events (keys[0]=StoreSetRecord, keys[1]=CollectableEntity model)
           if (addressToBigInt(eventAddress) === dojoWorldAddressBigInt &&
               selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
               modelSelector === DOJO_EVENT_SELECTORS.CollectableEntity) {
 
+            // DEBUG: Log raw event structure to verify CollectableEntity format
+            logger.info(`[CollectableEntity] data.length=${data.length}`);
+            for (let i = 0; i < Math.min(data.length, 10); i++) {
+              logger.info(`[CollectableEntity] data[${i}]=${feltToHex(data[i])}`);
+            }
+
             const decoded = decodeCollectableEntityEvent([...keys], [...data]);
-            logger.info(`CollectableEntity: entity_hash=${decoded.entityHash}, timestamp=${decoded.timestamp}`);
+
+            // Filter by dungeon - only process Loot Survivor dungeon events
+            const LS_DUNGEON = "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42";
+            if (decoded.dungeon !== LS_DUNGEON) {
+              logger.debug(`Skipping CollectableEntity from dungeon ${decoded.dungeon}, expected ${LS_DUNGEON}`);
+              continue;
+            }
+
+            logger.info(`CollectableEntity: dungeon=${decoded.dungeon}, entity_hash=${decoded.entityHash}, timestamp=${decoded.timestamp}`);
 
             // Upsert beast_data with last_death_timestamp
             await db.insert(schema.beastData).values({
