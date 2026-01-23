@@ -21,28 +21,10 @@ import {
   ITEM_NAME_PREFIXES,
   ITEM_NAME_SUFFIXES,
 } from "./lib/beastData.js";
-import { poseidonHashMany } from "@scure/starknet";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
 // Helper functions for beast calculations
-function padAddress(hex: string): string {
-  const clean = hex.replace(/^0x/, "");
-  return "0x" + clean.padStart(64, "0");
-}
-
-function getEntityHash(id: number, prefix: number, suffix: number): string {
-  const params = [BigInt(id), BigInt(prefix), BigInt(suffix)];
-  const hash = poseidonHashMany(params);
-  return padAddress(hash.toString(16));
-}
-
-function getSpecialsHash(prefix: number, suffix: number): string {
-  const params = [BigInt(prefix), BigInt(suffix)];
-  const hash = poseidonHashMany(params);
-  return padAddress(hash.toString(16));
-}
-
 function getSpiritRevivalReductionSeconds(points: number): number {
   const p = Math.max(0, Math.floor(points));
   if (p <= 5) {
@@ -133,6 +115,7 @@ app.get("/beasts/:owner", async (c) => {
       adventurers_killed: beast_data.adventurers_killed,
       last_death_loot_survivor: beast_data.last_death_timestamp,
       last_killed_by: beast_data.last_killed_by,
+      entity_hash: beast_data.entity_hash,
       // Beast stats (Summit game state)
       current_health: beast_stats.current_health,
       bonus_health: beast_stats.bonus_health,
@@ -233,9 +216,8 @@ app.get("/beasts/:owner", async (c) => {
         last_dm_death_timestamp: Number(r.last_death_loot_survivor ?? 0n),
         last_killed_by: Number(r.last_killed_by ?? 0n),
 
-        // Computed hashes
-        entity_hash: getEntityHash(beastId, prefixId, suffixId),
-        specials_hash: getSpecialsHash(prefixId, suffixId),
+        // Hash from beast_data (if linked)
+        entity_hash: r.entity_hash ?? undefined,
       };
     })
   );
