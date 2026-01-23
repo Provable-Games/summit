@@ -16,14 +16,14 @@ export default defineConfig({
       // Mainnet DNA stream URL
       streamUrl: process.env.STREAM_URL,
       // Starting block - use earliest block needed for Dojo events
-      startingBlock: "5900000",
+      startingBlock: "5930000",
       // PostgreSQL connection string
       databaseUrl: process.env.DATABASE_URL,
       // RPC URL for fetching beast metadata
-      rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
+      rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10",
       // Optional: skip beast Transfer events before this block (for reindexing Dojo events only)
       // Set via SKIP_BEASTS_BEFORE_BLOCK env var when you want to reindex from scratch without re-fetching beasts
-      skipBeastsBeforeBlock: "5900000",
+      skipBeastsBeforeBlock: "5930000",
     },
   },
 });

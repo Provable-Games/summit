@@ -12,6 +12,7 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -122,6 +123,7 @@ export const battles = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     attacking_beast_token_id: integer("attacking_beast_token_id").notNull(),
+    attacking_player: text("attacking_player"),
     attack_index: smallint("attack_index").notNull(),
     defending_beast_token_id: integer("defending_beast_token_id").notNull(),
     attack_count: smallint("attack_count").notNull(),
@@ -133,6 +135,7 @@ export const battles = pgTable(
     critical_counter_attack_count: smallint("critical_counter_attack_count").notNull(),
     critical_counter_attack_damage: smallint("critical_counter_attack_damage").notNull(),
     attack_potions: smallint("attack_potions").notNull(),
+    revive_potions: smallint("revive_potions").notNull(),
     xp_gained: smallint("xp_gained").notNull(),
     created_at: timestamp("created_at").notNull(),
     indexed_at: timestamp("indexed_at").notNull(),
@@ -148,6 +151,7 @@ export const battles = pgTable(
       table.event_index
     ),
     index("battles_attacking_beast_idx").on(table.attacking_beast_token_id),
+    index("battles_attacking_player_idx").on(table.attacking_player),
     index("battles_defending_beast_idx").on(table.defending_beast_token_id),
     index("battles_created_at_idx").on(table.created_at.desc()),
     index("battles_block_number_idx").on(table.block_number),
@@ -155,15 +159,14 @@ export const battles = pgTable(
 );
 
 /**
- * Rewards table - token reward distribution
+ * Rewards Earned table - token reward distribution
  */
-export const rewards = pgTable(
-  "rewards",
+export const rewards_earned = pgTable(
+  "rewards_earned",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    reward_block_number: bigint("reward_block_number", { mode: "bigint" }).notNull(),
     beast_token_id: integer("beast_token_id").notNull(),
-    owner: text("owner").notNull(),
+    owner: text("owner"),
     amount: integer("amount").notNull(),
     created_at: timestamp("created_at").notNull(),
     indexed_at: timestamp("indexed_at").notNull(),
@@ -173,14 +176,14 @@ export const rewards = pgTable(
     event_index: integer("event_index").notNull(),
   },
   (table) => [
-    uniqueIndex("rewards_block_tx_event_idx").on(
+    uniqueIndex("rewards_earned_block_tx_event_idx").on(
       table.block_number,
       table.transaction_hash,
       table.event_index
     ),
-    index("rewards_owner_idx").on(table.owner),
-    index("rewards_beast_token_id_idx").on(table.beast_token_id),
-    index("rewards_created_at_idx").on(table.created_at.desc()),
+    index("rewards_earned_owner_idx").on(table.owner),
+    index("rewards_earned_beast_token_id_idx").on(table.beast_token_id),
+    index("rewards_earned_created_at_idx").on(table.created_at.desc()),
   ]
 );
 
@@ -243,34 +246,6 @@ export const poison_events = pgTable(
 );
 
 /**
- * Diplomacy Groups table - diplomacy configuration history
- */
-export const diplomacy_groups = pgTable(
-  "diplomacy_groups",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    specials_hash: text("specials_hash").notNull(),
-    beast_token_ids: text("beast_token_ids").notNull(),
-    total_power: smallint("total_power").notNull(),
-    created_at: timestamp("created_at").notNull(),
-    indexed_at: timestamp("indexed_at").notNull(),
-    inserted_at: timestamp("inserted_at").defaultNow(),
-    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
-    transaction_hash: text("transaction_hash").notNull(),
-    event_index: integer("event_index").notNull(),
-  },
-  (table) => [
-    uniqueIndex("diplomacy_groups_block_tx_event_idx").on(
-      table.block_number,
-      table.transaction_hash,
-      table.event_index
-    ),
-    index("diplomacy_groups_specials_hash_idx").on(table.specials_hash),
-    index("diplomacy_groups_created_at_idx").on(table.created_at.desc()),
-  ]
-);
-
-/**
  * Corpse Events table - corpse creation history
  */
 export const corpse_events = pgTable(
@@ -307,6 +282,7 @@ export const skull_events = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     beast_token_id: integer("beast_token_id").notNull(),
     skulls: bigint("skulls", { mode: "bigint" }).notNull(),
+    player: text("player"),
     created_at: timestamp("created_at").notNull(),
     indexed_at: timestamp("indexed_at").notNull(),
     inserted_at: timestamp("inserted_at").defaultNow(),
@@ -322,6 +298,7 @@ export const skull_events = pgTable(
     ),
     index("skull_events_beast_token_id_idx").on(table.beast_token_id),
     index("skull_events_skulls_idx").on(table.skulls.desc()),
+    index("skull_events_player_idx").on(table.player),
     index("skull_events_created_at_idx").on(table.created_at.desc()),
   ]
 );
@@ -337,7 +314,7 @@ export const summit_log = pgTable(
     event_index: integer("event_index").notNull(),
     category: text("category").notNull(),
     sub_category: text("sub_category").notNull(),
-    data: text("data").notNull(), // jsonb stored as text
+    data: jsonb("data").notNull(),
     player: text("player"),
     token_id: integer("token_id"),
     transaction_hash: text("transaction_hash").notNull(),
@@ -366,10 +343,9 @@ export const schema = {
   beast_stats,
   summit_log,
   battles,
-  rewards,
+  rewards_earned,
   rewards_claimed,
   poison_events,
-  diplomacy_groups,
   corpse_events,
   skull_events,
 };

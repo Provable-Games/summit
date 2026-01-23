@@ -1,19 +1,18 @@
 /**
  * Summit Indexer Database Schema
  *
- * 12 tables for all contract events:
+ * 11 tables for all contract events:
  * 1. beast_stats - Current beast state (upsert on token_id)
  * 2. battles - Combat history (append-only)
  * 3. rewards_earned - Reward distribution (append-only)
  * 4. rewards_claimed - Rewards claimed by players (append-only)
  * 5. poison_events - Poison attacks (append-only)
- * 6. diplomacy_groups - Diplomacy configurations (append-only)
- * 7. corpse_events - Corpse creation (append-only)
- * 8. skull_events - Skull claims (append-only)
- * 9. beast_owners - Current NFT ownership (upsert on token_id)
- * 10. beasts - NFT metadata (insert once)
- * 11. beast_data - Dojo event data (upsert on entity_hash)
- * 12. summit_log - Unified activity feed (append-only with derived events)
+ * 6. corpse_events - Corpse creation (append-only)
+ * 7. skull_events - Skull claims (append-only)
+ * 8. beast_owners - Current NFT ownership (upsert on token_id)
+ * 9. beasts - NFT metadata (insert once)
+ * 10. beast_data - Dojo event data (upsert on entity_hash)
+ * 11. summit_log - Unified activity feed (append-only with derived events)
  *
  * All tables include:
  * - UUID primary key (required by Apibara Drizzle plugin for reorg handling)
@@ -209,35 +208,6 @@ export const poison_events = pgTable(
 );
 
 /**
- * Diplomacy Groups table - diplomacy configuration history
- *
- * Append-only history of diplomacy group formations.
- * beast_token_ids stored as comma-separated string for simplicity.
- */
-export const diplomacy_groups = pgTable(
-  "diplomacy_groups",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    specials_hash: text("specials_hash").notNull(),
-    beast_token_ids: text("beast_token_ids").notNull(), // Comma-separated u32 values
-    total_power: smallint("total_power").notNull(),
-    // Timestamps
-    created_at: timestamp("created_at").notNull(),
-    indexed_at: timestamp("indexed_at").notNull(),
-    inserted_at: timestamp("inserted_at").defaultNow(),
-    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
-    transaction_hash: text("transaction_hash").notNull(),
-    event_index: integer("event_index").notNull(),
-  },
-  (table) => [
-    // Unique constraint for idempotent re-indexing
-    uniqueIndex("diplomacy_groups_block_tx_event_idx").on(table.block_number, table.transaction_hash, table.event_index),
-    index("diplomacy_groups_specials_hash_idx").on(table.specials_hash),
-    index("diplomacy_groups_created_at_idx").on(table.created_at.desc()),
-  ]
-);
-
-/**
  * Corpse Events table - corpse creation history
  *
  * Append-only history of corpse collection.
@@ -419,7 +389,6 @@ export const schema = {
   rewards_earned,
   rewards_claimed,
   poison_events,
-  diplomacy_groups,
   corpse_events,
   skull_events,
   beast_owners,
