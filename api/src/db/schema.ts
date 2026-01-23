@@ -274,33 +274,17 @@ export const corpse_events = pgTable(
 );
 
 /**
- * Skull Events table - skull claim history
+ * Skulls Claimed table - total skulls claimed per beast
  */
-export const skull_events = pgTable(
-  "skull_events",
+export const skulls_claimed = pgTable(
+  "skulls_claimed",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    beast_token_id: integer("beast_token_id").notNull(),
+    beast_token_id: integer("beast_token_id").notNull().unique(),
     skulls: bigint("skulls", { mode: "bigint" }).notNull(),
-    player: text("player"),
-    created_at: timestamp("created_at").notNull(),
-    indexed_at: timestamp("indexed_at").notNull(),
-    inserted_at: timestamp("inserted_at").defaultNow(),
-    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
-    transaction_hash: text("transaction_hash").notNull(),
-    event_index: integer("event_index").notNull(),
+    updated_at: timestamp("updated_at").defaultNow(),
   },
-  (table) => [
-    uniqueIndex("skull_events_block_tx_event_idx").on(
-      table.block_number,
-      table.transaction_hash,
-      table.event_index
-    ),
-    index("skull_events_beast_token_id_idx").on(table.beast_token_id),
-    index("skull_events_skulls_idx").on(table.skulls.desc()),
-    index("skull_events_player_idx").on(table.player),
-    index("skull_events_created_at_idx").on(table.created_at.desc()),
-  ]
+  (table) => [index("skulls_claimed_skulls_idx").on(table.skulls.desc())]
 );
 
 /**
@@ -347,5 +331,5 @@ export const schema = {
   rewards_claimed,
   poison_events,
   corpse_events,
-  skull_events,
+  skulls_claimed,
 };

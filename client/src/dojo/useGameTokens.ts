@@ -1,4 +1,3 @@
-import { useSummitApi } from "@/api/summitApi";
 import { useDynamicConnector } from "@/contexts/starknet";
 import { Top5000Cutoff } from "@/contexts/Statistics";
 import { Beast } from "@/types/game";
@@ -8,7 +7,6 @@ import { addAddressPadding } from "starknet";
 
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
-  const summitApi = useSummitApi();
 
   const getBeastCollection = async (accountAddress: string) => {
     const contractAddress = currentNetworkConfig.beasts;
@@ -63,7 +61,37 @@ export const useGameTokens = () => {
       integerIds.push(intId);
     }
 
-    // Step 3: Fetch stats from Summit API and metadata from Torii in parallel
+    // Step 3: Query stats and skulls in parallel with integer IDs (uses index)
+    const integerIdsList = integerIds.join(',');
+
+    const statsQuery = `
+      SELECT
+        token_id,
+        "live_stats.attack_streak",
+        "live_stats.bonus_health",
+        "live_stats.bonus_xp",
+        "live_stats.current_health",
+        "live_stats.extra_lives",
+        "live_stats.has_claimed_potions",
+        "live_stats.last_death_timestamp",
+        "live_stats.stats.luck",
+        "live_stats.stats.spirit",
+        "live_stats.stats.specials",
+        "live_stats.revival_count",
+        "live_stats.blocks_held",
+        "live_stats.stats.wisdom",
+        "live_stats.stats.diplomacy"
+      FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+      WHERE token_id IN (${integerIdsList})
+    `;
+
+    const skullsQuery = `
+      SELECT beast_token_id, skulls
+      FROM "${currentNetworkConfig.namespace}-SkullEvent"
+      WHERE beast_token_id IN (${integerIdsList})
+    `;
+
+    // Step 4: Get metadata (uses existing join pattern which is fast)
     const metadataQuery = `
       WITH tbf AS (
         SELECT
@@ -84,65 +112,52 @@ export const useGameTokens = () => {
         AND t.token_id = ('0x' || tbf.token_hex64)
     `;
 
-    // Execute API calls and metadata query in parallel
-    // Use allSettled so failures don't break the entire fetch
+    // Execute all three queries in parallel
     let statsData: any[] = [];
     let skullsData: any[] = [];
     let metadataData: any[] = [];
 
     try {
-      const [statsResult, skullsResult, metadataResult] = await Promise.allSettled([
-        // Fetch stats from Summit API (may fail if no game data exists yet)
-        currentNetworkConfig.apiUrl
-          ? summitApi.getBeastsBulk(integerIds)
-          : Promise.resolve({ data: [] }),
-        // Fetch skulls from Summit API (may fail if no game data exists yet)
-        currentNetworkConfig.apiUrl
-          ? summitApi.getSkullsBulk(integerIds)
-          : Promise.resolve({ data: [] }),
-        // Fetch metadata from Torii (NFT metadata still lives there)
+      const [statsResponse, skullsResponse, metadataResponse] = await Promise.all([
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(statsQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        }),
+        fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(skullsQuery)}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" }
+        }),
         fetch(`${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(metadataQuery)}`, {
           method: "GET",
           headers: { "Content-Type": "application/json" }
         })
       ]);
 
-      // Extract stats data (graceful fallback to empty array)
-      if (statsResult.status === 'fulfilled') {
-        statsData = statsResult.value.data || [];
-      } else {
-        console.warn("Failed to fetch beast stats from API:", statsResult.reason);
-      }
+      const results = await Promise.all([
+        statsResponse.ok ? statsResponse.json() : [],
+        skullsResponse.ok ? skullsResponse.json() : [],
+        metadataResponse.ok ? metadataResponse.json() : []
+      ]);
 
-      // Extract skulls data (graceful fallback to empty array)
-      if (skullsResult.status === 'fulfilled') {
-        skullsData = skullsResult.value.data || [];
-      } else {
-        console.warn("Failed to fetch skulls from API:", skullsResult.reason);
-      }
-
-      // Extract metadata (this is critical - return early if it fails)
-      if (metadataResult.status === 'fulfilled' && metadataResult.value.ok) {
-        const metadataJson = await metadataResult.value.json();
-        metadataData = Array.isArray(metadataJson) ? metadataJson : [];
-      } else {
-        console.error("Failed to fetch beast metadata from Torii");
-        return [];
-      }
+      statsData = Array.isArray(results[0]) ? results[0] : [];
+      skullsData = Array.isArray(results[1]) ? results[1] : [];
+      metadataData = Array.isArray(results[2]) ? results[2] : [];
     } catch (error) {
       console.error("Error fetching beast collection data:", error);
       return [];
     }
 
     // Build lookup maps for O(1) access
+    // Note: SQL JSON responses may return numeric IDs as strings, so we
+    // explicitly convert to Number to ensure consistent Map key types
     const statsMap = new Map<number, any>();
     for (const row of statsData) {
-      statsMap.set(row.tokenId, row);
+      statsMap.set(Number(row.token_id), row);
     }
 
     const skullsMap = new Map<number, string>();
     for (const row of skullsData) {
-      skullsMap.set(row.beastTokenId, row.skulls);
+      skullsMap.set(Number(row.beast_token_id), row.skulls);
     }
 
     const metadataMap = new Map<string, any>();
@@ -194,24 +209,24 @@ export const useGameTokens = () => {
         shiny: Number(attrs["Shiny"]),
         animated: Number(attrs["Animated"]),
         rank: Number(attrs["Rank"]),
-        // Stats from Summit API (camelCase format, already numeric)
-        attack_streak: stats.attackStreak || 0,
-        bonus_health: stats.bonusHealth || 0,
-        bonus_xp: stats.bonusXp || 0,
-        current_health: stats.currentHealth ?? null,
-        extra_lives: stats.extraLives || 0,
-        has_claimed_potions: Boolean(stats.hasClaimedPotions),
-        last_death_timestamp: stats.lastDeathTimestamp ? parseInt(stats.lastDeathTimestamp) : 0,
-        revival_count: stats.revivalCount || 0,
-        blocks_held: stats.blocksHeld || 0,
+        attack_streak: stats["live_stats.attack_streak"] || 0,
+        bonus_health: stats["live_stats.bonus_health"] || 0,
+        bonus_xp: stats["live_stats.bonus_xp"] || 0,
+        current_health: stats["live_stats.current_health"] ?? null,
+        extra_lives: stats["live_stats.extra_lives"] || 0,
+        has_claimed_potions: Boolean(stats["live_stats.has_claimed_potions"]),
+        last_death_timestamp: stats["live_stats.last_death_timestamp"] ? parseInt(stats["live_stats.last_death_timestamp"], 16) : 0,
+        revival_count: stats["live_stats.revival_count"] || 0,
+        blocks_held: parseInt(stats["live_stats.blocks_held"], 16) || 0,
         revival_time: 0,
-        spirit: stats.spirit || 0,
-        luck: stats.luck || 0,
-        specials: Boolean(stats.specials),
-        wisdom: Boolean(stats.wisdom),
-        diplomacy: Boolean(stats.diplomacy),
-        // Skulls from Summit API (skulls is a string)
-        kills_claimed: parseInt(skulls || "0"),
+        stats: {
+          spirit: stats["live_stats.stats.spirit"] || 0,
+          luck: stats["live_stats.stats.luck"] || 0,
+          specials: Boolean(stats["live_stats.stats.specials"]),
+          wisdom: Boolean(stats["live_stats.stats.wisdom"]),
+          diplomacy: Boolean(stats["live_stats.stats.diplomacy"]),
+        },
+        kills_claimed: parseInt(skulls || "0", 16),
       }
       beast.revival_time = getBeastRevivalTime(beast);
       beast.current_health = getBeastCurrentHealth(beast)
@@ -297,9 +312,24 @@ export const useGameTokens = () => {
   }
 
   const countAliveBeasts = async () => {
+    let q = `
+      SELECT COUNT(DISTINCT attacking_beast_token_id) as count
+      FROM "summit_relayer_6-BattleEvent"
+      WHERE internal_updated_at > datetime('now', '-24 hours')
+    `
+
+    let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+
     try {
-      const stats = await summitApi.getBattleStats();
-      return stats.activeBeasts24h;
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+
+      let data = await sql.json()
+      return data[0].count || 0;
     } catch (error) {
       console.error("Error counting beasts:", error);
       return 0;
@@ -307,9 +337,22 @@ export const useGameTokens = () => {
   }
 
   const countRegisteredBeasts = async () => {
+    let q = `
+      SELECT COUNT(*) as count
+      FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+    `
+    let url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+
     try {
-      const response = await summitApi.getBeasts({ limit: 1 });
-      return response.pagination.total;
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+
+      let data = await sql.json()
+      return data[0].count || 0;
     } catch (error) {
       console.error("Error counting beasts:", error);
       return 0;
@@ -317,14 +360,27 @@ export const useGameTokens = () => {
   }
 
   const getLeaderboard = async () => {
+    const q = `
+        SELECT owner, SUM(amount) AS amount
+        FROM "${currentNetworkConfig.namespace}-RewardEvent"
+        WHERE internal_created_at > '2025-11-21 16:20:00'
+        GROUP BY owner
+        ORDER BY amount DESC
+      `;
+
+    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
     try {
-      const response = await summitApi.getRewardsLeaderboard(500);
-      return response.data.map((row) => ({
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      })
+      let data = await sql.json()
+      return data.length > 0 ? data.map((row: any) => ({
         owner: row.owner,
-        amount: row.amount,
-      }));
+        amount: row.amount / 10000,
+      })) : []
     } catch (error) {
-      console.error("Error getting leaderboard:", error);
+      console.error("Error getting big five:", error);
       return [];
     }
   }
@@ -359,28 +415,44 @@ export const useGameTokens = () => {
 
   const getTop5000Cutoff = async (): Promise<Top5000Cutoff | null> => {
     try {
-      // Get the 5000th beast (offset 4999 with limit 1)
-      const response = await summitApi.getBeasts({
-        sortBy: "blocks_held",
-        sortOrder: "desc",
-        limit: 1,
-        offset: 4999,
-      });
+      // Query 1: Get blocks_held sorted DESC (fast, no joins)
+      const statsQuery = `
+        SELECT 
+          "live_stats.blocks_held" as blocks_held,
+          "live_stats.bonus_xp" as bonus_xp,
+          "live_stats.last_death_timestamp" as last_death_timestamp
+        FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+        WHERE "live_stats.blocks_held" > 0
+        ORDER BY 
+          "live_stats.blocks_held" DESC,
+          "live_stats.bonus_xp" DESC,
+          "live_stats.last_death_timestamp" DESC
+        LIMIT 5000
+      `;
 
-      if (response.data.length === 0 || response.pagination.total < 5000) {
+      const statsUrl = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(statsQuery)}`;
+      const statsResponse = await fetch(statsUrl, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      });
+      const statsData = await statsResponse.json();
+
+      if (!statsData || statsData.length < 5000) {
         return {
           blocks_held: 0,
           bonus_xp: 0,
           last_death_timestamp: 0,
-        };
+        }
       }
 
-      const beast = response.data[0];
+      // Get the 5000th beast's blocks_held
+      const lastBeast = statsData[4999];
+
       return {
-        blocks_held: beast.blocksHeld,
-        bonus_xp: beast.bonusXp,
-        last_death_timestamp: parseInt(beast.lastDeathTimestamp),
-      };
+        blocks_held: lastBeast.blocks_held,
+        bonus_xp: lastBeast.bonus_xp,
+        last_death_timestamp: lastBeast.last_death_timestamp,
+      }
     } catch (error) {
       console.error("Error getting top 5000 cutoff:", error);
       return null;
@@ -388,14 +460,21 @@ export const useGameTokens = () => {
   }
 
   const countBeastsWithBlocksHeld = async () => {
+    const q = `
+      SELECT COUNT(*) as count
+      FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+      WHERE "live_stats.blocks_held" > 0
+    `;
+
     try {
-      // Use the beasts API with a filter - get just count via pagination
-      const response = await summitApi.getBeasts({
-        sortBy: "blocks_held",
-        sortOrder: "desc",
-        limit: 1,
+      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
       });
-      return response.pagination.total;
+
+      const data = await sql.json();
+      return data[0]?.count || 0;
     } catch (error) {
       console.error("Error counting beasts with blocks_held:", error);
       return 0;
@@ -404,20 +483,30 @@ export const useGameTokens = () => {
 
   const getTopBeastsByBlocksHeld = async (limit: number, offset: number) => {
     try {
-      const response = await summitApi.getBeasts({
-        sortBy: "blocks_held",
-        sortOrder: "desc",
-        limit,
-        offset,
+      const q = `
+        SELECT 
+          token_id,
+          "live_stats.blocks_held" as blocks_held,
+          "live_stats.bonus_xp" as bonus_xp,
+          "live_stats.last_death_timestamp" as last_death_timestamp
+        FROM "${currentNetworkConfig.namespace}-LiveBeastStatsEvent"
+        WHERE "live_stats.blocks_held" > 0
+        ORDER BY 
+          "live_stats.blocks_held" DESC,
+          "live_stats.bonus_xp" DESC,
+          "live_stats.last_death_timestamp" DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+
+      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
       });
 
-      // Map API response to expected format
-      return response.data.map((beast) => ({
-        token_id: beast.tokenId,
-        blocks_held: beast.blocksHeld,
-        bonus_xp: beast.bonusXp,
-        last_death_timestamp: beast.lastDeathTimestamp,
-      }));
+      const data = await sql.json();
+      return data || [];
     } catch (error) {
       console.error("Error getting top beasts by blocks_held:", error);
       return [];
@@ -580,21 +669,31 @@ export const useGameTokens = () => {
   }
 
   const getDiplomacy = async (beast: Beast) => {
+    let q = `
+      SELECT total_power, beast_token_ids
+      FROM "${currentNetworkConfig.namespace}-DiplomacyEvent"
+      WHERE specials_hash = '${beast.specials_hash}'
+    `
     try {
-      if (!beast.specials_hash) {
-        return {
-          specials_hash: beast.specials_hash || "",
-          total_power: 0,
-          beast_token_ids: [],
-        };
+      const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
+      const sql = await fetch(url, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" }
+      })
+
+      let data = await sql.json()
+
+      return {
+        specials_hash: beast.specials_hash,
+        total_power: data[0].total_power,
+        beast_token_ids: JSON.parse(data[0].beast_token_ids),
       }
-      return await summitApi.getDiplomacy(beast.specials_hash);
     } catch (error) {
       return {
-        specials_hash: beast.specials_hash || "",
+        specials_hash: beast.specials_hash,
         total_power: 0,
         beast_token_ids: [],
-      };
+      }
     }
   }
 

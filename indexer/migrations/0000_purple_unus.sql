@@ -97,19 +97,7 @@ CREATE TABLE "corpse_events" (
 	"transaction_hash" text NOT NULL,
 	"event_index" integer NOT NULL
 );
---> statement-breakpoint
-CREATE TABLE "diplomacy_groups" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"specials_hash" text NOT NULL,
-	"beast_token_ids" text NOT NULL,
-	"total_power" smallint NOT NULL,
-	"created_at" timestamp NOT NULL,
-	"indexed_at" timestamp NOT NULL,
-	"inserted_at" timestamp DEFAULT now(),
-	"block_number" bigint NOT NULL,
-	"transaction_hash" text NOT NULL,
-	"event_index" integer NOT NULL
-);
+
 --> statement-breakpoint
 CREATE TABLE "poison_events" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -151,17 +139,12 @@ CREATE TABLE "rewards_earned" (
 	"event_index" integer NOT NULL
 );
 --> statement-breakpoint
-CREATE TABLE "skull_events" (
+CREATE TABLE "skulls_claimed" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"beast_token_id" integer NOT NULL,
 	"skulls" bigint NOT NULL,
-	"player" text,
-	"created_at" timestamp NOT NULL,
-	"indexed_at" timestamp NOT NULL,
-	"inserted_at" timestamp DEFAULT now(),
-	"block_number" bigint NOT NULL,
-	"transaction_hash" text NOT NULL,
-	"event_index" integer NOT NULL
+	"updated_at" timestamp DEFAULT now(),
+	CONSTRAINT "skulls_claimed_beast_token_id_unique" UNIQUE("beast_token_id")
 );
 --> statement-breakpoint
 CREATE TABLE "summit_log" (
@@ -182,16 +165,20 @@ CREATE TABLE "summit_log" (
 CREATE UNIQUE INDEX "battles_block_tx_event_idx" ON "battles" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
 CREATE INDEX "battles_attacking_beast_idx" ON "battles" USING btree ("attacking_beast_token_id");--> statement-breakpoint
 CREATE INDEX "battles_attacking_player_idx" ON "battles" USING btree ("attacking_player");--> statement-breakpoint
+CREATE INDEX "battles_defending_beast_idx" ON "battles" USING btree ("defending_beast_token_id");--> statement-breakpoint
+CREATE INDEX "battles_created_at_idx" ON "battles" USING btree ("created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "battles_block_number_idx" ON "battles" USING btree ("block_number");--> statement-breakpoint
 
 CREATE INDEX "beast_data_token_id_idx" ON "beast_data" USING btree ("token_id");--> statement-breakpoint
-CREATE INDEX "beast_data_entity_hash_idx" ON "beast_data" USING btree ("entity_hash");--> statement-breakpoint
+CREATE INDEX "beast_data_adventurers_killed_idx" ON "beast_data" USING btree ("adventurers_killed" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "beast_data_updated_at_idx" ON "beast_data" USING btree ("updated_at" DESC NULLS LAST);--> statement-breakpoint
 
 CREATE INDEX "beast_owners_owner_idx" ON "beast_owners" USING btree ("owner");--> statement-breakpoint
 CREATE INDEX "beast_owners_token_id_idx" ON "beast_owners" USING btree ("token_id");--> statement-breakpoint
 
-CREATE INDEX "beast_stats_token_id_idx" ON "beast_stats" USING btree ("token_id");--> statement-breakpoint
-CREATE INDEX "beast_stats_current_health_idx" ON "beast_stats" USING btree ("current_health" DESC NULLS LAST);--> statement-breakpoint
-CREATE INDEX "beast_stats_beast_order_idx" ON "beast_stats" USING btree ("blocks_held" DESC NULLS LAST,"bonus_xp" DESC NULLS LAST,"last_death_timestamp" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "beast_stats_current_health_idx" ON "beast_stats" USING btree ("current_health");--> statement-breakpoint
+CREATE INDEX "beast_stats_blocks_held_idx" ON "beast_stats" USING btree ("blocks_held" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "beast_stats_updated_at_idx" ON "beast_stats" USING btree ("updated_at" DESC NULLS LAST);--> statement-breakpoint
 
 
 CREATE INDEX "beasts_token_id_idx" ON "beasts" USING btree ("token_id");--> statement-breakpoint
@@ -203,22 +190,23 @@ CREATE INDEX "beasts_level_idx" ON "beasts" USING btree ("level" DESC NULLS LAST
 CREATE UNIQUE INDEX "corpse_events_block_tx_event_idx" ON "corpse_events" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
 CREATE INDEX "corpse_events_adventurer_id_idx" ON "corpse_events" USING btree ("adventurer_id");--> statement-breakpoint
 CREATE INDEX "corpse_events_player_idx" ON "corpse_events" USING btree ("player");--> statement-breakpoint
-
-CREATE UNIQUE INDEX "diplomacy_groups_block_tx_event_idx" ON "diplomacy_groups" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
-CREATE INDEX "diplomacy_groups_specials_hash_idx" ON "diplomacy_groups" USING btree ("specials_hash");--> statement-breakpoint
+CREATE INDEX "corpse_events_created_at_idx" ON "corpse_events" USING btree ("created_at" DESC NULLS LAST);--> statement-breakpoint
 
 CREATE UNIQUE INDEX "poison_events_block_tx_event_idx" ON "poison_events" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
+CREATE INDEX "poison_events_beast_token_id_idx" ON "poison_events" USING btree ("beast_token_id");--> statement-breakpoint
 CREATE INDEX "poison_events_player_idx" ON "poison_events" USING btree ("player");--> statement-breakpoint
+CREATE INDEX "poison_events_created_at_idx" ON "poison_events" USING btree ("created_at" DESC NULLS LAST);--> statement-breakpoint
 
 CREATE UNIQUE INDEX "rewards_claimed_block_tx_event_idx" ON "rewards_claimed" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
 CREATE INDEX "rewards_claimed_player_idx" ON "rewards_claimed" USING btree ("player");--> statement-breakpoint
+CREATE INDEX "rewards_claimed_created_at_idx" ON "rewards_claimed" USING btree ("created_at" DESC NULLS LAST);--> statement-breakpoint
 
 CREATE UNIQUE INDEX "rewards_earned_block_tx_event_idx" ON "rewards_earned" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
 CREATE INDEX "rewards_earned_owner_idx" ON "rewards_earned" USING btree ("owner");--> statement-breakpoint
+CREATE INDEX "rewards_earned_beast_token_id_idx" ON "rewards_earned" USING btree ("beast_token_id");--> statement-breakpoint
+CREATE INDEX "rewards_earned_created_at_idx" ON "rewards_earned" USING btree ("created_at" DESC NULLS LAST);--> statement-breakpoint
 
-CREATE UNIQUE INDEX "skull_events_block_tx_event_idx" ON "skull_events" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
-CREATE INDEX "skull_events_beast_token_id_idx" ON "skull_events" USING btree ("beast_token_id");--> statement-breakpoint
-CREATE INDEX "skull_events_player_idx" ON "skull_events" USING btree ("player");--> statement-breakpoint
+CREATE INDEX "skulls_claimed_skulls_idx" ON "skulls_claimed" USING btree ("skulls" DESC NULLS LAST);--> statement-breakpoint
 
 CREATE UNIQUE INDEX "summit_log_block_tx_event_idx" ON "summit_log" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
 CREATE INDEX "summit_log_order_idx" ON "summit_log" USING btree ("block_number" DESC NULLS LAST,"event_index" DESC NULLS LAST);--> statement-breakpoint

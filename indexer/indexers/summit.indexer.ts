@@ -985,7 +985,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
             case EVENT_SELECTORS.PoisonEvent: {
               const decoded = decodePoisonEvent([...keys], [...data]);
-              // logger.info(`PoisonEvent: beast=${decoded.beast_token_id}, player=${decoded.player}, count=${decoded.count}`);
 
               await db.insert(schema.poison_events).values({
                 beast_token_id: decoded.beast_token_id,
@@ -1056,29 +1055,40 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               const decoded = decodeSkullEvent([...keys], [...data]);
               // Look up player from beast_owners
               const skull_player = await getBeastOwner(db, decoded.beast_token_id);
-              // logger.info(`SkullEvent: beast=${decoded.beast_token_id} (${skull_player}), skulls=${decoded.skulls}`);
 
-              await db.insert(schema.skull_events).values({
+              // Get old skulls value to calculate delta
+              const oldSkullsResult = await db
+                .select({ skulls: schema.skulls_claimed.skulls })
+                .from(schema.skulls_claimed)
+                .where(eq(schema.skulls_claimed.beast_token_id, decoded.beast_token_id))
+                .limit(1);
+              const oldSkulls = oldSkullsResult.length > 0 ? oldSkullsResult[0].skulls : 0n;
+              const skullsClaimed = decoded.skulls - oldSkulls;
+
+              // logger.info(`SkullEvent: beast=${decoded.beast_token_id} (${skull_player}), claimed=${skullsClaimed}, total=${decoded.skulls}`);
+
+              // Upsert skulls_claimed - skulls value is cumulative total
+              await db.insert(schema.skulls_claimed).values({
                 beast_token_id: decoded.beast_token_id,
                 skulls: decoded.skulls,
-                player: skull_player,
-                created_at: block_timestamp,
-                indexed_at: indexed_at,
-                block_number,
-                transaction_hash,
-                event_index,
-              }).onConflictDoNothing();
+                updated_at: block_timestamp,
+              }).onConflictDoUpdate({
+                target: schema.skulls_claimed.beast_token_id,
+                set: {
+                  skulls: decoded.skulls,
+                  updated_at: block_timestamp,
+                },
+              });
 
-              // Log: Rewards/Claimed Skulls
+              // Log: Rewards/Claimed Skulls (with delta, not total)
               await insertSummitLog(db, {
                 block_number,
                 event_index,
                 category: "Rewards",
                 sub_category: "Claimed Skulls",
                 data: {
-                  player: skull_player,
                   beast_token_id: decoded.beast_token_id,
-                  skulls: decoded.skulls.toString(),
+                  skulls_claimed: skullsClaimed.toString(),
                 },
                 player: skull_player,
                 token_id: decoded.beast_token_id,
