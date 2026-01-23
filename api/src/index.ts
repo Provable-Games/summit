@@ -100,11 +100,22 @@ app.get("/health", async (c) => {
 });
 
 /**
+ * Normalize a Starknet address to match database format
+ * - Lowercase
+ * - Pad to 66 chars (0x + 64 hex chars)
+ */
+function normalizeAddress(address: string): string {
+  const lower = address.toLowerCase();
+  const withoutPrefix = lower.startsWith("0x") ? lower.slice(2) : lower;
+  return "0x" + withoutPrefix.padStart(64, "0");
+}
+
+/**
  * GET /beasts/:owner - Get all beasts for an owner with stats and data joined
  * Returns data in Beast interface format compatible with getBeastCollection
  */
 app.get("/beasts/:owner", async (c) => {
-  const owner = c.req.param("owner");
+  const owner = normalizeAddress(c.req.param("owner"));
 
   // Get beast data with all joins including skulls
   const results = await db
