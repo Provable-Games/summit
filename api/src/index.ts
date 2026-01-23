@@ -12,7 +12,7 @@ import { eq, sql, desc, and } from "drizzle-orm";
 import "dotenv/config";
 
 import { checkDatabaseHealth, db, pool } from "./db/client.js";
-import { beasts, beastOwners, beastData, beastStats, summitLog } from "./db/schema.js";
+import { beasts, beast_owners, beast_data, beast_stats, summit_log } from "./db/schema.js";
 import { getSubscriptionHub } from "./ws/subscriptions.js";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
@@ -53,8 +53,8 @@ app.get("/beasts/:owner", async (c) => {
   const results = await db
     .select({
       // Beast NFT metadata
-      tokenId: beasts.tokenId,
-      beastId: beasts.beastId,
+      token_id: beasts.token_id,
+      beast_id: beasts.beast_id,
       prefix: beasts.prefix,
       suffix: beasts.suffix,
       level: beasts.level,
@@ -62,58 +62,62 @@ app.get("/beasts/:owner", async (c) => {
       shiny: beasts.shiny,
       animated: beasts.animated,
       // Beast data (Loot Survivor stats)
-      adventurersKilled: beastData.adventurersKilled,
-      lastDeathTimestamp: beastData.lastDeathTimestamp,
+      adventurers_killed: beast_data.adventurers_killed,
+      last_death_loot_survivor: beast_data.last_death_timestamp,
+      last_killed_by: beast_data.last_killed_by,
       // Beast stats (Summit game state)
-      currentHealth: beastStats.currentHealth,
-      bonusHealth: beastStats.bonusHealth,
-      bonusXp: beastStats.bonusXp,
-      attackStreak: beastStats.attackStreak,
-      revivalCount: beastStats.revivalCount,
-      extraLives: beastStats.extraLives,
-      hasClaimedPotions: beastStats.hasClaimedPotions,
-      blocksHeld: beastStats.blocksHeld,
-      spirit: beastStats.spirit,
-      luck: beastStats.luck,
-      specials: beastStats.specials,
-      wisdom: beastStats.wisdom,
-      diplomacy: beastStats.diplomacy,
-      rewardsEarned: beastStats.rewardsEarned,
-      rewardsClaimed: beastStats.rewardsClaimed,
+      current_health: beast_stats.current_health,
+      bonus_health: beast_stats.bonus_health,
+      bonus_xp: beast_stats.bonus_xp,
+      attack_streak: beast_stats.attack_streak,
+      last_death_summit: beast_stats.last_death_timestamp,
+      revival_count: beast_stats.revival_count,
+      extra_lives: beast_stats.extra_lives,
+      has_claimed_potions: beast_stats.has_claimed_potions,
+      blocks_held: beast_stats.blocks_held,
+      spirit: beast_stats.spirit,
+      luck: beast_stats.luck,
+      specials: beast_stats.specials,
+      wisdom: beast_stats.wisdom,
+      diplomacy: beast_stats.diplomacy,
+      rewards_earned: beast_stats.rewards_earned,
+      rewards_claimed: beast_stats.rewards_claimed,
     })
-    .from(beastOwners)
-    .innerJoin(beasts, eq(beasts.tokenId, beastOwners.tokenId))
-    .leftJoin(beastData, eq(beastData.tokenId, beastOwners.tokenId))
-    .leftJoin(beastStats, eq(beastStats.tokenId, beastOwners.tokenId))
-    .where(eq(beastOwners.owner, owner));
+    .from(beast_owners)
+    .innerJoin(beasts, eq(beasts.token_id, beast_owners.token_id))
+    .leftJoin(beast_data, eq(beast_data.token_id, beast_owners.token_id))
+    .leftJoin(beast_stats, eq(beast_stats.token_id, beast_owners.token_id))
+    .where(eq(beast_owners.owner, owner));
 
   return c.json(
     results.map((r) => ({
-      tokenId: r.tokenId,
-      beastId: r.beastId,
+      token_id: r.token_id,
+      beast_id: r.beast_id,
       prefix: r.prefix,
       suffix: r.suffix,
       level: r.level,
       health: r.health,
       shiny: r.shiny,
       animated: r.animated,
-      adventurersKilled: r.adventurersKilled?.toString() ?? "0",
-      lastDeathTimestamp: r.lastDeathTimestamp?.toString() ?? "0",
-      currentHealth: r.currentHealth ?? 0,
-      bonusHealth: r.bonusHealth ?? 0,
-      bonusXp: r.bonusXp ?? 0,
-      attackStreak: r.attackStreak ?? 0,
-      revivalCount: r.revivalCount ?? 0,
-      extraLives: r.extraLives ?? 0,
-      hasClaimedPotions: r.hasClaimedPotions ?? 0,
-      blocksHeld: r.blocksHeld ?? 0,
+      adventurers_killed: r.adventurers_killed?.toString() ?? "0",
+      last_death_loot_survivor: r.last_death_loot_survivor?.toString() ?? "0",
+      last_killed_by: r.last_killed_by?.toString() ?? "0",
+      current_health: r.current_health ?? 0,
+      bonus_health: r.bonus_health ?? 0,
+      bonus_xp: r.bonus_xp ?? 0,
+      attack_streak: r.attack_streak ?? 0,
+      last_death_summit: r.last_death_summit?.toString() ?? "0",
+      revival_count: r.revival_count ?? 0,
+      extra_lives: r.extra_lives ?? 0,
+      has_claimed_potions: r.has_claimed_potions ?? 0,
+      blocks_held: r.blocks_held ?? 0,
       spirit: r.spirit ?? 0,
       luck: r.luck ?? 0,
       specials: r.specials ?? 0,
       wisdom: r.wisdom ?? 0,
       diplomacy: r.diplomacy ?? 0,
-      rewardsEarned: r.rewardsEarned ?? 0,
-      rewardsClaimed: r.rewardsClaimed ?? 0,
+      rewards_earned: r.rewards_earned ?? 0,
+      rewards_claimed: r.rewards_claimed ?? 0,
     }))
   );
 });
@@ -125,58 +129,58 @@ app.get("/beasts/:owner", async (c) => {
  * - limit: Number of results (default: 50, max: 100)
  * - offset: Pagination offset (default: 0)
  * - category: Filter by category (optional)
- * - subCategory: Filter by sub_category (optional)
+ * - sub_category: Filter by sub_category (optional)
  * - player: Filter by player address (optional)
  */
 app.get("/logs", async (c) => {
   const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 100);
   const offset = parseInt(c.req.query("offset") || "0", 10);
   const category = c.req.query("category");
-  const subCategory = c.req.query("subCategory");
+  const sub_category = c.req.query("sub_category");
   const player = c.req.query("player");
 
   // Build where conditions
   const conditions = [];
-  if (category) conditions.push(eq(summitLog.category, category));
-  if (subCategory) conditions.push(eq(summitLog.subCategory, subCategory));
-  if (player) conditions.push(eq(summitLog.player, player));
+  if (category) conditions.push(eq(summit_log.category, category));
+  if (sub_category) conditions.push(eq(summit_log.sub_category, sub_category));
+  if (player) conditions.push(eq(summit_log.player, player));
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   // Get results
   const results = await db
     .select()
-    .from(summitLog)
+    .from(summit_log)
     .where(whereClause)
-    .orderBy(desc(summitLog.blockNumber), desc(summitLog.eventIndex))
+    .orderBy(desc(summit_log.block_number), desc(summit_log.event_index))
     .limit(limit)
     .offset(offset);
 
   // Get total count
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
-    .from(summitLog)
+    .from(summit_log)
     .where(whereClause);
   const total = Number(countResult[0]?.count ?? 0);
 
   return c.json({
     data: results.map((r) => ({
       id: r.id,
-      blockNumber: r.blockNumber.toString(),
-      eventIndex: r.eventIndex,
+      block_number: r.block_number.toString(),
+      event_index: r.event_index,
       category: r.category,
-      subCategory: r.subCategory,
-      data: JSON.parse(r.data),
+      sub_category: r.sub_category,
+      data: r.data,
       player: r.player,
-      tokenId: r.tokenId,
-      transactionHash: r.transactionHash,
-      createdAt: r.createdAt.toISOString(),
+      token_id: r.token_id,
+      transaction_hash: r.transaction_hash,
+      created_at: r.created_at.toISOString(),
     })),
     pagination: {
       limit,
       offset,
       total,
-      hasMore: offset + results.length < total,
+      has_more: offset + results.length < total,
     },
   });
 });
@@ -187,10 +191,10 @@ if (isDevelopment) {
     const client = await pool.connect();
     try {
       const body = await c.req.json().catch(() => ({}));
-      const tokenId = body.token_id || 1;
+      const token_id = body.token_id || 1;
 
       const testPayload = JSON.stringify({
-        token_id: tokenId,
+        token_id: token_id,
         current_health: 100,
         bonus_health: 50,
         bonus_xp: 10,
@@ -236,7 +240,7 @@ if (isDevelopment) {
         event_index: 0,
         category: body.category || "Battle",
         sub_category: body.sub_category || "BattleEvent",
-        data: body.data || { attackingBeastTokenId: 1, defendingBeastTokenId: 2 },
+        data: body.data || { attacking_beast_token_id: 1, defending_beast_token_id: 2 },
         player: body.player || "0x123",
         token_id: body.token_id || 1,
         transaction_hash: "0x456",
@@ -262,7 +266,7 @@ app.get("/", (c) => {
   const endpoints: Record<string, unknown> = {
     health: "GET /health",
     beasts: {
-      byOwner: "GET /beasts/:owner",
+      by_owner: "GET /beasts/:owner",
     },
     websocket: {
       endpoint: "WS /ws",
@@ -273,8 +277,8 @@ app.get("/", (c) => {
 
   if (isDevelopment) {
     endpoints.debug = {
-      testSummitUpdate: "POST /debug/test-summit-update",
-      testSummitLog: "POST /debug/test-summit-log",
+      test_summit_update: "POST /debug/test-summit-update",
+      test_summit_log: "POST /debug/test-summit-log",
     };
   }
 

@@ -145,16 +145,16 @@ const MASK_64 = 0xFFFFFFFFFFFFFFFFn;
 // ============ Event Data Interfaces ============
 
 export interface LiveBeastStats {
-  tokenId: number;
-  currentHealth: number;
-  bonusHealth: number;
-  bonusXp: number;
-  attackStreak: number;
-  lastDeathTimestamp: bigint;
-  revivalCount: number;
-  extraLives: number;
-  hasClaimedPotions: number;
-  blocksHeld: number;
+  token_id: number;
+  current_health: number;
+  bonus_health: number;
+  bonus_xp: number;
+  attack_streak: number;
+  last_death_timestamp: bigint;
+  revival_count: number;
+  extra_lives: number;
+  has_claimed_potions: number;
+  blocks_held: number;
   // Stats struct
   spirit: number;
   luck: number;
@@ -162,37 +162,37 @@ export interface LiveBeastStats {
   wisdom: number;
   diplomacy: number;
   // Rewards
-  rewardsEarned: number;
-  rewardsClaimed: number;
+  rewards_earned: number;
+  rewards_claimed: number;
 }
 
 export interface BeastUpdatesEventData {
-  packedUpdates: string[]; // Raw packed felt252 values
+  packed_updates: string[]; // Raw packed felt252 values
 }
 
 export interface LiveBeastStatsEventData {
-  liveStats: LiveBeastStats;
+  live_stats: LiveBeastStats;
 }
 
 export interface BattleEventData {
-  attackingBeastTokenId: number;
-  attackIndex: number;
-  defendingBeastTokenId: number;
-  attackCount: number;
-  attackDamage: number;
-  criticalAttackCount: number;
-  criticalAttackDamage: number;
-  counterAttackCount: number;
-  counterAttackDamage: number;
-  criticalCounterAttackCount: number;
-  criticalCounterAttackDamage: number;
-  attackPotions: number;
-  revivePotions: number;
-  xpGained: number;
+  attacking_beast_token_id: number;
+  attack_index: number;
+  defending_beast_token_id: number;
+  attack_count: number;
+  attack_damage: number;
+  critical_attack_count: number;
+  critical_attack_damage: number;
+  counter_attack_count: number;
+  counter_attack_damage: number;
+  critical_counter_attack_count: number;
+  critical_counter_attack_damage: number;
+  attack_potions: number;
+  revive_potions: number;
+  xp_gained: number;
 }
 
 export interface RewardsEarnedEventData {
-  beastTokenId: number;
+  beast_token_id: number;
   amount: number;
 }
 
@@ -202,18 +202,18 @@ export interface RewardsClaimedEventData {
 }
 
 export interface PoisonEventData {
-  beastTokenId: number;
+  beast_token_id: number;
   count: number;
   player: string;
 }
 
 export interface CorpseEventData {
-  adventurerId: bigint;
+  adventurer_id: bigint;
   player: string;
 }
 
 export interface SkullEventData {
-  beastTokenId: number;
+  beast_token_id: number;
   skulls: bigint;
 }
 
@@ -244,43 +244,43 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   let packed = hexToBigInt(packedFelt);
 
   // Extract token_id (17 bits)
-  const tokenId = Number(packed & MASK_17);
+  const token_id = Number(packed & MASK_17);
   packed = packed / TWO_POW_17;
 
   // Extract current_health (12 bits)
-  const currentHealth = Number(packed & MASK_12);
+  const current_health = Number(packed & MASK_12);
   packed = packed / TWO_POW_12;
 
   // Extract bonus_health (12 bits)
-  const bonusHealth = Number(packed & MASK_12);
+  const bonus_health = Number(packed & MASK_12);
   packed = packed / TWO_POW_12;
 
   // Extract bonus_xp (16 bits)
-  const bonusXp = Number(packed & MASK_16);
+  const bonus_xp = Number(packed & MASK_16);
   packed = packed / TWO_POW_16;
 
   // Extract attack_streak (4 bits)
-  const attackStreak = Number(packed & MASK_4);
+  const attack_streak = Number(packed & MASK_4);
   packed = packed / TWO_POW_4;
 
   // Extract last_death_timestamp (64 bits)
-  const lastDeathTimestamp = packed & MASK_64;
+  const last_death_timestamp = packed & MASK_64;
   packed = packed / TWO_POW_64;
 
   // Extract revival_count (6 bits)
-  const revivalCount = Number(packed & MASK_6);
+  const revival_count = Number(packed & MASK_6);
   packed = packed / TWO_POW_6;
 
   // Extract extra_lives (12 bits)
-  const extraLives = Number(packed & MASK_12);
+  const extra_lives = Number(packed & MASK_12);
   packed = packed / TWO_POW_12;
 
   // Extract has_claimed_potions (1 bit)
-  const hasClaimedPotions = Number(packed & MASK_1);
+  const has_claimed_potions = Number(packed & MASK_1);
   packed = packed / 2n;
 
   // Extract blocks_held (17 bits)
-  const blocksHeld = Number(packed & MASK_17);
+  const blocks_held = Number(packed & MASK_17);
   packed = packed / TWO_POW_17;
 
   // Extract spirit (8 bits)
@@ -299,30 +299,30 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   packed = packed / 8n;
 
   // Extract rewards_earned (32 bits)
-  const rewardsEarned = Number(packed & MASK_32);
+  const rewards_earned = Number(packed & MASK_32);
   packed = packed / TWO_POW_32;
 
   // Extract rewards_claimed (32 bits)
-  const rewardsClaimed = Number(packed & MASK_32);
+  const rewards_claimed = Number(packed & MASK_32);
 
   return {
-    tokenId,
-    currentHealth,
-    bonusHealth,
-    bonusXp,
-    attackStreak,
-    lastDeathTimestamp,
-    revivalCount,
-    extraLives,
-    hasClaimedPotions,
-    blocksHeld,
+    token_id,
+    current_health,
+    bonus_health,
+    bonus_xp,
+    attack_streak,
+    last_death_timestamp,
+    revival_count,
+    extra_lives,
+    has_claimed_potions,
+    blocks_held,
     spirit,
     luck,
     specials,
     wisdom,
     diplomacy,
-    rewardsEarned,
-    rewardsClaimed,
+    rewards_earned,
+    rewards_claimed,
   };
 }
 
@@ -334,7 +334,7 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
  */
 export function decodeBeastUpdatesEvent(keys: string[], data: string[]): BeastUpdatesEventData {
   const { values } = decodeSpanFelt252(data, 0);
-  return { packedUpdates: values };
+  return { packed_updates: values };
 }
 
 /**
@@ -342,8 +342,8 @@ export function decodeBeastUpdatesEvent(keys: string[], data: string[]): BeastUp
  * Data: live_stats (felt252 - packed)
  */
 export function decodeLiveBeastStatsEvent(keys: string[], data: string[]): LiveBeastStatsEventData {
-  const liveStats = unpackLiveBeastStats(data[0]);
-  return { liveStats };
+  const live_stats = unpackLiveBeastStats(data[0]);
+  return { live_stats };
 }
 
 /**
@@ -356,20 +356,20 @@ export function decodeLiveBeastStatsEvent(keys: string[], data: string[]): LiveB
  */
 export function decodeBattleEvent(keys: string[], data: string[]): BattleEventData {
   return {
-    attackingBeastTokenId: hexToNumber(data[0]),
-    attackIndex: hexToNumber(data[1]),
-    defendingBeastTokenId: hexToNumber(data[2]),
-    attackCount: hexToNumber(data[3]),
-    attackDamage: hexToNumber(data[4]),
-    criticalAttackCount: hexToNumber(data[5]),
-    criticalAttackDamage: hexToNumber(data[6]),
-    counterAttackCount: hexToNumber(data[7]),
-    counterAttackDamage: hexToNumber(data[8]),
-    criticalCounterAttackCount: hexToNumber(data[9]),
-    criticalCounterAttackDamage: hexToNumber(data[10]),
-    attackPotions: hexToNumber(data[11]),
-    revivePotions: hexToNumber(data[12]),
-    xpGained: hexToNumber(data[13]),
+    attacking_beast_token_id: hexToNumber(data[0]),
+    attack_index: hexToNumber(data[1]),
+    defending_beast_token_id: hexToNumber(data[2]),
+    attack_count: hexToNumber(data[3]),
+    attack_damage: hexToNumber(data[4]),
+    critical_attack_count: hexToNumber(data[5]),
+    critical_attack_damage: hexToNumber(data[6]),
+    counter_attack_count: hexToNumber(data[7]),
+    counter_attack_damage: hexToNumber(data[8]),
+    critical_counter_attack_count: hexToNumber(data[9]),
+    critical_counter_attack_damage: hexToNumber(data[10]),
+    attack_potions: hexToNumber(data[11]),
+    revive_potions: hexToNumber(data[12]),
+    xp_gained: hexToNumber(data[13]),
   };
 }
 
@@ -379,7 +379,7 @@ export function decodeBattleEvent(keys: string[], data: string[]): BattleEventDa
  */
 export function decodeRewardsEarnedEvent(keys: string[], data: string[]): RewardsEarnedEventData {
   return {
-    beastTokenId: hexToNumber(data[0]),
+    beast_token_id: hexToNumber(data[0]),
     amount: hexToNumber(data[1]),
   };
 }
@@ -402,7 +402,7 @@ export function decodeRewardsClaimedEvent(keys: string[], data: string[]): Rewar
  */
 export function decodePoisonEvent(keys: string[], data: string[]): PoisonEventData {
   return {
-    beastTokenId: hexToNumber(data[0]),
+    beast_token_id: hexToNumber(data[0]),
     count: hexToNumber(data[1]),
     player: feltToHex(data[2]),
   };
@@ -414,7 +414,7 @@ export function decodePoisonEvent(keys: string[], data: string[]): PoisonEventDa
  */
 export function decodeCorpseEvent(keys: string[], data: string[]): CorpseEventData {
   return {
-    adventurerId: hexToBigInt(data[0]),
+    adventurer_id: hexToBigInt(data[0]),
     player: feltToHex(data[1]),
   };
 }
@@ -425,7 +425,7 @@ export function decodeCorpseEvent(keys: string[], data: string[]): CorpseEventDa
  */
 export function decodeSkullEvent(keys: string[], data: string[]): SkullEventData {
   return {
-    beastTokenId: hexToNumber(data[0]),
+    beast_token_id: hexToNumber(data[0]),
     skulls: hexToBigInt(data[1]),
   };
 }
@@ -435,7 +435,7 @@ export function decodeSkullEvent(keys: string[], data: string[]): SkullEventData
 export interface TransferEventData {
   from: string;
   to: string;
-  tokenId: bigint;
+  token_id: bigint;
 }
 
 export interface PackableBeast {
@@ -520,14 +520,14 @@ export function decodeTransferEvent(keys: string[], data: string[]): TransferEve
   const from = feltToHex(keys[1]);
   const to = feltToHex(keys[2]);
   // token_id is u256, combine low and high parts
-  const tokenIdLow = hexToBigInt(keys[3]);
-  const tokenIdHigh = hexToBigInt(keys[4] ?? "0x0");
-  const tokenId = tokenIdLow + (tokenIdHigh * (2n ** 128n));
+  const token_id_low = hexToBigInt(keys[3]);
+  const token_id_high = hexToBigInt(keys[4] ?? "0x0");
+  const token_id = token_id_low + (token_id_high * (2n ** 128n));
 
   return {
     from,
     to,
-    tokenId,
+    token_id,
   };
 }
 
@@ -535,13 +535,14 @@ export function decodeTransferEvent(keys: string[], data: string[]): TransferEve
 
 export interface EntityStatsEventData {
   dungeon: string;
-  entityHash: string;
-  adventurersKilled: bigint;
+  entity_hash: string;
+  adventurers_killed: bigint;
 }
 
 export interface CollectableEntityEventData {
   dungeon: string;
-  entityHash: string;
+  entity_hash: string;
+  last_killed_by: bigint;
   timestamp: bigint;
 }
 
@@ -559,13 +560,13 @@ export function decodeEntityStatsEvent(_keys: string[], data: string[]): EntityS
   // data[2] = entity_hash
   // data[3] = adventurers_killed
   const dungeon = feltToHex(data[1]);
-  const entityHash = feltToHex(data[2]);
-  const adventurersKilled = hexToBigInt(data[3]);
+  const entity_hash = feltToHex(data[2]);
+  const adventurers_killed = hexToBigInt(data[3]);
 
   return {
     dungeon,
-    entityHash,
-    adventurersKilled,
+    entity_hash,
+    adventurers_killed,
   };
 }
 
@@ -582,15 +583,17 @@ export function decodeCollectableEntityEvent(_keys: string[], data: string[]): C
   // data[1] = dungeon
   // data[2] = entity_hash
   // ... other fields
+  // last_killed_by at data[data.length - 2]
   // timestamp at the end
   const dungeon = feltToHex(data[1]);
-  const entityHash = feltToHex(data[2]);
-  // Timestamp position needs to be verified with debug logging
+  const entity_hash = feltToHex(data[2]);
+  const last_killed_by = hexToBigInt(data[data.length - 2]);
   const timestamp = hexToBigInt(data[data.length - 1]); // Last field
 
   return {
     dungeon,
-    entityHash,
+    entity_hash,
+    last_killed_by,
     timestamp,
   };
 }
@@ -601,6 +604,6 @@ export function decodeCollectableEntityEvent(_keys: string[], data: string[]): C
  */
 export function computeEntityHash(id: number, prefix: number, suffix: number): string {
   // Use starknet.js Poseidon hash
-  const entityHash = hash.computePoseidonHashOnElements([id, prefix, suffix]);
-  return feltToHex(entityHash);
+  const entity_hash = hash.computePoseidonHashOnElements([id, prefix, suffix]);
+  return feltToHex(entity_hash);
 }

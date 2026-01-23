@@ -28,6 +28,7 @@ CREATE TABLE "beast_data" (
 	"entity_hash" text NOT NULL,
 	"adventurers_killed" bigint NOT NULL,
 	"last_death_timestamp" bigint NOT NULL,
+	"last_killed_by" bigint NOT NULL,
 	"token_id" integer,
 	"updated_at" timestamp DEFAULT now(),
 	CONSTRAINT "beast_data_entity_hash_unique" UNIQUE("entity_hash")

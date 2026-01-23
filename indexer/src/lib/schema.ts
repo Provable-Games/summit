@@ -40,20 +40,20 @@ import {
  * Upserted on each LiveBeastStatsEvent and BeastUpdatesEvent.
  * Primary key is token_id since we only care about latest state.
  */
-export const beastStats = pgTable(
+export const beast_stats = pgTable(
   "beast_stats",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    tokenId: integer("token_id").notNull().unique(),
-    currentHealth: smallint("current_health").notNull(),
-    bonusHealth: smallint("bonus_health").notNull(),
-    bonusXp: smallint("bonus_xp").notNull(),
-    attackStreak: smallint("attack_streak").notNull(),
-    lastDeathTimestamp: bigint("last_death_timestamp", { mode: "bigint" }).notNull(),
-    revivalCount: smallint("revival_count").notNull(),
-    extraLives: smallint("extra_lives").notNull(),
-    hasClaimedPotions: smallint("has_claimed_potions").notNull(),
-    blocksHeld: integer("blocks_held").notNull(),
+    token_id: integer("token_id").notNull().unique(),
+    current_health: smallint("current_health").notNull(),
+    bonus_health: smallint("bonus_health").notNull(),
+    bonus_xp: smallint("bonus_xp").notNull(),
+    attack_streak: smallint("attack_streak").notNull(),
+    last_death_timestamp: bigint("last_death_timestamp", { mode: "bigint" }).notNull(),
+    revival_count: smallint("revival_count").notNull(),
+    extra_lives: smallint("extra_lives").notNull(),
+    has_claimed_potions: smallint("has_claimed_potions").notNull(),
+    blocks_held: integer("blocks_held").notNull(),
     // Stats struct fields
     spirit: smallint("spirit").notNull(),
     luck: smallint("luck").notNull(),
@@ -61,20 +61,20 @@ export const beastStats = pgTable(
     wisdom: smallint("wisdom").notNull(),
     diplomacy: smallint("diplomacy").notNull(),
     // Rewards tracking
-    rewardsEarned: integer("rewards_earned").notNull(),
-    rewardsClaimed: integer("rewards_claimed").notNull(),
+    rewards_earned: integer("rewards_earned").notNull(),
+    rewards_claimed: integer("rewards_claimed").notNull(),
     // Timestamps
-    createdAt: timestamp("created_at").notNull(), // Starknet block timestamp
-    indexedAt: timestamp("indexed_at").notNull(), // When DNA delivered block
-    insertedAt: timestamp("inserted_at").defaultNow(), // When row inserted (set by PostgreSQL)
-    updatedAt: timestamp("updated_at").defaultNow(),
-    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-    transactionHash: text("transaction_hash").notNull(),
+    created_at: timestamp("created_at").notNull(), // Starknet block timestamp
+    indexed_at: timestamp("indexed_at").notNull(), // When DNA delivered block
+    inserted_at: timestamp("inserted_at").defaultNow(), // When row inserted (set by PostgreSQL)
+    updated_at: timestamp("updated_at").defaultNow(),
+    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
   },
   (table) => [
-    index("beast_stats_current_health_idx").on(table.currentHealth),
-    index("beast_stats_blocks_held_idx").on(table.blocksHeld.desc()),
-    index("beast_stats_updated_at_idx").on(table.updatedAt.desc()),
+    index("beast_stats_current_health_idx").on(table.current_health),
+    index("beast_stats_blocks_held_idx").on(table.blocks_held.desc()),
+    index("beast_stats_updated_at_idx").on(table.updated_at.desc()),
   ]
 );
 
@@ -87,37 +87,37 @@ export const battles = pgTable(
   "battles",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    attackingBeastTokenId: integer("attacking_beast_token_id").notNull(),
-    attackingPlayer: text("attacking_player"), // Owner of attacking beast (joined from beast_owners)
-    attackIndex: smallint("attack_index").notNull(),
-    defendingBeastTokenId: integer("defending_beast_token_id").notNull(),
-    attackCount: smallint("attack_count").notNull(),
-    attackDamage: smallint("attack_damage").notNull(),
-    criticalAttackCount: smallint("critical_attack_count").notNull(),
-    criticalAttackDamage: smallint("critical_attack_damage").notNull(),
-    counterAttackCount: smallint("counter_attack_count").notNull(),
-    counterAttackDamage: smallint("counter_attack_damage").notNull(),
-    criticalCounterAttackCount: smallint("critical_counter_attack_count").notNull(),
-    criticalCounterAttackDamage: smallint("critical_counter_attack_damage").notNull(),
-    attackPotions: smallint("attack_potions").notNull(),
-    revivePotions: smallint("revive_potions").notNull(),
-    xpGained: smallint("xp_gained").notNull(),
+    attacking_beast_token_id: integer("attacking_beast_token_id").notNull(),
+    attacking_player: text("attacking_player"), // Owner of attacking beast (joined from beast_owners)
+    attack_index: smallint("attack_index").notNull(),
+    defending_beast_token_id: integer("defending_beast_token_id").notNull(),
+    attack_count: smallint("attack_count").notNull(),
+    attack_damage: smallint("attack_damage").notNull(),
+    critical_attack_count: smallint("critical_attack_count").notNull(),
+    critical_attack_damage: smallint("critical_attack_damage").notNull(),
+    counter_attack_count: smallint("counter_attack_count").notNull(),
+    counter_attack_damage: smallint("counter_attack_damage").notNull(),
+    critical_counter_attack_count: smallint("critical_counter_attack_count").notNull(),
+    critical_counter_attack_damage: smallint("critical_counter_attack_damage").notNull(),
+    attack_potions: smallint("attack_potions").notNull(),
+    revive_potions: smallint("revive_potions").notNull(),
+    xp_gained: smallint("xp_gained").notNull(),
     // Timestamps
-    createdAt: timestamp("created_at").notNull(),
-    indexedAt: timestamp("indexed_at").notNull(),
-    insertedAt: timestamp("inserted_at").defaultNow(),
-    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-    transactionHash: text("transaction_hash").notNull(),
-    eventIndex: integer("event_index").notNull(),
+    created_at: timestamp("created_at").notNull(),
+    indexed_at: timestamp("indexed_at").notNull(),
+    inserted_at: timestamp("inserted_at").defaultNow(),
+    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
   },
   (table) => [
     // Unique constraint for idempotent re-indexing
-    uniqueIndex("battles_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
-    index("battles_attacking_beast_idx").on(table.attackingBeastTokenId),
-    index("battles_attacking_player_idx").on(table.attackingPlayer),
-    index("battles_defending_beast_idx").on(table.defendingBeastTokenId),
-    index("battles_created_at_idx").on(table.createdAt.desc()),
-    index("battles_block_number_idx").on(table.blockNumber),
+    uniqueIndex("battles_block_tx_event_idx").on(table.block_number, table.transaction_hash, table.event_index),
+    index("battles_attacking_beast_idx").on(table.attacking_beast_token_id),
+    index("battles_attacking_player_idx").on(table.attacking_player),
+    index("battles_defending_beast_idx").on(table.defending_beast_token_id),
+    index("battles_created_at_idx").on(table.created_at.desc()),
+    index("battles_block_number_idx").on(table.block_number),
   ]
 );
 
@@ -126,27 +126,27 @@ export const battles = pgTable(
  *
  * Append-only history of rewards earned.
  */
-export const rewardsEarned = pgTable(
+export const rewards_earned = pgTable(
   "rewards_earned",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    beastTokenId: integer("beast_token_id").notNull(),
+    beast_token_id: integer("beast_token_id").notNull(),
     owner: text("owner"), // Owner of the beast (joined from beast_owners)
     amount: integer("amount").notNull(),
     // Timestamps
-    createdAt: timestamp("created_at").notNull(),
-    indexedAt: timestamp("indexed_at").notNull(),
-    insertedAt: timestamp("inserted_at").defaultNow(),
-    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-    transactionHash: text("transaction_hash").notNull(),
-    eventIndex: integer("event_index").notNull(),
+    created_at: timestamp("created_at").notNull(),
+    indexed_at: timestamp("indexed_at").notNull(),
+    inserted_at: timestamp("inserted_at").defaultNow(),
+    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
   },
   (table) => [
     // Unique constraint for idempotent re-indexing
-    uniqueIndex("rewards_earned_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
+    uniqueIndex("rewards_earned_block_tx_event_idx").on(table.block_number, table.transaction_hash, table.event_index),
     index("rewards_earned_owner_idx").on(table.owner),
-    index("rewards_earned_beast_token_id_idx").on(table.beastTokenId),
-    index("rewards_earned_created_at_idx").on(table.createdAt.desc()),
+    index("rewards_earned_beast_token_id_idx").on(table.beast_token_id),
+    index("rewards_earned_created_at_idx").on(table.created_at.desc()),
   ]
 );
 
@@ -155,26 +155,26 @@ export const rewardsEarned = pgTable(
  *
  * Append-only history of claimed rewards.
  */
-export const rewardsClaimed = pgTable(
+export const rewards_claimed = pgTable(
   "rewards_claimed",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     player: text("player").notNull(),
-    beastTokenIds: text("beast_token_ids").notNull(), // Comma-separated u32 values
+    beast_token_ids: text("beast_token_ids").notNull(), // Comma-separated u32 values
     amount: text("amount").notNull(), // u256 stored as string
     // Timestamps
-    createdAt: timestamp("created_at").notNull(),
-    indexedAt: timestamp("indexed_at").notNull(),
-    insertedAt: timestamp("inserted_at").defaultNow(),
-    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-    transactionHash: text("transaction_hash").notNull(),
-    eventIndex: integer("event_index").notNull(),
+    created_at: timestamp("created_at").notNull(),
+    indexed_at: timestamp("indexed_at").notNull(),
+    inserted_at: timestamp("inserted_at").defaultNow(),
+    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
   },
   (table) => [
     // Unique constraint for idempotent re-indexing
-    uniqueIndex("rewards_claimed_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
+    uniqueIndex("rewards_claimed_block_tx_event_idx").on(table.block_number, table.transaction_hash, table.event_index),
     index("rewards_claimed_player_idx").on(table.player),
-    index("rewards_claimed_created_at_idx").on(table.createdAt.desc()),
+    index("rewards_claimed_created_at_idx").on(table.created_at.desc()),
   ]
 );
 
@@ -183,28 +183,28 @@ export const rewardsClaimed = pgTable(
  *
  * Append-only history of poison attacks.
  */
-export const poisonEvents = pgTable(
+export const poison_events = pgTable(
   "poison_events",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    beastTokenId: integer("beast_token_id").notNull(),
-    blockTimestamp: bigint("block_timestamp", { mode: "bigint" }).notNull(),
+    beast_token_id: integer("beast_token_id").notNull(),
+    block_timestamp: bigint("block_timestamp", { mode: "bigint" }).notNull(),
     count: smallint("count").notNull(),
     player: text("player").notNull(),
     // Timestamps
-    createdAt: timestamp("created_at").notNull(),
-    indexedAt: timestamp("indexed_at").notNull(),
-    insertedAt: timestamp("inserted_at").defaultNow(),
-    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-    transactionHash: text("transaction_hash").notNull(),
-    eventIndex: integer("event_index").notNull(),
+    created_at: timestamp("created_at").notNull(),
+    indexed_at: timestamp("indexed_at").notNull(),
+    inserted_at: timestamp("inserted_at").defaultNow(),
+    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
   },
   (table) => [
     // Unique constraint for idempotent re-indexing
-    uniqueIndex("poison_events_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
-    index("poison_events_beast_token_id_idx").on(table.beastTokenId),
+    uniqueIndex("poison_events_block_tx_event_idx").on(table.block_number, table.transaction_hash, table.event_index),
+    index("poison_events_beast_token_id_idx").on(table.beast_token_id),
     index("poison_events_player_idx").on(table.player),
-    index("poison_events_created_at_idx").on(table.createdAt.desc()),
+    index("poison_events_created_at_idx").on(table.created_at.desc()),
   ]
 );
 
@@ -214,26 +214,26 @@ export const poisonEvents = pgTable(
  * Append-only history of diplomacy group formations.
  * beast_token_ids stored as comma-separated string for simplicity.
  */
-export const diplomacyGroups = pgTable(
+export const diplomacy_groups = pgTable(
   "diplomacy_groups",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    specialsHash: text("specials_hash").notNull(),
-    beastTokenIds: text("beast_token_ids").notNull(), // Comma-separated u32 values
-    totalPower: smallint("total_power").notNull(),
+    specials_hash: text("specials_hash").notNull(),
+    beast_token_ids: text("beast_token_ids").notNull(), // Comma-separated u32 values
+    total_power: smallint("total_power").notNull(),
     // Timestamps
-    createdAt: timestamp("created_at").notNull(),
-    indexedAt: timestamp("indexed_at").notNull(),
-    insertedAt: timestamp("inserted_at").defaultNow(),
-    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-    transactionHash: text("transaction_hash").notNull(),
-    eventIndex: integer("event_index").notNull(),
+    created_at: timestamp("created_at").notNull(),
+    indexed_at: timestamp("indexed_at").notNull(),
+    inserted_at: timestamp("inserted_at").defaultNow(),
+    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
   },
   (table) => [
     // Unique constraint for idempotent re-indexing
-    uniqueIndex("diplomacy_groups_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
-    index("diplomacy_groups_specials_hash_idx").on(table.specialsHash),
-    index("diplomacy_groups_created_at_idx").on(table.createdAt.desc()),
+    uniqueIndex("diplomacy_groups_block_tx_event_idx").on(table.block_number, table.transaction_hash, table.event_index),
+    index("diplomacy_groups_specials_hash_idx").on(table.specials_hash),
+    index("diplomacy_groups_created_at_idx").on(table.created_at.desc()),
   ]
 );
 
@@ -242,26 +242,26 @@ export const diplomacyGroups = pgTable(
  *
  * Append-only history of corpse collection.
  */
-export const corpseEvents = pgTable(
+export const corpse_events = pgTable(
   "corpse_events",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    adventurerId: bigint("adventurer_id", { mode: "bigint" }).notNull(),
+    adventurer_id: bigint("adventurer_id", { mode: "bigint" }).notNull(),
     player: text("player").notNull(),
     // Timestamps
-    createdAt: timestamp("created_at").notNull(),
-    indexedAt: timestamp("indexed_at").notNull(),
-    insertedAt: timestamp("inserted_at").defaultNow(),
-    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-    transactionHash: text("transaction_hash").notNull(),
-    eventIndex: integer("event_index").notNull(),
+    created_at: timestamp("created_at").notNull(),
+    indexed_at: timestamp("indexed_at").notNull(),
+    inserted_at: timestamp("inserted_at").defaultNow(),
+    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
   },
   (table) => [
     // Unique constraint for idempotent re-indexing
-    uniqueIndex("corpse_events_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
-    index("corpse_events_adventurer_id_idx").on(table.adventurerId),
+    uniqueIndex("corpse_events_block_tx_event_idx").on(table.block_number, table.transaction_hash, table.event_index),
+    index("corpse_events_adventurer_id_idx").on(table.adventurer_id),
     index("corpse_events_player_idx").on(table.player),
-    index("corpse_events_created_at_idx").on(table.createdAt.desc()),
+    index("corpse_events_created_at_idx").on(table.created_at.desc()),
   ]
 );
 
@@ -270,28 +270,28 @@ export const corpseEvents = pgTable(
  *
  * Append-only history of skull claims.
  */
-export const skullEvents = pgTable(
+export const skull_events = pgTable(
   "skull_events",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    beastTokenId: integer("beast_token_id").notNull(),
+    beast_token_id: integer("beast_token_id").notNull(),
     skulls: bigint("skulls", { mode: "bigint" }).notNull(),
     player: text("player"), // Owner of the beast (joined from beast_owners)
     // Timestamps
-    createdAt: timestamp("created_at").notNull(),
-    indexedAt: timestamp("indexed_at").notNull(),
-    insertedAt: timestamp("inserted_at").defaultNow(),
-    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-    transactionHash: text("transaction_hash").notNull(),
-    eventIndex: integer("event_index").notNull(),
+    created_at: timestamp("created_at").notNull(),
+    indexed_at: timestamp("indexed_at").notNull(),
+    inserted_at: timestamp("inserted_at").defaultNow(),
+    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
   },
   (table) => [
     // Unique constraint for idempotent re-indexing
-    uniqueIndex("skull_events_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
-    index("skull_events_beast_token_id_idx").on(table.beastTokenId),
+    uniqueIndex("skull_events_block_tx_event_idx").on(table.block_number, table.transaction_hash, table.event_index),
+    index("skull_events_beast_token_id_idx").on(table.beast_token_id),
     index("skull_events_skulls_idx").on(table.skulls.desc()),
     index("skull_events_player_idx").on(table.player),
-    index("skull_events_created_at_idx").on(table.createdAt.desc()),
+    index("skull_events_created_at_idx").on(table.created_at.desc()),
   ]
 );
 
@@ -301,13 +301,13 @@ export const skullEvents = pgTable(
  * Upserted on each Transfer event from Beasts contract.
  * Primary key is token_id since we only care about current owner.
  */
-export const beastOwners = pgTable(
+export const beast_owners = pgTable(
   "beast_owners",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    tokenId: integer("token_id").notNull().unique(),
+    token_id: integer("token_id").notNull().unique(),
     owner: text("owner").notNull(),
-    updatedAt: timestamp("updated_at").defaultNow(),
+    updated_at: timestamp("updated_at").defaultNow(),
   },
   (table) => [
     index("beast_owners_owner_idx").on(table.owner),
@@ -324,9 +324,9 @@ export const beasts = pgTable(
   "beasts",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    tokenId: integer("token_id").notNull().unique(),
+    token_id: integer("token_id").notNull().unique(),
     // Unpacked beast metadata
-    beastId: smallint("beast_id").notNull(), // Species 1-75 (7 bits)
+    beast_id: smallint("beast_id").notNull(), // Species 1-75 (7 bits)
     prefix: smallint("prefix").notNull(), // Name prefix (7 bits)
     suffix: smallint("suffix").notNull(), // Name suffix (5 bits)
     level: smallint("level").notNull(), // Level (16 bits)
@@ -334,13 +334,13 @@ export const beasts = pgTable(
     shiny: smallint("shiny").notNull(), // Visual trait (1 bit)
     animated: smallint("animated").notNull(), // Visual trait (1 bit)
     // Timestamps
-    createdAt: timestamp("created_at").notNull(),
-    indexedAt: timestamp("indexed_at").notNull(),
-    insertedAt: timestamp("inserted_at").defaultNow(),
+    created_at: timestamp("created_at").notNull(),
+    indexed_at: timestamp("indexed_at").notNull(),
+    inserted_at: timestamp("inserted_at").defaultNow(),
   },
   (table) => [
-    index("beasts_token_id_idx").on(table.tokenId),
-    index("beasts_beast_id_idx").on(table.beastId),
+    index("beasts_token_id_idx").on(table.token_id),
+    index("beasts_beast_id_idx").on(table.beast_id),
     index("beasts_prefix_idx").on(table.prefix),
     index("beasts_suffix_idx").on(table.suffix),
     index("beasts_level_idx").on(table.level.desc()),
@@ -356,20 +356,21 @@ export const beasts = pgTable(
  *
  * Linked to beasts table via entity_hash (poseidon_hash(id, prefix, suffix))
  */
-export const beastData = pgTable(
+export const beast_data = pgTable(
   "beast_data",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    entityHash: text("entity_hash").notNull().unique(),
-    adventurersKilled: bigint("adventurers_killed", { mode: "bigint" }).notNull(),
-    lastDeathTimestamp: bigint("last_death_timestamp", { mode: "bigint" }).notNull(),
-    tokenId: integer("token_id"), // Nullable, linked after beast mint
-    updatedAt: timestamp("updated_at").defaultNow(),
+    entity_hash: text("entity_hash").notNull().unique(),
+    adventurers_killed: bigint("adventurers_killed", { mode: "bigint" }).notNull(),
+    last_death_timestamp: bigint("last_death_timestamp", { mode: "bigint" }).notNull(),
+    last_killed_by: bigint("last_killed_by", { mode: "bigint" }).notNull(),
+    token_id: integer("token_id"), // Nullable, linked after beast mint
+    updated_at: timestamp("updated_at").defaultNow(),
   },
   (table) => [
-    index("beast_data_token_id_idx").on(table.tokenId),
-    index("beast_data_adventurers_killed_idx").on(table.adventurersKilled.desc()),
-    index("beast_data_updated_at_idx").on(table.updatedAt.desc()),
+    index("beast_data_token_id_idx").on(table.token_id),
+    index("beast_data_adventurers_killed_idx").on(table.adventurers_killed.desc()),
+    index("beast_data_updated_at_idx").on(table.updated_at.desc()),
   ]
 );
 
@@ -380,49 +381,49 @@ export const beastData = pgTable(
  * Categories: Battle, Beast Upgrade, Rewards, Arriving to Summit, LS Events
  * Includes both direct events and derived events (stat changes detected by comparing old vs new state).
  */
-export const summitLog = pgTable(
+export const summit_log = pgTable(
   "summit_log",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
-    eventIndex: integer("event_index").notNull(),
+    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
+    event_index: integer("event_index").notNull(),
     category: text("category").notNull(),
-    subCategory: text("sub_category").notNull(),
+    sub_category: text("sub_category").notNull(),
     data: jsonb("data").notNull(),
     player: text("player"), // Nullable, for filtering
-    tokenId: integer("token_id"), // Nullable, for filtering
-    transactionHash: text("transaction_hash").notNull(),
+    token_id: integer("token_id"), // Nullable, for filtering
+    transaction_hash: text("transaction_hash").notNull(),
     // Timestamps
-    createdAt: timestamp("created_at").notNull(), // Starknet block timestamp
-    indexedAt: timestamp("indexed_at").notNull(), // When DNA delivered block
-    insertedAt: timestamp("inserted_at").defaultNow(), // When row inserted
+    created_at: timestamp("created_at").notNull(), // Starknet block timestamp
+    indexed_at: timestamp("indexed_at").notNull(), // When DNA delivered block
+    inserted_at: timestamp("inserted_at").defaultNow(), // When row inserted
   },
   (table) => [
     // Unique constraint for idempotent re-indexing
-    uniqueIndex("summit_log_block_tx_event_idx").on(table.blockNumber, table.transactionHash, table.eventIndex),
+    uniqueIndex("summit_log_block_tx_event_idx").on(table.block_number, table.transaction_hash, table.event_index),
     // Ordering index
-    index("summit_log_order_idx").on(table.blockNumber.desc(), table.eventIndex.desc()),
+    index("summit_log_order_idx").on(table.block_number.desc(), table.event_index.desc()),
     // Filter indexes
     index("summit_log_category_idx").on(table.category),
     index("summit_log_player_idx").on(table.player),
-    index("summit_log_token_id_idx").on(table.tokenId),
+    index("summit_log_token_id_idx").on(table.token_id),
     // Combined index for player activity feed
-    index("summit_log_player_order_idx").on(table.player, table.blockNumber.desc(), table.eventIndex.desc()),
+    index("summit_log_player_order_idx").on(table.player, table.block_number.desc(), table.event_index.desc()),
   ]
 );
 
 // Export all schema tables for Drizzle
 export const schema = {
-  beastStats,
+  beast_stats,
   battles,
-  rewardsEarned,
-  rewardsClaimed,
-  poisonEvents,
-  diplomacyGroups,
-  corpseEvents,
-  skullEvents,
-  beastOwners,
+  rewards_earned,
+  rewards_claimed,
+  poison_events,
+  diplomacy_groups,
+  corpse_events,
+  skull_events,
+  beast_owners,
   beasts,
-  beastData,
-  summitLog,
+  beast_data,
+  summit_log,
 };
