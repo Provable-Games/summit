@@ -3,11 +3,8 @@
  * Uses PostgreSQL LISTEN/NOTIFY for real-time updates
  *
  * Channels:
- * - beast_update: Beast stat changes (LiveBeastStatsEvent, BeastUpdatesEvent)
- * - battle: Combat events (BattleEvent)
- * - summit: Summit takeover events (SummitEvent)
- * - poison: Poison attack events (PoisonEvent)
- * - reward: Reward distribution events (RewardEvent)
+ * - summit_update: Beast stats updates (current_health > 0)
+ * - summit_log: Activity feed (all summit_log inserts)
  */
 
 import { pool } from "../db/client.js";
@@ -20,7 +17,7 @@ interface WebSocketLike {
 }
 
 // Subscription channels
-export type Channel = "beast_update" | "battle" | "summit" | "poison" | "reward";
+export type Channel = "summit_update" | "summit_log";
 
 // Client subscription state
 interface ClientSubscription {
@@ -29,8 +26,8 @@ interface ClientSubscription {
   beastTokenIds?: Set<number>; // Optional filter for specific beasts
 }
 
-// Notification payload interfaces
-interface BeastUpdatePayload {
+// Payload for summit updates (beast_stats with current_health > 0)
+interface SummitUpdatePayload {
   token_id: number;
   current_health: number;
   bonus_health: number;
@@ -52,72 +49,21 @@ interface BeastUpdatePayload {
   transaction_hash: string;
   created_at: string;
   indexed_at: string;
-  inserted_at: string;
 }
 
-interface BattlePayload {
-  attacking_beast_token_id: number;
-  attack_index: number;
-  defending_beast_token_id: number;
-  attack_count: number;
-  attack_damage: number;
-  critical_attack_count: number;
-  critical_attack_damage: number;
-  counter_attack_count: number;
-  counter_attack_damage: number;
-  critical_counter_attack_count: number;
-  critical_counter_attack_damage: number;
-  attack_potions: number;
-  xp_gained: number;
+// Payload for summit_log inserts (activity feed)
+interface SummitLogPayload {
+  id: string;
   block_number: string;
+  event_index: number;
+  category: string;
+  sub_category: string;
+  data: Record<string, unknown>;
+  player: string | null;
+  token_id: number | null;
   transaction_hash: string;
   created_at: string;
   indexed_at: string;
-  inserted_at: string;
-}
-
-interface SummitPayload {
-  beast_token_id: number;
-  beast_id: number;
-  beast_prefix: number;
-  beast_suffix: number;
-  beast_level: number;
-  beast_health: number;
-  beast_shiny: number;
-  beast_animated: number;
-  current_health: number;
-  bonus_health: number;
-  blocks_held: number;
-  owner: string;
-  block_number: string;
-  transaction_hash: string;
-  created_at: string;
-  indexed_at: string;
-  inserted_at: string;
-}
-
-interface PoisonPayload {
-  beast_token_id: number;
-  block_timestamp: string;
-  count: number;
-  player: string;
-  block_number: string;
-  transaction_hash: string;
-  created_at: string;
-  indexed_at: string;
-  inserted_at: string;
-}
-
-interface RewardPayload {
-  reward_block_number: string;
-  beast_token_id: number;
-  owner: string;
-  amount: number;
-  block_number: string;
-  transaction_hash: string;
-  created_at: string;
-  indexed_at: string;
-  inserted_at: string;
 }
 
 // Subscription hub class
@@ -158,15 +104,10 @@ export class SubscriptionHub {
       });
 
       // Subscribe to channels
-      await this.pgClient.query("LISTEN beast_update");
-      await this.pgClient.query("LISTEN battle");
-      await this.pgClient.query("LISTEN summit");
-      await this.pgClient.query("LISTEN poison");
-      await this.pgClient.query("LISTEN reward");
+      await this.pgClient.query("LISTEN summit_update");
+      await this.pgClient.query("LISTEN summit_log_insert");
 
-      console.log(
-        "[SubscriptionHub] Listening on: beast_update, battle, summit, poison, reward"
-      );
+      console.log("[SubscriptionHub] Listening on: summit_update, summit_log_insert");
     } catch (error) {
       console.error("[SubscriptionHub] Failed to connect:", error);
       this.reconnect();
@@ -218,20 +159,11 @@ export class SubscriptionHub {
       );
 
       switch (msg.channel) {
-        case "beast_update":
-          this.broadcastBeastUpdate(payload as BeastUpdatePayload);
+        case "summit_update":
+          this.broadcastSummitUpdate(payload as SummitUpdatePayload);
           break;
-        case "battle":
-          this.broadcastBattle(payload as BattlePayload);
-          break;
-        case "summit":
-          this.broadcastSummit(payload as SummitPayload);
-          break;
-        case "poison":
-          this.broadcastPoison(payload as PoisonPayload);
-          break;
-        case "reward":
-          this.broadcastReward(payload as RewardPayload);
+        case "summit_log_insert":
+          this.broadcastSummitLog(payload as SummitLogPayload);
           break;
         default:
           console.log(`[SubscriptionHub] Unknown channel: ${msg.channel}`);
@@ -247,11 +179,12 @@ export class SubscriptionHub {
   }
 
   /**
-   * Broadcast beast update to subscribed clients
+   * Broadcast summit update to subscribed clients
+   * Triggered when beast_stats is updated with current_health > 0
    */
-  private broadcastBeastUpdate(payload: BeastUpdatePayload): void {
+  private broadcastSummitUpdate(payload: SummitUpdatePayload): void {
     const message = JSON.stringify({
-      type: "beast_update",
+      type: "summit_update",
       data: {
         token_id: payload.token_id,
         current_health: payload.current_health,
@@ -273,14 +206,13 @@ export class SubscriptionHub {
         block_number: payload.block_number,
         transaction_hash: payload.transaction_hash,
         created_at: payload.created_at,
+        indexed_at: payload.indexed_at,
       },
     });
 
     let sentCount = 0;
-    for (const [clientId, client] of this.clients) {
-      if (!client.channels.has("beast_update")) {
-        continue;
-      }
+    for (const [, client] of this.clients) {
+      if (!client.channels.has("summit_update")) continue;
 
       // Filter by beast token ID if specified
       if (client.beastTokenIds && !client.beastTokenIds.has(payload.token_id)) {
@@ -291,115 +223,38 @@ export class SubscriptionHub {
       sentCount++;
     }
     console.log(
-      `[SubscriptionHub] Beast update broadcast to ${sentCount}/${this.clients.size} clients`
+      `[SubscriptionHub] Summit update broadcast to ${sentCount}/${this.clients.size} clients`
     );
   }
 
   /**
-   * Broadcast battle to subscribed clients
+   * Broadcast summit log entry to subscribed clients
+   * Triggered on every summit_log insert for activity feed updates
    */
-  private broadcastBattle(payload: BattlePayload): void {
+  private broadcastSummitLog(payload: SummitLogPayload): void {
     const message = JSON.stringify({
-      type: "battle",
+      type: "summit_log",
       data: {
-        attacking_beast_token_id: payload.attacking_beast_token_id,
-        attack_index: payload.attack_index,
-        defending_beast_token_id: payload.defending_beast_token_id,
-        attack_count: payload.attack_count,
-        attack_damage: payload.attack_damage,
-        critical_attack_count: payload.critical_attack_count,
-        critical_attack_damage: payload.critical_attack_damage,
-        counter_attack_count: payload.counter_attack_count,
-        counter_attack_damage: payload.counter_attack_damage,
-        critical_counter_attack_count: payload.critical_counter_attack_count,
-        critical_counter_attack_damage: payload.critical_counter_attack_damage,
-        attack_potions: payload.attack_potions,
-        xp_gained: payload.xp_gained,
+        id: payload.id,
         block_number: payload.block_number,
-        transaction_hash: payload.transaction_hash,
-        created_at: payload.created_at,
-      },
-    });
-
-    let sentCount = 0;
-    for (const [, client] of this.clients) {
-      if (!client.channels.has("battle")) continue;
-
-      // Filter by beast token ID if specified (either attacker or defender)
-      if (client.beastTokenIds) {
-        const hasMatch =
-          client.beastTokenIds.has(payload.attacking_beast_token_id) ||
-          client.beastTokenIds.has(payload.defending_beast_token_id);
-        if (!hasMatch) continue;
-      }
-
-      this.send(client.ws, message);
-      sentCount++;
-    }
-    console.log(
-      `[SubscriptionHub] Battle broadcast to ${sentCount}/${this.clients.size} clients`
-    );
-  }
-
-  /**
-   * Broadcast summit takeover to subscribed clients
-   */
-  private broadcastSummit(payload: SummitPayload): void {
-    const message = JSON.stringify({
-      type: "summit",
-      data: {
-        beast_token_id: payload.beast_token_id,
-        beast_id: payload.beast_id,
-        beast_prefix: payload.beast_prefix,
-        beast_suffix: payload.beast_suffix,
-        beast_level: payload.beast_level,
-        beast_health: payload.beast_health,
-        beast_shiny: payload.beast_shiny,
-        beast_animated: payload.beast_animated,
-        current_health: payload.current_health,
-        bonus_health: payload.bonus_health,
-        blocks_held: payload.blocks_held,
-        owner: payload.owner,
-        block_number: payload.block_number,
-        transaction_hash: payload.transaction_hash,
-        created_at: payload.created_at,
-      },
-    });
-
-    let sentCount = 0;
-    for (const [, client] of this.clients) {
-      if (!client.channels.has("summit")) continue;
-      this.send(client.ws, message);
-      sentCount++;
-    }
-    console.log(
-      `[SubscriptionHub] Summit broadcast to ${sentCount}/${this.clients.size} clients`
-    );
-  }
-
-  /**
-   * Broadcast poison attack to subscribed clients
-   */
-  private broadcastPoison(payload: PoisonPayload): void {
-    const message = JSON.stringify({
-      type: "poison",
-      data: {
-        beast_token_id: payload.beast_token_id,
-        block_timestamp: payload.block_timestamp,
-        count: payload.count,
+        event_index: payload.event_index,
+        category: payload.category,
+        sub_category: payload.sub_category,
+        data: payload.data,
         player: payload.player,
-        block_number: payload.block_number,
+        token_id: payload.token_id,
         transaction_hash: payload.transaction_hash,
         created_at: payload.created_at,
+        indexed_at: payload.indexed_at,
       },
     });
 
     let sentCount = 0;
     for (const [, client] of this.clients) {
-      if (!client.channels.has("poison")) continue;
+      if (!client.channels.has("summit_log")) continue;
 
       // Filter by beast token ID if specified
-      if (client.beastTokenIds && !client.beastTokenIds.has(payload.beast_token_id)) {
+      if (client.beastTokenIds && payload.token_id !== null && !client.beastTokenIds.has(payload.token_id)) {
         continue;
       }
 
@@ -407,41 +262,7 @@ export class SubscriptionHub {
       sentCount++;
     }
     console.log(
-      `[SubscriptionHub] Poison broadcast to ${sentCount}/${this.clients.size} clients`
-    );
-  }
-
-  /**
-   * Broadcast reward to subscribed clients
-   */
-  private broadcastReward(payload: RewardPayload): void {
-    const message = JSON.stringify({
-      type: "reward",
-      data: {
-        reward_block_number: payload.reward_block_number,
-        beast_token_id: payload.beast_token_id,
-        owner: payload.owner,
-        amount: payload.amount,
-        block_number: payload.block_number,
-        transaction_hash: payload.transaction_hash,
-        created_at: payload.created_at,
-      },
-    });
-
-    let sentCount = 0;
-    for (const [, client] of this.clients) {
-      if (!client.channels.has("reward")) continue;
-
-      // Filter by beast token ID if specified
-      if (client.beastTokenIds && !client.beastTokenIds.has(payload.beast_token_id)) {
-        continue;
-      }
-
-      this.send(client.ws, message);
-      sentCount++;
-    }
-    console.log(
-      `[SubscriptionHub] Reward broadcast to ${sentCount}/${this.clients.size} clients`
+      `[SubscriptionHub] Summit log broadcast to ${sentCount}/${this.clients.size} clients`
     );
   }
 

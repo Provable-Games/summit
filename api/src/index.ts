@@ -1,6 +1,5 @@
 /**
  * Summit API Server
- * REST endpoints + WebSocket subscriptions for real-time game updates
  */
 
 import { Hono } from "hono";
@@ -9,15 +8,11 @@ import { logger } from "hono/logger";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { v4 as uuidv4 } from "uuid";
+import { eq, sql, desc, and } from "drizzle-orm";
 import "dotenv/config";
 
-import beastsRoute from "./routes/beasts.js";
-import battlesRoute from "./routes/battles.js";
-import summitRoute from "./routes/summit.js";
-import rewardsRoute from "./routes/rewards.js";
-import eventsRoute from "./routes/events.js";
-import diplomacyRoute from "./routes/diplomacy.js";
-import { checkDatabaseHealth, pool } from "./db/client.js";
+import { checkDatabaseHealth, db, pool } from "./db/client.js";
+import { beasts, beastOwners, beastData, beastStats, summitLog } from "./db/schema.js";
 import { getSubscriptionHub } from "./ws/subscriptions.js";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
@@ -26,10 +21,6 @@ const app = new Hono();
 
 // Middleware
 app.use("*", logger());
-
-// CORS Configuration
-// Allow all origins by echoing back the request origin
-// This is required because credentials:true doesn't work with literal "*"
 app.use(
   "*",
   cors({
@@ -40,7 +31,7 @@ app.use(
   })
 );
 
-// Health check endpoint
+// Health check
 app.get("/health", async (c) => {
   const dbHealthy = await checkDatabaseHealth();
   const wsStatus = getSubscriptionHub().getStatus();
@@ -53,12 +44,147 @@ app.get("/health", async (c) => {
   });
 });
 
+/**
+ * GET /beasts/:owner - Get all beasts for an owner with stats and data joined
+ */
+app.get("/beasts/:owner", async (c) => {
+  const owner = c.req.param("owner");
+
+  const results = await db
+    .select({
+      // Beast NFT metadata
+      tokenId: beasts.tokenId,
+      beastId: beasts.beastId,
+      prefix: beasts.prefix,
+      suffix: beasts.suffix,
+      level: beasts.level,
+      health: beasts.health,
+      shiny: beasts.shiny,
+      animated: beasts.animated,
+      // Beast data (Loot Survivor stats)
+      adventurersKilled: beastData.adventurersKilled,
+      lastDeathTimestamp: beastData.lastDeathTimestamp,
+      // Beast stats (Summit game state)
+      currentHealth: beastStats.currentHealth,
+      bonusHealth: beastStats.bonusHealth,
+      bonusXp: beastStats.bonusXp,
+      attackStreak: beastStats.attackStreak,
+      revivalCount: beastStats.revivalCount,
+      extraLives: beastStats.extraLives,
+      hasClaimedPotions: beastStats.hasClaimedPotions,
+      blocksHeld: beastStats.blocksHeld,
+      spirit: beastStats.spirit,
+      luck: beastStats.luck,
+      specials: beastStats.specials,
+      wisdom: beastStats.wisdom,
+      diplomacy: beastStats.diplomacy,
+      rewardsEarned: beastStats.rewardsEarned,
+      rewardsClaimed: beastStats.rewardsClaimed,
+    })
+    .from(beastOwners)
+    .innerJoin(beasts, eq(beasts.tokenId, beastOwners.tokenId))
+    .leftJoin(beastData, eq(beastData.tokenId, beastOwners.tokenId))
+    .leftJoin(beastStats, eq(beastStats.tokenId, beastOwners.tokenId))
+    .where(eq(beastOwners.owner, owner));
+
+  return c.json(
+    results.map((r) => ({
+      tokenId: r.tokenId,
+      beastId: r.beastId,
+      prefix: r.prefix,
+      suffix: r.suffix,
+      level: r.level,
+      health: r.health,
+      shiny: r.shiny,
+      animated: r.animated,
+      adventurersKilled: r.adventurersKilled?.toString() ?? "0",
+      lastDeathTimestamp: r.lastDeathTimestamp?.toString() ?? "0",
+      currentHealth: r.currentHealth ?? 0,
+      bonusHealth: r.bonusHealth ?? 0,
+      bonusXp: r.bonusXp ?? 0,
+      attackStreak: r.attackStreak ?? 0,
+      revivalCount: r.revivalCount ?? 0,
+      extraLives: r.extraLives ?? 0,
+      hasClaimedPotions: r.hasClaimedPotions ?? 0,
+      blocksHeld: r.blocksHeld ?? 0,
+      spirit: r.spirit ?? 0,
+      luck: r.luck ?? 0,
+      specials: r.specials ?? 0,
+      wisdom: r.wisdom ?? 0,
+      diplomacy: r.diplomacy ?? 0,
+      rewardsEarned: r.rewardsEarned ?? 0,
+      rewardsClaimed: r.rewardsClaimed ?? 0,
+    }))
+  );
+});
+
+/**
+ * GET /logs - Get paginated summit_log with optional filters
+ *
+ * Query params:
+ * - limit: Number of results (default: 50, max: 100)
+ * - offset: Pagination offset (default: 0)
+ * - category: Filter by category (optional)
+ * - subCategory: Filter by sub_category (optional)
+ * - player: Filter by player address (optional)
+ */
+app.get("/logs", async (c) => {
+  const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 100);
+  const offset = parseInt(c.req.query("offset") || "0", 10);
+  const category = c.req.query("category");
+  const subCategory = c.req.query("subCategory");
+  const player = c.req.query("player");
+
+  // Build where conditions
+  const conditions = [];
+  if (category) conditions.push(eq(summitLog.category, category));
+  if (subCategory) conditions.push(eq(summitLog.subCategory, subCategory));
+  if (player) conditions.push(eq(summitLog.player, player));
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Get results
+  const results = await db
+    .select()
+    .from(summitLog)
+    .where(whereClause)
+    .orderBy(desc(summitLog.blockNumber), desc(summitLog.eventIndex))
+    .limit(limit)
+    .offset(offset);
+
+  // Get total count
+  const countResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(summitLog)
+    .where(whereClause);
+  const total = Number(countResult[0]?.count ?? 0);
+
+  return c.json({
+    data: results.map((r) => ({
+      id: r.id,
+      blockNumber: r.blockNumber.toString(),
+      eventIndex: r.eventIndex,
+      category: r.category,
+      subCategory: r.subCategory,
+      data: JSON.parse(r.data),
+      player: r.player,
+      tokenId: r.tokenId,
+      transactionHash: r.transactionHash,
+      createdAt: r.createdAt.toISOString(),
+    })),
+    pagination: {
+      limit,
+      offset,
+      total,
+      hasMore: offset + results.length < total,
+    },
+  });
+});
+
 // Debug endpoints - only available in development
 if (isDevelopment) {
-  // Debug endpoint to send a test NOTIFY for beast_update
-  app.post("/debug/test-beast-update", async (c) => {
+  app.post("/debug/test-summit-update", async (c) => {
     const client = await pool.connect();
-
     try {
       const body = await c.req.json().catch(() => ({}));
       const tokenId = body.token_id || 1;
@@ -81,18 +207,17 @@ if (isDevelopment) {
         diplomacy: 0,
         rewards_earned: 100,
         rewards_claimed: 50,
-        block_number: "0",
-        transaction_hash: "0x0",
+        block_number: "123456",
+        transaction_hash: "0x123",
         created_at: new Date().toISOString(),
         indexed_at: new Date().toISOString(),
-        inserted_at: new Date().toISOString(),
       });
 
-      await client.query(`SELECT pg_notify('beast_update', $1)`, [testPayload]);
+      await client.query(`SELECT pg_notify('summit_update', $1)`, [testPayload]);
 
       return c.json({
         success: true,
-        message: "Test NOTIFY sent on 'beast_update' channel",
+        message: "Test NOTIFY sent on 'summit_update' channel",
         payload: JSON.parse(testPayload),
       });
     } finally {
@@ -100,74 +225,30 @@ if (isDevelopment) {
     }
   });
 
-  // Debug endpoint to send a test NOTIFY for battle
-  app.post("/debug/test-battle", async (c) => {
+  app.post("/debug/test-summit-log", async (c) => {
     const client = await pool.connect();
-
     try {
+      const body = await c.req.json().catch(() => ({}));
+
       const testPayload = JSON.stringify({
-        attacking_beast_token_id: 1,
-        attack_index: 0,
-        defending_beast_token_id: 2,
-        attack_count: 3,
-        attack_damage: 50,
-        critical_attack_count: 1,
-        critical_attack_damage: 25,
-        counter_attack_count: 2,
-        counter_attack_damage: 30,
-        critical_counter_attack_count: 0,
-        critical_counter_attack_damage: 0,
-        attack_potions: 0,
-        xp_gained: 10,
-        block_number: "0",
-        transaction_hash: "0x0",
+        id: "test-" + Date.now(),
+        block_number: "123456",
+        event_index: 0,
+        category: body.category || "Battle",
+        sub_category: body.sub_category || "BattleEvent",
+        data: body.data || { attackingBeastTokenId: 1, defendingBeastTokenId: 2 },
+        player: body.player || "0x123",
+        token_id: body.token_id || 1,
+        transaction_hash: "0x456",
         created_at: new Date().toISOString(),
         indexed_at: new Date().toISOString(),
-        inserted_at: new Date().toISOString(),
       });
 
-      await client.query(`SELECT pg_notify('battle', $1)`, [testPayload]);
+      await client.query(`SELECT pg_notify('summit_log_insert', $1)`, [testPayload]);
 
       return c.json({
         success: true,
-        message: "Test NOTIFY sent on 'battle' channel",
-        payload: JSON.parse(testPayload),
-      });
-    } finally {
-      client.release();
-    }
-  });
-
-  // Debug endpoint to send a test NOTIFY for summit
-  app.post("/debug/test-summit", async (c) => {
-    const client = await pool.connect();
-
-    try {
-      const testPayload = JSON.stringify({
-        beast_token_id: 1,
-        beast_id: 5,
-        beast_prefix: 1,
-        beast_suffix: 2,
-        beast_level: 10,
-        beast_health: 100,
-        beast_shiny: 0,
-        beast_animated: 0,
-        current_health: 95,
-        bonus_health: 50,
-        blocks_held: 500,
-        owner: "0x123",
-        block_number: "0",
-        transaction_hash: "0x0",
-        created_at: new Date().toISOString(),
-        indexed_at: new Date().toISOString(),
-        inserted_at: new Date().toISOString(),
-      });
-
-      await client.query(`SELECT pg_notify('summit', $1)`, [testPayload]);
-
-      return c.json({
-        success: true,
-        message: "Test NOTIFY sent on 'summit' channel",
+        message: "Test NOTIFY sent on 'summit_log_insert' channel",
         payload: JSON.parse(testPayload),
       });
     } finally {
@@ -176,66 +257,24 @@ if (isDevelopment) {
   });
 }
 
-// Mount REST routes
-app.route("/beasts", beastsRoute);
-app.route("/battles", battlesRoute);
-app.route("/summit", summitRoute);
-app.route("/rewards", rewardsRoute);
-app.route("/events", eventsRoute);
-app.route("/diplomacy", diplomacyRoute);
-
 // Root endpoint
 app.get("/", (c) => {
   const endpoints: Record<string, unknown> = {
     health: "GET /health",
     beasts: {
-      list: "GET /beasts",
-      leaderboard: "GET /beasts/leaderboard",
-      get: "GET /beasts/:tokenId",
-      bulk: "POST /beasts/bulk",
+      byOwner: "GET /beasts/:owner",
     },
-    battles: {
-      list: "GET /battles",
-      byBeast: "GET /battles/beast/:tokenId",
-      stats: "GET /battles/stats",
+    websocket: {
+      endpoint: "WS /ws",
+      channels: ["summit_update", "summit_log"],
+      subscribe: '{"type":"subscribe","channels":["summit_update","summit_log"]}',
     },
-    summit: {
-      current: "GET /summit/current",
-      history: "GET /summit/history",
-      byBeast: "GET /summit/beast/:tokenId",
-      byOwner: "GET /summit/owner/:address",
-    },
-    rewards: {
-      list: "GET /rewards",
-      leaderboard: "GET /rewards/leaderboard",
-      byPlayer: "GET /rewards/player/:address",
-      byBeast: "GET /rewards/beast/:tokenId",
-      claimed: "GET /rewards/claimed",
-      claimedByPlayer: "GET /rewards/claimed/player/:address",
-    },
-    diplomacy: {
-      bySpecialsHash: "GET /diplomacy/:specialsHash",
-    },
-    events: {
-      poison: "GET /events/poison",
-      poisonByBeast: "GET /events/poison/beast/:tokenId",
-      poisonByPlayer: "GET /events/poison/player/:address",
-      corpse: "GET /events/corpse",
-      corpseByPlayer: "GET /events/corpse/player/:address",
-      skull: "GET /events/skull",
-      skullByBeast: "GET /events/skull/beast/:tokenId",
-      skullLeaderboard: "GET /events/skull/leaderboard",
-      skullBulk: "POST /events/skull/bulk",
-    },
-    websocket: "WS /ws",
   };
 
-  // Only include debug endpoints in development
   if (isDevelopment) {
     endpoints.debug = {
-      testBeastUpdate: "POST /debug/test-beast-update",
-      testBattle: "POST /debug/test-battle",
-      testSummit: "POST /debug/test-summit",
+      testSummitUpdate: "POST /debug/test-summit-update",
+      testSummitLog: "POST /debug/test-summit-log",
     };
   }
 
@@ -246,10 +285,9 @@ app.get("/", (c) => {
   });
 });
 
-// Create WebSocket upgrade handler
+// WebSocket
 const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 
-// WebSocket endpoint for real-time subscriptions
 app.get(
   "/ws",
   upgradeWebSocket(() => {
@@ -258,16 +296,12 @@ app.get(
 
     return {
       onOpen(_event, ws) {
-        hub.addClient(
-          clientId,
-          ws.raw as unknown as Parameters<typeof hub.addClient>[1]
-        );
+        hub.addClient(clientId, ws.raw as unknown as Parameters<typeof hub.addClient>[1]);
         console.log(`[WebSocket] Client connected: ${clientId}`);
       },
 
       onMessage(event, _ws) {
-        const message =
-          typeof event.data === "string" ? event.data : event.data.toString();
+        const message = typeof event.data === "string" ? event.data : event.data.toString();
         hub.handleMessage(clientId, message);
       },
 
@@ -300,7 +334,6 @@ const server = serve(
   }
 );
 
-// Inject WebSocket handling
 injectWebSocket(server);
 
 // Graceful shutdown

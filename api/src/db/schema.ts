@@ -1,16 +1,5 @@
 /**
  * Summit API Database Schema
- *
- * Copy of the indexer schema for API queries.
- * 8 tables for all contract events:
- * 1. beast_stats - Current beast state (upsert on token_id)
- * 2. battles - Combat history (append-only)
- * 3. rewards - Reward distribution (append-only)
- * 4. rewards_claimed - Rewards claimed by players (append-only)
- * 5. poison_events - Poison attacks (append-only)
- * 6. diplomacy_groups - Diplomacy configurations (append-only)
- * 7. corpse_events - Corpse creation (append-only)
- * 8. skull_events - Skull claims (append-only)
  */
 
 import {
@@ -26,7 +15,68 @@ import {
 } from "drizzle-orm/pg-core";
 
 /**
- * Beast Stats table - current state of each beast
+ * Beasts table - NFT beast metadata
+ */
+export const beasts = pgTable(
+  "beasts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tokenId: integer("token_id").notNull().unique(),
+    beastId: smallint("beast_id").notNull(),
+    prefix: smallint("prefix").notNull(),
+    suffix: smallint("suffix").notNull(),
+    level: smallint("level").notNull(),
+    health: smallint("health").notNull(),
+    shiny: smallint("shiny").notNull(),
+    animated: smallint("animated").notNull(),
+    createdAt: timestamp("created_at").notNull(),
+    indexedAt: timestamp("indexed_at").notNull(),
+    insertedAt: timestamp("inserted_at").defaultNow(),
+  },
+  (table) => [
+    index("beasts_token_id_idx").on(table.tokenId),
+    index("beasts_beast_id_idx").on(table.beastId),
+  ]
+);
+
+/**
+ * Beast Owners table - current owner of each beast
+ */
+export const beastOwners = pgTable(
+  "beast_owners",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    tokenId: integer("token_id").notNull().unique(),
+    owner: text("owner").notNull(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("beast_owners_owner_idx").on(table.owner),
+    index("beast_owners_token_id_idx").on(table.tokenId),
+  ]
+);
+
+/**
+ * Beast Data table - Loot Survivor stats (adventurers killed, etc.)
+ */
+export const beastData = pgTable(
+  "beast_data",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    entityHash: text("entity_hash").notNull().unique(),
+    adventurersKilled: bigint("adventurers_killed", { mode: "bigint" }).notNull(),
+    lastDeathTimestamp: bigint("last_death_timestamp", { mode: "bigint" }).notNull(),
+    tokenId: integer("token_id"),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("beast_data_token_id_idx").on(table.tokenId),
+    index("beast_data_entity_hash_idx").on(table.entityHash),
+  ]
+);
+
+/**
+ * Beast Stats table - current Summit game state of each beast
  */
 export const beastStats = pgTable(
   "beast_stats",
@@ -275,9 +325,45 @@ export const skullEvents = pgTable(
   ]
 );
 
+/**
+ * Summit Log table - unified activity feed
+ */
+export const summitLog = pgTable(
+  "summit_log",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
+    eventIndex: integer("event_index").notNull(),
+    category: text("category").notNull(),
+    subCategory: text("sub_category").notNull(),
+    data: text("data").notNull(), // jsonb stored as text
+    player: text("player"),
+    tokenId: integer("token_id"),
+    transactionHash: text("transaction_hash").notNull(),
+    createdAt: timestamp("created_at").notNull(),
+    indexedAt: timestamp("indexed_at").notNull(),
+    insertedAt: timestamp("inserted_at").defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("summit_log_block_tx_event_idx").on(
+      table.blockNumber,
+      table.transactionHash,
+      table.eventIndex
+    ),
+    index("summit_log_order_idx").on(table.blockNumber.desc(), table.eventIndex.desc()),
+    index("summit_log_category_idx").on(table.category),
+    index("summit_log_player_idx").on(table.player),
+    index("summit_log_token_id_idx").on(table.tokenId),
+  ]
+);
+
 // Export all schema tables
 export const schema = {
+  beasts,
+  beastOwners,
+  beastData,
   beastStats,
+  summitLog,
   battles,
   rewards,
   rewardsClaimed,
