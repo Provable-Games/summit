@@ -1,6 +1,6 @@
 import { useStarknetApi } from '@/api/starknet';
+import { useSummitApi } from '@/api/summitApi';
 import { useStatistics } from '@/contexts/Statistics';
-import { useGameTokens } from '@/dojo/useGameTokens';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { addAddressPadding } from 'starknet';
@@ -14,9 +14,9 @@ import RewardsRemainingBar from './RewardsRemainingBar';
 import { SUMMIT_REWARD_PER_BLOCK } from '@/utils/summitRewards';
 
 function Leaderboard() {
-  const { beastsRegistered, beastsAlive, refreshBeastsAlive } = useStatistics()
+  const { beastsRegistered, beastsAlive, fetchBeastCounts } = useStatistics()
   const { summit, leaderboard, setLeaderboard } = useGameStore()
-  const { getLeaderboard } = useGameTokens()
+  const { getLeaderboard } = useSummitApi()
   const { getCurrentBlock } = useStarknetApi()
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(true)
   const [addressNames, setAddressNames] = useState({})
@@ -212,7 +212,7 @@ function Leaderboard() {
           <IconButton
             aria-label="Refresh beasts alive"
             size="small"
-            onClick={refreshBeastsAlive}
+            onClick={fetchBeastCounts}
             sx={styles.refreshButton}
           >
             <RefreshIcon sx={{ color: gameColors.accentGreen, fontSize: '16px' }} />

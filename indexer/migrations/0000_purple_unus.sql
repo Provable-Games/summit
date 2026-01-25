@@ -179,6 +179,7 @@ CREATE INDEX "beast_owners_token_id_idx" ON "beast_owners" USING btree ("token_i
 CREATE INDEX "beast_stats_current_health_idx" ON "beast_stats" USING btree ("current_health");--> statement-breakpoint
 CREATE INDEX "beast_stats_blocks_held_idx" ON "beast_stats" USING btree ("blocks_held" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "beast_stats_updated_at_idx" ON "beast_stats" USING btree ("updated_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "beast_stats_diplomacy_token_idx" ON "beast_stats" USING btree ("token_id") WHERE diplomacy > 0;--> statement-breakpoint
 
 
 CREATE INDEX "beasts_token_id_idx" ON "beasts" USING btree ("token_id");--> statement-breakpoint

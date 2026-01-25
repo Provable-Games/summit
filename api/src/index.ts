@@ -13,7 +13,7 @@ import { eq, sql, desc, and } from "drizzle-orm";
 import "dotenv/config";
 
 import { checkDatabaseHealth, db, pool } from "./db/client.js";
-import { beasts, beast_owners, beast_data, beast_stats, summit_log, skulls_claimed } from "./db/schema.js";
+import { beasts, beast_owners, beast_data, beast_stats, summit_log, skulls_claimed, rewards_earned } from "./db/schema.js";
 import { getSubscriptionHub } from "./ws/subscriptions.js";
 import {
   BEAST_NAMES,
@@ -288,81 +288,251 @@ app.get("/logs", async (c) => {
   });
 });
 
-// Debug endpoints - only available in development
-if (isDevelopment) {
-  app.post("/debug/test-summit-update", async (c) => {
-    const client = await pool.connect();
-    try {
-      const body = await c.req.json().catch(() => ({}));
-      const token_id = body.token_id || 1;
+/**
+ * GET /beasts/stats/counts - Get total beasts vs alive beasts
+ * Total = all beast_stats records
+ * Alive = beasts where death was > 24 hours ago (or never died)
+ */
+app.get("/beasts/stats/counts", async (c) => {
+  const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - 86400;
 
-      const testPayload = JSON.stringify({
-        token_id: token_id,
-        current_health: 100,
-        bonus_health: 50,
-        bonus_xp: 10,
-        attack_streak: 5,
-        last_death_timestamp: "0",
-        revival_count: 0,
-        extra_lives: 0,
-        has_claimed_potions: 0,
-        blocks_held: 1000,
-        spirit: 10,
-        luck: 5,
-        specials: 0,
-        wisdom: 0,
-        diplomacy: 0,
-        rewards_earned: 100,
-        rewards_claimed: 50,
-        block_number: "123456",
-        transaction_hash: "0x123",
-        created_at: new Date().toISOString(),
-        indexed_at: new Date().toISOString(),
-      });
+  const result = await db
+    .select({
+      total: sql<number>`count(*)`,
+      alive: sql<number>`count(*) filter (where ${beast_stats.last_death_timestamp} < ${twentyFourHoursAgo})`,
+    })
+    .from(beast_stats);
 
-      await client.query(`SELECT pg_notify('summit_update', $1)`, [testPayload]);
+  const { total, alive } = result[0] ?? { total: 0, alive: 0 };
 
-      return c.json({
-        success: true,
-        message: "Test NOTIFY sent on 'summit_update' channel",
-        payload: JSON.parse(testPayload),
-      });
-    } finally {
-      client.release();
-    }
+  return c.json({
+    total: Number(total),
+    alive: Number(alive),
+    dead: Number(total) - Number(alive),
   });
+});
 
-  app.post("/debug/test-summit-log", async (c) => {
-    const client = await pool.connect();
-    try {
-      const body = await c.req.json().catch(() => ({}));
+/**
+ * GET /beasts/stats/top5000-cutoff - Get the cutoff values for top 5000 beasts
+ */
+app.get("/beasts/stats/top5000-cutoff", async (c) => {
+  const results = await db
+    .select({
+      blocks_held: beast_stats.blocks_held,
+      bonus_xp: beast_stats.bonus_xp,
+      last_death_timestamp: beast_stats.last_death_timestamp,
+    })
+    .from(beast_stats)
+    .where(sql`${beast_stats.blocks_held} > 0`)
+    .orderBy(
+      desc(beast_stats.blocks_held),
+      desc(beast_stats.bonus_xp),
+      desc(beast_stats.last_death_timestamp)
+    )
+    .limit(5000);
 
-      const testPayload = JSON.stringify({
-        id: "test-" + Date.now(),
-        block_number: "123456",
-        event_index: 0,
-        category: body.category || "Battle",
-        sub_category: body.sub_category || "BattleEvent",
-        data: body.data || { attacking_beast_token_id: 1, defending_beast_token_id: 2 },
-        player: body.player || "0x123",
-        token_id: body.token_id || 1,
-        transaction_hash: "0x456",
-        created_at: new Date().toISOString(),
-        indexed_at: new Date().toISOString(),
-      });
+  if (results.length < 5000) {
+    return c.json({
+      blocks_held: 0,
+      bonus_xp: 0,
+      last_death_timestamp: 0,
+    });
+  }
 
-      await client.query(`SELECT pg_notify('summit_log_insert', $1)`, [testPayload]);
-
-      return c.json({
-        success: true,
-        message: "Test NOTIFY sent on 'summit_log_insert' channel",
-        payload: JSON.parse(testPayload),
-      });
-    } finally {
-      client.release();
-    }
+  const cutoff = results[4999];
+  return c.json({
+    blocks_held: cutoff.blocks_held,
+    bonus_xp: cutoff.bonus_xp,
+    last_death_timestamp: Number(cutoff.last_death_timestamp),
   });
-}
+});
+
+/**
+ * GET /beasts/stats/top - Get paginated top beasts by blocks_held with metadata
+ *
+ * Query params:
+ * - limit: Number of results (default: 25, max: 100)
+ * - offset: Pagination offset (default: 0)
+ *
+ * Returns beasts with full metadata and pagination info including total count
+ */
+app.get("/beasts/stats/top", async (c) => {
+  const limit = Math.min(parseInt(c.req.query("limit") || "25", 10), 100);
+  const offset = parseInt(c.req.query("offset") || "0", 10);
+
+  // Get paginated results with beast metadata
+  const results = await db
+    .select({
+      token_id: beast_stats.token_id,
+      blocks_held: beast_stats.blocks_held,
+      bonus_xp: beast_stats.bonus_xp,
+      last_death_timestamp: beast_stats.last_death_timestamp,
+      beast_id: beasts.beast_id,
+      prefix: beasts.prefix,
+      suffix: beasts.suffix,
+      owner: beast_owners.owner,
+    })
+    .from(beast_stats)
+    .innerJoin(beasts, eq(beasts.token_id, beast_stats.token_id))
+    .leftJoin(beast_owners, eq(beast_owners.token_id, beast_stats.token_id))
+    .where(sql`${beast_stats.blocks_held} > 0`)
+    .orderBy(
+      desc(beast_stats.blocks_held),
+      desc(beast_stats.bonus_xp),
+      desc(beast_stats.last_death_timestamp)
+    )
+    .limit(limit)
+    .offset(offset);
+
+  // Get total count
+  const countResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(beast_stats)
+    .where(sql`${beast_stats.blocks_held} > 0`);
+  const total = Number(countResult[0]?.count ?? 0);
+
+  return c.json({
+    data: results.map((r) => {
+      const beastName = BEAST_NAMES[r.beast_id] ?? "Unknown";
+      const prefix = ITEM_NAME_PREFIXES[r.prefix] ?? "";
+      const suffix = ITEM_NAME_SUFFIXES[r.suffix] ?? "";
+      const fullName = prefix && suffix ? `"${prefix} ${suffix}" ${beastName}` : beastName;
+
+      return {
+        token_id: r.token_id,
+        blocks_held: r.blocks_held,
+        bonus_xp: r.bonus_xp,
+        last_death_timestamp: Number(r.last_death_timestamp),
+        owner: r.owner,
+        beast_name: beastName,
+        prefix,
+        suffix,
+        full_name: fullName,
+      };
+    }),
+    pagination: {
+      limit,
+      offset,
+      total,
+      has_more: offset + results.length < total,
+    },
+  });
+});
+
+/**
+ * GET /diplomacy - Get beasts with diplomacy unlocked matching prefix/suffix
+ *
+ * Query params:
+ * - prefix: The prefix ID to match
+ * - suffix: The suffix ID to match
+ *
+ * Returns beasts with owner and stats that have diplomacy unlocked
+ */
+app.get("/diplomacy", async (c) => {
+  const prefix = parseInt(c.req.query("prefix") || "0", 10);
+  const suffix = parseInt(c.req.query("suffix") || "0", 10);
+
+  if (!prefix || !suffix) {
+    return c.json({ error: "prefix and suffix are required" }, 400);
+  }
+
+  const results = await db
+    .select({
+      token_id: beasts.token_id,
+      beast_id: beasts.beast_id,
+      prefix: beasts.prefix,
+      suffix: beasts.suffix,
+      level: beasts.level,
+      health: beasts.health,
+      owner: beast_owners.owner,
+      current_health: beast_stats.current_health,
+      bonus_health: beast_stats.bonus_health,
+      bonus_xp: beast_stats.bonus_xp,
+      blocks_held: beast_stats.blocks_held,
+      spirit: beast_stats.spirit,
+      luck: beast_stats.luck,
+    })
+    .from(beasts)
+    .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+    .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
+    .where(
+      and(
+        eq(beasts.prefix, prefix),
+        eq(beasts.suffix, suffix),
+        sql`${beast_stats.diplomacy} > 0`
+      )
+    );
+
+  return c.json(
+    results.map((r) => {
+      const beastName = BEAST_NAMES[r.beast_id] ?? "Unknown";
+      const prefixName = ITEM_NAME_PREFIXES[r.prefix] ?? "";
+      const suffixName = ITEM_NAME_SUFFIXES[r.suffix] ?? "";
+      const currentLevel = getBeastCurrentLevel(r.level, r.bonus_xp);
+
+      return {
+        token_id: r.token_id,
+        beast_id: r.beast_id,
+        name: beastName,
+        prefix: prefixName,
+        suffix: suffixName,
+        full_name: `"${prefixName} ${suffixName}" ${beastName}`,
+        level: r.level,
+        current_level: currentLevel,
+        health: r.health,
+        current_health: r.current_health,
+        bonus_health: r.bonus_health,
+        bonus_xp: r.bonus_xp,
+        blocks_held: r.blocks_held,
+        spirit: r.spirit,
+        luck: r.luck,
+        owner: r.owner,
+      };
+    })
+  );
+});
+
+/**
+ * GET /diplomacy/all - Get all beasts with diplomacy unlocked
+ * Used for building diplomacy leaderboard (grouped by prefix/suffix with power calculation)
+ */
+app.get("/diplomacy/all", async (c) => {
+  const results = await db
+    .select({
+      token_id: beasts.token_id,
+      beast_id: beasts.beast_id,
+      prefix: beasts.prefix,
+      suffix: beasts.suffix,
+      level: beasts.level,
+      bonus_xp: beast_stats.bonus_xp,
+    })
+    .from(beasts)
+    .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+    .where(sql`${beast_stats.diplomacy} > 0`);
+
+  return c.json(results);
+});
+
+/**
+ * GET /leaderboard - Get rewards leaderboard grouped by owner
+ */
+app.get("/leaderboard", async (c) => {
+  const results = await db
+    .select({
+      owner: rewards_earned.owner,
+      amount: sql<number>`sum(${rewards_earned.amount})`,
+    })
+    .from(rewards_earned)
+    .groupBy(rewards_earned.owner)
+    .orderBy(sql`sum(${rewards_earned.amount}) desc`);
+
+  return c.json(
+    results.map((r) => ({
+      owner: r.owner,
+      amount: Number(r.amount) / 10000,
+    }))
+  );
+});
 
 // Root endpoint
 app.get("/", (c) => {
@@ -370,11 +540,15 @@ app.get("/", (c) => {
     health: "GET /health",
     beasts: {
       by_owner: "GET /beasts/:owner",
+      counts: "GET /beasts/stats/counts",
+      top: "GET /beasts/stats/top?limit=25&offset=0",
+      top5000_cutoff: "GET /beasts/stats/top5000-cutoff",
     },
+    leaderboard: "GET /leaderboard",
     websocket: {
       endpoint: "WS /ws",
-      channels: ["summit_update", "summit_log"],
-      subscribe: '{"type":"subscribe","channels":["summit_update","summit_log"]}',
+      channels: ["summit", "event"],
+      subscribe: '{"type":"subscribe","channels":["summit","event"]}',
     },
   };
 

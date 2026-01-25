@@ -6,9 +6,18 @@
 
 CREATE OR REPLACE FUNCTION notify_summit_update()
 RETURNS TRIGGER AS $$
+DECLARE
+  beast_data RECORD;
 BEGIN
   -- Only notify if beast has health (is on summit)
   IF NEW.current_health > 0 THEN
+    -- Fetch beast and owner data in single query
+    SELECT b.beast_id, b.prefix, b.suffix, b.level, b.health, bo.owner
+    INTO beast_data
+    FROM beasts b
+    LEFT JOIN beast_owners bo ON bo.token_id = b.token_id
+    WHERE b.token_id = NEW.token_id;
+
     PERFORM pg_notify(
       'summit_update',
       json_build_object(
@@ -32,7 +41,13 @@ BEGIN
         'block_number', NEW.block_number,
         'transaction_hash', NEW.transaction_hash,
         'created_at', NEW.created_at,
-        'indexed_at', NEW.indexed_at
+        'indexed_at', NEW.indexed_at,
+        'beast_id', beast_data.beast_id,
+        'prefix', beast_data.prefix,
+        'suffix', beast_data.suffix,
+        'level', beast_data.level,
+        'health', beast_data.health,
+        'owner', beast_data.owner
       )::text
     );
   END IF;

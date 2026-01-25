@@ -1,61 +1,56 @@
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { lookupAddressNames } from '@/utils/addressNameCache';
-import { useGameTokens } from '@/dojo/useGameTokens';
+import { useSummitApi, TopBeast } from '@/api/summitApi';
 import CloseIcon from '@mui/icons-material/Close';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { Box, Dialog, IconButton, Pagination, Tab, Tabs, Typography } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 
 interface LeaderboardModalProps {
   open: boolean;
   onClose: () => void;
 }
 
+const PAGE_SIZE = 25;
+
 export default function LeaderboardModal({ open, onClose }: LeaderboardModalProps) {
   const { leaderboard } = useGameStore();
-  const { getTopBeastsWithMetadata, countBeastsWithBlocksHeld } = useGameTokens();
+  const { getTopBeasts } = useSummitApi();
 
   const [activeTab, setActiveTab] = useState<'players' | 'beasts'>('players');
 
   // Players tab state
   const [playersPage, setPlayersPage] = useState(1);
-  const playersPageSize = 25;
   const [addressNames, setAddressNames] = useState<Record<string, string | null>>({});
 
   // Beasts tab state
   const [beastsPage, setBeastsPage] = useState(1);
-  const beastsPageSize = 25;
-  const [beasts, setBeasts] = useState<Array<{ token_id: number; blocks_held: number; bonus_xp: number; last_death_timestamp: number; owner: string; beast_name: string; prefix: string; suffix: string; full_name: string }>>([]);
+  const [beasts, setBeasts] = useState<TopBeast[]>([]);
   const [beastsLoading, setBeastsLoading] = useState(false);
-  const [beastsTotal, setBeastsTotal] = useState<number | null>(null);
+  const [beastsTotal, setBeastsTotal] = useState(0);
   const [beastOwnerNames, setBeastOwnerNames] = useState<Record<string, string | null>>({});
 
-  const playersTotalPages = Math.max(1, Math.ceil(leaderboard.length / playersPageSize));
+  const playersTotalPages = Math.max(1, Math.ceil(leaderboard.length / PAGE_SIZE));
+  const beastsTotalPages = Math.max(1, Math.ceil(beastsTotal / PAGE_SIZE));
 
   const playerPagedItems = useMemo(() => {
-    const start = (playersPage - 1) * playersPageSize;
-    return leaderboard.slice(start, start + playersPageSize);
+    const start = (playersPage - 1) * PAGE_SIZE;
+    return leaderboard.slice(start, start + PAGE_SIZE);
   }, [leaderboard, playersPage]);
 
-  const beastsTotalPages = useMemo(() => {
-    if (!beastsTotal || beastsTotal === 0) return 1;
-    return Math.max(1, Math.ceil(beastsTotal / beastsPageSize));
-  }, [beastsTotal, beastsPageSize]);
-
+  // Fetch player names for current page
   useEffect(() => {
-    const fetchNamesForPage = async () => {
-      if (playerPagedItems.length === 0) return;
+    if (playerPagedItems.length === 0) return;
 
-      const addressesToLookup = playerPagedItems
-        .map((p) => p.owner)
-        .filter((addr) => addressNames[addr] === undefined);
+    const addressesToLookup = playerPagedItems
+      .map((p) => p.owner)
+      .filter((addr) => addressNames[addr] === undefined);
 
-      if (addressesToLookup.length === 0) return;
+    if (addressesToLookup.length === 0) return;
 
-      try {
-        const addressMap = await lookupAddressNames(addressesToLookup);
-
+    lookupAddressNames(addressesToLookup)
+      .then((addressMap) => {
         setAddressNames((prev) => {
           const updated = { ...prev };
           for (const addr of addressesToLookup) {
@@ -64,81 +59,63 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
           }
           return updated;
         });
-      } catch (error) {
-        console.error('Error fetching controller names for leaderboard page:', error);
-      }
-    };
-
-    fetchNamesForPage();
+      })
+      .catch((error) => {
+        console.error('Error fetching controller names:', error);
+      });
   }, [playerPagedItems, addressNames]);
 
-  useEffect(() => {
-    const fetchBeastsTotal = async () => {
-      const total = await countBeastsWithBlocksHeld();
-      setBeastsTotal(total);
-    };
+  // Fetch beasts data when tab is active or page changes
+  const fetchBeasts = useCallback(async () => {
+    setBeastsLoading(true);
+    try {
+      const offset = (beastsPage - 1) * PAGE_SIZE;
+      const response = await getTopBeasts(PAGE_SIZE, offset);
 
-    fetchBeastsTotal();
-  }, []);
+      setBeasts(response.data);
+      setBeastsTotal(response.pagination.total);
 
-  // Fetch beasts leaderboard for current page
-  useEffect(() => {
-    const fetchBeastsPage = async () => {
-      if (activeTab !== 'beasts') return;
+      // Fetch owner names for beasts
+      const ownerAddresses = response.data
+        .map((beast) => beast.owner)
+        .filter((owner): owner is string => owner !== null && beastOwnerNames[owner] === undefined);
 
-      setBeastsLoading(true);
-      try {
-        const offset = (beastsPage - 1) * beastsPageSize;
-        const data = await getTopBeastsWithMetadata(beastsPageSize, offset);
-        setBeasts(data || []);
-
-        // Fetch owner names for the beasts
-        if (data && data.length > 0) {
-          const ownerAddresses = data
-            .map((beast) => beast.owner)
-            .filter((owner) => owner && beastOwnerNames[owner] === undefined);
-
-          if (ownerAddresses.length > 0) {
-            try {
-              const addressMap = await lookupAddressNames(ownerAddresses);
-              
-              setBeastOwnerNames((prev) => {
-                const updated = { ...prev };
-                for (const addr of ownerAddresses) {
-                  const normalized = addr.replace(/^0x0+/, '0x').toLowerCase();
-                  updated[addr] = addressMap.get(normalized) || null;
-                }
-                return updated;
-              });
-            } catch (error) {
-              console.error('Error fetching beast owner names:', error);
-            }
+      if (ownerAddresses.length > 0) {
+        const addressMap = await lookupAddressNames(ownerAddresses);
+        setBeastOwnerNames((prev) => {
+          const updated = { ...prev };
+          for (const addr of ownerAddresses) {
+            const normalized = addr.replace(/^0x0+/, '0x').toLowerCase();
+            updated[addr] = addressMap.get(normalized) || null;
           }
-        }
-      } catch (error) {
-        console.error('Error fetching beasts leaderboard page:', error);
-        setBeasts([]);
-      } finally {
-        setBeastsLoading(false);
+          return updated;
+        });
       }
-    };
+    } catch (error) {
+      console.error('Error fetching beasts leaderboard:', error);
+      setBeasts([]);
+    } finally {
+      setBeastsLoading(false);
+    }
+  }, [beastsPage, getTopBeasts, beastOwnerNames]);
 
-    fetchBeastsPage();
+  useEffect(() => {
+    if (activeTab === 'beasts') {
+      fetchBeasts();
+    }
   }, [activeTab, beastsPage]);
 
   const formatRewards = (rewards: number) =>
     rewards.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
   const formatAddress = (addr: string) => {
-    if (!addr) return '';
-    if (addr.length <= 10) return addr;
+    if (!addr || addr.length <= 10) return addr || '';
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
   const handleClose = () => {
     setPlayersPage(1);
     setBeastsPage(1);
-    setBeastOwnerNames({});
     setActiveTab('players');
     onClose();
   };
@@ -188,16 +165,8 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
             onChange={(_, value) => setActiveTab(value)}
             sx={styles.tabs}
           >
-            <Tab
-              value="players"
-              label="Players"
-              sx={styles.tab}
-            />
-            <Tab
-              value="beasts"
-              label="Beasts"
-              sx={styles.tab}
-            />
+            <Tab value="players" label="Players" sx={styles.tab} />
+            <Tab value="beasts" label="Beasts" sx={styles.tab} />
           </Tabs>
         </Box>
 
@@ -205,44 +174,29 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
           <>
             <Box sx={styles.tableContainer}>
               <Box sx={styles.tableHeader}>
-                <Typography sx={[styles.headerCell, { flex: '0 0 60px', textAlign: 'left' }]}>
-                  #
-                </Typography>
-                <Typography sx={[styles.headerCell, { flex: '1 1 auto' }]}>
-                  PLAYER
-                </Typography>
-                <Typography sx={[styles.headerCell, { flex: '0 0 140px', textAlign: 'right' }]}>
-                  REWARDS
-                </Typography>
+                <Typography sx={[styles.headerCell, { flex: '0 0 60px', textAlign: 'left' }]}>#</Typography>
+                <Typography sx={[styles.headerCell, { flex: '1 1 auto' }]}>PLAYER</Typography>
+                <Typography sx={[styles.headerCell, { flex: '0 0 140px', textAlign: 'right' }]}>REWARDS</Typography>
               </Box>
 
               <Box sx={styles.tableBody}>
-                {leaderboard.length === 0 && (
+                {leaderboard.length === 0 ? (
                   <Box sx={styles.emptyState}>
                     <Typography sx={styles.emptyText}>
                       No player leaderboard data yet. Play a bit and check back soon.
                     </Typography>
                   </Box>
-                )}
-
-                {leaderboard.length > 0 &&
+                ) : (
                   playerPagedItems.map((player, index) => {
-                    const globalRank = (playersPage - 1) * playersPageSize + index + 1;
+                    const globalRank = (playersPage - 1) * PAGE_SIZE + index + 1;
                     const name = addressNames[player.owner];
                     return (
-                      <Box
-                        key={player.owner}
-                        sx={styles.row}
-                      >
-                        <Typography sx={styles.rankCell}>
-                          {globalRank}.
-                        </Typography>
+                      <Box key={player.owner} sx={styles.row}>
+                        <Typography sx={styles.rankCell}>{globalRank}.</Typography>
                         <Box sx={styles.playerCell}>
                           {name ? (
                             <>
-                              <Typography sx={styles.playerName}>
-                                {name}
-                              </Typography>
+                              <Typography sx={styles.playerName}>{name}</Typography>
                               <Typography
                                 sx={styles.collectionLink}
                                 component="a"
@@ -254,26 +208,22 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                               </Typography>
                             </>
                           ) : (
-                            <Typography sx={styles.playerAddress}>
-                              {formatAddress(player.owner)}
-                            </Typography>
+                            <Typography sx={styles.playerAddress}>{formatAddress(player.owner)}</Typography>
                           )}
                         </Box>
-                        <Typography sx={styles.rewardsCell}>
-                          {formatRewards(player.amount)}
-                        </Typography>
+                        <Typography sx={styles.rewardsCell}>{formatRewards(player.amount)}</Typography>
                       </Box>
                     );
-                  })}
+                  })
+                )}
               </Box>
             </Box>
 
             {leaderboard.length > 0 && (
               <Box sx={styles.footer}>
                 <Typography sx={styles.paginationInfo}>
-                  Showing{' '}
-                  {Math.min((playersPage - 1) * playersPageSize + 1, leaderboard.length)}-
-                  {Math.min(playersPage * playersPageSize, leaderboard.length)} of {leaderboard.length}
+                  Showing {Math.min((playersPage - 1) * PAGE_SIZE + 1, leaderboard.length)}-
+                  {Math.min(playersPage * PAGE_SIZE, leaderboard.length)} of {leaderboard.length}
                 </Typography>
                 <Pagination
                   count={playersTotalPages}
@@ -293,47 +243,27 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
           <>
             <Box sx={styles.tableContainer}>
               <Box sx={styles.tableHeader}>
-                <Typography sx={[styles.headerCell, { flex: '0 0 60px', textAlign: 'left' }]}>
-                  #
-                </Typography>
-                <Typography sx={[styles.headerCell, { flex: '1 1 auto' }]}>
-                  BEAST
-                </Typography>
-                <Typography sx={[styles.headerCell, { flex: '0 0 140px', textAlign: 'right' }]}>
-                  BLOCKS HELD
-                </Typography>
+                <Typography sx={[styles.headerCell, { flex: '0 0 60px', textAlign: 'left' }]}>#</Typography>
+                <Typography sx={[styles.headerCell, { flex: '1 1 auto' }]}>BEAST</Typography>
+                <Typography sx={[styles.headerCell, { flex: '0 0 140px', textAlign: 'right' }]}>BLOCKS HELD</Typography>
               </Box>
 
               <Box sx={styles.tableBody}>
-                {beastsLoading && (
+                {beastsLoading ? (
                   <Box sx={styles.emptyState}>
-                    <Typography sx={styles.emptyText}>
-                      Loading beasts leaderboard...
-                    </Typography>
+                    <Typography sx={styles.emptyText}>Loading beasts leaderboard...</Typography>
                   </Box>
-                )}
-
-                {!beastsLoading && beasts.length === 0 && (
+                ) : beasts.length === 0 ? (
                   <Box sx={styles.emptyState}>
-                    <Typography sx={styles.emptyText}>
-                      No beast leaderboard data yet.
-                    </Typography>
+                    <Typography sx={styles.emptyText}>No beast leaderboard data yet.</Typography>
                   </Box>
-                )}
-
-                {!beastsLoading &&
-                  beasts.length > 0 &&
+                ) : (
                   beasts.map((row, index) => {
-                    const globalRank = (beastsPage - 1) * beastsPageSize + index + 1;
+                    const globalRank = (beastsPage - 1) * PAGE_SIZE + index + 1;
                     const ownerName = row.owner ? beastOwnerNames[row.owner] : null;
                     return (
-                      <Box
-                        key={`${row.token_id}-${index}`}
-                        sx={styles.row}
-                      >
-                        <Typography sx={styles.rankCell}>
-                          {globalRank}.
-                        </Typography>
+                      <Box key={row.token_id} sx={styles.row}>
+                        <Typography sx={styles.rankCell}>{globalRank}.</Typography>
                         <Box sx={styles.beastCell}>
                           <Typography
                             sx={styles.beastName}
@@ -356,21 +286,19 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                             </Typography>
                           )}
                         </Box>
-                        <Typography sx={styles.blocksCell}>
-                          {row.blocks_held?.toLocaleString() ?? '0'}
-                        </Typography>
+                        <Typography sx={styles.blocksCell}>{row.blocks_held?.toLocaleString() ?? '0'}</Typography>
                       </Box>
                     );
-                  })}
+                  })
+                )}
               </Box>
             </Box>
 
-            {beastsTotal !== null && beastsTotal > 0 && (
+            {beastsTotal > 0 && (
               <Box sx={styles.footer}>
                 <Typography sx={styles.paginationInfo}>
-                  Showing{' '}
-                  {Math.min((beastsPage - 1) * beastsPageSize + 1, beastsTotal)}-
-                  {Math.min(beastsPage * beastsPageSize, beastsTotal)} of {beastsTotal}
+                  Showing {Math.min((beastsPage - 1) * PAGE_SIZE + 1, beastsTotal)}-
+                  {Math.min(beastsPage * PAGE_SIZE, beastsTotal)} of {beastsTotal}
                 </Typography>
                 <Pagination
                   count={beastsTotalPages}
@@ -434,11 +362,6 @@ const styles = {
       0 2px 4px rgba(0, 0, 0, 0.8),
       0 0 12px ${gameColors.brightGreen}40
     `,
-  },
-  subtitle: {
-    fontSize: '13px',
-    color: '#ccc',
-    maxWidth: '420px',
   },
   tabs: {
     mt: 1,
@@ -564,11 +487,6 @@ const styles = {
     flexDirection: 'column' as const,
     justifyContent: 'center',
   },
-  beastId: {
-    fontSize: '13px',
-    fontWeight: 'bold',
-    color: '#ffedbb',
-  },
   beastName: {
     fontSize: '13px',
     fontWeight: 'bold',
@@ -583,11 +501,6 @@ const styles = {
       textDecoration: 'underline !important',
       color: gameColors.brightGreen,
     },
-  },
-  ownerInfo: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    mt: 0.5,
   },
   ownerName: {
     fontSize: '11px',
@@ -604,25 +517,8 @@ const styles = {
       color: gameColors.accentGreen,
     },
   },
-  ownerAddress: {
-    fontSize: '10px',
-    color: '#888',
-    fontFamily: 'monospace',
-    textDecoration: 'none',
-    cursor: 'pointer',
-    '&:hover': {
-      textDecoration: 'underline !important',
-    },
-  },
   blocksCell: {
     flex: '0 0 140px',
-    textAlign: 'right' as const,
-    fontSize: '13px',
-    fontWeight: 'bold',
-    color: gameColors.yellow,
-  },
-  xpCell: {
-    flex: '0 0 120px',
     textAlign: 'right' as const,
     fontSize: '13px',
     fontWeight: 'bold',
@@ -653,5 +549,3 @@ const styles = {
     },
   },
 };
-
-

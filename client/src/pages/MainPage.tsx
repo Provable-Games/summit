@@ -15,7 +15,6 @@ import EventHistoryButton from '../components/EventHistoryButton'
 import BeastBoard from '../components/BeastBoard'
 import Top5000BeastsModal from '../components/dialogs/Top5000BeastsModal'
 import LeaderboardModal from '../components/dialogs/LeaderboardModal'
-import EventHistoryModal from '../components/dialogs/EventHistoryModal'
 import Onboarding from '../components/Onboarding'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
@@ -43,7 +42,6 @@ function MainPage() {
             <Leaderboard />
             <Box sx={styles.buttonsContainer}>
               <LeaderboardButton onClick={() => setLeaderboardModalOpen(true)} />
-              <EventHistoryButton onClick={() => setEventHistoryModalOpen(true)} />
             </Box>
           </Box>
         </Box>}
@@ -94,13 +92,6 @@ function MainPage() {
       <LeaderboardModal
         open={leaderboardModalOpen}
         onClose={() => setLeaderboardModalOpen(false)}
-      />
-    )}
-
-    {eventHistoryModalOpen && (
-      <EventHistoryModal
-        open={eventHistoryModalOpen}
-        onClose={() => setEventHistoryModalOpen(false)}
       />
     )}
   </>

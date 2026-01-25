@@ -1,33 +1,19 @@
 /**
  * WebSocket Subscription Hook
- * Manages WebSocket connection with automatic reconnection and channel subscriptions
+ * Manages WebSocket connection with automatic reconnection
+ *
+ * Channels:
+ * - summit: Beast stats updates for summit beast
+ * - event: Activity feed from summit_log
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// Channels supported by the Summit API
-export type Channel = "beast_update" | "battle" | "summit" | "poison" | "reward";
+export type Channel = "summit" | "event";
 
-// WebSocket message types
-interface SubscribeMessage {
-  type: "subscribe";
-  channels: Channel[];
-  beastTokenIds?: number[];
-}
+export type ConnectionState = "connecting" | "connected" | "disconnected" | "reconnecting";
 
-interface UnsubscribeMessage {
-  type: "unsubscribe";
-  channels: Channel[];
-}
-
-interface PingMessage {
-  type: "ping";
-}
-
-type OutgoingMessage = SubscribeMessage | UnsubscribeMessage | PingMessage;
-
-// Incoming message payloads - using snake_case to match existing client types
-export interface BeastUpdateData {
+export interface SummitData {
   token_id: number;
   current_health: number;
   bonus_health: number;
@@ -50,157 +36,40 @@ export interface BeastUpdateData {
   created_at: string;
 }
 
-export interface BattleData {
-  attacking_beast_token_id: number;
-  attack_index: number;
-  defending_beast_token_id: number;
-  attack_count: number;
-  attack_damage: number;
-  critical_attack_count: number;
-  critical_attack_damage: number;
-  counter_attack_count: number;
-  counter_attack_damage: number;
-  critical_counter_attack_count: number;
-  critical_counter_attack_damage: number;
-  attack_potions: number;
-  xp_gained: number;
+export interface EventData {
+  id: string;
   block_number: string;
+  event_index: number;
+  category: string;
+  sub_category: string;
+  data: Record<string, unknown>;
+  player: string | null;
+  token_id: number | null;
   transaction_hash: string;
   created_at: string;
 }
 
-export interface SummitData {
-  beast_token_id: number;
-  beast_id: number;
-  beast_prefix: number;
-  beast_suffix: number;
-  beast_level: number;
-  beast_health: number;
-  beast_shiny: number;
-  beast_animated: number;
-  current_health: number;
-  bonus_health: number;
-  blocks_held: number;
-  owner: string;
-  block_number: string;
-  transaction_hash: string;
-  created_at: string;
-}
-
-export interface PoisonData {
-  beast_token_id: number;
-  block_timestamp: string;
-  count: number;
-  player: string;
-  block_number: string;
-  transaction_hash: string;
-  created_at: string;
-}
-
-export interface RewardData {
-  reward_block_number: string;
-  beast_token_id: number;
-  owner: string;
-  amount: number;
-  block_number: string;
-  transaction_hash: string;
-  created_at: string;
-}
-
-// Incoming message types
-interface BeastUpdateMessage {
-  type: "beast_update";
-  data: BeastUpdateData;
-}
-
-interface BattleMessage {
-  type: "battle";
-  data: BattleData;
-}
-
-interface SummitMessage {
-  type: "summit";
-  data: SummitData;
-}
-
-interface PoisonMessage {
-  type: "poison";
-  data: PoisonData;
-}
-
-interface RewardMessage {
-  type: "reward";
-  data: RewardData;
-}
-
-interface SubscribedMessage {
-  type: "subscribed";
-  channels: Channel[];
-}
-
-interface UnsubscribedMessage {
-  type: "unsubscribed";
-  channels: Channel[];
-}
-
-interface PongMessage {
-  type: "pong";
-}
-
-type IncomingMessage =
-  | BeastUpdateMessage
-  | BattleMessage
-  | SummitMessage
-  | PoisonMessage
-  | RewardMessage
-  | SubscribedMessage
-  | UnsubscribedMessage
-  | PongMessage;
-
-// Connection state
-export type ConnectionState = "connecting" | "connected" | "disconnected" | "reconnecting";
-
-// Hook options
 export interface UseWebSocketOptions {
   url: string;
   channels: Channel[];
-  beastTokenIds?: number[];
-  onBeastUpdate?: (data: BeastUpdateData) => void;
-  onBattle?: (data: BattleData) => void;
   onSummit?: (data: SummitData) => void;
-  onPoison?: (data: PoisonData) => void;
-  onReward?: (data: RewardData) => void;
+  onEvent?: (data: EventData) => void;
   onConnectionChange?: (state: ConnectionState) => void;
   enabled?: boolean;
-  maxReconnectAttempts?: number;
-  reconnectBaseDelay?: number;
-  pingInterval?: number;
 }
 
-// Hook return type
 export interface UseWebSocketReturn {
   connectionState: ConnectionState;
-  subscribe: (channels: Channel[], beastTokenIds?: number[]) => void;
-  unsubscribe: (channels: Channel[]) => void;
-  disconnect: () => void;
-  reconnect: () => void;
 }
 
 export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   const {
     url,
     channels,
-    beastTokenIds,
-    onBeastUpdate,
-    onBattle,
     onSummit,
-    onPoison,
-    onReward,
+    onEvent,
     onConnectionChange,
     enabled = true,
-    maxReconnectAttempts = 10,
-    reconnectBaseDelay = 1000,
-    pingInterval = 30000,
   } = options;
 
   const [connectionState, setConnectionState] = useState<ConnectionState>("disconnected");
@@ -210,71 +79,33 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
 
-  // Store callbacks in refs to avoid stale closures
-  const callbacksRef = useRef({
-    onBeastUpdate,
-    onBattle,
-    onSummit,
-    onPoison,
-    onReward,
-    onConnectionChange,
-  });
+  const callbacksRef = useRef({ onSummit, onEvent, onConnectionChange });
 
-  // Update callbacks ref when they change
   useEffect(() => {
-    callbacksRef.current = {
-      onBeastUpdate,
-      onBattle,
-      onSummit,
-      onPoison,
-      onReward,
-      onConnectionChange,
-    };
-  }, [onBeastUpdate, onBattle, onSummit, onPoison, onReward, onConnectionChange]);
+    callbacksRef.current = { onSummit, onEvent, onConnectionChange };
+  }, [onSummit, onEvent, onConnectionChange]);
 
-  // Update connection state and notify
   const updateConnectionState = useCallback((state: ConnectionState) => {
     if (!mountedRef.current) return;
     setConnectionState(state);
     callbacksRef.current.onConnectionChange?.(state);
   }, []);
 
-  // Send message to WebSocket
-  const sendMessage = useCallback((message: OutgoingMessage) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message));
-    }
-  }, []);
-
-  // Handle incoming messages
   const handleMessage = useCallback((event: MessageEvent) => {
     try {
-      const message: IncomingMessage = JSON.parse(event.data);
+      const message = JSON.parse(event.data);
 
       switch (message.type) {
-        case "beast_update":
-          callbacksRef.current.onBeastUpdate?.(message.data);
-          break;
-        case "battle":
-          callbacksRef.current.onBattle?.(message.data);
-          break;
         case "summit":
           callbacksRef.current.onSummit?.(message.data);
           break;
-        case "poison":
-          callbacksRef.current.onPoison?.(message.data);
-          break;
-        case "reward":
-          callbacksRef.current.onReward?.(message.data);
+        case "event":
+          callbacksRef.current.onEvent?.(message.data);
           break;
         case "subscribed":
           console.log("[WebSocket] Subscribed to:", message.channels);
           break;
-        case "unsubscribed":
-          console.log("[WebSocket] Unsubscribed from:", message.channels);
-          break;
         case "pong":
-          // Heartbeat received
           break;
       }
     } catch (error) {
@@ -282,20 +113,16 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     }
   }, []);
 
-  // Connect to WebSocket
   const connect = useCallback(() => {
     if (!enabled || !url) return;
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    // Clean up existing connection
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
     }
 
-    updateConnectionState(
-      reconnectAttemptsRef.current > 0 ? "reconnecting" : "connecting"
-    );
+    updateConnectionState("connecting");
 
     try {
       const ws = new WebSocket(url);
@@ -307,22 +134,18 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
         reconnectAttemptsRef.current = 0;
         updateConnectionState("connected");
 
-        // Subscribe to channels
         if (channels.length > 0) {
-          sendMessage({
-            type: "subscribe",
-            channels,
-            beastTokenIds,
-          });
+          ws.send(JSON.stringify({ type: "subscribe", channels }));
         }
 
-        // Start ping interval
         if (pingIntervalRef.current) {
           clearInterval(pingIntervalRef.current);
         }
         pingIntervalRef.current = setInterval(() => {
-          sendMessage({ type: "ping" });
-        }, pingInterval);
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 30000);
       };
 
       ws.onmessage = handleMessage;
@@ -333,53 +156,35 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
 
       ws.onclose = (event) => {
         if (!mountedRef.current) return;
-        console.log("[WebSocket] Connection closed:", event.code, event.reason);
+        console.log("[WebSocket] Connection closed:", event.code);
         updateConnectionState("disconnected");
 
-        // Clear ping interval
         if (pingIntervalRef.current) {
           clearInterval(pingIntervalRef.current);
           pingIntervalRef.current = null;
         }
 
-        // Attempt reconnection
-        if (
-          enabled &&
-          reconnectAttemptsRef.current < maxReconnectAttempts &&
-          event.code !== 1000 // Normal closure
-        ) {
-          const delay =
-            reconnectBaseDelay * Math.pow(2, reconnectAttemptsRef.current);
-          const cappedDelay = Math.min(delay, 30000); // Cap at 30 seconds
+        // Reconnect unless intentionally closed
+        // First 5 attempts: exponential backoff (1s, 2s, 4s, 8s, 16s)
+        // After that: 30s interval forever
+        if (enabled && event.code !== 1000) {
+          const delay = reconnectAttemptsRef.current < 5
+            ? 1000 * Math.pow(2, reconnectAttemptsRef.current)
+            : 30000;
 
-          console.log(
-            `[WebSocket] Reconnecting in ${cappedDelay}ms (attempt ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`
-          );
-
+          console.log(`[WebSocket] Reconnecting in ${delay / 1000}s...`);
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttemptsRef.current++;
             connect();
-          }, cappedDelay);
+          }, delay);
         }
       };
     } catch (error) {
       console.error("[WebSocket] Failed to connect:", error);
       updateConnectionState("disconnected");
     }
-  }, [
-    url,
-    enabled,
-    channels,
-    beastTokenIds,
-    handleMessage,
-    sendMessage,
-    updateConnectionState,
-    maxReconnectAttempts,
-    reconnectBaseDelay,
-    pingInterval,
-  ]);
+  }, [url, enabled, channels, handleMessage, updateConnectionState]);
 
-  // Disconnect from WebSocket
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
@@ -396,41 +201,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       wsRef.current = null;
     }
 
-    reconnectAttemptsRef.current = maxReconnectAttempts; // Prevent auto-reconnect
     updateConnectionState("disconnected");
-  }, [maxReconnectAttempts, updateConnectionState]);
+  }, [updateConnectionState]);
 
-  // Manual reconnect
-  const reconnect = useCallback(() => {
-    reconnectAttemptsRef.current = 0;
-    disconnect();
-    connect();
-  }, [disconnect, connect]);
-
-  // Subscribe to additional channels
-  const subscribe = useCallback(
-    (newChannels: Channel[], newBeastTokenIds?: number[]) => {
-      sendMessage({
-        type: "subscribe",
-        channels: newChannels,
-        beastTokenIds: newBeastTokenIds,
-      });
-    },
-    [sendMessage]
-  );
-
-  // Unsubscribe from channels
-  const unsubscribe = useCallback(
-    (channelsToRemove: Channel[]) => {
-      sendMessage({
-        type: "unsubscribe",
-        channels: channelsToRemove,
-      });
-    },
-    [sendMessage]
-  );
-
-  // Initial connection
   useEffect(() => {
     mountedRef.current = true;
     connect();
@@ -439,24 +212,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       mountedRef.current = false;
       disconnect();
     };
-  }, [url, enabled]); // Only reconnect when URL or enabled changes
+  }, [url, enabled]);
 
-  // Re-subscribe when channels change
-  useEffect(() => {
-    if (connectionState === "connected" && channels.length > 0) {
-      sendMessage({
-        type: "subscribe",
-        channels,
-        beastTokenIds,
-      });
-    }
-  }, [channels.join(","), beastTokenIds?.join(","), connectionState, sendMessage]);
-
-  return {
-    connectionState,
-    subscribe,
-    unsubscribe,
-    disconnect,
-    reconnect,
-  };
+  return { connectionState };
 }
