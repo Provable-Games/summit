@@ -3,8 +3,16 @@
  */
 
 import { useDynamicConnector } from "@/contexts/starknet";
-import { Beast } from "@/types/game";
-import { BEAST_TIERS, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
+import { Beast, DiplomacyBeast } from "@/types/game";
+import { BEAST_NAMES, BEAST_TIERS, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
+
+// Reverse lookup: name -> id
+const PREFIX_NAME_TO_ID = Object.fromEntries(
+  Object.entries(ITEM_NAME_PREFIXES).map(([id, name]) => [name, parseInt(id)])
+);
+const SUFFIX_NAME_TO_ID = Object.fromEntries(
+  Object.entries(ITEM_NAME_SUFFIXES).map(([id, name]) => [name, parseInt(id)])
+);
 
 export interface TopBeast {
   token_id: number;
@@ -28,26 +36,24 @@ export interface TopBeastsResponse {
   };
 }
 
-export interface DiplomacyBeast {
+// Raw response from /diplomacy endpoint
+interface RawDiplomacyResponse {
   token_id: number;
   beast_id: number;
-  name: string;
-  prefix: string;
-  suffix: string;
-  full_name: string;
+  prefix: number;
+  suffix: number;
   level: number;
-  current_level: number;
   health: number;
+  owner: string | null;
   current_health: number;
   bonus_health: number;
   bonus_xp: number;
   blocks_held: number;
   spirit: number;
   luck: number;
-  owner: string | null;
 }
 
-interface RawDiplomacyBeast {
+interface RawDiplomacyAllBeast {
   token_id: number;
   beast_id: number;
   prefix: number;
@@ -126,13 +132,37 @@ export const useSummitApi = () => {
 
   /**
    * Get beasts with diplomacy unlocked matching prefix/suffix
+   * Accepts either numeric IDs or string names
    */
-  const getDiplomacy = async (prefix: number, suffix: number): Promise<DiplomacyBeast[]> => {
-    const response = await fetch(`${currentNetworkConfig.apiUrl}/diplomacy?prefix=${prefix}&suffix=${suffix}`);
+  const getDiplomacy = async (prefix: number | string, suffix: number | string): Promise<DiplomacyBeast[]> => {
+    const prefixId = typeof prefix === "string" ? PREFIX_NAME_TO_ID[prefix] : prefix;
+    const suffixId = typeof suffix === "string" ? SUFFIX_NAME_TO_ID[suffix] : suffix;
+
+    if (!prefixId || !suffixId) {
+      console.error("[getDiplomacy] Invalid prefix/suffix:", prefix, suffix);
+      return [];
+    }
+
+    const response = await fetch(`${currentNetworkConfig.apiUrl}/diplomacy?prefix=${prefixId}&suffix=${suffixId}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch diplomacy beasts: ${response.status}`);
     }
-    return response.json();
+    const raw: RawDiplomacyResponse[] = await response.json();
+
+    return raw.map(b => {
+      const tier = BEAST_TIERS[b.beast_id as keyof typeof BEAST_TIERS] ?? 5;
+      const current_level = Math.floor(Math.sqrt(b.bonus_xp + Math.pow(b.level, 2)));
+      return {
+        token_id: b.token_id,
+        owner: b.owner,
+        name: BEAST_NAMES[b.beast_id as keyof typeof BEAST_NAMES] ?? "",
+        prefix: ITEM_NAME_PREFIXES[b.prefix as keyof typeof ITEM_NAME_PREFIXES] ?? "",
+        suffix: ITEM_NAME_SUFFIXES[b.suffix as keyof typeof ITEM_NAME_SUFFIXES] ?? "",
+        level: b.level,
+        current_level,
+        power: (6 - tier) * current_level,
+      };
+    });
   };
 
   /**
@@ -143,7 +173,7 @@ export const useSummitApi = () => {
     if (!response.ok) {
       throw new Error(`Failed to fetch diplomacy beasts: ${response.status}`);
     }
-    const beasts: RawDiplomacyBeast[] = await response.json();
+    const beasts: RawDiplomacyAllBeast[] = await response.json();
 
     const groups = new Map<string, DiplomacyGroup>();
 

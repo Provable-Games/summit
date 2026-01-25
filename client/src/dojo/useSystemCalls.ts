@@ -42,11 +42,12 @@ export const useSystemCalls = () => {
         return
       }
 
-      const translatedEvents = receipt.events.map((event: any) =>
-        translateGameEvent(event, currentNetworkConfig.manifest, account!.address)
-      );
+      const translatedEvents = receipt.events
+        .map((event: any) => translateGameEvent(event, account!.address))
+        .flat()
+        .filter(Boolean);
 
-      return translatedEvents.filter(Boolean);
+      return translatedEvents;
     } catch (error) {
       console.error("Error executing action:", error);
       forceResetAction();

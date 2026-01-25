@@ -476,6 +476,8 @@ app.get("/diplomacy", async (c) => {
         name: beastName,
         prefix: prefixName,
         suffix: suffixName,
+        prefix_id: r.prefix,
+        suffix_id: r.suffix,
         full_name: `"${prefixName} ${suffixName}" ${beastName}`,
         level: r.level,
         current_level: currentLevel,

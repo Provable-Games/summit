@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Summit, Beast, Adventurer, BattleEvent, Leaderboard, PoisonEvent, selection } from '@/types/game';
+import { Summit, Beast, Adventurer, BattleEvent, SpectatorBattleEvent, Leaderboard, PoisonEvent, selection } from '@/types/game';
 
 export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'blocks held';
 export type BeastTypeFilter = 'all' | 'strong';
@@ -10,7 +10,7 @@ interface GameState {
   onboarding: boolean;
   leaderboard: Leaderboard[];
   battleEvents: BattleEvent[];
-  spectatorBattleEvents: BattleEvent[];
+  spectatorBattleEvents: SpectatorBattleEvent[];
   poisonEvent: PoisonEvent | null;
   killedByAdventurers: number[];
   collection: Beast[];
@@ -39,7 +39,7 @@ interface GameState {
   setOnboarding: (onboarding: boolean) => void;
   setLeaderboard: (leaderboard: Leaderboard[]) => void;
   setBattleEvents: (battleEvents: BattleEvent[]) => void;
-  setSpectatorBattleEvents: (spectatorBattleEvents: BattleEvent[] | ((prev: BattleEvent[]) => BattleEvent[])) => void;
+  setSpectatorBattleEvents: (spectatorBattleEvents: SpectatorBattleEvent[] | ((prev: SpectatorBattleEvent[]) => SpectatorBattleEvent[])) => void;
   setPoisonEvent: (poisonEvent: PoisonEvent | null) => void;
   setKilledByAdventurers: (killedByAdventurers: number[]) => void;
   setCollection: (collection: Beast[] | ((prev: Beast[]) => Beast[])) => void;
@@ -132,7 +132,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setOnboarding: (onboarding: boolean) => set({ onboarding }),
   setLeaderboard: (leaderboard: Leaderboard[]) => set({ leaderboard }),
   setBattleEvents: (battleEvents: BattleEvent[]) => set({ battleEvents }),
-  setSpectatorBattleEvents: (spectatorBattleEvents: BattleEvent[] | ((prev: BattleEvent[]) => BattleEvent[])) =>
+  setSpectatorBattleEvents: (spectatorBattleEvents: SpectatorBattleEvent[] | ((prev: SpectatorBattleEvent[]) => SpectatorBattleEvent[])) =>
     set(state => ({ spectatorBattleEvents: typeof spectatorBattleEvents === 'function' ? spectatorBattleEvents(state.spectatorBattleEvents) : spectatorBattleEvents })),
   setPoisonEvent: (poisonEvent: PoisonEvent | null) => set({ poisonEvent }),
   setKilledByAdventurers: (killedByAdventurers: number[]) => set({ killedByAdventurers }),

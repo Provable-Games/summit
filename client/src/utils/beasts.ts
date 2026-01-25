@@ -178,8 +178,6 @@ export const formatBeastName = (beast: Beast): string => {
 }
 
 export const getBeastDetails = (id: number, prefix: number, suffix: number, level: number) => {
-  const specialsHash = getSpecialsHash(prefix, suffix);
-
   return {
     name: BEAST_NAMES[id],
     prefix: ITEM_NAME_PREFIXES[prefix],
@@ -187,7 +185,6 @@ export const getBeastDetails = (id: number, prefix: number, suffix: number, leve
     tier: BEAST_TIERS[id],
     type: BEAST_TYPES[id],
     power: (6 - BEAST_TIERS[id]) * level,
-    specials_hash: specialsHash,
   }
 }
 
@@ -287,12 +284,6 @@ export function applyPoisonDamage(
 
 export const getEntityHash = (id: number, prefix: number, suffix: number): string => {
   const params = [BigInt(id), BigInt(prefix), BigInt(suffix)];
-  let hash = starknet.poseidonHashMany(params);
-  return addAddressPadding(hash.toString(16));
-}
-
-export const getSpecialsHash = (prefix: number, suffix: number): string => {
-  const params = [BigInt(prefix), BigInt(suffix)];
   let hash = starknet.poseidonHashMany(params);
   return addAddressPadding(hash.toString(16));
 }

@@ -1,10 +1,11 @@
 import { useStarknetApi } from "@/api/starknet";
+import { useSummitApi } from "@/api/summitApi";
 import { useSound } from "@/contexts/sound";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useWebSocket, SummitData, EventData } from "@/hooks/useWebSocket";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
-import { BattleEvent, Beast, GameAction, Summit } from "@/types/game";
+import { BattleEvent, Beast, Diplomacy, GameAction, Summit } from "@/types/game";
 import {
   applyPoisonDamage,
   getBeastCurrentHealth,
@@ -15,7 +16,6 @@ import {
 import {
   createContext,
   PropsWithChildren,
-  useCallback,
   useContext,
   useEffect,
   useReducer,
@@ -58,6 +58,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     setPoisonPotionsUsed,
   } = useAutopilotStore();
   const { getSummitData } = useStarknetApi();
+  const { getDiplomacy } = useSummitApi();
   const {
     executeAction,
     attack,
@@ -76,16 +77,31 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const [actionFailed, setActionFailed] = useReducer((x) => x + 1, 0);
   const [pauseUpdates, setPauseUpdates] = useState(false);
 
-  // WebSocket handlers - logic to be implemented later
-  const handleSummit = useCallback((data: SummitData) => {
+  const handleSummit = (data: SummitData) => {
     console.log("[GameDirector] Summit update:", data);
-    // TODO: Process summit beast updates
-  }, []);
 
-  const handleEvent = useCallback((data: EventData) => {
+    const current_level = getBeastCurrentLevel(data.level, data.bonus_xp);
+    const sameBeast = summit?.beast.token_id === data.token_id;
+
+    setNextSummit({
+      beast: {
+        ...data,
+        ...getBeastDetails(data.beast_id, data.prefix, data.suffix, current_level),
+        id: data.beast_id,
+        current_level,
+        revival_time: 0,
+        kills_claimed: 0,
+      } as Beast,
+      owner: data.owner,
+      taken_at: sameBeast ? summit.taken_at : data.block_number,
+      poison_count: sameBeast ? summit.poison_count : 0,
+      poison_timestamp: sameBeast ? summit.poison_timestamp : 0,
+    });
+  };
+
+  const handleEvent = (data: EventData) => {
     console.log("[GameDirector] Event:", data.category, data.sub_category, data.data);
-    // TODO: Process activity feed events
-  }, []);
+  };
 
   // WebSocket subscription
   useWebSocket({
@@ -117,13 +133,43 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       setSelectedBeasts([]);
       setSummit(newSummit);
       setNextSummit(null);
-      play("roar");
     }
 
     if (nextSummit && !pauseUpdates) {
       processNextSummit();
     }
   }, [nextSummit, pauseUpdates]);
+
+  // Play roar and fetch diplomacy when summit beast changes
+  useEffect(() => {
+    if (!summit?.beast.token_id) return;
+
+    play("roar");
+
+    // Fetch diplomacy if not already set
+    if (!summit.diplomacy && summit.beast.diplomacy) {
+      const fetchDiplomacy = async () => {
+        try {
+          const beasts = await getDiplomacy(
+            summit.beast.prefix,
+            summit.beast.suffix
+          );
+
+          if (beasts.length > 0) {
+            const totalPower = beasts.reduce((sum, b) => sum + b.power, 0);
+            const adjustedPower = summit.beast.diplomacy ? totalPower - summit.beast.power : totalPower;
+            const bonus = Math.floor(adjustedPower / 250);
+
+            setSummit(prev => prev ? { ...prev, diplomacy: { beasts, totalPower, bonus } } : prev);
+          }
+        } catch (error) {
+          console.error("[GameDirector] Failed to fetch diplomacy:", error);
+        }
+      };
+
+      fetchDiplomacy();
+    }
+  }, [summit?.beast.token_id]);
 
   const fetchSummitData = async () => {
     const summitBeast = await getSummitData();

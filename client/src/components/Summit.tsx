@@ -1,6 +1,7 @@
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useSound } from '@/contexts/sound';
 import { useGameStore } from '@/stores/gameStore';
+import { SpectatorBattleEvent } from '@/types/game';
 import SummitGiftModal from '@/components/dialogs/SummitGiftModal';
 import CasinoIcon from '@mui/icons-material/Casino';
 import HandshakeIcon from '@mui/icons-material/Handshake';
@@ -34,7 +35,7 @@ function Summit() {
   const [estimatedDamage, setEstimatedDamage] = useState<number>(0)
 
   // Queue and dedup for spectator battle events
-  const spectatorQueueRef = useRef<any[]>([])
+  const spectatorQueueRef = useRef<SpectatorBattleEvent[]>([])
   const processingSpectatorRef = useRef<boolean>(false)
   const spectatorAnimSeqRef = useRef<number>(0)
 
@@ -368,7 +369,7 @@ function Summit() {
               </Box>
             </Box>
           </Tooltip>
-          {summit.diplomacy && summit.diplomacy.bonus > 0 && (
+          {summit.diplomacy && summit.diplomacy.beasts.length > 0 && (
             <Tooltip
               title={
                 <Box sx={styles.tooltipContent}>
@@ -394,7 +395,7 @@ function Summit() {
                         Beasts
                       </Typography>
                       <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
-                        {summit.diplomacy.beast_token_ids.length}
+                        {summit.diplomacy.beasts.length}
                       </Typography>
                     </Box>
 
@@ -403,9 +404,9 @@ function Summit() {
                         Total power
                       </Typography>
                       {summit.beast.diplomacy ? <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
-                        {summit.diplomacy.total_power}({summit.diplomacy.total_power - summit.beast.power})
+                        {summit.diplomacy.totalPower}({summit.diplomacy.totalPower - summit.beast.power})
                       </Typography> : <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
-                        {summit.diplomacy.total_power}
+                        {summit.diplomacy.totalPower}
                       </Typography>}
                     </Box>
 

@@ -7,7 +7,9 @@ import { addAddressPadding } from 'starknet';
 import { lookupAddressNames } from '@/utils/addressNameCache';
 import { Box, Typography, IconButton } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import HandshakeIcon from '@mui/icons-material/Handshake';
 import { useEffect, useState } from 'react';
+import { DiplomacyPopover } from './DiplomacyPopover';
 import { TERMINAL_BLOCK } from '@/contexts/GameDirector';
 import FinalShowdown from './FinalShowdown';
 import RewardsRemainingBar from './RewardsRemainingBar';
@@ -22,6 +24,7 @@ function Leaderboard() {
   const [addressNames, setAddressNames] = useState({})
   const [currentBlock, setCurrentBlock] = useState(0)
   const [summitOwnerRank, setSummitOwnerRank] = useState(null)
+  const [diplomacyAnchor, setDiplomacyAnchor] = useState(null)
 
   // Check if we're in the final showdown phase
   const isFinalShowdown = currentBlock >= TERMINAL_BLOCK;
@@ -58,6 +61,13 @@ function Leaderboard() {
           addressesToLookup.push(summit.owner);
         }
 
+        // Add diplomacy beast owners
+        if (summit?.diplomacy?.beasts) {
+          summit.diplomacy.beasts.forEach(beast => {
+            if (beast.owner) addressesToLookup.push(beast.owner);
+          });
+        }
+
         if (addressesToLookup.length > 0) {
           // Use cached lookup function
           const addressMap = await lookupAddressNames(addressesToLookup);
@@ -79,7 +89,7 @@ function Leaderboard() {
     }
 
     fetchLeaderboard()
-  }, [summit?.beast?.token_id])
+  }, [summit?.beast?.token_id, summit?.diplomacy?.beasts?.length])
 
   // Calculate summit owner's live score and rank
   useEffect(() => {
@@ -90,7 +100,7 @@ function Leaderboard() {
 
     // Calculate bonus points from blocks held (1 point per block)
     const blocksHeld = (currentBlock - summit.taken_at)
-    const diplomacyCount = (summit?.diplomacy?.beast_token_ids.length || 0) - (summit.beast.diplomacy ? 1 : 0);
+    const diplomacyCount = (summit?.diplomacy?.beasts.length || 0) - (summit.beast.diplomacy ? 1 : 0);
     const diplomacyRewards = (SUMMIT_REWARD_PER_BLOCK / 100 * diplomacyCount);
 
     // Find summit owner in leaderboard
@@ -189,11 +199,23 @@ function Leaderboard() {
                     {formatRewards(summitOwnerRank.beforeAmount)} <span style={{ color: gameColors.brightGreen }}>+{formatRewards(summitOwnerRank.gainedSince)}</span>
                   </Typography>
                 </Box>
-                {summitOwnerRank.diplomacyCount > 0 && (
+                {summitOwnerRank.diplomacyCount > 0 && summit.diplomacy && (
                   <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
-                    <Typography sx={styles.summitOwnerSub}>
+                    <Typography
+                      sx={[styles.summitOwnerSub, styles.diplomacyLink]}
+                      onClick={(e) => setDiplomacyAnchor(e.currentTarget)}
+                    >
+                      <HandshakeIcon sx={{ fontSize: '12px', mr: 0.5 }} />
                       +{summitOwnerRank.diplomacyCount} Diplomacy
                     </Typography>
+                    <DiplomacyPopover
+                      anchorEl={diplomacyAnchor}
+                      onClose={() => setDiplomacyAnchor(null)}
+                      diplomacy={summit.diplomacy}
+                      summitBeast={summit.beast}
+                      leaderboard={leaderboard}
+                      addressNames={addressNames}
+                    />
                   </Box>
                 )}
               </>
@@ -549,5 +571,13 @@ const styles = {
     fontSize: '10px',
     color: gameColors.accentGreen,
     mr: '2px'
+  },
+  diplomacyLink: {
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    '&:hover': {
+      color: gameColors.yellow,
+    },
   },
 }

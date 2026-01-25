@@ -19,21 +19,28 @@ export interface SummitData {
   bonus_health: number;
   bonus_xp: number;
   attack_streak: number;
-  last_death_timestamp: string;
+  last_death_timestamp: number;
   revival_count: number;
   extra_lives: number;
-  has_claimed_potions: number;
+  has_claimed_potions: boolean;
   blocks_held: number;
   spirit: number;
   luck: number;
-  specials: number;
-  wisdom: number;
-  diplomacy: number;
+  specials: boolean;
+  wisdom: boolean;
+  diplomacy: boolean;
   rewards_earned: number;
   rewards_claimed: number;
-  block_number: string;
-  transaction_hash: string;
-  created_at: string;
+  block_number: number;
+  // Beast data from trigger join
+  beast_id: number;
+  prefix: number;
+  suffix: number;
+  level: number;
+  health: number;
+  shiny: number;
+  animated: number;
+  owner: string | null;
 }
 
 export interface EventData {

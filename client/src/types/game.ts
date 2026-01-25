@@ -7,11 +7,21 @@ export interface Summit {
   diplomacy?: Diplomacy;
 }
 
+export interface DiplomacyBeast {
+  token_id: number;
+  owner: string | null;
+  name: string;
+  prefix: string;
+  suffix: string;
+  level: number;
+  current_level: number;
+  power: number;
+}
+
 export interface Diplomacy {
-  specials_hash: string;
+  beasts: DiplomacyBeast[];
+  totalPower: number;
   bonus: number;
-  total_power: number;
-  beast_token_ids: number[];
 }
 
 export interface Leaderboard {
@@ -50,13 +60,13 @@ export interface Beast {
   diplomacy: boolean;
   kills_claimed: number;
   entity_hash?: string;
-  specials_hash?: string;
   rank?: number;
   last_dm_death_timestamp?: number;
   adventurers_killed?: number;
   last_killed_by?: number;
   combat?: Combat;
   battle?: BattleEvent;
+  owner?: string;
 }
 
 export interface Stats {
@@ -105,13 +115,10 @@ export interface GameAction {
   revivePotions?: number;
 }
 
+// BattleEvent matches Cairo struct - used for transaction event parsing
 export interface BattleEvent {
   attacking_beast_token_id: number;
   attack_index: number;
-  attacking_beast_owner: string | null;
-  attacking_beast_id: number;
-  attacking_beast_shiny: number;
-  attacking_beast_animated: number;
   defending_beast_token_id: number;
   attack_count: number;
   attack_damage: number;
@@ -122,7 +129,16 @@ export interface BattleEvent {
   critical_counter_attack_count: number;
   critical_counter_attack_damage: number;
   attack_potions: number;
+  revive_potions: number;
   xp_gained: number;
+}
+
+// SpectatorBattleEvent - enriched data from WebSocket/summit_log for spectator view
+export interface SpectatorBattleEvent extends BattleEvent {
+  attacking_beast_owner: string | null;
+  attacking_beast_id: number;
+  attacking_beast_shiny: number;
+  attacking_beast_animated: number;
 }
 
 export interface PoisonEvent {
@@ -134,7 +150,6 @@ export interface PoisonEvent {
 
 export interface DiplomacyEvent {
   beast_token_id: number;
-  specials_hash: string;
   power: number;
   owner: string | null;
 }
