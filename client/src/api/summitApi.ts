@@ -14,6 +14,47 @@ const SUFFIX_NAME_TO_ID = Object.fromEntries(
   Object.entries(ITEM_NAME_SUFFIXES).map(([id, name]) => [name, parseInt(id)])
 );
 
+export interface AllBeast {
+  token_id: number;
+  beast_id: number;
+  prefix: number;
+  suffix: number;
+  level: number;
+  health: number;
+  bonus_health: number;
+  bonus_xp: number;
+  blocks_held: number;
+  spirit: number;
+  luck: number;
+  specials: boolean;
+  wisdom: boolean;
+  diplomacy: boolean;
+  extra_lives: number;
+  owner: string | null;
+  shiny: number;
+  animated: number;
+}
+
+export interface AllBeastsResponse {
+  data: AllBeast[];
+  pagination: {
+    limit: number;
+    offset: number;
+    total: number;
+    has_more: boolean;
+  };
+}
+
+export interface GetAllBeastsParams {
+  limit?: number;
+  offset?: number;
+  prefix?: number;
+  suffix?: number;
+  name?: string;
+  owner?: string;
+  sort?: 'power' | 'level' | 'blocks_held';
+}
+
 export interface TopBeast {
   token_id: number;
   blocks_held: number;
@@ -34,6 +75,37 @@ export interface TopBeastsResponse {
     total: number;
     has_more: boolean;
   };
+}
+
+export interface LogEntry {
+  id: string;
+  block_number: string;
+  event_index: number;
+  category: string;
+  sub_category: string;
+  data: Record<string, unknown>;
+  player: string | null;
+  token_id: number | null;
+  transaction_hash: string;
+  created_at: string;
+}
+
+export interface LogsResponse {
+  data: LogEntry[];
+  pagination: {
+    limit: number;
+    offset: number;
+    total: number;
+    has_more: boolean;
+  };
+}
+
+export interface GetLogsParams {
+  limit?: number;
+  offset?: number;
+  category?: string;
+  sub_category?: string;
+  player?: string;
 }
 
 // Raw response from /diplomacy endpoint
@@ -82,6 +154,26 @@ export const useSummitApi = () => {
     const response = await fetch(`${currentNetworkConfig.apiUrl}/beasts/${owner}`);
     if (!response.ok) {
       throw new Error(`Failed to fetch beasts for owner ${owner}: ${response.status}`);
+    }
+    return response.json();
+  };
+
+  /**
+   * Get paginated list of all beasts with filtering
+   */
+  const getAllBeasts = async (params: GetAllBeastsParams = {}): Promise<AllBeastsResponse> => {
+    const searchParams = new URLSearchParams();
+    if (params.limit) searchParams.set('limit', params.limit.toString());
+    if (params.offset) searchParams.set('offset', params.offset.toString());
+    if (params.prefix) searchParams.set('prefix', params.prefix.toString());
+    if (params.suffix) searchParams.set('suffix', params.suffix.toString());
+    if (params.name) searchParams.set('name', params.name);
+    if (params.owner) searchParams.set('owner', params.owner);
+    if (params.sort) searchParams.set('sort', params.sort);
+
+    const response = await fetch(`${currentNetworkConfig.apiUrl}/beasts/all?${searchParams}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch all beasts: ${response.status}`);
     }
     return response.json();
   };
@@ -205,13 +297,33 @@ export const useSummitApi = () => {
     return Array.from(groups.values()).sort((a, b) => b.totalPower - a.totalPower);
   };
 
+  /**
+   * Get paginated event logs with optional filters
+   */
+  const getLogs = async (params: GetLogsParams = {}): Promise<LogsResponse> => {
+    const searchParams = new URLSearchParams();
+    if (params.limit) searchParams.set('limit', params.limit.toString());
+    if (params.offset) searchParams.set('offset', params.offset.toString());
+    if (params.category) searchParams.set('category', params.category);
+    if (params.sub_category) searchParams.set('sub_category', params.sub_category);
+    if (params.player) searchParams.set('player', params.player);
+
+    const response = await fetch(`${currentNetworkConfig.apiUrl}/logs?${searchParams}`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch logs: ${response.status}`);
+    }
+    return response.json();
+  };
+
   return {
     getBeastsByOwner,
+    getAllBeasts,
     getBeastCounts,
     getLeaderboard,
     getTop5000Cutoff,
     getTopBeasts,
     getDiplomacy,
     getDiplomacyLeaderboard,
+    getLogs,
   };
 };

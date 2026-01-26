@@ -16,7 +16,7 @@ export default defineConfig({
       // Mainnet DNA stream URL
       streamUrl: process.env.STREAM_URL,
       // Starting block - use earliest block needed for Dojo events
-      startingBlock: "5930000",
+      startingBlock: "6060000",
       // PostgreSQL connection string
       databaseUrl: process.env.DATABASE_URL,
       // RPC URL for fetching beast metadata

@@ -108,6 +108,8 @@ interface BeastMetadata {
   beast_id: number;
   prefix: number;
   suffix: number;
+  shiny: number;
+  animated: number;
 }
 
 /**
@@ -176,6 +178,8 @@ async function getBeastMetadata(db: any, token_id: number): Promise<BeastMetadat
       beast_id: schema.beasts.beast_id,
       prefix: schema.beasts.prefix,
       suffix: schema.beasts.suffix,
+      shiny: schema.beasts.shiny,
+      animated: schema.beasts.animated,
     })
     .from(schema.beasts)
     .where(eq(schema.beasts.token_id, token_id))
@@ -847,8 +851,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
             case EVENT_SELECTORS.BattleEvent: {
               const decoded = decodeBattleEvent([...keys], [...data]);
-              // Look up attacking player from beast_owners
+              // Look up attacking player and beast metadata
               const attacking_player = await getBeastOwner(db, decoded.attacking_beast_token_id);
+              const attacking_beast_metadata = await getBeastMetadata(db, decoded.attacking_beast_token_id);
               // logger.info(`BattleEvent: attacker=${decoded.attacking_beast_token_id} (${attacking_player}), defender=${decoded.defending_beast_token_id}, damage=${decoded.attack_damage}`);
 
               await db.insert(schema.battles).values({
@@ -874,21 +879,33 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 event_index,
               }).onConflictDoNothing();
 
-              // Log: Battle/BattleEvent
+              // Log: Battle/BattleEvent - include all fields for spectator view
               await insertSummitLog(db, {
                 block_number,
                 event_index,
                 category: "Battle",
                 sub_category: "BattleEvent",
                 data: {
-                  attacking_player,
+                  // Core battle data
                   attacking_beast_token_id: decoded.attacking_beast_token_id,
+                  attack_index: decoded.attack_index,
                   defending_beast_token_id: decoded.defending_beast_token_id,
+                  attack_count: decoded.attack_count,
                   attack_damage: decoded.attack_damage,
+                  critical_attack_count: decoded.critical_attack_count,
                   critical_attack_damage: decoded.critical_attack_damage,
+                  counter_attack_count: decoded.counter_attack_count,
+                  counter_attack_damage: decoded.counter_attack_damage,
+                  critical_counter_attack_count: decoded.critical_counter_attack_count,
+                  critical_counter_attack_damage: decoded.critical_counter_attack_damage,
                   attack_potions: decoded.attack_potions,
                   revive_potions: decoded.revive_potions,
                   xp_gained: decoded.xp_gained,
+                  // Attacking beast metadata for spectator view
+                  attacking_beast_owner: attacking_player,
+                  attacking_beast_id: attacking_beast_metadata?.beast_id ?? 0,
+                  attacking_beast_shiny: attacking_beast_metadata?.shiny ?? 0,
+                  attacking_beast_animated: attacking_beast_metadata?.animated ?? 0,
                 },
                 player: attacking_player,
                 token_id: decoded.attacking_beast_token_id,

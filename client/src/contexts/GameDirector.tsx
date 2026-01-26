@@ -5,7 +5,7 @@ import { useSystemCalls } from "@/dojo/useSystemCalls";
 import { useWebSocket, SummitData, EventData } from "@/hooks/useWebSocket";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
-import { BattleEvent, Beast, Diplomacy, GameAction, Summit } from "@/types/game";
+import { BattleEvent, Beast, Diplomacy, GameAction, SpectatorBattleEvent, Summit } from "@/types/game";
 import {
   applyPoisonDamage,
   getBeastCurrentHealth,
@@ -13,6 +13,7 @@ import {
   getBeastDetails,
   getBeastRevivalTime,
 } from "@/utils/beasts";
+import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import {
   createContext,
   PropsWithChildren,
@@ -47,6 +48,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     collection,
     setCollection,
     setBattleEvents,
+    setSpectatorBattleEvents,
     setApplyingPotions,
     setAppliedExtraLifePotions,
     setSelectedBeasts,
@@ -83,6 +85,20 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     const current_level = getBeastCurrentLevel(data.level, data.bonus_xp);
     const sameBeast = summit?.beast.token_id === data.token_id;
 
+    // If summit beast changed and we owned it, mark it as dead in our collection
+    if (!sameBeast && summit?.beast.token_id) {
+      if (collection.some(b => b.token_id === summit.beast.token_id)) {
+        const now = Math.floor(Date.now() / 1000);
+        setCollection(prevCollection =>
+          prevCollection.map(beast =>
+            beast.token_id === summit.beast.token_id
+              ? { ...beast, last_death_timestamp: now, current_health: 0 }
+              : beast
+          )
+        );
+      }
+    }
+
     setNextSummit({
       beast: {
         ...data,
@@ -101,6 +117,83 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   const handleEvent = (data: EventData) => {
     console.log("[GameDirector] Event:", data.category, data.sub_category, data.data);
+
+    const { category, sub_category, data: eventData } = data;
+
+    // Handle Battle events
+    if (category === "Battle") {
+      if (sub_category === "BattleEvent") {
+        // Add to spectator battle events for activity feed
+        setSpectatorBattleEvents(prev => [...prev, eventData as unknown as SpectatorBattleEvent]);
+      } else if (sub_category === "Applied Poison") {
+        const beastTokenId = eventData.beast_token_id as number;
+        const count = eventData.count as number;
+        const blockTimestamp = Math.floor(new Date(data.created_at).getTime() / 1000);
+
+        // Update summit poison stats directly
+        if (nextSummit && nextSummit.beast.token_id === beastTokenId) {
+          setNextSummit(prev => prev ? {
+            ...prev,
+            poison_count: prev.poison_count + count,
+            poison_timestamp: blockTimestamp,
+          } : prev);
+        } else if (summit && summit.beast.token_id === beastTokenId) {
+          setSummit(prev => prev ? {
+            ...prev,
+            poison_count: prev.poison_count + count,
+            poison_timestamp: blockTimestamp,
+          } : prev);
+        }
+      }
+    }
+
+    // Handle LS (Loot Survivor) Events - update collection beasts
+    if (category === "LS Events") {
+      const entityHash = eventData.entity_hash as string;
+
+      if (sub_category === "EntityStats") {
+        setCollection(prevCollection =>
+          prevCollection.map(beast =>
+            beast.entity_hash === entityHash
+              ? { ...beast, adventurers_killed: Number(eventData.adventurers_killed) }
+              : beast
+          )
+        );
+      } else if (sub_category === "CollectableEntity") {
+        setCollection(prevCollection =>
+          prevCollection.map(beast =>
+            beast.entity_hash === entityHash
+              ? {
+                  ...beast,
+                  last_killed_by: Number(eventData.last_killed_by),
+                  last_dm_death_timestamp: Number(eventData.timestamp),
+                }
+              : beast
+          )
+        );
+      }
+    }
+
+    // Handle Beast Upgrade/Diplomacy - refresh diplomacy bonus if a matching beast upgraded
+    if (category === "Beast Upgrade" && sub_category === "Diplomacy") {
+      const prefix = eventData.prefix as number;
+      const suffix = eventData.suffix as number;
+      const prefixName = ITEM_NAME_PREFIXES[prefix as keyof typeof ITEM_NAME_PREFIXES];
+      const suffixName = ITEM_NAME_SUFFIXES[suffix as keyof typeof ITEM_NAME_SUFFIXES];
+
+      // Refresh diplomacy bonus if upgraded beast's name matches summit beast
+      if (summit?.beast.prefix === prefixName && summit?.beast.suffix === suffixName) {
+        getDiplomacy(prefix, suffix).then(beasts => {
+          if (beasts.length > 0) {
+            const totalPower = beasts.reduce((sum, b) => sum + b.power, 0);
+            // Exclude summit beast's own power if it has diplomacy (can't give bonus to itself)
+            const adjustedPower = summit.beast.diplomacy ? totalPower - summit.beast.power : totalPower;
+            const bonus = Math.floor(adjustedPower / 250);
+            setSummit(prev => prev ? { ...prev, diplomacy: { beasts, totalPower, bonus } } : prev);
+          }
+        });
+      }
+    }
   };
 
   // WebSocket subscription

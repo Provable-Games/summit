@@ -516,6 +516,136 @@ app.get("/diplomacy/all", async (c) => {
 });
 
 /**
+ * GET /beasts/all - Get paginated list of all beasts with filtering
+ *
+ * Query params:
+ * - limit: Number of results (default: 25, max: 100)
+ * - offset: Pagination offset (default: 0)
+ * - prefix: Filter by prefix ID (optional)
+ * - suffix: Filter by suffix ID (optional)
+ * - name: Filter by beast name search (optional)
+ * - owner: Filter by owner address (optional)
+ * - sort: Sort by power, level, or blocks_held (default: power)
+ */
+app.get("/beasts/all", async (c) => {
+  const limit = Math.min(parseInt(c.req.query("limit") || "25", 10), 100);
+  const offset = parseInt(c.req.query("offset") || "0", 10);
+  const prefix = c.req.query("prefix");
+  const suffix = c.req.query("suffix");
+  const name = c.req.query("name");
+  const owner = c.req.query("owner");
+  const sort = c.req.query("sort") || "power";
+
+  // Build where conditions
+  const conditions = [];
+  if (prefix) conditions.push(eq(beasts.prefix, parseInt(prefix, 10)));
+  if (suffix) conditions.push(eq(beasts.suffix, parseInt(suffix, 10)));
+  if (owner) conditions.push(eq(beast_owners.owner, normalizeAddress(owner)));
+  if (name) {
+    // Find beast IDs that match the name search
+    const lowerName = name.toLowerCase();
+    const matchingBeastIds = Object.entries(BEAST_NAMES)
+      .filter(([, beastName]) => beastName.toLowerCase().includes(lowerName))
+      .map(([id]) => parseInt(id, 10));
+    if (matchingBeastIds.length > 0) {
+      conditions.push(sql`${beasts.beast_id} IN (${sql.raw(matchingBeastIds.join(","))})`);
+    } else {
+      // No matches, return empty result
+      return c.json({
+        data: [],
+        pagination: { limit, offset, total: 0, has_more: false },
+      });
+    }
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Build order by clause based on sort parameter
+  let orderByClause;
+  switch (sort) {
+    case "level":
+      orderByClause = [desc(beasts.level), desc(beast_stats.bonus_xp)];
+      break;
+    case "blocks_held":
+      orderByClause = [desc(beast_stats.blocks_held), desc(beast_stats.bonus_xp)];
+      break;
+    case "power":
+    default:
+      // Power = (6 - tier) * current_level, approximate by level and tier
+      orderByClause = [desc(beasts.level), desc(beast_stats.bonus_xp)];
+      break;
+  }
+
+  // Get paginated results
+  const results = await db
+    .select({
+      token_id: beasts.token_id,
+      beast_id: beasts.beast_id,
+      prefix: beasts.prefix,
+      suffix: beasts.suffix,
+      level: beasts.level,
+      health: beasts.health,
+      shiny: beasts.shiny,
+      animated: beasts.animated,
+      bonus_health: beast_stats.bonus_health,
+      bonus_xp: beast_stats.bonus_xp,
+      blocks_held: beast_stats.blocks_held,
+      spirit: beast_stats.spirit,
+      luck: beast_stats.luck,
+      specials: beast_stats.specials,
+      wisdom: beast_stats.wisdom,
+      diplomacy: beast_stats.diplomacy,
+      extra_lives: beast_stats.extra_lives,
+      owner: beast_owners.owner,
+    })
+    .from(beasts)
+    .leftJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+    .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
+    .where(whereClause)
+    .orderBy(...orderByClause)
+    .limit(limit)
+    .offset(offset);
+
+  // Get total count
+  const countResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(beasts)
+    .leftJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+    .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
+    .where(whereClause);
+  const total = Number(countResult[0]?.count ?? 0);
+
+  return c.json({
+    data: results.map((r) => ({
+      token_id: r.token_id,
+      beast_id: r.beast_id,
+      prefix: r.prefix,
+      suffix: r.suffix,
+      level: r.level,
+      health: r.health,
+      bonus_health: r.bonus_health ?? 0,
+      bonus_xp: r.bonus_xp ?? 0,
+      blocks_held: r.blocks_held ?? 0,
+      spirit: r.spirit ?? 0,
+      luck: r.luck ?? 0,
+      specials: Boolean(r.specials),
+      wisdom: Boolean(r.wisdom),
+      diplomacy: Boolean(r.diplomacy),
+      extra_lives: r.extra_lives ?? 0,
+      owner: r.owner,
+      shiny: r.shiny,
+      animated: r.animated,
+    })),
+    pagination: {
+      limit,
+      offset,
+      total,
+      has_more: offset + results.length < total,
+    },
+  });
+});
+
+/**
  * GET /leaderboard - Get rewards leaderboard grouped by owner
  */
 app.get("/leaderboard", async (c) => {
@@ -542,6 +672,7 @@ app.get("/", (c) => {
     health: "GET /health",
     beasts: {
       by_owner: "GET /beasts/:owner",
+      all: "GET /beasts/all?limit=25&offset=0&prefix=&suffix=&name=&owner=&sort=power",
       counts: "GET /beasts/stats/counts",
       top: "GET /beasts/stats/top?limit=25&offset=0",
       top5000_cutoff: "GET /beasts/stats/top5000-cutoff",

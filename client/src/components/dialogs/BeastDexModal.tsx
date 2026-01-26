@@ -1,6 +1,9 @@
+import { AllBeast, useSummitApi } from '@/api/summitApi';
 import { useGameStore } from '@/stores/gameStore';
+import { useAccount } from '@starknet-react/core';
 import { Beast } from '@/types/game';
-import { fetchBeastImage } from '@/utils/beasts';
+import { lookupAddressName } from '@/utils/addressNameCache';
+import { fetchBeastImage, getBeastCurrentLevel, getBeastDetails } from '@/utils/beasts';
 import { gameColors } from '@/utils/themes';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import CasinoIcon from '@mui/icons-material/Casino';
@@ -13,9 +16,10 @@ import PsychologyIcon from '@mui/icons-material/Psychology';
 import SearchIcon from '@mui/icons-material/Search';
 import SortByAlphaIcon from '@mui/icons-material/SortByAlpha';
 import StarIcon from '@mui/icons-material/Star';
-import { Box, Dialog, FormControl, IconButton, InputBase, InputLabel, MenuItem, Pagination, Select, Tooltip, Typography } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { Box, CircularProgress, Dialog, FormControl, IconButton, InputBase, InputLabel, MenuItem, Pagination, Select, Tab, Tabs, Typography } from '@mui/material';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import BeastUpgradeModal from './BeastUpgradeModal';
+import SummitGiftModal from './SummitGiftModal';
 
 interface BeastDexModalProps {
   open: boolean;
@@ -24,11 +28,52 @@ interface BeastDexModalProps {
 
 type SortKey = 'power' | 'level' | 'health' | 'name';
 type TypeKey = 'all' | 'Brute' | 'Hunter' | 'Magic';
+type TabKey = 'mine' | 'all';
+
+// Transform AllBeast API response to Beast type for display
+const transformAllBeast = (ab: AllBeast): Beast => {
+  const currentLevel = getBeastCurrentLevel(ab.level, ab.bonus_xp);
+  const details = getBeastDetails(ab.beast_id, ab.prefix, ab.suffix, currentLevel);
+  return {
+    ...details,
+    id: ab.beast_id,
+    token_id: ab.token_id,
+    level: ab.level,
+    health: ab.health,
+    bonus_health: ab.bonus_health,
+    bonus_xp: ab.bonus_xp,
+    current_level: currentLevel,
+    blocks_held: ab.blocks_held,
+    spirit: ab.spirit,
+    luck: ab.luck,
+    specials: ab.specials,
+    wisdom: ab.wisdom,
+    diplomacy: ab.diplomacy,
+    extra_lives: ab.extra_lives,
+    owner: ab.owner,
+    shiny: ab.shiny,
+    animated: ab.animated,
+    // Defaults for fields not in API
+    current_health: ab.health + ab.bonus_health,
+    revival_time: 0,
+    attack_streak: 0,
+    last_death_timestamp: 0,
+    revival_count: 0,
+    has_claimed_potions: false,
+    kills_claimed: 0,
+  };
+};
 
 export default function BeastDexModal(props: BeastDexModalProps) {
   const { open, close } = props;
   const { collection, summit } = useGameStore();
+  const { address } = useAccount();
+  const summitApi = useSummitApi();
 
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabKey>('mine');
+
+  // Filter/sort state (shared between tabs)
   const [prefixQuery, setPrefixQuery] = useState('');
   const [suffixQuery, setSuffixQuery] = useState('');
   const [nameQuery, setNameQuery] = useState('');
@@ -37,6 +82,13 @@ export default function BeastDexModal(props: BeastDexModalProps) {
   const [selectedBeast, setSelectedBeast] = useState<Beast | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 24;
+
+  // All Beasts tab state
+  const [allBeasts, setAllBeasts] = useState<Beast[]>([]);
+  const [allBeastsTotal, setAllBeastsTotal] = useState(0);
+  const [allBeastsLoading, setAllBeastsLoading] = useState(false);
+  const [selectedGiftBeast, setSelectedGiftBeast] = useState<Beast | null>(null);
+  const [selectedGiftOwnerName, setSelectedGiftOwnerName] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     let list = collection.slice();
@@ -97,7 +149,48 @@ export default function BeastDexModal(props: BeastDexModalProps) {
 
   useEffect(() => {
     setPage(1);
-  }, [prefixQuery, suffixQuery, nameQuery, sortBy, typeFilter, collection.length]);
+  }, [prefixQuery, suffixQuery, nameQuery, sortBy, typeFilter, collection.length, activeTab]);
+
+  // Fetch all beasts when on "All Beasts" tab
+  useEffect(() => {
+    if (activeTab !== 'all' || !open) return;
+
+    let cancelled = false;
+    const fetchAllBeasts = async () => {
+      setAllBeastsLoading(true);
+      try {
+        const sortParam = sortBy === 'name' || sortBy === 'health' ? 'power' : sortBy;
+        const response = await summitApi.getAllBeasts({
+          limit: pageSize,
+          offset: (page - 1) * pageSize,
+          name: nameQuery.trim() || undefined,
+          sort: sortParam as 'power' | 'level' | 'blocks_held',
+        });
+        if (cancelled) return;
+        const data = response?.data ?? [];
+        const transformedBeasts = data.map(transformAllBeast);
+        setAllBeasts(transformedBeasts);
+        setAllBeastsTotal(response?.pagination?.total ?? 0);
+      } catch (error) {
+        console.error('Failed to fetch all beasts:', error);
+        if (!cancelled) {
+          setAllBeasts([]);
+          setAllBeastsTotal(0);
+        }
+      } finally {
+        if (!cancelled) {
+          setAllBeastsLoading(false);
+        }
+      }
+    };
+
+    fetchAllBeasts();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, open, page, nameQuery, sortBy]);
 
   const handleSelect = (beast: Beast) => {
     setSelectedBeast(beast);
@@ -106,6 +199,31 @@ export default function BeastDexModal(props: BeastDexModalProps) {
   const handleCloseUpgrade = () => {
     setSelectedBeast(null);
   };
+
+  const handleSelectGiftBeast = async (beast: Beast) => {
+    setSelectedGiftBeast(beast);
+    if (beast.owner) {
+      const name = await lookupAddressName(beast.owner);
+      setSelectedGiftOwnerName(name);
+    } else {
+      setSelectedGiftOwnerName(null);
+    }
+  };
+
+  const handleCloseGift = () => {
+    setSelectedGiftBeast(null);
+    setSelectedGiftOwnerName(null);
+  };
+
+  const handleTabChange = (_event: React.SyntheticEvent, newValue: TabKey) => {
+    setActiveTab(newValue);
+    setPage(1);
+  };
+
+  // Determine which items to display based on active tab
+  const displayItems = activeTab === 'mine' ? pagedItems : allBeasts;
+  const displayTotal = activeTab === 'mine' ? filtered.length : allBeastsTotal;
+  const displayTotalPages = activeTab === 'mine' ? totalPages : Math.max(1, Math.ceil(allBeastsTotal / pageSize));
 
   return (
     <Dialog
@@ -144,7 +262,17 @@ export default function BeastDexModal(props: BeastDexModalProps) {
         </IconButton>
 
         <Box sx={styles.header}>
-          <Typography sx={styles.title}>SELECT BEAST TO UPGRADE</Typography>
+          <Typography sx={styles.title}>
+            {activeTab === 'mine' ? 'SELECT BEAST TO UPGRADE' : 'ALL BEASTS'}
+          </Typography>
+          <Tabs
+            value={activeTab}
+            onChange={handleTabChange}
+            sx={styles.tabs}
+          >
+            <Tab value="mine" label="My Beasts" sx={styles.tab} />
+            <Tab value="all" label="All Beasts" sx={styles.tab} />
+          </Tabs>
           <Box sx={styles.controlsRow}>
             <FormControl size="small" sx={styles.selectControl}>
               <InputLabel id="sort-select-label" sx={styles.inputLabel}>Sort by</InputLabel>
@@ -249,111 +377,126 @@ export default function BeastDexModal(props: BeastDexModalProps) {
         </Box>
 
         <Box sx={styles.grid}>
-          {pagedItems.map((beast) => {
-            const MAX_BONUS_HEALTH = 1023;
-            const bonusPctOnly = Math.min(100, Math.max(0, Math.round((beast.bonus_health * 100) / MAX_BONUS_HEALTH)));
-            return (
-              <Box
-                key={beast.token_id}
-                sx={styles.card}
-                onClick={() => handleSelect(beast)}
-              >
-                <Box sx={styles.cardTop}>
-                  <Box sx={styles.imageHolder}>
-                    {summit?.beast?.token_id === beast.token_id && (
-                      <Box sx={styles.ribbon}>
-                        <Typography sx={styles.ribbonText}>SUMMIT</Typography>
-                      </Box>
-                    )}
-                    <img src={fetchBeastImage(beast)} alt={beast.name} style={{ width: '90%', height: '90%', objectFit: 'contain' }} />
-                  </Box>
-                  <Box sx={styles.nameArea}>
-                    <Typography sx={styles.specialName}>"{beast.prefix} {beast.suffix}"</Typography>
-                    <Typography sx={styles.beastName}>{beast.name}</Typography>
-
-                    <Box sx={styles.badgesRow}>
-                      <Box sx={[styles.abilityIcon, beast.specials ? styles.abilityIconOn : styles.abilityIconOff]}>
-                        <StarIcon sx={{ fontSize: '18px', color: beast.specials ? '#ffd700' : '#888'}} />
-                      </Box>
-                      <Box sx={[styles.abilityIcon, beast.diplomacy ? styles.abilityIconOn : styles.abilityIconOff]}>
-                        <HandshakeIcon sx={{ fontSize: '18px', color: beast.diplomacy ? '#a78bfa' : '#888'}} />
-                      </Box>
-                      <Box sx={[styles.abilityIcon, beast.wisdom ? styles.abilityIconOn : styles.abilityIconOff]}>
-                        <PsychologyIcon sx={{ fontSize: '18px', color: beast.wisdom ? '#60a5fa' : '#888'}} />
-                      </Box>
-                    </Box>
-
-                    <Box sx={styles.badgesRow}>
-                      <Box sx={styles.pointChip}>
-                        <CasinoIcon sx={{ fontSize: '18px', color: '#ff69b4' }} />
-                        <Typography sx={styles.pointText}>{beast.luck || 0}</Typography>
-                      </Box>
-                      <Box sx={styles.pointChip}>
-                        <EnergyIcon sx={{ fontSize: '18px', color: '#00ffff' }} />
-                        <Typography sx={styles.pointText}>{beast.spirit || 0}</Typography>
-                      </Box>
-                    </Box>
-                  </Box>
-                </Box>
-
-                <Box sx={styles.statsRow}>
-                  <Box sx={styles.statChip}>
-                    <Typography sx={styles.statLabel}>Lvl</Typography>
-                    <Typography sx={styles.statValue}>{beast.current_level}</Typography>
-                  </Box>
-                  <Box sx={styles.statChip}>
-                    <FlashOnIcon sx={{ fontSize: '14px', color: gameColors.yellow }} />
-                    <Typography sx={styles.statValue}>{beast.power}</Typography>
-                  </Box>
-                  <Box sx={styles.statChip}>
-                    <FavoriteIcon sx={{ fontSize: '14px', color: gameColors.red }} />
-                    <Typography sx={styles.statValue}>
-                      {beast.health + beast.bonus_health}
-                    </Typography>
-                  </Box>
-                </Box>
-
-                <Box>
-                  <Typography sx={styles.bonusBarLabel}>Bonus Health</Typography>
-                  <Box sx={styles.bonusBarContainer}>
-                    <Box sx={styles.bonusBarTrack}>
-                      <Box sx={[styles.bonusBarFill, { width: `${bonusPctOnly}%` }]} />
-                      <Typography sx={styles.bonusBarOverlay}>{beast.bonus_health}</Typography>
-                    </Box>
-                  </Box>
-                </Box>
-              </Box>
-            );
-          })}
-          {filtered.length === 0 && (
-            <Box sx={styles.emptyBox}>
-              <Typography sx={styles.emptyText}>No beasts match your filters</Typography>
+          {activeTab === 'all' && allBeastsLoading ? (
+            <Box sx={styles.loadingBox}>
+              <CircularProgress size={40} sx={{ color: gameColors.brightGreen }} />
+              <Typography sx={styles.loadingText}>Loading beasts...</Typography>
             </Box>
+          ) : (
+            <>
+              {displayItems.map((beast) => {
+                const MAX_BONUS_HEALTH = 1023;
+                const bonusPctOnly = Math.min(100, Math.max(0, Math.round((beast.bonus_health * 100) / MAX_BONUS_HEALTH)));
+                const isOwnBeast = activeTab === 'all' && address && beast.owner?.toLowerCase().includes(address.toLowerCase().replace('0x', ''));
+                return (
+                  <Box
+                    key={beast.token_id}
+                    sx={styles.card}
+                    onClick={() => activeTab === 'mine' ? handleSelect(beast) : handleSelectGiftBeast(beast)}
+                  >
+                    <Box sx={styles.cardTop}>
+                      <Box sx={styles.imageHolder}>
+                        {summit?.beast?.token_id === beast.token_id && (
+                          <Box sx={styles.ribbon}>
+                            <Typography sx={styles.ribbonText}>SUMMIT</Typography>
+                          </Box>
+                        )}
+                        {activeTab === 'all' && isOwnBeast && (
+                          <Box sx={styles.ownedRibbon}>
+                            <Typography sx={styles.ribbonText}>YOURS</Typography>
+                          </Box>
+                        )}
+                        <img src={fetchBeastImage(beast)} alt={beast.name} style={{ width: '90%', height: '90%', objectFit: 'contain' }} />
+                      </Box>
+                      <Box sx={styles.nameArea}>
+                        <Typography sx={styles.specialName}>"{beast.prefix} {beast.suffix}"</Typography>
+                        <Typography sx={styles.beastName}>{beast.name}</Typography>
+
+                        <Box sx={styles.badgesRow}>
+                          <Box sx={[styles.abilityIcon, beast.specials ? styles.abilityIconOn : styles.abilityIconOff]}>
+                            <StarIcon sx={{ fontSize: '18px', color: beast.specials ? '#ffd700' : '#888'}} />
+                          </Box>
+                          <Box sx={[styles.abilityIcon, beast.diplomacy ? styles.abilityIconOn : styles.abilityIconOff]}>
+                            <HandshakeIcon sx={{ fontSize: '18px', color: beast.diplomacy ? '#a78bfa' : '#888'}} />
+                          </Box>
+                          <Box sx={[styles.abilityIcon, beast.wisdom ? styles.abilityIconOn : styles.abilityIconOff]}>
+                            <PsychologyIcon sx={{ fontSize: '18px', color: beast.wisdom ? '#60a5fa' : '#888'}} />
+                          </Box>
+                        </Box>
+
+                        <Box sx={styles.badgesRow}>
+                          <Box sx={styles.pointChip}>
+                            <CasinoIcon sx={{ fontSize: '18px', color: '#ff69b4' }} />
+                            <Typography sx={styles.pointText}>{beast.luck || 0}</Typography>
+                          </Box>
+                          <Box sx={styles.pointChip}>
+                            <EnergyIcon sx={{ fontSize: '18px', color: '#00ffff' }} />
+                            <Typography sx={styles.pointText}>{beast.spirit || 0}</Typography>
+                          </Box>
+                        </Box>
+                      </Box>
+                    </Box>
+
+                    <Box sx={styles.statsRow}>
+                      <Box sx={styles.statChip}>
+                        <Typography sx={styles.statLabel}>Lvl</Typography>
+                        <Typography sx={styles.statValue}>{beast.current_level}</Typography>
+                      </Box>
+                      <Box sx={styles.statChip}>
+                        <FlashOnIcon sx={{ fontSize: '14px', color: gameColors.yellow }} />
+                        <Typography sx={styles.statValue}>{beast.power}</Typography>
+                      </Box>
+                      <Box sx={styles.statChip}>
+                        <FavoriteIcon sx={{ fontSize: '14px', color: gameColors.red }} />
+                        <Typography sx={styles.statValue}>
+                          {beast.health + beast.bonus_health}
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    <Box>
+                      <Typography sx={styles.bonusBarLabel}>Bonus Health</Typography>
+                      <Box sx={styles.bonusBarContainer}>
+                        <Box sx={styles.bonusBarTrack}>
+                          <Box sx={[styles.bonusBarFill, { width: `${bonusPctOnly}%` }]} />
+                          <Typography sx={styles.bonusBarOverlay}>{beast.bonus_health}</Typography>
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Box>
+                );
+              })}
+              {displayTotal === 0 && (
+                <Box sx={styles.emptyBox}>
+                  <Typography sx={styles.emptyText}>
+                    {activeTab === 'mine' ? 'No beasts match your filters' : 'No beasts found'}
+                  </Typography>
+                </Box>
+              )}
+            </>
           )}
         </Box>
 
         {/* Pagination Controls */}
-        {
-          filtered.length > 0 && (
-            <Box sx={styles.paginationRow}>
-              <Typography sx={styles.paginationInfo}>
-                {Math.min((page - 1) * pageSize + 1, filtered.length)}-
-                {Math.min(page * pageSize, filtered.length)} of {filtered.length}
-              </Typography>
-              <Box sx={styles.paginationControls}>
-                <Pagination
-                  count={totalPages}
-                  page={page}
-                  onChange={(_, value) => setPage(value)}
-                  color="primary"
-                  siblingCount={1}
-                  boundaryCount={1}
-                  sx={styles.pagination}
-                />
-              </Box>
+        {displayTotal > 0 && (
+          <Box sx={styles.paginationRow}>
+            <Typography sx={styles.paginationInfo}>
+              {Math.min((page - 1) * pageSize + 1, displayTotal)}-
+              {Math.min(page * pageSize, displayTotal)} of {displayTotal}
+            </Typography>
+            <Box sx={styles.paginationControls}>
+              <Pagination
+                count={displayTotalPages}
+                page={page}
+                onChange={(_, value) => setPage(value)}
+                color="primary"
+                siblingCount={1}
+                boundaryCount={1}
+                sx={styles.pagination}
+              />
             </Box>
-          )
-        }
+          </Box>
+        )}
       </Box>
 
       {selectedBeast && (
@@ -361,6 +504,16 @@ export default function BeastDexModal(props: BeastDexModalProps) {
           open={!!selectedBeast}
           beast={selectedBeast}
           close={handleCloseUpgrade}
+        />
+      )}
+
+      {selectedGiftBeast && (
+        <SummitGiftModal
+          open={!!selectedGiftBeast}
+          beast={selectedGiftBeast}
+          ownerName={selectedGiftOwnerName}
+          isSavage={!!(address && selectedGiftBeast.owner?.toLowerCase().includes(address.toLowerCase().replace('0x', '')))}
+          close={handleCloseGift}
         />
       )}
     </Dialog>
@@ -406,6 +559,29 @@ const styles = {
       0 2px 4px rgba(0, 0, 0, 0.8),
       0 0 12px ${gameColors.brightGreen}40
     `,
+  },
+  tabs: {
+    minHeight: '32px',
+    mb: 0.5,
+    '& .MuiTabs-indicator': {
+      backgroundColor: gameColors.brightGreen,
+    },
+  },
+  tab: {
+    minHeight: '32px',
+    py: 0.5,
+    px: 2,
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: '#aaa',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    '&.Mui-selected': {
+      color: gameColors.brightGreen,
+    },
+    '&:hover': {
+      color: '#fff',
+    },
   },
   controlsRow: {
     display: 'flex',
@@ -614,6 +790,34 @@ const styles = {
     fontWeight: 'bold',
     color: gameColors.darkGreen,
     letterSpacing: '0.6px',
+  },
+  ownedRibbon: {
+    position: 'absolute',
+    top: '2px',
+    right: '2px',
+    background: gameColors.brightGreen,
+    color: gameColors.darkGreen,
+    borderRadius: '3px',
+    padding: '0 6px',
+    lineHeight: '16px',
+    height: '16px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+  },
+  loadingBox: {
+    gridColumn: '1 / -1',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+    py: 8,
+  },
+  loadingText: {
+    fontSize: '13px',
+    color: '#bbb',
   },
   nameArea: {
     display: 'flex',

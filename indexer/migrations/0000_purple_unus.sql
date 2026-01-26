@@ -212,6 +212,8 @@ CREATE INDEX "skulls_claimed_skulls_idx" ON "skulls_claimed" USING btree ("skull
 CREATE UNIQUE INDEX "summit_log_block_tx_event_idx" ON "summit_log" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
 CREATE INDEX "summit_log_order_idx" ON "summit_log" USING btree ("block_number" DESC NULLS LAST,"event_index" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "summit_log_category_idx" ON "summit_log" USING btree ("category");--> statement-breakpoint
+CREATE INDEX "summit_log_sub_category_idx" ON "summit_log" USING btree ("sub_category");--> statement-breakpoint
+CREATE INDEX "summit_log_category_order_idx" ON "summit_log" USING btree ("category","block_number" DESC NULLS LAST,"event_index" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "summit_log_player_idx" ON "summit_log" USING btree ("player");--> statement-breakpoint
 CREATE INDEX "summit_log_token_id_idx" ON "summit_log" USING btree ("token_id");--> statement-breakpoint
 CREATE INDEX "summit_log_player_order_idx" ON "summit_log" USING btree ("player","block_number" DESC NULLS LAST,"event_index" DESC NULLS LAST);
