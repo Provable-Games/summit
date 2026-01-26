@@ -65,8 +65,6 @@ interface SummitConfig {
   startingBlock: string;
   databaseUrl: string;
   rpcUrl: string;
-  // Optional: skip beast Transfer events before this block (for reindexing Dojo events only)
-  skipBeastsBeforeBlock?: string;
 }
 
 // In-memory cache to track tokens we've already fetched metadata for
@@ -387,11 +385,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     startingBlock: startBlockStr,
     databaseUrl,
     rpcUrl,
-    skipBeastsBeforeBlock: skipBeastsBeforeBlockStr,
   } = config;
   const startingBlock = BigInt(startBlockStr);
-  // Optional: skip beast Transfer events before this block (for reindexing Dojo events only)
-  const skipBeastsBeforeBlock = skipBeastsBeforeBlockStr ? BigInt(skipBeastsBeforeBlockStr) : null;
 
   // Convert contract addresses to BigInt for comparison
   const summitAddressBigInt = addressToBigInt(summitContractAddress);
@@ -402,9 +397,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   console.log("[Summit Indexer] Summit Contract:", summitContractAddress);
   console.log("[Summit Indexer] Beasts Contract:", beastsContractAddress);
   console.log("[Summit Indexer] Dojo World:", dojoWorldAddress);
-  if (skipBeastsBeforeBlock) {
-    console.log("[Summit Indexer] Skip beasts before block:", skipBeastsBeforeBlock.toString());
-  }
   console.log("[Summit Indexer] Stream:", streamUrl);
   console.log("[Summit Indexer] Starting Block:", startingBlock.toString());
   console.log("[Summit Indexer] RPC URL:", rpcUrl);
@@ -568,11 +560,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         try {
           // Beasts NFT contract - Transfer events
           if (addressToBigInt(event_address) === beastsAddressBigInt && selector === BEAST_EVENT_SELECTORS.Transfer) {
-            // Skip Transfer events before skipBeastsBeforeBlock (for reindexing Dojo events only)
-            if (skipBeastsBeforeBlock && block_number < skipBeastsBeforeBlock) {
-              continue;
-            }
-
             const decoded = decodeTransferEvent([...keys], [...data]);
             const token_id = Number(decoded.token_id);
 

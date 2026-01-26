@@ -29,25 +29,35 @@
 import { hash } from "starknet";
 
 /**
+ * Helper to get padded selector (64 hex chars after 0x)
+ */
+function getPaddedSelector(name: string): string {
+  const selector = hash.getSelectorFromName(name);
+  return `0x${BigInt(selector).toString(16).padStart(64, '0')}`;
+}
+
+/**
  * Event selectors for Summit contract events
  * Standard Starknet events use sn_keccak(event_name)
+ * Padded to 64 chars to match feltToHex output for comparison
  */
 export const EVENT_SELECTORS = {
-  BeastUpdatesEvent: hash.getSelectorFromName("BeastUpdatesEvent"),
-  LiveBeastStatsEvent: hash.getSelectorFromName("LiveBeastStatsEvent"),
-  RewardsEarnedEvent: hash.getSelectorFromName("RewardsEarnedEvent"),
-  RewardsClaimedEvent: hash.getSelectorFromName("RewardsClaimedEvent"),
-  PoisonEvent: hash.getSelectorFromName("PoisonEvent"),
-  CorpseEvent: hash.getSelectorFromName("CorpseEvent"),
-  SkullEvent: hash.getSelectorFromName("SkullEvent"),
-  BattleEvent: hash.getSelectorFromName("BattleEvent"),
+  BeastUpdatesEvent: getPaddedSelector("BeastUpdatesEvent"),
+  LiveBeastStatsEvent: getPaddedSelector("LiveBeastStatsEvent"),
+  RewardsEarnedEvent: getPaddedSelector("RewardsEarnedEvent"),
+  RewardsClaimedEvent: getPaddedSelector("RewardsClaimedEvent"),
+  PoisonEvent: getPaddedSelector("PoisonEvent"),
+  CorpseEvent: getPaddedSelector("CorpseEvent"),
+  SkullEvent: getPaddedSelector("SkullEvent"),
+  BattleEvent: getPaddedSelector("BattleEvent"),
 } as const;
 
 /**
  * Event selectors for Beasts NFT contract (ERC721)
+ * Padded to 64 chars to match feltToHex output for comparison
  */
 export const BEAST_EVENT_SELECTORS = {
-  Transfer: hash.getSelectorFromName("Transfer"),
+  Transfer: getPaddedSelector("Transfer"),
 } as const;
 
 /**
