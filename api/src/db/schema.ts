@@ -37,6 +37,9 @@ export const beasts = pgTable(
   (table) => [
     index("beasts_token_id_idx").on(table.token_id),
     index("beasts_beast_id_idx").on(table.beast_id),
+    index("beasts_prefix_idx").on(table.prefix),
+    index("beasts_suffix_idx").on(table.suffix),
+    index("beasts_level_idx").on(table.level.desc()),
   ]
 );
 

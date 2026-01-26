@@ -159,12 +159,10 @@ export default function BeastDexModal(props: BeastDexModalProps) {
     const fetchAllBeasts = async () => {
       setAllBeastsLoading(true);
       try {
-        const sortParam = sortBy === 'name' || sortBy === 'health' ? 'power' : sortBy;
         const response = await summitApi.getAllBeasts({
           limit: pageSize,
           offset: (page - 1) * pageSize,
           name: nameQuery.trim() || undefined,
-          sort: sortParam as 'power' | 'level' | 'blocks_held',
         });
         if (cancelled) return;
         const data = response?.data ?? [];
@@ -190,7 +188,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, open, page, nameQuery, sortBy]);
+  }, [activeTab, open, page, nameQuery]);
 
   const handleSelect = (beast: Beast) => {
     setSelectedBeast(beast);

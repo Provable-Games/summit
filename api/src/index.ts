@@ -100,28 +100,31 @@ function normalizeAddress(address: string): string {
  * Query params:
  * - limit: Number of results (default: 25, max: 100)
  * - offset: Pagination offset (default: 0)
- * - prefix: Filter by prefix ID (optional)
- * - suffix: Filter by suffix ID (optional)
- * - name: Filter by beast name search (optional)
- * - owner: Filter by owner address (optional)
- * - sort: Sort by power, level, or blocks_held (default: power)
+ * - prefix: Filter by prefix ID (optional, indexed)
+ * - suffix: Filter by suffix ID (optional, indexed)
+ * - beast_id: Filter by beast type ID (optional, indexed)
+ * - name: Filter by beast name search (optional, uses beast_id index)
+ * - owner: Filter by owner address (optional, indexed)
+ * - sort: Sort by "blocks_held" or "level" (default: blocks_held, both indexed)
  */
 app.get("/beasts/all", async (c) => {
   const limit = Math.min(parseInt(c.req.query("limit") || "25", 10), 100);
   const offset = parseInt(c.req.query("offset") || "0", 10);
   const prefix = c.req.query("prefix");
   const suffix = c.req.query("suffix");
+  const beastId = c.req.query("beast_id");
   const name = c.req.query("name");
   const owner = c.req.query("owner");
-  const sort = c.req.query("sort") || "power";
+  const sort = c.req.query("sort") || "blocks_held";
 
-  // Build where conditions
+  // Build where conditions (all filters use indexed columns)
   const conditions = [];
   if (prefix) conditions.push(eq(beasts.prefix, parseInt(prefix, 10)));
   if (suffix) conditions.push(eq(beasts.suffix, parseInt(suffix, 10)));
+  if (beastId) conditions.push(eq(beasts.beast_id, parseInt(beastId, 10)));
   if (owner) conditions.push(eq(beast_owners.owner, normalizeAddress(owner)));
   if (name) {
-    // Find beast IDs that match the name search
+    // Find beast IDs that match the name search (uses beast_id index)
     const lowerName = name.toLowerCase();
     const matchingBeastIds = Object.entries(BEAST_NAMES)
       .filter(([, beastName]) => beastName.toLowerCase().includes(lowerName))
@@ -139,21 +142,10 @@ app.get("/beasts/all", async (c) => {
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  // Build order by clause based on sort parameter
-  let orderByClause;
-  switch (sort) {
-    case "level":
-      orderByClause = [desc(beasts.level), desc(beast_stats.bonus_xp)];
-      break;
-    case "blocks_held":
-      orderByClause = [desc(beast_stats.blocks_held), desc(beast_stats.bonus_xp)];
-      break;
-    case "power":
-    default:
-      // Power = (6 - tier) * current_level, approximate by level and tier
-      orderByClause = [desc(beasts.level), desc(beast_stats.bonus_xp)];
-      break;
-  }
+  // Both sort options use indexed columns
+  const orderByClause = sort === "level"
+    ? desc(beasts.level)
+    : desc(beast_stats.blocks_held);
 
   // Get paginated results
   const results = await db
@@ -178,10 +170,10 @@ app.get("/beasts/all", async (c) => {
       owner: beast_owners.owner,
     })
     .from(beasts)
-    .leftJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+    .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
     .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
     .where(whereClause)
-    .orderBy(...orderByClause)
+    .orderBy(orderByClause)
     .limit(limit)
     .offset(offset);
 
@@ -189,7 +181,7 @@ app.get("/beasts/all", async (c) => {
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(beasts)
-    .leftJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+    .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
     .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
     .where(whereClause);
   const total = Number(countResult[0]?.count ?? 0);
@@ -672,7 +664,7 @@ app.get("/", (c) => {
     health: "GET /health",
     beasts: {
       by_owner: "GET /beasts/:owner",
-      all: "GET /beasts/all?limit=25&offset=0&prefix=&suffix=&name=&owner=&sort=power",
+      all: "GET /beasts/all?limit=25&offset=0&prefix=&suffix=&beast_id=&name=&owner=&sort=blocks_held",
       counts: "GET /beasts/stats/counts",
       top: "GET /beasts/stats/top?limit=25&offset=0",
       top5000_cutoff: "GET /beasts/stats/top5000-cutoff",

@@ -50,9 +50,10 @@ export interface GetAllBeastsParams {
   offset?: number;
   prefix?: number;
   suffix?: number;
+  beast_id?: number;
   name?: string;
   owner?: string;
-  sort?: 'power' | 'level' | 'blocks_held';
+  sort?: 'blocks_held' | 'level';
 }
 
 export interface TopBeast {
@@ -160,6 +161,7 @@ export const useSummitApi = () => {
 
   /**
    * Get paginated list of all beasts with filtering
+   * Results sorted by blocks_held or level (both indexed)
    */
   const getAllBeasts = async (params: GetAllBeastsParams = {}): Promise<AllBeastsResponse> => {
     const searchParams = new URLSearchParams();
@@ -167,6 +169,7 @@ export const useSummitApi = () => {
     if (params.offset) searchParams.set('offset', params.offset.toString());
     if (params.prefix) searchParams.set('prefix', params.prefix.toString());
     if (params.suffix) searchParams.set('suffix', params.suffix.toString());
+    if (params.beast_id) searchParams.set('beast_id', params.beast_id.toString());
     if (params.name) searchParams.set('name', params.name);
     if (params.owner) searchParams.set('owner', params.owner);
     if (params.sort) searchParams.set('sort', params.sort);
