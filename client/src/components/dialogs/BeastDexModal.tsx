@@ -26,7 +26,8 @@ interface BeastDexModalProps {
   close: () => void;
 }
 
-type SortKey = 'power' | 'level' | 'health' | 'name';
+type MySortKey = 'power' | 'level' | 'health' | 'name';
+type AllSortKey = 'blocks_held' | 'level';
 type TypeKey = 'all' | 'Brute' | 'Hunter' | 'Magic';
 type TabKey = 'mine' | 'all';
 
@@ -73,11 +74,12 @@ export default function BeastDexModal(props: BeastDexModalProps) {
   // Tab state
   const [activeTab, setActiveTab] = useState<TabKey>('mine');
 
-  // Filter/sort state (shared between tabs)
+  // Filter/sort state
   const [prefixQuery, setPrefixQuery] = useState('');
   const [suffixQuery, setSuffixQuery] = useState('');
   const [nameQuery, setNameQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortKey>('power');
+  const [mySortBy, setMySortBy] = useState<MySortKey>('power');
+  const [allSortBy, setAllSortBy] = useState<AllSortKey>('blocks_held');
   const [typeFilter, setTypeFilter] = useState<TypeKey>('all');
   const [selectedBeast, setSelectedBeast] = useState<Beast | null>(null);
   const [page, setPage] = useState(1);
@@ -111,7 +113,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
     if (typeFilter !== 'all') {
       list = list.filter(b => (b.type || '') === typeFilter);
     }
-    switch (sortBy) {
+    switch (mySortBy) {
       case 'power':
         list.sort((a, b) => b.power - a.power);
         break;
@@ -139,7 +141,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
     }
 
     return list;
-  }, [collection, prefixQuery, suffixQuery, nameQuery, sortBy, typeFilter, summit]);
+  }, [collection, prefixQuery, suffixQuery, nameQuery, mySortBy, typeFilter, summit]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pagedItems = useMemo(() => {
@@ -149,7 +151,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
 
   useEffect(() => {
     setPage(1);
-  }, [prefixQuery, suffixQuery, nameQuery, sortBy, typeFilter, collection.length, activeTab]);
+  }, [prefixQuery, suffixQuery, nameQuery, mySortBy, allSortBy, typeFilter, collection.length, activeTab]);
 
   // Fetch all beasts when on "All Beasts" tab
   useEffect(() => {
@@ -163,6 +165,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
           limit: pageSize,
           offset: (page - 1) * pageSize,
           name: nameQuery.trim() || undefined,
+          sort: allSortBy,
         });
         if (cancelled) return;
         const data = response?.data ?? [];
@@ -188,7 +191,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, open, page, nameQuery]);
+  }, [activeTab, open, page, nameQuery, allSortBy]);
 
   const handleSelect = (beast: Beast) => {
     setSelectedBeast(beast);
@@ -272,78 +275,117 @@ export default function BeastDexModal(props: BeastDexModalProps) {
             <Tab value="all" label="All Beasts" sx={styles.tab} />
           </Tabs>
           <Box sx={styles.controlsRow}>
-            <FormControl size="small" sx={styles.selectControl}>
-              <InputLabel id="sort-select-label" sx={styles.inputLabel}>Sort by</InputLabel>
-              <Select
-                labelId="sort-select-label"
-                id="sort-select"
-                label="Sort by"
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortKey)}
-                sx={styles.sortSelect}
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      background: `${gameColors.darkGreen}`,
-                      border: `1px solid ${gameColors.accentGreen}40`,
-                      boxShadow: `0 8px 24px rgba(0,0,0,0.6)`,
-                      '& .MuiMenuItem-root': { color: '#fff' },
+            {activeTab === 'mine' ? (
+              <FormControl size="small" sx={styles.selectControl}>
+                <InputLabel id="sort-select-label" sx={styles.inputLabel}>Sort by</InputLabel>
+                <Select
+                  labelId="sort-select-label"
+                  id="sort-select"
+                  label="Sort by"
+                  value={mySortBy}
+                  onChange={(e) => setMySortBy(e.target.value as MySortKey)}
+                  sx={styles.sortSelect}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        background: `${gameColors.darkGreen}`,
+                        border: `1px solid ${gameColors.accentGreen}40`,
+                        boxShadow: `0 8px 24px rgba(0,0,0,0.6)`,
+                        '& .MuiMenuItem-root': { color: '#fff' },
+                      }
                     }
-                  }
-                }}
-              >
-                <MenuItem value="power">
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <FlashOnIcon sx={{ fontSize: '16px', color: gameColors.yellow, mr: 1 }} />
-                    Power
-                  </Box>
-                </MenuItem>
-                <MenuItem value="level">
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <BarChartIcon sx={{ fontSize: '16px', color: gameColors.accentGreen, mr: 1 }} />
-                    Level
-                  </Box>
-                </MenuItem>
-                <MenuItem value="health">
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <FavoriteIcon sx={{ fontSize: '16px', color: gameColors.red, mr: 1 }} />
-                    Health
-                  </Box>
-                </MenuItem>
-                <MenuItem value="name">
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <SortByAlphaIcon sx={{ fontSize: '16px', color: '#bbb', mr: 1 }} />
-                    Name
-                  </Box>
-                </MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={styles.selectControl}>
-              <InputLabel id="type-select-label" sx={styles.inputLabel}>Type</InputLabel>
-              <Select
-                labelId="type-select-label"
-                id="type-select"
-                label="Type"
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value as TypeKey)}
-                sx={styles.sortSelect}
-                MenuProps={{
-                  PaperProps: {
-                    sx: {
-                      background: `${gameColors.darkGreen}`,
-                      border: `1px solid ${gameColors.accentGreen}40`,
-                      boxShadow: `0 8px 24px rgba(0,0,0,0.6)`,
-                      '& .MuiMenuItem-root': { color: '#fff' },
+                  }}
+                >
+                  <MenuItem value="power">
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <FlashOnIcon sx={{ fontSize: '16px', color: gameColors.yellow, mr: 1 }} />
+                      Power
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="level">
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <BarChartIcon sx={{ fontSize: '16px', color: gameColors.accentGreen, mr: 1 }} />
+                      Level
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="health">
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <FavoriteIcon sx={{ fontSize: '16px', color: gameColors.red, mr: 1 }} />
+                      Health
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="name">
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <SortByAlphaIcon sx={{ fontSize: '16px', color: '#bbb', mr: 1 }} />
+                      Name
+                    </Box>
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            ) : (
+              <FormControl size="small" sx={styles.selectControl}>
+                <InputLabel id="sort-select-label" sx={styles.inputLabel}>Sort by</InputLabel>
+                <Select
+                  labelId="sort-select-label"
+                  id="sort-select"
+                  label="Sort by"
+                  value={allSortBy}
+                  onChange={(e) => setAllSortBy(e.target.value as AllSortKey)}
+                  sx={styles.sortSelect}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        background: `${gameColors.darkGreen}`,
+                        border: `1px solid ${gameColors.accentGreen}40`,
+                        boxShadow: `0 8px 24px rgba(0,0,0,0.6)`,
+                        '& .MuiMenuItem-root': { color: '#fff' },
+                      }
                     }
-                  }
-                }}
-              >
-                <MenuItem value="all">All</MenuItem>
-                <MenuItem value="Brute">Brute</MenuItem>
-                <MenuItem value="Hunter">Hunter</MenuItem>
-                <MenuItem value="Magic">Magic</MenuItem>
-              </Select>
-            </FormControl>
+                  }}
+                >
+                  <MenuItem value="blocks_held">
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <BarChartIcon sx={{ fontSize: '16px', color: gameColors.brightGreen, mr: 1 }} />
+                      Blocks Held
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="level">
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <BarChartIcon sx={{ fontSize: '16px', color: gameColors.accentGreen, mr: 1 }} />
+                      Level
+                    </Box>
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            )}
+            {activeTab === 'mine' && (
+              <FormControl size="small" sx={styles.selectControl}>
+                <InputLabel id="type-select-label" sx={styles.inputLabel}>Type</InputLabel>
+                <Select
+                  labelId="type-select-label"
+                  id="type-select"
+                  label="Type"
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value as TypeKey)}
+                  sx={styles.sortSelect}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        background: `${gameColors.darkGreen}`,
+                        border: `1px solid ${gameColors.accentGreen}40`,
+                        boxShadow: `0 8px 24px rgba(0,0,0,0.6)`,
+                        '& .MuiMenuItem-root': { color: '#fff' },
+                      }
+                    }
+                  }}
+                >
+                  <MenuItem value="all">All</MenuItem>
+                  <MenuItem value="Brute">Brute</MenuItem>
+                  <MenuItem value="Hunter">Hunter</MenuItem>
+                  <MenuItem value="Magic">Magic</MenuItem>
+                </Select>
+              </FormControl>
+            )}
             <Box sx={styles.input}>
               <SearchIcon sx={styles.inputIcon} />
               <InputBase

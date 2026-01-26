@@ -170,7 +170,7 @@ app.get("/beasts/all", async (c) => {
       owner: beast_owners.owner,
     })
     .from(beasts)
-    .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+    .leftJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
     .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
     .where(whereClause)
     .orderBy(orderByClause)
@@ -181,7 +181,7 @@ app.get("/beasts/all", async (c) => {
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(beasts)
-    .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+    .leftJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
     .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
     .where(whereClause);
   const total = Number(countResult[0]?.count ?? 0);
