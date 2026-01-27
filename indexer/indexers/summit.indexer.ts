@@ -799,6 +799,13 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
       const rewardsEarnedTokenIds: number[] = [];
       const transferTokenIds: number[] = []; // For batching metadata fetches
 
+      // Collect entity_hashes for LS Events (EntityStats and CollectableEntity)
+      const lsEventEntityHashes: string[] = [];
+
+      // Dungeon constants for filtering LS Events
+      const BEAST_DUNGEON = "0x0000000000000000000000000000000000000000000000000000000000000006";
+      const LS_DUNGEON = "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42";
+
       // Pre-scan events to collect token IDs for batch lookups
       const preScanStart = Date.now();
       for (const event of events) {
@@ -815,6 +822,24 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             const token_id = Number(decoded.token_id);
             if (!fetchedTokens.has(token_id)) {
               transferTokenIds.push(token_id);
+            }
+          }
+        }
+
+        // Collect entity_hashes for LS Events (Dojo World events)
+        if (addressToBigInt(event_address) === dojoWorldAddressBigInt &&
+            selector === DOJO_EVENT_SELECTORS.StoreSetRecord) {
+          const model_selector = keys.length > 1 ? feltToHex(keys[1]) : "";
+
+          if (model_selector === DOJO_EVENT_SELECTORS.EntityStats) {
+            const decoded = decodeEntityStatsEvent([...keys], [...event.data]);
+            if (decoded.dungeon === BEAST_DUNGEON) {
+              lsEventEntityHashes.push(decoded.entity_hash);
+            }
+          } else if (model_selector === DOJO_EVENT_SELECTORS.CollectableEntity) {
+            const decoded = decodeCollectableEntityEvent([...keys], [...event.data]);
+            if (decoded.dungeon === LS_DUNGEON) {
+              lsEventEntityHashes.push(decoded.entity_hash);
             }
           }
         }
@@ -904,7 +929,43 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         }
         skullsQueryTime = Date.now() - skullsStart;
       }
-      const contextLookupTime = joinQueryTime + fallbackQueryTime + skullsQueryTime;
+
+      // Batch lookup beast metadata for LS Events via entity_hash → beast_data → beasts
+      let lsMetadataQueryTime = 0;
+      const lsMetadataMap = new Map<string, { token_id: number; beast_id: number; prefix: number; suffix: number }>();
+
+      if (lsEventEntityHashes.length > 0) {
+        const lsMetadataStart = Date.now();
+        const uniqueHashes = [...new Set(lsEventEntityHashes)];
+
+        // Join beast_data with beasts to get metadata
+        const lsMetadataResult = await db
+          .select({
+            entity_hash: schema.beast_data.entity_hash,
+            token_id: schema.beast_data.token_id,
+            beast_id: schema.beasts.beast_id,
+            prefix: schema.beasts.prefix,
+            suffix: schema.beasts.suffix,
+          })
+          .from(schema.beast_data)
+          .innerJoin(schema.beasts, eq(schema.beast_data.token_id, schema.beasts.token_id))
+          .where(inArray(schema.beast_data.entity_hash, uniqueHashes));
+
+        for (const row of lsMetadataResult) {
+          if (row.token_id !== null && row.beast_id !== null && row.prefix !== null && row.suffix !== null) {
+            lsMetadataMap.set(row.entity_hash, {
+              token_id: row.token_id,
+              beast_id: row.beast_id,
+              prefix: row.prefix,
+              suffix: row.suffix,
+            });
+          }
+        }
+
+        lsMetadataQueryTime = Date.now() - lsMetadataStart;
+      }
+
+      const contextLookupTime = joinQueryTime + fallbackQueryTime + skullsQueryTime + lsMetadataQueryTime;
 
       // Process all events in order, collecting into batches
       const eventProcessingStart = Date.now();
@@ -986,12 +1047,14 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             const decoded = decodeEntityStatsEvent([...keys], [...data]);
 
             // Filter by dungeon - only process Beast dungeon (0x6) events
-            const BEAST_DUNGEON = "0x0000000000000000000000000000000000000000000000000000000000000006";
             if (decoded.dungeon !== BEAST_DUNGEON) {
               continue;
             }
 
-            logger.info(`EntityStats: adventurers_killed=${decoded.adventurers_killed}`);
+            // Get beast metadata from lookup
+            const entityMetadata = lsMetadataMap.get(decoded.entity_hash);
+
+            logger.info(`EntityStats: adventurers_killed=${decoded.adventurers_killed}, token_id=${entityMetadata?.token_id ?? 'unknown'}`);
 
             // Collect beast_data upsert
             batches.beast_data.push({
@@ -1002,7 +1065,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               updated_at: block_timestamp,
             });
 
-            // Collect summit_log
+            // Collect summit_log with beast metadata
             collectSummitLog(batches, {
               block_number,
               event_index,
@@ -1011,9 +1074,13 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               data: {
                 entity_hash: decoded.entity_hash,
                 adventurers_killed: decoded.adventurers_killed.toString(),
+                token_id: entityMetadata?.token_id ?? null,
+                beast_id: entityMetadata?.beast_id ?? null,
+                prefix: entityMetadata?.prefix ?? null,
+                suffix: entityMetadata?.suffix ?? null,
               },
               player: null,
-              token_id: null,
+              token_id: entityMetadata?.token_id ?? null,
               transaction_hash,
               created_at: block_timestamp,
               indexed_at,
@@ -1029,12 +1096,14 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             const decoded = decodeCollectableEntityEvent([...keys], [...data]);
 
             // Filter by dungeon - only process Loot Survivor dungeon events
-            const LS_DUNGEON = "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42";
             if (decoded.dungeon !== LS_DUNGEON) {
               continue;
             }
 
-            logger.info(`CollectableEntity: last_killed_by=${decoded.last_killed_by}, timestamp=${decoded.timestamp}`);
+            // Get beast metadata from lookup
+            const collectableMetadata = lsMetadataMap.get(decoded.entity_hash);
+
+            logger.info(`CollectableEntity: last_killed_by=${decoded.last_killed_by}, timestamp=${decoded.timestamp}, token_id=${collectableMetadata?.token_id ?? 'unknown'}`);
 
             // Collect beast_data upsert
             batches.beast_data.push({
@@ -1045,7 +1114,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               updated_at: block_timestamp,
             });
 
-            // Collect summit_log
+            // Collect summit_log with beast metadata
             collectSummitLog(batches, {
               block_number,
               event_index,
@@ -1055,9 +1124,13 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 entity_hash: decoded.entity_hash,
                 last_killed_by: decoded.last_killed_by.toString(),
                 timestamp: decoded.timestamp.toString(),
+                token_id: collectableMetadata?.token_id ?? null,
+                beast_id: collectableMetadata?.beast_id ?? null,
+                prefix: collectableMetadata?.prefix ?? null,
+                suffix: collectableMetadata?.suffix ?? null,
               },
               player: null,
-              token_id: null,
+              token_id: collectableMetadata?.token_id ?? null,
               transaction_hash,
               created_at: block_timestamp,
               indexed_at,
@@ -1503,10 +1576,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         // Detailed timing breakdown
         // scan = pre-scan to collect token IDs
         // rpc = RPC calls for new beast metadata (rare)
-        // ctx = context lookup (join + fallback + skulls queries)
+        // ctx = context lookup (join + fallback + skulls + ls metadata queries)
         // proc = event processing loop
         // ins = database inserts
-        const timingStr = `scan:${preScanTime} rpc:${rpcTime} ctx:${contextLookupTime}(j:${joinQueryTime} f:${fallbackQueryTime} s:${skullsQueryTime}) proc:${eventProcessingTime} ins:${insertTime}`;
+        const timingStr = `scan:${preScanTime} rpc:${rpcTime} ctx:${contextLookupTime}(j:${joinQueryTime} f:${fallbackQueryTime} s:${skullsQueryTime} ls:${lsMetadataQueryTime}) proc:${eventProcessingTime} ins:${insertTime}`;
         const countsStr = `bs:${batches.beast_stats.length} bt:${batches.battles.length} log:${batches.summit_log.length} own:${batches.beast_owners.length}`;
 
         logger.info(`Block ${block_number}: ${totalTime}ms [${timingStr}] {${countsStr}}`);
