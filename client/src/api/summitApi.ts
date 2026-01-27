@@ -104,8 +104,8 @@ export interface LogsResponse {
 export interface GetLogsParams {
   limit?: number;
   offset?: number;
-  category?: string;
-  sub_category?: string;
+  category?: string | string[];
+  sub_category?: string | string[];
   player?: string;
 }
 
@@ -307,8 +307,14 @@ export const useSummitApi = () => {
     const searchParams = new URLSearchParams();
     if (params.limit) searchParams.set('limit', params.limit.toString());
     if (params.offset) searchParams.set('offset', params.offset.toString());
-    if (params.category) searchParams.set('category', params.category);
-    if (params.sub_category) searchParams.set('sub_category', params.sub_category);
+    if (params.category) {
+      const categoryValue = Array.isArray(params.category) ? params.category.join(',') : params.category;
+      if (categoryValue) searchParams.set('category', categoryValue);
+    }
+    if (params.sub_category) {
+      const subCategoryValue = Array.isArray(params.sub_category) ? params.sub_category.join(',') : params.sub_category;
+      if (subCategoryValue) searchParams.set('sub_category', subCategoryValue);
+    }
     if (params.player) searchParams.set('player', params.player);
 
     const response = await fetch(`${currentNetworkConfig.apiUrl}/logs?${searchParams}`);

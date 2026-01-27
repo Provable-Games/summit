@@ -13,10 +13,10 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import PsychologyIcon from '@mui/icons-material/Psychology';
-import SearchIcon from '@mui/icons-material/Search';
 import SortByAlphaIcon from '@mui/icons-material/SortByAlpha';
 import StarIcon from '@mui/icons-material/Star';
-import { Box, CircularProgress, Dialog, FormControl, IconButton, InputBase, InputLabel, MenuItem, Pagination, Select, Tab, Tabs, Typography } from '@mui/material';
+import { Autocomplete, Box, CircularProgress, Dialog, FormControl, IconButton, InputLabel, MenuItem, Pagination, Select, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from '@/utils/BeastData';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import BeastUpgradeModal from './BeastUpgradeModal';
 import SummitGiftModal from './SummitGiftModal';
@@ -74,18 +74,23 @@ export default function BeastDexModal(props: BeastDexModalProps) {
   // Tab state
   const [activeTab, setActiveTab] = useState<TabKey>('mine');
 
-  // Filter/sort state
-  const [prefixQuery, setPrefixQuery] = useState('');
-  const [suffixQuery, setSuffixQuery] = useState('');
-  const [nameQuery, setNameQuery] = useState('');
+  // My Beasts tab filter state (client-side filtering)
+  const [myNameFilter, setMyNameFilter] = useState<string | null>(null);
+  const [myPrefixFilter, setMyPrefixFilter] = useState<string | null>(null);
+  const [mySuffixFilter, setMySuffixFilter] = useState<string | null>(null);
   const [mySortBy, setMySortBy] = useState<MySortKey>('power');
-  const [allSortBy, setAllSortBy] = useState<AllSortKey>('blocks_held');
+  const [allSortBy, setAllSortBy] = useState<AllSortKey>('level');
   const [typeFilter, setTypeFilter] = useState<TypeKey>('all');
   const [selectedBeast, setSelectedBeast] = useState<Beast | null>(null);
   const [page, setPage] = useState(1);
   const pageSize = 24;
 
-  // All Beasts tab state
+  // All Beasts tab filter state (server-side filtering)
+  const [allNameFilter, setAllNameFilter] = useState<string | null>(null);
+  const [allPrefixFilter, setAllPrefixFilter] = useState<number | null>(null);
+  const [allSuffixFilter, setAllSuffixFilter] = useState<number | null>(null);
+
+  // All Beasts tab data state
   const [allBeasts, setAllBeasts] = useState<Beast[]>([]);
   const [allBeastsTotal, setAllBeastsTotal] = useState(0);
   const [allBeastsLoading, setAllBeastsLoading] = useState(false);
@@ -95,20 +100,14 @@ export default function BeastDexModal(props: BeastDexModalProps) {
   const filtered = useMemo(() => {
     let list = collection.slice();
 
-    if (prefixQuery.trim().length > 0) {
-      const q = prefixQuery.trim().toLowerCase();
-      list = list.filter(b => (b.prefix || '').toLowerCase().includes(q));
+    if (myPrefixFilter) {
+      list = list.filter(b => (b.prefix || '') === myPrefixFilter);
     }
-    if (suffixQuery.trim().length > 0) {
-      const q = suffixQuery.trim().toLowerCase();
-      list = list.filter(b => (b.suffix || '').toLowerCase().includes(q));
+    if (mySuffixFilter) {
+      list = list.filter(b => (b.suffix || '') === mySuffixFilter);
     }
-    if (nameQuery.trim().length > 0) {
-      const q = nameQuery.trim().toLowerCase();
-      list = list.filter(b =>
-        (b.name || '').toLowerCase().includes(q)
-        || (b.type || '').toLowerCase().includes(q)
-      );
+    if (myNameFilter) {
+      list = list.filter(b => (b.name || '') === myNameFilter);
     }
     if (typeFilter !== 'all') {
       list = list.filter(b => (b.type || '') === typeFilter);
@@ -141,7 +140,21 @@ export default function BeastDexModal(props: BeastDexModalProps) {
     }
 
     return list;
-  }, [collection, prefixQuery, suffixQuery, nameQuery, mySortBy, typeFilter, summit]);
+  }, [collection, myPrefixFilter, mySuffixFilter, myNameFilter, mySortBy, typeFilter, summit]);
+
+  // Autocomplete options
+  const beastNameOptions = useMemo(() => Object.values(BEAST_NAMES), []);
+  const prefixNameOptions = useMemo(() => Object.values(ITEM_NAME_PREFIXES), []);
+  const suffixNameOptions = useMemo(() => Object.values(ITEM_NAME_SUFFIXES), []);
+  // For All Beasts tab (server-side filtering needs IDs)
+  const prefixIdOptions = useMemo(() =>
+    Object.entries(ITEM_NAME_PREFIXES).map(([id, name]) => ({ id: Number(id), name })),
+    []
+  );
+  const suffixIdOptions = useMemo(() =>
+    Object.entries(ITEM_NAME_SUFFIXES).map(([id, name]) => ({ id: Number(id), name })),
+    []
+  );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pagedItems = useMemo(() => {
@@ -151,7 +164,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
 
   useEffect(() => {
     setPage(1);
-  }, [prefixQuery, suffixQuery, nameQuery, mySortBy, allSortBy, typeFilter, collection.length, activeTab]);
+  }, [myPrefixFilter, mySuffixFilter, myNameFilter, mySortBy, allSortBy, allNameFilter, allPrefixFilter, allSuffixFilter, typeFilter, collection.length, activeTab]);
 
   // Fetch all beasts when on "All Beasts" tab
   useEffect(() => {
@@ -164,7 +177,9 @@ export default function BeastDexModal(props: BeastDexModalProps) {
         const response = await summitApi.getAllBeasts({
           limit: pageSize,
           offset: (page - 1) * pageSize,
-          name: nameQuery.trim() || undefined,
+          name: allNameFilter || undefined,
+          prefix: allPrefixFilter || undefined,
+          suffix: allSuffixFilter || undefined,
           sort: allSortBy,
         });
         if (cancelled) return;
@@ -191,7 +206,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, open, page, nameQuery, allSortBy]);
+  }, [activeTab, open, page, allNameFilter, allPrefixFilter, allSuffixFilter, allSortBy]);
 
   const handleSelect = (beast: Beast) => {
     setSelectedBeast(beast);
@@ -244,7 +259,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
             `,
             width: '900px',
             maxWidth: '96vw',
-            maxHeight: '90vh',
+            height: '85vh',
             position: 'relative',
             display: 'flex',
             flexDirection: 'column',
@@ -386,33 +401,112 @@ export default function BeastDexModal(props: BeastDexModalProps) {
                 </Select>
               </FormControl>
             )}
-            <Box sx={styles.input}>
-              <SearchIcon sx={styles.inputIcon} />
-              <InputBase
-                placeholder="Name"
-                value={nameQuery}
-                onChange={(e) => setNameQuery(e.target.value)}
-                sx={styles.inputField}
-              />
-            </Box>
-            <Box sx={styles.input}>
-              <SearchIcon sx={styles.inputIcon} />
-              <InputBase
-                placeholder="Prefix"
-                value={prefixQuery}
-                onChange={(e) => setPrefixQuery(e.target.value)}
-                sx={styles.inputField}
-              />
-            </Box>
-            <Box sx={styles.input}>
-              <SearchIcon sx={styles.inputIcon} />
-              <InputBase
-                placeholder="Suffix"
-                value={suffixQuery}
-                onChange={(e) => setSuffixQuery(e.target.value)}
-                sx={styles.inputField}
-              />
-            </Box>
+            <Autocomplete
+              size="small"
+              options={beastNameOptions}
+              value={activeTab === 'mine' ? myNameFilter : allNameFilter}
+              onChange={(_, value) => {
+                if (activeTab === 'mine') {
+                  setMyNameFilter(value);
+                } else {
+                  setAllNameFilter(value);
+                }
+                setPage(1);
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Name"
+                  sx={styles.autocompleteInput}
+                />
+              )}
+              sx={styles.autocomplete}
+              slotProps={{
+                paper: { sx: styles.autocompletePaper },
+                popper: { sx: { zIndex: 1500 } },
+              }}
+            />
+            {activeTab === 'mine' ? (
+              <>
+                <Autocomplete
+                  size="small"
+                  options={prefixNameOptions}
+                  value={myPrefixFilter}
+                  onChange={(_, value) => { setMyPrefixFilter(value); setPage(1); }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Prefix"
+                      sx={styles.autocompleteInput}
+                    />
+                  )}
+                  sx={styles.autocomplete}
+                  slotProps={{
+                    paper: { sx: styles.autocompletePaper },
+                    popper: { sx: { zIndex: 1500 } },
+                  }}
+                />
+                <Autocomplete
+                  size="small"
+                  options={suffixNameOptions}
+                  value={mySuffixFilter}
+                  onChange={(_, value) => { setMySuffixFilter(value); setPage(1); }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Suffix"
+                      sx={styles.autocompleteInput}
+                    />
+                  )}
+                  sx={styles.autocomplete}
+                  slotProps={{
+                    paper: { sx: styles.autocompletePaper },
+                    popper: { sx: { zIndex: 1500 } },
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                <Autocomplete
+                  size="small"
+                  options={prefixIdOptions}
+                  getOptionLabel={(option) => option.name}
+                  value={prefixIdOptions.find(p => p.id === allPrefixFilter) || null}
+                  onChange={(_, value) => { setAllPrefixFilter(value?.id || null); setPage(1); }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Prefix"
+                      sx={styles.autocompleteInput}
+                    />
+                  )}
+                  sx={styles.autocomplete}
+                  slotProps={{
+                    paper: { sx: styles.autocompletePaper },
+                    popper: { sx: { zIndex: 1500 } },
+                  }}
+                />
+                <Autocomplete
+                  size="small"
+                  options={suffixIdOptions}
+                  getOptionLabel={(option) => option.name}
+                  value={suffixIdOptions.find(s => s.id === allSuffixFilter) || null}
+                  onChange={(_, value) => { setAllSuffixFilter(value?.id || null); setPage(1); }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Suffix"
+                      sx={styles.autocompleteInput}
+                    />
+                  )}
+                  sx={styles.autocomplete}
+                  slotProps={{
+                    paper: { sx: styles.autocompletePaper },
+                    popper: { sx: { zIndex: 1500 } },
+                  }}
+                />
+              </>
+            )}
           </Box>
         </Box>
 
@@ -629,24 +723,53 @@ const styles = {
     alignItems: 'center',
     flexWrap: 'wrap',
   },
-  input: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 0.5,
-    background: `${gameColors.darkGreen}80`,
+  autocomplete: {
+    width: '140px',
+    '& .MuiInputBase-root': {
+      height: '30px',
+      color: '#fff',
+      fontSize: '12px',
+      background: `${gameColors.darkGreen}80`,
+      '& .MuiOutlinedInput-notchedOutline': {
+        borderColor: `${gameColors.accentGreen}40`,
+      },
+      '&:hover .MuiOutlinedInput-notchedOutline': {
+        borderColor: `${gameColors.accentGreen}60`,
+      },
+      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+        borderColor: gameColors.brightGreen,
+      },
+    },
+    '& .MuiAutocomplete-clearIndicator': {
+      color: '#999',
+    },
+    '& .MuiAutocomplete-popupIndicator': {
+      color: '#999',
+    },
+  },
+  autocompleteInput: {
+    '& .MuiInputBase-input': {
+      padding: '4px 8px !important',
+    },
+    '& .MuiInputBase-input::placeholder': {
+      color: '#999',
+      opacity: 1,
+    },
+  },
+  autocompletePaper: {
+    background: gameColors.darkGreen,
     border: `1px solid ${gameColors.accentGreen}40`,
-    borderRadius: '4px',
-    px: 0.75,
-    py: 0.25,
-  },
-  inputIcon: {
-    fontSize: '16px',
-    color: gameColors.accentGreen,
-  },
-  inputField: {
-    color: '#fff',
-    fontSize: '12px',
-    width: '120px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+    '& .MuiAutocomplete-option': {
+      color: '#fff',
+      fontSize: '12px',
+      '&[aria-selected="true"]': {
+        background: `${gameColors.mediumGreen}80`,
+      },
+      '&.Mui-focused': {
+        background: `${gameColors.accentGreen}30`,
+      },
+    },
   },
   toggle: {
     display: 'flex',

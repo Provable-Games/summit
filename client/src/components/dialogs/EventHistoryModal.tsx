@@ -1,22 +1,42 @@
 import { useSummitApi, LogEntry } from '@/api/summitApi';
+import attackPotionIcon from '@/assets/images/attack-potion.png';
+import corpseTokenIcon from '@/assets/images/corpse-token.png';
+import killTokenIcon from '@/assets/images/kill-token.png';
+import lifePotionIcon from '@/assets/images/life-potion.png';
+import poisonPotionIcon from '@/assets/images/poison-potion.png';
+import revivePotionIcon from '@/assets/images/revive-potion.png';
+import swordIcon from '@/assets/images/sword.png';
 import { gameColors } from '@/utils/themes';
 import { lookupAddressNames } from '@/utils/addressNameCache';
+import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from '@/utils/BeastData';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CloseIcon from '@mui/icons-material/Close';
 import HistoryIcon from '@mui/icons-material/History';
+import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
+import TerrainIcon from '@mui/icons-material/Terrain';
+
+// Public images
+const survivorTokenIcon = '/images/survivor_token.png';
+const skullIcon = '/images/skull.png';
 import {
   Box,
-  Chip,
+  Checkbox,
   CircularProgress,
   Dialog,
   FormControl,
   IconButton,
+  ListItemText,
   MenuItem,
   Pagination,
   Select,
   Tab,
   Tabs,
+  Tooltip,
   Typography,
 } from '@mui/material';
+import IndeterminateCheckBoxIcon from '@mui/icons-material/IndeterminateCheckBox';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import { useAccount } from '@starknet-react/core';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -44,13 +64,82 @@ const CATEGORY_COLORS: Record<string, string> = {
   'LS Events': '#c9b1ff',
 };
 
+// Sub-category specific icons
+const getEventIcon = (category: string, subCategory: string): React.ReactNode => {
+  const imgStyle = { width: 18, height: 18, objectFit: 'contain' as const };
+
+  // Battle events
+  if (category === 'Battle') {
+    if (subCategory === 'BattleEvent') return <img src={swordIcon} alt="battle" style={imgStyle} />;
+    if (subCategory === 'Applied Poison') return <img src={poisonPotionIcon} alt="poison" style={imgStyle} />;
+    if (subCategory === 'Applied Extra Life') return <img src={lifePotionIcon} alt="life" style={imgStyle} />;
+    if (subCategory === 'Summit Change') return <MilitaryTechIcon sx={{ fontSize: 18 }} />;
+  }
+
+  // Beast Upgrade events
+  if (category === 'Beast Upgrade') {
+    return <img src={killTokenIcon} alt="upgrade" style={imgStyle} />;
+  }
+
+  // Rewards events
+  if (category === 'Rewards') {
+    if (subCategory === '$SURVIVOR Earned' || subCategory === 'Claimed $SURVIVOR') {
+      return <img src={survivorTokenIcon} alt="survivor" style={imgStyle} />;
+    }
+    if (subCategory === 'Claimed Corpse') return <img src={corpseTokenIcon} alt="corpse" style={imgStyle} />;
+    if (subCategory === 'Claimed Skulls') return <img src={skullIcon} alt="skull" style={imgStyle} />;
+  }
+
+  // Arriving to Summit
+  if (category === 'Arriving to Summit') {
+    return <TerrainIcon sx={{ fontSize: 18 }} />;
+  }
+
+  // LS Events
+  if (category === 'LS Events') {
+    return <AutoAwesomeIcon sx={{ fontSize: 18 }} />;
+  }
+
+  return null;
+};
+
+const formatTimeAgo = (timestamp: string): string => {
+  const now = new Date();
+  const date = new Date(timestamp);
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks}w ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  const years = Math.floor(days / 365);
+  return `${years}y ago`;
+};
+
+// Get all sub-categories as a flat array
+const ALL_SUB_CATEGORIES = Object.values(CATEGORIES).flat();
+
+// Map sub-category to its parent category
+const SUB_CATEGORY_TO_CATEGORY: Record<string, string> = {};
+for (const [cat, subs] of Object.entries(CATEGORIES)) {
+  for (const sub of subs) {
+    SUB_CATEGORY_TO_CATEGORY[sub] = cat;
+  }
+}
+
 export default function EventHistoryModal({ open, onClose }: EventHistoryModalProps) {
   const { address } = useAccount();
   const { getLogs } = useSummitApi();
 
   const [activeTab, setActiveTab] = useState<'all' | 'mine'>('all');
-  const [category, setCategory] = useState<string>('');
-  const [subCategory, setSubCategory] = useState<string>('');
+  const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([]);
   const [events, setEvents] = useState<LogEntry[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -63,13 +152,19 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     setLoading(true);
     try {
       const offset = (page - 1) * PAGE_SIZE;
-      const params: Record<string, string | number | undefined> = {
+      const params: {
+        limit: number;
+        offset: number;
+        sub_category?: string[];
+        player?: string;
+      } = {
         limit: PAGE_SIZE,
         offset,
       };
 
-      if (category) params.category = category;
-      if (subCategory) params.sub_category = subCategory;
+      if (selectedSubCategories.length > 0) {
+        params.sub_category = selectedSubCategories;
+      }
       if (activeTab === 'mine' && address) params.player = address;
 
       const response = await getLogs(params);
@@ -100,31 +195,75 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     } finally {
       setLoading(false);
     }
-  }, [page, category, subCategory, activeTab, address, addressNames]);
+  }, [page, selectedSubCategories, activeTab, address, addressNames]);
 
   // Fetch events when filters change
   useEffect(() => {
     if (open) {
       fetchEvents();
     }
-  }, [open, page, category, subCategory, activeTab]);
+  }, [open, page, selectedSubCategories, activeTab]);
 
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
-  }, [category, subCategory, activeTab]);
-
-  // Reset sub-category when category changes
-  useEffect(() => {
-    setSubCategory('');
-  }, [category]);
+  }, [selectedSubCategories, activeTab]);
 
   const handleClose = () => {
     setPage(1);
-    setCategory('');
-    setSubCategory('');
+    setSelectedSubCategories([]);
     setActiveTab('all');
     onClose();
+  };
+
+  // Handle toggling a sub-category
+  const handleSubCategoryToggle = (subCategory: string) => {
+    setSelectedSubCategories((prev) => {
+      if (prev.includes(subCategory)) {
+        return prev.filter((s) => s !== subCategory);
+      }
+      return [...prev, subCategory];
+    });
+  };
+
+  // Handle toggling all sub-categories in a category
+  const handleCategoryToggle = (category: string) => {
+    const categorySubs = CATEGORIES[category] || [];
+    const allSelected = categorySubs.every((sub) => selectedSubCategories.includes(sub));
+
+    setSelectedSubCategories((prev) => {
+      if (allSelected) {
+        // Deselect all in this category
+        return prev.filter((sub) => !categorySubs.includes(sub));
+      }
+      // Select all in this category
+      const newSubs = new Set([...prev, ...categorySubs]);
+      return Array.from(newSubs);
+    });
+  };
+
+  // Get checkbox state for a category (checked, unchecked, or indeterminate)
+  const getCategoryCheckState = (category: string): 'checked' | 'unchecked' | 'indeterminate' => {
+    const categorySubs = CATEGORIES[category] || [];
+    const selectedCount = categorySubs.filter((sub) => selectedSubCategories.includes(sub)).length;
+
+    if (selectedCount === 0) return 'unchecked';
+    if (selectedCount === categorySubs.length) return 'checked';
+    return 'indeterminate';
+  };
+
+  // Render the filter dropdown display value
+  const renderFilterValue = () => {
+    if (selectedSubCategories.length === 0) {
+      return 'All Events';
+    }
+    if (selectedSubCategories.length === 1) {
+      return selectedSubCategories[0];
+    }
+    if (selectedSubCategories.length <= 2) {
+      return selectedSubCategories.join(', ');
+    }
+    return `${selectedSubCategories.length} filters`;
   };
 
   const formatAddress = (addr: string) => {
@@ -132,85 +271,223 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const getPlayerDisplay = (event: LogEntry): string => {
+    if (!event.player) return '';
+    const name = addressNames[event.player];
+    const display = name || formatAddress(event.player);
+    return display.toUpperCase();
   };
 
-  const getEventSummary = (event: LogEntry): string => {
+  const getEventSummary = (event: LogEntry): React.ReactNode => {
     const data = event.data;
+    const player = getPlayerDisplay(event);
 
     // Battle events
     if (event.category === 'Battle') {
       if (event.sub_category === 'BattleEvent') {
-        const attackerName = data.attacker_name || `Beast #${data.attacker_token_id}`;
-        const defenderName = data.defender_name || `Beast #${data.defender_token_id}`;
-        const won = (data.attack_count as number || 0) + (data.critical_attack_count as number || 0) >
-                   (data.counter_attack_count as number || 0) + (data.critical_counter_attack_count as number || 0);
-        return `${attackerName} ${won ? 'defeated' : 'lost to'} ${defenderName}`;
+        const damage = (data.attack_damage as number || 0) + (data.critical_attack_damage as number || 0);
+        const xpGained = data.xp_gained as number | undefined;
+        const attackPotions = data.attack_potions as number | undefined;
+        const revivePotions = data.revive_potions as number | undefined;
+        const hasDetails = !!xpGained || !!attackPotions || !!revivePotions;
+        const displayName = player || 'Unknown';
+
+        return (
+          <Box>
+            <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+              <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+              {' attacked summit for '}
+              <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{damage}</Box>
+              {' damage'}
+            </Typography>
+            {hasDetails && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                {!!xpGained && (
+                  <Typography sx={{ fontSize: '10px', color: '#9e9e9e', fontWeight: 500 }}>
+                    +{xpGained} XP
+                  </Typography>
+                )}
+                {!!attackPotions && (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography sx={{ fontSize: '10px', color: '#9e9e9e' }}>{attackPotions}</Typography>
+                    <img src={attackPotionIcon} alt="attack" style={{ width: 12, height: 12 }} />
+                  </Box>
+                )}
+                {!!revivePotions && (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography sx={{ fontSize: '10px', color: '#9e9e9e' }}>{revivePotions}</Typography>
+                    <img src={revivePotionIcon} alt="revive" style={{ width: 12, height: 12 }} />
+                  </Box>
+                )}
+              </Box>
+            )}
+          </Box>
+        );
       }
       if (event.sub_category === 'Applied Poison') {
-        return `Applied ${data.count || 1} poison to Beast #${data.beast_token_id}`;
+        const displayName = player || 'Unknown';
+        const count = (data.count as number) || 1;
+        return (
+          <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+            {' applied '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{count}</Box>
+            {' poison'}
+          </Typography>
+        );
       }
       if (event.sub_category === 'Applied Extra Life') {
-        return `Applied ${data.count || 1} extra life to Beast #${data.beast_token_id}`;
+        const displayName = player || 'Unknown';
+        const count = (data.count as number) || 1;
+        return (
+          <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+            {' applied '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{count}</Box>
+            {' extra life'}
+          </Typography>
+        );
       }
       if (event.sub_category === 'Summit Change') {
-        return `Summit changed to Beast #${data.token_id}`;
+        const displayName = player || 'Unknown';
+        // Try to build full beast name from data
+        const beastId = data.beast_id as number | undefined;
+        const beastPrefix = data.prefix as number | undefined;
+        const beastSuffix = data.suffix as number | undefined;
+        const beastTypeName = beastId ? BEAST_NAMES[beastId as keyof typeof BEAST_NAMES] : null;
+        const prefixName = beastPrefix ? ITEM_NAME_PREFIXES[beastPrefix as keyof typeof ITEM_NAME_PREFIXES] : null;
+        const suffixName = beastSuffix ? ITEM_NAME_SUFFIXES[beastSuffix as keyof typeof ITEM_NAME_SUFFIXES] : null;
+
+        let beastName: string;
+        if (prefixName && suffixName && beastTypeName) {
+          beastName = `"${prefixName} ${suffixName}" ${beastTypeName}`;
+        } else if (beastTypeName) {
+          beastName = beastTypeName;
+        } else {
+          beastName = (data.beast_name as string) || (data.name as string) || `Beast #${data.token_id || event.token_id}`;
+        }
+        return (
+          <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+            {' took summit with '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastName}</Box>
+          </Typography>
+        );
       }
     }
 
     // Beast Upgrade events
     if (event.category === 'Beast Upgrade') {
-      const beastId = event.token_id || data.token_id;
+      const displayName = player || 'Unknown';
+      const beastId = event.token_id || (data.token_id as number);
       if (event.sub_category === 'Bonus Health') {
-        return `Beast #${beastId} gained ${data.amount || data.bonus_health} bonus health`;
+        const amount = (data.amount as number) || (data.bonus_health as number);
+        return (
+          <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+            {' upgraded Beast #'}
+            {beastId}
+            {' with '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{amount}</Box>
+            {' bonus health'}
+          </Typography>
+        );
       }
-      return `Beast #${beastId} upgraded ${event.sub_category}`;
+      return (
+        <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+          <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+          {` upgraded Beast #${beastId}'s `}
+          <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{event.sub_category}</Box>
+        </Typography>
+      );
     }
 
     // Rewards events
     if (event.category === 'Rewards') {
+      const displayName = player || 'Unknown';
       if (event.sub_category === '$SURVIVOR Earned') {
-        const amount = typeof data.amount === 'number' ? data.amount.toFixed(2) : data.amount;
-        return `Earned ${amount} $SURVIVOR`;
+        const rawAmount = typeof data.amount === 'number' ? data.amount : parseFloat(String(data.amount)) || 0;
+        const amount = parseFloat((rawAmount / 10000).toFixed(3));
+        return (
+          <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+            {' earned '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{amount}</Box>
+            {' $SURVIVOR'}
+          </Typography>
+        );
       }
       if (event.sub_category === 'Claimed $SURVIVOR') {
-        const amount = typeof data.amount === 'number' ? data.amount.toFixed(2) : data.amount;
-        return `Claimed ${amount} $SURVIVOR`;
+        const amount = typeof data.amount === 'number' ? data.amount.toFixed(2) : String(data.amount);
+        return (
+          <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+            {' claimed '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{amount}</Box>
+            {' $SURVIVOR'}
+          </Typography>
+        );
       }
       if (event.sub_category === 'Claimed Corpse') {
-        return `Claimed ${data.count || 1} corpse token(s)`;
+        const count = (data.count as number) || 1;
+        return (
+          <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+            {' claimed '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{count}</Box>
+            {' corpse token(s)'}
+          </Typography>
+        );
       }
       if (event.sub_category === 'Claimed Skulls') {
-        return `Claimed ${data.count || 1} skull token(s)`;
+        const count = (data.count as number) || 1;
+        return (
+          <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+            {' claimed '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{count}</Box>
+            {' skull token(s)'}
+          </Typography>
+        );
       }
     }
 
     // Arriving to Summit events
     if (event.category === 'Arriving to Summit') {
-      return `Beast #${event.token_id} claimed potions`;
+      const displayName = player || 'Unknown';
+      return (
+        <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+          <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+          {' claimed potions for Beast #'}
+          <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{event.token_id}</Box>
+        </Typography>
+      );
     }
 
     // LS Events
     if (event.category === 'LS Events') {
       if (event.sub_category === 'EntityStats') {
-        return `Beast stats updated`;
+        return (
+          <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            Beast stats updated
+          </Typography>
+        );
       }
       if (event.sub_category === 'CollectableEntity') {
-        return `Collectable entity event`;
+        return (
+          <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            Collectable entity event
+          </Typography>
+        );
       }
     }
 
-    return `${event.category}: ${event.sub_category}`;
+    return (
+      <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+        {event.category}: {event.sub_category}
+      </Typography>
+    );
   };
-
-  const availableSubCategories = category ? CATEGORIES[category] || [] : [];
 
   return (
     <Dialog
@@ -267,33 +544,130 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
           <Box sx={styles.toolbarRight}>
             <FormControl size="small" sx={styles.filterControl}>
               <Select
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                multiple
+                value={selectedSubCategories}
+                onChange={() => {}}
                 displayEmpty
+                renderValue={renderFilterValue}
                 sx={styles.select}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      maxHeight: 400,
+                      background: `${gameColors.darkGreen}f5`,
+                      backdropFilter: 'blur(12px)',
+                      border: `1px solid ${gameColors.accentGreen}60`,
+                      '& .MuiMenuItem-root': {
+                        py: 0.5,
+                        px: 1,
+                      },
+                    },
+                  },
+                }}
               >
-                <MenuItem value="">All Categories</MenuItem>
-                {Object.keys(CATEGORIES).map((cat) => (
-                  <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                ))}
+                {Object.entries(CATEGORIES).map(([cat, subs]) => {
+                  const checkState = getCategoryCheckState(cat);
+                  const categoryColor = CATEGORY_COLORS[cat] || gameColors.accentGreen;
+
+                  return [
+                    <MenuItem
+                      key={cat}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleCategoryToggle(cat);
+                      }}
+                      sx={{
+                        '&:hover': { background: `${gameColors.accentGreen}20` },
+                      }}
+                    >
+                      <Checkbox
+                        checked={checkState === 'checked'}
+                        indeterminate={checkState === 'indeterminate'}
+                        icon={<CheckBoxOutlineBlankIcon sx={{ fontSize: 18 }} />}
+                        checkedIcon={<CheckBoxIcon sx={{ fontSize: 18 }} />}
+                        indeterminateIcon={<IndeterminateCheckBoxIcon sx={{ fontSize: 18 }} />}
+                        sx={{
+                          color: categoryColor,
+                          '&.Mui-checked': { color: categoryColor },
+                          '&.MuiCheckbox-indeterminate': { color: categoryColor },
+                          p: 0.5,
+                          mr: 1,
+                        }}
+                      />
+                      <ListItemText
+                        primary={cat}
+                        primaryTypographyProps={{
+                          sx: {
+                            fontWeight: 'bold',
+                            fontSize: '13px',
+                            color: categoryColor,
+                          },
+                        }}
+                      />
+                      <Typography
+                        sx={{
+                          fontSize: '11px',
+                          color: '#888',
+                          ml: 1,
+                        }}
+                      >
+                        ({subs.filter((s) => selectedSubCategories.includes(s)).length}/{subs.length})
+                      </Typography>
+                    </MenuItem>,
+                    ...subs.map((sub) => {
+                      const isSelected = selectedSubCategories.includes(sub);
+                      const icon = getEventIcon(cat, sub);
+
+                      return (
+                        <MenuItem
+                          key={sub}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handleSubCategoryToggle(sub);
+                          }}
+                          sx={{
+                            pl: 4,
+                            '&:hover': { background: `${gameColors.accentGreen}20` },
+                          }}
+                        >
+                          <Checkbox
+                            checked={isSelected}
+                            icon={<CheckBoxOutlineBlankIcon sx={{ fontSize: 16 }} />}
+                            checkedIcon={<CheckBoxIcon sx={{ fontSize: 16 }} />}
+                            sx={{
+                              color: '#888',
+                              '&.Mui-checked': { color: gameColors.brightGreen },
+                              p: 0.5,
+                              mr: 1,
+                            }}
+                          />
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              color: categoryColor,
+                              mr: 1,
+                              opacity: 0.8,
+                            }}
+                          >
+                            {icon}
+                          </Box>
+                          <ListItemText
+                            primary={sub}
+                            primaryTypographyProps={{
+                              sx: {
+                                fontSize: '12px',
+                                color: isSelected ? '#fff' : '#bbb',
+                              },
+                            }}
+                          />
+                        </MenuItem>
+                      );
+                    }),
+                  ];
+                })}
               </Select>
             </FormControl>
-
-            {category && availableSubCategories.length > 0 && (
-              <FormControl size="small" sx={styles.filterControl}>
-                <Select
-                  value={subCategory}
-                  onChange={(e) => setSubCategory(e.target.value)}
-                  displayEmpty
-                  sx={styles.select}
-                >
-                  <MenuItem value="">All</MenuItem>
-                  {availableSubCategories.map((sub) => (
-                    <MenuItem key={sub} value={sub}>{sub}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
 
             <IconButton onClick={handleClose} sx={styles.closeButton}>
               <CloseIcon />
@@ -303,10 +677,9 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
 
         <Box sx={styles.tableContainer}>
           <Box sx={styles.tableHeader}>
-            <Typography sx={[styles.headerCell, { flex: '0 0 100px' }]}>TIME</Typography>
-            <Typography sx={[styles.headerCell, { flex: '0 0 120px' }]}>CATEGORY</Typography>
+            <Typography sx={[styles.headerCell, { flex: '0 0 70px' }]}>TIME</Typography>
+            <Typography sx={[styles.headerCell, { flex: '0 0 40px', textAlign: 'center' }]}></Typography>
             <Typography sx={[styles.headerCell, { flex: '1 1 auto' }]}>EVENT</Typography>
-            <Typography sx={[styles.headerCell, { flex: '0 0 120px', textAlign: 'right' }]}>PLAYER</Typography>
           </Box>
 
           <Box sx={styles.tableBody}>
@@ -324,35 +697,23 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
               </Box>
             ) : (
               events.map((event) => {
-                const playerName = event.player ? addressNames[event.player] : null;
                 const categoryColor = CATEGORY_COLORS[event.category] || gameColors.accentGreen;
+                const eventIcon = getEventIcon(event.category, event.sub_category);
 
                 return (
                   <Box key={event.id} sx={styles.row}>
                     <Typography sx={styles.timeCell}>
-                      {formatTimestamp(event.created_at)}
+                      {formatTimeAgo(event.created_at)}
                     </Typography>
                     <Box sx={styles.categoryCell}>
-                      <Chip
-                        label={event.sub_category}
-                        size="small"
-                        sx={{
-                          ...styles.categoryChip,
-                          backgroundColor: `${categoryColor}30`,
-                          borderColor: categoryColor,
-                          color: categoryColor,
-                        }}
-                      />
+                      <Tooltip title={event.sub_category} placement="top" arrow>
+                        <Box sx={{ color: categoryColor, display: 'flex', alignItems: 'center' }}>
+                          {eventIcon}
+                        </Box>
+                      </Tooltip>
                     </Box>
-                    <Typography sx={styles.eventCell}>
+                    <Box sx={styles.eventCell}>
                       {getEventSummary(event)}
-                    </Typography>
-                    <Box sx={styles.playerCell}>
-                      {event.player && (
-                        <Typography sx={styles.playerText}>
-                          {playerName || formatAddress(event.player)}
-                        </Typography>
-                      )}
                     </Box>
                   </Box>
                 );
@@ -456,7 +817,7 @@ const styles = {
     },
   },
   filterControl: {
-    minWidth: { xs: 120, sm: 150 },
+    minWidth: { xs: 140, sm: 180 },
   },
   select: {
     color: '#fff',
@@ -534,45 +895,27 @@ const styles = {
     },
   },
   timeCell: {
-    flex: '0 0 100px',
+    flex: '0 0 70px',
     fontSize: '11px',
-    color: '#999',
+    color: '#888',
     fontFamily: 'monospace',
   },
   categoryCell: {
-    flex: '0 0 120px',
+    flex: '0 0 40px',
     display: 'flex',
     alignItems: 'center',
-  },
-  categoryChip: {
-    fontSize: '10px',
-    height: '22px',
-    border: '1px solid',
-    '& .MuiChip-label': {
-      px: 1,
-    },
+    justifyContent: 'center',
   },
   eventCell: {
     flex: '1 1 auto',
     fontSize: '12px',
-    color: '#ddd',
+    color: '#e0e0e0',
     overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap' as const,
-    px: 1,
-  },
-  playerCell: {
-    flex: '0 0 120px',
-    display: 'flex',
-    justifyContent: 'flex-end',
-  },
-  playerText: {
-    fontSize: '11px',
-    color: '#bbb',
-    fontFamily: 'monospace',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap' as const,
+    pl: 1,
+    minWidth: 0,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+    fontWeight: 500,
   },
   loadingState: {
     padding: '32px',

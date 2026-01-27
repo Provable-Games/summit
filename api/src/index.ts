@@ -9,7 +9,7 @@ import { logger } from "hono/logger";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { v4 as uuidv4 } from "uuid";
-import { eq, sql, desc, and } from "drizzle-orm";
+import { eq, sql, desc, and, inArray } from "drizzle-orm";
 import "dotenv/config";
 
 import { checkDatabaseHealth, db, pool } from "./db/client.js";
@@ -353,21 +353,25 @@ app.get("/beasts/:owner", async (c) => {
  * Query params:
  * - limit: Number of results (default: 50, max: 100)
  * - offset: Pagination offset (default: 0)
- * - category: Filter by category (optional)
- * - sub_category: Filter by sub_category (optional)
+ * - category: Filter by category (optional, comma-separated for multiple)
+ * - sub_category: Filter by sub_category (optional, comma-separated for multiple)
  * - player: Filter by player address (optional)
  */
 app.get("/logs", async (c) => {
   const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 100);
   const offset = parseInt(c.req.query("offset") || "0", 10);
-  const category = c.req.query("category");
-  const sub_category = c.req.query("sub_category");
+  const categoryParam = c.req.query("category");
+  const subCategoryParam = c.req.query("sub_category");
   const player = c.req.query("player");
+
+  // Parse comma-separated values into arrays
+  const categories = categoryParam ? categoryParam.split(',').filter(Boolean) : [];
+  const subCategories = subCategoryParam ? subCategoryParam.split(',').filter(Boolean) : [];
 
   // Build where conditions
   const conditions = [];
-  if (category) conditions.push(eq(summit_log.category, category));
-  if (sub_category) conditions.push(eq(summit_log.sub_category, sub_category));
+  if (categories.length > 0) conditions.push(inArray(summit_log.category, categories));
+  if (subCategories.length > 0) conditions.push(inArray(summit_log.sub_category, subCategories));
   if (player) conditions.push(eq(summit_log.player, player));
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;

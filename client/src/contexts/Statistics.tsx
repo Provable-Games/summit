@@ -81,7 +81,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     fetchBeastCounts();
     fetchTop5000Cutoff();
-    refreshTokenPrices();
+    // refreshTokenPrices();
   }, []);
 
   return (
