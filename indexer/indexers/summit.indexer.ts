@@ -73,6 +73,11 @@ const fetchedTokens = new Set<number>();
 // Zero address for burn detection
 const ZERO_ADDRESS = "0x0";
 
+// Progress tracking
+let lastEventBlock = 0n;
+let blocksWithoutEvents = 0;
+let lastProgressLog = Date.now();
+
 /**
  * Helper to look up beast owner from beast_owners table
  */
@@ -756,10 +761,30 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
       const block_number = header.blockNumber ?? 0n;
       const block_timestamp = header.timestamp ?? new Date();
 
-      // Only log blocks with events
-      if (events.length > 0) {
+      // Track blocks without events
+      if (events.length === 0) {
+        blocksWithoutEvents++;
+
+        // Log progress every 5 seconds or every 1000 empty blocks
+        const now = Date.now();
+        if (now - lastProgressLog > 5000 || blocksWithoutEvents >= 1000) {
+          const blockGap = lastEventBlock > 0n ? block_number - lastEventBlock : 0n;
+          logger.info(`Progress: block ${block_number} (${blocksWithoutEvents} empty blocks since last event, gap: ${blockGap})`);
+          lastProgressLog = now;
+          blocksWithoutEvents = 0;
+        }
+        return; // Skip processing for empty blocks
+      }
+
+      // Log block with events
+      const blockGap = lastEventBlock > 0n ? block_number - lastEventBlock : 0n;
+      if (blockGap > 100n) {
+        logger.info(`Block ${block_number}: ${events.length} events (gap: ${blockGap} blocks since last event)`);
+      } else {
         logger.info(`Block ${block_number}: ${events.length} events`);
       }
+      lastEventBlock = block_number;
+      blocksWithoutEvents = 0;
 
       // Initialize bulk insert batches for this block
       const batches = createEmptyBatches();
