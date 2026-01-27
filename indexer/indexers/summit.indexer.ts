@@ -1079,9 +1079,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 const packed = decoded.packed_updates[i];
                 const stats = unpackLiveBeastStats(packed);
 
-                // Get context from batch lookup (only need prev_stats and owner)
+                // Get context from batch lookup
                 const context = beastContextMap.get(stats.token_id) ?? { prev_stats: null, metadata: null, owner: null };
-                const { prev_stats, owner: beast_owner } = context;
+                const { prev_stats, metadata: beast_metadata, owner: beast_owner } = context;
 
                 // Collect beast_stats upsert
                 batches.beast_stats.push({
@@ -1124,6 +1124,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                       attacking_player: beast_owner,
                       attacking_beast_token_id: stats.token_id,
                       defending_beast_token_id: stats.token_id,
+                      beast_id: beast_metadata?.beast_id ?? null,
+                      prefix: beast_metadata?.prefix ?? null,
+                      suffix: beast_metadata?.suffix ?? null,
                     },
                     player: beast_owner,
                     token_id: stats.token_id,
@@ -1269,6 +1272,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   xp_gained: decoded.xp_gained,
                   attacking_beast_owner: attacking_player,
                   attacking_beast_id: attacking_beast_metadata?.beast_id ?? 0,
+                  attacking_beast_prefix: attacking_beast_metadata?.prefix ?? 0,
+                  attacking_beast_suffix: attacking_beast_metadata?.suffix ?? 0,
                   attacking_beast_shiny: attacking_beast_metadata?.shiny ?? 0,
                   attacking_beast_animated: attacking_beast_metadata?.animated ?? 0,
                 },
@@ -1284,9 +1289,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             case EVENT_SELECTORS.RewardsEarnedEvent: {
               const decoded = decodeRewardsEarnedEvent([...keys], [...data]);
 
-              // Get owner from batch lookup
+              // Get owner and metadata from batch lookup
               const context = beastContextMap.get(decoded.beast_token_id) ?? { prev_stats: null, metadata: null, owner: null };
               const owner = context.owner;
+              const rewards_metadata = context.metadata;
 
               // Collect rewards_earned insert
               batches.rewards_earned.push({
@@ -1310,6 +1316,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   owner,
                   beast_token_id: decoded.beast_token_id,
                   amount: decoded.amount,
+                  beast_id: rewards_metadata?.beast_id ?? null,
+                  prefix: rewards_metadata?.prefix ?? null,
+                  suffix: rewards_metadata?.suffix ?? null,
                 },
                 player: owner,
                 token_id: decoded.beast_token_id,
@@ -1426,9 +1435,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             case EVENT_SELECTORS.SkullEvent: {
               const decoded = decodeSkullEvent([...keys], [...data]);
 
-              // Get owner from batch lookup
+              // Get owner and metadata from batch lookup
               const context = beastContextMap.get(decoded.beast_token_id) ?? { prev_stats: null, metadata: null, owner: null };
               const skull_player = context.owner;
+              const skull_metadata = context.metadata;
 
               // Get old skulls from batch lookup
               const oldSkulls = oldSkullsMap.get(decoded.beast_token_id) ?? 0n;
@@ -1450,6 +1460,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 data: {
                   beast_token_id: decoded.beast_token_id,
                   skulls_claimed: skullsClaimed.toString(),
+                  beast_id: skull_metadata?.beast_id ?? null,
+                  prefix: skull_metadata?.prefix ?? null,
+                  suffix: skull_metadata?.suffix ?? null,
                 },
                 player: skull_player,
                 token_id: decoded.beast_token_id,
