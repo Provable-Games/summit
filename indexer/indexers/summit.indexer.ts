@@ -1073,6 +1073,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               const decoded = decodeBeastUpdatesEvent([...keys], [...data]);
 
               // Track new beasts arriving to summit (first-time insertion)
+              let newBeastOwner: string | null = null;
               const newBeastTokenIds: number[] = [];
 
               for (let i = 0; i < decoded.packed_updates.length; i++) {
@@ -1111,6 +1112,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 // Track new beasts (first-time insertion = no prev_stats)
                 if (prev_stats === null) {
                   newBeastTokenIds.push(stats.token_id);
+                  newBeastOwner = beast_owner;
                 }
 
                 // Detect Summit Change (health goes 0 → positive)
@@ -1148,7 +1150,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                     count: newBeastTokenIds.length,
                     token_ids: newBeastTokenIds,
                   },
-                  player: null,
+                  player: newBeastOwner,
                   token_id: null,
                   transaction_hash,
                   created_at: block_timestamp,

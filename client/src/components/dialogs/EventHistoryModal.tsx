@@ -47,21 +47,21 @@ interface EventHistoryModalProps {
 
 const PAGE_SIZE = 25;
 
-// Category definitions with their sub-categories
+// Category definitions with their sub-categories (order matters for display)
 const CATEGORIES: Record<string, string[]> = {
+  'Arriving to Summit': ['Claimed Potions'],
   'Battle': ['BattleEvent', 'Applied Poison', 'Summit Change', 'Applied Extra Life'],
   'Beast Upgrade': ['Spirit', 'Luck', 'Specials', 'Wisdom', 'Diplomacy', 'Bonus Health'],
   'Rewards': ['$SURVIVOR Earned', 'Claimed $SURVIVOR', 'Claimed Corpse', 'Claimed Skulls'],
-  'Arriving to Summit': ['Claimed Potions'],
   'LS Events': ['EntityStats', 'CollectableEntity'],
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  'Battle': '#ff6b6b',
-  'Beast Upgrade': '#4ecdc4',
-  'Rewards': '#ffd93d',
-  'Arriving to Summit': '#a8e6cf',
-  'LS Events': '#c9b1ff',
+  'Arriving to Summit': '#7cb98b',
+  'Battle': '#e07a5f',
+  'Beast Upgrade': '#81b29a',
+  'Rewards': '#f2cc8f',
+  'LS Events': '#a8a4ce',
 };
 
 // Sub-category specific icons
@@ -134,17 +134,41 @@ for (const [cat, subs] of Object.entries(CATEGORIES)) {
   }
 }
 
+const STORAGE_KEY = 'summit-event-filters';
+
+// Load saved filters from localStorage
+const loadSavedFilters = (): string[] => {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Validate that all saved values are still valid sub-categories
+      if (Array.isArray(parsed)) {
+        return parsed.filter((s) => ALL_SUB_CATEGORIES.includes(s));
+      }
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return [];
+};
+
 export default function EventHistoryModal({ open, onClose }: EventHistoryModalProps) {
   const { address } = useAccount();
   const { getLogs } = useSummitApi();
 
   const [activeTab, setActiveTab] = useState<'all' | 'mine'>('all');
-  const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>([]);
+  const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>(loadSavedFilters);
   const [events, setEvents] = useState<LogEntry[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [addressNames, setAddressNames] = useState<Record<string, string | null>>({});
+
+  // Save filters to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(selectedSubCategories));
+  }, [selectedSubCategories]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -211,7 +235,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
 
   const handleClose = () => {
     setPage(1);
-    setSelectedSubCategories([]);
+    // Keep filters - they're persisted in localStorage
     setActiveTab('all');
     onClose();
   };
@@ -255,15 +279,14 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
   // Render the filter dropdown display value
   const renderFilterValue = () => {
     if (selectedSubCategories.length === 0) {
-      return 'All Events';
+      return 'Filter Events';
     }
-    if (selectedSubCategories.length === 1) {
-      return selectedSubCategories[0];
-    }
-    if (selectedSubCategories.length <= 2) {
-      return selectedSubCategories.join(', ');
-    }
-    return `${selectedSubCategories.length} filters`;
+    // Count unique parent categories
+    const uniqueCategories = new Set(
+      selectedSubCategories.map((sub) => SUB_CATEGORY_TO_CATEGORY[sub])
+    );
+    const categoryCount = uniqueCategories.size;
+    return `${categoryCount} ${categoryCount === 1 ? 'category' : 'categories'}`;
   };
 
   const formatAddress = (addr: string) => {
@@ -568,6 +591,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
                 {Object.entries(CATEGORIES).map(([cat, subs]) => {
                   const checkState = getCategoryCheckState(cat);
                   const categoryColor = CATEGORY_COLORS[cat] || gameColors.accentGreen;
+                  const isSingleItem = subs.length === 1;
 
                   return [
                     <MenuItem
@@ -604,17 +628,20 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
                           },
                         }}
                       />
-                      <Typography
-                        sx={{
-                          fontSize: '11px',
-                          color: '#888',
-                          ml: 1,
-                        }}
-                      >
-                        ({subs.filter((s) => selectedSubCategories.includes(s)).length}/{subs.length})
-                      </Typography>
+                      {!isSingleItem && (
+                        <Typography
+                          sx={{
+                            fontSize: '11px',
+                            color: '#888',
+                            ml: 1,
+                          }}
+                        >
+                          ({subs.filter((s) => selectedSubCategories.includes(s)).length}/{subs.length})
+                        </Typography>
+                      )}
                     </MenuItem>,
-                    ...subs.map((sub) => {
+                    // Only show sub-categories if there's more than one
+                    ...(isSingleItem ? [] : subs.map((sub) => {
                       const isSelected = selectedSubCategories.includes(sub);
                       const icon = getEventIcon(cat, sub);
 
@@ -663,7 +690,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
                           />
                         </MenuItem>
                       );
-                    }),
+                    })),
                   ];
                 })}
               </Select>
