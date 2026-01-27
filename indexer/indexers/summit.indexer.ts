@@ -35,7 +35,7 @@ import {
 } from "@apibara/plugin-drizzle";
 import type { ApibaraRuntimeConfig } from "apibara/types";
 
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import * as schema from "../src/lib/schema.js";
 import {
   EVENT_SELECTORS,
@@ -139,9 +139,16 @@ interface BeastContext {
 
 /**
  * Batch lookup beast context for multiple token IDs in a single query
+ * Returns timing info for logging
  */
-async function getBeastContextBatch(db: any, token_ids: number[]): Promise<Map<number, BeastContext>> {
-  if (token_ids.length === 0) return new Map();
+async function getBeastContextBatch(
+  db: any,
+  token_ids: number[],
+  logger?: { info: (msg: string) => void }
+): Promise<{ result: Map<number, BeastContext>; joinQueryTime: number; fallbackQueryTime: number }> {
+  if (token_ids.length === 0) {
+    return { result: new Map(), joinQueryTime: 0, fallbackQueryTime: 0 };
+  }
 
   const uniqueIds = [...new Set(token_ids)];
   const resultMap = new Map<number, BeastContext>();
@@ -152,6 +159,7 @@ async function getBeastContextBatch(db: any, token_ids: number[]): Promise<Map<n
   }
 
   // Batch query: beast_stats LEFT JOIN beasts LEFT JOIN beast_owners
+  const joinQueryStart = Date.now();
   const withStatsResult = await db
     .select({
       bs_token_id: schema.beast_stats.token_id,
@@ -175,6 +183,7 @@ async function getBeastContextBatch(db: any, token_ids: number[]): Promise<Map<n
     .leftJoin(schema.beasts, eq(schema.beast_stats.token_id, schema.beasts.token_id))
     .leftJoin(schema.beast_owners, eq(schema.beast_stats.token_id, schema.beast_owners.token_id))
     .where(inArray(schema.beast_stats.token_id, uniqueIds));
+  const joinQueryTime = Date.now() - joinQueryStart;
 
   // Process results from beast_stats query
   const foundInStats = new Set<number>();
@@ -205,8 +214,10 @@ async function getBeastContextBatch(db: any, token_ids: number[]): Promise<Map<n
   }
 
   // For tokens not found in beast_stats, query beasts and beast_owners
+  let fallbackQueryTime = 0;
   const missingIds = uniqueIds.filter(id => !foundInStats.has(id));
   if (missingIds.length > 0) {
+    const fallbackStart = Date.now();
     const [metadataResults, ownerResults] = await Promise.all([
       db.select({
         token_id: schema.beasts.token_id,
@@ -226,6 +237,7 @@ async function getBeastContextBatch(db: any, token_ids: number[]): Promise<Map<n
       .from(schema.beast_owners)
       .where(inArray(schema.beast_owners.token_id, missingIds)),
     ]);
+    fallbackQueryTime = Date.now() - fallbackStart;
 
     // Build maps for quick lookup with proper types
     type MetadataRow = { token_id: number; beast_id: number; prefix: number; suffix: number; shiny: number; animated: number };
@@ -247,9 +259,13 @@ async function getBeastContextBatch(db: any, token_ids: number[]): Promise<Map<n
         owner: ownerMap.get(id) ?? null,
       });
     }
+
+    if (logger && fallbackQueryTime > 50) {
+      logger.info(`Context fallback: ${missingIds.length} missing IDs in ${fallbackQueryTime}ms`);
+    }
   }
 
-  return resultMap;
+  return { result: resultMap, joinQueryTime, fallbackQueryTime };
 }
 
 /**
@@ -330,48 +346,45 @@ interface BulkInsertBatches {
 
 /**
  * Execute bulk inserts for all collected batches
+ * Uses true batch upserts (single query per table) instead of individual queries
  */
 async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<void> {
-  // Execute all inserts in parallel where possible
+  // Execute all inserts in parallel
   const insertPromises: Promise<unknown>[] = [];
 
-  // beast_stats - upsert (need to handle one by one due to ON CONFLICT DO UPDATE)
-  // For multiple rows with same token_id in a batch, we want the last one to win
-  // So we dedupe by token_id keeping the last occurrence
+  // beast_stats - batch upsert (dedupe first, then single query)
   if (batches.beast_stats.length > 0) {
     const deduped = new Map<number, BeastStatsRow>();
     for (const row of batches.beast_stats) {
       deduped.set(row.token_id, row);
     }
-    for (const row of deduped.values()) {
-      insertPromises.push(
-        db.insert(schema.beast_stats).values(row).onConflictDoUpdate({
-          target: schema.beast_stats.token_id,
-          set: {
-            current_health: row.current_health,
-            bonus_health: row.bonus_health,
-            bonus_xp: row.bonus_xp,
-            attack_streak: row.attack_streak,
-            last_death_timestamp: row.last_death_timestamp,
-            revival_count: row.revival_count,
-            extra_lives: row.extra_lives,
-            has_claimed_potions: row.has_claimed_potions,
-            blocks_held: row.blocks_held,
-            spirit: row.spirit,
-            luck: row.luck,
-            specials: row.specials,
-            wisdom: row.wisdom,
-            diplomacy: row.diplomacy,
-            rewards_earned: row.rewards_earned,
-            rewards_claimed: row.rewards_claimed,
-            indexed_at: row.indexed_at,
-            updated_at: row.created_at,
-            block_number: row.block_number,
-            transaction_hash: row.transaction_hash,
-          },
-        })
-      );
-    }
+    insertPromises.push(
+      db.insert(schema.beast_stats).values([...deduped.values()]).onConflictDoUpdate({
+        target: schema.beast_stats.token_id,
+        set: {
+          current_health: sql`excluded.current_health`,
+          bonus_health: sql`excluded.bonus_health`,
+          bonus_xp: sql`excluded.bonus_xp`,
+          attack_streak: sql`excluded.attack_streak`,
+          last_death_timestamp: sql`excluded.last_death_timestamp`,
+          revival_count: sql`excluded.revival_count`,
+          extra_lives: sql`excluded.extra_lives`,
+          has_claimed_potions: sql`excluded.has_claimed_potions`,
+          blocks_held: sql`excluded.blocks_held`,
+          spirit: sql`excluded.spirit`,
+          luck: sql`excluded.luck`,
+          specials: sql`excluded.specials`,
+          wisdom: sql`excluded.wisdom`,
+          diplomacy: sql`excluded.diplomacy`,
+          rewards_earned: sql`excluded.rewards_earned`,
+          rewards_claimed: sql`excluded.rewards_claimed`,
+          indexed_at: sql`excluded.indexed_at`,
+          updated_at: sql`excluded.created_at`,
+          block_number: sql`excluded.block_number`,
+          transaction_hash: sql`excluded.transaction_hash`,
+        },
+      })
+    );
   }
 
   // battles - bulk insert with onConflictDoNothing
@@ -409,23 +422,21 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
     );
   }
 
-  // skulls_claimed - upsert (dedupe by beast_token_id, keeping last)
+  // skulls_claimed - batch upsert
   if (batches.skulls_claimed.length > 0) {
     const deduped = new Map<number, SkullsClaimedRow>();
     for (const row of batches.skulls_claimed) {
       deduped.set(row.beast_token_id, row);
     }
-    for (const row of deduped.values()) {
-      insertPromises.push(
-        db.insert(schema.skulls_claimed).values(row).onConflictDoUpdate({
-          target: schema.skulls_claimed.beast_token_id,
-          set: {
-            skulls: row.skulls,
-            updated_at: row.updated_at,
-          },
-        })
-      );
-    }
+    insertPromises.push(
+      db.insert(schema.skulls_claimed).values([...deduped.values()]).onConflictDoUpdate({
+        target: schema.skulls_claimed.beast_token_id,
+        set: {
+          skulls: sql`excluded.skulls`,
+          updated_at: sql`excluded.updated_at`,
+        },
+      })
+    );
   }
 
   // summit_log - bulk insert with onConflictDoNothing
@@ -435,23 +446,21 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
     );
   }
 
-  // beast_owners - upsert (dedupe by token_id, keeping last)
+  // beast_owners - batch upsert
   if (batches.beast_owners.length > 0) {
     const deduped = new Map<number, BeastOwnerRow>();
     for (const row of batches.beast_owners) {
       deduped.set(row.token_id, row);
     }
-    for (const row of deduped.values()) {
-      insertPromises.push(
-        db.insert(schema.beast_owners).values(row).onConflictDoUpdate({
-          target: schema.beast_owners.token_id,
-          set: {
-            owner: row.owner,
-            updated_at: row.updated_at,
-          },
-        })
-      );
-    }
+    insertPromises.push(
+      db.insert(schema.beast_owners).values([...deduped.values()]).onConflictDoUpdate({
+        target: schema.beast_owners.token_id,
+        set: {
+          owner: sql`excluded.owner`,
+          updated_at: sql`excluded.updated_at`,
+        },
+      })
+    );
   }
 
   // beasts - bulk insert with onConflictDoNothing
@@ -461,26 +470,24 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
     );
   }
 
-  // beast_data - upsert (dedupe by entity_hash, keeping last)
+  // beast_data - batch upsert
   if (batches.beast_data.length > 0) {
     const deduped = new Map<string, BeastDataRow>();
     for (const row of batches.beast_data) {
       deduped.set(row.entity_hash, row);
     }
-    for (const row of deduped.values()) {
-      insertPromises.push(
-        db.insert(schema.beast_data).values(row).onConflictDoUpdate({
-          target: schema.beast_data.entity_hash,
-          set: {
-            adventurers_killed: row.adventurers_killed,
-            last_death_timestamp: row.last_death_timestamp,
-            last_killed_by: row.last_killed_by,
-            token_id: row.token_id,
-            updated_at: row.updated_at,
-          },
-        })
-      );
-    }
+    insertPromises.push(
+      db.insert(schema.beast_data).values([...deduped.values()]).onConflictDoUpdate({
+        target: schema.beast_data.entity_hash,
+        set: {
+          adventurers_killed: sql`excluded.adventurers_killed`,
+          last_death_timestamp: sql`excluded.last_death_timestamp`,
+          last_killed_by: sql`excluded.last_killed_by`,
+          token_id: sql`excluded.token_id`,
+          updated_at: sql`excluded.updated_at`,
+        },
+      })
+    );
   }
 
   await Promise.all(insertPromises);
@@ -735,6 +742,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     async transform({ block }) {
       // Capture DNA delivery time FIRST - before any processing
       const indexed_at = new Date();
+      const blockStartTime = Date.now();
 
       const logger = useLogger();
       const { db } = useDrizzleStorage();
@@ -764,14 +772,27 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
       const beastStatsTokenIds: number[] = [];
       const battleTokenIds: number[] = [];
       const rewardsEarnedTokenIds: number[] = [];
+      const transferTokenIds: number[] = []; // For batching metadata fetches
 
       // Pre-scan events to collect token IDs for batch lookups
+      const preScanStart = Date.now();
       for (const event of events) {
         const keys = event.keys;
         if (keys.length === 0) continue;
 
         const selector = feltToHex(keys[0]);
         const event_address = feltToHex(event.address);
+
+        // Collect Transfer token IDs for batch metadata fetch
+        if (addressToBigInt(event_address) === beastsAddressBigInt && selector === BEAST_EVENT_SELECTORS.Transfer) {
+          const decoded = decodeTransferEvent([...keys], [...event.data]);
+          if (decoded.to !== ZERO_ADDRESS) {
+            const token_id = Number(decoded.token_id);
+            if (!fetchedTokens.has(token_id)) {
+              transferTokenIds.push(token_id);
+            }
+          }
+        }
 
         if (addressToBigInt(event_address) === summitAddressBigInt) {
           switch (selector) {
@@ -812,6 +833,25 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         }
       }
 
+      const preScanTime = Date.now() - preScanStart;
+
+      // Batch fetch metadata for Transfer events (parallel RPC calls)
+      let rpcTime = 0;
+      const metadataMap = new Map<number, Awaited<ReturnType<typeof fetchBeastMetadata>>>();
+      if (transferTokenIds.length > 0) {
+        const uniqueTransferIds = [...new Set(transferTokenIds)];
+        const rpcStartTime = Date.now();
+
+        // Fetch all in parallel (new mints are rare)
+        const results = await Promise.all(uniqueTransferIds.map(id => fetchBeastMetadata(id)));
+        uniqueTransferIds.forEach((id, idx) => {
+          metadataMap.set(id, results[idx]);
+        });
+
+        rpcTime = Date.now() - rpcStartTime;
+        logger.info(`RPC metadata fetch: ${uniqueTransferIds.length} tokens in ${rpcTime}ms`);
+      }
+
       // Batch lookup beast context for all needed token IDs
       const allBeastContextTokenIds = [...new Set([
         ...beastStatsTokenIds,
@@ -819,11 +859,13 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         ...rewardsEarnedTokenIds,
         ...skullEventTokenIds,
       ])];
-      const beastContextMap = await getBeastContextBatch(db, allBeastContextTokenIds);
+      const { result: beastContextMap, joinQueryTime, fallbackQueryTime } = await getBeastContextBatch(db, allBeastContextTokenIds, logger);
 
       // Batch lookup old skulls for skull events
+      let skullsQueryTime = 0;
       const oldSkullsMap = new Map<number, bigint>();
       if (skullEventTokenIds.length > 0) {
+        const skullsStart = Date.now();
         const uniqueSkullTokenIds = [...new Set(skullEventTokenIds)];
         const oldSkullsResult = await db
           .select({
@@ -835,9 +877,12 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         for (const row of oldSkullsResult) {
           oldSkullsMap.set(row.beast_token_id, row.skulls);
         }
+        skullsQueryTime = Date.now() - skullsStart;
       }
+      const contextLookupTime = joinQueryTime + fallbackQueryTime + skullsQueryTime;
 
       // Process all events in order, collecting into batches
+      const eventProcessingStart = Date.now();
       for (const event of events) {
         const keys = event.keys;
         const data = event.data;
@@ -868,9 +913,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               updated_at: block_timestamp,
             });
 
-            // Check if we need to fetch metadata (only once per token)
+            // Use pre-fetched metadata from batch lookup (only for tokens not in cache)
             if (!fetchedTokens.has(token_id)) {
-              const beast_data = await fetchBeastMetadata(token_id);
+              const beast_data = metadataMap.get(token_id);
 
               if (beast_data) {
                 const { id, prefix, suffix, level, health, shiny, animated } = beast_data;
@@ -1404,8 +1449,28 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         }
       }
 
+      const eventProcessingTime = Date.now() - eventProcessingStart;
+
       // Execute all bulk inserts at the end of block processing
+      const insertStartTime = Date.now();
       await executeBulkInserts(db, batches);
+      const insertTime = Date.now() - insertStartTime;
+
+      // Log performance metrics for blocks with events
+      if (events.length > 0) {
+        const totalTime = Date.now() - blockStartTime;
+
+        // Detailed timing breakdown
+        // scan = pre-scan to collect token IDs
+        // rpc = RPC calls for new beast metadata (rare)
+        // ctx = context lookup (join + fallback + skulls queries)
+        // proc = event processing loop
+        // ins = database inserts
+        const timingStr = `scan:${preScanTime} rpc:${rpcTime} ctx:${contextLookupTime}(j:${joinQueryTime} f:${fallbackQueryTime} s:${skullsQueryTime}) proc:${eventProcessingTime} ins:${insertTime}`;
+        const countsStr = `bs:${batches.beast_stats.length} bt:${batches.battles.length} log:${batches.summit_log.length} own:${batches.beast_owners.length}`;
+
+        logger.info(`Block ${block_number}: ${totalTime}ms [${timingStr}] {${countsStr}}`);
+      }
     },
   });
 }
