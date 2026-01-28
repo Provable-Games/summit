@@ -59,7 +59,7 @@ const CATEGORIES: Record<string, string[]> = {
   'Arriving to Summit': ['Claimed Potions'],
   'Battle': ['BattleEvent', 'Applied Poison', 'Summit Change', 'Applied Extra Life'],
   'Beast Upgrade': ['Spirit', 'Luck', 'Specials', 'Wisdom', 'Diplomacy', 'Bonus Health'],
-  'Rewards': ['$SURVIVOR Earned', 'Claimed $SURVIVOR', 'Claimed Corpse', 'Claimed Skulls'],
+  'Rewards': ['$SURVIVOR Earned', 'Claimed $SURVIVOR', 'Claimed Corpses', 'Claimed Skulls'],
   'LS Events': ['EntityStats', 'CollectableEntity'],
 };
 
@@ -105,7 +105,7 @@ const getEventIcon = (category: string, subCategory: string): React.ReactNode =>
     if (subCategory === '$SURVIVOR Earned' || subCategory === 'Claimed $SURVIVOR') {
       return <img src={survivorTokenIcon} alt="survivor" style={imgStyle} />;
     }
-    if (subCategory === 'Claimed Corpse') return <img src={corpseTokenIcon} alt="corpse" style={imgStyle} />;
+    if (subCategory === 'Claimed Corpses') return <img src={corpseTokenIcon} alt="corpse" style={imgStyle} />;
     if (subCategory === 'Claimed Skulls') return <img src={killTokenIcon} alt="skull" style={imgStyle} />;
   }
 
@@ -527,25 +527,30 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
           </Typography>
         );
       }
-      if (event.sub_category === 'Claimed Corpse') {
-        const count = (data.count as number) || 1;
+      if (event.sub_category === 'Claimed Corpses') {
+        const corpseAmount = (data.corpse_amount as number) || 1;
+        const adventurerCount = (data.adventurer_count as number) || 1;
         return (
           <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
             <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
             {' claimed '}
-            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{count}</Box>
-            {' corpse token(s)'}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{corpseAmount}</Box>
+            {' CORPSE from '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{adventurerCount}</Box>
+            {adventurerCount === 1 ? ' adventurer' : ' adventurers'}
           </Typography>
         );
       }
       if (event.sub_category === 'Claimed Skulls') {
-        const count = (data.count as number) || 1;
+        const skullsClaimed = data.skulls_claimed 
+          ? (typeof data.skulls_claimed === 'string' ? parseInt(data.skulls_claimed, 10) : (data.skulls_claimed as number))
+          : 1;
         return (
           <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
             <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
             {' claimed '}
-            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{count}</Box>
-            {' skull token(s)'}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{skullsClaimed}</Box>
+            {skullsClaimed === 1 ? ' skull token' : ' skull tokens'}
           </Typography>
         );
       }

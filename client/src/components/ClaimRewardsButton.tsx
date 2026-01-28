@@ -1,28 +1,24 @@
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
-import { Badge, Box, Button, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
+import { Badge, Box, Button, IconButton, Menu, MenuItem, Typography } from '@mui/material';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import ClaimCorpseReward from './dialogs/ClaimCorpseReward';
 import ClaimSkullReward from './dialogs/ClaimSkullReward';
-import ClaimStarterPack from './dialogs/ClaimStarterPack';
 
 const ClaimRewardsButton = () => {
   const { collection, adventurerCollection } = useGameStore();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false);
   const [claimCorpseRewardDialog, setClaimCorpseRewardDialog] = useState(false);
   const [claimSkullRewardDialog, setClaimSkullRewardDialog] = useState(false);
 
-  const unclaimedStarterPacks = collection.filter(beast => !beast.has_claimed_potions);
   const unclaimedSkullTokens = collection.reduce(
     (sum, beast) => sum + ((beast.adventurers_killed || 0) - (beast.kills_claimed || 0)),
     0,
   );
   const unclaimedCorpseTokens = adventurerCollection.reduce((sum, adventurer) => sum + adventurer.level, 0);
   const totalRewards =
-    unclaimedStarterPacks.length +
     (unclaimedSkullTokens > 0 ? 1 : 0) +
     (unclaimedCorpseTokens > 0 ? 1 : 0);
 
@@ -32,11 +28,6 @@ const ClaimRewardsButton = () => {
 
   const handleClose = () => {
     setAnchorEl(null);
-  };
-
-  const handleClaimBeastReward = () => {
-    setClaimStarterPackDialog(true);
-    handleClose();
   };
 
   const handleClaimSkullReward = () => {
@@ -86,20 +77,6 @@ const ClaimRewardsButton = () => {
           },
         }}
       >
-        {unclaimedStarterPacks.length > 0 && (
-          <MenuItem sx={styles.menuItem}>
-            <Box sx={styles.menuItemContent}>
-              <Box sx={styles.menuItemInfo}>
-                <Typography sx={styles.menuItemTitle}>Starter Pack</Typography>
-                <Typography sx={styles.menuItemSubtitle}>{unclaimedStarterPacks.length} beasts</Typography>
-              </Box>
-              <Button sx={styles.claimButton} onClick={handleClaimBeastReward}>
-                <Typography sx={styles.claimButtonText}>CLAIM</Typography>
-              </Button>
-            </Box>
-          </MenuItem>
-        )}
-
         {unclaimedSkullTokens > 0 && (
           <MenuItem sx={styles.menuItem}>
             <Box sx={styles.menuItemContent}>
@@ -128,13 +105,6 @@ const ClaimRewardsButton = () => {
           </MenuItem>
         )}
       </Menu>
-
-      {claimStarterPackDialog && (
-        <ClaimStarterPack
-          open={claimStarterPackDialog}
-          close={() => setClaimStarterPackDialog(false)}
-        />
-      )}
 
       {claimCorpseRewardDialog && (
         <ClaimCorpseReward

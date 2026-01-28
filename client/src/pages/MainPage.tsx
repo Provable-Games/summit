@@ -3,29 +3,27 @@ import Countdown from "@/components/Countdown"
 import { useGameDirector } from "@/contexts/GameDirector"
 import { useGameStore } from "@/stores/gameStore"
 import { Box, Typography } from '@mui/material'
-import { isBrowser, isMobile } from 'react-device-detect'
+import { useAccount } from "@starknet-react/core"
 import { useState } from 'react'
+import { isBrowser, isMobile } from 'react-device-detect'
 import ActionBar from '../components/ActionBar'
+import BeastBoard from '../components/BeastBoard'
 import BeastCollection from '../components/BeastCollection'
 import BurgerMenu from '../components/BurgerMenu'
 import ClaimRewardsButton from '../components/ClaimRewardsButton'
+import EventHistoryModal from '../components/dialogs/EventHistoryModal'
+import LeaderboardModal from '../components/dialogs/LeaderboardModal'
+import Top5000BeastsModal from '../components/dialogs/Top5000BeastsModal'
+import EventHistoryButton from '../components/EventHistoryButton'
 import Leaderboard from '../components/Leaderboard'
 import LeaderboardButton from '../components/LeaderboardButton'
-import EventHistoryButton from '../components/EventHistoryButton'
-import BeastBoard from '../components/BeastBoard'
-import Top5000BeastsModal from '../components/dialogs/Top5000BeastsModal'
-import LeaderboardModal from '../components/dialogs/LeaderboardModal'
-import EventHistoryModal from '../components/dialogs/EventHistoryModal'
-import Onboarding from '../components/Onboarding'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
-import { useAccount } from "@starknet-react/core"
-import RewardsRemainingBar from '../components/RewardsRemainingBar'
 
 function MainPage() {
   const { address } = useAccount()
-  const { summit, attackInProgress, selectedBeasts, onboarding, attackMode } = useGameStore()
+  const { summit, attackInProgress, selectedBeasts, attackMode } = useGameStore()
   const { pauseUpdates } = useGameDirector();
   const [top5000ModalOpen, setTop5000ModalOpen] = useState(false);
   const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false);
@@ -58,17 +56,15 @@ function MainPage() {
           </Box>
         </Box>}
 
-        {onboarding
-          ? <Onboarding />
-          : <>
-            {(attackInProgress && pauseUpdates && selectedBeasts.length > 0 && attackMode !== 'autopilot')
-              ? <AttackingBeasts />
-              : <Box sx={styles.bottomContainer}>
-                <ActionBar />
-                <BeastCollection />
-              </Box>
-            }
-          </>}
+        <>
+          {(attackInProgress && pauseUpdates && selectedBeasts.length > 0 && attackMode !== 'autopilot')
+            ? <AttackingBeasts />
+            : <Box sx={styles.bottomContainer}>
+              <ActionBar />
+              <BeastCollection />
+            </Box>
+          }
+        </>
       </>
 
       {isMobile && <Box sx={{ position: 'absolute', top: '10px', width: '100%', boxSizing: 'border-box', px: 1, display: 'flex', justifyContent: 'center' }}>

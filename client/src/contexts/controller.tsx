@@ -41,7 +41,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { account, isConnecting } = useAccount();
   const { connector, connectors, connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
-  const { collection, setCollection, setAdventurerCollection, setLoadingCollection, setOnboarding, setCollectionSyncing } = useGameStore();
+  const { setCollection, setAdventurerCollection, setLoadingCollection, setCollectionSyncing } = useGameStore();
   const { getTokenBalances } = useStarknetApi();
   const { getBeastsByOwner } = useSummitApi();
   const { getValidAdventurers } = useGameTokens();
@@ -106,7 +106,6 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     try {
       const beasts = await getBeastsByOwner(account.address);
       setCollection(beasts);
-      setOnboarding(false);
     } catch (error) {
       console.error('Error fetching beast collection:', error);
       setCollection([]);
