@@ -1056,7 +1056,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
             logger.info(`EntityStats: adventurers_killed=${decoded.adventurers_killed}, token_id=${entityMetadata?.token_id ?? 'unknown'}`);
 
-            // Collect beast_data upsert
+            // Always save to beast_data table
             batches.beast_data.push({
               entity_hash: decoded.entity_hash,
               adventurers_killed: decoded.adventurers_killed,
@@ -1065,26 +1065,28 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               updated_at: block_timestamp,
             });
 
-            // Collect summit_log with beast metadata
-            collectSummitLog(batches, {
-              block_number,
-              event_index,
-              category: "LS Events",
-              sub_category: "EntityStats",
-              data: {
-                entity_hash: decoded.entity_hash,
-                adventurers_killed: decoded.adventurers_killed.toString(),
-                token_id: entityMetadata?.token_id ?? null,
-                beast_id: entityMetadata?.beast_id ?? null,
-                prefix: entityMetadata?.prefix ?? null,
-                suffix: entityMetadata?.suffix ?? null,
-              },
-              player: null,
-              token_id: entityMetadata?.token_id ?? null,
-              transaction_hash,
-              created_at: block_timestamp,
-              indexed_at,
-            });
+            // Only add to summit_log if beast is minted (token_id >= 76 with prefix+suffix)
+            if (entityMetadata && entityMetadata.token_id >= 76 && entityMetadata.prefix && entityMetadata.suffix) {
+              collectSummitLog(batches, {
+                block_number,
+                event_index,
+                category: "LS Events",
+                sub_category: "EntityStats",
+                data: {
+                  entity_hash: decoded.entity_hash,
+                  adventurers_killed: decoded.adventurers_killed.toString(),
+                  token_id: entityMetadata.token_id,
+                  beast_id: entityMetadata.beast_id,
+                  prefix: entityMetadata.prefix,
+                  suffix: entityMetadata.suffix,
+                },
+                player: null,
+                token_id: entityMetadata.token_id,
+                transaction_hash,
+                created_at: block_timestamp,
+                indexed_at,
+              });
+            }
             continue;
           }
 
