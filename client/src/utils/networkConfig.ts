@@ -34,8 +34,8 @@ export const TOKEN_ADDRESS = {
   REVIVE: "0x062901fa8278203cfc5bcc499259345d35dfdef72b6e5033caae0899255d873f",
   EXTRA_LIFE: "0x02cfc6f4ab7b9e062bb4576495408cc6516d98727a0b7d094952910961ab1825",
   POISON: "0x0705a687dcbc563ffdd372038920dcbcbcbf5e976cdc2f4202d848b30841f101",
-  SKULL: "0x05169f2f5a20fdb8db9fa59a2014b35c31e6d8440d5f782a373cb1fe6cbc83e5",
-  CORPSE: "0x06504fb9d64cda31aaa7bfa425b410ae86ceb0ee154f2c85a61d145155eab1bc",
+  SKULL: "0x020b8b562c355ddf6b3a9a5b898cffedb8f93e2e9151c2c2ef6101a0fa310c03",
+  CORPSE: "0x03543b1abd1b2a8bc33928ee8137dabfc3fa7b1a1a0d8cd1a8c407441b91e251",
   SURVIVOR: "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
 }
 
@@ -300,7 +300,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           {
             "name": "Claim Corpse Reward",
             "description": "Claim corpse rewards",
-            "entrypoint": "claim_efficient"
+            "entrypoint": "claim"
           },
           {
             "name": "Approve",

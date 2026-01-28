@@ -14,6 +14,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import HandshakeIcon from '@mui/icons-material/Handshake';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import HeartBrokenIcon from '@mui/icons-material/HeartBroken';
 import HistoryIcon from '@mui/icons-material/History';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
@@ -90,7 +91,7 @@ const getEventIcon = (category: string, subCategory: string): React.ReactNode =>
 
   // Beast Upgrade events
   if (category === 'Beast Upgrade') {
-    if (subCategory === 'Bonus Health') return <img src={corpseTokenIcon} alt="bonus health" style={imgStyle} />;
+    if (subCategory === 'Bonus Health') return <FavoriteIcon sx={{ fontSize: 18, color: '#e05050' }} />;
     if (subCategory === 'Luck') return <CasinoIcon sx={{ fontSize: 18, color: '#ff69b4' }} />;
     if (subCategory === 'Spirit') return <ElectricBoltIcon sx={{ fontSize: 18, color: '#00ffff' }} />;
     if (subCategory === 'Specials') return <StarIcon sx={{ fontSize: 18, color: '#ffd700' }} />;
@@ -480,6 +481,8 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
       }
       // Boolean upgrades don't show numbers
       const isBooleanUpgrade = ['Wisdom', 'Specials', 'Diplomacy'].includes(event.sub_category);
+      // Numeric upgrades like Luck and Spirit show +diff
+      const isNumericUpgrade = ['Luck', 'Spirit'].includes(event.sub_category);
 
       return (
         <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
@@ -487,6 +490,9 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
           {' upgraded '}
           <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{fullBeastName}</Box>
           {"'s "}
+          {isNumericUpgrade && diff !== null && (
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>+{diff} </Box>
+          )}
           <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{event.sub_category}</Box>
           {hasDiff && !isBooleanUpgrade && (
             <Box component="span" sx={{ color: '#888' }}>{` (${oldValue} → ${newValue})`}</Box>
