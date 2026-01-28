@@ -13,7 +13,16 @@ import { eq, sql, desc, and, inArray } from "drizzle-orm";
 import "dotenv/config";
 
 import { checkDatabaseHealth, db, pool } from "./db/client.js";
-import { beasts, beast_owners, beast_data, beast_stats, summit_log, skulls_claimed, rewards_earned } from "./db/schema.js";
+import {
+  beasts,
+  beast_owners,
+  beast_data,
+  beast_stats,
+  summit_log,
+  skulls_claimed,
+  rewards_earned,
+  corpse_events,
+} from "./db/schema.js";
 import { getSubscriptionHub } from "./ws/subscriptions.js";
 import {
   BEAST_NAMES,
@@ -662,6 +671,29 @@ app.get("/leaderboard", async (c) => {
   );
 });
 
+/**
+ * GET /adventurers/:player - Get all adventurer_ids for a player address
+ * - Not paginated
+ * - Returns distinct adventurer_ids as strings
+ */
+app.get("/adventurers/:player", async (c) => {
+  const player = normalizeAddress(c.req.param("player"));
+
+  const results = await db
+    .selectDistinct({
+      adventurer_id: corpse_events.adventurer_id,
+    })
+    .from(corpse_events)
+    .where(eq(corpse_events.player, player));
+
+  const adventurerIds = results.map((r) => r.adventurer_id.toString());
+
+  return c.json({
+    player,
+    adventurer_ids: adventurerIds,
+  });
+});
+
 // Root endpoint
 app.get("/", (c) => {
   const endpoints: Record<string, unknown> = {
@@ -672,6 +704,9 @@ app.get("/", (c) => {
       counts: "GET /beasts/stats/counts",
       top: "GET /beasts/stats/top?limit=25&offset=0",
       top5000_cutoff: "GET /beasts/stats/top5000-cutoff",
+    },
+    adventurers: {
+      by_player: "GET /adventurers/:player",
     },
     leaderboard: "GET /leaderboard",
     websocket: {
