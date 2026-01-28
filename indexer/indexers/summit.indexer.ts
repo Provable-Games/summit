@@ -1214,6 +1214,24 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                     indexed_at,
                   });
                 }
+
+                // Update context map with new stats so subsequent events in same block see updated state
+                beastContextMap.set(stats.token_id, {
+                  prev_stats: {
+                    token_id: stats.token_id,
+                    spirit: stats.spirit,
+                    luck: stats.luck,
+                    specials: stats.specials,
+                    wisdom: stats.wisdom,
+                    diplomacy: stats.diplomacy,
+                    bonus_health: stats.bonus_health,
+                    extra_lives: stats.extra_lives,
+                    has_claimed_potions: stats.has_claimed_potions,
+                    current_health: stats.current_health,
+                  },
+                  metadata: beast_metadata,
+                  owner: beast_owner,
+                });
               }
 
               // Create single batch "Arriving to Summit" event for all new beasts
@@ -1293,6 +1311,25 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 block_timestamp,
                 indexed_at,
               );
+
+              // Update context map with new stats so subsequent events in same block see updated state
+              // This prevents duplicate derived events when multiple LiveBeastStatsEvent occur for same beast
+              beastContextMap.set(stats.token_id, {
+                prev_stats: {
+                  token_id: stats.token_id,
+                  spirit: stats.spirit,
+                  luck: stats.luck,
+                  specials: stats.specials,
+                  wisdom: stats.wisdom,
+                  diplomacy: stats.diplomacy,
+                  bonus_health: stats.bonus_health,
+                  extra_lives: stats.extra_lives,
+                  has_claimed_potions: stats.has_claimed_potions,
+                  current_health: stats.current_health,
+                },
+                metadata,
+                owner: live_beast_owner,
+              });
               break;
             }
 

@@ -64,6 +64,11 @@ export class SubscriptionHub {
   private isConnected = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // Exponential backoff configuration (no max limit - retries forever)
+  private reconnectAttempts = 0;
+  private readonly baseReconnectDelay = 1000; // 1 second
+  private readonly maxReconnectDelay = 30000; // 30 seconds (capped)
+
   constructor() {
     this.connect();
   }
@@ -72,6 +77,7 @@ export class SubscriptionHub {
     try {
       this.pgClient = await pool.connect();
       this.isConnected = true;
+      this.reconnectAttempts = 0; // Reset on successful connection
 
       console.log("[SubscriptionHub] Connected to PostgreSQL for LISTEN");
 
@@ -112,11 +118,22 @@ export class SubscriptionHub {
       this.pgClient = null;
     }
 
-    console.log("[SubscriptionHub] Reconnecting in 5 seconds...");
+    this.reconnectAttempts++;
+
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (capped at 30s, retries forever)
+    const delay = Math.min(
+      this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
+      this.maxReconnectDelay
+    );
+
+    console.log(
+      `[SubscriptionHub] Reconnecting in ${delay / 1000}s (attempt ${this.reconnectAttempts})...`
+    );
+
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
       this.connect();
-    }, 5000);
+    }, delay);
   }
 
   private handleNotification(msg: pg.Notification): void {

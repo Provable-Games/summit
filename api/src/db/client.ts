@@ -19,6 +19,12 @@ const pool = new pg.Pool({
     : undefined,
 });
 
+// Handle pool errors to prevent crashes from unexpected disconnections
+// pg-pool will automatically replace dead clients, so we just log here
+pool.on("error", (err) => {
+  console.error("[PG POOL ERROR]", err.message);
+});
+
 // Create Drizzle ORM instance
 export const db = drizzle(pool);
 
@@ -32,7 +38,8 @@ export async function checkDatabaseHealth(): Promise<boolean> {
     await client.query("SELECT 1");
     client.release();
     return true;
-  } catch {
+  } catch (error) {
+    console.error("[DB HEALTH CHECK] Failed:", error instanceof Error ? error.message : error);
     return false;
   }
 }
