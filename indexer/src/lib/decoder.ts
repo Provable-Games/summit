@@ -180,7 +180,7 @@ export interface LiveBeastStats {
   revival_count: number;
   extra_lives: number;
   has_claimed_potions: number;
-  blocks_held: number;
+  summit_held_seconds: number;
   // Stats struct
   spirit: number;
   luck: number;
@@ -258,7 +258,7 @@ export interface SkullEventData {
  * - revival_count: 6 bits
  * - extra_lives: 12 bits
  * - has_claimed_potions: 1 bit
- * - blocks_held: 17 bits
+ * - summit_held_seconds: 17 bits
  * - spirit: 8 bits
  * - luck: 8 bits
  * - specials: 1 bit
@@ -306,8 +306,8 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   const has_claimed_potions = Number(packed & MASK_1);
   packed = packed / 2n;
 
-  // Extract blocks_held (17 bits)
-  const blocks_held = Number(packed & MASK_17);
+  // Extract summit_held_seconds (17 bits)
+  const summit_held_seconds = Number(packed & MASK_17);
   packed = packed / TWO_POW_17;
 
   // Extract spirit (8 bits)
@@ -342,7 +342,7 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
     revival_count,
     extra_lives,
     has_claimed_potions,
-    blocks_held,
+    summit_held_seconds,
     spirit,
     luck,
     specials,

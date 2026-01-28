@@ -77,19 +77,19 @@ pub fn update_attack_streak(
 }
 
 /// Compare two beasts for leaderboard ranking
-/// Primary: blocks_held, Secondary: bonus_xp, Tertiary: last_death_timestamp
+/// Primary: summit_held_seconds, Secondary: bonus_xp, Tertiary: last_death_timestamp
 /// @return true if beast1 is stronger than beast2
 #[inline(always)]
 pub fn is_beast_stronger(
-    beast1_blocks_held: u32,
+    beast1_summit_held_seconds: u32,
     beast1_bonus_xp: u16,
     beast1_last_death: u64,
-    beast2_blocks_held: u32,
+    beast2_summit_held_seconds: u32,
     beast2_bonus_xp: u16,
     beast2_last_death: u64,
 ) -> bool {
-    if beast1_blocks_held != beast2_blocks_held {
-        return beast1_blocks_held > beast2_blocks_held;
+    if beast1_summit_held_seconds != beast2_summit_held_seconds {
+        return beast1_summit_held_seconds > beast2_summit_held_seconds;
     }
     if beast1_bonus_xp != beast2_bonus_xp {
         return beast1_bonus_xp > beast2_bonus_xp;

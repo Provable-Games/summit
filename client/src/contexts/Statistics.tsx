@@ -11,7 +11,7 @@ import {
 import { useDynamicConnector } from "./starknet";
 
 export interface Top5000Cutoff {
-  blocks_held: number;
+  summit_held_seconds: number;
   bonus_xp: number;
   last_death_timestamp: number;
 }

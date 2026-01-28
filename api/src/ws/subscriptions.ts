@@ -32,7 +32,7 @@ interface SummitPayload {
   revival_count: number;
   extra_lives: number;
   has_claimed_potions: number;
-  blocks_held: number;
+  summit_held_seconds: number;
   spirit: number;
   luck: number;
   specials: number;

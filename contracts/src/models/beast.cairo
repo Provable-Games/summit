@@ -11,7 +11,7 @@ pub struct LiveBeastStats {
     pub revival_count: u8, // 6 bits
     pub extra_lives: u16, // 12 bits 4000 max
     pub has_claimed_potions: u8, // 1 bit
-    pub blocks_held: u32, // 17 bits
+    pub summit_held_seconds: u32, // 23 bits
     pub stats: Stats,
     pub rewards_earned: u32, // 32 bits
     pub rewards_claimed: u32 // 32 bits
@@ -40,6 +40,7 @@ mod pow {
     pub const TWO_POW_12: u256 = 0x1000;
     pub const TWO_POW_16: u256 = 0x10000;
     pub const TWO_POW_17: u256 = 0x20000;
+    pub const TWO_POW_23: u256 = 0x800000;
     pub const TWO_POW_29: u256 = 0x20000000;
     pub const TWO_POW_41: u256 = 0x20000000000;
     pub const TWO_POW_57: u256 = 0x200000000000000;
@@ -49,13 +50,13 @@ mod pow {
     pub const TWO_POW_131: u256 = 0x800000000000000000000000000000000;
     pub const TWO_POW_143: u256 = 0x800000000000000000000000000000000000;
     pub const TWO_POW_144: u256 = 0x1000000000000000000000000000000000000;
-    pub const TWO_POW_161: u256 = 0x20000000000000000000000000000000000000000;
-    pub const TWO_POW_169: u256 = 0x2000000000000000000000000000000000000000000;
-    pub const TWO_POW_177: u256 = 0x200000000000000000000000000000000000000000000;
-    pub const TWO_POW_178: u256 = 0x400000000000000000000000000000000000000000000;
-    pub const TWO_POW_179: u256 = 0x800000000000000000000000000000000000000000000;
-    pub const TWO_POW_180: u256 = 0x1000000000000000000000000000000000000000000000;
-    pub const TWO_POW_212: u256 = 0x100000000000000000000000000000000000000000000000000000;
+    pub const TWO_POW_167: u256 = 0x80000000000000000000000000000000000000000;
+    pub const TWO_POW_175: u256 = 0x8000000000000000000000000000000000000000000;
+    pub const TWO_POW_183: u256 = 0x800000000000000000000000000000000000000000000;
+    pub const TWO_POW_184: u256 = 0x1000000000000000000000000000000000000000000000;
+    pub const TWO_POW_185: u256 = 0x2000000000000000000000000000000000000000000000;
+    pub const TWO_POW_186: u256 = 0x4000000000000000000000000000000000000000000000;
+    pub const TWO_POW_218: u256 = 0x40000000000000000000000000000000000000000000000000000000;
 
     // Mask constants for optimized unpacking (value = 2^N - 1)
     pub const MASK_1: u256 = 0x1;
@@ -65,6 +66,7 @@ mod pow {
     pub const MASK_12: u256 = 0xFFF;
     pub const MASK_16: u256 = 0xFFFF;
     pub const MASK_17: u256 = 0x1FFFF;
+    pub const MASK_23: u256 = 0x7FFFFF;
     pub const MASK_32: u256 = 0xFFFFFFFF;
     pub const MASK_64: u256 = 0xFFFFFFFFFFFFFFFF;
 }
@@ -73,7 +75,7 @@ mod pow {
 pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking<LiveBeastStats, felt252> {
     fn pack(value: LiveBeastStats) -> felt252 {
         // Pack according to structure:
-        // Total bits: 17+12+12+16+4+64+6+12+1+17+8+8+1+1+1+32+32 = 244 bits (fits in felt252's 251 bits)
+        // Total bits: 17+12+12+16+4+64+6+12+1+23+8+8+1+1+1+32+32 = 250 bits (fits in felt252's 251 bits)
         (value.token_id.into()
             + value.current_health.into() * pow::TWO_POW_17
             + value.bonus_health.into() * pow::TWO_POW_29
@@ -83,14 +85,14 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
             + value.revival_count.into() * pow::TWO_POW_125
             + value.extra_lives.into() * pow::TWO_POW_131
             + value.has_claimed_potions.into() * pow::TWO_POW_143
-            + value.blocks_held.into() * pow::TWO_POW_144
-            + value.stats.spirit.into() * pow::TWO_POW_161
-            + value.stats.luck.into() * pow::TWO_POW_169
-            + value.stats.specials.into() * pow::TWO_POW_177
-            + value.stats.wisdom.into() * pow::TWO_POW_178
-            + value.stats.diplomacy.into() * pow::TWO_POW_179
-            + value.rewards_earned.into() * pow::TWO_POW_180
-            + value.rewards_claimed.into() * pow::TWO_POW_212)
+            + value.summit_held_seconds.into() * pow::TWO_POW_144
+            + value.stats.spirit.into() * pow::TWO_POW_167
+            + value.stats.luck.into() * pow::TWO_POW_175
+            + value.stats.specials.into() * pow::TWO_POW_183
+            + value.stats.wisdom.into() * pow::TWO_POW_184
+            + value.stats.diplomacy.into() * pow::TWO_POW_185
+            + value.rewards_earned.into() * pow::TWO_POW_186
+            + value.rewards_claimed.into() * pow::TWO_POW_218)
             .try_into()
             .expect('pack beast overflow')
     }
@@ -134,9 +136,9 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
         let has_claimed_potions = (packed & pow::MASK_1).try_into().expect('unpack has_claimed_potions');
         packed = packed / 2_u256;
 
-        // Extract blocks_held (17 bits)
-        let blocks_held = (packed & pow::MASK_17).try_into().expect('unpack blocks_held');
-        packed = packed / pow::TWO_POW_17;
+        // Extract summit_held_seconds (23 bits)
+        let summit_held_seconds = (packed & pow::MASK_23).try_into().expect('unpack summit_held_seconds');
+        packed = packed / pow::TWO_POW_23;
 
         let spirit = (packed & pow::MASK_8).try_into().expect('unpack spirit');
         packed = packed / pow::TWO_POW_8;
@@ -170,7 +172,7 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
             revival_count,
             extra_lives,
             has_claimed_potions,
-            blocks_held,
+            summit_held_seconds,
             stats,
             rewards_earned,
             rewards_claimed,
@@ -248,7 +250,7 @@ mod tests {
         revival_count: u8,
         extra_lives: u16,
         has_claimed_potions: u8,
-        blocks_held: u32,
+        summit_held_seconds: u32,
         spirit: u8,
         luck: u8,
         specials: u8,
@@ -267,7 +269,7 @@ mod tests {
             revival_count,
             extra_lives,
             has_claimed_potions,
-            blocks_held,
+            summit_held_seconds,
             stats: Stats { spirit, luck, specials, wisdom, diplomacy },
             rewards_earned,
             rewards_claimed,
@@ -287,7 +289,7 @@ mod tests {
             0_u8, // revival_count
             0_u16, // extra_lives
             0_u8, // has_claimed_potions
-            0_u32, // blocks_held
+            0_u32, // summit_held_seconds
             0_u8, // spirit
             0_u8, // luck
             0_u8, // specials
@@ -307,7 +309,7 @@ mod tests {
         assert(unpacked.revival_count == 0, 'zero revival_count');
         assert(unpacked.extra_lives == 0, 'zero extra_lives');
         assert(unpacked.has_claimed_potions == 0, 'zero has_claimed_potions');
-        assert(unpacked.blocks_held == 0, 'zero blocks_held');
+        assert(unpacked.summit_held_seconds == 0, 'zero summit_held_seconds');
         assert(unpacked.stats.spirit == 0, 'zero spirit');
         assert(unpacked.stats.luck == 0, 'zero luck');
         assert(unpacked.stats.specials == 0, 'zero specials');
@@ -330,7 +332,7 @@ mod tests {
         // revival_count: 6 bits -> 2^6 - 1
         // extra_lives: 12 bits -> 2^12 - 1
         // has_claimed_potions: 1 bit -> 1
-        // blocks_held: 17 bits -> 2^17 - 1
+        // summit_held_seconds: 23 bits -> 2^23 - 1
         // spirit, luck: 8 bits -> 255
         // specials, wisdom, diplomacy: 1 bit -> 1
         // rewards_earned, rewards_claimed: 32 bits -> 2^32 - 1
@@ -344,7 +346,7 @@ mod tests {
             63_u8, // (2^6 - 1) - 1
             4094_u16, // (2^12 - 1) - 1
             1_u8, // 1-bit remains 1 for max
-            131070_u32, // (2^17 - 1) - 1
+            8388606_u32, // (2^23 - 1) - 1
             100, // (2^8 - 1) - 1
             100, // (2^8 - 1) - 1
             1_u8, // 1-bit remains 1 for max
@@ -364,7 +366,7 @@ mod tests {
         assert(unpacked.revival_count == 63_u8, 'max revival_count');
         assert(unpacked.extra_lives == 4094_u16, 'max extra_lives');
         assert(unpacked.has_claimed_potions == 1_u8, 'max has_claimed_potions');
-        assert(unpacked.blocks_held == 131070_u32, 'max blocks_held');
+        assert(unpacked.summit_held_seconds == 8388606_u32, 'max summit_held_seconds');
         assert(unpacked.stats.spirit == 100, 'max spirit');
         assert(unpacked.stats.luck == 100, 'max luck');
         assert(unpacked.stats.specials == 1_u8, 'max specials');
@@ -392,7 +394,7 @@ mod tests {
         assert(unpacked.revival_count == 7_u8, 'mixed revival_count');
         assert(unpacked.extra_lives == 42_u16, 'mixed extra_lives');
         assert(unpacked.has_claimed_potions == 1_u8, 'mixed has_claimed_potions');
-        assert(unpacked.blocks_held == 54321_u32, 'mixed blocks_held');
+        assert(unpacked.summit_held_seconds == 54321_u32, 'mixed summit_held_seconds');
         assert(unpacked.stats.spirit == 17_u8, 'mixed spirit');
         assert(unpacked.stats.luck == 96_u8, 'mixed luck');
         assert(unpacked.stats.specials == 0_u8, 'mixed specials');

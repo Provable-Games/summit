@@ -23,7 +23,7 @@ export interface AllBeast {
   health: number;
   bonus_health: number;
   bonus_xp: number;
-  blocks_held: number;
+  summit_held_seconds: number;
   spirit: number;
   luck: number;
   specials: boolean;
@@ -53,12 +53,12 @@ export interface GetAllBeastsParams {
   beast_id?: number;
   name?: string;
   owner?: string;
-  sort?: 'blocks_held' | 'level';
+  sort?: 'summit_held_seconds' | 'level';
 }
 
 export interface TopBeast {
   token_id: number;
-  blocks_held: number;
+  summit_held_seconds: number;
   bonus_xp: number;
   last_death_timestamp: number;
   owner: string | null;
@@ -121,7 +121,7 @@ interface RawDiplomacyResponse {
   current_health: number;
   bonus_health: number;
   bonus_xp: number;
-  blocks_held: number;
+  summit_held_seconds: number;
   spirit: number;
   luck: number;
 }
@@ -161,7 +161,7 @@ export const useSummitApi = () => {
 
   /**
    * Get paginated list of all beasts with filtering
-   * Results sorted by blocks_held or level (both indexed)
+   * Results sorted by summit_held_seconds or level (both indexed)
    */
   const getAllBeasts = async (params: GetAllBeastsParams = {}): Promise<AllBeastsResponse> => {
     const searchParams = new URLSearchParams();
@@ -206,7 +206,7 @@ export const useSummitApi = () => {
   /**
    * Get top 5000 cutoff values
    */
-  const getTop5000Cutoff = async (): Promise<{ blocks_held: number; bonus_xp: number; last_death_timestamp: number }> => {
+  const getTop5000Cutoff = async (): Promise<{ summit_held_seconds: number; bonus_xp: number; last_death_timestamp: number }> => {
     const response = await fetch(`${currentNetworkConfig.apiUrl}/beasts/stats/top5000-cutoff`);
     if (!response.ok) {
       throw new Error(`Failed to fetch top 5000 cutoff: ${response.status}`);
@@ -215,7 +215,7 @@ export const useSummitApi = () => {
   };
 
   /**
-   * Get paginated top beasts by blocks_held
+   * Get paginated top beasts by summit_held_seconds
    */
   const getTopBeasts = async (limit: number = 25, offset: number = 0): Promise<TopBeastsResponse> => {
     const response = await fetch(`${currentNetworkConfig.apiUrl}/beasts/stats/top?limit=${limit}&offset=${offset}`);

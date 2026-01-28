@@ -114,7 +114,7 @@ function normalizeAddress(address: string): string {
  * - beast_id: Filter by beast type ID (optional, indexed)
  * - name: Filter by beast name search (optional, uses beast_id index)
  * - owner: Filter by owner address (optional, indexed)
- * - sort: Sort by "blocks_held" or "level" (default: blocks_held, both indexed)
+ * - sort: Sort by "summit_held_seconds" or "level" (default: summit_held_seconds, both indexed)
  */
 app.get("/beasts/all", async (c) => {
   const limit = Math.min(parseInt(c.req.query("limit") || "25", 10), 100);
@@ -124,7 +124,7 @@ app.get("/beasts/all", async (c) => {
   const beastId = c.req.query("beast_id");
   const name = c.req.query("name");
   const owner = c.req.query("owner");
-  const sort = c.req.query("sort") || "blocks_held";
+  const sort = c.req.query("sort") || "summit_held_seconds";
 
   // Build where conditions (all filters use indexed columns)
   const conditions = [];
@@ -154,7 +154,7 @@ app.get("/beasts/all", async (c) => {
   // Both sort options use indexed columns
   const orderByClause = sort === "level"
     ? desc(beasts.level)
-    : desc(beast_stats.blocks_held);
+    : desc(beast_stats.summit_held_seconds);
 
   // Get paginated results
   const results = await db
@@ -169,7 +169,7 @@ app.get("/beasts/all", async (c) => {
       animated: beasts.animated,
       bonus_health: beast_stats.bonus_health,
       bonus_xp: beast_stats.bonus_xp,
-      blocks_held: beast_stats.blocks_held,
+      summit_held_seconds: beast_stats.summit_held_seconds,
       spirit: beast_stats.spirit,
       luck: beast_stats.luck,
       specials: beast_stats.specials,
@@ -205,7 +205,7 @@ app.get("/beasts/all", async (c) => {
       health: r.health,
       bonus_health: r.bonus_health ?? 0,
       bonus_xp: r.bonus_xp ?? 0,
-      blocks_held: r.blocks_held ?? 0,
+      summit_held_seconds: r.summit_held_seconds ?? 0,
       spirit: r.spirit ?? 0,
       luck: r.luck ?? 0,
       specials: Boolean(r.specials),
@@ -258,7 +258,7 @@ app.get("/beasts/:owner", async (c) => {
       revival_count: beast_stats.revival_count,
       extra_lives: beast_stats.extra_lives,
       has_claimed_potions: beast_stats.has_claimed_potions,
-      blocks_held: beast_stats.blocks_held,
+      summit_held_seconds: beast_stats.summit_held_seconds,
       spirit: beast_stats.spirit,
       luck: beast_stats.luck,
       specials: beast_stats.specials,
@@ -330,7 +330,7 @@ app.get("/beasts/:owner", async (c) => {
         revival_count: r.revival_count ?? 0,
         extra_lives: r.extra_lives ?? 0,
         has_claimed_potions: Boolean(r.has_claimed_potions),
-        blocks_held: r.blocks_held ?? 0,
+        summit_held_seconds: r.summit_held_seconds ?? 0,
 
         // Upgrades
         spirit,
@@ -453,14 +453,14 @@ app.get("/beasts/stats/counts", async (c) => {
 app.get("/beasts/stats/top5000-cutoff", async (c) => {
   const results = await db
     .select({
-      blocks_held: beast_stats.blocks_held,
+      summit_held_seconds: beast_stats.summit_held_seconds,
       bonus_xp: beast_stats.bonus_xp,
       last_death_timestamp: beast_stats.last_death_timestamp,
     })
     .from(beast_stats)
-    .where(sql`${beast_stats.blocks_held} > 0`)
+    .where(sql`${beast_stats.summit_held_seconds} > 0`)
     .orderBy(
-      desc(beast_stats.blocks_held),
+      desc(beast_stats.summit_held_seconds),
       desc(beast_stats.bonus_xp),
       desc(beast_stats.last_death_timestamp)
     )
@@ -468,7 +468,7 @@ app.get("/beasts/stats/top5000-cutoff", async (c) => {
 
   if (results.length < 5000) {
     return c.json({
-      blocks_held: 0,
+      summit_held_seconds: 0,
       bonus_xp: 0,
       last_death_timestamp: 0,
     });
@@ -476,14 +476,14 @@ app.get("/beasts/stats/top5000-cutoff", async (c) => {
 
   const cutoff = results[4999];
   return c.json({
-    blocks_held: cutoff.blocks_held,
+    summit_held_seconds: cutoff.summit_held_seconds,
     bonus_xp: cutoff.bonus_xp,
     last_death_timestamp: Number(cutoff.last_death_timestamp),
   });
 });
 
 /**
- * GET /beasts/stats/top - Get paginated top beasts by blocks_held with metadata
+ * GET /beasts/stats/top - Get paginated top beasts by summit_held_seconds with metadata
  *
  * Query params:
  * - limit: Number of results (default: 25, max: 100)
@@ -499,7 +499,7 @@ app.get("/beasts/stats/top", async (c) => {
   const results = await db
     .select({
       token_id: beast_stats.token_id,
-      blocks_held: beast_stats.blocks_held,
+      summit_held_seconds: beast_stats.summit_held_seconds,
       bonus_xp: beast_stats.bonus_xp,
       last_death_timestamp: beast_stats.last_death_timestamp,
       beast_id: beasts.beast_id,
@@ -510,9 +510,9 @@ app.get("/beasts/stats/top", async (c) => {
     .from(beast_stats)
     .innerJoin(beasts, eq(beasts.token_id, beast_stats.token_id))
     .leftJoin(beast_owners, eq(beast_owners.token_id, beast_stats.token_id))
-    .where(sql`${beast_stats.blocks_held} > 0`)
+    .where(sql`${beast_stats.summit_held_seconds} > 0`)
     .orderBy(
-      desc(beast_stats.blocks_held),
+      desc(beast_stats.summit_held_seconds),
       desc(beast_stats.bonus_xp),
       desc(beast_stats.last_death_timestamp)
     )
@@ -523,7 +523,7 @@ app.get("/beasts/stats/top", async (c) => {
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(beast_stats)
-    .where(sql`${beast_stats.blocks_held} > 0`);
+    .where(sql`${beast_stats.summit_held_seconds} > 0`);
   const total = Number(countResult[0]?.count ?? 0);
 
   return c.json({
@@ -535,7 +535,7 @@ app.get("/beasts/stats/top", async (c) => {
 
       return {
         token_id: r.token_id,
-        blocks_held: r.blocks_held,
+        summit_held_seconds: r.summit_held_seconds,
         bonus_xp: r.bonus_xp,
         last_death_timestamp: Number(r.last_death_timestamp),
         owner: r.owner,
@@ -583,7 +583,7 @@ app.get("/diplomacy", async (c) => {
       current_health: beast_stats.current_health,
       bonus_health: beast_stats.bonus_health,
       bonus_xp: beast_stats.bonus_xp,
-      blocks_held: beast_stats.blocks_held,
+      summit_held_seconds: beast_stats.summit_held_seconds,
       spirit: beast_stats.spirit,
       luck: beast_stats.luck,
     })
@@ -620,7 +620,7 @@ app.get("/diplomacy", async (c) => {
         current_health: r.current_health,
         bonus_health: r.bonus_health,
         bonus_xp: r.bonus_xp,
-        blocks_held: r.blocks_held,
+        summit_held_seconds: r.summit_held_seconds,
         spirit: r.spirit,
         luck: r.luck,
         owner: r.owner,
@@ -700,7 +700,7 @@ app.get("/", (c) => {
     health: "GET /health",
     beasts: {
       by_owner: "GET /beasts/:owner",
-      all: "GET /beasts/all?limit=25&offset=0&prefix=&suffix=&beast_id=&name=&owner=&sort=blocks_held",
+      all: "GET /beasts/all?limit=25&offset=0&prefix=&suffix=&beast_id=&name=&owner=&sort=summit_held_seconds",
       counts: "GET /beasts/stats/counts",
       top: "GET /beasts/stats/top?limit=25&offset=0",
       top5000_cutoff: "GET /beasts/stats/top5000-cutoff",

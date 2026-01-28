@@ -128,8 +128,8 @@ function BeastCollection() {
         } else if (sortMethod === 'health') {
           return (b.health + b.bonus_health) - (a.health + a.bonus_health)
         } else if (sortMethod === 'blocks held') {
-          if (b.blocks_held !== a.blocks_held) {
-            return b.blocks_held - a.blocks_held
+          if (b.summit_held_seconds !== a.summit_held_seconds) {
+            return b.summit_held_seconds - a.summit_held_seconds
           }
           // Tiebreaker: lower power wins (same as top 5000 logic)
           if (a.power !== b.power) {

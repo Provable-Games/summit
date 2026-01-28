@@ -307,7 +307,7 @@ type BeastStatsRow = {
   revival_count: number;
   extra_lives: number;
   has_claimed_potions: number;
-  blocks_held: number;
+  summit_held_seconds: number;
   spirit: number;
   luck: number;
   specials: number;
@@ -375,7 +375,7 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
           revival_count: sql`excluded.revival_count`,
           extra_lives: sql`excluded.extra_lives`,
           has_claimed_potions: sql`excluded.has_claimed_potions`,
-          blocks_held: sql`excluded.blocks_held`,
+          summit_held_seconds: sql`excluded.summit_held_seconds`,
           spirit: sql`excluded.spirit`,
           luck: sql`excluded.luck`,
           specials: sql`excluded.specials`,
@@ -1175,7 +1175,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   revival_count: stats.revival_count,
                   extra_lives: stats.extra_lives,
                   has_claimed_potions: stats.has_claimed_potions,
-                  blocks_held: stats.blocks_held,
+                  summit_held_seconds: stats.summit_held_seconds,
                   spirit: stats.spirit,
                   luck: stats.luck,
                   specials: stats.specials,
@@ -1277,7 +1277,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 revival_count: stats.revival_count,
                 extra_lives: stats.extra_lives,
                 has_claimed_potions: stats.has_claimed_potions,
-                blocks_held: stats.blocks_held,
+                summit_held_seconds: stats.summit_held_seconds,
                 spirit: stats.spirit,
                 luck: stats.luck,
                 specials: stats.specials,

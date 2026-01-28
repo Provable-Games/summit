@@ -598,14 +598,14 @@ fn test_add_beast_to_leaderboard_invalid_position_too_high() {
 #[test]
 #[fork("mainnet")]
 #[should_panic(expected: "Beast has no rewards earned")]
-fn test_add_beast_to_leaderboard_no_blocks_held() {
+fn test_add_beast_to_leaderboard_no_summit_held_seconds() {
     let summit = deploy_summit_and_start();
     let terminal_block = summit.get_terminal_block();
 
     start_cheat_block_number_global(terminal_block + 1);
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    // Beast 60989 never held the summit, so blocks_held = 0
+    // Beast 60989 never held the summit, so summit_held_seconds = 0
     // Should panic with "Beast has no rewards earned"
     summit.add_beast_to_leaderboard(60989, 1);
 
@@ -648,7 +648,7 @@ fn create_test_beast(luck: u8, spirit: u8) -> Beast {
         revival_count: 0,
         extra_lives: 0,
         has_claimed_potions: 0,
-        blocks_held: 0,
+        summit_held_seconds: 0,
         stats: summit::models::beast::Stats { spirit, luck, specials: 0, wisdom: 0, diplomacy: 0 },
         rewards_earned: 0,
         rewards_claimed: 0,
@@ -1622,10 +1622,10 @@ fn test_attack_unused_revival_potions() {
 // P0 TESTS: STATE CONSISTENCY
 // ==========================
 
-// Note: Full blocks_held tracking requires multi-player scenarios where one beast takes
-// the summit from another, which updates blocks_held. With single-player fork testing,
-// we can only verify the basic attack flow. The blocks_held accumulation is implicitly
-// tested by test_claim_starter_pack_basic which requires blocks_held > 0.
+// Note: Full summit_held_seconds tracking requires multi-player scenarios where one beast takes
+// the summit from another, which updates summit_held_seconds. With single-player fork testing,
+// we can only verify the basic attack flow. The summit_held_seconds accumulation is implicitly
+// tested by test_claim_starter_pack_basic which requires summit_held_seconds > 0.
 #[test]
 #[fork("mainnet")]
 fn test_summit_beast_can_be_attacked() {
@@ -1710,10 +1710,10 @@ fn test_claim_summit_before_game_ends() {
 // P1 TESTS: LEADERBOARD
 // ==========================
 
-// Note: test_leaderboard_valid_submission removed - the beast needs blocks_held > 0
-// to be added to leaderboard, and blocks_held only gets updated when summit is finalized
+// Note: test_leaderboard_valid_submission removed - the beast needs summit_held_seconds > 0
+// to be added to leaderboard, and summit_held_seconds only gets updated when summit is finalized
 // (when another beast takes over). This requires two separate players/beasts to properly test.
-// The existing tests test_add_beast_to_leaderboard_no_blocks_held and
+// The existing tests test_add_beast_to_leaderboard_no_summit_held_seconds and
 // test_add_beast_to_leaderboard_before_terminal cover the negative cases.
 
 // ==========================
@@ -1881,8 +1881,8 @@ fn test_set_start_timestamp_after_summit_started() {
 // DISTRIBUTE BEAST TOKENS TESTS
 // ==========================
 
-// Note: test_distribute_beast_tokens_after_submission - the beast needs blocks_held > 0
-// to be added to leaderboard, and blocks_held only updates when another beast takes the summit.
+// Note: test_distribute_beast_tokens_after_submission - the beast needs summit_held_seconds > 0
+// to be added to leaderboard, and summit_held_seconds only updates when another beast takes the summit.
 // This requires multiple owners/beasts to properly test. The existing test
 // test_distribute_beast_tokens_before_submission_ends covers the timing validation.
 

@@ -487,8 +487,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "blocks_held": {
-          "name": "blocks_held",
+        "summit_held_seconds": {
+          "name": "summit_held_seconds",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
@@ -590,11 +590,11 @@
           "method": "btree",
           "with": {}
         },
-        "beast_stats_blocks_held_idx": {
-          "name": "beast_stats_blocks_held_idx",
+        "beast_stats_summit_held_seconds_idx": {
+          "name": "beast_stats_summit_held_seconds_idx",
           "columns": [
             {
-              "expression": "blocks_held",
+              "expression": "summit_held_seconds",
               "isExpression": false,
               "asc": false,
               "nulls": "last"

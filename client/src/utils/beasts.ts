@@ -289,11 +289,11 @@ export const getEntityHash = (id: number, prefix: number, suffix: number): strin
 }
 
 export const isBeastInTop5000 = (beast: Beast, top5000Cutoff: Top5000Cutoff): boolean => {
-  if (!top5000Cutoff || beast.blocks_held === 0) return false;
+  if (!top5000Cutoff || beast.summit_held_seconds === 0) return false;
 
-  return beast.blocks_held > top5000Cutoff.blocks_held
-    || (beast.blocks_held === top5000Cutoff.blocks_held && beast.bonus_xp > top5000Cutoff.bonus_xp)
-    || (beast.blocks_held === top5000Cutoff.blocks_held && beast.bonus_xp === top5000Cutoff.bonus_xp && beast.last_death_timestamp > top5000Cutoff.last_death_timestamp);
+  return beast.summit_held_seconds > top5000Cutoff.summit_held_seconds
+    || (beast.summit_held_seconds === top5000Cutoff.summit_held_seconds && beast.bonus_xp > top5000Cutoff.bonus_xp)
+    || (beast.summit_held_seconds === top5000Cutoff.summit_held_seconds && beast.bonus_xp === top5000Cutoff.bonus_xp && beast.last_death_timestamp > top5000Cutoff.last_death_timestamp);
 }
 
 export const calculateOptimalAttackPotions = (selection: any, summit: Summit, maxAllowed: number) => {

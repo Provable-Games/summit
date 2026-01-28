@@ -28,7 +28,7 @@ interface BeastDexModalProps {
 }
 
 type MySortKey = 'power' | 'level' | 'health' | 'name';
-type AllSortKey = 'blocks_held' | 'level';
+type AllSortKey = 'summit_held_seconds' | 'level';
 type TypeKey = 'all' | 'Brute' | 'Hunter' | 'Magic';
 type TabKey = 'mine' | 'all';
 
@@ -45,7 +45,7 @@ const transformAllBeast = (ab: AllBeast): Beast => {
     bonus_health: ab.bonus_health,
     bonus_xp: ab.bonus_xp,
     current_level: currentLevel,
-    blocks_held: ab.blocks_held,
+    summit_held_seconds: ab.summit_held_seconds,
     spirit: ab.spirit,
     luck: ab.luck,
     specials: ab.specials,
@@ -367,7 +367,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
                     }
                   }}
                 >
-                  <MenuItem value="blocks_held">
+                  <MenuItem value="summit_held_seconds">
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <BarChartIcon sx={{ fontSize: '16px', color: gameColors.brightGreen, mr: 1 }} />
                       Blocks Held

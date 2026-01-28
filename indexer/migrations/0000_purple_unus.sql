@@ -53,7 +53,7 @@ CREATE TABLE "beast_stats" (
 	"revival_count" smallint NOT NULL,
 	"extra_lives" smallint NOT NULL,
 	"has_claimed_potions" smallint NOT NULL,
-	"blocks_held" integer NOT NULL,
+	"summit_held_seconds" integer NOT NULL,
 	"spirit" smallint NOT NULL,
 	"luck" smallint NOT NULL,
 	"specials" smallint NOT NULL,
@@ -177,7 +177,7 @@ CREATE INDEX "beast_owners_owner_idx" ON "beast_owners" USING btree ("owner");--
 CREATE INDEX "beast_owners_token_id_idx" ON "beast_owners" USING btree ("token_id");--> statement-breakpoint
 
 CREATE INDEX "beast_stats_current_health_idx" ON "beast_stats" USING btree ("current_health");--> statement-breakpoint
-CREATE INDEX "beast_stats_blocks_held_idx" ON "beast_stats" USING btree ("blocks_held" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "beast_stats_summit_held_seconds_idx" ON "beast_stats" USING btree ("summit_held_seconds" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "beast_stats_updated_at_idx" ON "beast_stats" USING btree ("updated_at" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "beast_stats_diplomacy_token_idx" ON "beast_stats" USING btree ("token_id") WHERE diplomacy > 0;--> statement-breakpoint
 

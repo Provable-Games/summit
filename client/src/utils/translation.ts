@@ -55,7 +55,7 @@ export interface LiveBeastStats {
   revival_count: number;
   extra_lives: number;
   has_claimed_potions: boolean;
-  blocks_held: number;
+  summit_held_seconds: number;
   spirit: number;
   luck: number;
   specials: boolean;
@@ -77,7 +77,7 @@ export interface LiveBeastStats {
  * - revival_count: 6 bits
  * - extra_lives: 12 bits
  * - has_claimed_potions: 1 bit
- * - blocks_held: 17 bits
+ * - summit_held_seconds: 17 bits
  * - spirit: 8 bits
  * - luck: 8 bits
  * - specials: 1 bit
@@ -116,7 +116,7 @@ function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   const has_claimed_potions = (packed & MASK_1) === 1n;
   packed = packed / 2n;
 
-  const blocks_held = Number(packed & MASK_17);
+  const summit_held_seconds = Number(packed & MASK_17);
   packed = packed / TWO_POW_17;
 
   const spirit = Number(packed & MASK_8);
@@ -146,7 +146,7 @@ function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
     revival_count,
     extra_lives,
     has_claimed_potions,
-    blocks_held,
+    summit_held_seconds,
     spirit,
     luck,
     specials,

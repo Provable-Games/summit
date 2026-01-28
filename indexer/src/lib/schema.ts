@@ -52,7 +52,7 @@ export const beast_stats = pgTable(
     revival_count: smallint("revival_count").notNull(),
     extra_lives: smallint("extra_lives").notNull(),
     has_claimed_potions: smallint("has_claimed_potions").notNull(),
-    blocks_held: integer("blocks_held").notNull(),
+    summit_held_seconds: integer("summit_held_seconds").notNull(),
     // Stats struct fields
     spirit: smallint("spirit").notNull(),
     luck: smallint("luck").notNull(),
@@ -72,7 +72,7 @@ export const beast_stats = pgTable(
   },
   (table) => [
     index("beast_stats_current_health_idx").on(table.current_health),
-    index("beast_stats_blocks_held_idx").on(table.blocks_held.desc()),
+    index("beast_stats_summit_held_seconds_idx").on(table.summit_held_seconds.desc()),
     index("beast_stats_updated_at_idx").on(table.updated_at.desc()),
   ]
 );

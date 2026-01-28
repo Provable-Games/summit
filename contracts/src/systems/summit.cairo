@@ -14,7 +14,6 @@ pub trait ISummitSystem<T> {
     ) -> (u32, u32, u16);
     fn feed(ref self: T, beast_token_id: u32, amount: u16);
     fn claim_rewards(ref self: T, beast_token_ids: Span<u32>);
-    fn claim_starter_pack(ref self: T, beast_token_ids: Span<u32>);
 
     fn add_extra_life(ref self: T, beast_token_id: u32, extra_life_potions: u16);
     fn apply_stat_points(ref self: T, beast_token_id: u32, stats: Stats);
@@ -44,14 +43,14 @@ pub trait ISummitSystem<T> {
     fn get_live_stats(self: @T, beast_token_ids: Span<u32>) -> Span<LiveBeastStats>;
 
     fn get_start_timestamp(self: @T) -> u64;
-    fn get_terminal_block(self: @T) -> u64;
+    fn get_terminal_timestamp(self: @T) -> u64;
     fn get_summit_claimed(self: @T) -> bool;
-    fn get_summit_duration_blocks(self: @T) -> u64;
-    fn get_summit_reward_amount(self: @T) -> u128;
+    fn get_summit_duration_seconds(self: @T) -> u64;
+    fn get_summit_reward_amount_per_second(self: @T) -> u128;
     fn get_showdown_duration_seconds(self: @T) -> u64;
     fn get_showdown_reward_amount(self: @T) -> u128;
     fn get_beast_tokens_amount(self: @T) -> u128;
-    fn get_beast_submission_blocks(self: @T) -> u64;
+    fn get_beast_submission_seconds(self: @T) -> u64;
     fn get_beast_top_spots(self: @T) -> u32;
 
     fn get_dungeon_address(self: @T) -> ContractAddress;
@@ -120,14 +119,14 @@ pub mod summit_systems {
         diplomacy_beast: Map<felt252, Map<u8, u32>>, // (prefix-suffix hash) -> (index) -> beast token id
         diplomacy_count: Map<felt252, u8>,
         start_timestamp: u64,
-        summit_duration_blocks: u64,
+        summit_duration_seconds: u64,
         showdown_duration_seconds: u64,
-        terminal_block: u64,
+        terminal_timestamp: u64,
         summit_claimed: bool,
-        summit_reward_amount: u128, // Total amount being distributed
+        summit_reward_amount_per_second: u128,
         showdown_reward_amount: u128, // Showdown winner reward
         beast_leaderboard: Map<u32, u32>, // position -> beast token id
-        beast_submission_blocks: u64,
+        beast_submission_seconds: u64,
         beast_tokens_distributed: u32,
         beast_tokens_amount: u128, // Amount each top beast get
         beast_top_spots: u32, // Number of beasts getting reward
@@ -167,12 +166,12 @@ pub mod summit_systems {
         ref self: ContractState,
         owner: ContractAddress,
         start_timestamp: u64,
-        summit_duration_blocks: u64,
-        summit_reward_amount: u128,
+        summit_duration_seconds: u64,
+        summit_reward_amount_per_second: u128,
         showdown_duration_seconds: u64,
         showdown_reward_amount: u128,
         beast_tokens_amount: u128,
-        beast_submission_blocks: u64,
+        beast_submission_seconds: u64,
         beast_top_spots: u32,
         dungeon_address: ContractAddress,
         beast_address: ContractAddress,
@@ -181,12 +180,12 @@ pub mod summit_systems {
     ) {
         self.ownable.initializer(owner);
         self.start_timestamp.write(start_timestamp);
-        self.summit_duration_blocks.write(summit_duration_blocks);
-        self.summit_reward_amount.write(summit_reward_amount);
+        self.summit_duration_seconds.write(summit_duration_seconds);
+        self.summit_reward_amount_per_second.write(summit_reward_amount_per_second);
         self.showdown_duration_seconds.write(showdown_duration_seconds);
         self.showdown_reward_amount.write(showdown_reward_amount);
         self.beast_tokens_amount.write(beast_tokens_amount);
-        self.beast_submission_blocks.write(beast_submission_blocks);
+        self.beast_submission_seconds.write(beast_submission_seconds);
         self.beast_top_spots.write(beast_top_spots);
         self.dungeon_address.write(dungeon_address);
         self.beast_dispatcher.write(IERC721Dispatcher { contract_address: beast_address });
@@ -201,11 +200,15 @@ pub mod summit_systems {
             assert(!self.summit_claimed.read(), 'Summit already claimed');
             assert(!InternalSummitImpl::_summit_playable(@self), 'Summit not over');
 
+            let caller = get_caller_address();
             let token_id = self.summit_beast_token_id.read();
 
             let summit_owner = self.beast_dispatcher.read().owner_of(token_id.into());
-            assert(summit_owner == get_caller_address(), errors::NOT_TOKEN_OWNER);
+            assert(summit_owner == caller, errors::NOT_TOKEN_OWNER);
 
+            // Transfer rewards to caller
+            let showdown_reward_amount = self.showdown_reward_amount.read();
+            self.reward_dispatcher.read().transfer(caller, showdown_reward_amount.into());
             self.summit_claimed.write(true);
         }
 
@@ -289,43 +292,6 @@ pub mod summit_systems {
             // Emit events
             self.emit(BeastUpdatesEvent { beast_updates: beast_updates.span() });
             self.emit(RewardsClaimedEvent { player: caller, amount: total_claimable });
-        }
-
-        fn claim_starter_pack(ref self: ContractState, beast_token_ids: Span<u32>) {
-            assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
-
-            let caller = get_caller_address();
-            let beast_dispatcher = self.beast_dispatcher.read();
-            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
-
-            let mut potion_rewards: u256 = 0;
-            let mut beast_updates: Array<felt252> = array![];
-
-            let mut i = 0;
-            while (i < beast_token_ids.len()) {
-                let beast_token_id = *beast_token_ids.at(i);
-                assert(beast_dispatcher.owner_of(beast_token_id.into()) == caller, errors::NOT_TOKEN_OWNER);
-
-                let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id, beast_nft_dispatcher);
-                assert(beast.live.has_claimed_potions == 0, 'Already claimed potions');
-
-                potion_rewards += InternalSummitImpl::get_potion_amount(beast.fixed.id).into();
-                beast.live.has_claimed_potions = 1;
-
-                let packed_beast = self._save_live_stats(beast.live);
-                beast_updates.append(packed_beast);
-                i += 1;
-            }
-
-            assert(potion_rewards > 0, 'No potions to claim');
-
-            self.attack_potion_dispatcher.read().transfer(caller, 3 * potion_rewards * TOKEN_DECIMALS);
-            self.poison_potion_dispatcher.read().transfer(caller, 3 * potion_rewards * TOKEN_DECIMALS);
-            self.revive_potion_dispatcher.read().transfer(caller, 2 * potion_rewards * TOKEN_DECIMALS);
-            self.extra_life_potion_dispatcher.read().transfer(caller, potion_rewards * TOKEN_DECIMALS);
-            self.test_money_dispatcher.read().transfer(caller, potion_rewards * TOKEN_DECIMALS);
-
-            self.emit(BeastUpdatesEvent { beast_updates: beast_updates.span() });
         }
 
         fn add_extra_life(ref self: ContractState, beast_token_id: u32, extra_life_potions: u16) {
@@ -437,14 +403,14 @@ pub mod summit_systems {
         }
 
         fn start_summit(ref self: ContractState) {
-            assert(get_block_timestamp() >= self.start_timestamp.read(), 'Summit not open yet');
+            let block_timestamp = get_block_timestamp();
+            assert(block_timestamp >= self.start_timestamp.read(), 'Summit not open yet');
             assert(self.summit_beast_token_id.read() == 0, 'Summit already started');
 
-            let current_block = get_block_number();
-            self.terminal_block.write(current_block + self.summit_duration_blocks.read());
+            self.terminal_timestamp.write(block_timestamp + self.summit_duration_seconds.read());
 
             let start_token_id = 1;
-            self.summit_history.entry(start_token_id).write(current_block);
+            self.summit_history.entry(start_token_id).write(block_timestamp);
             self.summit_beast_token_id.write(start_token_id);
 
             let mut beast_live_stats: LiveBeastStats = InternalSummitImpl::_get_live_stats(@self, start_token_id);
@@ -453,15 +419,17 @@ pub mod summit_systems {
         }
 
         fn add_beast_to_leaderboard(ref self: ContractState, beast_token_id: u32, position: u32) {
-            let current_block = get_block_number();
-            let terminal_block = self.terminal_block.read();
-            assert(current_block >= terminal_block, 'Summit not over');
-            assert(current_block < terminal_block + self.beast_submission_blocks.read(), 'Submission period over');
+            let current_timestamp = get_block_timestamp();
+            let terminal_timestamp = self.terminal_timestamp.read();
+            assert(current_timestamp >= terminal_timestamp, 'Summit not over');
+            assert(
+                current_timestamp < terminal_timestamp + self.beast_submission_seconds.read(), 'Submission period over',
+            );
 
             assert(position > 0 && position <= self.beast_top_spots.read(), 'Invalid position');
 
             let new_beast: LiveBeastStats = InternalSummitImpl::_get_live_stats(@self, beast_token_id);
-            assert!(new_beast.blocks_held > 0, "Beast has no rewards earned");
+            assert!(new_beast.summit_held_seconds > 0, "Beast has no rewards earned");
 
             if position > 1 {
                 let previous_position_id = self.beast_leaderboard.entry(position - 1).read();
@@ -486,7 +454,7 @@ pub mod summit_systems {
 
         fn distribute_beast_tokens(ref self: ContractState, limit: u32) {
             assert(
-                get_block_number() > self.terminal_block.read() + self.beast_submission_blocks.read(),
+                get_block_number() > self.terminal_timestamp.read() + self.beast_submission_seconds.read(),
                 'Submission not over',
             );
 
@@ -517,7 +485,7 @@ pub mod summit_systems {
 
         fn set_summit_reward(ref self: ContractState, amount: u128) {
             self.ownable.assert_only_owner();
-            self.summit_reward_amount.write(amount);
+            self.summit_reward_amount_per_second.write(amount);
         }
 
         fn set_start_timestamp(ref self: ContractState, start_timestamp: u64) {
@@ -587,24 +555,24 @@ pub mod summit_systems {
             self.start_timestamp.read()
         }
 
-        fn get_terminal_block(self: @ContractState) -> u64 {
-            self.terminal_block.read()
+        fn get_terminal_timestamp(self: @ContractState) -> u64 {
+            self.terminal_timestamp.read()
         }
 
-        fn get_beast_submission_blocks(self: @ContractState) -> u64 {
-            self.beast_submission_blocks.read()
+        fn get_beast_submission_seconds(self: @ContractState) -> u64 {
+            self.beast_submission_seconds.read()
         }
 
         fn get_summit_claimed(self: @ContractState) -> bool {
             self.summit_claimed.read()
         }
 
-        fn get_summit_duration_blocks(self: @ContractState) -> u64 {
-            self.summit_duration_blocks.read()
+        fn get_summit_duration_seconds(self: @ContractState) -> u64 {
+            self.summit_duration_seconds.read()
         }
 
-        fn get_summit_reward_amount(self: @ContractState) -> u128 {
-            self.summit_reward_amount.read()
+        fn get_summit_reward_amount_per_second(self: @ContractState) -> u128 {
+            self.summit_reward_amount_per_second.read()
         }
 
         fn get_showdown_duration_seconds(self: @ContractState) -> u64 {
@@ -763,25 +731,24 @@ pub mod summit_systems {
         /// @param token_id the id of the beast
         fn _finalize_summit_history(ref self: ContractState, ref beast: Beast, ref beast_updates: Array<felt252>) {
             let mut taken_at: u64 = self.summit_history.entry(beast.live.token_id).read();
-            let terminal_block = self.terminal_block.read();
+            let terminal_timestamp = self.terminal_timestamp.read();
 
-            if taken_at >= terminal_block {
+            if taken_at >= terminal_timestamp {
                 return;
             }
 
-            let current_block = get_block_number();
+            let current_timestamp = get_block_timestamp();
 
-            let blocks_on_summit = if current_block > terminal_block {
-                terminal_block - taken_at
+            let time_on_summit = if current_timestamp > terminal_timestamp {
+                terminal_timestamp - taken_at
             } else {
-                current_block - taken_at
+                current_timestamp - taken_at
             };
 
             // Mint reward
-            if blocks_on_summit > 0 {
-                beast.live.blocks_held += blocks_on_summit.try_into().unwrap();
-                let block_reward = self.summit_reward_amount.read() / self.summit_duration_blocks.read().into();
-                let total_reward_amount = blocks_on_summit.into() * block_reward;
+            if time_on_summit > 0 {
+                beast.live.summit_held_seconds += time_on_summit.try_into().unwrap();
+                let total_reward_amount = time_on_summit.into() * self.summit_reward_amount_per_second.read();
                 let diplomacy_reward_amount = total_reward_amount / 100;
 
                 let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
@@ -1086,11 +1053,10 @@ pub mod summit_systems {
 
                         // initialize summit history for the new beast
                         // Timestamp in showdown, otherwise block number
-                        let current_block = get_block_number();
-                        if (current_block >= self.terminal_block.read()) {
+                        if (current_time >= self.terminal_timestamp.read()) {
                             self.showdown_taken_at.write(current_time);
                         } else {
-                            self.summit_history.entry(attacking_beast_token_id).write(current_block);
+                            self.summit_history.entry(attacking_beast_token_id).write(current_time);
                         }
 
                         // set the new summit beast
@@ -1206,10 +1172,10 @@ pub mod summit_systems {
 
         fn _is_beast_stronger(beast1: LiveBeastStats, beast2: LiveBeastStats) -> bool {
             beast_utils::is_beast_stronger(
-                beast1.blocks_held,
+                beast1.summit_held_seconds,
                 beast1.bonus_xp,
                 beast1.last_death_timestamp,
-                beast2.blocks_held,
+                beast2.summit_held_seconds,
                 beast2.bonus_xp,
                 beast2.last_death_timestamp,
             )

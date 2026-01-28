@@ -30,7 +30,7 @@ BEGIN
         'revival_count', NEW.revival_count,
         'extra_lives', NEW.extra_lives,
         'has_claimed_potions', NEW.has_claimed_potions > 0,
-        'blocks_held', NEW.blocks_held,
+        'summit_held_seconds', NEW.summit_held_seconds,
         'spirit', NEW.spirit,
         'luck', NEW.luck,
         'specials', NEW.specials > 0,

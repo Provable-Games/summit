@@ -74,7 +74,7 @@ export const useStarknetApi = () => {
         revival_count: parseInt(data?.result[13], 16),
         extra_lives: parseInt(data?.result[14], 16),
         has_claimed_potions: Boolean(parseInt(data?.result[15], 16)),
-        blocks_held: parseInt(data?.result[16], 16),
+        summit_held_seconds: parseInt(data?.result[16], 16),
         spirit: parseInt(data?.result[17], 16),
         luck: parseInt(data?.result[18], 16),
         specials: Boolean(parseInt(data?.result[19], 16)),

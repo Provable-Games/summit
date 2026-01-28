@@ -286,7 +286,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                             </Typography>
                           )}
                         </Box>
-                        <Typography sx={styles.blocksCell}>{row.blocks_held?.toLocaleString() ?? '0'}</Typography>
+                        <Typography sx={styles.blocksCell}>{row.summit_held_seconds?.toLocaleString() ?? '0'}</Typography>
                       </Box>
                     );
                   })
