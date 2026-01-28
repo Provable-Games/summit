@@ -243,8 +243,10 @@ export const corpse_events = pgTable(
     event_index: integer("event_index").notNull(),
   },
   (table) => [
-    // Unique constraint for idempotent re-indexing
-    uniqueIndex("corpse_events_block_tx_event_idx").on(table.block_number, table.transaction_hash, table.event_index),
+    // Unique constraint for idempotent re-indexing (includes adventurer_id for batch events)
+    uniqueIndex("corpse_events_block_tx_event_adv_idx").on(
+      table.block_number, table.transaction_hash, table.event_index, table.adventurer_id
+    ),
     index("corpse_events_adventurer_id_idx").on(table.adventurer_id),
     index("corpse_events_player_idx").on(table.player),
     index("corpse_events_created_at_idx").on(table.created_at.desc()),

@@ -130,6 +130,22 @@ function decodeSpanFelt252(data: string[], startIndex: number): { values: string
   return { values, consumed: 1 + length };
 }
 
+/**
+ * Decode a Span<u64> from data array
+ * Format: [length, elem1, elem2, ...]
+ * Returns: array of bigints and the number of elements consumed
+ */
+function decodeSpanU64(data: string[], startIndex: number): { values: bigint[]; consumed: number } {
+  const length = hexToNumber(data[startIndex]);
+  const values: bigint[] = [];
+
+  for (let i = 0; i < length; i++) {
+    values.push(hexToBigInt(data[startIndex + 1 + i]));
+  }
+
+  return { values, consumed: 1 + length };
+}
+
 // ============ Bit manipulation constants ============
 // Mirrors Cairo pow module for unpacking
 
@@ -218,13 +234,14 @@ export interface PoisonEventData {
 }
 
 export interface CorpseEventData {
-  adventurer_id: bigint;
+  adventurer_ids: bigint[];
+  corpse_amount: number;
   player: string;
 }
 
 export interface SkullEventData {
-  beast_token_id: number;
-  skulls: bigint;
+  beast_token_ids: number[];
+  skulls_claimed: bigint;
 }
 
 // ============ Packed Data Decoders ============
@@ -420,24 +437,23 @@ export function decodePoisonEvent(keys: string[], data: string[]): PoisonEventDa
 
 /**
  * Decode CorpseEvent
- * Data: adventurer_id, player
+ * Data: adventurer_ids (Span<u64>), corpse_amount (u32), player (ContractAddress)
  */
 export function decodeCorpseEvent(keys: string[], data: string[]): CorpseEventData {
-  return {
-    adventurer_id: hexToBigInt(data[0]),
-    player: feltToHex(data[1]),
-  };
+  const { values: adventurer_ids, consumed } = decodeSpanU64(data, 0);
+  const corpse_amount = hexToNumber(data[consumed]);
+  const player = feltToHex(data[consumed + 1]);
+  return { adventurer_ids, corpse_amount, player };
 }
 
 /**
  * Decode SkullEvent
- * Data: beast_token_id, skulls
+ * Data: beast_token_ids (Span<u32>), skulls_claimed (u64)
  */
 export function decodeSkullEvent(keys: string[], data: string[]): SkullEventData {
-  return {
-    beast_token_id: hexToNumber(data[0]),
-    skulls: hexToBigInt(data[1]),
-  };
+  const { values: beast_token_ids, consumed } = decodeSpanU32(data, 0);
+  const skulls_claimed = hexToBigInt(data[consumed]);
+  return { beast_token_ids, skulls_claimed };
 }
 
 // ============ Beasts NFT Data Interfaces ============

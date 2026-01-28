@@ -789,9 +789,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
       // Initialize bulk insert batches for this block
       const batches = createEmptyBatches();
 
-      // Track skull events that need old skulls lookup (must be done before processing)
+      // Track skull events that need beast_data lookup for adventurers_killed (must be done before processing)
       const skullEventTokenIds: number[] = [];
-      const skullEventData: Array<{ decoded: { beast_token_id: number; skulls: bigint }; event_index: number; transaction_hash: string }> = [];
+      const skullEventData: Array<{ decoded: { beast_token_ids: number[]; skulls_claimed: bigint }; event_index: number; transaction_hash: string }> = [];
 
       // First pass: collect token IDs that need context lookup and skull events
       const beastStatsTokenIds: number[] = [];
@@ -871,7 +871,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             }
             case EVENT_SELECTORS.SkullEvent: {
               const decoded = decodeSkullEvent([...keys], [...event.data]);
-              skullEventTokenIds.push(decoded.beast_token_id);
+              // Collect all token IDs from the span for batch lookup
+              skullEventTokenIds.push(...decoded.beast_token_ids);
               skullEventData.push({
                 decoded,
                 event_index: event.eventIndex,
@@ -911,23 +912,25 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
       ])];
       const { result: beastContextMap, joinQueryTime, fallbackQueryTime } = await getBeastContextBatch(db, allBeastContextTokenIds, logger);
 
-      // Batch lookup old skulls for skull events
-      let skullsQueryTime = 0;
-      const oldSkullsMap = new Map<number, bigint>();
+      // Batch lookup adventurers_killed from beast_data for skull calculations
+      let beastDataQueryTime = 0;
+      const beastDataSkullsMap = new Map<number, bigint>();
       if (skullEventTokenIds.length > 0) {
-        const skullsStart = Date.now();
+        const beastDataStart = Date.now();
         const uniqueSkullTokenIds = [...new Set(skullEventTokenIds)];
-        const oldSkullsResult = await db
+        const beastDataResult = await db
           .select({
-            beast_token_id: schema.skulls_claimed.beast_token_id,
-            skulls: schema.skulls_claimed.skulls,
+            token_id: schema.beast_data.token_id,
+            adventurers_killed: schema.beast_data.adventurers_killed,
           })
-          .from(schema.skulls_claimed)
-          .where(inArray(schema.skulls_claimed.beast_token_id, uniqueSkullTokenIds));
-        for (const row of oldSkullsResult) {
-          oldSkullsMap.set(row.beast_token_id, row.skulls);
+          .from(schema.beast_data)
+          .where(inArray(schema.beast_data.token_id, uniqueSkullTokenIds));
+        for (const row of beastDataResult) {
+          if (row.token_id !== null) {
+            beastDataSkullsMap.set(row.token_id, row.adventurers_killed);
+          }
         }
-        skullsQueryTime = Date.now() - skullsStart;
+        beastDataQueryTime = Date.now() - beastDataStart;
       }
 
       // Batch lookup beast metadata for LS Events via entity_hash → beast_data → beasts
@@ -965,7 +968,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         lsMetadataQueryTime = Date.now() - lsMetadataStart;
       }
 
-      const contextLookupTime = joinQueryTime + fallbackQueryTime + skullsQueryTime + lsMetadataQueryTime;
+      const contextLookupTime = joinQueryTime + fallbackQueryTime + beastDataQueryTime + lsMetadataQueryTime;
 
       // Process all events in order, collecting into batches
       const eventProcessingStart = Date.now();
@@ -1518,26 +1521,29 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             case EVENT_SELECTORS.CorpseEvent: {
               const decoded = decodeCorpseEvent([...keys], [...data]);
 
-              // Collect corpse_events insert
-              batches.corpse_events.push({
-                adventurer_id: decoded.adventurer_id,
-                player: decoded.player,
-                created_at: block_timestamp,
-                indexed_at: indexed_at,
-                block_number,
-                transaction_hash,
-                event_index,
-              });
+              // Process each adventurer_id individually into corpse_events
+              for (const adventurer_id of decoded.adventurer_ids) {
+                batches.corpse_events.push({
+                  adventurer_id,
+                  player: decoded.player,
+                  created_at: block_timestamp,
+                  indexed_at: indexed_at,
+                  block_number,
+                  transaction_hash,
+                  event_index,
+                });
+              }
 
-              // Collect summit_log
+              // Single summit_log entry for the batch
               collectSummitLog(batches, {
                 block_number,
                 event_index,
                 category: "Rewards",
-                sub_category: "Claimed Corpse",
+                sub_category: "Claimed Corpses",
                 data: {
                   player: decoded.player,
-                  adventurer_id: decoded.adventurer_id.toString(),
+                  adventurer_count: decoded.adventurer_ids.length,
+                  corpse_amount: decoded.corpse_amount,
                 },
                 player: decoded.player,
                 token_id: null,
@@ -1551,37 +1557,36 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             case EVENT_SELECTORS.SkullEvent: {
               const decoded = decodeSkullEvent([...keys], [...data]);
 
-              // Get owner and metadata from batch lookup
-              const context = beastContextMap.get(decoded.beast_token_id) ?? { prev_stats: null, metadata: null, owner: null };
-              const skull_player = context.owner;
-              const skull_metadata = context.metadata;
+              // Get player from first beast's owner (all beasts in batch belong to same player)
+              const firstContext = beastContextMap.get(decoded.beast_token_ids[0]) ?? { prev_stats: null, metadata: null, owner: null };
+              const skull_player = firstContext.owner;
 
-              // Get old skulls from batch lookup
-              const oldSkulls = oldSkullsMap.get(decoded.beast_token_id) ?? 0n;
-              const skullsClaimed = decoded.skulls - oldSkulls;
+              // Process each beast_token_id individually
+              for (const beast_token_id of decoded.beast_token_ids) {
+                // Get skulls (adventurers_killed) from beast_data lookup
+                const skulls = beastDataSkullsMap.get(beast_token_id) ?? 0n;
 
-              // Collect skulls_claimed upsert
-              batches.skulls_claimed.push({
-                beast_token_id: decoded.beast_token_id,
-                skulls: decoded.skulls,
-                updated_at: block_timestamp,
-              });
+                // Collect skulls_claimed upsert for each beast
+                batches.skulls_claimed.push({
+                  beast_token_id,
+                  skulls,
+                  updated_at: block_timestamp,
+                });
+              }
 
-              // Collect summit_log
+              // Single summit_log entry for the batch
               collectSummitLog(batches, {
                 block_number,
                 event_index,
                 category: "Rewards",
                 sub_category: "Claimed Skulls",
                 data: {
-                  beast_token_id: decoded.beast_token_id,
-                  skulls_claimed: skullsClaimed.toString(),
-                  beast_id: skull_metadata?.beast_id ?? null,
-                  prefix: skull_metadata?.prefix ?? null,
-                  suffix: skull_metadata?.suffix ?? null,
+                  player: skull_player,
+                  beast_count: decoded.beast_token_ids.length,
+                  skulls_claimed: decoded.skulls_claimed.toString(),
                 },
                 player: skull_player,
-                token_id: decoded.beast_token_id,
+                token_id: null,  // No single token_id for batch
                 transaction_hash,
                 created_at: block_timestamp,
                 indexed_at,
@@ -1620,7 +1625,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         // ctx = context lookup (join + fallback + skulls + ls metadata queries)
         // proc = event processing loop
         // ins = database inserts
-        const timingStr = `scan:${preScanTime} rpc:${rpcTime} ctx:${contextLookupTime}(j:${joinQueryTime} f:${fallbackQueryTime} s:${skullsQueryTime} ls:${lsMetadataQueryTime}) proc:${eventProcessingTime} ins:${insertTime}`;
+        const timingStr = `scan:${preScanTime} rpc:${rpcTime} ctx:${contextLookupTime}(j:${joinQueryTime} f:${fallbackQueryTime} bd:${beastDataQueryTime} ls:${lsMetadataQueryTime}) proc:${eventProcessingTime} ins:${insertTime}`;
         const countsStr = `bs:${batches.beast_stats.length} bt:${batches.battles.length} log:${batches.summit_log.length} own:${batches.beast_owners.length}`;
 
         logger.info(`Block ${block_number}: ${totalTime}ms [${timingStr}] {${countsStr}}`);
