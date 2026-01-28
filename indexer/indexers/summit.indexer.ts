@@ -232,15 +232,15 @@ async function getBeastContextBatch(
         shiny: schema.beasts.shiny,
         animated: schema.beasts.animated,
       })
-      .from(schema.beasts)
-      .where(inArray(schema.beasts.token_id, missingIds)),
+        .from(schema.beasts)
+        .where(inArray(schema.beasts.token_id, missingIds)),
 
       db.select({
         token_id: schema.beast_owners.token_id,
         owner: schema.beast_owners.owner,
       })
-      .from(schema.beast_owners)
-      .where(inArray(schema.beast_owners.token_id, missingIds)),
+        .from(schema.beast_owners)
+        .where(inArray(schema.beast_owners.token_id, missingIds)),
     ]);
     fallbackQueryTime = Date.now() - fallbackStart;
 
@@ -828,7 +828,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
         // Collect entity_hashes for LS Events (Dojo World events)
         if (addressToBigInt(event_address) === dojoWorldAddressBigInt &&
-            selector === DOJO_EVENT_SELECTORS.StoreSetRecord) {
+          selector === DOJO_EVENT_SELECTORS.StoreSetRecord) {
           const model_selector = keys.length > 1 ? feltToHex(keys[1]) : "";
 
           if (model_selector === DOJO_EVENT_SELECTORS.EntityStats) {
@@ -1041,8 +1041,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           // Dojo World contract - EntityStats events
           const model_selector = keys.length > 1 ? feltToHex(keys[1]) : "";
           if (addressToBigInt(event_address) === dojoWorldAddressBigInt &&
-              selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
-              model_selector === DOJO_EVENT_SELECTORS.EntityStats) {
+            selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
+            model_selector === DOJO_EVENT_SELECTORS.EntityStats) {
 
             const decoded = decodeEntityStatsEvent([...keys], [...data]);
 
@@ -1092,8 +1092,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
           // Dojo World contract - CollectableEntity events
           if (addressToBigInt(event_address) === dojoWorldAddressBigInt &&
-              selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
-              model_selector === DOJO_EVENT_SELECTORS.CollectableEntity) {
+            selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
+            model_selector === DOJO_EVENT_SELECTORS.CollectableEntity) {
 
             const decoded = decodeCollectableEntityEvent([...keys], [...data]);
 
@@ -1117,26 +1117,28 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             });
 
             // Collect summit_log with beast metadata
-            collectSummitLog(batches, {
-              block_number,
-              event_index,
-              category: "LS Events",
-              sub_category: "CollectableEntity",
-              data: {
-                entity_hash: decoded.entity_hash,
-                last_killed_by: decoded.last_killed_by.toString(),
-                timestamp: decoded.timestamp.toString(),
+            if (collectableMetadata && collectableMetadata.token_id >= 76 && collectableMetadata.prefix && collectableMetadata.suffix) {
+              collectSummitLog(batches, {
+                block_number,
+                event_index,
+                category: "LS Events",
+                sub_category: "CollectableEntity",
+                data: {
+                  entity_hash: decoded.entity_hash,
+                  last_killed_by: decoded.last_killed_by.toString(),
+                  timestamp: decoded.timestamp.toString(),
+                  token_id: collectableMetadata?.token_id ?? null,
+                  beast_id: collectableMetadata?.beast_id ?? null,
+                  prefix: collectableMetadata?.prefix ?? null,
+                  suffix: collectableMetadata?.suffix ?? null,
+                },
+                player: null,
                 token_id: collectableMetadata?.token_id ?? null,
-                beast_id: collectableMetadata?.beast_id ?? null,
-                prefix: collectableMetadata?.prefix ?? null,
-                suffix: collectableMetadata?.suffix ?? null,
-              },
-              player: null,
-              token_id: collectableMetadata?.token_id ?? null,
-              transaction_hash,
-              created_at: block_timestamp,
-              indexed_at,
-            });
+                transaction_hash,
+                created_at: block_timestamp,
+                indexed_at,
+              });
+            }
             continue;
           }
 

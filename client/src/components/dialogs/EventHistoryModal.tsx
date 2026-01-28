@@ -9,10 +9,16 @@ import swordIcon from '@/assets/images/sword.png';
 import { gameColors } from '@/utils/themes';
 import { lookupAddressNames } from '@/utils/addressNameCache';
 import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from '@/utils/BeastData';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import CasinoIcon from '@mui/icons-material/Casino';
 import CloseIcon from '@mui/icons-material/Close';
+import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import HandshakeIcon from '@mui/icons-material/Handshake';
+import HeartBrokenIcon from '@mui/icons-material/HeartBroken';
 import HistoryIcon from '@mui/icons-material/History';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
+import PsychologyIcon from '@mui/icons-material/Psychology';
+import StarIcon from '@mui/icons-material/Star';
 import TerrainIcon from '@mui/icons-material/Terrain';
 
 // Public images
@@ -25,6 +31,7 @@ import {
   Dialog,
   FormControl,
   IconButton,
+  Link,
   ListItemText,
   MenuItem,
   Pagination,
@@ -78,6 +85,12 @@ const getEventIcon = (category: string, subCategory: string): React.ReactNode =>
 
   // Beast Upgrade events
   if (category === 'Beast Upgrade') {
+    if (subCategory === 'Bonus Health') return <img src={corpseTokenIcon} alt="bonus health" style={imgStyle} />;
+    if (subCategory === 'Luck') return <CasinoIcon sx={{ fontSize: 18, color: '#ff69b4' }} />;
+    if (subCategory === 'Spirit') return <ElectricBoltIcon sx={{ fontSize: 18, color: '#00ffff' }} />;
+    if (subCategory === 'Specials') return <StarIcon sx={{ fontSize: 18, color: '#ffd700' }} />;
+    if (subCategory === 'Diplomacy') return <HandshakeIcon sx={{ fontSize: 18, color: '#a78bfa' }} />;
+    if (subCategory === 'Wisdom') return <PsychologyIcon sx={{ fontSize: 18, color: '#60a5fa' }} />;
     return <img src={killTokenIcon} alt="upgrade" style={imgStyle} />;
   }
 
@@ -97,7 +110,8 @@ const getEventIcon = (category: string, subCategory: string): React.ReactNode =>
 
   // LS Events
   if (category === 'LS Events') {
-    return <AutoAwesomeIcon sx={{ fontSize: 18 }} />;
+    if (subCategory === 'EntityStats') return <EmojiEventsIcon sx={{ fontSize: 18 }} />;
+    if (subCategory === 'CollectableEntity') return <HeartBrokenIcon sx={{ fontSize: 18 }} />;
   }
 
   return null;
@@ -362,12 +376,29 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
       if (event.sub_category === 'Applied Extra Life') {
         const displayName = player || 'Unknown';
         const count = (data.count as number) || 1;
+        // Build full beast name
+        const beastId = data.beast_id as number | undefined;
+        const beastPrefix = data.prefix as number | undefined;
+        const beastSuffix = data.suffix as number | undefined;
+        const beastTypeName = beastId ? BEAST_NAMES[beastId as keyof typeof BEAST_NAMES] : null;
+        const prefixName = beastPrefix ? ITEM_NAME_PREFIXES[beastPrefix as keyof typeof ITEM_NAME_PREFIXES] : null;
+        const suffixName = beastSuffix ? ITEM_NAME_SUFFIXES[beastSuffix as keyof typeof ITEM_NAME_SUFFIXES] : null;
+
+        let beastName: string;
+        if (prefixName && suffixName && beastTypeName) {
+          beastName = `"${prefixName} ${suffixName}" ${beastTypeName}`;
+        } else if (beastTypeName) {
+          beastName = beastTypeName;
+        } else {
+          beastName = (data.beast_name as string) || (data.name as string) || `Beast #${data.token_id || event.token_id}`;
+        }
         return (
           <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
             <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
             {' applied '}
             <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{count}</Box>
-            {' extra life'}
+            {' extra life to '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastName}</Box>
           </Typography>
         );
       }
@@ -478,11 +509,14 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     // Arriving to Summit events
     if (event.category === 'Arriving to Summit') {
       const displayName = player || 'Unknown';
+      const count = (data.count as number) || (data.beast_count as number) || 1;
       return (
         <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
           <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
-          {' claimed potions for Beast #'}
-          <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{event.token_id}</Box>
+          {' brought '}
+          <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{count}</Box>
+          {count === 1 ? ' beast' : ' beasts'}
+          {' to the Summit'}
         </Typography>
       );
     }
@@ -490,17 +524,82 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     // LS Events
     if (event.category === 'LS Events') {
       if (event.sub_category === 'EntityStats') {
+        // Build full beast name
+        const beastId = data.beast_id as number | undefined;
+        const beastPrefix = data.prefix as number | undefined;
+        const beastSuffix = data.suffix as number | undefined;
+        const beastTypeName = beastId ? BEAST_NAMES[beastId as keyof typeof BEAST_NAMES] : null;
+        const prefixName = beastPrefix ? ITEM_NAME_PREFIXES[beastPrefix as keyof typeof ITEM_NAME_PREFIXES] : null;
+        const suffixName = beastSuffix ? ITEM_NAME_SUFFIXES[beastSuffix as keyof typeof ITEM_NAME_SUFFIXES] : null;
+
+        let beastName: string;
+        if (prefixName && suffixName && beastTypeName) {
+          beastName = `"${prefixName} ${suffixName}" ${beastTypeName}`;
+        } else if (beastTypeName) {
+          beastName = beastTypeName;
+        } else {
+          beastName = (data.beast_name as string) || (data.name as string) || `Beast #${data.token_id || event.token_id}`;
+        }
+
         return (
           <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
-            Beast stats updated
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastName}</Box>
+            {' killed an adventurer'}
           </Typography>
         );
       }
       if (event.sub_category === 'CollectableEntity') {
+        // Build full beast name
+        const beastId = data.beast_id as number | undefined;
+        const beastPrefix = data.prefix as number | undefined;
+        const beastSuffix = data.suffix as number | undefined;
+        const killedBy = data.last_killed_by as number | undefined;
+        const beastTypeName = beastId ? BEAST_NAMES[beastId as keyof typeof BEAST_NAMES] : null;
+        const prefixName = beastPrefix ? ITEM_NAME_PREFIXES[beastPrefix as keyof typeof ITEM_NAME_PREFIXES] : null;
+        const suffixName = beastSuffix ? ITEM_NAME_SUFFIXES[beastSuffix as keyof typeof ITEM_NAME_SUFFIXES] : null;
+
+        let beastName: string;
+        if (prefixName && suffixName && beastTypeName) {
+          beastName = `"${prefixName} ${suffixName}" ${beastTypeName}`;
+        } else if (beastTypeName) {
+          beastName = beastTypeName;
+        } else {
+          beastName = (data.beast_name as string) || (data.name as string) || `Beast #${data.token_id || event.token_id}`;
+        }
+
+        const watchUrl = killedBy && prefixName && suffixName && beastTypeName
+          ? `https://lootsurvivor.io/survivor/watch?id=${killedBy}&beast=${encodeURIComponent(`${prefixName}_${suffixName}_${beastTypeName}`)}`
+          : null;
+
         return (
-          <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
-            Collectable entity event
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+              <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastName}</Box>
+              {' has been killed in Loot Survivor'}
+            </Typography>
+            {watchUrl && (
+              <Link
+                href={watchUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                sx={{
+                  px: '6px',
+                  py: '1px',
+                  borderRadius: '999px',
+                  border: `1px solid ${gameColors.brightGreen}`,
+                  fontSize: '10px',
+                  color: gameColors.brightGreen,
+                  textDecoration: 'none',
+                  '&:hover': {
+                    background: `${gameColors.brightGreen}20`,
+                  },
+                }}
+              >
+                Watch
+              </Link>
+            )}
+          </Box>
         );
       }
     }
