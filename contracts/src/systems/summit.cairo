@@ -569,7 +569,9 @@ pub mod summit_systems {
             token.transfer(self.ownable.Ownable_owner.read(), amount);
         }
 
-        fn emit_corpse_event(ref self: ContractState, adventurer_ids: Span<u64>, corpse_amount: u32, player: ContractAddress) {
+        fn emit_corpse_event(
+            ref self: ContractState, adventurer_ids: Span<u64>, corpse_amount: u32, player: ContractAddress,
+        ) {
             let corpse_address = self.corpse_token_dispatcher.read().contract_address;
             assert(corpse_address == starknet::get_caller_address(), 'Invalid caller');
             self.emit(CorpseEvent { adventurer_ids, corpse_amount, player });
