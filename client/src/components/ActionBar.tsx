@@ -5,6 +5,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SettingsIcon from '@mui/icons-material/Settings';
 import {
@@ -24,6 +25,8 @@ import {
 } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 import AutopilotConfigModal from './dialogs/AutopilotConfigModal';
+import BeastDexModal from './dialogs/BeastDexModal';
+import BeastUpgradeModal from './dialogs/BeastUpgradeModal';
 
 function ActionBar() {
   const { executeGameAction } = useGameDirector();
@@ -70,6 +73,9 @@ function ActionBar() {
   const [attackDropdownAnchor, setAttackDropdownAnchor] = useState<null | HTMLElement>(null);
   const [autopilotConfigOpen, setAutopilotConfigOpen] = useState(false);
   const [lastBeastAttacked, setLastBeastAttacked] = useState(null);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeBeast, setUpgradeBeast] = useState<Beast | null>(null);
+  const [beastDexFilterIds, setBeastDexFilterIds] = useState<number[] | null>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>, potion: any) => {
     setAnchorEl(event.currentTarget);
@@ -79,6 +85,15 @@ function ActionBar() {
   const handleClose = () => {
     setAnchorEl(null);
     setPotion(null);
+  };
+
+  const handleUpgradeClick = () => {
+    if (selectedBeasts.length === 1) {
+      setUpgradeBeast(selectedBeasts[0][0]);
+      setUpgradeModalOpen(true);
+    } else if (selectedBeasts.length > 1) {
+      setBeastDexFilterIds(selectedBeasts.map(b => b[0].token_id));
+    }
   };
 
   const handleAttack = () => {
@@ -592,7 +607,7 @@ function ActionBar() {
                 </Tooltip>
               </Box>
 
-              <Box sx={styles.divider} />
+              <Box sx={styles.divider} mr={-1} />
 
               <Box sx={styles.potionSubGroup}>
                 <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
@@ -600,7 +615,7 @@ function ActionBar() {
                   <Typography sx={styles.tooltipText}>
                     {revivalPotionsRequired > 0
                       ? `${revivalPotionsRequired} required for attack`
-                      : 'Attack with your dead beasts'}
+                      : 'Used to attack with your dead beasts'}
                   </Typography>
                   {revivalPotionsRequired > tokenBalances["REVIVE"] && (
                     <Typography sx={styles.tooltipWarning}>
@@ -609,9 +624,8 @@ function ActionBar() {
                   )}
                 </Box>}>
                   <Box sx={[
-                    styles.potionButton,
-                    revivalPotionsRequired > 0 && styles.potionButtonActive,
-                    revivalPotionsRequired > tokenBalances["REVIVE"] && styles.potionButtonInsufficient
+                    styles.potionDisplay,
+                    revivalPotionsRequired > tokenBalances["REVIVE"] && styles.potionDisplayInsufficient
                   ]}>
                     <img src={revivePotionIcon} alt='' height={'32px'} />
                     {revivalPotionsRequired > 0 && (
@@ -636,15 +650,8 @@ function ActionBar() {
                       ? `${appliedAttackPotions * 10}% damage boost applied`
                       : 'Add 10% damage boost per potion'}
                   </Typography>
-                  <Typography sx={styles.tooltipSubtext}>
-                    Applied on next attack
-                  </Typography>
                 </Box>}>
-                  <Box sx={[
-                    styles.potionButton,
-                    appliedAttackPotions > 0 && styles.potionButtonActive,
-                    appliedAttackPotions > 0 && styles.potionButtonApplied,
-                  ]}>
+                  <Box sx={styles.potionDisplay}>
                     <img src={attackPotionIcon} alt='' height={'32px'} />
                     {appliedAttackPotions > 0 && (
                       <Box sx={styles.appliedIndicator}>
@@ -661,6 +668,24 @@ function ActionBar() {
                   </Box>
                 </Tooltip>
               </Box>
+
+              {selectedBeasts.length > 0 && (
+                <>
+                  <Box sx={styles.divider} />
+                  <Box sx={styles.potionSubGroup}>
+                    <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+                      <Typography sx={styles.tooltipTitle}>Upgrade Selected Beasts</Typography>
+                    </Box>}>
+                      <Box
+                        sx={[styles.potionButton, styles.potionButtonActive]}
+                        onClick={handleUpgradeClick}
+                      >
+                        <KeyboardDoubleArrowUpIcon sx={{ fontSize: 24, color: gameColors.brightGreen }} />
+                      </Box>
+                    </Tooltip>
+                  </Box>
+                </>
+              )}
             </>
           )}
         </>
@@ -671,6 +696,25 @@ function ActionBar() {
       <AutopilotConfigModal
         open={autopilotConfigOpen}
         close={() => setAutopilotConfigOpen(false)}
+      />
+    )}
+
+    {upgradeModalOpen && upgradeBeast && (
+      <BeastUpgradeModal
+        open={upgradeModalOpen}
+        beast={upgradeBeast}
+        close={() => {
+          setUpgradeModalOpen(false);
+          setUpgradeBeast(null);
+        }}
+      />
+    )}
+
+    {beastDexFilterIds && (
+      <BeastDexModal
+        open={!!beastDexFilterIds}
+        close={() => setBeastDexFilterIds(null)}
+        filterTokenIds={beastDexFilterIds}
       />
     )}
 
@@ -1447,6 +1491,22 @@ const styles = {
       boxShadow: `0 4px 8px rgba(0, 0, 0, 0.3)`,
       opacity: 0.8,
     }
+  },
+  potionDisplay: {
+    position: 'relative',
+    width: '40px',
+    height: '40px',
+    borderRadius: '8px',
+    background: 'transparent',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.9,
+  },
+  potionDisplayInsufficient: {
+    '& img': {
+      filter: 'grayscale(0.5) brightness(0.8)',
+    },
   },
   configButton: {
     width: '40px',

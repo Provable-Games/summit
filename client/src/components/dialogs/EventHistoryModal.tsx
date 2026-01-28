@@ -23,7 +23,6 @@ import TerrainIcon from '@mui/icons-material/Terrain';
 
 // Public images
 const survivorTokenIcon = '/images/survivor_token.png';
-const skullIcon = '/images/skull.png';
 import {
   Box,
   Checkbox,
@@ -71,6 +70,12 @@ const CATEGORY_COLORS: Record<string, string> = {
   'LS Events': '#a8a4ce',
 };
 
+// Display names for sub-categories (API value -> Display name)
+const SUB_CATEGORY_DISPLAY_NAMES: Record<string, string> = {
+  'EntityStats': 'Adventurer Killed',
+  'CollectableEntity': 'Beast Killed',
+};
+
 // Sub-category specific icons
 const getEventIcon = (category: string, subCategory: string): React.ReactNode => {
   const imgStyle = { width: 18, height: 18, objectFit: 'contain' as const };
@@ -100,7 +105,7 @@ const getEventIcon = (category: string, subCategory: string): React.ReactNode =>
       return <img src={survivorTokenIcon} alt="survivor" style={imgStyle} />;
     }
     if (subCategory === 'Claimed Corpse') return <img src={corpseTokenIcon} alt="corpse" style={imgStyle} />;
-    if (subCategory === 'Claimed Skulls') return <img src={skullIcon} alt="skull" style={imgStyle} />;
+    if (subCategory === 'Claimed Skulls') return <img src={killTokenIcon} alt="skull" style={imgStyle} />;
   }
 
   // Arriving to Summit
@@ -110,8 +115,8 @@ const getEventIcon = (category: string, subCategory: string): React.ReactNode =>
 
   // LS Events
   if (category === 'LS Events') {
-    if (subCategory === 'EntityStats') return <EmojiEventsIcon sx={{ fontSize: 18 }} />;
-    if (subCategory === 'CollectableEntity') return <HeartBrokenIcon sx={{ fontSize: 18 }} />;
+    if (subCategory === 'EntityStats') return <EmojiEventsIcon sx={{ fontSize: 18, color: '#ffd700' }} />;
+    if (subCategory === 'CollectableEntity') return <HeartBrokenIcon sx={{ fontSize: 18, color: '#e05050' }} />;
   }
 
   return null;
@@ -433,25 +438,59 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     // Beast Upgrade events
     if (event.category === 'Beast Upgrade') {
       const displayName = player || 'Unknown';
-      const beastId = event.token_id || (data.token_id as number);
+
+      // Build full beast name
+      const beastId = data.beast_id as number | undefined;
+      const beastPrefix = data.prefix as number | undefined;
+      const beastSuffix = data.suffix as number | undefined;
+      const beastTypeName = beastId ? BEAST_NAMES[beastId as keyof typeof BEAST_NAMES] : null;
+      const prefixName = beastPrefix ? ITEM_NAME_PREFIXES[beastPrefix as keyof typeof ITEM_NAME_PREFIXES] : null;
+      const suffixName = beastSuffix ? ITEM_NAME_SUFFIXES[beastSuffix as keyof typeof ITEM_NAME_SUFFIXES] : null;
+
+      let fullBeastName: string;
+      if (prefixName && suffixName && beastTypeName) {
+        fullBeastName = `"${prefixName} ${suffixName}" ${beastTypeName}`;
+      } else if (beastTypeName) {
+        fullBeastName = beastTypeName;
+      } else {
+        fullBeastName = `Beast #${data.token_id || event.token_id}`;
+      }
+
+      // Get old and new values for showing difference
+      const oldValue = data.old_value as number | undefined;
+      const newValue = data.new_value as number | undefined;
+      const hasDiff = oldValue !== undefined && newValue !== undefined;
+      const diff = hasDiff ? newValue - oldValue : null;
+
       if (event.sub_category === 'Bonus Health') {
-        const amount = (data.amount as number) || (data.bonus_health as number);
+        const amount = (data.amount as number) || (data.bonus_health as number) || diff;
         return (
           <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
             <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
-            {' upgraded Beast #'}
-            {beastId}
+            {' upgraded '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{fullBeastName}</Box>
             {' with '}
-            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{amount}</Box>
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>+{amount}</Box>
             {' bonus health'}
+            {hasDiff && (
+              <Box component="span" sx={{ color: '#888' }}>{` (${oldValue} → ${newValue})`}</Box>
+            )}
           </Typography>
         );
       }
+      // Boolean upgrades don't show numbers
+      const isBooleanUpgrade = ['Wisdom', 'Specials', 'Diplomacy'].includes(event.sub_category);
+
       return (
         <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
           <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
-          {` upgraded Beast #${beastId}'s `}
+          {' upgraded '}
+          <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{fullBeastName}</Box>
+          {"'s "}
           <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{event.sub_category}</Box>
+          {hasDiff && !isBooleanUpgrade && (
+            <Box component="span" sx={{ color: '#888' }}>{` (${oldValue} → ${newValue})`}</Box>
+          )}
         </Typography>
       );
     }
@@ -779,7 +818,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
                             {icon}
                           </Box>
                           <ListItemText
-                            primary={sub}
+                            primary={SUB_CATEGORY_DISPLAY_NAMES[sub] || sub}
                             primaryTypographyProps={{
                               sx: {
                                 fontSize: '12px',
@@ -832,7 +871,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
                       {formatTimeAgo(event.created_at)}
                     </Typography>
                     <Box sx={styles.categoryCell}>
-                      <Tooltip title={event.sub_category} placement="top" arrow>
+                      <Tooltip title={SUB_CATEGORY_DISPLAY_NAMES[event.sub_category] || event.sub_category} placement="top" arrow>
                         <Box sx={{ color: categoryColor, display: 'flex', alignItems: 'center' }}>
                           {eventIcon}
                         </Box>

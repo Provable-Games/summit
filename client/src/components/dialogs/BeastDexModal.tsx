@@ -24,6 +24,7 @@ import SummitGiftModal from './SummitGiftModal';
 interface BeastDexModalProps {
   open: boolean;
   close: () => void;
+  filterTokenIds?: number[];
 }
 
 type MySortKey = 'power' | 'level' | 'health' | 'name';
@@ -66,7 +67,7 @@ const transformAllBeast = (ab: AllBeast): Beast => {
 };
 
 export default function BeastDexModal(props: BeastDexModalProps) {
-  const { open, close } = props;
+  const { open, close, filterTokenIds } = props;
   const { collection, summit } = useGameStore();
   const { address } = useAccount();
   const summitApi = useSummitApi();
@@ -98,7 +99,9 @@ export default function BeastDexModal(props: BeastDexModalProps) {
   const [selectedGiftOwnerName, setSelectedGiftOwnerName] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
-    let list = collection.slice();
+    let list = filterTokenIds
+      ? collection.filter(b => filterTokenIds.includes(b.token_id))
+      : collection.slice();
 
     if (myPrefixFilter) {
       list = list.filter(b => (b.prefix || '') === myPrefixFilter);
@@ -140,7 +143,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
     }
 
     return list;
-  }, [collection, myPrefixFilter, mySuffixFilter, myNameFilter, mySortBy, typeFilter, summit]);
+  }, [collection, myPrefixFilter, mySuffixFilter, myNameFilter, mySortBy, typeFilter, summit, filterTokenIds]);
 
   // Autocomplete options
   const beastNameOptions = useMemo(() => Object.values(BEAST_NAMES), []);
@@ -279,16 +282,22 @@ export default function BeastDexModal(props: BeastDexModalProps) {
 
         <Box sx={styles.header}>
           <Typography sx={styles.title}>
-            {activeTab === 'mine' ? 'SELECT BEAST TO UPGRADE' : 'ALL BEASTS'}
+            {filterTokenIds
+              ? 'SELECT BEAST TO UPGRADE'
+              : activeTab === 'mine'
+                ? 'SELECT BEAST TO UPGRADE'
+                : 'ALL BEASTS'}
           </Typography>
-          <Tabs
-            value={activeTab}
-            onChange={handleTabChange}
-            sx={styles.tabs}
-          >
-            <Tab value="mine" label="My Beasts" sx={styles.tab} />
-            <Tab value="all" label="All Beasts" sx={styles.tab} />
-          </Tabs>
+          {!filterTokenIds && (
+            <Tabs
+              value={activeTab}
+              onChange={handleTabChange}
+              sx={styles.tabs}
+            >
+              <Tab value="mine" label="My Beasts" sx={styles.tab} />
+              <Tab value="all" label="All Beasts" sx={styles.tab} />
+            </Tabs>
+          )}
           <Box sx={styles.controlsRow}>
             {activeTab === 'mine' ? (
               <FormControl size="small" sx={styles.selectControl}>
@@ -902,6 +911,7 @@ const styles = {
     gap: 0.75,
     cursor: 'pointer',
     transition: 'all 0.2s ease',
+    maxHeight: '200px',
     boxShadow: `
       0 2px 6px rgba(0, 0, 0, 0.3),
       inset 0 1px 0 ${gameColors.accentGreen}20
