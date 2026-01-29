@@ -156,6 +156,7 @@ const TWO_POW_4 = 0x10n;
 const TWO_POW_64 = 0x10000000000000000n;
 const TWO_POW_6 = 0x40n;
 const TWO_POW_8 = 0x100n;
+const TWO_POW_23 = 0x800000n;
 const TWO_POW_32 = 0x100000000n;
 
 const MASK_1 = 0x1n;
@@ -165,6 +166,7 @@ const MASK_8 = 0xFFn;
 const MASK_12 = 0xFFFn;
 const MASK_16 = 0xFFFFn;
 const MASK_17 = 0x1FFFFn;
+const MASK_23 = 0x7FFFFFn;
 const MASK_32 = 0xFFFFFFFFn;
 const MASK_64 = 0xFFFFFFFFFFFFFFFFn;
 
@@ -248,7 +250,7 @@ export interface SkullEventData {
 
 /**
  * Unpack LiveBeastStats from a single felt252
- * Bit layout (total 244 bits):
+ * Bit layout (total 250 bits):
  * - token_id: 17 bits
  * - current_health: 12 bits
  * - bonus_health: 12 bits
@@ -258,7 +260,7 @@ export interface SkullEventData {
  * - revival_count: 6 bits
  * - extra_lives: 12 bits
  * - has_claimed_potions: 1 bit
- * - summit_held_seconds: 17 bits
+ * - summit_held_seconds: 23 bits
  * - spirit: 8 bits
  * - luck: 8 bits
  * - specials: 1 bit
@@ -306,9 +308,9 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   const has_claimed_potions = Number(packed & MASK_1);
   packed = packed / 2n;
 
-  // Extract summit_held_seconds (17 bits)
-  const summit_held_seconds = Number(packed & MASK_17);
-  packed = packed / TWO_POW_17;
+  // Extract summit_held_seconds (23 bits)
+  const summit_held_seconds = Number(packed & MASK_23);
+  packed = packed / TWO_POW_23;
 
   // Extract spirit (8 bits)
   const spirit = Number(packed & MASK_8);
