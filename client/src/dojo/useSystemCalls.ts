@@ -47,7 +47,7 @@ export const useSystemCalls = () => {
         .flat()
         .filter(Boolean);
 
-      return translatedEvents;
+      return { events: translatedEvents, transactionHash: tx.transaction_hash };
     } catch (error) {
       console.error("Error executing action:", error);
       forceResetAction();

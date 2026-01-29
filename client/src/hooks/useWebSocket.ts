@@ -32,6 +32,7 @@ export interface SummitData {
   rewards_earned: number;
   rewards_claimed: number;
   block_number: number;
+  transaction_hash?: string;
   // Beast data from trigger join
   beast_id: number;
   prefix: number;
