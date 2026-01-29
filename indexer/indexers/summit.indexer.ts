@@ -1199,6 +1199,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                       beast_id: beast_metadata?.beast_id ?? null,
                       prefix: beast_metadata?.prefix ?? null,
                       suffix: beast_metadata?.suffix ?? null,
+                      extra_lives: stats.extra_lives,
                     },
                     player: beast_owner,
                     token_id: stats.token_id,
