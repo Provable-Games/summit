@@ -90,10 +90,6 @@ function Leaderboard() {
   // Calculate summit owner's live score and rank
   useEffect(() => {
     if (!summit?.owner || !summit?.block_timestamp || !currentTimestamp || leaderboard.length === 0) {
-      console.log('summit?.owner', summit?.owner);
-      console.log('summit?.block_timestamp', summit?.block_timestamp);
-      console.log('currentTimestamp', currentTimestamp);
-      console.log('leaderboard.length', leaderboard.length);
       setSummitOwnerRank(null)
       return
     }

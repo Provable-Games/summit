@@ -88,8 +88,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const [pauseUpdates, setPauseUpdates] = useState(false);
 
   const handleSummit = (data: SummitData) => {
-    console.log("[GameDirector] Summit update:", data);
-
     const current_level = getBeastCurrentLevel(data.level, data.bonus_xp);
     const sameBeast = summit?.beast.token_id === data.token_id;
 
@@ -124,8 +122,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   };
 
   const handleEvent = (data: EventData) => {
-    console.log("[GameDirector] Event:", data.category, data.sub_category, data.data, "created_at:", data.created_at);
-
     // Add to live events for EventHistoryModal
     addLiveEvent(data);
 
