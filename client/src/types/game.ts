@@ -139,6 +139,8 @@ export interface SpectatorBattleEvent extends BattleEvent {
   attacking_beast_id: number;
   attacking_beast_shiny: number;
   attacking_beast_animated: number;
+  beast_count: number;
+  total_damage: number;
 }
 
 export interface PoisonEvent {

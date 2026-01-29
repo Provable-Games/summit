@@ -440,18 +440,27 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     // Battle events
     if (event.category === 'Battle') {
       if (event.sub_category === 'BattleEvent') {
-        const damage = (data.attack_damage as number || 0) + (data.critical_attack_damage as number || 0);
+        const damage = data.total_damage as number | undefined;
         const xpGained = data.xp_gained as number | undefined;
         const attackPotions = data.attack_potions as number | undefined;
         const revivePotions = data.revive_potions as number | undefined;
         const hasDetails = !!xpGained || !!attackPotions || !!revivePotions;
         const displayName = player || 'Unknown';
+        const beastCount = data.beast_count as number | undefined;
 
         return (
           <Box>
             <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
               <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
-              {' attacked summit for '}
+              {beastCount && beastCount > 1 ? (
+                <>
+                  {' attacked summit with '}
+                  <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastCount}</Box>
+                  {' beasts for '}
+                </>
+              ) : (
+                ' attacked summit for '
+              )}
               <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{damage}</Box>
               {' damage'}
             </Typography>

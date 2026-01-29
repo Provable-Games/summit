@@ -30,7 +30,7 @@ function Summit() {
   const controls = useAnimationControls()
   const [giftModalOpen, setGiftModalOpen] = useState(false)
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
-  const [spectatorDamage, setSpectatorDamage] = useState<Array<{ id: string; damage: number; attackerName: string; imageSrc: string }>>([])
+  const [spectatorDamage, setSpectatorDamage] = useState<Array<{ id: string; damage: number; attackerName: string; imageSrcs: string[] }>>([])
   const [poisonNotices, setPoisonNotices] = useState<Array<{ id: string; count: number; playerName: string }>>([])
   const [estimatedDamage, setEstimatedDamage] = useState<number>(0)
 
@@ -179,10 +179,9 @@ function Summit() {
         if (!event) break;
         // Play per-event sound
         play(fetchBeastSound(Number(event.attacking_beast_id)));
+
         // Calculate total damage
-        const totalDamage =
-          (event.attack_damage * event.attack_count) +
-          (event.critical_attack_damage * event.critical_attack_count);
+        const totalDamage = event.total_damage;
         // Resolve attacker name
         let attackerName = 'Unknown';
         if (event.attacking_beast_owner) {
@@ -194,14 +193,27 @@ function Summit() {
         }
         // Build visual payload
         const attackerBeastName = BEAST_NAMES[event.attacking_beast_id] || 'Unknown'
-        const imageSrc = fetchBeastImage({
+        const primaryImageSrc = fetchBeastImage({
           name: attackerBeastName,
           shiny: event.attacking_beast_shiny,
           animated: event.attacking_beast_animated,
         } as any)
+
+        // Generate multiple images for multi-beast attacks
+        const imageSrcs: string[] = [primaryImageSrc];
+        if (event.beast_count > 1) {
+          const beastIds = Object.keys(BEAST_NAMES).map(Number);
+          const additionalCount = Math.min(event.beast_count - 1, 2); // Cap at 3 total images
+          for (let i = 0; i < additionalCount; i++) {
+            const randomId = beastIds[Math.floor(Math.random() * beastIds.length)];
+            const randomBeastName = BEAST_NAMES[randomId] || 'Unknown';
+            imageSrcs.push(fetchBeastImage({ name: randomBeastName, shiny: false, animated: false } as any));
+          }
+        }
+
         const eventId = `spectator-${++spectatorAnimSeqRef.current}`;
         // Show animation
-        setSpectatorDamage(prev => [...prev, { id: eventId, damage: totalDamage, attackerName, imageSrc }]);
+        setSpectatorDamage(prev => [...prev, { id: eventId, damage: totalDamage, attackerName, imageSrcs }]);
         // Remove after animation duration
         setTimeout(() => {
           setSpectatorDamage(prev => prev.filter(d => d.id !== eventId));
@@ -615,7 +627,22 @@ function Summit() {
             >
               <Box sx={styles.spectatorDamageContainer}>
                 <Box sx={styles.spectatorDamageRow}>
-                  <img src={damage.imageSrc} alt={damage.attackerName} style={styles.spectatorAttackerImage} />
+                  <Box sx={{ position: 'relative', width: 28 + (damage.imageSrcs.length - 1) * 6, height: 28 }}>
+                    {damage.imageSrcs.slice(0, 3).map((src, idx, arr) => (
+                      <img
+                        key={idx}
+                        src={src}
+                        alt=""
+                        style={{
+                          ...styles.spectatorAttackerImage,
+                          position: idx === 0 ? 'relative' : 'absolute',
+                          left: idx * 6,
+                          top: 0,
+                          zIndex: arr.length - idx,
+                        }}
+                      />
+                    ))}
+                  </Box>
                   <Typography sx={styles.spectatorDamageValue}>
                     -{damage.damage}
                   </Typography>
