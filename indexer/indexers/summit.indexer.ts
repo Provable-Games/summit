@@ -350,6 +350,91 @@ interface BulkInsertBatches {
 }
 
 /**
+ * Aggregate battle events by transaction_hash to reduce client notifications
+ * When multiple beasts attack in one transaction, bundle them into a single summit_log entry
+ */
+function aggregateBattleEvents(logs: SummitLogRow[]): SummitLogRow[] {
+  // Separate battle events from other events
+  const battleEvents: SummitLogRow[] = [];
+  const otherEvents: SummitLogRow[] = [];
+
+  for (const log of logs) {
+    if (log.category === "Battle" && log.sub_category === "BattleEvent") {
+      battleEvents.push(log);
+    } else {
+      otherEvents.push(log);
+    }
+  }
+
+  // Group battle events by transaction_hash
+  const battlesByTx = new Map<string, SummitLogRow[]>();
+  for (const event of battleEvents) {
+    const existing = battlesByTx.get(event.transaction_hash) || [];
+    existing.push(event);
+    battlesByTx.set(event.transaction_hash, existing);
+  }
+
+  // Create aggregated entries for multi-beast transactions
+  const aggregatedBattles: SummitLogRow[] = [];
+  for (const [_txHash, events] of battlesByTx) {
+    if (events.length === 1) {
+      // Single battle - add beast_count: 1 for consistency
+      const single = events[0];
+      single.data = { ...(single.data as object), beast_count: 1 };
+      aggregatedBattles.push(single);
+    } else {
+      aggregatedBattles.push(createAggregatedBattleEntry(events));
+    }
+  }
+
+  return [...otherEvents, ...aggregatedBattles];
+}
+
+/**
+ * Create a single aggregated battle entry from multiple battle events in the same transaction
+ * Sums damage fields and adds beast_count for client detection
+ */
+function createAggregatedBattleEntry(events: SummitLogRow[]): SummitLogRow {
+  const first = events[0];
+  const dataList = events.map(e => e.data as Record<string, unknown>);
+  const firstData = dataList[0];
+
+  // Sum up numeric fields
+  const sumField = (field: string) => dataList.reduce((sum, d) => sum + (Number(d[field]) || 0), 0);
+
+  return {
+    ...first,
+    // Keep sub_category as "BattleEvent" - no change
+    data: {
+      // Use first attacker's info
+      attacking_beast_token_id: firstData.attacking_beast_token_id,
+      attack_index: firstData.attack_index,
+      defending_beast_token_id: firstData.defending_beast_token_id,
+      attacking_beast_owner: firstData.attacking_beast_owner,
+      attacking_beast_id: firstData.attacking_beast_id,
+      attacking_beast_prefix: firstData.attacking_beast_prefix,
+      attacking_beast_suffix: firstData.attacking_beast_suffix,
+      attacking_beast_shiny: firstData.attacking_beast_shiny,
+      attacking_beast_animated: firstData.attacking_beast_animated,
+      // Aggregate counts/damage across all attackers
+      attack_count: sumField("attack_count"),
+      attack_damage: sumField("attack_damage"),
+      critical_attack_count: sumField("critical_attack_count"),
+      critical_attack_damage: sumField("critical_attack_damage"),
+      counter_attack_count: sumField("counter_attack_count"),
+      counter_attack_damage: sumField("counter_attack_damage"),
+      critical_counter_attack_count: sumField("critical_counter_attack_count"),
+      critical_counter_attack_damage: sumField("critical_counter_attack_damage"),
+      attack_potions: sumField("attack_potions"),
+      revive_potions: sumField("revive_potions"),
+      xp_gained: sumField("xp_gained"),
+      // New field - client detects multi-attack via beast_count > 1
+      beast_count: events.length,
+    },
+  };
+}
+
+/**
  * Execute bulk inserts for all collected batches
  * Uses true batch upserts (single query per table) instead of individual queries
  */
@@ -444,10 +529,11 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
     );
   }
 
-  // summit_log - bulk insert with onConflictDoNothing
+  // summit_log - aggregate battles by tx, then bulk insert
   if (batches.summit_log.length > 0) {
+    const aggregatedLogs = aggregateBattleEvents(batches.summit_log);
     insertPromises.push(
-      db.insert(schema.summit_log).values(batches.summit_log).onConflictDoNothing()
+      db.insert(schema.summit_log).values(aggregatedLogs).onConflictDoNothing()
     );
   }
 
