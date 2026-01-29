@@ -488,7 +488,8 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
           adventurers_killed: sql`excluded.adventurers_killed`,
           last_death_timestamp: sql`excluded.last_death_timestamp`,
           last_killed_by: sql`excluded.last_killed_by`,
-          token_id: sql`excluded.token_id`,
+          // Preserve existing token_id if set, only update if new value is provided
+          token_id: sql`COALESCE(beast_data.token_id, excluded.token_id)`,
           updated_at: sql`excluded.updated_at`,
         },
       })
