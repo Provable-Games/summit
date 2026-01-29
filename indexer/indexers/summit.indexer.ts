@@ -1185,8 +1185,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   transaction_hash,
                 });
 
-                // Detect Summit Change (health goes 0 → positive)
-                if (prev_stats?.current_health === 0 && stats.current_health > 0) {
+                // Detect Summit Change (new beast or health goes 0 → positive)
+                if ((prev_stats === null || prev_stats.current_health === 0) && stats.current_health > 0) {
                   collectSummitLog(batches, {
                     block_number,
                     event_index: event_index * 100 + 1,
