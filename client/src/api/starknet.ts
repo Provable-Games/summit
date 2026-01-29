@@ -92,7 +92,7 @@ export const useStarknetApi = () => {
           ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.current_level),
           revival_time: 0,
         },
-        taken_at: parseInt(data?.result[24], 16),
+        block_timestamp: parseInt(data?.result[24], 16),
         owner: data?.result[25],
         poison_count: parseInt(data?.result[26], 16),
         poison_timestamp: parseInt(data?.result[27], 16),

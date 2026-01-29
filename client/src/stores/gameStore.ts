@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import { Summit, Beast, Adventurer, BattleEvent, SpectatorBattleEvent, Leaderboard, PoisonEvent, selection } from '@/types/game';
+import { LogEntry } from '@/api/summitApi';
 
-export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'blocks held';
+export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'seconds held';
 export type BeastTypeFilter = 'all' | 'strong';
+
+const MAX_LIVE_EVENTS = 100;
 
 interface GameState {
   summit: Summit | null;
@@ -25,6 +28,7 @@ interface GameState {
   attackMode: 'safe' | 'unsafe' | 'autopilot';
   autopilotEnabled: boolean;
   autopilotLog: string;
+  liveEvents: LogEntry[];
 
   // Beast Collection Filters
   hideDeadBeasts: boolean;
@@ -53,6 +57,8 @@ interface GameState {
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'autopilot') => void;
   setAutopilotEnabled: (autopilotEnabled: boolean) => void;
   setAutopilotLog: (autopilotLog: string) => void;
+  addLiveEvent: (event: LogEntry) => void;
+  clearLiveEvents: () => void;
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => void;
@@ -85,6 +91,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   attackMode: 'safe',
   autopilotEnabled: false,
   autopilotLog: '',
+  liveEvents: [],
 
   // Beast Collection Filters - Default Values
   hideDeadBeasts: false,
@@ -114,6 +121,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       appliedPoisonCount: 0,
       attackMode: 'safe',
       autopilotEnabled: false,
+      liveEvents: [],
       // Reset filters to defaults
       hideDeadBeasts: false,
       typeFilter: 'all',
@@ -146,6 +154,11 @@ export const useGameStore = create<GameState>((set, get) => ({
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'autopilot') => set({ attackMode }),
   setAutopilotEnabled: (autopilotEnabled: boolean) => set({ autopilotEnabled }),
   setAutopilotLog: (autopilotLog: string) => set({ autopilotLog }),
+  addLiveEvent: (event: LogEntry) =>
+    set(state => ({
+      liveEvents: [event, ...state.liveEvents].slice(0, MAX_LIVE_EVENTS),
+    })),
+  clearLiveEvents: () => set({ liveEvents: [] }),
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => set({ hideDeadBeasts }),

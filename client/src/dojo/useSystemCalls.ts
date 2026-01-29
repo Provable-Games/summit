@@ -42,6 +42,7 @@ export const useSystemCalls = () => {
         return
       }
 
+      console.log('Receipt Timestamp', new Date().toISOString());
       const translatedEvents = receipt.events
         .map((event: any) => translateGameEvent(event, account!.address))
         .flat()

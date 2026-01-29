@@ -44,7 +44,8 @@ import IndeterminateCheckBoxIcon from '@mui/icons-material/IndeterminateCheckBox
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import { useAccount } from '@starknet-react/core';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import { useGameStore } from '@/stores/gameStore';
 
 interface EventHistoryModalProps {
   open: boolean;
@@ -117,9 +118,35 @@ const getEventIcon = (category: string, subCategory: string): React.ReactNode =>
 
 const formatTimeAgo = (timestamp: string): string => {
   const now = new Date();
-  const date = new Date(timestamp);
+  let date: Date;
+
+  // Handle Unix timestamps (numeric strings) - could be seconds or milliseconds
+  const numericTimestamp = Number(timestamp);
+  if (!isNaN(numericTimestamp) && /^\d+$/.test(timestamp)) {
+    // If timestamp is small (< year 2100 in seconds), treat as seconds
+    // Otherwise treat as milliseconds
+    if (numericTimestamp < 4102444800) {
+      date = new Date(numericTimestamp * 1000);
+    } else {
+      date = new Date(numericTimestamp);
+    }
+  } else {
+    // ISO string - if no timezone indicator, assume UTC by appending 'Z'
+    let normalizedTimestamp = timestamp;
+    if (timestamp && !timestamp.endsWith('Z') && !timestamp.includes('+') && !timestamp.includes('-', 10)) {
+      normalizedTimestamp = timestamp + 'Z';
+    }
+    date = new Date(normalizedTimestamp);
+  }
+
+  // Handle invalid dates
+  if (isNaN(date.getTime())) {
+    return 'unknown';
+  }
+
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
+  if (seconds < 0) return 'just now'; // Future dates show as just now
   if (seconds < 60) return 'just now';
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ago`;
@@ -168,6 +195,7 @@ const loadSavedFilters = (): string[] => {
 export default function EventHistoryModal({ open, onClose }: EventHistoryModalProps) {
   const { address } = useAccount();
   const { getLogs } = useSummitApi();
+  const { liveEvents, clearLiveEvents } = useGameStore();
 
   const [activeTab, setActiveTab] = useState<'all' | 'mine'>('all');
   const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>(loadSavedFilters);
@@ -176,6 +204,8 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [addressNames, setAddressNames] = useState<Record<string, string | null>>({});
+  const [seenLiveEventIds, setSeenLiveEventIds] = useState<Set<string>>(new Set());
+  const prevLiveEventsLengthRef = useRef(0);
 
   // Save filters to localStorage when they change
   useEffect(() => {
@@ -183,6 +213,96 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
   }, [selectedSubCategories]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // Filter live events based on current filters
+  const filteredLiveEvents = useMemo(() => {
+    // Only show live events on page 1
+    if (page !== 1) return [];
+
+    return liveEvents.filter((event) => {
+      // Filter by sub-category if any are selected
+      if (selectedSubCategories.length > 0 && !selectedSubCategories.includes(event.sub_category)) {
+        return false;
+      }
+      // Filter by player if "mine" tab is active
+      if (activeTab === 'mine' && address) {
+        const normalizedEventPlayer = event.player?.toLowerCase().replace(/^0x0+/, '0x');
+        const normalizedAddress = address.toLowerCase().replace(/^0x0+/, '0x');
+        if (normalizedEventPlayer !== normalizedAddress) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [liveEvents, selectedSubCategories, activeTab, address, page]);
+
+  // Merge live events with fetched events, deduplicating by ID
+  const displayEvents = useMemo(() => {
+    if (page !== 1 || filteredLiveEvents.length === 0) {
+      return events;
+    }
+
+    const fetchedIds = new Set(events.map((e) => e.id));
+    const newLiveEvents = filteredLiveEvents.filter((e) => !fetchedIds.has(e.id));
+
+    return [...newLiveEvents, ...events];
+  }, [events, filteredLiveEvents, page]);
+
+  // Track which events are "new" (arrived via WebSocket after modal opened)
+  const newEventIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const event of filteredLiveEvents) {
+      if (!seenLiveEventIds.has(event.id)) {
+        ids.add(event.id);
+      }
+    }
+    return ids;
+  }, [filteredLiveEvents, seenLiveEventIds]);
+
+  // Mark live events as seen after a short delay for animation
+  useEffect(() => {
+    if (newEventIds.size > 0 && open) {
+      const timer = setTimeout(() => {
+        setSeenLiveEventIds((prev) => {
+          const updated = new Set(prev);
+          newEventIds.forEach((id) => updated.add(id));
+          return updated;
+        });
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [newEventIds, open]);
+
+  // Fetch player names for live events
+  useEffect(() => {
+    if (!open || filteredLiveEvents.length === 0) return;
+
+    const playerAddresses = filteredLiveEvents
+      .map((event) => event.player)
+      .filter((player): player is string => player !== null && addressNames[player] === undefined);
+
+    const uniqueAddresses = [...new Set(playerAddresses)];
+    if (uniqueAddresses.length > 0) {
+      lookupAddressNames(uniqueAddresses).then((addressMap) => {
+        setAddressNames((prev) => {
+          const updated = { ...prev };
+          for (const addr of uniqueAddresses) {
+            const normalized = addr.replace(/^0x0+/, '0x').toLowerCase();
+            updated[addr] = addressMap.get(normalized) || null;
+          }
+          return updated;
+        });
+      });
+    }
+  }, [filteredLiveEvents, addressNames, open]);
+
+  // Reset seen events when modal closes
+  useEffect(() => {
+    if (!open) {
+      setSeenLiveEventIds(new Set());
+      prevLiveEventsLengthRef.current = liveEvents.length;
+    }
+  }, [open, liveEvents.length]);
 
   const fetchEvents = useCallback(async () => {
     setLoading(true);
@@ -848,7 +968,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
               <Box sx={styles.loadingState}>
                 <CircularProgress size={32} sx={{ color: gameColors.brightGreen }} />
               </Box>
-            ) : events.length === 0 ? (
+            ) : displayEvents.length === 0 ? (
               <Box sx={styles.emptyState}>
                 <Typography sx={styles.emptyText}>
                   {activeTab === 'mine' && !address
@@ -857,12 +977,19 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
                 </Typography>
               </Box>
             ) : (
-              events.map((event) => {
+              displayEvents.map((event) => {
                 const categoryColor = CATEGORY_COLORS[event.category] || gameColors.accentGreen;
                 const eventIcon = getEventIcon(event.category, event.sub_category);
+                const isNew = newEventIds.has(event.id);
 
                 return (
-                  <Box key={event.id} sx={styles.row}>
+                  <Box
+                    key={event.id}
+                    sx={[
+                      styles.row,
+                      isNew && styles.newRow,
+                    ]}
+                  >
                     <Typography sx={styles.timeCell}>
                       {formatTimeAgo(event.created_at)}
                     </Typography>
@@ -1053,6 +1180,19 @@ const styles = {
     },
     '&:hover': {
       background: `${gameColors.darkGreen}80`,
+    },
+  },
+  newRow: {
+    animation: 'pulse-highlight 2s ease-out',
+    '@keyframes pulse-highlight': {
+      '0%': {
+        background: `${gameColors.brightGreen}30`,
+        boxShadow: `inset 0 0 8px ${gameColors.brightGreen}40`,
+      },
+      '100%': {
+        background: 'transparent',
+        boxShadow: 'none',
+      },
     },
   },
   timeCell: {

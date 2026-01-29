@@ -1,6 +1,6 @@
 export interface Summit {
   beast: Beast;
-  taken_at: number;
+  block_timestamp: number;
   owner: string;
   poison_count: number;
   poison_timestamp: number;

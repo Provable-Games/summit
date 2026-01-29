@@ -1,11 +1,10 @@
-import { useStarknetApi } from '@/api/starknet';
 import { getSummitRewardsStatus } from '@/utils/summitRewards';
 import { gameColors } from '@/utils/themes';
 import { Box, Typography } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 type RewardsRemainingBarProps = {
-  currentBlock?: number;
+  currentTimestamp?: number;
   variant?: 'panel' | 'compact';
 };
 
@@ -30,47 +29,41 @@ const pulseKeyframes = `
 `;
 
 export default function RewardsRemainingBar({
-  currentBlock,
+  currentTimestamp,
   variant = 'panel',
 }: RewardsRemainingBarProps) {
-  const { getCurrentBlock } = useStarknetApi();
-  const [polledBlock, setPolledBlock] = useState<number>(0);
-  const prevBlockRef = useRef<number>(0);
+  const [polledTimestamp, setPolledTimestamp] = useState<number>(() => Math.floor(Date.now() / 1000));
+  const prevSecondRef = useRef<number>(0);
   const pulseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [blockPulse, setBlockPulse] = useState(false);
+  const [secondPulse, setSecondPulse] = useState(false);
 
-  const effectiveBlock = currentBlock ?? polledBlock;
+  const effectiveTimestamp = currentTimestamp ?? polledTimestamp;
 
+  // Update timestamp every second if not provided
   useEffect(() => {
-    if (currentBlock !== undefined) return;
+    if (currentTimestamp !== undefined) return;
 
-    let cancelled = false;
-    const fetchBlock = async () => {
-      const block = await getCurrentBlock();
-      if (!cancelled) setPolledBlock(block);
-    };
+    const id = setInterval(() => {
+      setPolledTimestamp(Math.floor(Date.now() / 1000));
+    }, 1000);
 
-    fetchBlock();
-    const id = setInterval(fetchBlock, 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(id);
-    };
-  }, [currentBlock, getCurrentBlock]);
+    return () => clearInterval(id);
+  }, [currentTimestamp]);
 
-  // Pulse once whenever a new block arrives (signals rewards streaming out)
+  // Pulse animation every 10 seconds (subtle indication of rewards streaming)
   useEffect(() => {
-    const prev = prevBlockRef.current;
-    prevBlockRef.current = effectiveBlock;
+    const prev = prevSecondRef.current;
+    prevSecondRef.current = effectiveTimestamp;
 
-    if (!effectiveBlock || effectiveBlock <= prev) return;
+    // Pulse every 10 seconds
+    if (!effectiveTimestamp || Math.floor(effectiveTimestamp / 10) === Math.floor(prev / 10)) return;
 
     if (pulseTimeoutRef.current) clearTimeout(pulseTimeoutRef.current);
     // Restart animation reliably by toggling off->on
-    setBlockPulse(false);
-    requestAnimationFrame(() => setBlockPulse(true));
-    pulseTimeoutRef.current = setTimeout(() => setBlockPulse(false), 520);
-  }, [effectiveBlock]);
+    setSecondPulse(false);
+    requestAnimationFrame(() => setSecondPulse(true));
+    pulseTimeoutRef.current = setTimeout(() => setSecondPulse(false), 520);
+  }, [effectiveTimestamp]);
 
   useEffect(() => {
     return () => {
@@ -78,7 +71,7 @@ export default function RewardsRemainingBar({
     };
   }, []);
 
-  const status = useMemo(() => getSummitRewardsStatus(effectiveBlock), [effectiveBlock]);
+  const status = useMemo(() => getSummitRewardsStatus(effectiveTimestamp), [effectiveTimestamp]);
 
   const fillColor =
     status.percentRemaining <= 10
@@ -96,7 +89,7 @@ export default function RewardsRemainingBar({
     boxShadow: 'none',
   } as const;
 
-  const blockPulseFx = blockPulse
+  const pulseFx = secondPulse
     ? ({
       animation: 'rewardsBarBlockPulse 520ms ease-out',
       '&::after': {
@@ -106,7 +99,7 @@ export default function RewardsRemainingBar({
     } as const)
     : ({} as const);
 
-  const borderPulseFx = blockPulse
+  const borderPulseFx = secondPulse
     ? ({ animation: 'rewardsBarBorderPulse 520ms ease-out' } as const)
     : ({} as const);
 
@@ -121,7 +114,7 @@ export default function RewardsRemainingBar({
           <Box
             sx={[
               compactStyles.barFill,
-              { width: `${status.percentRemaining}%`, ...fillFx, ...blockPulseFx },
+              { width: `${status.percentRemaining}%`, ...fillFx, ...pulseFx },
             ]}
           />
         </Box>
@@ -141,7 +134,7 @@ export default function RewardsRemainingBar({
         <Box
           sx={[
             panelStyles.barFill,
-            { width: `${status.percentRemaining}%`, ...fillFx, ...blockPulseFx },
+            { width: `${status.percentRemaining}%`, ...fillFx, ...pulseFx },
           ]}
         />
       </Box>

@@ -370,7 +370,7 @@ export default function BeastDexModal(props: BeastDexModalProps) {
                   <MenuItem value="summit_held_seconds">
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <BarChartIcon sx={{ fontSize: '16px', color: gameColors.brightGreen, mr: 1 }} />
-                      Blocks Held
+                      Seconds Held
                     </Box>
                   </MenuItem>
                   <MenuItem value="level">

@@ -127,7 +127,7 @@ function BeastCollection() {
           return (b.combat?.attack || 0) - (a.combat?.attack || 0)
         } else if (sortMethod === 'health') {
           return (b.health + b.bonus_health) - (a.health + a.bonus_health)
-        } else if (sortMethod === 'blocks held') {
+        } else if (sortMethod === 'seconds held') {
           if (b.summit_held_seconds !== a.summit_held_seconds) {
             return b.summit_held_seconds - a.summit_held_seconds
           }
@@ -391,7 +391,7 @@ function BeastCollection() {
                             {sortMethod === 'recommended' && <TipsAndUpdatesIcon sx={{ fontSize: '12px', color: gameColors.gameYellow }} />}
                             {sortMethod === 'power' && <FlashOnIcon sx={{ fontSize: '12px', color: gameColors.yellow }} />}
                             {sortMethod === 'health' && <FavoriteIcon sx={{ fontSize: '12px', color: gameColors.red }} />}
-                            {sortMethod === 'blocks held' && <img src="/images/survivor_token.png" alt="blocks held" style={{ width: '16px', height: '16px' }} />}
+                            {sortMethod === 'seconds held' && <img src="/images/survivor_token.png" alt="seconds held" style={{ width: '16px', height: '16px' }} />}
                           </Box>
                           <Typography sx={styles.sortDropdownText}>
                             {sortMethod === 'recommended' ? 'Recommended' : sortMethod.charAt(0).toUpperCase() + sortMethod.slice(1)}
@@ -409,7 +409,7 @@ function BeastCollection() {
                             style={{ overflow: 'hidden' }}
                           >
                             <Box sx={styles.sortDropdownOptions}>
-                              {(['recommended', 'power', 'health', 'blocks held'] as SortMethod[]).map((method) => (
+                              {(['recommended', 'power', 'health', 'seconds held'] as SortMethod[]).map((method) => (
                                 <Box
                                   key={method}
                                   sx={[styles.sortDropdownOption, sortMethod === method && styles.sortDropdownOptionActive]}
@@ -423,7 +423,7 @@ function BeastCollection() {
                                     {method === 'recommended' && <TipsAndUpdatesIcon sx={{ fontSize: '12px', color: gameColors.gameYellow }} />}
                                     {method === 'power' && <FlashOnIcon sx={{ fontSize: '12px', color: gameColors.yellow }} />}
                                     {method === 'health' && <FavoriteIcon sx={{ fontSize: '12px', color: gameColors.red }} />}
-                                    {method === 'blocks held' && <img src="/images/survivor_token.png" alt="blocks held" style={{ width: '16px', height: '16px' }} />}
+                                    {method === 'seconds held' && <img src="/images/survivor_token.png" alt="seconds held" style={{ width: '16px', height: '16px' }} />}
                                   </Box>
                                   <Typography sx={styles.sortDropdownOptionText}>
                                     {method === 'recommended' ? 'Recommended' : method.charAt(0).toUpperCase() + method.slice(1)}

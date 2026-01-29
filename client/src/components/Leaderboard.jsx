@@ -1,4 +1,3 @@
-import { useStarknetApi } from '@/api/starknet';
 import { useSummitApi } from '@/api/summitApi';
 import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
@@ -10,37 +9,34 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import { useEffect, useState } from 'react';
 import { DiplomacyPopover } from './DiplomacyPopover';
-import { TERMINAL_BLOCK } from '@/contexts/GameDirector';
+import { START_TIMESTAMP, SUMMIT_DURATION_SECONDS, SUMMIT_REWARDS_PER_SECOND } from '@/contexts/GameDirector';
 import FinalShowdown from './FinalShowdown';
 import RewardsRemainingBar from './RewardsRemainingBar';
-import { SUMMIT_REWARD_PER_BLOCK } from '@/utils/summitRewards';
+
+// End timestamp for the summit
+const END_TIMESTAMP = START_TIMESTAMP + SUMMIT_DURATION_SECONDS;
 
 function Leaderboard() {
   const { beastsRegistered, beastsAlive, fetchBeastCounts } = useStatistics()
   const { summit, leaderboard, setLeaderboard } = useGameStore()
   const { getLeaderboard } = useSummitApi()
-  const { getCurrentBlock } = useStarknetApi()
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(true)
   const [addressNames, setAddressNames] = useState({})
-  const [currentBlock, setCurrentBlock] = useState(0)
+  const [currentTimestamp, setCurrentTimestamp] = useState(() => Math.floor(Date.now() / 1000))
   const [summitOwnerRank, setSummitOwnerRank] = useState(null)
   const [diplomacyAnchor, setDiplomacyAnchor] = useState(null)
 
-  // Check if we're in the final showdown phase
-  const isFinalShowdown = currentBlock >= TERMINAL_BLOCK;
+  // Check if we're in the final showdown phase (summit ended)
+  const isFinalShowdown = currentTimestamp >= END_TIMESTAMP;
 
-  // Fetch current block - every 2 seconds during Final Showdown, every 5 seconds otherwise
+  // Update current timestamp every second
   useEffect(() => {
-    const fetchBlock = async () => {
-      const block = await getCurrentBlock()
-      setCurrentBlock(block)
-    }
-
-    fetchBlock()
-    const interval = setInterval(fetchBlock, isFinalShowdown ? 2000 : 5000)
+    const interval = setInterval(() => {
+      setCurrentTimestamp(Math.floor(Date.now() / 1000))
+    }, 1000)
 
     return () => clearInterval(interval)
-  }, [isFinalShowdown])
+  }, [])
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -93,19 +89,20 @@ function Leaderboard() {
 
   // Calculate summit owner's live score and rank
   useEffect(() => {
-    if (!summit?.owner || !summit?.taken_at || !currentBlock || leaderboard.length === 0) {
+    if (!summit?.owner || !summit?.block_timestamp || !currentTimestamp || leaderboard.length === 0) {
       setSummitOwnerRank(null)
       return
     }
 
-    // Calculate bonus points from blocks held (1 point per block)
-    const blocksHeld = (currentBlock - summit.taken_at)
+    // Calculate rewards from seconds held
+    const secondsHeld = Math.max(0, currentTimestamp - summit.block_timestamp)
     const diplomacyCount = (summit?.diplomacy?.beasts.length || 0) - (summit.beast.diplomacy ? 1 : 0);
-    const diplomacyRewards = (SUMMIT_REWARD_PER_BLOCK / 100 * diplomacyCount);
+    const diplomacyRewardPerSecond = SUMMIT_REWARDS_PER_SECOND / 100;
+    const diplomacyRewards = diplomacyRewardPerSecond * secondsHeld * diplomacyCount;
 
     // Find summit owner in leaderboard
     const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summit.owner))
-    const gainedSince = blocksHeld * SUMMIT_REWARD_PER_BLOCK - diplomacyRewards;
+    const gainedSince = (secondsHeld * SUMMIT_REWARDS_PER_SECOND) - diplomacyRewards;
     const score = (player?.amount || 0) + gainedSince;
 
     // Find summit owner's rank in the sorted list
@@ -118,7 +115,7 @@ function Leaderboard() {
       gainedSince: gainedSince,
       diplomacyCount: diplomacyCount,
     })
-  }, [summit, currentBlock, leaderboard])
+  }, [summit, currentTimestamp, leaderboard])
 
   const formatRewards = (rewards) => {
     const n = Number(rewards ?? 0);
@@ -148,7 +145,7 @@ function Leaderboard() {
   }
 
   if (isFinalShowdown) {
-    return <FinalShowdown summit={summit} currentBlock={currentBlock} />;
+    return <FinalShowdown summit={summit} currentTimestamp={currentTimestamp} />;
   }
 
   return <Box sx={styles.container}>
@@ -160,7 +157,7 @@ function Leaderboard() {
           SUMMIT ALPHA
         </Typography>
 
-        <RewardsRemainingBar currentBlock={currentBlock} />
+        <RewardsRemainingBar currentTimestamp={currentTimestamp} />
 
         <Box sx={styles.sectionHeader}>
           <Typography sx={styles.sectionTitle}>

@@ -245,7 +245,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
               <Box sx={styles.tableHeader}>
                 <Typography sx={[styles.headerCell, { flex: '0 0 60px', textAlign: 'left' }]}>#</Typography>
                 <Typography sx={[styles.headerCell, { flex: '1 1 auto' }]}>BEAST</Typography>
-                <Typography sx={[styles.headerCell, { flex: '0 0 140px', textAlign: 'right' }]}>BLOCKS HELD</Typography>
+                <Typography sx={[styles.headerCell, { flex: '0 0 140px', textAlign: 'right' }]}>SECONDS HELD</Typography>
               </Box>
 
               <Box sx={styles.tableBody}>

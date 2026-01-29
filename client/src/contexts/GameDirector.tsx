@@ -2,10 +2,11 @@ import { useStarknetApi } from "@/api/starknet";
 import { useSummitApi } from "@/api/summitApi";
 import { useSound } from "@/contexts/sound";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
-import { useWebSocket, SummitData, EventData } from "@/hooks/useWebSocket";
+import { EventData, SummitData, useWebSocket } from "@/hooks/useWebSocket";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
-import { BattleEvent, Beast, Diplomacy, GameAction, SpectatorBattleEvent, Summit } from "@/types/game";
+import { BattleEvent, Beast, GameAction, SpectatorBattleEvent, Summit } from "@/types/game";
+import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import {
   applyPoisonDamage,
   getBeastCurrentHealth,
@@ -13,7 +14,7 @@ import {
   getBeastDetails,
   getBeastRevivalTime,
 } from "@/utils/beasts";
-import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
+import { useAccount } from "@starknet-react/core";
 import {
   createContext,
   PropsWithChildren,
@@ -32,14 +33,16 @@ export interface GameDirectorContext {
   pauseUpdates: boolean;
 }
 
-export const START_TIMESTAMP = 1760947200;
-export const TERMINAL_BLOCK = 7000000;
+export const START_TIMESTAMP = 1769683726;
+export const SUMMIT_DURATION_SECONDS = 4320000;
+export const SUMMIT_REWARDS_PER_SECOND = 0.01;
 
 const GameDirectorContext = createContext<GameDirectorContext>(
   {} as GameDirectorContext
 );
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
+  const { account } = useAccount();
   const { currentNetworkConfig } = useDynamicConnector();
   const {
     summit,
@@ -52,6 +55,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     setApplyingPotions,
     setAppliedExtraLifePotions,
     setSelectedBeasts,
+    poisonEvent,
+    setPoisonEvent,
+    addLiveEvent,
   } = useGameStore();
   const {
     setRevivePotionsUsed,
@@ -109,14 +115,17 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         kills_claimed: 0,
       } as Beast,
       owner: data.owner,
-      taken_at: sameBeast ? summit.taken_at : data.block_number,
+      block_timestamp: sameBeast ? summit.block_timestamp : data.block_timestamp,
       poison_count: sameBeast ? summit.poison_count : 0,
       poison_timestamp: sameBeast ? summit.poison_timestamp : 0,
     });
   };
 
   const handleEvent = (data: EventData) => {
-    console.log("[GameDirector] Event:", data.category, data.sub_category, data.data);
+    console.log("[GameDirector] Event:", data.category, data.sub_category, data.data, "created_at:", data.created_at);
+
+    // Add to live events for EventHistoryModal
+    addLiveEvent(data);
 
     const { category, sub_category, data: eventData } = data;
 
@@ -125,25 +134,14 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       if (sub_category === "BattleEvent") {
         // Add to spectator battle events for activity feed
         setSpectatorBattleEvents(prev => [...prev, eventData as unknown as SpectatorBattleEvent]);
-      } else if (sub_category === "Applied Poison") {
-        const beastTokenId = eventData.beast_token_id as number;
-        const count = eventData.count as number;
-        const blockTimestamp = Math.floor(new Date(data.created_at).getTime() / 1000);
-
-        // Update summit poison stats directly
-        if (nextSummit && nextSummit.beast.token_id === beastTokenId) {
-          setNextSummit(prev => prev ? {
-            ...prev,
-            poison_count: prev.poison_count + count,
-            poison_timestamp: blockTimestamp,
-          } : prev);
-        } else if (summit && summit.beast.token_id === beastTokenId) {
-          setSummit(prev => prev ? {
-            ...prev,
-            poison_count: prev.poison_count + count,
-            poison_timestamp: blockTimestamp,
-          } : prev);
-        }
+      } else if (sub_category === "Applied Poison" && data.player !== account?.address) {
+        console.log("[GameDirector] Poison event:", data.player, account?.address);
+        setPoisonEvent({
+          beast_token_id: eventData.beast_token_id as number,
+          block_timestamp: Math.floor(new Date(data.created_at).getTime() / 1000),
+          count: eventData.count as number,
+          player: data.player,
+        });
       }
     }
 
@@ -164,10 +162,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           prevCollection.map(beast =>
             beast.entity_hash === entityHash
               ? {
-                  ...beast,
-                  last_killed_by: Number(eventData.last_killed_by),
-                  last_dm_death_timestamp: Number(eventData.timestamp),
-                }
+                ...beast,
+                last_killed_by: Number(eventData.last_killed_by),
+                last_dm_death_timestamp: Number(eventData.timestamp),
+              }
               : beast
           )
         );
@@ -263,6 +261,24 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       fetchDiplomacy();
     }
   }, [summit?.beast.token_id]);
+
+  useEffect(() => {
+    if (poisonEvent) {
+      if (poisonEvent.beast_token_id === summit?.beast.token_id) {
+        setSummit(prevSummit => ({
+          ...prevSummit,
+          poison_count: (prevSummit?.poison_count || 0) + poisonEvent.count,
+          poison_timestamp: poisonEvent.block_timestamp,
+        }));
+      } else if (poisonEvent.beast_token_id === nextSummit?.beast.token_id) {
+        setNextSummit(prevSummit => ({
+          ...prevSummit,
+          poison_count: (prevSummit?.poison_count || 0) + poisonEvent.count,
+          poison_timestamp: poisonEvent.block_timestamp,
+        }));
+      }
+    }
+  }, [poisonEvent]);
 
   const fetchSummitData = async () => {
     const summitBeast = await getSummitData();
@@ -417,6 +433,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       setApplyingPotions(false);
       setAppliedExtraLifePotions(0);
       setExtraLifePotionsUsed((prev) => prev + action.extraLifePotions);
+      setSummit(prev => prev ? { ...prev, extra_lives: (prev.beast.extra_lives || 0) + action.extraLifePotions } : prev);
     } else if (action.type === "apply_poison") {
       setTokenBalances({
         ...tokenBalances,
@@ -424,6 +441,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       });
       setApplyingPotions(false);
       setPoisonPotionsUsed((prev) => prev + action.count);
+      setPoisonEvent({
+        beast_token_id: action.beastId,
+        block_timestamp: Math.floor(Date.now() / 1000),
+        count: action.count,
+        player: account?.address,
+      })
     } else if (action.type === "upgrade_beast") {
       setTokenBalances({
         ...tokenBalances,
