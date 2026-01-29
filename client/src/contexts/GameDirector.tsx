@@ -25,6 +25,7 @@ import {
 } from "react";
 import { useController } from "./controller";
 import { useDynamicConnector } from "./starknet";
+import { addAddressPadding } from "starknet";
 
 export interface GameDirectorContext {
   executeGameAction: (action: GameAction) => Promise<boolean>;
@@ -36,6 +37,7 @@ export interface GameDirectorContext {
 export const START_TIMESTAMP = 1769683726;
 export const SUMMIT_DURATION_SECONDS = 4320000;
 export const SUMMIT_REWARDS_PER_SECOND = 0.01;
+export const MAX_BEASTS_PER_ATTACK = 300;
 
 const GameDirectorContext = createContext<GameDirectorContext>(
   {} as GameDirectorContext
@@ -115,7 +117,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         kills_claimed: 0,
       } as Beast,
       owner: data.owner,
-      block_timestamp: sameBeast ? summit.block_timestamp : data.block_timestamp,
+      block_timestamp: sameBeast ? summit.block_timestamp : Date.now() / 1000,
       poison_count: sameBeast ? summit.poison_count : 0,
       poison_timestamp: sameBeast ? summit.poison_timestamp : 0,
     });
@@ -134,8 +136,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       if (sub_category === "BattleEvent") {
         // Add to spectator battle events for activity feed
         setSpectatorBattleEvents(prev => [...prev, eventData as unknown as SpectatorBattleEvent]);
-      } else if (sub_category === "Applied Poison" && data.player !== account?.address) {
-        console.log("[GameDirector] Poison event:", data.player, account?.address);
+      } else if (sub_category === "Applied Poison" && data.player !== addAddressPadding(account?.address)) {
         setPoisonEvent({
           beast_token_id: eventData.beast_token_id as number,
           block_timestamp: Math.floor(new Date(data.created_at).getTime() / 1000),

@@ -27,6 +27,7 @@ import { gameColors } from '../utils/themes';
 import AutopilotConfigModal from './dialogs/AutopilotConfigModal';
 import BeastDexModal from './dialogs/BeastDexModal';
 import BeastUpgradeModal from './dialogs/BeastUpgradeModal';
+import { MAX_BEASTS_PER_ATTACK } from '@/contexts/GameDirector';
 
 function ActionBar() {
   const { executeGameAction } = useGameDirector();
@@ -160,11 +161,11 @@ function ActionBar() {
     setBattleEvents([]);
     setAttackInProgress(true);
 
-    const BATCH_SIZE = 75;
+    const BATCH_SIZE = MAX_BEASTS_PER_ATTACK;
     const CONCURRENT_BATCHES = 10;
     const allBeasts: [Beast, number, number][] = collectionWithCombat.map((beast: Beast) => [beast, 1, beast.combat?.attackPotions || 0]);
 
-    // Split into batches of 75
+    // Split into batches of MAX_BEASTS_PER_ATTACK
     const batches: [Beast, number, number][][] = [];
     for (let i = 0; i < allBeasts.length; i += BATCH_SIZE) {
       batches.push(allBeasts.slice(i, i + BATCH_SIZE));
@@ -301,7 +302,7 @@ function ActionBar() {
       setLastBeastAttacked(summit?.beast.token_id);
       handleAttackUntilCapture(extraLifePotions);
     } else if (attackStrategy === 'guaranteed') {
-      let beasts = collectionWithCombat.slice(0, 75)
+      let beasts = collectionWithCombat.slice(0, MAX_BEASTS_PER_ATTACK)
 
       let totalSummitHealth = ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health;
       let totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
@@ -1044,18 +1045,18 @@ function ActionBar() {
           // Calculate total health pool
           const maxHealth = summit.beast.health + summit.beast.bonus_health;
           const totalHealthPool = (summit.beast.extra_lives || 0) * maxHealth + summit.beast.current_health;
-          
+
           // Calculate damage per second (including existing poison)
           const totalPoisonDps = summit.poison_count + appliedPoisonCount;
-          
+
           // Calculate time to kill
           const secondsToKill = Math.ceil(totalHealthPool / totalPoisonDps);
-          
+
           // Format time
           const hours = Math.floor(secondsToKill / 3600);
           const minutes = Math.floor((secondsToKill % 3600) / 60);
           const seconds = secondsToKill % 60;
-          
+
           let timeString = '';
           if (hours > 0) {
             timeString = `${hours}h ${minutes}m ${seconds}s`;
@@ -1066,9 +1067,9 @@ function ActionBar() {
           }
 
           return (
-            <Box sx={{ 
-              width: '100%', 
-              mt: 1, 
+            <Box sx={{
+              width: '100%',
+              mt: 1,
               px: 1,
               py: 0.5,
               boxSizing: 'border-box',
@@ -1076,8 +1077,8 @@ function ActionBar() {
               border: `1px solid ${gameColors.brightGreen}30`,
               borderRadius: '4px',
             }}>
-              <Typography sx={{ 
-                fontSize: '12px', 
+              <Typography sx={{
+                fontSize: '12px',
                 color: gameColors.brightGreen,
                 textAlign: 'center',
                 fontWeight: 500,

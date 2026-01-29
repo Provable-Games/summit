@@ -85,11 +85,15 @@ function Leaderboard() {
     }
 
     fetchLeaderboard()
-  }, [summit?.beast?.token_id, summit?.diplomacy?.beasts?.length])
+  }, [summit?.beast?.token_id, summit?.owner, summit?.diplomacy?.beasts?.length])
 
   // Calculate summit owner's live score and rank
   useEffect(() => {
     if (!summit?.owner || !summit?.block_timestamp || !currentTimestamp || leaderboard.length === 0) {
+      console.log('summit?.owner', summit?.owner);
+      console.log('summit?.block_timestamp', summit?.block_timestamp);
+      console.log('currentTimestamp', currentTimestamp);
+      console.log('leaderboard.length', leaderboard.length);
       setSummitOwnerRank(null)
       return
     }
@@ -115,7 +119,7 @@ function Leaderboard() {
       gainedSince: gainedSince,
       diplomacyCount: diplomacyCount,
     })
-  }, [summit, currentTimestamp, leaderboard])
+  }, [summit?.owner, summit?.beast?.token_id, summit?.block_timestamp, summit?.diplomacy, currentTimestamp, leaderboard])
 
   const formatRewards = (rewards) => {
     const n = Number(rewards ?? 0);

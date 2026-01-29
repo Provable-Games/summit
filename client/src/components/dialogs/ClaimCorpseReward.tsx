@@ -6,9 +6,9 @@ import { Box, Button, Dialog, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
 
-const LIMIT = 200;
+const LIMIT = 300;
 
-function claimCorpses(props) {
+function ClaimCorpseReward(props) {
   const { open, close, isOnboarding = false } = props
   const { executeGameAction, actionFailed } = useGameDirector()
   const { adventurerCollection, setAdventurerCollection } = useGameStore()
@@ -37,26 +37,19 @@ function claimCorpses(props) {
     try {
       const tokenAmount = getTotalCorpseTokens();
       const adventurerIds = adventurerCollection.map(adv => adv.id)
-      const promises: Promise<unknown>[] = []
 
+      let allSucceeded = true;
       for (let i = 0; i < adventurerIds.length; i += LIMIT) {
         const batch = adventurerIds.slice(i, i + LIMIT);
-        // Fire the call without awaiting
-        promises.push(
-          executeGameAction({
-            type: "claim_corpse_reward",
-            adventurerIds: batch
-          })
-        );
-        // Wait 500ms before firing the next batch
-        if (i + LIMIT < adventurerIds.length) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+        const res = await executeGameAction({
+          type: "claim_corpse_reward",
+          adventurerIds: batch
+        });
+        if (!res) {
+          allSucceeded = false;
+          break;
         }
       }
-
-      // Wait for all calls to complete
-      const results = await Promise.all(promises);
-      const allSucceeded = results.every(res => res);
 
       if (allSucceeded) {
         setTokenBalances({
@@ -168,7 +161,7 @@ function claimCorpses(props) {
   )
 }
 
-export default claimCorpses
+export default ClaimCorpseReward
 
 const styles = {
   dialogContainer: {

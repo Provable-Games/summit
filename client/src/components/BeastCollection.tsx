@@ -24,6 +24,7 @@ import { calculateBattleResult } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 import BeastCard from './BeastCard';
 import BeastProfile from './BeastProfile';
+import { MAX_BEASTS_PER_ATTACK } from '@/contexts/GameDirector';
 
 function BeastCollection() {
   const {
@@ -112,6 +113,19 @@ function BeastCollection() {
 
         // Apply selected sorting method
         if (sortMethod === 'recommended') {
+          // When nameMatchFilter is active, prioritize beasts that match both prefix & suffix
+          if (nameMatchFilter) {
+            const aMatchesBoth = a.prefix === summit.beast.prefix && a.suffix === summit.beast.suffix;
+            const bMatchesBoth = b.prefix === summit.beast.prefix && b.suffix === summit.beast.suffix;
+            
+            if (aMatchesBoth && !bMatchesBoth) {
+              return -1; // a comes first
+            } else if (!aMatchesBoth && bMatchesBoth) {
+              return 1; // b comes first
+            }
+            // If both match both or neither matches both, continue with normal sorting
+          }
+          
           if (a.combat?.score !== b.combat?.score) {
             return b.combat?.score - a.combat?.score
           } else if (b.combat?.attack !== a.combat?.attack) {
@@ -160,7 +174,7 @@ function BeastCollection() {
     if (attackInProgress) return;
 
     const allBeasts = collectionWithCombat.filter((beast: Beast) => !isBeastLocked(beast));
-    const maxBeasts = Math.min(75, allBeasts.length);
+    const maxBeasts = Math.min(MAX_BEASTS_PER_ATTACK, allBeasts.length);
 
     if (selectedBeasts.length >= maxBeasts) {
       setSelectedBeasts([])
@@ -177,7 +191,7 @@ function BeastCollection() {
 
   const maxBeastsSelected = useMemo(() => {
     const allBeasts = collectionWithCombat.filter((beast: Beast) => !isBeastLocked(beast));
-    const maxBeasts = Math.min(75, allBeasts.length);
+    const maxBeasts = Math.min(MAX_BEASTS_PER_ATTACK, allBeasts.length);
     return allBeasts.length > 0 && selectedBeasts.length >= maxBeasts;
   }, [collectionWithCombat, selectedBeasts]);
 
@@ -361,7 +375,7 @@ function BeastCollection() {
                 </Box>
               </Tooltip>
 
-              {attackMode !== 'autopilot' && <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Select 75</Box>}>
+              {attackMode !== 'autopilot' && <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Select 300</Box>}>
                 <Box sx={[styles.utilityButton, maxBeastsSelected && styles.selectedItem]} onClick={() => selectAllBeasts()}>
                   <LibraryAddCheckIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />
                 </Box>
@@ -683,6 +697,8 @@ function BeastCollection() {
           <Box sx={styles.settingsPopover}>
             <Box sx={styles.settingsPopoverBody}>
               {(() => {
+                const currentPotions = selectedBeasts.find(selection => selection[0].token_id === attackSettingsBeastId)?.[2] || 0;
+                const maxAvailable = Math.min(tokenBalances["ATTACK"] || 0, 255);
                 return (
                   <Box sx={styles.popRow}>
                     <Typography sx={styles.popLabel}>Apply attack potions</Typography>
@@ -701,11 +717,11 @@ function BeastCollection() {
                                 setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], 0] : selection));
                               } else if (opt.key === 'optimal') {
                                 let optimalPotions = calculateOptimalAttackPotions(
-                                  selectedBeasts.find(selection => selection[0].token_id === attackSettingsBeastId), summit, Math.min(tokenBalances["ATTACK"] || 0, 255));
+                                  selectedBeasts.find(selection => selection[0].token_id === attackSettingsBeastId), summit, maxAvailable);
                                 setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], optimalPotions] : selection));
                               } else if (opt.key === 'max') {
                                 let maxPotions = calculateMaxAttackPotions(selectedBeasts.find(
-                                  selection => selection[0].token_id === attackSettingsBeastId), summit, Math.min(tokenBalances["ATTACK"] || 0, 255));
+                                  selection => selection[0].token_id === attackSettingsBeastId), summit, maxAvailable);
                                 setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], maxPotions] : selection));
                               }
                             }}
@@ -714,6 +730,20 @@ function BeastCollection() {
                           </Box>
                         );
                       })}
+                    </Box>
+                    <Box sx={styles.popCustomRow}>
+                      <Typography sx={styles.popCustomLabel}>Custom:</Typography>
+                      <TextField
+                        size="small"
+                        type="number"
+                        value={currentPotions}
+                        onChange={(e) => {
+                          const value = Math.max(0, Math.min(maxAvailable, parseInt(e.target.value, 10) || 0));
+                          setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], value] : selection));
+                        }}
+                        inputProps={{ min: 0, max: maxAvailable, step: 1 }}
+                        sx={styles.popCustomInput}
+                      />
                     </Box>
                   </Box>
                 );
@@ -1462,6 +1492,47 @@ const styles = {
     letterSpacing: '0.3px',
     textTransform: 'uppercase',
     lineHeight: '10px',
+  },
+  popCustomRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    marginTop: '4px',
+  },
+  popCustomLabel: {
+    fontSize: '10px',
+    fontWeight: 'bold',
+    color: gameColors.accentGreen,
+    letterSpacing: '0.3px',
+    textTransform: 'uppercase',
+  },
+  popCustomInput: {
+    flex: 1,
+    '& .MuiOutlinedInput-root': {
+      background: `${gameColors.darkGreen}B0`,
+      borderRadius: '6px',
+      '& fieldset': {
+        borderColor: `${gameColors.accentGreen}35`,
+      },
+      '&:hover fieldset': {
+        borderColor: `${gameColors.accentGreen}70`,
+      },
+      '&.Mui-focused fieldset': {
+        borderColor: `${gameColors.brightGreen}80`,
+      },
+    },
+    '& input': {
+      color: '#FFF',
+      fontSize: '12px',
+      fontWeight: 800,
+      padding: '4px 8px',
+      textAlign: 'center',
+      MozAppearance: 'textfield',
+    },
+    '& input::-webkit-outer-spin-button, & input::-webkit-inner-spin-button': {
+      WebkitAppearance: 'none',
+      margin: 0,
+    },
   },
   noFilterResultsText: {
     fontSize: '14px',

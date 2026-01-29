@@ -604,18 +604,31 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
       // Numeric upgrades like Luck and Spirit show +diff
       const isNumericUpgrade = ['Luck', 'Spirit'].includes(event.sub_category);
 
+      // Special format for boolean upgrades
+      if (isBooleanUpgrade) {
+        return (
+          <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+            {' Unlocked '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{event.sub_category}</Box>
+            {' ability for '}
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{fullBeastName}</Box>
+          </Typography>
+        );
+      }
+
       return (
         <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
           <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
           {' upgraded '}
           <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{fullBeastName}</Box>
-          {"'s "}
+          {' with '}
           {isNumericUpgrade && diff !== null && (
-            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>+{diff} </Box>
+            <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>+{Math.min(100, diff)} </Box>
           )}
           <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{event.sub_category}</Box>
           {hasDiff && !isBooleanUpgrade && (
-            <Box component="span" sx={{ color: '#888' }}>{` (${oldValue} → ${newValue})`}</Box>
+            <Box component="span" sx={{ color: '#888' }}>{` (${Math.min(100, oldValue)} → ${Math.min(100, newValue)})`}</Box>
           )}
         </Typography>
       );
@@ -662,7 +675,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
         );
       }
       if (event.sub_category === 'Claimed Skulls') {
-        const skullsClaimed = data.skulls_claimed 
+        const skullsClaimed = data.skulls_claimed
           ? (typeof data.skulls_claimed === 'string' ? parseInt(data.skulls_claimed, 10) : (data.skulls_claimed as number))
           : 1;
         return (
@@ -823,7 +836,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
               <Select
                 multiple
                 value={selectedSubCategories}
-                onChange={() => {}}
+                onChange={() => { }}
                 displayEmpty
                 renderValue={renderFilterValue}
                 sx={styles.select}
