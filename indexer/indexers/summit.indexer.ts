@@ -378,9 +378,13 @@ function aggregateBattleEvents(logs: SummitLogRow[]): SummitLogRow[] {
   const aggregatedBattles: SummitLogRow[] = [];
   for (const [_txHash, events] of battlesByTx) {
     if (events.length === 1) {
-      // Single battle - add beast_count: 1 for consistency
+      // Single battle - add beast_count and total_damage for consistency
       const single = events[0];
-      single.data = { ...(single.data as object), beast_count: 1 };
+      const d = single.data as Record<string, unknown>;
+      const totalDamage =
+        (Number(d.attack_count) || 0) * (Number(d.attack_damage) || 0) +
+        (Number(d.critical_attack_count) || 0) * (Number(d.critical_attack_damage) || 0);
+      single.data = { ...d, beast_count: 1, total_damage: totalDamage };
       aggregatedBattles.push(single);
     } else {
       aggregatedBattles.push(createAggregatedBattleEntry(events));
@@ -401,6 +405,14 @@ function createAggregatedBattleEntry(events: SummitLogRow[]): SummitLogRow {
 
   // Sum up numeric fields
   const sumField = (field: string) => dataList.reduce((sum, d) => sum + (Number(d[field]) || 0), 0);
+
+  // Calculate total damage correctly per-beast before summing
+  // Formula: (attack_count * attack_damage) + (critical_attack_count * critical_attack_damage)
+  const totalDamage = dataList.reduce((sum, d) => {
+    const attackDmg = (Number(d.attack_count) || 0) * (Number(d.attack_damage) || 0);
+    const critDmg = (Number(d.critical_attack_count) || 0) * (Number(d.critical_attack_damage) || 0);
+    return sum + attackDmg + critDmg;
+  }, 0);
 
   return {
     ...first,
@@ -428,8 +440,9 @@ function createAggregatedBattleEntry(events: SummitLogRow[]): SummitLogRow {
       attack_potions: sumField("attack_potions"),
       revive_potions: sumField("revive_potions"),
       xp_gained: sumField("xp_gained"),
-      // New field - client detects multi-attack via beast_count > 1
+      // New fields for aggregated events
       beast_count: events.length,
+      total_damage: totalDamage,
     },
   };
 }
