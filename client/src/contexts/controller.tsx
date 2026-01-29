@@ -80,6 +80,8 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
       if (!termsAccepted) {
         setShowTermsOfService(true);
       }
+    } else {
+      setCollection([]);
     }
   }, [account]);
 

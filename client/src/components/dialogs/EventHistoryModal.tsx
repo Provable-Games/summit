@@ -20,7 +20,6 @@ import HistoryIcon from '@mui/icons-material/History';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import StarIcon from '@mui/icons-material/Star';
-import TerrainIcon from '@mui/icons-material/Terrain';
 
 // Public images
 const survivorTokenIcon = '/images/survivor_token.png';
@@ -56,7 +55,6 @@ const PAGE_SIZE = 25;
 
 // Category definitions with their sub-categories (order matters for display)
 const CATEGORIES: Record<string, string[]> = {
-  'Arriving to Summit': ['Claimed Potions'],
   'Battle': ['BattleEvent', 'Applied Poison', 'Summit Change', 'Applied Extra Life'],
   'Beast Upgrade': ['Spirit', 'Luck', 'Specials', 'Wisdom', 'Diplomacy', 'Bonus Health'],
   'Rewards': ['$SURVIVOR Earned', 'Claimed $SURVIVOR', 'Claimed Corpses', 'Claimed Skulls'],
@@ -64,7 +62,6 @@ const CATEGORIES: Record<string, string[]> = {
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
-  'Arriving to Summit': '#7cb98b',
   'Battle': '#e07a5f',
   'Beast Upgrade': '#81b29a',
   'Rewards': '#f2cc8f',
@@ -107,11 +104,6 @@ const getEventIcon = (category: string, subCategory: string): React.ReactNode =>
     }
     if (subCategory === 'Claimed Corpses') return <img src={corpseTokenIcon} alt="corpse" style={imgStyle} />;
     if (subCategory === 'Claimed Skulls') return <img src={killTokenIcon} alt="skull" style={imgStyle} />;
-  }
-
-  // Arriving to Summit
-  if (category === 'Arriving to Summit') {
-    return <TerrainIcon sx={{ fontSize: 18 }} />;
   }
 
   // LS Events
@@ -414,6 +406,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
         const beastId = data.beast_id as number | undefined;
         const beastPrefix = data.prefix as number | undefined;
         const beastSuffix = data.suffix as number | undefined;
+        const extraLives = data.extra_lives as number | undefined;
         const beastTypeName = beastId ? BEAST_NAMES[beastId as keyof typeof BEAST_NAMES] : null;
         const prefixName = beastPrefix ? ITEM_NAME_PREFIXES[beastPrefix as keyof typeof ITEM_NAME_PREFIXES] : null;
         const suffixName = beastSuffix ? ITEM_NAME_SUFFIXES[beastSuffix as keyof typeof ITEM_NAME_SUFFIXES] : null;
@@ -431,6 +424,13 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
             <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
             {' took summit with '}
             <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastName}</Box>
+            {!!extraLives && (
+              <>
+                {' with '}
+                <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{extraLives}</Box>
+                {' extra '}{extraLives === 1 ? 'life' : 'lives'}
+              </>
+            )}
           </Typography>
         );
       }
@@ -554,21 +554,6 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
           </Typography>
         );
       }
-    }
-
-    // Arriving to Summit events
-    if (event.category === 'Arriving to Summit') {
-      const displayName = player || 'Unknown';
-      const count = (data.count as number) || (data.beast_count as number) || 1;
-      return (
-        <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
-          <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
-          {' brought '}
-          <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{count}</Box>
-          {count === 1 ? ' beast' : ' beasts'}
-          {' to the Summit'}
-        </Typography>
-      );
     }
 
     // LS Events

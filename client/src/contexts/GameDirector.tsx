@@ -20,7 +20,6 @@ import {
   useContext,
   useEffect,
   useReducer,
-  useRef,
   useState,
 } from "react";
 import { useController } from "./controller";
@@ -35,9 +34,6 @@ export interface GameDirectorContext {
 
 export const START_TIMESTAMP = 1760947200;
 export const TERMINAL_BLOCK = 7000000;
-
-// Maximum number of seen transaction hashes to keep (LRU-style)
-const MAX_SEEN_TX_HASHES = 100;
 
 const GameDirectorContext = createContext<GameDirectorContext>(
   {} as GameDirectorContext
@@ -83,41 +79,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const [actionFailed, setActionFailed] = useReducer((x) => x + 1, 0);
   const [pauseUpdates, setPauseUpdates] = useState(false);
 
-  // Track seen transaction hashes for deduplication of optimistic broadcasts
-  const seenTxHashesRef = useRef<Set<string>>(new Set());
-
-  /**
-   * Check if a transaction hash has been seen and mark it as seen.
-   * Returns true if this is the first time seeing this hash, false if duplicate.
-   * Maintains LRU-style cleanup to limit memory usage.
-   */
-  const markTxSeen = (txHash: string | undefined): boolean => {
-    if (!txHash) return true; // No hash to dedupe, process the event
-
-    if (seenTxHashesRef.current.has(txHash)) {
-      console.log("[GameDirector] Skipping duplicate event:", txHash.slice(0, 10) + "...");
-      return false;
-    }
-
-    // Add to seen set
-    seenTxHashesRef.current.add(txHash);
-
-    // LRU-style cleanup: if over limit, remove oldest entries
-    if (seenTxHashesRef.current.size > MAX_SEEN_TX_HASHES) {
-      const entries = Array.from(seenTxHashesRef.current);
-      const toRemove = entries.slice(0, entries.length - MAX_SEEN_TX_HASHES);
-      toRemove.forEach(hash => seenTxHashesRef.current.delete(hash));
-    }
-
-    return true;
-  };
-
   const handleSummit = (data: SummitData) => {
-    // Deduplicate based on transaction_hash
-    if (!markTxSeen(data.transaction_hash)) {
-      return;
-    }
-
     console.log("[GameDirector] Summit update:", data);
 
     const current_level = getBeastCurrentLevel(data.level, data.bonus_xp);
@@ -154,11 +116,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   };
 
   const handleEvent = (data: EventData) => {
-    // Deduplicate based on transaction_hash
-    if (!markTxSeen(data.transaction_hash)) {
-      return;
-    }
-
     console.log("[GameDirector] Event:", data.category, data.sub_category, data.data);
 
     const { category, sub_category, data: eventData } = data;
@@ -239,7 +196,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
   };
 
-  // WebSocket subscription for real-time updates
+  // WebSocket subscription
   useWebSocket({
     url: currentNetworkConfig.wsUrl,
     channels: ["summit", "event"],
@@ -402,14 +359,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       txs.push(...applyPoison(action.beastId, action.count));
     }
 
-    const result = await executeAction(txs, setActionFailed);
+    const events = await executeAction(txs, setActionFailed);
 
-    if (!result) {
+    if (!events) {
       setActionFailed();
       return false;
     }
-
-    const { events, transactionHash } = result;
 
     updateLiveStats(
       events.filter((event: any) => event.componentName === "LiveBeastStatsEvent")
@@ -421,11 +376,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           event.attack_count + event.critical_attack_count >
           event.counter_attack_count + event.critical_counter_attack_count
       );
-
-    // Mark this transaction as seen to deduplicate when indexer sends the same event
-    if (transactionHash) {
-      markTxSeen(transactionHash);
-    }
 
     if (action.type === "attack" || action.type === "attack_until_capture") {
       let summitEvent = events.find(
