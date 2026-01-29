@@ -88,7 +88,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectedAdventurers: [],
   appliedPoisonCount: 0,
   appliedExtraLifePotions: 0,
-  attackMode: 'safe',
+  attackMode: 'unsafe',
   autopilotEnabled: false,
   autopilotLog: '',
   liveEvents: [],
@@ -119,7 +119,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       selectedAdventurers: [],
       appliedExtraLifePotions: 0,
       appliedPoisonCount: 0,
-      attackMode: 'safe',
+      attackMode: 'unsafe',
       autopilotEnabled: false,
       liveEvents: [],
       // Reset filters to defaults

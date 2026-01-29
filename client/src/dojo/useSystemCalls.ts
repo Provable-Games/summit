@@ -139,7 +139,7 @@ export const useSystemCalls = () => {
         ...beastsData.flat(),
         revivalPotions,
         extraLifePotions,
-        vrf ? 1 : 0,
+        (vrf || !safeAttack) ? 1 : 0,
       ],
     });
 

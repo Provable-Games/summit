@@ -460,7 +460,7 @@ function ActionBar() {
                             {attackMode === 'safe'
                               ? 'Safe Attack'
                               : attackMode === 'unsafe'
-                                ? 'Unsafe Attack'
+                                ? 'Attack'
                                 : 'Start Autopilot'}
                           </Typography>
                         </Box>
@@ -745,6 +745,23 @@ function ActionBar() {
     >
       <MenuItem
         onClick={() => {
+          setAttackMode('unsafe');
+          setAttackDropdownAnchor(null);
+        }}
+        sx={{
+          ...styles.menuItem,
+          backgroundColor: attackMode === 'unsafe' ? `${gameColors.brightGreen}20` : 'transparent',
+        }}
+      >
+        <Box>
+          <Typography sx={styles.menuItemTitle}>Attack</Typography>
+          <Typography sx={styles.menuItemDescription}>
+            Attack no matter what
+          </Typography>
+        </Box>
+      </MenuItem>
+      <MenuItem
+        onClick={() => {
           setAttackMode('safe');
           setAttackDropdownAnchor(null);
         }}
@@ -757,23 +774,6 @@ function ActionBar() {
           <Typography sx={styles.menuItemTitle}>Safe Attack</Typography>
           <Typography sx={styles.menuItemDescription}>
             Attack only if Summit beast hasn't changed
-          </Typography>
-        </Box>
-      </MenuItem>
-      <MenuItem
-        onClick={() => {
-          setAttackMode('unsafe');
-          setAttackDropdownAnchor(null);
-        }}
-        sx={{
-          ...styles.menuItem,
-          backgroundColor: attackMode === 'unsafe' ? `${gameColors.brightGreen}20` : 'transparent',
-        }}
-      >
-        <Box>
-          <Typography sx={styles.menuItemTitle}>Unsafe Attack</Typography>
-          <Typography sx={styles.menuItemDescription}>
-            Attack no matter what
           </Typography>
         </Box>
       </MenuItem>
