@@ -336,7 +336,7 @@ export const beast_data = pgTable(
  * Summit Log table - unified activity feed
  *
  * Consolidates all game events into a single table for activity feeds.
- * Categories: Battle, Beast Upgrade, Rewards, Arriving to Summit, LS Events
+ * Categories: Battle, Beast Upgrade, Rewards, LS Events
  * Includes both direct events and derived events (stat changes detected by comparing old vs new state).
  */
 export const summit_log = pgTable(

@@ -1152,10 +1152,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             case EVENT_SELECTORS.BeastUpdatesEvent: {
               const decoded = decodeBeastUpdatesEvent([...keys], [...data]);
 
-              // Track new beasts arriving to summit (first-time insertion)
-              let newBeastOwner: string | null = null;
-              const newBeastTokenIds: number[] = [];
-
               for (let i = 0; i < decoded.packed_updates.length; i++) {
                 const packed = decoded.packed_updates[i];
                 const stats = unpackLiveBeastStats(packed);
@@ -1188,12 +1184,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   block_number,
                   transaction_hash,
                 });
-
-                // Track new beasts (first-time insertion = no prev_stats)
-                if (prev_stats === null) {
-                  newBeastTokenIds.push(stats.token_id);
-                  newBeastOwner = beast_owner;
-                }
 
                 // Detect Summit Change (health goes 0 → positive)
                 if (prev_stats?.current_health === 0 && stats.current_health > 0) {
@@ -1234,25 +1224,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   },
                   metadata: beast_metadata,
                   owner: beast_owner,
-                });
-              }
-
-              // Create single batch "Arriving to Summit" event for all new beasts
-              if (newBeastTokenIds.length > 0) {
-                collectSummitLog(batches, {
-                  block_number,
-                  event_index: event_index * 100 + 2,
-                  category: "Arriving to Summit",
-                  sub_category: "Beasts Arrived",
-                  data: {
-                    count: newBeastTokenIds.length,
-                    token_ids: newBeastTokenIds,
-                  },
-                  player: newBeastOwner,
-                  token_id: null,
-                  transaction_hash,
-                  created_at: block_timestamp,
-                  indexed_at,
                 });
               }
               break;
