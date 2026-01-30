@@ -4,6 +4,7 @@ import { NETWORKS } from "@/utils/networkConfig";
 import {
   createContext,
   PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -59,24 +60,22 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     setTop5000Cutoff(result);
   };
 
-  const fetchTokenPrice = async (token: any) => {
+  const fetchTokenPrice = useCallback(async (token: any) => {
     try {
       const swap = await getSwapQuote(-1n * 10n ** 18n, token.address, USDC_ADDRESS);
       setTokenPrices((prev) => ({ ...prev, [token.name]: ((swap.total * -1) / 1e18).toFixed(4) }));
     } catch (err) {
       console.warn("refreshTokenPrices: failed to fetch price", token?.name, err);
     }
-  };
+  }, []);
 
-  const refreshTokenPrices = async () => {
-    const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON", "SKULL", "CORPSE"];
-
+  const refreshTokenPrices = useCallback(async (tokenNames: string[] = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON", "SKULL", "CORPSE"]) => {
     for (const tokenName of tokenNames) {
       const token = currentNetworkConfig.tokens.erc20.find(token => token.name === tokenName);
       if (!token) continue;
       await fetchTokenPrice(token);
     }
-  };
+  }, [currentNetworkConfig.tokens.erc20, fetchTokenPrice]);
 
   useEffect(() => {
     fetchBeastCounts();
