@@ -60,7 +60,7 @@ function elementalDamage(attacker: any, defender: any): number {
 function nameMatchBonus(attacker: Beast, defender: Beast, elementalDamage: number): number {
   let damage = 0;
 
-  if (!attacker.stats.specials) return damage;
+  if (!attacker.specials) return damage;
 
   if (attacker.prefix === defender.prefix) {
     damage += elementalDamage * 2
@@ -86,8 +86,8 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
   let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((elemental * (1 + 0.1 * potions) + beastNameMatch) - summit.power))
   let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental * (1 + 0.1 * diplomacyBonus) + summitNameMatch) - beast.power)
 
-  let beastCritChance = getLuckCritChancePercent(beast.stats.luck);
-  let summitCritChance = getLuckCritChancePercent(summit.stats.luck);
+  let beastCritChance = getLuckCritChancePercent(beast.luck);
+  let summitCritChance = getLuckCritChancePercent(summit.luck);
 
   let beastCritDamage = beastCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor(((elemental * 2) * (1 + 0.1 * potions) + beastNameMatch) - summit.power)) : 0;
   let summitCritDamage = summitCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) * (1 + 0.1 * diplomacyBonus) + summitNameMatch) - beast.power) : 0;
@@ -114,8 +114,8 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
 export const getBeastRevivalTime = (beast: Beast): number => {
   let revivalTime = 86400000;
 
-  if (beast.stats.spirit > 0) {
-    revivalTime -= getSpiritRevivalReductionSeconds(beast.stats.spirit) * 1000;
+  if (beast.spirit > 0) {
+    revivalTime -= getSpiritRevivalReductionSeconds(beast.spirit) * 1000;
   }
 
   return revivalTime;
@@ -178,8 +178,6 @@ export const formatBeastName = (beast: Beast): string => {
 }
 
 export const getBeastDetails = (id: number, prefix: number, suffix: number, level: number) => {
-  const specialsHash = getSpecialsHash(prefix, suffix);
-
   return {
     name: BEAST_NAMES[id],
     prefix: ITEM_NAME_PREFIXES[prefix],
@@ -187,7 +185,6 @@ export const getBeastDetails = (id: number, prefix: number, suffix: number, leve
     tier: BEAST_TIERS[id],
     type: BEAST_TYPES[id],
     power: (6 - BEAST_TIERS[id]) * level,
-    specials_hash: specialsHash,
   }
 }
 
@@ -291,18 +288,12 @@ export const getEntityHash = (id: number, prefix: number, suffix: number): strin
   return addAddressPadding(hash.toString(16));
 }
 
-export const getSpecialsHash = (prefix: number, suffix: number): string => {
-  const params = [BigInt(prefix), BigInt(suffix)];
-  let hash = starknet.poseidonHashMany(params);
-  return addAddressPadding(hash.toString(16));
-}
-
 export const isBeastInTop5000 = (beast: Beast, top5000Cutoff: Top5000Cutoff): boolean => {
-  if (!top5000Cutoff || beast.blocks_held === 0) return false;
+  if (!top5000Cutoff || beast.summit_held_seconds === 0) return false;
 
-  return beast.blocks_held > top5000Cutoff.blocks_held
-    || (beast.blocks_held === top5000Cutoff.blocks_held && beast.bonus_xp > top5000Cutoff.bonus_xp)
-    || (beast.blocks_held === top5000Cutoff.blocks_held && beast.bonus_xp === top5000Cutoff.bonus_xp && beast.last_death_timestamp > top5000Cutoff.last_death_timestamp);
+  return beast.summit_held_seconds > top5000Cutoff.summit_held_seconds
+    || (beast.summit_held_seconds === top5000Cutoff.summit_held_seconds && beast.bonus_xp > top5000Cutoff.bonus_xp)
+    || (beast.summit_held_seconds === top5000Cutoff.summit_held_seconds && beast.bonus_xp === top5000Cutoff.bonus_xp && beast.last_death_timestamp > top5000Cutoff.last_death_timestamp);
 }
 
 export const calculateOptimalAttackPotions = (selection: any, summit: Summit, maxAllowed: number) => {

@@ -37,16 +37,18 @@ export const useSystemCalls = () => {
       let receipt: any = await waitForTransaction(tx.transaction_hash, 0);
 
       if (receipt.execution_status === "REVERTED") {
+        console.log('action failed reverted', receipt);
         forceResetAction();
-        enqueueSnackbar('Action failed', { variant: 'warning', anchorOrigin: { vertical: 'top', horizontal: 'center' } })
         return
       }
 
-      const translatedEvents = receipt.events.map((event: any) =>
-        translateGameEvent(event, currentNetworkConfig.manifest, account!.address)
-      );
+      console.log('Receipt Timestamp', new Date().toISOString());
+      const translatedEvents = receipt.events
+        .map((event: any) => translateGameEvent(event, account!.address))
+        .flat()
+        .filter(Boolean);
 
-      return translatedEvents.filter(Boolean);
+      return translatedEvents;
     } catch (error) {
       console.error("Error executing action:", error);
       forceResetAction();
@@ -137,7 +139,7 @@ export const useSystemCalls = () => {
         ...beastsData.flat(),
         revivalPotions,
         extraLifePotions,
-        vrf ? 1 : 0,
+        (vrf || !safeAttack) ? 1 : 0,
       ],
     });
 
@@ -189,7 +191,7 @@ export const useSystemCalls = () => {
   const claimBeastReward = (beastIds: number[]) => {
     return {
       contractAddress: SUMMIT_ADDRESS,
-      entrypoint: "claim_beast_reward",
+      entrypoint: "claim_test_money",
       calldata: CallData.compile([beastIds]),
     };
   };
@@ -197,7 +199,7 @@ export const useSystemCalls = () => {
   const claimCorpses = (adventurerIds: number[]) => {
     return {
       contractAddress: currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE")?.address,
-      entrypoint: "claim_efficient",
+      entrypoint: "claim",
       calldata: CallData.compile([adventurerIds]),
     };
   };

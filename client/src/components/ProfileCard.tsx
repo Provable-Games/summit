@@ -20,7 +20,7 @@ import MarketplaceModal from './dialogs/MarketplaceModal';
 import { useStatistics } from '@/contexts/Statistics';
 
 const ProfileCard = () => {
-  const { collection, leaderboard, onboarding, loadingCollection, summitEnded } = useGameStore()
+  const { collection, leaderboard, loadingCollection, summitEnded } = useGameStore()
   const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
   const { playerName, tokenBalances, openProfile } = useController()
@@ -115,7 +115,7 @@ const ProfileCard = () => {
         </Box>
       </Box>
 
-      {!onboarding && !loadingCollection && <>
+      {!loadingCollection && <>
         <Box display={'flex'} width={'100%'}>
           <Box sx={[styles.infoSection, styles.leftSection]}>
             <Typography sx={styles.infoLabel}>SCORE</Typography>

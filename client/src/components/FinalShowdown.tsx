@@ -7,85 +7,47 @@ import FlashOnIcon from '@mui/icons-material/FlashOn';
 import { Box, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 
-// 75 blocks to win, estimate ~5 minutes (assuming ~4 second block time)
-const WINNING_BLOCKS = 75;
-const ESTIMATED_BLOCK_TIME = 4; // seconds per block
-const ESTIMATED_TOTAL_TIME = WINNING_BLOCKS * ESTIMATED_BLOCK_TIME; // ~300 seconds (5 minutes)
+// 5 minutes (300 seconds) to win
+const WINNING_SECONDS = 300;
 
 interface FinalShowdownProps {
   summit: any;
-  currentBlock: number;
+  currentTimestamp: number;
 }
 
-function FinalShowdown({ summit, currentBlock }: FinalShowdownProps) {
+function FinalShowdown({ summit, currentTimestamp }: FinalShowdownProps) {
   const { setSummitEnded } = useGameStore();
   const [holderName, setHolderName] = useState<string>('');
-  const [timeRemaining, setTimeRemaining] = useState<number>(0);
-  const [smoothTimeRemaining, setSmoothTimeRemaining] = useState<number>(0);
-  const [blocksRemaining, setBlocksRemaining] = useState<number>(WINNING_BLOCKS);
+  const [timeRemaining, setTimeRemaining] = useState<number>(WINNING_SECONDS);
+  const [secondsHeld, setSecondsHeld] = useState<number>(0);
   const [isComplete, setIsComplete] = useState(false);
   const [pulseAnimation, setPulseAnimation] = useState(false);
-  const [lastBlockUpdate, setLastBlockUpdate] = useState<number>(Date.now());
 
-  // Calculate blocks held and time remaining estimate
+  // Calculate seconds held and time remaining
   useEffect(() => {
-    const now = Date.now();
-
-    if (!summit?.taken_at || !currentBlock) {
-      setTimeRemaining(ESTIMATED_TOTAL_TIME);
-      setBlocksRemaining(WINNING_BLOCKS);
-      setSmoothTimeRemaining(ESTIMATED_TOTAL_TIME);
-      setLastBlockUpdate(now);
+    if (!summit?.block_timestamp || !currentTimestamp) {
+      setTimeRemaining(WINNING_SECONDS);
+      setSecondsHeld(0);
       return;
     }
 
-    const blocksHeld = Math.max(0, currentBlock - summit.taken_at);
-    const blocksLeft = Math.max(0, WINNING_BLOCKS - blocksHeld);
-    const estimatedTimeLeft = Math.min(ESTIMATED_TOTAL_TIME, blocksLeft * ESTIMATED_BLOCK_TIME);
+    const held = Math.max(0, currentTimestamp - summit.block_timestamp);
+    const remaining = Math.max(0, WINNING_SECONDS - held);
 
+    setSecondsHeld(held);
+    setTimeRemaining(remaining);
+    setIsComplete(remaining === 0);
 
-    // Ensure we never show more time than maximum or negative progress
-    const cappedTimeLeft = Math.max(0, Math.min(ESTIMATED_TOTAL_TIME, estimatedTimeLeft));
-    const cappedBlocksLeft = Math.max(0, Math.min(WINNING_BLOCKS, blocksLeft));
+    // Trigger pulse animation when close to winning (last 20 seconds)
+    setPulseAnimation(remaining <= 20 && remaining > 0);
+  }, [summit?.block_timestamp, currentTimestamp]);
 
-    setBlocksRemaining(cappedBlocksLeft);
-    setTimeRemaining(cappedTimeLeft);
-    setSmoothTimeRemaining(cappedTimeLeft);
-    setIsComplete(cappedBlocksLeft === 0);
-    setLastBlockUpdate(now);
-
-    // Trigger pulse animation when close to winning (last 5 blocks or 20 seconds)
-    setPulseAnimation((blocksLeft <= 5 || estimatedTimeLeft <= 20) && blocksLeft > 0);
-  }, [summit?.taken_at, currentBlock, lastBlockUpdate]);
-
-  // Smooth countdown timer
+  // Mark summit as ended when complete
   useEffect(() => {
-    if (isComplete || timeRemaining <= 0) {
+    if (isComplete) {
       setSummitEnded(true);
-      return;
     }
-
-    const interval = setInterval(() => {
-      setSmoothTimeRemaining(prevTime => {
-        const newTime = Math.max(0, prevTime - 1);
-
-        // Sync back to block-based time if we drift too far
-        const drift = Math.abs(newTime - timeRemaining);
-        if (drift > 5) {
-          return timeRemaining;
-        }
-
-        return newTime;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [timeRemaining, isComplete]);
-
-  // Update pulse animation based on smooth countdown
-  useEffect(() => {
-    setPulseAnimation((blocksRemaining <= 5 || smoothTimeRemaining <= 20) && !isComplete);
-  }, [smoothTimeRemaining, blocksRemaining, isComplete]);
+  }, [isComplete]);
 
   // Fetch holder name
   useEffect(() => {
@@ -117,13 +79,13 @@ function FinalShowdown({ summit, currentBlock }: FinalShowdownProps) {
   };
 
   const getTimeColor = (): string => {
-    if (smoothTimeRemaining <= 10) return gameColors.red;
-    if (smoothTimeRemaining <= 30) return '#ff9800';
-    if (smoothTimeRemaining <= 60) return gameColors.yellow;
+    if (timeRemaining <= 10) return gameColors.red;
+    if (timeRemaining <= 30) return '#ff9800';
+    if (timeRemaining <= 60) return gameColors.yellow;
     return gameColors.brightGreen;
   };
 
-  const progress = Math.max(0, Math.min(100, ((WINNING_BLOCKS - blocksRemaining) / WINNING_BLOCKS) * 100));
+  const progress = Math.max(0, Math.min(100, (secondsHeld / WINNING_SECONDS) * 100));
 
   return (
     <Box sx={styles.container}>
@@ -155,14 +117,14 @@ function FinalShowdown({ summit, currentBlock }: FinalShowdownProps) {
             <Box sx={styles.timerContainer}>
               {!isComplete && <TimerIcon sx={[styles.timerIcon, { color: getTimeColor() }]} />}
               <Typography sx={[styles.timeDisplay, { color: getTimeColor() }]}>
-                {isComplete ? 'VICTORY' : formatTime(smoothTimeRemaining)}
+                {isComplete ? 'VICTORY' : formatTime(timeRemaining)}
               </Typography>
             </Box>
 
             {!isComplete && (
               <Box sx={styles.blockInfo}>
                 <Typography sx={styles.blockCount}>
-                  {blocksRemaining} blocks remaining
+                  {timeRemaining}s remaining
                 </Typography>
               </Box>
             )}

@@ -1,6 +1,7 @@
 pub mod constants;
 pub mod models {
     pub mod beast;
+    pub mod events;
 }
 pub mod systems {
     pub mod summit;

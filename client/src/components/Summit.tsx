@@ -1,6 +1,7 @@
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useSound } from '@/contexts/sound';
 import { useGameStore } from '@/stores/gameStore';
+import { SpectatorBattleEvent } from '@/types/game';
 import SummitGiftModal from '@/components/dialogs/SummitGiftModal';
 import CasinoIcon from '@mui/icons-material/Casino';
 import HandshakeIcon from '@mui/icons-material/Handshake';
@@ -29,12 +30,12 @@ function Summit() {
   const controls = useAnimationControls()
   const [giftModalOpen, setGiftModalOpen] = useState(false)
   const [cartridgeName, setCartridgeName] = useState<string | null>(null)
-  const [spectatorDamage, setSpectatorDamage] = useState<Array<{ id: string; damage: number; attackerName: string; imageSrc: string }>>([])
+  const [spectatorDamage, setSpectatorDamage] = useState<Array<{ id: string; damage: number; attackerName: string; imageSrcs: string[] }>>([])
   const [poisonNotices, setPoisonNotices] = useState<Array<{ id: string; count: number; playerName: string }>>([])
   const [estimatedDamage, setEstimatedDamage] = useState<number>(0)
 
   // Queue and dedup for spectator battle events
-  const spectatorQueueRef = useRef<any[]>([])
+  const spectatorQueueRef = useRef<SpectatorBattleEvent[]>([])
   const processingSpectatorRef = useRef<boolean>(false)
   const spectatorAnimSeqRef = useRef<number>(0)
 
@@ -178,10 +179,9 @@ function Summit() {
         if (!event) break;
         // Play per-event sound
         play(fetchBeastSound(Number(event.attacking_beast_id)));
+
         // Calculate total damage
-        const totalDamage =
-          (event.attack_damage * event.attack_count) +
-          (event.critical_attack_damage * event.critical_attack_count);
+        const totalDamage = event.total_damage;
         // Resolve attacker name
         let attackerName = 'Unknown';
         if (event.attacking_beast_owner) {
@@ -193,14 +193,27 @@ function Summit() {
         }
         // Build visual payload
         const attackerBeastName = BEAST_NAMES[event.attacking_beast_id] || 'Unknown'
-        const imageSrc = fetchBeastImage({
+        const primaryImageSrc = fetchBeastImage({
           name: attackerBeastName,
           shiny: event.attacking_beast_shiny,
           animated: event.attacking_beast_animated,
         } as any)
+
+        // Generate multiple images for multi-beast attacks
+        const imageSrcs: string[] = [primaryImageSrc];
+        if (event.beast_count > 1) {
+          const beastIds = Object.keys(BEAST_NAMES).map(Number);
+          const additionalCount = Math.min(event.beast_count - 1, 2); // Cap at 3 total images
+          for (let i = 0; i < additionalCount; i++) {
+            const randomId = beastIds[Math.floor(Math.random() * beastIds.length)];
+            const randomBeastName = BEAST_NAMES[randomId] || 'Unknown';
+            imageSrcs.push(fetchBeastImage({ name: randomBeastName, shiny: false, animated: false } as any));
+          }
+        }
+
         const eventId = `spectator-${++spectatorAnimSeqRef.current}`;
         // Show animation
-        setSpectatorDamage(prev => [...prev, { id: eventId, damage: totalDamage, attackerName, imageSrc }]);
+        setSpectatorDamage(prev => [...prev, { id: eventId, damage: totalDamage, attackerName, imageSrcs }]);
         // Remove after animation duration
         setTimeout(() => {
           setSpectatorDamage(prev => prev.filter(d => d.id !== eventId));
@@ -297,9 +310,9 @@ function Summit() {
             </Box>
 
             <Box sx={styles.abilitiesContainer}>
-              {Boolean(summit.beast.stats.specials) && <StarIcon sx={{ fontSize: '16px', color: '#ffd700', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
-              {Boolean(summit.beast.stats.wisdom) && <PsychologyIcon sx={{ fontSize: '16px', color: '#60a5fa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
-              {Boolean(summit.beast.stats.diplomacy) && <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {Boolean(summit.beast.specials) && <StarIcon sx={{ fontSize: '16px', color: '#ffd700', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {Boolean(summit.beast.wisdom) && <PsychologyIcon sx={{ fontSize: '16px', color: '#60a5fa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
+              {Boolean(summit.beast.diplomacy) && <HandshakeIcon sx={{ fontSize: '16px', color: '#a78bfa', pb: '1px', filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8))' }} />}
             </Box>
           </Box>
 
@@ -352,7 +365,7 @@ function Summit() {
                   <Typography sx={[styles.statLabel, { fontSize: '12px' }]}>LUCK</Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                     <CasinoIcon sx={{ fontSize: '16px', color: '#ff69b4' }} />
-                    <Typography sx={styles.levelValue}>{Math.max(0, Math.floor(summit.beast.stats.luck))}</Typography>
+                    <Typography sx={styles.levelValue}>{Math.max(0, Math.floor(summit.beast.luck))}</Typography>
                   </Box>
                 </Box>
               </Box>
@@ -363,12 +376,12 @@ function Summit() {
               <Typography sx={styles.statLabel}>CRIT</Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
                 <Typography sx={styles.levelValue}>
-                  {getLuckCritChancePercent(summit.beast.stats.luck)}%
+                  {getLuckCritChancePercent(summit.beast.luck)}%
                 </Typography>
               </Box>
             </Box>
           </Tooltip>
-          {summit.diplomacy && summit.diplomacy.bonus > 0 && (
+          {summit.diplomacy && summit.diplomacy.beasts.length > 0 && (
             <Tooltip
               title={
                 <Box sx={styles.tooltipContent}>
@@ -394,7 +407,7 @@ function Summit() {
                         Beasts
                       </Typography>
                       <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
-                        {summit.diplomacy.beast_token_ids.length}
+                        {summit.diplomacy.beasts.length}
                       </Typography>
                     </Box>
 
@@ -402,10 +415,10 @@ function Summit() {
                       <Typography sx={[styles.statLabel, { fontSize: '11px', opacity: 0.85 }]}>
                         Total power
                       </Typography>
-                      {summit.beast.stats.diplomacy ? <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
-                        {summit.diplomacy.total_power}({summit.diplomacy.total_power - summit.beast.power})
+                      {summit.beast.diplomacy ? <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
+                        {summit.diplomacy.totalPower}({summit.diplomacy.totalPower - summit.beast.power})
                       </Typography> : <Typography sx={[styles.levelValue, { fontSize: '11px' }]}>
-                        {summit.diplomacy.total_power}
+                        {summit.diplomacy.totalPower}
                       </Typography>}
                     </Box>
 
@@ -614,7 +627,22 @@ function Summit() {
             >
               <Box sx={styles.spectatorDamageContainer}>
                 <Box sx={styles.spectatorDamageRow}>
-                  <img src={damage.imageSrc} alt={damage.attackerName} style={styles.spectatorAttackerImage} />
+                  <Box sx={{ position: 'relative', width: 28 + (damage.imageSrcs.length - 1) * 6, height: 28 }}>
+                    {damage.imageSrcs.slice(0, 3).map((src, idx, arr) => (
+                      <img
+                        key={idx}
+                        src={src}
+                        alt=""
+                        style={{
+                          ...styles.spectatorAttackerImage,
+                          position: idx === 0 ? 'relative' : 'absolute',
+                          left: idx * 6,
+                          top: 0,
+                          zIndex: arr.length - idx,
+                        }}
+                      />
+                    ))}
+                  </Box>
                   <Typography sx={styles.spectatorDamageValue}>
                     -{damage.damage}
                   </Typography>

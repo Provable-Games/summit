@@ -364,19 +364,19 @@ function AttackingBeasts() {
                       style={styles.beastImage}
                     />
                     {/* Upgrade Icons */}
-                    {(beast.stats.spirit || beast.stats.luck || beast.stats.specials) && (
+                    {(beast.spirit || beast.luck || beast.specials) && (
                       <Box sx={styles.upgradeIconsContainer}>
-                        {beast.stats.luck && (
+                        {beast.luck && (
                           <Box sx={{ color: '#ff69b4' }}>
                             <CasinoIcon sx={{ fontSize: '12px' }} />
                           </Box>
                         )}
-                        {beast.stats.spirit && (
+                        {beast.spirit && (
                           <Box sx={{ color: '#00ffff' }}>
                             <EnergyIcon sx={{ fontSize: '12px' }} />
                           </Box>
                         )}
-                        {beast.stats.specials && (
+                        {beast.specials && (
                           <Box sx={{ color: '#ffd700' }}>
                             <StarIcon sx={{ fontSize: '12px' }} />
                           </Box>

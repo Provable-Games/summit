@@ -73,8 +73,8 @@ export default function Top5000BeastsModal({ open, onClose }: Top5000BeastsModal
         <Box sx={styles.statsGrid}>
           <Box sx={styles.statCard}>
             <WhatshotIcon sx={styles.statIcon} />
-            <Typography sx={styles.statLabel}>Blocks Required</Typography>
-            <Typography sx={styles.statValue}>{Math.max(top5000Cutoff?.blocks_held || 0, 1)}</Typography>
+            <Typography sx={styles.statLabel}>Seconds Required</Typography>
+            <Typography sx={styles.statValue}>{Math.max(top5000Cutoff?.summit_held_seconds || 0, 1)}</Typography>
           </Box>
 
           <Box sx={styles.statCard}>

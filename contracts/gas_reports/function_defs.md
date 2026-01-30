@@ -92,7 +92,7 @@ Total files analyzed: 8 source files (excluding tests and interfaces)
 
 ### `is_beast_stronger`
 - **Visibility**: pub
-- **Signature**: `fn is_beast_stronger(beast1_blocks_held: u32, beast1_bonus_xp: u16, beast1_last_death: u64, beast2_blocks_held: u32, beast2_bonus_xp: u16, beast2_last_death: u64) -> bool`
+- **Signature**: `fn is_beast_stronger(beast1_summit_held_seconds: u32, beast1_bonus_xp: u16, beast1_last_death: u64, beast2_summit_held_seconds: u32, beast2_bonus_xp: u16, beast2_last_death: u64) -> bool`
 - **Description**: Compares beasts for leaderboard ranking (blocks > XP > death timestamp).
 - **Storage Access**: No
 - **Events**: None
@@ -152,9 +152,9 @@ Total files analyzed: 8 source files (excluding tests and interfaces)
 
 ## src/logic/rewards.cairo
 
-### `calculate_blocks_held`
+### `calculate_summit_held_seconds`
 - **Visibility**: pub
-- **Signature**: `fn calculate_blocks_held(taken_at: u64, current_block: u64, terminal_block: u64) -> u64`
+- **Signature**: `fn calculate_summit_held_seconds(taken_at: u64, current_block: u64, terminal_block: u64) -> u64`
 - **Description**: Calculates blocks held on summit, capped at terminal block.
 - **Storage Access**: No
 - **Events**: None
@@ -273,7 +273,7 @@ Total files analyzed: 8 source files (excluding tests and interfaces)
 | `start_summit` | external | Write | No |
 | `attack` | external | Read/Write | Yes (via dispatcher) |
 | `feed` | external | Read/Write | Yes |
-| `claim_beast_reward` | external | Read/Write | Yes |
+| `claim_starter_pack` | external | Read/Write | Yes |
 | `add_extra_life` | external | Read/Write | Yes |
 | `apply_stat_points` | external | Read/Write | Yes |
 | `apply_poison` | external | Read/Write | Yes |

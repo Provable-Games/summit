@@ -1,15 +1,12 @@
-import manifest_mainnet from "../../manifest.json";
-
 export interface NetworkConfig {
   chainId: ChainId;
-  namespace: string;
-  manifest: any;
   slot: string;
   preset: string;
   policies: | any | undefined;
   rpcUrl: string;
   toriiUrl: string;
-  subscriptionUrl: string;
+  apiUrl: string;
+  wsUrl: string;
   chains: Array<{
     rpcUrl: string;
   }>;
@@ -28,24 +25,23 @@ export enum ChainId {
 }
 
 export const TOKEN_ADDRESS = {
-  ATTACK: "0x00d6e434c85750498492e1ed983a13357166b94e8762bbd28f1ed5d8e4ccbfc6",
-  REVIVE: "0x062901fa8278203cfc5bcc499259345d35dfdef72b6e5033caae0899255d873f",
-  EXTRA_LIFE: "0x02cfc6f4ab7b9e062bb4576495408cc6516d98727a0b7d094952910961ab1825",
-  POISON: "0x0705a687dcbc563ffdd372038920dcbcbcbf5e976cdc2f4202d848b30841f101",
-  SKULL: "0x05169f2f5a20fdb8db9fa59a2014b35c31e6d8440d5f782a373cb1fe6cbc83e5",
-  CORPSE: "0x06504fb9d64cda31aaa7bfa425b410ae86ceb0ee154f2c85a61d145155eab1bc",
+  ATTACK: "0x013a3AD917c5c42458e0fBDe0B000D1986A3Ff7E6bb382501bcF1734724f1e00",
+  REVIVE: "0x2f551c78fc99fae13f040f19a881ee72c0fc41972aeabe57498de2b8c57fa6b",
+  EXTRA_LIFE: "0x00a12cF5773962B36F87a9c98Bbc060253194c474134AF440A4251e174053982",
+  POISON: "0x2451f3d69c69023f4b5d3d64885d76b752da6151eecc60c268df2f10ce9d869",
+  SKULL: "0x066177b0b92dbd2947df3bbb82d29b93f9138382c322e7a4f51d77634dc2876a",
+  CORPSE: "0x00ab6d8f1d1960e845d1c5615ef9c4c0a5cc49a530d08a574c9525ae5a01e878",
   SURVIVOR: "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
 }
 
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    namespace: "summit_relayer_6",
-    manifest: manifest_mainnet,
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
-    subscriptionUrl: "https://api.cartridge.gg/x/summit-6/torii",
+    apiUrl: "https://summit-api-oxwa.onrender.com",
+    wsUrl: "wss://summit-api-oxwa.onrender.com/ws",
     tokens: {
       erc20: [
         // {
@@ -190,7 +186,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           {
             "name": "Claim Beast Reward",
             "description": "Claim beast rewards",
-            "entrypoint": "claim_beast_reward"
+            "entrypoint": "claim_test_money"
           },
           {
             "name": "Add Extra Life",
@@ -296,7 +292,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           {
             "name": "Claim Corpse Reward",
             "description": "Claim corpse rewards",
-            "entrypoint": "claim_efficient"
+            "entrypoint": "claim"
           },
           {
             "name": "Approve",
@@ -323,14 +319,13 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
 
   return {
     chainId: network.chainId,
-    namespace: network.namespace,
-    manifest: network.manifest,
     slot: network.slot,
     preset: "savage-summit",
     policies: policies,
     rpcUrl: network.rpcUrl,
     toriiUrl: network.torii,
-    subscriptionUrl: network.subscriptionUrl,
+    apiUrl: network.apiUrl,
+    wsUrl: network.wsUrl,
     chains: [{ rpcUrl: network.rpcUrl }],
     tokens: network.tokens,
     denshokan: network.denshokan,

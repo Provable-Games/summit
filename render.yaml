@@ -1,0 +1,90 @@
+# Summit Infrastructure Blueprint
+# Deploy with: Connect repo to Render, or `render blueprint apply`
+#
+# Services:
+#   - PostgreSQL database (managed)
+#   - Indexer (background worker - processes Dojo events)
+#   - API server (web service - REST + WebSocket)
+#
+# Build Filters:
+#   Each service only rebuilds when its specific files change.
+#   Changes to render.yaml always trigger a sync regardless of filters.
+
+databases:
+  - name: summit-db
+    plan: basic-256mb # ~$7/mo - upgrade to basic-1gb ($20) or standard-1gb ($50) for production
+    databaseName: summit
+    postgresMajorVersion: 18
+    ipAllowList: [] # Allow all IPs (Render services connect internally)
+    # Uncomment for production:
+    # plan: standard-1gb
+    # readReplicas:
+    #   - name: summit-db-replica
+
+services:
+  # ===========================================
+  # Indexer (Background Worker)
+  # ===========================================
+  - type: worker
+    name: summit-indexer
+    runtime: docker
+    plan: starter # $7/mo
+    region: oregon
+    dockerfilePath: ./indexer/Dockerfile
+    dockerContext: ./indexer
+    # Only rebuild when indexer files change
+    buildFilter:
+      paths:
+        - indexer/**
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+      - key: STREAM_URL
+        value: "https://mainnet.starknet.a5a.ch"
+      - key: STARTING_BLOCK
+        value: "2021270" # Earliest block for Dojo events
+      - key: DNA_TOKEN
+        sync: false # Set manually (Apibara auth token)
+      # Contract addresses use defaults from apibara.config.ts:
+      # - SUMMIT_CONTRACT_ADDRESS: 0x06015596D10cBc6DD695a964827eEe290d3487ffFCF60d02264b81524Dd275E4
+      # - BEASTS_CONTRACT_ADDRESS: 0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4
+      # - DOJO_WORLD_ADDRESS: 0x02ef591697f0fd9adc0ba9dbe0ca04dabad80cf95f08ba02e435d9cb6698a28a
+
+  # ===========================================
+  # API Server (REST + WebSocket)
+  # ===========================================
+  - type: web
+    name: summit-api
+    runtime: docker
+    plan: starter # $7/mo
+    region: oregon
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - api/**
+        - indexer/src/lib/schema.ts
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3001"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: summit-db
+          property: connectionString
+
+# ===========================================
+# Environment Variable Groups
+# Shared secrets across services
+# ===========================================
+envVarGroups:
+  - name: summit-secrets
+    envVars:
+      - key: DNA_TOKEN
+        sync: false # Must be set manually in Render dashboard

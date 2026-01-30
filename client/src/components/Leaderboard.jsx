@@ -1,43 +1,42 @@
-import { useStarknetApi } from '@/api/starknet';
+import { useSummitApi } from '@/api/summitApi';
 import { useStatistics } from '@/contexts/Statistics';
-import { useGameTokens } from '@/dojo/useGameTokens';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { addAddressPadding } from 'starknet';
 import { lookupAddressNames } from '@/utils/addressNameCache';
 import { Box, Typography, IconButton } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import HandshakeIcon from '@mui/icons-material/Handshake';
 import { useEffect, useState } from 'react';
-import { TERMINAL_BLOCK } from '@/contexts/GameDirector';
+import { DiplomacyPopover } from './DiplomacyPopover';
+import { START_TIMESTAMP, SUMMIT_DURATION_SECONDS, SUMMIT_REWARDS_PER_SECOND } from '@/contexts/GameDirector';
 import FinalShowdown from './FinalShowdown';
 import RewardsRemainingBar from './RewardsRemainingBar';
-import { SUMMIT_REWARD_PER_BLOCK } from '@/utils/summitRewards';
+
+// End timestamp for the summit
+const END_TIMESTAMP = START_TIMESTAMP + SUMMIT_DURATION_SECONDS;
 
 function Leaderboard() {
-  const { beastsRegistered, beastsAlive, refreshBeastsAlive } = useStatistics()
+  const { beastsRegistered, beastsAlive, fetchBeastCounts } = useStatistics()
   const { summit, leaderboard, setLeaderboard } = useGameStore()
-  const { getLeaderboard } = useGameTokens()
-  const { getCurrentBlock } = useStarknetApi()
+  const { getLeaderboard } = useSummitApi()
   const [loadingLeaderboard, setLoadingLeaderboard] = useState(true)
   const [addressNames, setAddressNames] = useState({})
-  const [currentBlock, setCurrentBlock] = useState(0)
+  const [currentTimestamp, setCurrentTimestamp] = useState(() => Math.floor(Date.now() / 1000))
   const [summitOwnerRank, setSummitOwnerRank] = useState(null)
+  const [diplomacyAnchor, setDiplomacyAnchor] = useState(null)
 
-  // Check if we're in the final showdown phase
-  const isFinalShowdown = currentBlock >= TERMINAL_BLOCK;
+  // Check if we're in the final showdown phase (summit ended)
+  const isFinalShowdown = currentTimestamp >= END_TIMESTAMP;
 
-  // Fetch current block - every 2 seconds during Final Showdown, every 5 seconds otherwise
+  // Update current timestamp every second
   useEffect(() => {
-    const fetchBlock = async () => {
-      const block = await getCurrentBlock()
-      setCurrentBlock(block)
-    }
-
-    fetchBlock()
-    const interval = setInterval(fetchBlock, isFinalShowdown ? 2000 : 5000)
+    const interval = setInterval(() => {
+      setCurrentTimestamp(Math.floor(Date.now() / 1000))
+    }, 1000)
 
     return () => clearInterval(interval)
-  }, [isFinalShowdown])
+  }, [])
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
@@ -56,6 +55,13 @@ function Leaderboard() {
         // Add summit owner if exists
         if (summit?.owner) {
           addressesToLookup.push(summit.owner);
+        }
+
+        // Add diplomacy beast owners
+        if (summit?.diplomacy?.beasts) {
+          summit.diplomacy.beasts.forEach(beast => {
+            if (beast.owner) addressesToLookup.push(beast.owner);
+          });
         }
 
         if (addressesToLookup.length > 0) {
@@ -79,23 +85,24 @@ function Leaderboard() {
     }
 
     fetchLeaderboard()
-  }, [summit?.beast?.token_id])
+  }, [summit?.beast?.token_id, summit?.owner, summit?.diplomacy?.beasts?.length])
 
   // Calculate summit owner's live score and rank
   useEffect(() => {
-    if (!summit?.owner || !summit?.taken_at || !currentBlock || leaderboard.length === 0) {
+    if (!summit?.owner || !summit?.block_timestamp || !currentTimestamp || leaderboard.length === 0) {
       setSummitOwnerRank(null)
       return
     }
 
-    // Calculate bonus points from blocks held (1 point per block)
-    const blocksHeld = (currentBlock - summit.taken_at)
-    const diplomacyCount = (summit?.diplomacy?.beast_token_ids.length || 0) - (summit.beast.stats.diplomacy ? 1 : 0);
-    const diplomacyRewards = (SUMMIT_REWARD_PER_BLOCK / 100 * diplomacyCount);
+    // Calculate rewards from seconds held
+    const secondsHeld = Math.max(0, currentTimestamp - summit.block_timestamp)
+    const diplomacyCount = (summit?.diplomacy?.beasts.length || 0) - (summit.beast.diplomacy ? 1 : 0);
+    const diplomacyRewardPerSecond = SUMMIT_REWARDS_PER_SECOND / 100;
+    const diplomacyRewards = diplomacyRewardPerSecond * secondsHeld * diplomacyCount;
 
     // Find summit owner in leaderboard
     const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summit.owner))
-    const gainedSince = blocksHeld * SUMMIT_REWARD_PER_BLOCK - diplomacyRewards;
+    const gainedSince = (secondsHeld * SUMMIT_REWARDS_PER_SECOND) - diplomacyRewards;
     const score = (player?.amount || 0) + gainedSince;
 
     // Find summit owner's rank in the sorted list
@@ -108,7 +115,7 @@ function Leaderboard() {
       gainedSince: gainedSince,
       diplomacyCount: diplomacyCount,
     })
-  }, [summit, currentBlock, leaderboard])
+  }, [summit?.owner, summit?.beast?.token_id, summit?.block_timestamp, summit?.diplomacy, currentTimestamp, leaderboard])
 
   const formatRewards = (rewards) => {
     const n = Number(rewards ?? 0);
@@ -138,7 +145,7 @@ function Leaderboard() {
   }
 
   if (isFinalShowdown) {
-    return <FinalShowdown summit={summit} currentBlock={currentBlock} />;
+    return <FinalShowdown summit={summit} currentTimestamp={currentTimestamp} />;
   }
 
   return <Box sx={styles.container}>
@@ -150,7 +157,7 @@ function Leaderboard() {
           SUMMIT ALPHA
         </Typography>
 
-        <RewardsRemainingBar currentBlock={currentBlock} />
+        <RewardsRemainingBar currentTimestamp={currentTimestamp} />
 
         <Box sx={styles.sectionHeader}>
           <Typography sx={styles.sectionTitle}>
@@ -189,11 +196,23 @@ function Leaderboard() {
                     {formatRewards(summitOwnerRank.beforeAmount)} <span style={{ color: gameColors.brightGreen }}>+{formatRewards(summitOwnerRank.gainedSince)}</span>
                   </Typography>
                 </Box>
-                {summitOwnerRank.diplomacyCount > 0 && (
+                {summitOwnerRank.diplomacyCount > 0 && summit.diplomacy && (
                   <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end' }}>
-                    <Typography sx={styles.summitOwnerSub}>
+                    <Typography
+                      sx={[styles.summitOwnerSub, styles.diplomacyLink]}
+                      onClick={(e) => setDiplomacyAnchor(e.currentTarget)}
+                    >
+                      <HandshakeIcon sx={{ fontSize: '12px', mr: 0.5 }} />
                       +{summitOwnerRank.diplomacyCount} Diplomacy
                     </Typography>
+                    <DiplomacyPopover
+                      anchorEl={diplomacyAnchor}
+                      onClose={() => setDiplomacyAnchor(null)}
+                      diplomacy={summit.diplomacy}
+                      summitBeast={summit.beast}
+                      leaderboard={leaderboard}
+                      addressNames={addressNames}
+                    />
                   </Box>
                 )}
               </>
@@ -212,7 +231,7 @@ function Leaderboard() {
           <IconButton
             aria-label="Refresh beasts alive"
             size="small"
-            onClick={refreshBeastsAlive}
+            onClick={fetchBeastCounts}
             sx={styles.refreshButton}
           >
             <RefreshIcon sx={{ color: gameColors.accentGreen, fontSize: '16px' }} />
@@ -549,5 +568,13 @@ const styles = {
     fontSize: '10px',
     color: gameColors.accentGreen,
     mr: '2px'
+  },
+  diplomacyLink: {
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    '&:hover': {
+      color: gameColors.yellow,
+    },
   },
 }

@@ -146,7 +146,7 @@ The main `summit_systems` contract implements:
 - `feed()` - Increase beast health
 - `apply_stat_points()` - Upgrade beast attributes
 - `apply_poison()` - Apply poison to summit beast
-- `claim_beast_reward()` - Claim potion rewards
+- `claim_starter_pack()` - Claim potion rewards
 - `distribute_beast_tokens()` - Distribute rewards to winners
 
 ## Deployment

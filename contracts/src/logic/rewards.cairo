@@ -12,7 +12,7 @@ pub struct RewardDistribution {
 /// @param current_block Current block number
 /// @param terminal_block Terminal block (end of summit)
 /// @return Number of blocks held (0 if taken_at >= terminal_block)
-pub fn calculate_blocks_held(taken_at: u64, current_block: u64, terminal_block: u64) -> u64 {
+pub fn calculate_summit_held_seconds(taken_at: u64, current_block: u64, terminal_block: u64) -> u64 {
     if taken_at >= terminal_block {
         return 0;
     }
@@ -111,40 +111,40 @@ pub fn calculate_total_diplomacy_power(ally_powers: Span<u16>) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::{
-        calculate_blocks_held, calculate_diplomacy_bonus, calculate_summit_rewards, calculate_total_diplomacy_power,
-        get_potion_amount,
+        calculate_diplomacy_bonus, calculate_summit_held_seconds, calculate_summit_rewards,
+        calculate_total_diplomacy_power, get_potion_amount,
     };
 
     #[test]
     #[available_gas(gas: 55000)]
-    fn test_calculate_blocks_held_normal() {
+    fn test_calculate_summit_held_seconds_normal() {
         // Taken at block 100, current 200, terminal 500
-        let blocks = calculate_blocks_held(100, 200, 500);
+        let blocks = calculate_summit_held_seconds(100, 200, 500);
         assert!(blocks == 100, "Should have held for 100 blocks");
     }
 
     #[test]
     #[available_gas(gas: 55000)]
-    fn test_calculate_blocks_held_past_terminal() {
+    fn test_calculate_summit_held_seconds_past_terminal() {
         // Taken at block 100, current 600, terminal 500
         // Should cap at terminal
-        let blocks = calculate_blocks_held(100, 600, 500);
+        let blocks = calculate_summit_held_seconds(100, 600, 500);
         assert!(blocks == 400, "Should cap at terminal block");
     }
 
     #[test]
     #[available_gas(gas: 55000)]
-    fn test_calculate_blocks_held_taken_at_terminal() {
+    fn test_calculate_summit_held_seconds_taken_at_terminal() {
         // Taken at terminal block
-        let blocks = calculate_blocks_held(500, 600, 500);
+        let blocks = calculate_summit_held_seconds(500, 600, 500);
         assert!(blocks == 0, "Should be 0 if taken at/after terminal");
     }
 
     #[test]
     #[available_gas(gas: 55000)]
-    fn test_calculate_blocks_held_taken_after_terminal() {
+    fn test_calculate_summit_held_seconds_taken_after_terminal() {
         // Taken after terminal (showdown)
-        let blocks = calculate_blocks_held(600, 700, 500);
+        let blocks = calculate_summit_held_seconds(600, 700, 500);
         assert!(blocks == 0, "Should be 0 if taken after terminal");
     }
 

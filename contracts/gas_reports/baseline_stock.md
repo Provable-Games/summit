@@ -77,10 +77,10 @@ Branch: perf/opus-gas-optimizations
 | `summit::logic::revival::tests::test_is_killed_recently_exactly_at_boundary` | 48,130 | 48,130 |
 | `summit::logic::beast_utils::tests::test_calculate_xp_gain_not_eligible` | 47,730 | 47,730 |
 | `summit::logic::beast_utils::tests::test_get_level_from_xp_non_perfect_squares` | 46,930 | 46,930 |
-| `summit::logic::rewards::tests::test_calculate_blocks_held_past_terminal` | 46,030 | 46,030 |
-| `summit::logic::rewards::tests::test_calculate_blocks_held_taken_at_terminal` | 46,030 | 46,030 |
-| `summit::logic::rewards::tests::test_calculate_blocks_held_normal` | 46,030 | 46,030 |
-| `summit::logic::rewards::tests::test_calculate_blocks_held_taken_after_terminal` | 46,030 | 46,030 |
+| `summit::logic::rewards::tests::test_calculate_summit_held_seconds_past_terminal` | 46,030 | 46,030 |
+| `summit::logic::rewards::tests::test_calculate_summit_held_seconds_taken_at_terminal` | 46,030 | 46,030 |
+| `summit::logic::rewards::tests::test_calculate_summit_held_seconds_normal` | 46,030 | 46,030 |
+| `summit::logic::rewards::tests::test_calculate_summit_held_seconds_taken_after_terminal` | 46,030 | 46,030 |
 | `summit::logic::combat::tests::test_apply_damage_overkill` | 42,850 | 42,850 |
 | `summit::logic::combat::tests::test_apply_damage_zero` | 42,850 | 42,850 |
 | `summit::logic::combat::tests::test_apply_damage_exact_kill` | 42,850 | 42,850 |

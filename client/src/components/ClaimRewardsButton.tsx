@@ -1,30 +1,30 @@
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
-import { Badge, Box, Button, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
+import { Badge, Box, Button, IconButton, Menu, MenuItem, Typography } from '@mui/material';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import ClaimCorpseReward from './dialogs/ClaimCorpseReward';
 import ClaimSkullReward from './dialogs/ClaimSkullReward';
-import ClaimStarterPack from './dialogs/ClaimStarterPack';
+import ClaimTestMoney from './dialogs/ClaimTestMoney';
 
 const ClaimRewardsButton = () => {
   const { collection, adventurerCollection } = useGameStore();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [claimStarterPackDialog, setClaimStarterPackDialog] = useState(false);
   const [claimCorpseRewardDialog, setClaimCorpseRewardDialog] = useState(false);
   const [claimSkullRewardDialog, setClaimSkullRewardDialog] = useState(false);
+  const [claimTestMoneyDialog, setClaimTestMoneyDialog] = useState(false);
 
-  const unclaimedStarterPacks = collection.filter(beast => !beast.has_claimed_potions);
   const unclaimedSkullTokens = collection.reduce(
     (sum, beast) => sum + ((beast.adventurers_killed || 0) - (beast.kills_claimed || 0)),
     0,
   );
   const unclaimedCorpseTokens = adventurerCollection.reduce((sum, adventurer) => sum + adventurer.level, 0);
+  const unclaimedTestMoneyBeasts = collection.filter(b => !b.has_claimed_potions).length;
   const totalRewards =
-    unclaimedStarterPacks.length +
     (unclaimedSkullTokens > 0 ? 1 : 0) +
-    (unclaimedCorpseTokens > 0 ? 1 : 0);
+    (unclaimedCorpseTokens > 0 ? 1 : 0) +
+    (unclaimedTestMoneyBeasts > 0 ? 1 : 0);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -34,11 +34,6 @@ const ClaimRewardsButton = () => {
     setAnchorEl(null);
   };
 
-  const handleClaimBeastReward = () => {
-    setClaimStarterPackDialog(true);
-    handleClose();
-  };
-
   const handleClaimSkullReward = () => {
     setClaimSkullRewardDialog(true);
     handleClose();
@@ -46,6 +41,11 @@ const ClaimRewardsButton = () => {
 
   const handleClaimCorpseReward = () => {
     setClaimCorpseRewardDialog(true);
+    handleClose();
+  };
+
+  const handleClaimTestMoney = () => {
+    setClaimTestMoneyDialog(true);
     handleClose();
   };
 
@@ -86,20 +86,6 @@ const ClaimRewardsButton = () => {
           },
         }}
       >
-        {unclaimedStarterPacks.length > 0 && (
-          <MenuItem sx={styles.menuItem}>
-            <Box sx={styles.menuItemContent}>
-              <Box sx={styles.menuItemInfo}>
-                <Typography sx={styles.menuItemTitle}>Starter Pack</Typography>
-                <Typography sx={styles.menuItemSubtitle}>{unclaimedStarterPacks.length} beasts</Typography>
-              </Box>
-              <Button sx={styles.claimButton} onClick={handleClaimBeastReward}>
-                <Typography sx={styles.claimButtonText}>CLAIM</Typography>
-              </Button>
-            </Box>
-          </MenuItem>
-        )}
-
         {unclaimedSkullTokens > 0 && (
           <MenuItem sx={styles.menuItem}>
             <Box sx={styles.menuItemContent}>
@@ -127,14 +113,21 @@ const ClaimRewardsButton = () => {
             </Box>
           </MenuItem>
         )}
-      </Menu>
 
-      {claimStarterPackDialog && (
-        <ClaimStarterPack
-          open={claimStarterPackDialog}
-          close={() => setClaimStarterPackDialog(false)}
-        />
-      )}
+        {unclaimedTestMoneyBeasts > 0 && (
+          <MenuItem sx={styles.menuItem}>
+            <Box sx={styles.menuItemContent}>
+              <Box sx={styles.menuItemInfo}>
+                <Typography sx={styles.menuItemTitle}>Test Money</Typography>
+                <Typography sx={styles.menuItemSubtitle}>{unclaimedTestMoneyBeasts} beast{unclaimedTestMoneyBeasts !== 1 ? 's' : ''}</Typography>
+              </Box>
+              <Button sx={styles.claimButton} onClick={handleClaimTestMoney}>
+                <Typography sx={styles.claimButtonText}>CLAIM</Typography>
+              </Button>
+            </Box>
+          </MenuItem>
+        )}
+      </Menu>
 
       {claimCorpseRewardDialog && (
         <ClaimCorpseReward
@@ -147,6 +140,13 @@ const ClaimRewardsButton = () => {
         <ClaimSkullReward
           open={claimSkullRewardDialog}
           close={() => setClaimSkullRewardDialog(false)}
+        />
+      )}
+
+      {claimTestMoneyDialog && (
+        <ClaimTestMoney
+          open={claimTestMoneyDialog}
+          close={() => setClaimTestMoneyDialog(false)}
         />
       )}
     </>

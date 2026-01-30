@@ -90,10 +90,10 @@ All tests have `#[available_gas(gas: X)]` attributes to enforce gas budgets and 
 
 | Test Name | Gas Limit | Purpose |
 |-----------|-----------|---------|
-| `test_calculate_blocks_held_normal` | 55,000 | Block calculation |
-| `test_calculate_blocks_held_past_terminal` | 55,000 | Past terminal cap |
-| `test_calculate_blocks_held_taken_at_terminal` | 55,000 | At terminal boundary |
-| `test_calculate_blocks_held_taken_after_terminal` | 55,000 | After terminal |
+| `test_calculate_summit_held_seconds_normal` | 55,000 | Block calculation |
+| `test_calculate_summit_held_seconds_past_terminal` | 55,000 | Past terminal cap |
+| `test_calculate_summit_held_seconds_taken_at_terminal` | 55,000 | At terminal boundary |
+| `test_calculate_summit_held_seconds_taken_after_terminal` | 55,000 | After terminal |
 | `test_calculate_summit_rewards_no_diplomacy` | 90,000 | Reward calculation |
 | `test_calculate_summit_rewards_with_diplomacy` | 100,000 | With diplomacy beasts |
 | `test_calculate_summit_rewards_zero_blocks` | 70,000 | Zero blocks edge case |

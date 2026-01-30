@@ -1,16 +1,18 @@
 import { create } from 'zustand';
-import { Summit, Beast, Adventurer, BattleEvent, Leaderboard, PoisonEvent, selection } from '@/types/game';
+import { Summit, Beast, Adventurer, BattleEvent, SpectatorBattleEvent, Leaderboard, PoisonEvent, selection } from '@/types/game';
+import { LogEntry } from '@/api/summitApi';
 
-export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'blocks held';
+export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'seconds held';
 export type BeastTypeFilter = 'all' | 'strong';
+
+const MAX_LIVE_EVENTS = 100;
 
 interface GameState {
   summit: Summit | null;
   summitEnded: boolean;
-  onboarding: boolean;
   leaderboard: Leaderboard[];
   battleEvents: BattleEvent[];
-  spectatorBattleEvents: BattleEvent[];
+  spectatorBattleEvents: SpectatorBattleEvent[];
   poisonEvent: PoisonEvent | null;
   killedByAdventurers: number[];
   collection: Beast[];
@@ -26,6 +28,7 @@ interface GameState {
   attackMode: 'safe' | 'unsafe' | 'autopilot';
   autopilotEnabled: boolean;
   autopilotLog: string;
+  liveEvents: LogEntry[];
 
   // Beast Collection Filters
   hideDeadBeasts: boolean;
@@ -36,10 +39,9 @@ interface GameState {
 
   setSummit: (summit: Summit | null | ((prev: Summit | null) => Summit | null)) => void;
   setSummitEnded: (summitEnded: boolean) => void;
-  setOnboarding: (onboarding: boolean) => void;
   setLeaderboard: (leaderboard: Leaderboard[]) => void;
   setBattleEvents: (battleEvents: BattleEvent[]) => void;
-  setSpectatorBattleEvents: (spectatorBattleEvents: BattleEvent[] | ((prev: BattleEvent[]) => BattleEvent[])) => void;
+  setSpectatorBattleEvents: (spectatorBattleEvents: SpectatorBattleEvent[] | ((prev: SpectatorBattleEvent[]) => SpectatorBattleEvent[])) => void;
   setPoisonEvent: (poisonEvent: PoisonEvent | null) => void;
   setKilledByAdventurers: (killedByAdventurers: number[]) => void;
   setCollection: (collection: Beast[] | ((prev: Beast[]) => Beast[])) => void;
@@ -55,6 +57,8 @@ interface GameState {
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'autopilot') => void;
   setAutopilotEnabled: (autopilotEnabled: boolean) => void;
   setAutopilotLog: (autopilotLog: string) => void;
+  addLiveEvent: (event: LogEntry) => void;
+  clearLiveEvents: () => void;
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => void;
@@ -69,7 +73,6 @@ interface GameState {
 export const useGameStore = create<GameState>((set, get) => ({
   summit: null,
   summitEnded: false,
-  onboarding: false,
   leaderboard: [],
   battleEvents: [],
   spectatorBattleEvents: [],
@@ -85,9 +88,10 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectedAdventurers: [],
   appliedPoisonCount: 0,
   appliedExtraLifePotions: 0,
-  attackMode: 'safe',
+  attackMode: 'unsafe',
   autopilotEnabled: false,
   autopilotLog: '',
+  liveEvents: [],
 
   // Beast Collection Filters - Default Values
   hideDeadBeasts: false,
@@ -101,7 +105,6 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   disconnect: () => {
     set({
-      onboarding: false,
       battleEvents: [],
       spectatorBattleEvents: [],
       poisonEvent: null,
@@ -116,8 +119,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       selectedAdventurers: [],
       appliedExtraLifePotions: 0,
       appliedPoisonCount: 0,
-      attackMode: 'safe',
+      attackMode: 'unsafe',
       autopilotEnabled: false,
+      liveEvents: [],
       // Reset filters to defaults
       hideDeadBeasts: false,
       typeFilter: 'all',
@@ -129,10 +133,9 @@ export const useGameStore = create<GameState>((set, get) => ({
   setSummit: (summit: Summit | null | ((prev: Summit | null) => Summit | null)) =>
     set(state => ({ summit: typeof summit === 'function' ? summit(state.summit) : summit })),
   setSummitEnded: (summitEnded: boolean) => set({ summitEnded }),
-  setOnboarding: (onboarding: boolean) => set({ onboarding }),
   setLeaderboard: (leaderboard: Leaderboard[]) => set({ leaderboard }),
   setBattleEvents: (battleEvents: BattleEvent[]) => set({ battleEvents }),
-  setSpectatorBattleEvents: (spectatorBattleEvents: BattleEvent[] | ((prev: BattleEvent[]) => BattleEvent[])) =>
+  setSpectatorBattleEvents: (spectatorBattleEvents: SpectatorBattleEvent[] | ((prev: SpectatorBattleEvent[]) => SpectatorBattleEvent[])) =>
     set(state => ({ spectatorBattleEvents: typeof spectatorBattleEvents === 'function' ? spectatorBattleEvents(state.spectatorBattleEvents) : spectatorBattleEvents })),
   setPoisonEvent: (poisonEvent: PoisonEvent | null) => set({ poisonEvent }),
   setKilledByAdventurers: (killedByAdventurers: number[]) => set({ killedByAdventurers }),
@@ -151,6 +154,11 @@ export const useGameStore = create<GameState>((set, get) => ({
   setAttackMode: (attackMode: 'safe' | 'unsafe' | 'autopilot') => set({ attackMode }),
   setAutopilotEnabled: (autopilotEnabled: boolean) => set({ autopilotEnabled }),
   setAutopilotLog: (autopilotLog: string) => set({ autopilotLog }),
+  addLiveEvent: (event: LogEntry) =>
+    set(state => ({
+      liveEvents: [event, ...state.liveEvents].slice(0, MAX_LIVE_EVENTS),
+    })),
+  clearLiveEvents: () => set({ liveEvents: [] }),
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => set({ hideDeadBeasts }),

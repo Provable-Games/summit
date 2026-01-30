@@ -5,6 +5,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp';
 import RemoveIcon from '@mui/icons-material/Remove';
 import SettingsIcon from '@mui/icons-material/Settings';
 import {
@@ -24,6 +25,9 @@ import {
 } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 import AutopilotConfigModal from './dialogs/AutopilotConfigModal';
+import BeastDexModal from './dialogs/BeastDexModal';
+import BeastUpgradeModal from './dialogs/BeastUpgradeModal';
+import { MAX_BEASTS_PER_ATTACK } from '@/contexts/GameDirector';
 
 function ActionBar() {
   const { executeGameAction } = useGameDirector();
@@ -35,7 +39,7 @@ function ActionBar() {
 
   const { selectedBeasts, summit,
     attackInProgress,
-    applyingPotions, setApplyingPotions, appliedPoisonCount, setAppliedPoisonCount,
+    applyingPotions, setApplyingPotions, appliedPoisonCount, setAppliedPoisonCount, setBattleEvents, setAttackInProgress,
     collection, collectionSyncing, setSelectedBeasts, attackMode, setAttackMode, autopilotLog, setAutopilotLog,
     autopilotEnabled, setAutopilotEnabled, appliedExtraLifePotions, setAppliedExtraLifePotions } = useGameStore();
   const {
@@ -70,6 +74,9 @@ function ActionBar() {
   const [attackDropdownAnchor, setAttackDropdownAnchor] = useState<null | HTMLElement>(null);
   const [autopilotConfigOpen, setAutopilotConfigOpen] = useState(false);
   const [lastBeastAttacked, setLastBeastAttacked] = useState(null);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeBeast, setUpgradeBeast] = useState<Beast | null>(null);
+  const [beastDexFilterIds, setBeastDexFilterIds] = useState<number[] | null>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>, potion: any) => {
     setAnchorEl(event.currentTarget);
@@ -81,6 +88,15 @@ function ActionBar() {
     setPotion(null);
   };
 
+  const handleUpgradeClick = () => {
+    if (selectedBeasts.length === 1) {
+      setUpgradeBeast(selectedBeasts[0][0]);
+      setUpgradeModalOpen(true);
+    } else if (selectedBeasts.length > 1) {
+      setBeastDexFilterIds(selectedBeasts.map(b => b[0].token_id));
+    }
+  };
+
   const handleAttack = () => {
     if (!enableAttack) return;
 
@@ -89,7 +105,7 @@ function ActionBar() {
       pauseUpdates: true,
       beasts: selectedBeasts,
       safeAttack: attackMode === 'safe',
-      vrf: (selectedBeasts.find(selectedBeast => selectedBeast[0].stats.luck) || summit?.beast?.stats.luck) ? true : false,
+      vrf: (selectedBeasts.find(selectedBeast => selectedBeast[0].luck) || summit?.beast?.luck) ? true : false,
       attackPotions: appliedAttackPotions,
       revivePotions: revivalPotionsRequired,
       extraLifePotions: appliedExtraLifePotions,
@@ -139,14 +155,52 @@ function ActionBar() {
     return [];
   }, [summit?.beast?.token_id, collection.length, revivePotionsUsed, attackPotionsUsed]);
 
-  const handleAttackUntilCapture = (extraLifePotions) => {
+  const handleAttackUntilCapture = async (extraLifePotions) => {
     if (!enableAttack) return;
 
-    executeGameAction({
-      type: 'attack_until_capture',
-      beasts: collectionWithCombat.map((beast: Beast) => [beast, 1, beast.combat?.attackPotions || 0]),
-      extraLifePotions
-    });
+    setBattleEvents([]);
+    setAttackInProgress(true);
+
+    const BATCH_SIZE = MAX_BEASTS_PER_ATTACK;
+    const CONCURRENT_BATCHES = 10;
+    const allBeasts: [Beast, number, number][] = collectionWithCombat.map((beast: Beast) => [beast, 1, beast.combat?.attackPotions || 0]);
+
+    // Split into batches of MAX_BEASTS_PER_ATTACK
+    const batches: [Beast, number, number][][] = [];
+    for (let i = 0; i < allBeasts.length; i += BATCH_SIZE) {
+      batches.push(allBeasts.slice(i, i + BATCH_SIZE));
+    }
+
+    // Process batches in groups of 10
+    for (let groupStart = 0; groupStart < batches.length; groupStart += CONCURRENT_BATCHES) {
+      const groupBatches = batches.slice(groupStart, groupStart + CONCURRENT_BATCHES);
+      const promises: Promise<unknown>[] = [];
+
+      for (let i = 0; i < groupBatches.length; i++) {
+        // Fire the call without awaiting
+        promises.push(
+          executeGameAction({
+            type: 'attack_until_capture',
+            beasts: groupBatches[i],
+            extraLifePotions
+          })
+        );
+        // Wait 500ms before firing the next batch
+        if (i < groupBatches.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+
+      // Wait for all calls in this group to complete
+      const results = await Promise.all(promises);
+      const allSucceeded = results.every(res => res);
+
+      // If any failed, stop processing
+      if (!allSucceeded) {
+        setAttackInProgress(false);
+        break;
+      }
+    }
   }
 
   const handleApplyExtraLife = (amount: number) => {
@@ -248,7 +302,7 @@ function ActionBar() {
       setLastBeastAttacked(summit?.beast.token_id);
       handleAttackUntilCapture(extraLifePotions);
     } else if (attackStrategy === 'guaranteed') {
-      let beasts = collectionWithCombat.slice(0, 75)
+      let beasts = collectionWithCombat.slice(0, MAX_BEASTS_PER_ATTACK)
 
       let totalSummitHealth = ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health;
       let totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
@@ -407,7 +461,7 @@ function ActionBar() {
                             {attackMode === 'safe'
                               ? 'Safe Attack'
                               : attackMode === 'unsafe'
-                                ? 'Unsafe Attack'
+                                ? 'Attack'
                                 : 'Start Autopilot'}
                           </Typography>
                         </Box>
@@ -554,7 +608,7 @@ function ActionBar() {
                 </Tooltip>
               </Box>
 
-              <Box sx={styles.divider} />
+              <Box sx={styles.divider} mr={-1} />
 
               <Box sx={styles.potionSubGroup}>
                 <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
@@ -562,7 +616,7 @@ function ActionBar() {
                   <Typography sx={styles.tooltipText}>
                     {revivalPotionsRequired > 0
                       ? `${revivalPotionsRequired} required for attack`
-                      : 'Attack with your dead beasts'}
+                      : 'Used to attack with your dead beasts'}
                   </Typography>
                   {revivalPotionsRequired > tokenBalances["REVIVE"] && (
                     <Typography sx={styles.tooltipWarning}>
@@ -571,9 +625,8 @@ function ActionBar() {
                   )}
                 </Box>}>
                   <Box sx={[
-                    styles.potionButton,
-                    revivalPotionsRequired > 0 && styles.potionButtonActive,
-                    revivalPotionsRequired > tokenBalances["REVIVE"] && styles.potionButtonInsufficient
+                    styles.potionDisplay,
+                    revivalPotionsRequired > tokenBalances["REVIVE"] && styles.potionDisplayInsufficient
                   ]}>
                     <img src={revivePotionIcon} alt='' height={'32px'} />
                     {revivalPotionsRequired > 0 && (
@@ -598,15 +651,8 @@ function ActionBar() {
                       ? `${appliedAttackPotions * 10}% damage boost applied`
                       : 'Add 10% damage boost per potion'}
                   </Typography>
-                  <Typography sx={styles.tooltipSubtext}>
-                    Applied on next attack
-                  </Typography>
                 </Box>}>
-                  <Box sx={[
-                    styles.potionButton,
-                    appliedAttackPotions > 0 && styles.potionButtonActive,
-                    appliedAttackPotions > 0 && styles.potionButtonApplied,
-                  ]}>
+                  <Box sx={styles.potionDisplay}>
                     <img src={attackPotionIcon} alt='' height={'32px'} />
                     {appliedAttackPotions > 0 && (
                       <Box sx={styles.appliedIndicator}>
@@ -623,6 +669,24 @@ function ActionBar() {
                   </Box>
                 </Tooltip>
               </Box>
+
+              {selectedBeasts.length > 0 && (
+                <>
+                  <Box sx={styles.divider} />
+                  <Box sx={styles.potionSubGroup}>
+                    <Tooltip leaveDelay={300} placement='top' title={<Box sx={styles.tooltip}>
+                      <Typography sx={styles.tooltipTitle}>Upgrade Selected Beasts</Typography>
+                    </Box>}>
+                      <Box
+                        sx={[styles.potionButton, styles.potionButtonActive]}
+                        onClick={handleUpgradeClick}
+                      >
+                        <KeyboardDoubleArrowUpIcon sx={{ fontSize: 24, color: gameColors.brightGreen }} />
+                      </Box>
+                    </Tooltip>
+                  </Box>
+                </>
+              )}
             </>
           )}
         </>
@@ -633,6 +697,25 @@ function ActionBar() {
       <AutopilotConfigModal
         open={autopilotConfigOpen}
         close={() => setAutopilotConfigOpen(false)}
+      />
+    )}
+
+    {upgradeModalOpen && upgradeBeast && (
+      <BeastUpgradeModal
+        open={upgradeModalOpen}
+        beast={upgradeBeast}
+        close={() => {
+          setUpgradeModalOpen(false);
+          setUpgradeBeast(null);
+        }}
+      />
+    )}
+
+    {beastDexFilterIds && (
+      <BeastDexModal
+        open={!!beastDexFilterIds}
+        close={() => setBeastDexFilterIds(null)}
+        filterTokenIds={beastDexFilterIds}
       />
     )}
 
@@ -663,6 +746,23 @@ function ActionBar() {
     >
       <MenuItem
         onClick={() => {
+          setAttackMode('unsafe');
+          setAttackDropdownAnchor(null);
+        }}
+        sx={{
+          ...styles.menuItem,
+          backgroundColor: attackMode === 'unsafe' ? `${gameColors.brightGreen}20` : 'transparent',
+        }}
+      >
+        <Box>
+          <Typography sx={styles.menuItemTitle}>Attack</Typography>
+          <Typography sx={styles.menuItemDescription}>
+            Attack no matter what
+          </Typography>
+        </Box>
+      </MenuItem>
+      <MenuItem
+        onClick={() => {
           setAttackMode('safe');
           setAttackDropdownAnchor(null);
         }}
@@ -675,23 +775,6 @@ function ActionBar() {
           <Typography sx={styles.menuItemTitle}>Safe Attack</Typography>
           <Typography sx={styles.menuItemDescription}>
             Attack only if Summit beast hasn't changed
-          </Typography>
-        </Box>
-      </MenuItem>
-      <MenuItem
-        onClick={() => {
-          setAttackMode('unsafe');
-          setAttackDropdownAnchor(null);
-        }}
-        sx={{
-          ...styles.menuItem,
-          backgroundColor: attackMode === 'unsafe' ? `${gameColors.brightGreen}20` : 'transparent',
-        }}
-      >
-        <Box>
-          <Typography sx={styles.menuItemTitle}>Unsafe Attack</Typography>
-          <Typography sx={styles.menuItemDescription}>
-            Attack no matter what
           </Typography>
         </Box>
       </MenuItem>
@@ -962,18 +1045,18 @@ function ActionBar() {
           // Calculate total health pool
           const maxHealth = summit.beast.health + summit.beast.bonus_health;
           const totalHealthPool = (summit.beast.extra_lives || 0) * maxHealth + summit.beast.current_health;
-          
+
           // Calculate damage per second (including existing poison)
           const totalPoisonDps = summit.poison_count + appliedPoisonCount;
-          
+
           // Calculate time to kill
           const secondsToKill = Math.ceil(totalHealthPool / totalPoisonDps);
-          
+
           // Format time
           const hours = Math.floor(secondsToKill / 3600);
           const minutes = Math.floor((secondsToKill % 3600) / 60);
           const seconds = secondsToKill % 60;
-          
+
           let timeString = '';
           if (hours > 0) {
             timeString = `${hours}h ${minutes}m ${seconds}s`;
@@ -984,9 +1067,9 @@ function ActionBar() {
           }
 
           return (
-            <Box sx={{ 
-              width: '100%', 
-              mt: 1, 
+            <Box sx={{
+              width: '100%',
+              mt: 1,
               px: 1,
               py: 0.5,
               boxSizing: 'border-box',
@@ -994,8 +1077,8 @@ function ActionBar() {
               border: `1px solid ${gameColors.brightGreen}30`,
               borderRadius: '4px',
             }}>
-              <Typography sx={{ 
-                fontSize: '12px', 
+              <Typography sx={{
+                fontSize: '12px',
                 color: gameColors.brightGreen,
                 textAlign: 'center',
                 fontWeight: 500,
@@ -1409,6 +1492,22 @@ const styles = {
       boxShadow: `0 4px 8px rgba(0, 0, 0, 0.3)`,
       opacity: 0.8,
     }
+  },
+  potionDisplay: {
+    position: 'relative',
+    width: '40px',
+    height: '40px',
+    borderRadius: '8px',
+    background: 'transparent',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.9,
+  },
+  potionDisplayInsufficient: {
+    '& img': {
+      filter: 'grayscale(0.5) brightness(0.8)',
+    },
   },
   configButton: {
     width: '40px',
