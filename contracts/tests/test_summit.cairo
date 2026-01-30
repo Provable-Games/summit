@@ -320,43 +320,6 @@ fn test_apply_poison() {
 }
 
 // ===========================================
-// REWARD FUNCTIONS TESTS
-// ===========================================
-
-#[test]
-#[fork("mainnet")]
-fn test_claim_starter_pack_basic() {
-    let summit = deploy_summit_and_start();
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    mock_erc20_transfer(summit.get_attack_potion_address(), true);
-    mock_erc20_transfer(summit.get_poison_potion_address(), true);
-    mock_erc20_transfer(summit.get_revive_potion_address(), true);
-    mock_erc20_transfer(summit.get_extra_life_potion_address(), true);
-    mock_erc20_mint(summit.get_skull_token_address(), true);
-
-    let beast_token_ids = array![60989].span();
-    summit.claim_starter_pack(beast_token_ids);
-
-    stop_cheat_caller_address(summit.contract_address);
-}
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: ('Not token owner',))]
-fn test_claim_starter_pack_not_owner() {
-    let summit = deploy_summit_and_start();
-
-    let fake_owner: ContractAddress = 0x123.try_into().unwrap();
-    start_cheat_caller_address(summit.contract_address, fake_owner);
-
-    let beast_token_ids = array![60989].span();
-    summit.claim_starter_pack(beast_token_ids);
-
-    stop_cheat_caller_address(summit.contract_address);
-}
-
-// ===========================================
 // SUMMIT AND LEADERBOARD FUNCTIONS TESTS
 // ===========================================
 
@@ -468,9 +431,9 @@ fn test_get_start_timestamp() {
 
 #[test]
 #[fork("mainnet")]
-fn test_get_terminal_block() {
+fn test_get_terminal_timestamp() {
     let summit = deploy_summit_and_start();
-    let terminal_block = summit.get_terminal_block();
+    let terminal_block = summit.get_terminal_timestamp();
     assert(terminal_block > 0, 'Terminal block not set');
 }
 
@@ -478,7 +441,7 @@ fn test_get_terminal_block() {
 #[fork("mainnet")]
 fn test_get_submission_blocks() {
     let summit = deploy_summit();
-    let submission_blocks = summit.get_beast_submission_blocks();
+    let submission_blocks = summit.get_beast_submission_seconds();
     assert(submission_blocks == 100_u64, 'Wrong submission blocks');
 }
 
@@ -549,8 +512,8 @@ fn test_add_beast_to_leaderboard_before_terminal() {
 #[should_panic(expected: ('Submission period over',))]
 fn test_add_beast_to_leaderboard_after_submission() {
     let summit = deploy_summit_and_start();
-    let terminal_block = summit.get_terminal_block();
-    let submission_blocks = summit.get_beast_submission_blocks();
+    let terminal_block = summit.get_terminal_timestamp();
+    let submission_blocks = summit.get_beast_submission_seconds();
 
     // Set block past submission window
     start_cheat_block_number_global(terminal_block + submission_blocks + 1);
@@ -567,7 +530,7 @@ fn test_add_beast_to_leaderboard_after_submission() {
 #[should_panic(expected: ('Invalid position',))]
 fn test_add_beast_to_leaderboard_invalid_position_zero() {
     let summit = deploy_summit_and_start();
-    let terminal_block = summit.get_terminal_block();
+    let terminal_block = summit.get_terminal_timestamp();
 
     start_cheat_block_number_global(terminal_block + 1);
 
@@ -583,7 +546,7 @@ fn test_add_beast_to_leaderboard_invalid_position_zero() {
 #[should_panic(expected: ('Invalid position',))]
 fn test_add_beast_to_leaderboard_invalid_position_too_high() {
     let summit = deploy_summit_and_start();
-    let terminal_block = summit.get_terminal_block();
+    let terminal_block = summit.get_terminal_timestamp();
     let top_spots = summit.get_beast_top_spots();
 
     start_cheat_block_number_global(terminal_block + 1);
@@ -600,7 +563,7 @@ fn test_add_beast_to_leaderboard_invalid_position_too_high() {
 #[should_panic(expected: "Beast has no rewards earned")]
 fn test_add_beast_to_leaderboard_no_summit_held_seconds() {
     let summit = deploy_summit_and_start();
-    let terminal_block = summit.get_terminal_block();
+    let terminal_block = summit.get_terminal_timestamp();
 
     start_cheat_block_number_global(terminal_block + 1);
 
@@ -618,7 +581,7 @@ fn test_add_beast_to_leaderboard_no_summit_held_seconds() {
 #[should_panic(expected: ('Submission not over',))]
 fn test_distribute_beast_tokens_before_submission_ends() {
     let summit = deploy_summit_and_start();
-    let terminal_block = summit.get_terminal_block();
+    let terminal_block = summit.get_terminal_timestamp();
 
     // Set block to during submission window
     start_cheat_block_number_global(terminal_block + 1);
@@ -1048,7 +1011,7 @@ fn test_feed_summit_beast() {
 #[fork("mainnet")]
 fn test_get_summit_duration_blocks() {
     let summit = deploy_summit();
-    let duration = summit.get_summit_duration_blocks();
+    let duration = summit.get_summit_duration_seconds();
     assert(duration == 1000000_u64, 'Wrong summit duration');
 }
 
@@ -1056,7 +1019,7 @@ fn test_get_summit_duration_blocks() {
 #[fork("mainnet")]
 fn test_get_summit_reward_amount() {
     let summit = deploy_summit();
-    let amount = summit.get_summit_reward_amount();
+    let amount = summit.get_summit_reward_amount_per_second();
     assert(amount == 0, 'Wrong summit reward amount');
 }
 
@@ -1142,32 +1105,6 @@ fn test_apply_poison_not_summit_beast() {
 
     // Try to poison beast that's not on summit
     summit.apply_poison(60989, 5);
-
-    stop_cheat_caller_address(summit.contract_address);
-}
-
-// ===========================================
-// CLAIM BEAST REWARD EDGE CASES
-// ===========================================
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: ('Already claimed potions',))]
-fn test_claim_starter_pack_twice() {
-    let summit = deploy_summit_and_start();
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    mock_erc20_transfer(summit.get_attack_potion_address(), true);
-    mock_erc20_transfer(summit.get_poison_potion_address(), true);
-    mock_erc20_transfer(summit.get_revive_potion_address(), true);
-    mock_erc20_transfer(summit.get_extra_life_potion_address(), true);
-    mock_erc20_mint(summit.get_skull_token_address(), true);
-
-    let beast_token_ids = array![60989].span();
-    summit.claim_starter_pack(beast_token_ids);
-
-    // Try to claim again
-    summit.claim_starter_pack(beast_token_ids);
 
     stop_cheat_caller_address(summit.contract_address);
 }
@@ -1481,12 +1418,6 @@ fn test_withdraw_funds_non_owner() {
     stop_cheat_caller_address(summit.contract_address);
 }
 
-// Note: test_claim_starter_pack_multiple_beasts - requires multiple beasts owned by same player.
-// REAL_PLAYER owns beast 60989 on mainnet. Testing with multiple beasts would need either:
-// - A player who owns multiple beasts, or
-// - Mocking the NFT ownership check
-// The single-beast claim is already tested in test_claim_starter_pack_basic.
-
 // ==========================
 // P0 TESTS: ACCESS CONTROL
 // ==========================
@@ -1625,7 +1556,7 @@ fn test_attack_unused_revival_potions() {
 // Note: Full summit_held_seconds tracking requires multi-player scenarios where one beast takes
 // the summit from another, which updates summit_held_seconds. With single-player fork testing,
 // we can only verify the basic attack flow. The summit_held_seconds accumulation is implicitly
-// tested by test_claim_starter_pack_basic which requires summit_held_seconds > 0.
+// tested by test_claim_summit_basic which requires summit_held_seconds > 0.
 #[test]
 #[fork("mainnet")]
 fn test_summit_beast_can_be_attacked() {
