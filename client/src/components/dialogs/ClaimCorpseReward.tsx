@@ -6,7 +6,7 @@ import { Box, Button, Dialog, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
 
-const LIMIT = 300;
+const LIMIT = 200;
 
 function ClaimCorpseReward(props) {
   const { open, close, isOnboarding = false } = props
