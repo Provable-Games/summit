@@ -155,18 +155,3 @@ export interface DiplomacyEvent {
   power: number;
   owner: string | null;
 }
-
-import { NETWORKS } from '@/utils/networkConfig';
-import { HistoricalToriiQueryBuilder } from '@dojoengine/sdk';
-
-export class GameQueryBuilder extends HistoricalToriiQueryBuilder<any> { }
-
-export const getEntityModel = (entity: any, modelName: string) => {
-  let namespace = NETWORKS.SN_MAIN.namespace
-  return entity?.models[`${namespace}`]?.[modelName]
-};
-
-export const getDeathMountainModel = (entity: any, modelName: string) => {
-  let namespace = "ls_0_0_9"
-  return entity?.models[`${namespace}`]?.[modelName]
-};

@@ -14,6 +14,7 @@ pub trait ISummitSystem<T> {
     ) -> (u32, u32, u16);
     fn feed(ref self: T, beast_token_id: u32, amount: u16);
     fn claim_rewards(ref self: T, beast_token_ids: Span<u32>);
+    fn claim_test_money(ref self: T, beast_token_ids: Span<u32>);
 
     fn add_extra_life(ref self: T, beast_token_id: u32, extra_life_potions: u16);
     fn apply_stat_points(ref self: T, beast_token_id: u32, stats: Stats);
@@ -292,6 +293,34 @@ pub mod summit_systems {
             // Emit events
             self.emit(BeastUpdatesEvent { beast_updates: beast_updates.span() });
             self.emit(RewardsClaimedEvent { player: caller, amount: total_claimable });
+        }
+
+        fn claim_test_money(ref self: ContractState, beast_token_ids: Span<u32>) {
+            assert(InternalSummitImpl::_summit_playable(@self), 'Summit not playable');
+
+            let beast_dispatcher = self.beast_dispatcher.read();
+
+            let mut potion_rewards: u256 = 0;
+
+            let mut i = 0;
+            while (i < beast_token_ids.len()) {
+                let beast_token_id = *beast_token_ids.at(i);
+                if (beast_dispatcher.owner_of(beast_token_id.into()) != get_caller_address()) {
+                    i += 1;
+                    continue;
+                }
+
+                let mut beast_stats = InternalSummitImpl::_get_live_stats(@self, beast_token_id);
+                assert(beast_stats.has_claimed_potions == 0, 'Already claimed potions');
+
+                potion_rewards += 5;
+                beast_stats.has_claimed_potions = 1;
+
+                self._save_live_stats(beast_stats);
+                i += 1;
+            }
+
+            self.test_money_dispatcher.read().transfer(get_caller_address(), potion_rewards * TOKEN_DECIMALS);
         }
 
         fn add_extra_life(ref self: ContractState, beast_token_id: u32, extra_life_potions: u16) {

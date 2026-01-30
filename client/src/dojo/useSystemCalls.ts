@@ -191,7 +191,7 @@ export const useSystemCalls = () => {
   const claimBeastReward = (beastIds: number[]) => {
     return {
       contractAddress: SUMMIT_ADDRESS,
-      entrypoint: "claim_starter_pack",
+      entrypoint: "claim_test_money",
       calldata: CallData.compile([beastIds]),
     };
   };
