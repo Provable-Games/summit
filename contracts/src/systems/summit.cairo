@@ -301,6 +301,7 @@ pub mod summit_systems {
             let beast_dispatcher = self.beast_dispatcher.read();
 
             let mut potion_rewards: u256 = 0;
+            let mut beast_updates: Array<felt252> = array![];
 
             let mut i = 0;
             while (i < beast_token_ids.len()) {
@@ -316,11 +317,14 @@ pub mod summit_systems {
                 potion_rewards += 5;
                 beast_stats.has_claimed_potions = 1;
 
-                self._save_live_stats(beast_stats);
+                // Write beast and collect packed stats
+                let packed = self._save_live_stats(beast_stats);
+                beast_updates.append(packed);
                 i += 1;
             }
 
             self.test_money_dispatcher.read().transfer(get_caller_address(), potion_rewards * TOKEN_DECIMALS);
+            self.emit(BeastUpdatesEvent { beast_updates: beast_updates.span() });
         }
 
         fn add_extra_life(ref self: ContractState, beast_token_id: u32, extra_life_potions: u16) {
