@@ -74,13 +74,13 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
     killTokenCost += luckUpgrade * UPGRADE_COSTS.luck_per_level;
     killTokenCost += spiritUpgrade * UPGRADE_COSTS.spirit_per_level;
 
-    if (diplomacySelected && !currentBeast?.stats?.diplomacy) {
+    if (diplomacySelected && !currentBeast?.diplomacy) {
       killTokenCost += UPGRADE_COSTS.diplomacy;
     }
-    if (specialsSelected && !currentBeast?.stats?.specials) {
+    if (specialsSelected && !currentBeast?.specials) {
       killTokenCost += UPGRADE_COSTS.specials;
     }
-    if (wisdomSelected && !currentBeast?.stats?.wisdom) {
+    if (wisdomSelected && !currentBeast?.wisdom) {
       killTokenCost += UPGRADE_COSTS.wisdom;
     }
 
@@ -133,7 +133,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   };
 
   const adjustStat = (stat: 'luck' | 'spirit', delta: number) => {
-    const currentValue = stat === 'luck' ? currentBeast.stats?.luck || 0 : currentBeast.stats?.spirit || 0;
+    const currentValue = stat === 'luck' ? currentBeast.luck || 0 : currentBeast.spirit || 0;
     const currentUpgrade = stat === 'luck' ? luckUpgrade : spiritUpgrade;
     const setter = stat === 'luck' ? setLuckUpgrade : setSpiritUpgrade;
 
@@ -145,8 +145,8 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
     return null;
   }
 
-  const currentLuck = currentBeast.stats?.luck || 0;
-  const currentSpirit = currentBeast.stats?.spirit || 0;
+  const currentLuck = currentBeast.luck || 0;
+  const currentSpirit = currentBeast.spirit || 0;
 
   const formatShortDuration = (seconds: number): string => {
     const s = Math.max(0, Math.floor(seconds));
@@ -438,10 +438,10 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                 <Box
                   sx={[
                     styles.abilitySlot,
-                    currentBeast.stats?.specials && styles.abilityUnlocked,
-                    !currentBeast.stats?.specials && specialsSelected && styles.abilitySelected,
+                    currentBeast.specials && styles.abilityUnlocked,
+                    !currentBeast.specials && specialsSelected && styles.abilitySelected,
                   ]}
-                  onClick={() => !currentBeast.stats?.specials && setSpecialsSelected(!specialsSelected)}
+                  onClick={() => !currentBeast.specials && setSpecialsSelected(!specialsSelected)}
                 >
                   <Box sx={styles.abilityIconHolder}>
                     <StarIcon sx={{ fontSize: '28px', color: '#ffd700' }} />
@@ -450,7 +450,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                   <Typography sx={[styles.abilityDescription, styles.abilityDescriptionArea]}>
                     Unlocks name match bonus damage
                   </Typography>
-                  {currentBeast.stats?.specials ? (
+                  {currentBeast.specials ? (
                     <Box sx={styles.abilityCheck}>✓</Box>
                   ) : (
                     <Box sx={styles.abilityCost}>
@@ -463,10 +463,10 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                 <Box
                   sx={[
                     styles.abilitySlot,
-                    currentBeast.stats?.diplomacy && styles.abilityUnlocked,
-                    !currentBeast.stats?.diplomacy && diplomacySelected && styles.abilitySelected,
+                    currentBeast.diplomacy && styles.abilityUnlocked,
+                    !currentBeast.diplomacy && diplomacySelected && styles.abilitySelected,
                   ]}
-                  onClick={() => !currentBeast.stats?.diplomacy && setDiplomacySelected(!diplomacySelected)}
+                  onClick={() => !currentBeast.diplomacy && setDiplomacySelected(!diplomacySelected)}
                 >
                   <Box sx={styles.abilityIconHolder}>
                     <HandshakeIcon sx={{ fontSize: '28px', color: '#a78bfa' }} />
@@ -475,7 +475,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                   <Typography sx={[styles.abilityDescription, styles.abilityDescriptionArea]}>
                     Empower and share rewards of other "{currentBeast.prefix} {currentBeast.suffix}" beasts.
                   </Typography>
-                  {currentBeast.stats?.diplomacy ? (
+                  {currentBeast.diplomacy ? (
                     <Box sx={styles.abilityCheck}>✓</Box>
                   ) : (
                     <Box sx={styles.abilityCost}>
@@ -488,10 +488,10 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                 <Box
                   sx={[
                     styles.abilitySlot,
-                    currentBeast.stats?.wisdom && styles.abilityUnlocked,
-                    !currentBeast.stats?.wisdom && wisdomSelected && styles.abilitySelected,
+                    currentBeast.wisdom && styles.abilityUnlocked,
+                    !currentBeast.wisdom && wisdomSelected && styles.abilitySelected,
                   ]}
-                  onClick={() => !currentBeast.stats?.wisdom && setWisdomSelected(!wisdomSelected)}
+                  onClick={() => !currentBeast.wisdom && setWisdomSelected(!wisdomSelected)}
                 >
                   <Box sx={styles.abilityIconHolder}>
                     <PsychologyIcon sx={{ fontSize: '28px', color: '#60a5fa' }} />
@@ -500,7 +500,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
                   <Typography sx={[styles.abilityDescription, styles.abilityDescriptionArea]}>
                     Gain XP when successfully defending attacks on the Summit.
                   </Typography>
-                  {currentBeast.stats?.wisdom ? (
+                  {currentBeast.wisdom ? (
                     <Box sx={styles.abilityCheck}>✓</Box>
                   ) : (
                     <Box sx={styles.abilityCost}>
