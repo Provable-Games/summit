@@ -124,7 +124,7 @@ const createEmptyTokenQuotesState = () => ({ ...EMPTY_TOKEN_QUOTES_STATE });
 export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { open, close } = props;
   const { currentNetworkConfig } = useDynamicConnector();
-  const { tokenBalances, fetchPaymentTokenBalances } = useController();
+  const { tokenBalances, setTokenBalances, fetchPaymentTokenBalances } = useController();
   const { tokenPrices, refreshTokenPrices } = useStatistics();
   const { provider } = useProvider();
   const { executeAction } = useSystemCalls();
@@ -577,6 +577,21 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         let result = await executeAction(calls, () => { });
 
         if (result) {
+          // Optimistically update token balances
+          const updatedBalances = { ...tokenBalances };
+          // Decrease payment token balance
+          if (selectedTokenData) {
+            updatedBalances[selectedToken] = (updatedBalances[selectedToken] || 0) - totalTokenCost;
+          }
+          // Increase potion balances
+          for (const potion of POTIONS) {
+            const quantity = quantities[potion.id];
+            if (quantity > 0) {
+              updatedBalances[potion.id] = (updatedBalances[potion.id] || 0) + quantity;
+            }
+          }
+          setTokenBalances(updatedBalances);
+
           quotedPotions.forEach((q) => applyOptimisticPrice(q.id, q.quote, 'buy'));
           resetAfterAction();
         }
@@ -635,6 +650,21 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         const result = await executeAction(calls, () => { });
 
         if (result) {
+          // Optimistically update token balances
+          const updatedBalances = { ...tokenBalances };
+          // Decrease potion balances
+          for (const potion of POTIONS) {
+            const quantity = sellQuantities[potion.id];
+            if (quantity > 0) {
+              updatedBalances[potion.id] = Math.max(0, (updatedBalances[potion.id] || 0) - quantity);
+            }
+          }
+          // Increase receive token balance
+          if (selectedReceiveTokenData) {
+            updatedBalances[selectedReceiveToken] = (updatedBalances[selectedReceiveToken] || 0) + totalReceiveAmount;
+          }
+          setTokenBalances(updatedBalances);
+
           // Apply optimistic pricing for sells based on the quote used
           POTIONS.forEach((potion) => {
             if (sellQuantities[potion.id] > 0) {
