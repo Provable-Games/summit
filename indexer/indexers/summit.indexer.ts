@@ -653,14 +653,23 @@ function collectBeastStatChangeLogs(
 ): number {
   let derived_offset = 0;
 
-  // If no previous stats, this is a new beast - no changes to detect
-  if (!prev_stats) {
-    return derived_offset;
-  }
+  // If no previous stats, treat as default values (all zeros)
+  // This allows detecting upgrades for beasts without existing beast_stats records
+  const effective_prev_stats: BeastStatsSnapshot = prev_stats ?? {
+    token_id: new_stats.token_id,
+    spirit: 0,
+    luck: 0,
+    specials: 0,
+    wisdom: 0,
+    diplomacy: 0,
+    bonus_health: 0,
+    extra_lives: 0,
+    has_claimed_potions: 0,
+  };
 
   // Check each stat for increases
   for (const { field, sub_category } of STAT_UPGRADES) {
-    const old_value = prev_stats[field];
+    const old_value = effective_prev_stats[field];
     const new_value = new_stats[field];
 
     if (new_value > old_value) {
@@ -1308,6 +1317,30 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                     indexed_at,
                   });
                 }
+
+                // Collect derived events (stat changes)
+                collectBeastStatChangeLogs(
+                  batches,
+                  prev_stats,
+                  {
+                    token_id: stats.token_id,
+                    spirit: stats.spirit,
+                    luck: stats.luck,
+                    specials: stats.specials,
+                    wisdom: stats.wisdom,
+                    diplomacy: stats.diplomacy,
+                    bonus_health: stats.bonus_health,
+                    extra_lives: stats.extra_lives,
+                    has_claimed_potions: stats.has_claimed_potions,
+                  },
+                  beast_metadata,
+                  beast_owner,
+                  event_index * 100 + i, // Unique event_index per update in batch
+                  block_number,
+                  transaction_hash,
+                  block_timestamp,
+                  indexed_at,
+                );
 
                 // Update context map with new stats so subsequent events in same block see updated state
                 beastContextMap.set(stats.token_id, {
