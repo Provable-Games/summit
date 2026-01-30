@@ -5,7 +5,7 @@ import { gameColors } from '@/utils/themes';
 import { Box, Button, Dialog, Typography } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 
-const LIMIT = 500;
+const LIMIT = 300;
 
 function ClaimTestMoney(props) {
   const { open, close } = props;
