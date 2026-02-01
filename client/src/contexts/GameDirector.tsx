@@ -37,7 +37,7 @@ export interface GameDirectorContext {
 export const START_TIMESTAMP = 1769683726;
 export const SUMMIT_DURATION_SECONDS = 4320000;
 export const SUMMIT_REWARDS_PER_SECOND = 0.01;
-export const MAX_BEASTS_PER_ATTACK = 300;
+export const MAX_BEASTS_PER_ATTACK = 295;
 
 const GameDirectorContext = createContext<GameDirectorContext>(
   {} as GameDirectorContext

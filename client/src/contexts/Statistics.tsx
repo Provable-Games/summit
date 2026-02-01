@@ -4,6 +4,7 @@ import { NETWORKS } from "@/utils/networkConfig";
 import {
   createContext,
   PropsWithChildren,
+  useCallback,
   useContext,
   useEffect,
   useState,
