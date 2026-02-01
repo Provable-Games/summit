@@ -182,8 +182,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   useEffect(() => {
     if (open) {
       fetchPaymentTokenBalances();
-      refreshTokenPrices();
-
       setQuantities(createEmptyQuantities());
       setSellQuantities(createEmptyQuantities());
 
@@ -230,12 +228,13 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     if (!open) return;
 
     refreshTokenPrices();
+
     const intervalId = setInterval(() => {
       refreshTokenPrices();
     }, 60000);
 
     return () => clearInterval(intervalId);
-  }, [open, refreshTokenPrices]);
+  }, [open]);
 
   const totalItems = activeTab === 0
     ? Object.values(quantities).reduce((sum, qty) => sum + qty, 0)
