@@ -51,7 +51,9 @@ export interface Beast {
   revival_count: number;
   revival_time: number;
   extra_lives: number;
-  has_claimed_potions: boolean;
+  captured_summit: boolean;
+  used_revival_potion: boolean;
+  used_attack_potion: boolean;
   summit_held_seconds: number;
   spirit: number;
   luck: number;

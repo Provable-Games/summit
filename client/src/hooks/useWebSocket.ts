@@ -22,7 +22,9 @@ export interface SummitData {
   last_death_timestamp: number;
   revival_count: number;
   extra_lives: number;
-  has_claimed_potions: boolean;
+  captured_summit: boolean;
+  used_revival_potion: boolean;
+  used_attack_potion: boolean;
   summit_held_seconds: number;
   spirit: number;
   luck: number;

@@ -1,14 +1,10 @@
-1. Attack the Summit: 0.04 SURVIVOR
-2. Attack streak
-    2.1 three streak: 0.01
-    2.2 five streak: 0.02
-    2.3 ten streak: 0.03
+1. Attack the Summit: 0.05 SURVIVOR
 
-3. Buy revival potion and attack with dead beast: 0.1
-4. Buy attack potion & attack using the potion: 0.1
+3. Buy revival potion and attack with dead beast: 0.05
+4. Buy attack potion & attack using the potion: 0.05
 
 5. Take Summit: 0.05
-5.1 Held Summit for 10 seconds: 0.05
+5.1 Held Summit for 10 seconds: 0.1
 
 6. Level up beast
     6.1 One level: 0.02

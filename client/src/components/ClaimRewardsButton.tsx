@@ -6,25 +6,19 @@ import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import ClaimCorpseReward from './dialogs/ClaimCorpseReward';
 import ClaimSkullReward from './dialogs/ClaimSkullReward';
-import ClaimTestMoney from './dialogs/ClaimTestMoney';
 
 const ClaimRewardsButton = () => {
   const { collection, adventurerCollection } = useGameStore();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [claimCorpseRewardDialog, setClaimCorpseRewardDialog] = useState(false);
   const [claimSkullRewardDialog, setClaimSkullRewardDialog] = useState(false);
-  const [claimTestMoneyDialog, setClaimTestMoneyDialog] = useState(false);
-
+  
   const unclaimedSkullTokens = collection.reduce(
     (sum, beast) => sum + ((beast.adventurers_killed || 0) - (beast.kills_claimed || 0)),
     0,
   );
   const unclaimedCorpseTokens = adventurerCollection.reduce((sum, adventurer) => sum + adventurer.level, 0);
-  const unclaimedTestMoneyBeasts = collection.filter(b => !b.has_claimed_potions).length;
-  const totalRewards =
-    (unclaimedSkullTokens > 0 ? 1 : 0) +
-    (unclaimedCorpseTokens > 0 ? 1 : 0) +
-    (unclaimedTestMoneyBeasts > 0 ? 1 : 0);
+  const totalRewards = (unclaimedSkullTokens > 0 ? 1 : 0) + (unclaimedCorpseTokens > 0 ? 1 : 0);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -44,11 +38,7 @@ const ClaimRewardsButton = () => {
     handleClose();
   };
 
-  const handleClaimTestMoney = () => {
-    setClaimTestMoneyDialog(true);
-    handleClose();
-  };
-
+  
   if (totalRewards === 0) {
     return null;
   }
@@ -113,20 +103,6 @@ const ClaimRewardsButton = () => {
             </Box>
           </MenuItem>
         )}
-
-        {unclaimedTestMoneyBeasts > 0 && (
-          <MenuItem sx={styles.menuItem}>
-            <Box sx={styles.menuItemContent}>
-              <Box sx={styles.menuItemInfo}>
-                <Typography sx={styles.menuItemTitle}>Test Money</Typography>
-                <Typography sx={styles.menuItemSubtitle}>{unclaimedTestMoneyBeasts} beast{unclaimedTestMoneyBeasts !== 1 ? 's' : ''}</Typography>
-              </Box>
-              <Button sx={styles.claimButton} onClick={handleClaimTestMoney}>
-                <Typography sx={styles.claimButtonText}>CLAIM</Typography>
-              </Button>
-            </Box>
-          </MenuItem>
-        )}
       </Menu>
 
       {claimCorpseRewardDialog && (
@@ -143,13 +119,7 @@ const ClaimRewardsButton = () => {
         />
       )}
 
-      {claimTestMoneyDialog && (
-        <ClaimTestMoney
-          open={claimTestMoneyDialog}
-          close={() => setClaimTestMoneyDialog(false)}
-        />
-      )}
-    </>
+          </>
   );
 };
 

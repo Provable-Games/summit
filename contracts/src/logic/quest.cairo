@@ -8,9 +8,50 @@ pub struct QuestRewardsClaimed {
 
 // Bit shift constants for packing
 const TWO_POW_8: felt252 = 0x100; // 2^8
+use summit::logic::beast_utils;
+use summit::models::beast::Beast;
 
-/// Pack poison state into a single felt252
-/// Layout: [timestamp (64 bits)][count (16 bits)]
+#[inline(always)]
+pub fn calculate_quest_rewards(beast: Beast) -> u8 {
+    let mut total_rewards: u8 = 0;
+
+    if beast.live.last_death_timestamp > 0 {
+        total_rewards += 5;
+    }
+
+    let bonus_levels = beast_utils::get_bonus_levels(beast.fixed.level, beast.live.bonus_xp);
+    if bonus_levels >= 5 {
+        total_rewards += 5;
+    } else if bonus_levels >= 3 {
+        total_rewards += 3;
+    } else if bonus_levels >= 1 {
+        total_rewards += 2;
+    }
+
+    if beast.live.quest.used_revival_potion == 1 {
+        total_rewards += 10;
+    }
+
+    if beast.live.quest.used_attack_potion == 1 {
+        total_rewards += 10;
+    }
+
+    if beast.live.quest.captured_summit == 1 {
+        total_rewards += 5;
+    }
+
+    if beast.live.summit_held_seconds >= 10 {
+        total_rewards += 10;
+    }
+
+    if beast.live.stats.diplomacy == 1 {
+        total_rewards += 10;
+    }
+
+    total_rewards
+}
+
+
 #[inline(always)]
 pub fn pack_quest_rewards_claimed(beast_token_id: u32, amount: u8) -> felt252 {
     let beast_token_id_felt: felt252 = beast_token_id.into();
@@ -19,7 +60,6 @@ pub fn pack_quest_rewards_claimed(beast_token_id: u32, amount: u8) -> felt252 {
 }
 
 /// Unpack quest rewards claimed from a single felt252
-/// @return (timestamp, count)
 #[inline(always)]
 pub fn unpack_quest_rewards_claimed(packed: felt252) -> (u32, u8) {
     let packed_u256: u256 = packed.into();

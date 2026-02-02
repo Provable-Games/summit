@@ -61,7 +61,9 @@ const transformAllBeast = (ab: AllBeast): Beast => {
     attack_streak: 0,
     last_death_timestamp: 0,
     revival_count: 0,
-    has_claimed_potions: false,
+    captured_summit: false,
+    used_revival_potion: false,
+    used_attack_potion: false,
     kills_claimed: 0,
   };
 };

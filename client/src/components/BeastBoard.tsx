@@ -16,7 +16,7 @@ const BeastBoard = ({ onClick }: BeastBoardProps) => {
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <EmojiEventsIcon sx={styles.icon} />
         <Typography sx={styles.title}>
-          Beasts
+          Quests
         </Typography>
       </Box>
     </IconButton>

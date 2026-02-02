@@ -2,46 +2,6 @@ use core::hash::HashStateTrait;
 use core::num::traits::Sqrt;
 use core::poseidon::PoseidonTrait;
 use summit::constants::{BASE_REVIVAL_TIME_SECONDS, DIPLOMACY_COST, SPECIALS_COST, WISDOM_COST};
-use summit::models::beast::LiveBeastStats;
-
-#[inline(always)]
-pub fn calculate_quest_rewards(live_beast_stats: LiveBeastStats) -> u8 {
-    let mut total_rewards: u8 = 0;
-
-    if live_beast_stats.last_death_timestamp > 0 {
-        total_rewards += 4;
-    }
-
-    if live_beast_stats.attack_streak == 10 {
-        total_rewards += 6;
-    } else if live_beast_stats.attack_streak >= 5 {
-        total_rewards += 3;
-    } else if live_beast_stats.attack_streak >= 3 {
-        total_rewards += 1;
-    }
-
-    if live_beast_stats.quest.used_revival_potion == 1 {
-        total_rewards += 10;
-    }
-
-    if live_beast_stats.quest.used_attack_potion == 1 {
-        total_rewards += 10;
-    }
-
-    if live_beast_stats.quest.captured_summit == 1 {
-        total_rewards += 5;
-    }
-
-    if live_beast_stats.summit_held_seconds >= 10 {
-        total_rewards += 5;
-    }
-
-    if live_beast_stats.stats.diplomacy == 1 {
-        total_rewards += 10;
-    }
-
-    total_rewards
-}
 
 /// Calculate level from XP using square root
 /// @param xp The experience points
@@ -53,6 +13,15 @@ pub fn get_level_from_xp(xp: u32) -> u16 {
     } else {
         xp.sqrt()
     }
+}
+
+#[inline(always)]
+pub fn get_bonus_levels(base_level: u16, bonus_xp: u16) -> u16 {
+    let base: u32 = base_level.into();
+    let total_xp = base * base + bonus_xp.into();
+    let current_level = get_level_from_xp(total_xp);
+
+    current_level - base_level
 }
 
 #[inline(always)]

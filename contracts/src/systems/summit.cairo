@@ -258,7 +258,9 @@ pub mod summit_systems {
 
         fn claim_quest_rewards(ref self: ContractState, beast_token_ids: Span<u32>) {
             let caller = get_caller_address();
+
             let beast_dispatcher = self.beast_dispatcher.read();
+            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
 
             let mut total_claimable: u256 = 0;
             let mut quest_rewards_claimed: Array<felt252> = array![];
@@ -271,9 +273,9 @@ pub mod summit_systems {
                 let beast_owner = beast_dispatcher.owner_of(beast_token_id.into());
                 assert(beast_owner == caller, errors::NOT_TOKEN_OWNER);
 
-                let beast_live_stats = InternalSummitImpl::_get_live_stats(@self, beast_token_id);
+                let beast = InternalSummitImpl::_get_beast(@self, beast_token_id, beast_nft_dispatcher);
                 let claimed = self.quest_rewards_claimed.entry(beast_token_id).read();
-                let quest_rewards = beast_utils::calculate_quest_rewards(beast_live_stats);
+                let quest_rewards = quest::calculate_quest_rewards(beast);
 
                 let rewards_available = quest_rewards - claimed;
                 if rewards_available > 0 {
