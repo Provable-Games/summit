@@ -41,38 +41,6 @@ pub fn build_combat_spec(
     CombatSpec { tier: beast_tier, item_type: beast_type, level, specials }
 }
 
-/// Calculate damage for a single attack using the combat library
-/// @param attacker_spec Attacker's CombatSpec
-/// @param defender_spec Defender's CombatSpec
-/// @param attack_potions Number of attack potions (adds to attacker strength)
-/// @param defender_strength Defender's strength bonus (e.g., diplomacy bonus)
-/// @param minimum_damage Minimum damage floor
-/// @param critical_hit_chance Attacker's crit chance (0-100)
-/// @param critical_hit_rnd Random value for crit determination
-/// @return (total_damage, is_critical_hit)
-#[inline(always)]
-pub fn calculate_attack_damage(
-    attacker_spec: CombatSpec,
-    defender_spec: CombatSpec,
-    attack_potions: u8,
-    defender_strength: u8,
-    minimum_damage: u8,
-    critical_hit_chance: u8,
-    critical_hit_rnd: u8,
-) -> (u16, bool) {
-    let combat_result = ImplCombat::calculate_damage(
-        attacker_spec,
-        defender_spec,
-        minimum_damage,
-        attack_potions, // attacker_strength
-        defender_strength,
-        critical_hit_chance,
-        critical_hit_rnd,
-    );
-
-    (combat_result.total_damage, combat_result.critical_hit_bonus > 0)
-}
-
 /// Apply damage to a health value, flooring at 0
 /// @param current_health Current health
 /// @param damage Damage to apply

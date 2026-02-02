@@ -6,7 +6,9 @@ import { EventData, SummitData, useWebSocket } from "@/hooks/useWebSocket";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
 import { BattleEvent, Beast, GameAction, SpectatorBattleEvent, Summit } from "@/types/game";
-import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
+import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
+import { fetchBeastImage } from "@/utils/beasts";
+import { lookupAddressName } from "@/utils/addressNameCache";
 import {
   applyPoisonDamage,
   getBeastCurrentHealth,
@@ -60,6 +62,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     poisonEvent,
     setPoisonEvent,
     addLiveEvent,
+    addGameNotification,
   } = useGameStore();
   const {
     setRevivePotionsUsed,
@@ -126,18 +129,68 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     addLiveEvent(data);
 
     const { category, sub_category, data: eventData } = data;
+    const isOwnEvent = data.player === addAddressPadding(account?.address);
+
+    // Helper to get beast info from event data
+    const getBeastInfo = () => {
+      const beastId = eventData.beast_id as number;
+      const beastName = BEAST_NAMES[beastId] || 'Unknown';
+      const beastImageSrc = fetchBeastImage({ name: beastName, shiny: false, animated: false } as any);
+      return { beastName, beastImageSrc };
+    };
+
+    // Helper to add notification with player name lookup
+    const addNotificationWithPlayer = (notification: Parameters<typeof addGameNotification>[0]) => {
+      if (data.player) {
+        lookupAddressName(data.player).then(playerName => {
+          addGameNotification({ ...notification, playerName });
+        }).catch(() => {
+          addGameNotification({ ...notification, playerName: 'Unknown' });
+        });
+      } else {
+        addGameNotification(notification);
+      }
+    };
 
     // Handle Battle events
     if (category === "Battle") {
       if (sub_category === "BattleEvent") {
         // Add to spectator battle events for activity feed
         setSpectatorBattleEvents(prev => [...prev, eventData as unknown as SpectatorBattleEvent]);
-      } else if (sub_category === "Applied Poison" && data.player !== addAddressPadding(account?.address)) {
+
+        // Show battle notification (only for other players)
+        if (!isOwnEvent) {
+          const damage = eventData.total_damage as number;
+          addNotificationWithPlayer({
+            type: 'battle',
+            value: damage,
+          });
+        }
+      } else if (sub_category === "Applied Poison" && !isOwnEvent) {
         setPoisonEvent({
           beast_token_id: eventData.beast_token_id as number,
           block_timestamp: Math.floor(new Date(data.created_at).getTime() / 1000),
           count: eventData.count as number,
           player: data.player,
+        });
+
+        // Show poison notification
+        addNotificationWithPlayer({
+          type: 'poison',
+          value: eventData.count as number,
+        });
+      } else if (sub_category === "Applied Extra Life" && !isOwnEvent) {
+        const { beastImageSrc } = getBeastInfo();
+        addNotificationWithPlayer({
+          type: 'extra_life',
+          value: eventData.count as number,
+          beastImageSrc,
+        });
+      } else if (sub_category === "Summit Change" && !isOwnEvent) {
+        const { beastImageSrc } = getBeastInfo();
+        addNotificationWithPlayer({
+          type: 'summit_change',
+          beastImageSrc,
         });
       }
     }
@@ -145,8 +198,22 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     // Handle LS (Loot Survivor) Events - update collection beasts
     if (category === "LS Events") {
       const entityHash = eventData.entity_hash as string;
+      const { beastImageSrc } = getBeastInfo();
 
       if (sub_category === "EntityStats") {
+        // Find the beast in collection to check if kills increased
+        const matchingBeast = collection.find(b => b.entity_hash === entityHash);
+        const previousKills = matchingBeast?.adventurers_killed || 0;
+        const newKills = Number(eventData.adventurers_killed);
+
+        // Show kill notification when a beast kills an adventurer
+        if (newKills > previousKills) {
+          addGameNotification({
+            type: 'kill',
+            beastImageSrc,
+          });
+        }
+
         setCollection(prevCollection =>
           prevCollection.map(beast =>
             beast.entity_hash === entityHash
@@ -155,6 +222,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           )
         );
       } else if (sub_category === "CollectableEntity") {
+        // Show locked notification when a beast is killed in LS
+        addGameNotification({
+          type: 'locked',
+          beastImageSrc,
+        });
+
         setCollection(prevCollection =>
           prevCollection.map(beast =>
             beast.entity_hash === entityHash
@@ -169,23 +242,91 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       }
     }
 
-    // Handle Beast Upgrade/Diplomacy - refresh diplomacy bonus if a matching beast upgraded
-    if (category === "Beast Upgrade" && sub_category === "Diplomacy") {
-      const prefix = eventData.prefix as number;
-      const suffix = eventData.suffix as number;
-      const prefixName = ITEM_NAME_PREFIXES[prefix as keyof typeof ITEM_NAME_PREFIXES];
-      const suffixName = ITEM_NAME_SUFFIXES[suffix as keyof typeof ITEM_NAME_SUFFIXES];
+    // Handle Beast Upgrade events - show notifications and refresh diplomacy
+    if (category === "Beast Upgrade") {
+      const { beastImageSrc } = getBeastInfo();
 
-      // Refresh diplomacy bonus if upgraded beast's name matches summit beast
-      if (summit?.beast.prefix === prefixName && summit?.beast.suffix === suffixName) {
-        getDiplomacy(prefix, suffix).then(beasts => {
-          if (beasts.length > 0) {
-            const totalPower = beasts.reduce((sum, b) => sum + b.power, 0);
-            // Exclude summit beast's own power if it has diplomacy (can't give bonus to itself)
-            const adjustedPower = summit.beast.diplomacy ? totalPower - summit.beast.power : totalPower;
-            const bonus = Math.floor(adjustedPower / 250);
-            setSummit(prev => prev ? { ...prev, diplomacy: { beasts, totalPower, bonus } } : prev);
-          }
+      // Show notifications for upgrades (only for other players)
+      if (!isOwnEvent) {
+        const upgradeTypeMap: Record<string, Parameters<typeof addGameNotification>[0]['type']> = {
+          'Specials': 'specials',
+          'Wisdom': 'wisdom',
+          'Diplomacy': 'diplomacy',
+          'Spirit': 'spirit',
+          'Luck': 'luck',
+          'Bonus Health': 'bonus_health',
+        };
+
+        const notificationType = upgradeTypeMap[sub_category];
+        if (notificationType) {
+          // For numeric upgrades, show the difference
+          const oldValue = eventData.old_value as number | undefined;
+          const newValue = eventData.new_value as number | undefined;
+          const diff = (oldValue !== undefined && newValue !== undefined) ? newValue - oldValue : undefined;
+
+          // For Bonus Health, use amount field
+          const value = sub_category === 'Bonus Health'
+            ? (eventData.amount as number) || (eventData.bonus_health as number) || diff
+            : diff;
+
+          addNotificationWithPlayer({
+            type: notificationType,
+            value: value,
+            beastImageSrc,
+          });
+        }
+      }
+
+      // Refresh diplomacy bonus if a matching beast upgraded diplomacy
+      if (sub_category === "Diplomacy") {
+        const prefix = eventData.prefix as number;
+        const suffix = eventData.suffix as number;
+        const prefixName = ITEM_NAME_PREFIXES[prefix as keyof typeof ITEM_NAME_PREFIXES];
+        const suffixName = ITEM_NAME_SUFFIXES[suffix as keyof typeof ITEM_NAME_SUFFIXES];
+
+        // Refresh diplomacy bonus if upgraded beast's name matches summit beast
+        if (summit?.beast.prefix === prefixName && summit?.beast.suffix === suffixName) {
+          getDiplomacy(prefix, suffix).then(beasts => {
+            if (beasts.length > 0) {
+              const totalPower = beasts.reduce((sum, b) => sum + b.power, 0);
+              // Exclude summit beast's own power if it has diplomacy (can't give bonus to itself)
+              const adjustedPower = summit.beast.diplomacy ? totalPower - summit.beast.power : totalPower;
+              const bonus = Math.floor(adjustedPower / 250);
+              setSummit(prev => prev ? { ...prev, diplomacy: { beasts, totalPower, bonus } } : prev);
+            }
+          });
+        }
+      }
+    }
+
+    // Handle Rewards events
+    if (category === "Rewards" && !isOwnEvent) {
+      if (sub_category === "$SURVIVOR Earned") {
+        const rawAmount = typeof eventData.amount === 'number' ? eventData.amount : parseFloat(String(eventData.amount)) || 0;
+        const amount = parseFloat((rawAmount / 10000).toFixed(2));
+        addNotificationWithPlayer({
+          type: 'survivor_earned',
+          value: amount,
+        });
+      } else if (sub_category === "Claimed $SURVIVOR") {
+        const amount = typeof eventData.amount === 'number' ? eventData.amount.toFixed(1) : String(eventData.amount);
+        addNotificationWithPlayer({
+          type: 'claimed_survivor',
+          value: amount,
+        });
+      } else if (sub_category === "Claimed Corpses") {
+        const corpseAmount = (eventData.corpse_amount as number) || 1;
+        addNotificationWithPlayer({
+          type: 'claimed_corpses',
+          value: corpseAmount,
+        });
+      } else if (sub_category === "Claimed Skulls") {
+        const skullsClaimed = eventData.skulls_claimed
+          ? (typeof eventData.skulls_claimed === 'string' ? parseInt(eventData.skulls_claimed, 10) : (eventData.skulls_claimed as number))
+          : 1;
+        addNotificationWithPlayer({
+          type: 'claimed_skulls',
+          value: skullsClaimed,
         });
       }
     }

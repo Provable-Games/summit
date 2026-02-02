@@ -149,22 +149,24 @@ function decodeSpanU64(data: string[], startIndex: number): { values: bigint[]; 
 // ============ Bit manipulation constants ============
 // Mirrors Cairo pow module for unpacking
 
-const TWO_POW_17 = 0x20000n;
-const TWO_POW_12 = 0x1000n;
-const TWO_POW_16 = 0x10000n;
 const TWO_POW_4 = 0x10n;
-const TWO_POW_64 = 0x10000000000000000n;
 const TWO_POW_6 = 0x40n;
 const TWO_POW_8 = 0x100n;
+const TWO_POW_11 = 0x800n;
+const TWO_POW_12 = 0x1000n;
+const TWO_POW_15 = 0x8000n;
+const TWO_POW_17 = 0x20000n;
 const TWO_POW_23 = 0x800000n;
 const TWO_POW_32 = 0x100000000n;
+const TWO_POW_64 = 0x10000000000000000n;
 
 const MASK_1 = 0x1n;
 const MASK_4 = 0xFn;
 const MASK_6 = 0x3Fn;
 const MASK_8 = 0xFFn;
+const MASK_11 = 0x7FFn;
 const MASK_12 = 0xFFFn;
-const MASK_16 = 0xFFFFn;
+const MASK_15 = 0x7FFFn;
 const MASK_17 = 0x1FFFFn;
 const MASK_23 = 0x7FFFFFn;
 const MASK_32 = 0xFFFFFFFFn;
@@ -181,7 +183,6 @@ export interface LiveBeastStats {
   last_death_timestamp: bigint;
   revival_count: number;
   extra_lives: number;
-  has_claimed_potions: number;
   summit_held_seconds: number;
   // Stats struct
   spirit: number;
@@ -192,6 +193,10 @@ export interface LiveBeastStats {
   // Rewards
   rewards_earned: number;
   rewards_claimed: number;
+  // Quest struct
+  captured_summit: number;
+  used_revival_potion: number;
+  used_attack_potion: number;
 }
 
 export interface BeastUpdatesEventData {
@@ -253,13 +258,12 @@ export interface SkullEventData {
  * Bit layout (total 250 bits):
  * - token_id: 17 bits
  * - current_health: 12 bits
- * - bonus_health: 12 bits
- * - bonus_xp: 16 bits
+ * - bonus_health: 11 bits
+ * - bonus_xp: 15 bits
  * - attack_streak: 4 bits
  * - last_death_timestamp: 64 bits
  * - revival_count: 6 bits
  * - extra_lives: 12 bits
- * - has_claimed_potions: 1 bit
  * - summit_held_seconds: 23 bits
  * - spirit: 8 bits
  * - luck: 8 bits
@@ -268,6 +272,9 @@ export interface SkullEventData {
  * - diplomacy: 1 bit
  * - rewards_earned: 32 bits
  * - rewards_claimed: 32 bits
+ * - captured_summit: 1 bit
+ * - used_revival_potion: 1 bit
+ * - used_attack_potion: 1 bit
  */
 export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   let packed = hexToBigInt(packedFelt);
@@ -280,13 +287,13 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   const current_health = Number(packed & MASK_12);
   packed = packed / TWO_POW_12;
 
-  // Extract bonus_health (12 bits)
-  const bonus_health = Number(packed & MASK_12);
-  packed = packed / TWO_POW_12;
+  // Extract bonus_health (11 bits)
+  const bonus_health = Number(packed & MASK_11);
+  packed = packed / TWO_POW_11;
 
-  // Extract bonus_xp (16 bits)
-  const bonus_xp = Number(packed & MASK_16);
-  packed = packed / TWO_POW_16;
+  // Extract bonus_xp (15 bits)
+  const bonus_xp = Number(packed & MASK_15);
+  packed = packed / TWO_POW_15;
 
   // Extract attack_streak (4 bits)
   const attack_streak = Number(packed & MASK_4);
@@ -304,10 +311,6 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   const extra_lives = Number(packed & MASK_12);
   packed = packed / TWO_POW_12;
 
-  // Extract has_claimed_potions (1 bit)
-  const has_claimed_potions = Number(packed & MASK_1);
-  packed = packed / 2n;
-
   // Extract summit_held_seconds (23 bits)
   const summit_held_seconds = Number(packed & MASK_23);
   packed = packed / TWO_POW_23;
@@ -320,12 +323,13 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   const luck = Number(packed & MASK_8);
   packed = packed / TWO_POW_8;
 
-  // Extract all 3 flags at once (3 bits)
-  const flags = packed & 7n;
-  const specials = Number(flags & 1n);
-  const wisdom = Number((flags / 2n) & 1n);
-  const diplomacy = Number((flags / 4n) & 1n);
-  packed = packed / 8n;
+  // Extract stats flags (3 bits: specials, wisdom, diplomacy)
+  const specials = Number(packed & MASK_1);
+  packed = packed / 2n;
+  const wisdom = Number(packed & MASK_1);
+  packed = packed / 2n;
+  const diplomacy = Number(packed & MASK_1);
+  packed = packed / 2n;
 
   // Extract rewards_earned (32 bits)
   const rewards_earned = Number(packed & MASK_32);
@@ -333,6 +337,14 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
 
   // Extract rewards_claimed (32 bits)
   const rewards_claimed = Number(packed & MASK_32);
+  packed = packed / TWO_POW_32;
+
+  // Extract quest flags (3 bits: captured_summit, used_revival_potion, used_attack_potion)
+  const captured_summit = Number(packed & MASK_1);
+  packed = packed / 2n;
+  const used_revival_potion = Number(packed & MASK_1);
+  packed = packed / 2n;
+  const used_attack_potion = Number(packed & MASK_1);
 
   return {
     token_id,
@@ -343,7 +355,6 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
     last_death_timestamp,
     revival_count,
     extra_lives,
-    has_claimed_potions,
     summit_held_seconds,
     spirit,
     luck,
@@ -352,6 +363,9 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
     diplomacy,
     rewards_earned,
     rewards_claimed,
+    captured_summit,
+    used_revival_potion,
+    used_attack_potion,
   };
 }
 
@@ -477,66 +491,6 @@ export interface PackableBeast {
 }
 
 // ============ Beasts NFT Decoders ============
-
-// Bit masks for PackableBeast unpacking
-const MASK_5 = 0x1Fn;
-const MASK_7 = 0x7Fn;
-
-const TWO_POW_5 = 0x20n;
-const TWO_POW_7 = 0x80n;
-
-/**
- * Unpack PackableBeast from a single felt252
- * Bit layout (total 53 bits):
- * - bits 0-6: id (7 bits) - beast species
- * - bits 7-13: prefix (7 bits) - name prefix
- * - bits 14-18: suffix (5 bits) - name suffix
- * - bits 19-34: level (16 bits)
- * - bits 35-50: health (16 bits)
- * - bit 51: shiny (1 bit)
- * - bit 52: animated (1 bit)
- */
-export function unpackPackableBeast(packedFelt: string): PackableBeast {
-  let packed = hexToBigInt(packedFelt);
-
-  // Extract id (7 bits)
-  const id = Number(packed & MASK_7);
-  packed = packed / TWO_POW_7;
-
-  // Extract prefix (7 bits)
-  const prefix = Number(packed & MASK_7);
-  packed = packed / TWO_POW_7;
-
-  // Extract suffix (5 bits)
-  const suffix = Number(packed & MASK_5);
-  packed = packed / TWO_POW_5;
-
-  // Extract level (16 bits)
-  const level = Number(packed & MASK_16);
-  packed = packed / TWO_POW_16;
-
-  // Extract health (16 bits)
-  const health = Number(packed & MASK_16);
-  packed = packed / TWO_POW_16;
-
-  // Extract shiny (1 bit)
-  const shiny = Number(packed & MASK_1);
-  packed = packed / 2n;
-
-  // Extract animated (1 bit)
-  const animated = Number(packed & MASK_1);
-
-  return {
-    id,
-    prefix,
-    suffix,
-    level,
-    health,
-    shiny,
-    animated,
-  };
-}
-
 /**
  * Decode ERC721 Transfer event
  * Keys: [selector, from, to, token_id_low, token_id_high]

@@ -59,3 +59,8 @@ pub struct BattleEvent {
     pub revive_potions: u16,
     pub xp_gained: u16,
 }
+
+#[derive(Drop, starknet::Event)]
+pub struct QuestRewardsClaimedEvent {
+    pub quest_rewards_claimed: Span<felt252>,
+}

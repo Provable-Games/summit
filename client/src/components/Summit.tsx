@@ -655,6 +655,7 @@ function Summit() {
           );
         })}
       </AnimatePresence>
+
       {summit && (
         <SummitGiftModal
           open={giftModalOpen}

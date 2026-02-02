@@ -203,11 +203,6 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "description": "Apply poison to beast",
             "entrypoint": "apply_poison"
           },
-          {
-            "name": "Claim Summit",
-            "description": "Claim summit",
-            "entrypoint": "claim_summit"
-          },
         ]
       },
       [TOKEN_ADDRESS.ATTACK]: {

@@ -15,6 +15,7 @@ import EventHistoryModal from '../components/dialogs/EventHistoryModal'
 import LeaderboardModal from '../components/dialogs/LeaderboardModal'
 import Top5000BeastsModal from '../components/dialogs/Top5000BeastsModal'
 import EventHistoryButton from '../components/EventHistoryButton'
+import GameNotificationFeed from '../components/GameNotificationFeed'
 import Leaderboard from '../components/Leaderboard'
 import LeaderboardButton from '../components/LeaderboardButton'
 import ProfileCard from '../components/ProfileCard'
@@ -55,6 +56,8 @@ function MainPage() {
             <ProfileCard />
           </Box>
         </Box>}
+
+        {isBrowser && <GameNotificationFeed />}
 
         <>
           {(attackInProgress && pauseUpdates && selectedBeasts.length > 0 && attackMode !== 'autopilot')

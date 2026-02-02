@@ -27,8 +27,9 @@ const normalizeSelector = (selector: string | bigint): string => {
 const TWO_POW_4 = 0x10n;
 const TWO_POW_6 = 0x40n;
 const TWO_POW_8 = 0x100n;
+const TWO_POW_11 = 0x800n;
 const TWO_POW_12 = 0x1000n;
-const TWO_POW_16 = 0x10000n;
+const TWO_POW_15 = 0x8000n;
 const TWO_POW_17 = 0x20000n;
 const TWO_POW_23 = 0x800000n;
 const TWO_POW_32 = 0x100000000n;
@@ -38,8 +39,9 @@ const MASK_1 = 0x1n;
 const MASK_4 = 0xFn;
 const MASK_6 = 0x3Fn;
 const MASK_8 = 0xFFn;
+const MASK_11 = 0x7FFn;
 const MASK_12 = 0xFFFn;
-const MASK_16 = 0xFFFFn;
+const MASK_15 = 0x7FFFn;
 const MASK_17 = 0x1FFFFn;
 const MASK_23 = 0x7FFFFFn;
 const MASK_32 = 0xFFFFFFFFn;
@@ -56,7 +58,6 @@ export interface LiveBeastStats {
   last_death_timestamp: number;
   revival_count: number;
   extra_lives: number;
-  has_claimed_potions: boolean;
   summit_held_seconds: number;
   spirit: number;
   luck: number;
@@ -65,6 +66,9 @@ export interface LiveBeastStats {
   diplomacy: boolean;
   rewards_earned: number;
   rewards_claimed: number;
+  captured_summit: boolean;
+  used_revival_potion: boolean;
+  used_attack_potion: boolean;
 }
 
 /**
@@ -72,13 +76,12 @@ export interface LiveBeastStats {
  * Bit layout (total 250 bits):
  * - token_id: 17 bits
  * - current_health: 12 bits
- * - bonus_health: 12 bits
- * - bonus_xp: 16 bits
+ * - bonus_health: 11 bits
+ * - bonus_xp: 15 bits
  * - attack_streak: 4 bits
  * - last_death_timestamp: 64 bits
  * - revival_count: 6 bits
  * - extra_lives: 12 bits
- * - has_claimed_potions: 1 bit
  * - summit_held_seconds: 23 bits
  * - spirit: 8 bits
  * - luck: 8 bits
@@ -87,6 +90,9 @@ export interface LiveBeastStats {
  * - diplomacy: 1 bit
  * - rewards_earned: 32 bits
  * - rewards_claimed: 32 bits
+ * - captured_summit: 1 bit
+ * - used_revival_potion: 1 bit
+ * - used_attack_potion: 1 bit
  */
 function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   let packed = BigInt(packedFelt);
@@ -97,11 +103,11 @@ function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   const current_health = Number(packed & MASK_12);
   packed = packed / TWO_POW_12;
 
-  const bonus_health = Number(packed & MASK_12);
-  packed = packed / TWO_POW_12;
+  const bonus_health = Number(packed & MASK_11);
+  packed = packed / TWO_POW_11;
 
-  const bonus_xp = Number(packed & MASK_16);
-  packed = packed / TWO_POW_16;
+  const bonus_xp = Number(packed & MASK_15);
+  packed = packed / TWO_POW_15;
 
   const attack_streak = Number(packed & MASK_4);
   packed = packed / TWO_POW_4;
@@ -115,9 +121,6 @@ function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   const extra_lives = Number(packed & MASK_12);
   packed = packed / TWO_POW_12;
 
-  const has_claimed_potions = (packed & MASK_1) === 1n;
-  packed = packed / 2n;
-
   const summit_held_seconds = Number(packed & MASK_23);
   packed = packed / TWO_POW_23;
 
@@ -127,16 +130,24 @@ function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   const luck = Number(packed & MASK_8);
   packed = packed / TWO_POW_8;
 
-  const flags = packed & 7n;
-  const specials = (flags & 1n) === 1n;
-  const wisdom = ((flags / 2n) & 1n) === 1n;
-  const diplomacy = ((flags / 4n) & 1n) === 1n;
-  packed = packed / 8n;
+  const specials = (packed & MASK_1) === 1n;
+  packed = packed / 2n;
+  const wisdom = (packed & MASK_1) === 1n;
+  packed = packed / 2n;
+  const diplomacy = (packed & MASK_1) === 1n;
+  packed = packed / 2n;
 
   const rewards_earned = Number(packed & MASK_32);
   packed = packed / TWO_POW_32;
 
   const rewards_claimed = Number(packed & MASK_32);
+  packed = packed / TWO_POW_32;
+
+  const captured_summit = (packed & MASK_1) === 1n;
+  packed = packed / 2n;
+  const used_revival_potion = (packed & MASK_1) === 1n;
+  packed = packed / 2n;
+  const used_attack_potion = (packed & MASK_1) === 1n;
 
   return {
     token_id,
@@ -147,7 +158,6 @@ function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
     last_death_timestamp,
     revival_count,
     extra_lives,
-    has_claimed_potions,
     summit_held_seconds,
     spirit,
     luck,
@@ -156,6 +166,9 @@ function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
     diplomacy,
     rewards_earned,
     rewards_claimed,
+    captured_summit,
+    used_revival_potion,
+    used_attack_potion,
   };
 }
 

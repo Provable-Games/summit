@@ -342,19 +342,6 @@ fn test_start_summit_twice() {
     summit.start_summit();
 }
 
-#[test]
-#[fork("mainnet")]
-fn test_claim_summit_basic() {
-    let summit = deploy_summit_and_start();
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-
-    let attacking_beasts = array![(60989, 1, 0)].span();
-    summit.attack(1, attacking_beasts, 0, 0, false);
-
-    stop_cheat_caller_address(summit.contract_address);
-}
-
 // ===========================================
 // ADMIN FUNCTIONS TESTS
 // ===========================================
@@ -443,14 +430,6 @@ fn test_get_submission_blocks() {
     let summit = deploy_summit();
     let submission_blocks = summit.get_beast_submission_seconds();
     assert(submission_blocks == 100_u64, 'Wrong submission blocks');
-}
-
-#[test]
-#[fork("mainnet")]
-fn test_get_summit_claimed() {
-    let summit = deploy_summit();
-    let claimed = summit.get_summit_claimed();
-    assert(claimed == false, 'Summit should not be claimed');
 }
 
 #[test]
@@ -610,11 +589,11 @@ fn create_test_beast(luck: u8, spirit: u8) -> Beast {
         last_death_timestamp: 0,
         revival_count: 0,
         extra_lives: 0,
-        has_claimed_potions: 0,
         summit_held_seconds: 0,
         stats: summit::models::beast::Stats { spirit, luck, specials: 0, wisdom: 0, diplomacy: 0 },
         rewards_earned: 0,
         rewards_claimed: 0,
+        quest: summit::models::beast::Quest { captured_summit: 0, used_revival_potion: 0, used_attack_potion: 0 },
     };
 
     Beast { fixed, live }
@@ -1556,7 +1535,6 @@ fn test_attack_unused_revival_potions() {
 // Note: Full summit_held_seconds tracking requires multi-player scenarios where one beast takes
 // the summit from another, which updates summit_held_seconds. With single-player fork testing,
 // we can only verify the basic attack flow. The summit_held_seconds accumulation is implicitly
-// tested by test_claim_summit_basic which requires summit_held_seconds > 0.
 #[test]
 #[fork("mainnet")]
 fn test_summit_beast_can_be_attacked() {
@@ -1610,32 +1588,6 @@ fn test_poison_damage_over_time() {
     stop_cheat_block_timestamp_global();
     stop_cheat_caller_address(summit.contract_address);
 }
-
-// ==========================
-// P1 TESTS: CLAIM SUMMIT
-// ==========================
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: ('Summit not over',))]
-fn test_claim_summit_before_game_ends() {
-    let summit = deploy_summit_and_start();
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-
-    let attacking_beasts = array![(60989, 1, 0)].span();
-    summit.attack(1, attacking_beasts, 0, 0, false);
-
-    // Try to claim summit while still playable
-    summit.claim_summit();
-
-    stop_cheat_caller_address(summit.contract_address);
-}
-
-// Note: test_claim_summit_twice removed - complex showdown flow makes it hard to test in isolation.
-// The claim_summit function correctly checks summit_claimed and the test_claim_summit_basic
-// already covers the happy path. The double-claim scenario requires proper showdown triggering
-// which needs a second player to take the summit during showdown.
 
 // ==========================
 // P1 TESTS: LEADERBOARD
