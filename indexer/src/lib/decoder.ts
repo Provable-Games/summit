@@ -50,6 +50,7 @@ export const EVENT_SELECTORS = {
   CorpseEvent: getPaddedSelector("CorpseEvent"),
   SkullEvent: getPaddedSelector("SkullEvent"),
   BattleEvent: getPaddedSelector("BattleEvent"),
+  QuestRewardsClaimedEvent: getPaddedSelector("QuestRewardsClaimedEvent"),
 } as const;
 
 /**
@@ -249,6 +250,10 @@ export interface CorpseEventData {
 export interface SkullEventData {
   beast_token_ids: number[];
   skulls_claimed: bigint;
+}
+
+export interface QuestRewardsClaimedEventData {
+  packed_rewards: string[];
 }
 
 // ============ Packed Data Decoders ============
@@ -470,6 +475,28 @@ export function decodeSkullEvent(keys: string[], data: string[]): SkullEventData
   const { values: beast_token_ids, consumed } = decodeSpanU32(data, 0);
   const skulls_claimed = hexToBigInt(data[consumed]);
   return { beast_token_ids, skulls_claimed };
+}
+
+/**
+ * Unpack quest rewards claimed from a single felt252
+ * Bit layout:
+ * - amount: 8 bits
+ * - beast_token_id: 32 bits
+ */
+export function unpackQuestRewardsClaimed(packed: string): { beast_token_id: number; amount: number } {
+  const packed_u256 = hexToBigInt(packed);
+  const amount = Number(packed_u256 & MASK_8);
+  const beast_token_id = Number((packed_u256 / TWO_POW_8) & MASK_32);
+  return { beast_token_id, amount };
+}
+
+/**
+ * Decode QuestRewardsClaimedEvent
+ * Data: packed_rewards (Span<felt252>)
+ */
+export function decodeQuestRewardsClaimedEvent(keys: string[], data: string[]): QuestRewardsClaimedEventData {
+  const { values } = decodeSpanFelt252(data, 0);
+  return { packed_rewards: values };
 }
 
 // ============ Beasts NFT Data Interfaces ============

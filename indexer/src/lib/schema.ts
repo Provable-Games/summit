@@ -51,7 +51,9 @@ export const beast_stats = pgTable(
     last_death_timestamp: bigint("last_death_timestamp", { mode: "bigint" }).notNull(),
     revival_count: smallint("revival_count").notNull(),
     extra_lives: smallint("extra_lives").notNull(),
-    has_claimed_potions: smallint("has_claimed_potions").notNull(),
+    captured_summit: smallint("captured_summit").notNull(),
+    used_revival_potion: smallint("used_revival_potion").notNull(),
+    used_attack_potion: smallint("used_attack_potion").notNull(),
     summit_held_seconds: integer("summit_held_seconds").notNull(),
     // Stats struct fields
     spirit: smallint("spirit").notNull(),
@@ -224,6 +226,24 @@ export const skulls_claimed = pgTable(
 );
 
 /**
+ * Quest Rewards Claimed table - tracks quest rewards claimed per beast
+ *
+ * Upserted on each QuestRewardsClaimedEvent. Stores total quest rewards claimed.
+ */
+export const quest_rewards_claimed = pgTable(
+  "quest_rewards_claimed",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    beast_token_id: integer("beast_token_id").notNull().unique(),
+    amount: smallint("amount").notNull(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  },
+  (table) => [
+    index("quest_rewards_claimed_beast_token_id_idx").on(table.beast_token_id),
+  ]
+);
+
+/**
  * Corpse Events table - corpse creation history
  *
  * Append-only history of corpse collection.
@@ -379,6 +399,7 @@ export const schema = {
   poison_events,
   corpse_events,
   skulls_claimed,
+  quest_rewards_claimed,
   beast_owners,
   beasts,
   beast_data,

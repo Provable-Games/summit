@@ -49,6 +49,8 @@ import {
   decodePoisonEvent,
   decodeCorpseEvent,
   decodeSkullEvent,
+  decodeQuestRewardsClaimedEvent,
+  unpackQuestRewardsClaimed,
   decodeTransferEvent,
   decodeEntityStatsEvent,
   decodeCollectableEntityEvent,
@@ -102,7 +104,9 @@ interface BeastStatsSnapshot {
   diplomacy: number;
   bonus_health: number;
   extra_lives: number;
-  has_claimed_potions: number;
+  captured_summit: number;
+  used_revival_potion: number;
+  used_attack_potion: number;
   current_health?: number;
 }
 
@@ -175,7 +179,9 @@ async function getBeastContextBatch(
       bs_diplomacy: schema.beast_stats.diplomacy,
       bs_bonus_health: schema.beast_stats.bonus_health,
       bs_extra_lives: schema.beast_stats.extra_lives,
-      bs_has_claimed_potions: schema.beast_stats.has_claimed_potions,
+      bs_captured_summit: schema.beast_stats.captured_summit,
+      bs_used_revival_potion: schema.beast_stats.used_revival_potion,
+      bs_used_attack_potion: schema.beast_stats.used_attack_potion,
       bs_current_health: schema.beast_stats.current_health,
       b_beast_id: schema.beasts.beast_id,
       b_prefix: schema.beasts.prefix,
@@ -204,7 +210,9 @@ async function getBeastContextBatch(
         diplomacy: row.bs_diplomacy,
         bonus_health: row.bs_bonus_health,
         extra_lives: row.bs_extra_lives,
-        has_claimed_potions: row.bs_has_claimed_potions,
+        captured_summit: row.bs_captured_summit,
+        used_revival_potion: row.bs_used_revival_potion,
+        used_attack_potion: row.bs_used_attack_potion,
         current_health: row.bs_current_health,
       },
       metadata: row.b_beast_id !== null ? {
@@ -306,7 +314,9 @@ type BeastStatsRow = {
   last_death_timestamp: bigint;
   revival_count: number;
   extra_lives: number;
-  has_claimed_potions: number;
+  captured_summit: number;
+  used_revival_potion: number;
+  used_attack_potion: number;
   summit_held_seconds: number;
   spirit: number;
   luck: number;
@@ -327,6 +337,7 @@ type RewardsClaimedRow = typeof schema.rewards_claimed.$inferInsert;
 type PoisonEventRow = typeof schema.poison_events.$inferInsert;
 type CorpseEventRow = typeof schema.corpse_events.$inferInsert;
 type SkullsClaimedRow = typeof schema.skulls_claimed.$inferInsert;
+type QuestRewardsClaimedRow = typeof schema.quest_rewards_claimed.$inferInsert;
 type SummitLogRow = typeof schema.summit_log.$inferInsert;
 type BeastOwnerRow = typeof schema.beast_owners.$inferInsert;
 type BeastRow = typeof schema.beasts.$inferInsert;
@@ -343,6 +354,7 @@ interface BulkInsertBatches {
   poison_events: PoisonEventRow[];
   corpse_events: CorpseEventRow[];
   skulls_claimed: SkullsClaimedRow[];
+  quest_rewards_claimed: QuestRewardsClaimedRow[];
   summit_log: SummitLogRow[];
   beast_owners: BeastOwnerRow[];
   beasts: BeastRow[];
@@ -472,7 +484,9 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
           last_death_timestamp: sql`excluded.last_death_timestamp`,
           revival_count: sql`excluded.revival_count`,
           extra_lives: sql`excluded.extra_lives`,
-          has_claimed_potions: sql`excluded.has_claimed_potions`,
+          captured_summit: sql`excluded.captured_summit`,
+          used_revival_potion: sql`excluded.used_revival_potion`,
+          used_attack_potion: sql`excluded.used_attack_potion`,
           summit_held_seconds: sql`excluded.summit_held_seconds`,
           spirit: sql`excluded.spirit`,
           luck: sql`excluded.luck`,
@@ -536,6 +550,23 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
         target: schema.skulls_claimed.beast_token_id,
         set: {
           skulls: sql`excluded.skulls`,
+          updated_at: sql`excluded.updated_at`,
+        },
+      })
+    );
+  }
+
+  // quest_rewards_claimed - batch upsert
+  if (batches.quest_rewards_claimed.length > 0) {
+    const deduped = new Map<number, QuestRewardsClaimedRow>();
+    for (const row of batches.quest_rewards_claimed) {
+      deduped.set(row.beast_token_id, row);
+    }
+    insertPromises.push(
+      db.insert(schema.quest_rewards_claimed).values([...deduped.values()]).onConflictDoUpdate({
+        target: schema.quest_rewards_claimed.beast_token_id,
+        set: {
+          amount: sql`excluded.amount`,
           updated_at: sql`excluded.updated_at`,
         },
       })
@@ -610,6 +641,7 @@ function createEmptyBatches(): BulkInsertBatches {
     poison_events: [],
     corpse_events: [],
     skulls_claimed: [],
+    quest_rewards_claimed: [],
     summit_log: [],
     beast_owners: [],
     beasts: [],
@@ -664,7 +696,9 @@ function collectBeastStatChangeLogs(
     diplomacy: 0,
     bonus_health: 0,
     extra_lives: 0,
-    has_claimed_potions: 0,
+    captured_summit: 0,
+    used_revival_potion: 0,
+    used_attack_potion: 0,
   };
 
   // Check each stat for increases
@@ -1044,13 +1078,13 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
       // Batch lookup beast metadata for LS Events via entity_hash → beast_data → beasts
       let lsMetadataQueryTime = 0;
-      const lsMetadataMap = new Map<string, { token_id: number; beast_id: number; prefix: number; suffix: number }>();
+      const lsMetadataMap = new Map<string, { token_id: number; beast_id: number; prefix: number; suffix: number; owner: string | null }>();
 
       if (lsEventEntityHashes.length > 0) {
         const lsMetadataStart = Date.now();
         const uniqueHashes = [...new Set(lsEventEntityHashes)];
 
-        // Join beast_data with beasts to get metadata
+        // Join beast_data with beasts and beast_owners to get metadata and owner
         const lsMetadataResult = await db
           .select({
             entity_hash: schema.beast_data.entity_hash,
@@ -1058,9 +1092,11 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             beast_id: schema.beasts.beast_id,
             prefix: schema.beasts.prefix,
             suffix: schema.beasts.suffix,
+            owner: schema.beast_owners.owner,
           })
           .from(schema.beast_data)
           .innerJoin(schema.beasts, eq(schema.beast_data.token_id, schema.beasts.token_id))
+          .leftJoin(schema.beast_owners, eq(schema.beast_data.token_id, schema.beast_owners.token_id))
           .where(inArray(schema.beast_data.entity_hash, uniqueHashes));
 
         for (const row of lsMetadataResult) {
@@ -1070,6 +1106,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               beast_id: row.beast_id,
               prefix: row.prefix,
               suffix: row.suffix,
+              owner: row.owner ?? null,
             });
           }
         }
@@ -1191,8 +1228,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   beast_id: entityMetadata.beast_id,
                   prefix: entityMetadata.prefix,
                   suffix: entityMetadata.suffix,
+                  owner: entityMetadata.owner,
                 },
-                player: null,
+                player: entityMetadata.owner,
                 token_id: entityMetadata.token_id,
                 transaction_hash,
                 created_at: block_timestamp,
@@ -1243,8 +1281,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   beast_id: collectableMetadata?.beast_id ?? null,
                   prefix: collectableMetadata?.prefix ?? null,
                   suffix: collectableMetadata?.suffix ?? null,
+                  owner: collectableMetadata?.owner ?? null,
                 },
-                player: null,
+                player: collectableMetadata?.owner ?? null,
                 token_id: collectableMetadata?.token_id ?? null,
                 transaction_hash,
                 created_at: block_timestamp,
@@ -1279,7 +1318,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   last_death_timestamp: stats.last_death_timestamp,
                   revival_count: stats.revival_count,
                   extra_lives: stats.extra_lives,
-                  has_claimed_potions: stats.has_claimed_potions,
+                  captured_summit: stats.captured_summit,
+                  used_revival_potion: stats.used_revival_potion,
+                  used_attack_potion: stats.used_attack_potion,
                   summit_held_seconds: stats.summit_held_seconds,
                   spirit: stats.spirit,
                   luck: stats.luck,
@@ -1331,7 +1372,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                     diplomacy: stats.diplomacy,
                     bonus_health: stats.bonus_health,
                     extra_lives: stats.extra_lives,
-                    has_claimed_potions: stats.has_claimed_potions,
+                    captured_summit: stats.captured_summit,
+                    used_revival_potion: stats.used_revival_potion,
+                    used_attack_potion: stats.used_attack_potion,
                   },
                   beast_metadata,
                   beast_owner,
@@ -1353,7 +1396,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                     diplomacy: stats.diplomacy,
                     bonus_health: stats.bonus_health,
                     extra_lives: stats.extra_lives,
-                    has_claimed_potions: stats.has_claimed_potions,
+                    captured_summit: stats.captured_summit,
+                    used_revival_potion: stats.used_revival_potion,
+                    used_attack_potion: stats.used_attack_potion,
                     current_health: stats.current_health,
                   },
                   metadata: beast_metadata,
@@ -1381,7 +1426,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 last_death_timestamp: stats.last_death_timestamp,
                 revival_count: stats.revival_count,
                 extra_lives: stats.extra_lives,
-                has_claimed_potions: stats.has_claimed_potions,
+                captured_summit: stats.captured_summit,
+                used_revival_potion: stats.used_revival_potion,
+                used_attack_potion: stats.used_attack_potion,
                 summit_held_seconds: stats.summit_held_seconds,
                 spirit: stats.spirit,
                 luck: stats.luck,
@@ -1409,7 +1456,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   diplomacy: stats.diplomacy,
                   bonus_health: stats.bonus_health,
                   extra_lives: stats.extra_lives,
-                  has_claimed_potions: stats.has_claimed_potions,
+                  captured_summit: stats.captured_summit,
+                  used_revival_potion: stats.used_revival_potion,
+                  used_attack_potion: stats.used_attack_potion,
                 },
                 metadata,
                 live_beast_owner,
@@ -1432,7 +1481,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   diplomacy: stats.diplomacy,
                   bonus_health: stats.bonus_health,
                   extra_lives: stats.extra_lives,
-                  has_claimed_potions: stats.has_claimed_potions,
+                  captured_summit: stats.captured_summit,
+                  used_revival_potion: stats.used_revival_potion,
+                  used_attack_potion: stats.used_attack_potion,
                   current_health: stats.current_health,
                 },
                 metadata,
@@ -1692,6 +1743,52 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 },
                 player: skull_player,
                 token_id: null,  // No single token_id for batch
+                transaction_hash,
+                created_at: block_timestamp,
+                indexed_at,
+              });
+              break;
+            }
+
+            case EVENT_SELECTORS.QuestRewardsClaimedEvent: {
+              const decoded = decodeQuestRewardsClaimedEvent([...keys], [...data]);
+
+              // Unpack and accumulate by beast_token_id
+              const rewardsByBeast = new Map<number, number>();
+              for (const packed of decoded.packed_rewards) {
+                const { beast_token_id, amount } = unpackQuestRewardsClaimed(packed);
+                const existing = rewardsByBeast.get(beast_token_id) || 0;
+                rewardsByBeast.set(beast_token_id, existing + amount);
+              }
+
+              // Get owner from first beast
+              const firstBeastId = Array.from(rewardsByBeast.keys())[0];
+              const firstQuestContext = beastContextMap.get(firstBeastId);
+              const quest_player = firstQuestContext?.owner ?? null;
+
+              // Collect upserts
+              for (const [beast_token_id, total_amount] of rewardsByBeast.entries()) {
+                batches.quest_rewards_claimed.push({
+                  beast_token_id,
+                  amount: total_amount,
+                  updated_at: block_timestamp,
+                });
+              }
+
+              // Single summit_log entry
+              collectSummitLog(batches, {
+                block_number,
+                event_index,
+                category: "Rewards",
+                sub_category: "Claimed Quest Rewards",
+                data: {
+                  player: quest_player,
+                  beast_count: rewardsByBeast.size,
+                  total_amount: Array.from(rewardsByBeast.values()).reduce((sum, amt) => sum + amt, 0),
+                  beast_rewards: Array.from(rewardsByBeast.entries()).map(([id, amt]) => ({ beast_token_id: id, amount: amt })),
+                },
+                player: quest_player,
+                token_id: null,
                 transaction_hash,
                 created_at: block_timestamp,
                 indexed_at,
