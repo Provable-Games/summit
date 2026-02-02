@@ -648,7 +648,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
       const displayName = player || 'Unknown';
       if (event.sub_category === '$SURVIVOR Earned') {
         const rawAmount = typeof data.amount === 'number' ? data.amount : parseFloat(String(data.amount)) || 0;
-        const amount = parseFloat((rawAmount / 10000).toFixed(3));
+        const amount = parseFloat((rawAmount / 100000).toFixed(3));
         return (
           <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
             <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>

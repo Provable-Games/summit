@@ -675,7 +675,7 @@ app.get("/leaderboard", async (c) => {
   return c.json(
     results.map((r) => ({
       owner: r.owner,
-      amount: Number(r.amount) / 10000,
+      amount: Number(r.amount) / 100000,
     }))
   );
 });

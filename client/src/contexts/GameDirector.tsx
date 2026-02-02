@@ -303,7 +303,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (category === "Rewards" && !isOwnEvent) {
       if (sub_category === "$SURVIVOR Earned") {
         const rawAmount = typeof eventData.amount === 'number' ? eventData.amount : parseFloat(String(eventData.amount)) || 0;
-        const amount = parseFloat((rawAmount / 10000).toFixed(2));
+        const amount = parseFloat((rawAmount / 100000).toFixed(2));
         addNotificationWithPlayer({
           type: 'survivor_earned',
           value: amount,

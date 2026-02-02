@@ -243,12 +243,10 @@ pub mod summit_systems {
                 i += 1;
             }
 
-            assert!(
-                total_claimable > 50000 || !InternalSummitImpl::_summit_playable(@self), "Not enough rewards to claim",
-            );
+            assert!(total_claimable > 0, "No rewards to claim");
 
-            // Convert back to 18 decimals (add back the 14 decimals we removed)
-            let transfer_amount: u256 = total_claimable.into() * 100_000_000_000_000;
+            // Convert back to 18 decimals (add back the 13 decimals we removed)
+            let transfer_amount: u256 = total_claimable.into() * 10_000_000_000_000;
 
             // Transfer rewards to caller
             self.reward_dispatcher.read().transfer(caller, transfer_amount);
@@ -680,7 +678,7 @@ pub mod summit_systems {
                 let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
                 let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
                 if diplomacy_count > 0 {
-                    let diplomacy_reward_amount_u32: u32 = (diplomacy_reward_amount / 100_000_000_000_000)
+                    let diplomacy_reward_amount_u32: u32 = (diplomacy_reward_amount / 10_000_000_000_000)
                         .try_into()
                         .unwrap();
                     let mut index = 0;
@@ -707,8 +705,8 @@ pub mod summit_systems {
 
                 let summit_reward_amount = total_reward_amount - (diplomacy_reward_amount * diplomacy_count.into());
 
-                // Store rewards earned with 14 decimals removed
-                let reward_amount_u32: u32 = (summit_reward_amount / 100_000_000_000_000).try_into().unwrap();
+                // Store rewards earned with 13 decimals removed
+                let reward_amount_u32: u32 = (summit_reward_amount / 10_000_000_000_000).try_into().unwrap();
                 beast.live.rewards_earned += reward_amount_u32;
                 self.emit(RewardsEarnedEvent { beast_token_id: beast.live.token_id, amount: reward_amount_u32 });
             }
