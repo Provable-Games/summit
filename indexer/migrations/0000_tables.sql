@@ -55,6 +55,7 @@ CREATE TABLE "beast_stats" (
 	"captured_summit" smallint NOT NULL,
 	"used_revival_potion" smallint NOT NULL,
 	"used_attack_potion" smallint NOT NULL,
+	"max_attack_streak" smallint NOT NULL,
 	"summit_held_seconds" integer NOT NULL,
 	"spirit" smallint NOT NULL,
 	"luck" smallint NOT NULL,

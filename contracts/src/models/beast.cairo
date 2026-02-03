@@ -30,7 +30,8 @@ pub struct Stats {
 pub struct Quest {
     pub captured_summit: u8, // 1 bit
     pub used_revival_potion: u8, // 1 bit
-    pub used_attack_potion: u8 // 1 bit
+    pub used_attack_potion: u8, // 1 bit
+    pub max_attack_streak: u8 // 1 bit
 }
 
 #[derive(Copy, Drop, Serde)]
@@ -43,7 +44,7 @@ pub struct Beast {
 /// Layout: token_id(17) + current_health(12) + bonus_health(11) + bonus_xp(15) + attack_streak(4)
 ///         + last_death_timestamp(64) + revival_count(6) + extra_lives(12) + summit_held_seconds(23)
 ///         + spirit(8) + luck(8) + specials(1) + wisdom(1) + diplomacy(1)
-///         + rewards_earned(32) + rewards_claimed(32) + quest(3) = 250 bits
+///         + rewards_earned(32) + rewards_claimed(32) + quest(4) = 251 bits
 mod pow {
     pub const TWO_POW_4: u256 = 0x10;
     pub const TWO_POW_6: u256 = 0x40;
@@ -71,6 +72,7 @@ mod pow {
     pub const TWO_POW_247: u256 = 0x80000000000000000000000000000000000000000000000000000000000000;
     pub const TWO_POW_248: u256 = 0x100000000000000000000000000000000000000000000000000000000000000;
     pub const TWO_POW_249: u256 = 0x200000000000000000000000000000000000000000000000000000000000000;
+    pub const TWO_POW_250: u256 = 0x400000000000000000000000000000000000000000000000000000000000000;
 
     // Mask constants for optimized unpacking (value = 2^N - 1)
     pub const MASK_1: u256 = 0x1;
@@ -109,7 +111,8 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
             + value.rewards_claimed.into() * pow::TWO_POW_215 // 32 bits at position 215
             + value.quest.captured_summit.into() * pow::TWO_POW_247 // 1 bit at position 247
             + value.quest.used_revival_potion.into() * pow::TWO_POW_248 // 1 bit at position 248
-            + value.quest.used_attack_potion.into() * pow::TWO_POW_249) // 1 bit at position 249
+            + value.quest.used_attack_potion.into() * pow::TWO_POW_249 // 1 bit at position 249
+            + value.quest.max_attack_streak.into() * pow::TWO_POW_250) // 1 bit at position 250
             .try_into()
             .expect('pack beast overflow')
     }
@@ -177,15 +180,17 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
         let rewards_claimed = (packed & pow::MASK_32).try_into().expect('unpack rewards_claimed');
         packed = packed / 0x100000000_u256; // TWO_POW_32
 
-        // Extract quest flags (3 bits: captured_summit, used_revival_potion, used_attack_potion)
+        // Extract quest flags (4 bits: captured_summit, used_revival_potion, used_attack_potion, max_attack_streak)
         let captured_summit = (packed & pow::MASK_1).try_into().expect('unpack captured_summit');
         packed = packed / 2_u256;
         let used_revival_potion = (packed & pow::MASK_1).try_into().expect('unpack used_revival_potion');
         packed = packed / 2_u256;
         let used_attack_potion = (packed & pow::MASK_1).try_into().expect('unpack used_attack_potion');
+        packed = packed / 2_u256;
+        let max_attack_streak = (packed & pow::MASK_1).try_into().expect('unpack max_attack_streak');
 
         let stats = Stats { spirit, luck, specials, wisdom, diplomacy };
-        let quest = Quest { captured_summit, used_revival_potion, used_attack_potion };
+        let quest = Quest { captured_summit, used_revival_potion, used_attack_potion, max_attack_streak };
 
         LiveBeastStats {
             token_id,
@@ -285,6 +290,7 @@ mod tests {
         captured_summit: u8,
         used_revival_potion: u8,
         used_attack_potion: u8,
+        max_attack_streak: u8,
     ) -> LiveBeastStats {
         LiveBeastStats {
             token_id,
@@ -299,7 +305,7 @@ mod tests {
             stats: Stats { spirit, luck, specials, wisdom, diplomacy },
             rewards_earned,
             rewards_claimed,
-            quest: Quest { captured_summit, used_revival_potion, used_attack_potion },
+            quest: Quest { captured_summit, used_revival_potion, used_attack_potion, max_attack_streak },
         }
     }
 
@@ -325,7 +331,8 @@ mod tests {
             0_u32, // rewards_claimed
             0_u8, // captured_summit
             0_u8, // used_revival_potion
-            0_u8 // used_attack_potion
+            0_u8, // used_attack_potion
+            0_u8 // max_attack_streak
         );
         let packed = PackableLiveStatsStorePacking::pack(stats);
         let unpacked = PackableLiveStatsStorePacking::unpack(packed);
@@ -348,6 +355,7 @@ mod tests {
         assert(unpacked.quest.captured_summit == 0, 'zero captured_summit');
         assert(unpacked.quest.used_revival_potion == 0, 'zero used_revival_potion');
         assert(unpacked.quest.used_attack_potion == 0, 'zero used_attack_potion');
+        assert(unpacked.quest.max_attack_streak == 0, 'zero max_attack_streak');
     }
 
     #[test]
@@ -386,7 +394,8 @@ mod tests {
             0xFFFFFFFE_u32, // (2^32 - 1) - 1
             1_u8, // captured_summit: 1-bit max
             1_u8, // used_revival_potion: 1-bit max
-            1_u8 // used_attack_potion: 1-bit max
+            1_u8, // used_attack_potion: 1-bit max
+            1_u8 // max_attack_streak: 1-bit max
         );
         let packed = PackableLiveStatsStorePacking::pack(stats);
         let unpacked = PackableLiveStatsStorePacking::unpack(packed);
@@ -409,6 +418,7 @@ mod tests {
         assert(unpacked.quest.captured_summit == 1_u8, 'max captured_summit');
         assert(unpacked.quest.used_revival_potion == 1_u8, 'max used_revival_potion');
         assert(unpacked.quest.used_attack_potion == 1_u8, 'max used_attack_potion');
+        assert(unpacked.quest.max_attack_streak == 1_u8, 'max max_attack_streak');
     }
 
     #[test]
@@ -433,7 +443,8 @@ mod tests {
             500000_u32, // rewards_claimed
             1_u8, // captured_summit
             0_u8, // used_revival_potion
-            1_u8 // used_attack_potion
+            1_u8, // used_attack_potion
+            1_u8 // max_attack_streak
         );
         let packed = PackableLiveStatsStorePacking::pack(stats);
         let unpacked = PackableLiveStatsStorePacking::unpack(packed);
@@ -457,5 +468,6 @@ mod tests {
         assert(unpacked.quest.captured_summit == 1_u8, 'mixed captured_summit');
         assert(unpacked.quest.used_revival_potion == 0_u8, 'mixed used_revival_potion');
         assert(unpacked.quest.used_attack_potion == 1_u8, 'mixed used_attack_potion');
+        assert(unpacked.quest.max_attack_streak == 1_u8, 'mixed max_attack_streak');
     }
 }

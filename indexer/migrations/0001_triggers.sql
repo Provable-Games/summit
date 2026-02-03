@@ -32,6 +32,7 @@ BEGIN
         'captured_summit', NEW.captured_summit > 0,
         'used_revival_potion', NEW.used_revival_potion > 0,
         'used_attack_potion', NEW.used_attack_potion > 0,
+        'max_attack_streak', NEW.max_attack_streak > 0,
         'summit_held_seconds', NEW.summit_held_seconds,
         'spirit', NEW.spirit,
         'luck', NEW.luck,

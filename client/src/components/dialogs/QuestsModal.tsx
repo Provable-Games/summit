@@ -1,17 +1,20 @@
+import attackPotionIcon from '@/assets/images/attack-potion.png';
+import revivePotionIcon from '@/assets/images/revive-potion.png';
+import swordIcon from '@/assets/images/sword.png';
+
+const survivorTokenIcon = '/images/survivor_token.png';
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import { gameColors } from '@/utils/themes';
-import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
-import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import FlagIcon from '@mui/icons-material/Flag';
+import HandshakeIcon from '@mui/icons-material/Handshake';
+import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
+import StarIcon from '@mui/icons-material/Star';
 import TimerIcon from '@mui/icons-material/Timer';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import HandshakeIcon from '@mui/icons-material/Handshake';
-import ScienceIcon from '@mui/icons-material/Science';
-import BoltIcon from '@mui/icons-material/Bolt';
-import { Box, Dialog, IconButton, LinearProgress, Typography } from '@mui/material';
+import { Box, Button, Dialog, IconButton, LinearProgress, Typography } from '@mui/material';
 import { useMemo } from 'react';
 import { isMobile } from 'react-device-detect';
 
@@ -34,48 +37,32 @@ interface QuestDefinition {
 const questDefinitions: QuestDefinition[] = [
   {
     id: 'attack_summit',
-    name: 'Attack the Summit',
-    description: 'Attack the Summit at least once',
+    name: 'First Blood',
+    description: 'Attack the Summit',
     reward: 0.05,
-    icon: <LocalFireDepartmentIcon sx={{ color: gameColors.red }} />,
+    icon: <img src={swordIcon} alt="sword" style={{ width: 22, height: 22 }} />,
     check: (beast) => beast.attack_streak > 0,
   },
   {
     id: 'revival_potion',
-    name: 'Revival Potion Attack',
+    name: 'Second Wind',
     description: 'Buy a revival potion and attack with a dead beast',
     reward: 0.05,
-    icon: <ScienceIcon sx={{ color: '#4caf50' }} />,
+    icon: <img src={revivePotionIcon} alt="revive" style={{ width: 22, height: 22 }} />,
     check: (beast) => beast.used_revival_potion === true,
   },
   {
     id: 'attack_potion',
-    name: 'Attack Potion Usage',
+    name: 'A Vital Boost',
     description: 'Buy an attack potion and attack using it',
     reward: 0.05,
-    icon: <BoltIcon sx={{ color: '#f44336' }} />,
+    icon: <img src={attackPotionIcon} alt="attack" style={{ width: 22, height: 22 }} />,
     check: (beast) => beast.used_attack_potion === true,
   },
   {
-    id: 'take_summit',
-    name: 'Take Summit',
-    description: 'Capture the Summit',
-    reward: 0.05,
-    icon: <FlagIcon sx={{ color: gameColors.yellow }} />,
-    check: (beast) => beast.captured_summit === true,
-  },
-  {
-    id: 'hold_summit_10s',
-    name: 'Hold Summit 10s',
-    description: 'Hold the Summit for at least 10 seconds',
-    reward: 0.1,
-    icon: <TimerIcon sx={{ color: gameColors.brightGreen }} />,
-    check: (beast) => beast.summit_held_seconds >= 10,
-  },
-  {
     id: 'level_up_1',
-    name: 'Level Up (1)',
-    description: 'Gain at least 1 level',
+    name: 'Growing Stronger',
+    description: 'Level up your beast once',
     reward: 0.02,
     icon: <TrendingUpIcon sx={{ color: '#2196f3' }} />,
     check: (beast) => beast.current_level - beast.level >= 1,
@@ -84,31 +71,57 @@ const questDefinitions: QuestDefinition[] = [
   },
   {
     id: 'level_up_3',
-    name: 'Level Up (3)',
-    description: 'Gain at least 3 levels',
+    name: 'Rising Power',
+    description: 'Level up your beast 3 times',
     reward: 0.03,
-    icon: <TrendingUpIcon sx={{ color: '#2196f3' }} />,
+    icon: <TrendingUpIcon sx={{ color: '#64b5f6' }} />,
     check: (beast) => beast.current_level - beast.level >= 3,
     tier: 2,
     group: 'level_up',
   },
   {
     id: 'level_up_5',
-    name: 'Level Up (5)',
-    description: 'Gain at least 5 levels',
-    reward: 0.05,
-    icon: <TrendingUpIcon sx={{ color: '#2196f3' }} />,
+    name: 'Apex Predator',
+    description: 'Level up your beast 5 times',
+    reward: 0.04,
+    icon: <StarIcon sx={{ color: '#ffd700' }} />,
     check: (beast) => beast.current_level - beast.level >= 5,
     tier: 3,
     group: 'level_up',
   },
   {
-    id: 'upgrade_diplomacy',
-    name: 'Upgrade Diplomacy',
-    description: 'Purchase the Diplomacy upgrade',
+    id: 'level_up_10',
+    name: 'Mastery',
+    description: 'Level up your beast 10 times',
+    reward: 0.06,
+    icon: <StarIcon sx={{ color: '#ffd700' }} />,
+    check: (beast) => beast.current_level - beast.level >= 10,
+    tier: 4,
+    group: 'level_up',
+  },
+  {
+    id: 'max_attack_streak',
+    name: 'Consistency is Key',
+    description: 'Reach a max attack streak of 10',
+    reward: 0.05,
+    icon: <TrendingUpIcon sx={{ color: '#64b5f6' }} />,
+    check: (beast) => beast.max_attack_streak === true,
+  },
+  {
+    id: 'take_summit',
+    name: 'Summit Conqueror',
+    description: 'Capture the Summit',
+    reward: 0.05,
+    icon: <MilitaryTechIcon sx={{ color: gameColors.yellow }} />,
+    check: (beast) => beast.captured_summit === true,
+  },
+  {
+    id: 'hold_summit_10s',
+    name: 'Iron Grip',
+    description: 'Hold the Summit for at least 10 seconds',
     reward: 0.1,
-    icon: <HandshakeIcon sx={{ color: '#9c27b0' }} />,
-    check: (beast) => beast.diplomacy === true,
+    icon: <TimerIcon sx={{ color: gameColors.brightGreen }} />,
+    check: (beast) => beast.summit_held_seconds >= 10,
   },
 ];
 
@@ -136,12 +149,17 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
         ? stats.reduce((sum, s) => sum + s.completedCount / collection.length, 0) / totalQuests
         : 0;
 
+    const alreadyClaimed = 0; // TODO: fetch from contract
+    const claimable = totalEarnedReward - alreadyClaimed;
+
     return {
       quests: stats,
       totalPossibleReward,
       totalEarnedReward,
       avgCompletion,
       beastCount: collection.length,
+      alreadyClaimed,
+      claimable,
     };
   }, [collection]);
 
@@ -186,7 +204,7 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
           <EmojiEventsIcon sx={styles.trophyIcon} />
           <Typography sx={styles.title}>BEAST QUESTS</Typography>
           <Typography sx={styles.subtitle}>
-            Complete quests with your beasts to earn $SURVIVOR rewards
+            Complete quests with your beasts to earn $SURVIVOR
           </Typography>
         </Box>
 
@@ -199,9 +217,12 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
           <Box sx={styles.summaryDivider} />
           <Box sx={styles.summaryItem}>
             <Typography sx={styles.summaryLabel}>Max Reward</Typography>
-            <Typography sx={styles.summaryValue}>
-              {questStats.totalPossibleReward.toFixed(1)}
-            </Typography>
+            <Box sx={styles.summaryValueWithIcon}>
+              <Typography sx={styles.summaryValue}>
+                {questStats.totalPossibleReward.toFixed(1)}
+              </Typography>
+              <img src={survivorTokenIcon} alt="SURVIVOR" style={{ width: 24, height: 24 }} />
+            </Box>
           </Box>
           <Box sx={styles.summaryDivider} />
           <Box sx={styles.summaryItem}>
@@ -236,6 +257,7 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
                   </Box>
                   <Box sx={styles.rewardBadge}>
                     <Typography sx={styles.rewardText}>+{quest.reward}</Typography>
+                    <img src={survivorTokenIcon} alt="SURVIVOR" style={{ width: 18, height: 18, marginLeft: 4 }} />
                   </Box>
                 </Box>
 
@@ -244,7 +266,7 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
                     <Typography sx={styles.progressText}>
                       {quest.completedCount} / {quest.totalCount} beasts
                     </Typography>
-                    {isComplete && <AssignmentTurnedInIcon sx={styles.checkIcon} />}
+                    {isComplete && <CheckCircleIcon sx={styles.checkIcon} />}
                   </Box>
                   <LinearProgress
                     variant="determinate"
@@ -260,12 +282,22 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
         {/* Footer */}
         <Box sx={styles.footer}>
           <Box sx={styles.totalReward}>
-            <Typography sx={styles.totalLabel}>Potential Rewards</Typography>
-            <Typography sx={styles.totalValue}>
-              {questStats.totalEarnedReward.toFixed(2)} / {questStats.totalPossibleReward.toFixed(2)}{' '}
-              $SURVIVOR
-            </Typography>
+            <Typography sx={styles.totalLabel}>Unclaimed Rewards</Typography>
+            <Box sx={styles.totalValueWithIcon}>
+              <Typography sx={styles.totalValue}>
+                {questStats.totalEarnedReward.toFixed(2)}
+              </Typography>
+              <img src={survivorTokenIcon} alt="SURVIVOR" style={{ width: 24, height: 24 }} />
+            </Box>
           </Box>
+          <Button
+            sx={styles.claimButton}
+            disabled={questStats.claimable <= 0}
+          >
+            <Box sx={styles.claimButtonContent}>
+              <Typography sx={styles.claimButtonText}>Claim Now</Typography>
+            </Box>
+          </Button>
         </Box>
       </Box>
     </Dialog>
@@ -344,6 +376,11 @@ const styles = {
     fontSize: '18px',
     fontWeight: 'bold',
     color: gameColors.yellow,
+  },
+  summaryValueWithIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
   },
   summaryDivider: {
     width: '1px',
@@ -496,5 +533,56 @@ const styles = {
     fontSize: '16px',
     fontWeight: 'bold',
     color: gameColors.yellow,
+  },
+  totalValueWithIcon: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.75,
+  },
+  claimButton: {
+    mt: 1.5,
+    width: '100%',
+    background: `${gameColors.accentGreen}40`,
+    borderRadius: '8px',
+    py: 1,
+    border: `1px solid ${gameColors.accentGreen}60`,
+    transition: 'all 0.2s ease',
+    '&:hover': {
+      background: `${gameColors.accentGreen}60`,
+      border: `1px solid ${gameColors.brightGreen}`,
+    },
+    '&:disabled': {
+      background: `${gameColors.darkGreen}40`,
+      border: `1px solid ${gameColors.accentGreen}30`,
+      opacity: 0.6,
+    },
+  },
+  claimButtonContent: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1.5,
+  },
+  claimButtonText: {
+    color: '#fff',
+    fontSize: '14px',
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
+  },
+  claimAmountBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    background: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: '4px',
+    px: 1,
+    py: 0.25,
+  },
+  claimAmountText: {
+    color: gameColors.yellow,
+    fontSize: '14px',
+    fontWeight: 'bold',
   },
 };

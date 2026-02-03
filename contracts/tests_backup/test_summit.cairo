@@ -593,7 +593,9 @@ fn create_test_beast(luck: u8, spirit: u8) -> Beast {
         stats: summit::models::beast::Stats { spirit, luck, specials: 0, wisdom: 0, diplomacy: 0 },
         rewards_earned: 0,
         rewards_claimed: 0,
-        quest: summit::models::beast::Quest { captured_summit: 0, used_revival_potion: 0, used_attack_potion: 0 },
+        quest: summit::models::beast::Quest {
+            captured_summit: 0, used_revival_potion: 0, used_attack_potion: 0, max_attack_streak: 0,
+        },
     };
 
     Beast { fixed, live }

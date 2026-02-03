@@ -54,6 +54,7 @@ export interface Beast {
   captured_summit: boolean;
   used_revival_potion: boolean;
   used_attack_potion: boolean;
+  max_attack_streak: boolean;
   summit_held_seconds: number;
   spirit: number;
   luck: number;

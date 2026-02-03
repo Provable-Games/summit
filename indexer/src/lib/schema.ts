@@ -54,6 +54,7 @@ export const beast_stats = pgTable(
     captured_summit: smallint("captured_summit").notNull(),
     used_revival_potion: smallint("used_revival_potion").notNull(),
     used_attack_potion: smallint("used_attack_potion").notNull(),
+    max_attack_streak: smallint("max_attack_streak").notNull(),
     summit_held_seconds: integer("summit_held_seconds").notNull(),
     // Stats struct fields
     spirit: smallint("spirit").notNull(),

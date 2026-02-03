@@ -69,11 +69,12 @@ export interface LiveBeastStats {
   captured_summit: boolean;
   used_revival_potion: boolean;
   used_attack_potion: boolean;
+  max_attack_streak: boolean;
 }
 
 /**
  * Unpack LiveBeastStats from a single felt252
- * Bit layout (total 250 bits):
+ * Bit layout (total 251 bits):
  * - token_id: 17 bits
  * - current_health: 12 bits
  * - bonus_health: 11 bits
@@ -93,6 +94,7 @@ export interface LiveBeastStats {
  * - captured_summit: 1 bit
  * - used_revival_potion: 1 bit
  * - used_attack_potion: 1 bit
+ * - max_attack_streak: 1 bit
  */
 function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   let packed = BigInt(packedFelt);
@@ -148,6 +150,8 @@ function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   const used_revival_potion = (packed & MASK_1) === 1n;
   packed = packed / 2n;
   const used_attack_potion = (packed & MASK_1) === 1n;
+  packed = packed / 2n;
+  const max_attack_streak = (packed & MASK_1) === 1n;
 
   return {
     token_id,
@@ -169,6 +173,7 @@ function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
     captured_summit,
     used_revival_potion,
     used_attack_potion,
+    max_attack_streak,
   };
 }
 

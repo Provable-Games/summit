@@ -107,6 +107,7 @@ interface BeastStatsSnapshot {
   captured_summit: number;
   used_revival_potion: number;
   used_attack_potion: number;
+  max_attack_streak: number;
   current_health?: number;
 }
 
@@ -182,6 +183,7 @@ async function getBeastContextBatch(
       bs_captured_summit: schema.beast_stats.captured_summit,
       bs_used_revival_potion: schema.beast_stats.used_revival_potion,
       bs_used_attack_potion: schema.beast_stats.used_attack_potion,
+      bs_max_attack_streak: schema.beast_stats.max_attack_streak,
       bs_current_health: schema.beast_stats.current_health,
       b_beast_id: schema.beasts.beast_id,
       b_prefix: schema.beasts.prefix,
@@ -213,6 +215,7 @@ async function getBeastContextBatch(
         captured_summit: row.bs_captured_summit,
         used_revival_potion: row.bs_used_revival_potion,
         used_attack_potion: row.bs_used_attack_potion,
+        max_attack_streak: row.bs_max_attack_streak,
         current_health: row.bs_current_health,
       },
       metadata: row.b_beast_id !== null ? {
@@ -317,6 +320,7 @@ type BeastStatsRow = {
   captured_summit: number;
   used_revival_potion: number;
   used_attack_potion: number;
+  max_attack_streak: number;
   summit_held_seconds: number;
   spirit: number;
   luck: number;
@@ -487,6 +491,7 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
           captured_summit: sql`excluded.captured_summit`,
           used_revival_potion: sql`excluded.used_revival_potion`,
           used_attack_potion: sql`excluded.used_attack_potion`,
+          max_attack_streak: sql`excluded.max_attack_streak`,
           summit_held_seconds: sql`excluded.summit_held_seconds`,
           spirit: sql`excluded.spirit`,
           luck: sql`excluded.luck`,
@@ -699,6 +704,7 @@ function collectBeastStatChangeLogs(
     captured_summit: 0,
     used_revival_potion: 0,
     used_attack_potion: 0,
+    max_attack_streak: 0,
   };
 
   // Check each stat for increases
@@ -1321,6 +1327,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   captured_summit: stats.captured_summit,
                   used_revival_potion: stats.used_revival_potion,
                   used_attack_potion: stats.used_attack_potion,
+                  max_attack_streak: stats.max_attack_streak,
                   summit_held_seconds: stats.summit_held_seconds,
                   spirit: stats.spirit,
                   luck: stats.luck,
@@ -1375,6 +1382,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                     captured_summit: stats.captured_summit,
                     used_revival_potion: stats.used_revival_potion,
                     used_attack_potion: stats.used_attack_potion,
+                    max_attack_streak: stats.max_attack_streak,
                   },
                   beast_metadata,
                   beast_owner,
@@ -1399,6 +1407,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                     captured_summit: stats.captured_summit,
                     used_revival_potion: stats.used_revival_potion,
                     used_attack_potion: stats.used_attack_potion,
+                    max_attack_streak: stats.max_attack_streak,
                     current_health: stats.current_health,
                   },
                   metadata: beast_metadata,
@@ -1429,6 +1438,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 captured_summit: stats.captured_summit,
                 used_revival_potion: stats.used_revival_potion,
                 used_attack_potion: stats.used_attack_potion,
+                max_attack_streak: stats.max_attack_streak,
                 summit_held_seconds: stats.summit_held_seconds,
                 spirit: stats.spirit,
                 luck: stats.luck,
@@ -1459,6 +1469,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   captured_summit: stats.captured_summit,
                   used_revival_potion: stats.used_revival_potion,
                   used_attack_potion: stats.used_attack_potion,
+                  max_attack_streak: stats.max_attack_streak,
                 },
                 metadata,
                 live_beast_owner,
@@ -1484,6 +1495,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   captured_summit: stats.captured_summit,
                   used_revival_potion: stats.used_revival_potion,
                   used_attack_potion: stats.used_attack_potion,
+                  max_attack_streak: stats.max_attack_streak,
                   current_health: stats.current_health,
                 },
                 metadata,

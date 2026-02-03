@@ -1,5 +1,5 @@
 import { gameColors } from '@/utils/themes';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import DescriptionIcon from '@mui/icons-material/Description';
 import { Box, IconButton, Typography } from '@mui/material';
 import { isMobile } from 'react-device-detect';
 
@@ -14,7 +14,7 @@ const BeastBoard = ({ onClick }: BeastBoardProps) => {
       sx={styles.iconButton}
     >
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <EmojiEventsIcon sx={styles.icon} />
+        <DescriptionIcon sx={styles.icon} />
         <Typography sx={styles.title}>
           Quests
         </Typography>

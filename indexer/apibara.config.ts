@@ -4,7 +4,7 @@ export default defineConfig({
   runtimeConfig: {
     summit: {
       // Summit game contract address (mainnet)
-      summitContractAddress: "0x02cc9cdb8257395da31e6f7ed5570b6e6818c8d80194f07e7aa587242818f050",
+      summitContractAddress: "0x05dacc0d17aaada0d82284e6c2b6f9fa4a00e4d4fa3584313bb45937ba5c7be6",
       // Beasts NFT contract address (mainnet)
       beastsContractAddress: "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
       // Dojo World contract address (Loot Survivor mainnet)
@@ -16,7 +16,7 @@ export default defineConfig({
       // Mainnet DNA stream URL
       streamUrl: process.env.STREAM_URL,
       // Starting block - use earliest block needed for Dojo events
-      startingBlock: "6351000",
+      startingBlock: "6388539",
       // PostgreSQL connection string
       databaseUrl: process.env.DATABASE_URL,
       // RPC URL for fetching beast metadata

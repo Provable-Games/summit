@@ -198,6 +198,7 @@ export interface LiveBeastStats {
   captured_summit: number;
   used_revival_potion: number;
   used_attack_potion: number;
+  max_attack_streak: number;
 }
 
 export interface BeastUpdatesEventData {
@@ -260,7 +261,7 @@ export interface QuestRewardsClaimedEventData {
 
 /**
  * Unpack LiveBeastStats from a single felt252
- * Bit layout (total 250 bits):
+ * Bit layout (total 251 bits):
  * - token_id: 17 bits
  * - current_health: 12 bits
  * - bonus_health: 11 bits
@@ -280,6 +281,7 @@ export interface QuestRewardsClaimedEventData {
  * - captured_summit: 1 bit
  * - used_revival_potion: 1 bit
  * - used_attack_potion: 1 bit
+ * - max_attack_streak: 1 bit
  */
 export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   let packed = hexToBigInt(packedFelt);
@@ -344,12 +346,14 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   const rewards_claimed = Number(packed & MASK_32);
   packed = packed / TWO_POW_32;
 
-  // Extract quest flags (3 bits: captured_summit, used_revival_potion, used_attack_potion)
+  // Extract quest flags (4 bits: captured_summit, used_revival_potion, used_attack_potion, max_attack_streak)
   const captured_summit = Number(packed & MASK_1);
   packed = packed / 2n;
   const used_revival_potion = Number(packed & MASK_1);
   packed = packed / 2n;
   const used_attack_potion = Number(packed & MASK_1);
+  packed = packed / 2n;
+  const max_attack_streak = Number(packed & MASK_1);
 
   return {
     token_id,
@@ -371,6 +375,7 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
     captured_summit,
     used_revival_potion,
     used_attack_potion,
+    max_attack_streak,
   };
 }
 

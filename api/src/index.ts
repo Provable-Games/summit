@@ -261,6 +261,7 @@ app.get("/beasts/:owner", async (c) => {
       captured_summit: beast_stats.captured_summit,
       used_revival_potion: beast_stats.used_revival_potion,
       used_attack_potion: beast_stats.used_attack_potion,
+      max_attack_streak: beast_stats.max_attack_streak,
       summit_held_seconds: beast_stats.summit_held_seconds,
       spirit: beast_stats.spirit,
       luck: beast_stats.luck,
@@ -338,6 +339,7 @@ app.get("/beasts/:owner", async (c) => {
         captured_summit: Boolean(r.captured_summit),
         used_revival_potion: Boolean(r.used_revival_potion),
         used_attack_potion: Boolean(r.used_attack_potion),
+        max_attack_streak: Boolean(r.max_attack_streak),
         summit_held_seconds: r.summit_held_seconds ?? 0,
 
         // Upgrades

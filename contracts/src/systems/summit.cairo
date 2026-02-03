@@ -441,7 +441,8 @@ pub mod summit_systems {
 
             let mut beast_live_stats: LiveBeastStats = InternalSummitImpl::_get_live_stats(@self, start_token_id);
             beast_live_stats.current_health = 100;
-            self._save_live_stats(beast_live_stats);
+            let packed_beast = self._save_live_stats(beast_live_stats);
+            self.emit(LiveBeastStatsEvent { live_stats: packed_beast });
         }
 
         fn set_summit_reward(ref self: ContractState, amount: u128) {
@@ -937,6 +938,10 @@ pub mod summit_systems {
                     // increase attack streak if less than 10
                     if attacking_beast.live.attack_streak < 10 {
                         attacking_beast.live.attack_streak += 1;
+                    }
+
+                    if (attacking_beast.live.attack_streak == 10) {
+                        attacking_beast.live.quest.max_attack_streak = 1;
                     }
 
                     beast_attacked = true;
