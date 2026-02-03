@@ -12,7 +12,7 @@ import StarIcon from '@mui/icons-material/Star';
 import { Box, Typography } from '@mui/material';
 import { AnimatePresence, motion } from 'framer-motion';
 
-import attackPotionIcon from '@/assets/images/attack-potion.png';
+import swordIcon from '@/assets/images/sword.png';
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
 import killTokenIcon from '@/assets/images/kill-token.png';
 import lifePotionIcon from '@/assets/images/life-potion.png';
@@ -20,174 +20,156 @@ import poisonPotionIcon from '@/assets/images/poison-potion.png';
 
 const survivorTokenIcon = '/images/survivor_token.png';
 
+const getNotificationDisplay = (notification: GameNotification): { icon: React.ReactNode; text: string; color: string } => {
+  const iconStyle = { width: 14, height: 14, objectFit: 'contain' as const };
+  const { type, value } = notification;
+
+  switch (type) {
+    case 'battle':
+      return {
+        icon: <img src={swordIcon} alt="" style={iconStyle} />,
+        text: `${value} damage`,
+        color: '#e07a5f',
+      };
+    case 'poison':
+      return {
+        icon: <img src={poisonPotionIcon} alt="" style={iconStyle} />,
+        text: `${value} applied`,
+        color: gameColors.brightGreen,
+      };
+    case 'summit_change':
+      return {
+        icon: <MilitaryTechIcon sx={{ fontSize: 14, color: '#ffd700' }} />,
+        text: 'Took Summit',
+        color: '#ffd700',
+      };
+    case 'extra_life':
+      return {
+        icon: <img src={lifePotionIcon} alt="" style={iconStyle} />,
+        text: `+${value} Life`,
+        color: '#ff69b4',
+      };
+    case 'specials':
+      return {
+        icon: <StarIcon sx={{ fontSize: 14, color: '#ffd700' }} />,
+        text: 'Specials',
+        color: '#ffd700',
+      };
+    case 'wisdom':
+      return {
+        icon: <PsychologyIcon sx={{ fontSize: 14, color: '#60a5fa' }} />,
+        text: 'Wisdom',
+        color: '#60a5fa',
+      };
+    case 'diplomacy':
+      return {
+        icon: <HandshakeIcon sx={{ fontSize: 14, color: '#a78bfa' }} />,
+        text: 'Diplomacy',
+        color: '#a78bfa',
+      };
+    case 'spirit':
+      return {
+        icon: <ElectricBoltIcon sx={{ fontSize: 14, color: '#00ffff' }} />,
+        text: `+${value} Spirit`,
+        color: '#00ffff',
+      };
+    case 'luck':
+      return {
+        icon: <CasinoIcon sx={{ fontSize: 14, color: '#ff69b4' }} />,
+        text: `+${value} Luck`,
+        color: '#ff69b4',
+      };
+    case 'bonus_health':
+      return {
+        icon: <FavoriteIcon sx={{ fontSize: 14, color: '#e05050' }} />,
+        text: `+${value} HP`,
+        color: '#e05050',
+      };
+    case 'survivor_earned':
+      return {
+        icon: <img src={survivorTokenIcon} alt="" style={iconStyle} />,
+        text: `+${value} CLAIMED`,
+        color: '#f2cc8f',
+      };
+    case 'claimed_survivor':
+      return {
+        icon: <img src={survivorTokenIcon} alt="" style={iconStyle} />,
+        text: `${value} CLAIMED`,
+        color: '#f2cc8f',
+      };
+    case 'claimed_corpses':
+      return {
+        icon: <img src={corpseTokenIcon} alt="" style={iconStyle} />,
+        text: `${value} CLAIMED`,
+        color: '#f2cc8f',
+      };
+    case 'claimed_skulls':
+      return {
+        icon: <img src={killTokenIcon} alt="" style={iconStyle} />,
+        text: `${value} CLAIMED`,
+        color: '#f2cc8f',
+      };
+    case 'kill':
+      return {
+        icon: <EmojiEventsIcon sx={{ fontSize: 14, color: '#ffd700' }} />,
+        text: 'Adventurer Slain',
+        color: '#ffd700',
+      };
+    case 'locked':
+      return {
+        icon: <HeartBrokenIcon sx={{ fontSize: 14, color: '#ff4444' }} />,
+        text: 'Locked',
+        color: '#ff4444',
+      };
+    default:
+      return {
+        icon: null,
+        text: type,
+        color: '#fff',
+      };
+  }
+};
+
 const NotificationItem = ({ notification }: { notification: GameNotification }) => {
-  const config = getNotificationConfig(notification.type);
+  const display = getNotificationDisplay(notification);
+  const player = notification.playerName || '';
 
   return (
     <Box sx={styles.notificationItem}>
-      {/* Beast image (if available) */}
+      {/* Beast image on left */}
       {notification.beastImageSrc && (
         <Box sx={styles.beastImageContainer}>
           <img src={notification.beastImageSrc} alt="" style={styles.beastImage as React.CSSProperties} />
         </Box>
       )}
 
-      {/* Icon */}
-      <Box sx={[styles.iconContainer, { background: config.color + '25' }]}>
-        {config.icon}
+      {/* Right side content */}
+      <Box sx={styles.rightContent}>
+        {/* Row 1: Player name */}
+        {player && (
+          <Typography sx={styles.playerText}>
+            {player}
+          </Typography>
+        )}
+
+        {/* Row 2: Icon + text */}
+        <Box sx={styles.actionRow}>
+          <Box sx={styles.iconContainer}>
+            {display.icon}
+          </Box>
+          <Typography sx={[styles.labelText, { color: display.color }]}>
+            {display.text}
+          </Typography>
+        </Box>
       </Box>
-
-      {/* Label */}
-      <Typography sx={[styles.labelText, { color: config.color }]}>
-        {config.label}
-      </Typography>
-
-      {/* Value (if exists) */}
-      {notification.value !== undefined && (
-        <Typography sx={[styles.valueText, { color: config.color }]}>
-          {typeof notification.value === 'number' && notification.value > 0 ? '+' : ''}
-          {notification.value}
-        </Typography>
-      )}
-
-      {/* Player name */}
-      {notification.playerName && (
-        <Typography sx={styles.playerName}>
-          {notification.playerName}
-        </Typography>
-      )}
     </Box>
   );
-};
-
-interface NotificationConfig {
-  icon: React.ReactNode;
-  color: string;
-  label: string;
-}
-
-const getNotificationConfig = (type: GameNotification['type']): NotificationConfig => {
-  const iconStyle = { width: 16, height: 16, objectFit: 'contain' as const };
-
-  switch (type) {
-    // Battle events
-    case 'battle':
-      return {
-        icon: <img src={attackPotionIcon} alt="" style={iconStyle} />,
-        color: '#e07a5f',
-        label: 'ATK',
-      };
-    case 'poison':
-      return {
-        icon: <img src={poisonPotionIcon} alt="" style={iconStyle} />,
-        color: gameColors.brightGreen,
-        label: 'POISON',
-      };
-    case 'summit_change':
-      return {
-        icon: <MilitaryTechIcon sx={{ fontSize: 16, color: '#ffd700' }} />,
-        color: '#ffd700',
-        label: 'SUMMIT',
-      };
-    case 'extra_life':
-      return {
-        icon: <img src={lifePotionIcon} alt="" style={iconStyle} />,
-        color: '#ff69b4',
-        label: 'LIFE',
-      };
-
-    // Beast upgrades
-    case 'specials':
-      return {
-        icon: <StarIcon sx={{ fontSize: 16, color: '#ffd700' }} />,
-        color: '#ffd700',
-        label: 'SPECIALS',
-      };
-    case 'wisdom':
-      return {
-        icon: <PsychologyIcon sx={{ fontSize: 16, color: '#60a5fa' }} />,
-        color: '#60a5fa',
-        label: 'WISDOM',
-      };
-    case 'diplomacy':
-      return {
-        icon: <HandshakeIcon sx={{ fontSize: 16, color: '#a78bfa' }} />,
-        color: '#a78bfa',
-        label: 'DIPLOMACY',
-      };
-    case 'spirit':
-      return {
-        icon: <ElectricBoltIcon sx={{ fontSize: 16, color: '#00ffff' }} />,
-        color: '#00ffff',
-        label: 'SPIRIT',
-      };
-    case 'luck':
-      return {
-        icon: <CasinoIcon sx={{ fontSize: 16, color: '#ff69b4' }} />,
-        color: '#ff69b4',
-        label: 'LUCK',
-      };
-    case 'bonus_health':
-      return {
-        icon: <FavoriteIcon sx={{ fontSize: 16, color: '#e05050' }} />,
-        color: '#e05050',
-        label: 'FED',
-      };
-
-    // Rewards
-    case 'survivor_earned':
-      return {
-        icon: <img src={survivorTokenIcon} alt="" style={iconStyle} />,
-        color: '#f2cc8f',
-        label: 'EARNED',
-      };
-    case 'claimed_survivor':
-      return {
-        icon: <img src={survivorTokenIcon} alt="" style={iconStyle} />,
-        color: '#f2cc8f',
-        label: 'CLAIMED',
-      };
-    case 'claimed_corpses':
-      return {
-        icon: <img src={corpseTokenIcon} alt="" style={iconStyle} />,
-        color: '#f2cc8f',
-        label: 'CLAIMED',
-      };
-    case 'claimed_skulls':
-      return {
-        icon: <img src={killTokenIcon} alt="" style={iconStyle} />,
-        color: '#f2cc8f',
-        label: 'CLAIMED',
-      };
-
-    // LS Events
-    case 'kill':
-      return {
-        icon: <EmojiEventsIcon sx={{ fontSize: 16, color: '#ffd700' }} />,
-        color: '#ffd700',
-        label: 'KILL',
-      };
-    case 'locked':
-      return {
-        icon: <HeartBrokenIcon sx={{ fontSize: 16, color: '#ff4444' }} />,
-        color: '#ff4444',
-        label: 'LOCKED',
-      };
-
-    default:
-      return {
-        icon: null,
-        color: '#fff',
-        label: '',
-      };
-  }
 };
 
 const GameNotificationFeed = () => {
   const { gameNotifications } = useGameStore();
 
-  // Only show last 6 notifications
-  const visibleNotifications = gameNotifications.slice(-6);
+  const visibleNotifications = gameNotifications.slice(-4);
 
   if (visibleNotifications.length === 0) return null;
 
@@ -220,34 +202,29 @@ export default GameNotificationFeed;
 const styles = {
   container: {
     position: 'fixed',
-    right: '16px',
-    top: '50%',
-    transform: 'translateY(-50%)',
+    right: '10px',
+    bottom: '215px',
     display: 'flex',
     flexDirection: 'column',
-    gap: '8px',
+    gap: '6px',
     zIndex: 100,
     pointerEvents: 'none',
-    maxHeight: '60vh',
+    maxHeight: '40vh',
     overflow: 'hidden',
   },
   notificationItem: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    width: '180px',
     background: `linear-gradient(135deg, ${gameColors.darkGreen}f0 0%, ${gameColors.mediumGreen}e0 100%)`,
     backdropFilter: 'blur(12px)',
     border: `1px solid ${gameColors.accentGreen}50`,
-    borderRadius: '8px',
-    padding: '8px 12px',
-    boxShadow: `
-      0 4px 12px rgba(0, 0, 0, 0.4),
-      inset 0 1px 0 rgba(255, 255, 255, 0.05)
-    `,
-    minWidth: '120px',
+    borderRadius: '6px',
+    padding: '6px 10px',
+    boxShadow: `0 4px 12px rgba(0, 0, 0, 0.4)`,
   },
   beastImageContainer: {
-    position: 'relative',
     width: '28px',
     height: '28px',
     flexShrink: 0,
@@ -260,40 +237,43 @@ const styles = {
     height: '100%',
     objectFit: 'cover',
   },
+  rightContent: {
+    flex: 1,
+    minWidth: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1px',
+  },
+  playerText: {
+    fontSize: '10px',
+    fontWeight: 700,
+    color: gameColors.brightGreen,
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    lineHeight: 1.2,
+  },
+  actionRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+  },
   iconContainer: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    width: '28px',
-    height: '28px',
-    borderRadius: '6px',
     flexShrink: 0,
   },
   labelText: {
     fontSize: '11px',
-    fontWeight: 'bold',
+    fontWeight: 600,
     textShadow: '0 1px 2px rgba(0, 0, 0, 0.6)',
-    letterSpacing: '0.5px',
-    lineHeight: 1,
-    textTransform: 'uppercase',
-  },
-  valueText: {
-    fontSize: '16px',
-    fontWeight: 'bold',
-    textShadow: '0 2px 4px rgba(0, 0, 0, 0.6)',
-    letterSpacing: '0.5px',
-    lineHeight: 1,
-  },
-  playerName: {
-    fontSize: '11px',
-    fontWeight: 'bold',
-    color: gameColors.accentGreen,
-    textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
+    letterSpacing: '0.3px',
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
-    maxWidth: '80px',
   },
 };

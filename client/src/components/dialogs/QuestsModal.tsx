@@ -200,42 +200,42 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
           </Typography>
         </Box>
 
-        {/* Progress Bar */}
-        <Box sx={styles.summaryBar}>
-          <Box sx={styles.progressLabelRow}>
-            <Typography sx={styles.progressLabel}>Completion</Typography>
-            <Typography sx={styles.progressPercent}>
-              {questStats.totalPossibleReward > 0
-                ? ((questStats.totalEarnedReward / questStats.totalPossibleReward) * 100).toFixed(0)
-                : 0}%
-            </Typography>
-          </Box>
-          <LinearProgress
-            variant="determinate"
-            value={questStats.totalPossibleReward > 0
-              ? (questStats.totalEarnedReward / questStats.totalPossibleReward) * 100
-              : 0}
-            sx={styles.rewardProgressBar}
-          />
-          <Box sx={styles.rewardValuesRow}>
-            <Box sx={styles.rewardValueWithIcon}>
-              <Typography sx={styles.earnedValue}>
-                {questStats.totalEarnedReward.toFixed(2)}
-              </Typography>
-              <img src={survivorTokenIcon} alt="SURVIVOR" style={{ width: 20, height: 20 }} />
-            </Box>
-            <Typography sx={styles.rewardDivider}>/</Typography>
-            <Box sx={styles.rewardValueWithIcon}>
-              <Typography sx={styles.maxValue}>
-                {questStats.totalPossibleReward.toFixed(2)}
-              </Typography>
-              <img src={survivorTokenIcon} alt="SURVIVOR" style={{ width: 20, height: 20 }} />
-            </Box>
-          </Box>
-        </Box>
-
-        {/* Quest List */}
         <Box sx={styles.questList}>
+          {/* Progress Bar */}
+          <Box sx={styles.summaryBar}>
+            <Box sx={styles.progressLabelRow}>
+              <Typography sx={styles.progressLabel}>Completion</Typography>
+              <Typography sx={styles.progressPercent}>
+                {questStats.totalPossibleReward > 0
+                  ? ((questStats.totalEarnedReward / questStats.totalPossibleReward) * 100).toFixed(0)
+                  : 0}%
+              </Typography>
+            </Box>
+            <LinearProgress
+              variant="determinate"
+              value={questStats.totalPossibleReward > 0
+                ? (questStats.totalEarnedReward / questStats.totalPossibleReward) * 100
+                : 0}
+              sx={styles.rewardProgressBar}
+            />
+            <Box sx={styles.rewardValuesRow}>
+              <Box sx={styles.rewardValueWithIcon}>
+                <Typography sx={styles.earnedValue}>
+                  {questStats.totalEarnedReward.toFixed(2)}
+                </Typography>
+                <img src={survivorTokenIcon} alt="SURVIVOR" style={{ width: 20, height: 20 }} />
+              </Box>
+              <Typography sx={styles.rewardDivider}>/</Typography>
+              <Box sx={styles.rewardValueWithIcon}>
+                <Typography sx={styles.maxValue}>
+                  {questStats.totalPossibleReward.toFixed(2)}
+                </Typography>
+                <img src={survivorTokenIcon} alt="SURVIVOR" style={{ width: 20, height: 20 }} />
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Quest List */}
           {questStats.quests.map((quest) => {
             const progressPercent =
               quest.totalCount > 0 ? (quest.completedCount / quest.totalCount) * 100 : 0;
@@ -342,7 +342,6 @@ const styles = {
     border: `1px solid ${gameColors.accentGreen}40`,
     borderRadius: '8px',
     p: 1.5,
-    mb: 2,
     gap: 1,
   },
   progressLabelRow: {
@@ -377,7 +376,6 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     gap: 1,
-    mt: 0.5,
   },
   rewardValueWithIcon: {
     display: 'flex',

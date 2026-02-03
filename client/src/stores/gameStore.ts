@@ -24,6 +24,15 @@ export interface GameNotification {
   playerName?: string;
   beastName?: string;
   beastImageSrc?: string;
+  // Extended data for richer notifications
+  extraLives?: number;
+  xpGained?: number;
+  attackPotions?: number;
+  revivePotions?: number;
+  beastCount?: number;
+  oldValue?: number;
+  newValue?: number;
+  adventurerCount?: number;
 }
 
 interface GameState {

@@ -135,9 +135,23 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     // Helper to get beast info from event data
     const getBeastInfo = () => {
       const beastId = eventData.beast_id as number;
-      const beastName = BEAST_NAMES[beastId] || 'Unknown';
-      const beastImageSrc = fetchBeastImage({ name: beastName, shiny: false, animated: false } as any);
-      return { beastName, beastImageSrc };
+      const beastPrefix = eventData.prefix as number | undefined;
+      const beastSuffix = eventData.suffix as number | undefined;
+      const beastTypeName = BEAST_NAMES[beastId] || 'Unknown';
+      const prefixName = beastPrefix ? ITEM_NAME_PREFIXES[beastPrefix as keyof typeof ITEM_NAME_PREFIXES] : null;
+      const suffixName = beastSuffix ? ITEM_NAME_SUFFIXES[beastSuffix as keyof typeof ITEM_NAME_SUFFIXES] : null;
+
+      let fullBeastName: string;
+      if (prefixName && suffixName && beastTypeName) {
+        fullBeastName = `"${prefixName} ${suffixName}" ${beastTypeName}`;
+      } else if (beastTypeName) {
+        fullBeastName = beastTypeName;
+      } else {
+        fullBeastName = `Beast #${eventData.token_id || 'Unknown'}`;
+      }
+
+      const beastImageSrc = fetchBeastImage({ name: beastTypeName, shiny: false, animated: false } as any);
+      return { beastName: fullBeastName, beastImageSrc };
     };
 
     // Helper to add notification with player name lookup
@@ -162,9 +176,17 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         // Show battle notification (only for other players)
         if (!isOwnEvent) {
           const damage = eventData.total_damage as number;
+          const xpGained = eventData.xp_gained as number | undefined;
+          const attackPotions = eventData.attack_potions as number | undefined;
+          const revivePotions = eventData.revive_potions as number | undefined;
+          const beastCount = eventData.beast_count as number | undefined;
           addNotificationWithPlayer({
             type: 'battle',
             value: damage,
+            xpGained,
+            attackPotions,
+            revivePotions,
+            beastCount,
           });
         }
       } else if (sub_category === "Applied Poison" && !isOwnEvent) {
@@ -181,17 +203,21 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           value: eventData.count as number,
         });
       } else if (sub_category === "Applied Extra Life" && !isOwnEvent) {
-        const { beastImageSrc } = getBeastInfo();
+        const { beastName, beastImageSrc } = getBeastInfo();
         addNotificationWithPlayer({
           type: 'extra_life',
           value: eventData.count as number,
+          beastName,
           beastImageSrc,
         });
       } else if (sub_category === "Summit Change" && !isOwnEvent) {
-        const { beastImageSrc } = getBeastInfo();
+        const { beastName, beastImageSrc } = getBeastInfo();
+        const extraLives = eventData.extra_lives as number | undefined;
         addNotificationWithPlayer({
           type: 'summit_change',
+          beastName,
           beastImageSrc,
+          extraLives,
         });
       }
     }
@@ -199,7 +225,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     // Handle LS (Loot Survivor) Events - update collection beasts
     if (category === "LS Events") {
       const entityHash = eventData.entity_hash as string;
-      const { beastImageSrc } = getBeastInfo();
+      const { beastName, beastImageSrc } = getBeastInfo();
 
       if (sub_category === "EntityStats") {
         // Find the beast in collection to check if kills increased
@@ -209,8 +235,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
         // Show kill notification when a beast kills an adventurer
         if (newKills > previousKills) {
-          addGameNotification({
+          addNotificationWithPlayer({
             type: 'kill',
+            beastName,
             beastImageSrc,
           });
         }
@@ -224,8 +251,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         );
       } else if (sub_category === "CollectableEntity") {
         // Show locked notification when a beast is killed in LS
-        addGameNotification({
+        addNotificationWithPlayer({
           type: 'locked',
+          beastName,
           beastImageSrc,
         });
 
@@ -245,7 +273,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     // Handle Beast Upgrade events - show notifications and refresh diplomacy
     if (category === "Beast Upgrade") {
-      const { beastImageSrc } = getBeastInfo();
+      const { beastName, beastImageSrc } = getBeastInfo();
 
       // Show notifications for upgrades (only for other players)
       if (!isOwnEvent) {
@@ -273,7 +301,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           addNotificationWithPlayer({
             type: notificationType,
             value: value,
+            beastName,
             beastImageSrc,
+            oldValue,
+            newValue,
           });
         }
       }
@@ -317,9 +348,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         });
       } else if (sub_category === "Claimed Corpses") {
         const corpseAmount = (eventData.corpse_amount as number) || 1;
+        const adventurerCount = (eventData.adventurer_count as number) || 1;
         addNotificationWithPlayer({
           type: 'claimed_corpses',
           value: corpseAmount,
+          adventurerCount,
         });
       } else if (sub_category === "Claimed Skulls") {
         const skullsClaimed = eventData.skulls_claimed
