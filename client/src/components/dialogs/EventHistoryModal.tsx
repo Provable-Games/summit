@@ -701,6 +701,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     // LS Events
     if (event.category === 'LS Events') {
       if (event.sub_category === 'EntityStats') {
+        const displayName = player || 'Unknown';
         // Build full beast name
         const beastId = data.beast_id as number | undefined;
         const beastPrefix = data.prefix as number | undefined;
@@ -720,12 +721,14 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
 
         return (
           <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
             <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastName}</Box>
             {' killed an adventurer'}
           </Typography>
         );
       }
       if (event.sub_category === 'CollectableEntity') {
+        const displayName = player || 'Unknown';
         // Build full beast name
         const beastId = data.beast_id as number | undefined;
         const beastPrefix = data.prefix as number | undefined;
@@ -751,8 +754,10 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+              <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}'s</Box>
+              {" "}
               <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastName}</Box>
-              {' has been killed in Loot Survivor'}
+              {' has been killed in LS2'}
             </Typography>
             {watchUrl && (
               <Link
