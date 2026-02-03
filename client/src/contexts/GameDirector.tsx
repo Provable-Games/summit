@@ -76,7 +76,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     executeAction,
     attack,
     feed,
-    claimBeastReward,
     claimCorpses,
     claimSkulls,
     claimQuestRewards,
@@ -482,10 +481,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       }
 
       txs.push(...attack(action.beasts, false, true, action.extraLifePotions));
-    }
-
-    if (action.type === "claim_starter_pack") {
-      txs.push(claimBeastReward(action.beastIds));
     }
 
     if (action.type === "claim_corpse_reward") {
