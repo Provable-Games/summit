@@ -7,7 +7,7 @@ import { useAccount } from "@starknet-react/core"
 import { useState } from 'react'
 import { isBrowser, isMobile } from 'react-device-detect'
 import ActionBar from '../components/ActionBar'
-import BeastBoard from '../components/BeastBoard'
+import QuestBoard from '../components/QuestBoard'
 import BeastCollection from '../components/BeastCollection'
 import BurgerMenu from '../components/BurgerMenu'
 import ClaimRewardsButton from '../components/ClaimRewardsButton'
@@ -51,8 +51,8 @@ function MainPage() {
 
         {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
           <Box sx={styles.profileSection}>
+            {address ? <QuestBoard onClick={() => setQuestsModalOpen(true)} /> : null}
             {address ? <ClaimRewardsButton /> : null}
-            {address ? <BeastBoard onClick={() => setQuestsModalOpen(true)} /> : null}
             <ProfileCard />
           </Box>
         </Box>}

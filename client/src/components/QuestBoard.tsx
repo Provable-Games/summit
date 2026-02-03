@@ -1,20 +1,20 @@
+import questIcon from '@/assets/images/quest.png';
 import { gameColors } from '@/utils/themes';
-import DescriptionIcon from '@mui/icons-material/Description';
 import { Box, IconButton, Typography } from '@mui/material';
 import { isMobile } from 'react-device-detect';
 
-interface BeastBoardProps {
+interface QuestBoardProps {
   onClick?: () => void;
 }
 
-const BeastBoard = ({ onClick }: BeastBoardProps) => {
+const QuestBoard = ({ onClick }: QuestBoardProps) => {
   return (
     <IconButton
       onClick={onClick}
       sx={styles.iconButton}
     >
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <DescriptionIcon sx={styles.icon} />
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pb: '6px' }}>
+        <img src={questIcon} alt="quests" style={styles.icon} />
         <Typography sx={styles.title}>
           Quests
         </Typography>
@@ -23,12 +23,12 @@ const BeastBoard = ({ onClick }: BeastBoardProps) => {
   );
 };
 
-export default BeastBoard;
+export default QuestBoard;
 
 const styles = {
   iconButton: {
-    width: isMobile ? '48px' : '42px',
-    height: isMobile ? '48px' : '42px',
+    width: '46px',
+    height: '46px',
     background: `${gameColors.darkGreen}90`,
     backdropFilter: 'blur(12px) saturate(1.2)',
     border: `2px solid ${gameColors.accentGreen}60`,
@@ -49,13 +49,14 @@ const styles = {
     },
   },
   icon: {
-    color: gameColors.yellow,
-    fontSize: isMobile ? '26px' : '22px',
+    width: '32px',
+    height: '32px',
+    objectFit: 'contain' as const,
   },
   title: {
     fontSize: '10px',
     fontWeight: 'bold',
-    lineHeight: '10px',
+    lineHeight: '2px',
     color: gameColors.yellow,
   },
 };

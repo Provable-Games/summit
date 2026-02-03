@@ -1,22 +1,24 @@
 import attackPotionIcon from '@/assets/images/attack-potion.png';
+import questsIcon from '@/assets/images/quest.png';
 import revivePotionIcon from '@/assets/images/revive-potion.png';
 import swordIcon from '@/assets/images/sword.png';
-
-const survivorTokenIcon = '/images/survivor_token.png';
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import { gameColors } from '@/utils/themes';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import BoltIcon from '@mui/icons-material/Bolt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import HandshakeIcon from '@mui/icons-material/Handshake';
+import DiamondIcon from '@mui/icons-material/Diamond';
+import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
-import StarIcon from '@mui/icons-material/Star';
-import TimerIcon from '@mui/icons-material/Timer';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import { Box, Button, Dialog, IconButton, LinearProgress, Typography } from '@mui/material';
+import { Box, Dialog, IconButton, LinearProgress, Typography } from '@mui/material';
 import { useMemo } from 'react';
 import { isMobile } from 'react-device-detect';
+
+const survivorTokenIcon = '/images/survivor_token.png';
 
 interface QuestsModalProps {
   open: boolean;
@@ -41,7 +43,7 @@ const questDefinitions: QuestDefinition[] = [
     description: 'Attack the Summit',
     reward: 0.05,
     icon: <img src={swordIcon} alt="sword" style={{ width: 22, height: 22 }} />,
-    check: (beast) => beast.attack_streak > 0,
+    check: (beast) => beast.last_death_timestamp > 0,
   },
   {
     id: 'revival_potion',
@@ -64,7 +66,7 @@ const questDefinitions: QuestDefinition[] = [
     name: 'Growing Stronger',
     description: 'Level up your beast once',
     reward: 0.02,
-    icon: <TrendingUpIcon sx={{ color: '#2196f3' }} />,
+    icon: <TrendingUpIcon sx={{ color: '#4fc3f7' }} />,
     check: (beast) => beast.current_level - beast.level >= 1,
     tier: 1,
     group: 'level_up',
@@ -74,7 +76,7 @@ const questDefinitions: QuestDefinition[] = [
     name: 'Rising Power',
     description: 'Level up your beast 3 times',
     reward: 0.03,
-    icon: <TrendingUpIcon sx={{ color: '#64b5f6' }} />,
+    icon: <KeyboardDoubleArrowUpIcon sx={{ color: '#7c4dff' }} />,
     check: (beast) => beast.current_level - beast.level >= 3,
     tier: 2,
     group: 'level_up',
@@ -84,7 +86,7 @@ const questDefinitions: QuestDefinition[] = [
     name: 'Apex Predator',
     description: 'Level up your beast 5 times',
     reward: 0.04,
-    icon: <StarIcon sx={{ color: '#ffd700' }} />,
+    icon: <BoltIcon sx={{ color: '#ffab00' }} />,
     check: (beast) => beast.current_level - beast.level >= 5,
     tier: 3,
     group: 'level_up',
@@ -94,7 +96,7 @@ const questDefinitions: QuestDefinition[] = [
     name: 'Mastery',
     description: 'Level up your beast 10 times',
     reward: 0.06,
-    icon: <StarIcon sx={{ color: '#ffd700' }} />,
+    icon: <DiamondIcon sx={{ color: '#e040fb' }} />,
     check: (beast) => beast.current_level - beast.level >= 10,
     tier: 4,
     group: 'level_up',
@@ -102,9 +104,9 @@ const questDefinitions: QuestDefinition[] = [
   {
     id: 'max_attack_streak',
     name: 'Consistency is Key',
-    description: 'Reach a max attack streak of 10',
+    description: 'Reach the max attack streak of 10',
     reward: 0.05,
-    icon: <TrendingUpIcon sx={{ color: '#64b5f6' }} />,
+    icon: <LocalFireDepartmentIcon sx={{ color: '#ff5722' }} />,
     check: (beast) => beast.max_attack_streak === true,
   },
   {
@@ -112,7 +114,7 @@ const questDefinitions: QuestDefinition[] = [
     name: 'Summit Conqueror',
     description: 'Capture the Summit',
     reward: 0.05,
-    icon: <MilitaryTechIcon sx={{ color: gameColors.yellow }} />,
+    icon: <MilitaryTechIcon sx={{ color: '#ffd54f' }} />,
     check: (beast) => beast.captured_summit === true,
   },
   {
@@ -120,7 +122,7 @@ const questDefinitions: QuestDefinition[] = [
     name: 'Iron Grip',
     description: 'Hold the Summit for at least 10 seconds',
     reward: 0.1,
-    icon: <TimerIcon sx={{ color: gameColors.brightGreen }} />,
+    icon: <AutoAwesomeIcon sx={{ color: '#26c6da' }} />,
     check: (beast) => beast.summit_held_seconds >= 10,
   },
 ];
@@ -143,23 +145,11 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
 
     const totalPossibleReward = collection.length * TOTAL_REWARD_PER_BEAST;
     const totalEarnedReward = stats.reduce((sum, s) => sum + s.completedReward, 0);
-    const totalQuests = questDefinitions.length;
-    const avgCompletion =
-      collection.length > 0
-        ? stats.reduce((sum, s) => sum + s.completedCount / collection.length, 0) / totalQuests
-        : 0;
-
-    const alreadyClaimed = 0; // TODO: fetch from contract
-    const claimable = totalEarnedReward - alreadyClaimed;
 
     return {
       quests: stats,
       totalPossibleReward,
       totalEarnedReward,
-      avgCompletion,
-      beastCount: collection.length,
-      alreadyClaimed,
-      claimable,
     };
   }, [collection]);
 
@@ -201,35 +191,46 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
 
         {/* Header */}
         <Box sx={styles.header}>
-          <EmojiEventsIcon sx={styles.trophyIcon} />
-          <Typography sx={styles.title}>BEAST QUESTS</Typography>
+          <Box sx={styles.headerTitleRow}>
+            <img src={questsIcon} alt="quests" style={styles.trophyIcon} />
+            <Typography sx={styles.title}>QUESTS</Typography>
+          </Box>
           <Typography sx={styles.subtitle}>
             Complete quests with your beasts to earn $SURVIVOR
           </Typography>
         </Box>
 
-        {/* Summary Stats Bar */}
+        {/* Progress Bar */}
         <Box sx={styles.summaryBar}>
-          <Box sx={styles.summaryItem}>
-            <Typography sx={styles.summaryLabel}>Beasts</Typography>
-            <Typography sx={styles.summaryValue}>{questStats.beastCount}</Typography>
-          </Box>
-          <Box sx={styles.summaryDivider} />
-          <Box sx={styles.summaryItem}>
-            <Typography sx={styles.summaryLabel}>Max Reward</Typography>
-            <Box sx={styles.summaryValueWithIcon}>
-              <Typography sx={styles.summaryValue}>
-                {questStats.totalPossibleReward.toFixed(1)}
-              </Typography>
-              <img src={survivorTokenIcon} alt="SURVIVOR" style={{ width: 24, height: 24 }} />
-            </Box>
-          </Box>
-          <Box sx={styles.summaryDivider} />
-          <Box sx={styles.summaryItem}>
-            <Typography sx={styles.summaryLabel}>Completion</Typography>
-            <Typography sx={styles.summaryValue}>
-              {(questStats.avgCompletion * 100).toFixed(0)}%
+          <Box sx={styles.progressLabelRow}>
+            <Typography sx={styles.progressLabel}>Completion</Typography>
+            <Typography sx={styles.progressPercent}>
+              {questStats.totalPossibleReward > 0
+                ? ((questStats.totalEarnedReward / questStats.totalPossibleReward) * 100).toFixed(0)
+                : 0}%
             </Typography>
+          </Box>
+          <LinearProgress
+            variant="determinate"
+            value={questStats.totalPossibleReward > 0
+              ? (questStats.totalEarnedReward / questStats.totalPossibleReward) * 100
+              : 0}
+            sx={styles.rewardProgressBar}
+          />
+          <Box sx={styles.rewardValuesRow}>
+            <Box sx={styles.rewardValueWithIcon}>
+              <Typography sx={styles.earnedValue}>
+                {questStats.totalEarnedReward.toFixed(2)}
+              </Typography>
+              <img src={survivorTokenIcon} alt="SURVIVOR" style={{ width: 20, height: 20 }} />
+            </Box>
+            <Typography sx={styles.rewardDivider}>/</Typography>
+            <Box sx={styles.rewardValueWithIcon}>
+              <Typography sx={styles.maxValue}>
+                {questStats.totalPossibleReward.toFixed(2)}
+              </Typography>
+              <img src={survivorTokenIcon} alt="SURVIVOR" style={{ width: 20, height: 20 }} />
+            </Box>
           </Box>
         </Box>
 
@@ -279,26 +280,6 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
           })}
         </Box>
 
-        {/* Footer */}
-        <Box sx={styles.footer}>
-          <Box sx={styles.totalReward}>
-            <Typography sx={styles.totalLabel}>Unclaimed Rewards</Typography>
-            <Box sx={styles.totalValueWithIcon}>
-              <Typography sx={styles.totalValue}>
-                {questStats.totalEarnedReward.toFixed(2)}
-              </Typography>
-              <img src={survivorTokenIcon} alt="SURVIVOR" style={{ width: 24, height: 24 }} />
-            </Box>
-          </Box>
-          <Button
-            sx={styles.claimButton}
-            disabled={questStats.claimable <= 0}
-          >
-            <Box sx={styles.claimButtonContent}>
-              <Typography sx={styles.claimButtonText}>Claim Now</Typography>
-            </Box>
-          </Button>
-        </Box>
       </Box>
     </Dialog>
   );
@@ -329,10 +310,16 @@ const styles = {
     textAlign: 'center',
     mb: 2,
   },
+  headerTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 1,
+  },
   trophyIcon: {
-    fontSize: '44px',
-    color: gameColors.yellow,
-    mb: 0.5,
+    width: '44px',
+    height: '44px',
+    objectFit: 'contain' as const,
   },
   title: {
     fontSize: '22px',
@@ -343,7 +330,6 @@ const styles = {
       0 2px 4px rgba(0, 0, 0, 0.8),
       0 0 12px ${gameColors.brightGreen}40
     `,
-    mb: 0.5,
   },
   subtitle: {
     fontSize: '13px',
@@ -351,41 +337,66 @@ const styles = {
   },
   summaryBar: {
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: 'column',
     background: `${gameColors.darkGreen}80`,
     border: `1px solid ${gameColors.accentGreen}40`,
     borderRadius: '8px',
     p: 1.5,
     mb: 2,
-    gap: 2,
+    gap: 1,
   },
-  summaryItem: {
+  progressLabelRow: {
     display: 'flex',
-    flexDirection: 'column',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    minWidth: '80px',
   },
-  summaryLabel: {
-    fontSize: '11px',
+  progressLabel: {
+    fontSize: '12px',
     color: '#aaa',
     textTransform: 'uppercase',
     letterSpacing: '0.5px',
-  },
-  summaryValue: {
-    fontSize: '18px',
     fontWeight: 'bold',
-    color: gameColors.yellow,
   },
-  summaryValueWithIcon: {
+  progressPercent: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: gameColors.brightGreen,
+  },
+  rewardProgressBar: {
+    height: '10px',
+    borderRadius: '5px',
+    backgroundColor: `${gameColors.darkGreen}`,
+    '& .MuiLinearProgress-bar': {
+      backgroundColor: gameColors.yellow,
+      borderRadius: '5px',
+      backgroundImage: `linear-gradient(90deg, ${gameColors.accentGreen}, ${gameColors.yellow})`,
+    },
+  },
+  rewardValuesRow: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 1,
+    mt: 0.5,
+  },
+  rewardValueWithIcon: {
     display: 'flex',
     alignItems: 'center',
     gap: 0.5,
   },
-  summaryDivider: {
-    width: '1px',
-    height: '30px',
-    background: `${gameColors.accentGreen}40`,
+  earnedValue: {
+    fontSize: '16px',
+    fontWeight: 'bold',
+    color: gameColors.yellow,
+  },
+  maxValue: {
+    fontSize: '16px',
+    fontWeight: 'bold',
+    color: '#888',
+  },
+  rewardDivider: {
+    fontSize: '14px',
+    color: '#666',
   },
   questList: {
     flex: 1,
@@ -513,76 +524,5 @@ const styles = {
     '& .MuiLinearProgress-bar': {
       backgroundColor: gameColors.brightGreen,
     },
-  },
-  footer: {
-    mt: 2,
-    pt: 1.5,
-    borderTop: `1px solid ${gameColors.accentGreen}30`,
-  },
-  totalReward: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  totalLabel: {
-    fontSize: '14px',
-    color: '#bbb',
-    fontWeight: 'bold',
-  },
-  totalValue: {
-    fontSize: '16px',
-    fontWeight: 'bold',
-    color: gameColors.yellow,
-  },
-  totalValueWithIcon: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 0.75,
-  },
-  claimButton: {
-    mt: 1.5,
-    width: '100%',
-    background: `${gameColors.accentGreen}40`,
-    borderRadius: '8px',
-    py: 1,
-    border: `1px solid ${gameColors.accentGreen}60`,
-    transition: 'all 0.2s ease',
-    '&:hover': {
-      background: `${gameColors.accentGreen}60`,
-      border: `1px solid ${gameColors.brightGreen}`,
-    },
-    '&:disabled': {
-      background: `${gameColors.darkGreen}40`,
-      border: `1px solid ${gameColors.accentGreen}30`,
-      opacity: 0.6,
-    },
-  },
-  claimButtonContent: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 1.5,
-  },
-  claimButtonText: {
-    color: '#fff',
-    fontSize: '14px',
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    letterSpacing: '1px',
-    textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
-  },
-  claimAmountBadge: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 0.5,
-    background: 'rgba(0, 0, 0, 0.3)',
-    borderRadius: '4px',
-    px: 1,
-    py: 0.25,
-  },
-  claimAmountText: {
-    color: gameColors.yellow,
-    fontSize: '14px',
-    fontWeight: 'bold',
   },
 };

@@ -188,10 +188,18 @@ export const useSystemCalls = () => {
     };
   };
 
-  const claimBeastReward = (beastIds: number[]) => {
+  const claimRewards = (beastIds: number[]) => {
     return {
       contractAddress: SUMMIT_ADDRESS,
-      entrypoint: "claim_test_money",
+      entrypoint: "claim_rewards",
+      calldata: CallData.compile([beastIds]),
+    };
+  };
+
+  const claimQuestRewards = (beastIds: number[]) => {
+    return {
+      contractAddress: SUMMIT_ADDRESS,
+      entrypoint: "claim_quest_rewards",
       calldata: CallData.compile([beastIds]),
     };
   };
@@ -243,7 +251,8 @@ export const useSystemCalls = () => {
   return {
     feed,
     attack,
-    claimBeastReward,
+    claimRewards,
+    claimQuestRewards,
     claimCorpses,
     claimSkulls,
     executeAction,

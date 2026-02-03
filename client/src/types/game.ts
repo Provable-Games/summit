@@ -62,6 +62,9 @@ export interface Beast {
   wisdom: boolean;
   diplomacy: boolean;
   kills_claimed: number;
+  rewards_earned: number;
+  rewards_claimed: number;
+  quest_rewards_amount?: number;
   entity_hash?: string;
   rank?: number;
   last_dm_death_timestamp?: number;

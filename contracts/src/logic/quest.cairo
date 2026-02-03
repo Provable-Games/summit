@@ -29,11 +29,11 @@ pub fn calculate_quest_rewards(beast: Beast) -> u8 {
 
     let bonus_levels = beast_utils::get_bonus_levels(beast.fixed.level, beast.live.bonus_xp);
     if bonus_levels >= 10 {
-        total_rewards += 6;
+        total_rewards += 15;
     } else if bonus_levels >= 5 {
-        total_rewards += 4;
+        total_rewards += 9;
     } else if bonus_levels >= 3 {
-        total_rewards += 3;
+        total_rewards += 5;
     } else if bonus_levels >= 1 {
         total_rewards += 2;
     }

@@ -4,7 +4,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
 import ProfileCard from './ProfileCard';
 import ClaimRewardsButton from './ClaimRewardsButton';
-import BeastBoard from './BeastBoard';
+import QuestBoard from './QuestBoard';
 import LeaderboardButton from './LeaderboardButton';
 import Top5000BeastsModal from './dialogs/Top5000BeastsModal';
 import LeaderboardModal from './dialogs/LeaderboardModal';
@@ -75,7 +75,7 @@ const BurgerMenu = () => {
           {address && (
             <Box sx={styles.buttonContainer}>
               <ClaimRewardsButton />
-              <BeastBoard onClick={() => {
+              <QuestBoard onClick={() => {
                 setIsOpen(false);
                 setTop5000ModalOpen(true);
               }} />
