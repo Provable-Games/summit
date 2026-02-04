@@ -46,6 +46,7 @@ import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import { useAccount } from '@starknet-react/core';
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useGameStore } from '@/stores/gameStore';
+import { REWARD_NAME } from '@/contexts/GameDirector';
 
 interface EventHistoryModalProps {
   open: boolean;
@@ -73,6 +74,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 const SUB_CATEGORY_DISPLAY_NAMES: Record<string, string> = {
   'EntityStats': 'Adventurer Killed',
   'CollectableEntity': 'Beast Killed',
+  '$SURVIVOR Earned': `${REWARD_NAME} Earned`,
+  'Claimed $SURVIVOR': `Claimed ${REWARD_NAME}`,
 };
 
 // Sub-category specific icons
@@ -654,7 +657,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
             <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
             {' earned '}
             <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{amount}</Box>
-            {' $SURVIVOR'}
+            {` ${REWARD_NAME}`}
           </Typography>
         );
       }
@@ -665,7 +668,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
             <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
             {' claimed '}
             <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{amount}</Box>
-            {' $SURVIVOR'}
+            {` ${REWARD_NAME}`}
           </Typography>
         );
       }
@@ -788,7 +791,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
 
     return (
       <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
-        {event.category}: {event.sub_category}
+        {event.category}: {SUB_CATEGORY_DISPLAY_NAMES[event.sub_category] || event.sub_category}
       </Typography>
     );
   };

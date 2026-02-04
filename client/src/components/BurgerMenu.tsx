@@ -6,7 +6,6 @@ import ProfileCard from './ProfileCard';
 import ClaimRewardsButton from './ClaimRewardsButton';
 import QuestBoard from './QuestBoard';
 import LeaderboardButton from './LeaderboardButton';
-import Top5000BeastsModal from './dialogs/Top5000BeastsModal';
 import LeaderboardModal from './dialogs/LeaderboardModal';
 import { gameColors } from '@/utils/themes';
 import { useAccount } from '@starknet-react/core';
@@ -15,7 +14,6 @@ import RewardsRemainingBar from './RewardsRemainingBar';
 const BurgerMenu = () => {
   const { address } = useAccount();
   const [isOpen, setIsOpen] = useState(false);
-  const [top5000ModalOpen, setTop5000ModalOpen] = useState(false);
   const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false);
 
   const toggleDrawer = (open: boolean) => (event: React.KeyboardEvent | React.MouseEvent) => {
@@ -77,7 +75,6 @@ const BurgerMenu = () => {
               <ClaimRewardsButton />
               <QuestBoard onClick={() => {
                 setIsOpen(false);
-                setTop5000ModalOpen(true);
               }} />
               <LeaderboardButton onClick={() => {
                 setIsOpen(false);
@@ -87,13 +84,6 @@ const BurgerMenu = () => {
           )}
         </Box>
       </Drawer>
-
-      {top5000ModalOpen && (
-        <Top5000BeastsModal
-          open={top5000ModalOpen}
-          onClose={() => setTop5000ModalOpen(false)}
-        />
-      )}
 
       {leaderboardModalOpen && (
         <LeaderboardModal

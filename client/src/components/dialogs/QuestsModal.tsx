@@ -17,6 +17,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { Box, Dialog, IconButton, LinearProgress, Typography } from '@mui/material';
 import { useMemo } from 'react';
 import { isMobile } from 'react-device-detect';
+import { REWARD_NAME } from '@/contexts/GameDirector';
 
 const survivorTokenIcon = '/images/survivor_token.png';
 
@@ -196,7 +197,7 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
             <Typography sx={styles.title}>QUESTS</Typography>
           </Box>
           <Typography sx={styles.subtitle}>
-            Complete quests with your beasts to earn $SURVIVOR
+            Complete quests with your beasts to earn {REWARD_NAME}
           </Typography>
         </Box>
 
@@ -204,7 +205,7 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
           {/* Progress Bar */}
           <Box sx={styles.summaryBar}>
             <Box sx={styles.progressLabelRow}>
-              <Typography sx={styles.progressLabel}>Completion</Typography>
+              <Typography sx={styles.progressLabel}>Total Progress</Typography>
               <Typography sx={styles.progressPercent}>
                 {questStats.totalPossibleReward > 0
                   ? ((questStats.totalEarnedReward / questStats.totalPossibleReward) * 100).toFixed(0)

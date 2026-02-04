@@ -10,18 +10,10 @@ import {
 } from "react";
 import { useDynamicConnector } from "./starknet";
 
-export interface Top5000Cutoff {
-  summit_held_seconds: number;
-  bonus_xp: number;
-  last_death_timestamp: number;
-}
-
 export interface StatisticsContext {
   beastsRegistered: number;
   beastsAlive: number;
-  top5000Cutoff: Top5000Cutoff | null;
   fetchBeastCounts: () => void;
-  fetchTop5000Cutoff: () => void;
   refreshTokenPrices: (tokenNames?: string[]) => Promise<void>;
   tokenPrices: Record<string, string>;
 }
@@ -38,10 +30,9 @@ const USDC_ADDRESS = NETWORKS.SN_MAIN.paymentTokens.find(
 // Create a provider component
 export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   const { currentNetworkConfig } = useDynamicConnector();
-  const { getBeastCounts, getTop5000Cutoff } = useSummitApi();
+  const { getBeastCounts } = useSummitApi();
   const [beastsRegistered, setBeastsRegistered] = useState(0);
   const [beastsAlive, setBeastsAlive] = useState(0);
-  const [top5000Cutoff, setTop5000Cutoff] = useState<Top5000Cutoff | null>(null);
   const [tokenPrices, setTokenPrices] = useState<Record<string, string>>({});
 
   const fetchBeastCounts = async () => {
@@ -54,11 +45,6 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     }
   };
 
-  const fetchTop5000Cutoff = async () => {
-    const result = await getTop5000Cutoff();
-    setTop5000Cutoff(result);
-  };
-
   const fetchTokenPrice = async (token: any) => {
     try {
       const swap = await getSwapQuote(-1n * 10n ** 18n, token.address, USDC_ADDRESS);
@@ -69,7 +55,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   };
 
   const refreshTokenPrices = async () => {
-    const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON", "SKULL", "CORPSE"];
+    const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON"];
 
     for (const tokenName of tokenNames) {
       const token = currentNetworkConfig.tokens.erc20.find(token => token.name === tokenName);
@@ -80,7 +66,6 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     fetchBeastCounts();
-    fetchTop5000Cutoff();
     refreshTokenPrices();
   }, []);
 
@@ -89,9 +74,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
       value={{
         beastsRegistered,
         beastsAlive,
-        top5000Cutoff,
         fetchBeastCounts,
-        fetchTop5000Cutoff,
         refreshTokenPrices,
         tokenPrices,
       }}

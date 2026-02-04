@@ -6,6 +6,7 @@ import TimerIcon from '@mui/icons-material/Timer';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
 import { Box, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { REWARD_NAME } from '@/contexts/GameDirector';
 
 // 5 minutes (300 seconds) to win
 const WINNING_SECONDS = 300;
@@ -190,7 +191,7 @@ function FinalShowdown({ summit, currentTimestamp }: FinalShowdownProps) {
         {/* Prize Pool Display */}
         <Box sx={styles.prizeSection}>
           <Typography sx={styles.prizeLabel}>🏆 Prize</Typography>
-          <Typography sx={styles.prizeAmount}>10.000 $SURVIVOR</Typography>
+          <Typography sx={styles.prizeAmount}>10.000 {REWARD_NAME}</Typography>
         </Box>
 
       </Box>

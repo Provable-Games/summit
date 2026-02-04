@@ -36,6 +36,7 @@ export interface GameDirectorContext {
   pauseUpdates: boolean;
 }
 
+export const REWARD_NAME = "Test Money";
 export const START_TIMESTAMP = 1769683726;
 export const SUMMIT_DURATION_SECONDS = 4320000;
 export const SUMMIT_REWARDS_PER_SECOND = 0.01;
