@@ -724,7 +724,8 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
 
         return (
           <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
-            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}'s</Box>
+            {" "}
             <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastName}</Box>
             {' killed an adventurer'}
           </Typography>

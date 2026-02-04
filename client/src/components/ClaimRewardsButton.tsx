@@ -110,7 +110,7 @@ const ClaimRewardsButton = () => {
 
       // Quest rewards (SURVIVOR from quests)
       const questEarned = calculateQuestRewards(beast);
-      const questClaimed = beast.quest_rewards_amount || 0;
+      const questClaimed = beast.quest_rewards_claimed || 0;
       questTotalEarned += questEarned;
       questTotalClaimed += questClaimed;
       if (questEarned > questClaimed) {
@@ -136,7 +136,7 @@ const ClaimRewardsButton = () => {
       questTotalPossible: collection.length * MAX_REWARD_PER_BEAST,
       // Summit (SURVIVOR)
       unclaimedSummitBeasts: summitBeasts,
-      unclaimedSummitTokens: summitTokens,
+      unclaimedSummitTokens: summitTokens / 100000,
     };
   }, [collection]);
 
@@ -304,7 +304,7 @@ const ClaimRewardsButton = () => {
           .slice(i, i + QUEST_REWARD_LIMIT)
           .reduce((sum: number, beast: Beast) => {
             const earned = calculateQuestRewards(beast);
-            const claimed = beast.quest_rewards_amount || 0;
+            const claimed = beast.quest_rewards_claimed || 0;
             return sum + (earned - claimed);
           }, 0) / 100; // Convert to display units
 
@@ -333,11 +333,11 @@ const ClaimRewardsButton = () => {
         setCollection(prevCollection =>
           prevCollection.map((beast: Beast) => {
             const earned = calculateQuestRewards(beast);
-            const claimed = beast.quest_rewards_amount || 0;
+            const claimed = beast.quest_rewards_claimed || 0;
             if (earned > claimed) {
               return {
                 ...beast,
-                quest_rewards_amount: earned,
+                quest_rewards_claimed: earned,
               };
             }
             return beast;
@@ -487,7 +487,6 @@ const ClaimRewardsButton = () => {
               >
                 {skullClaimState?.inProgress ? (
                   <Box display="flex" alignItems="baseline">
-                    <span>Claiming</span>
                     <div className="dotLoader white" />
                   </Box>
                 ) : (
@@ -533,7 +532,6 @@ const ClaimRewardsButton = () => {
               >
                 {corpseClaimState?.inProgress ? (
                   <Box display="flex" alignItems="baseline">
-                    <span>Claiming</span>
                     <div className="dotLoader white" />
                   </Box>
                 ) : (
@@ -557,7 +555,7 @@ const ClaimRewardsButton = () => {
                 </Box>
                 <Box sx={styles.menuItemInfo}>
                   <Box sx={styles.titleRow}>
-                    <Typography sx={styles.survivorTitle}>SURVIVOR</Typography>
+                    <Typography sx={styles.survivorTitle}>Quest Reward</Typography>
                     <Tooltip
                       title="Earned by completing quests with your beasts. Each quest completed earns SURVIVOR tokens"
                       placement="top"
@@ -579,32 +577,13 @@ const ClaimRewardsButton = () => {
                   disabled={survivorClaimState?.inProgress || unclaimedSurvivorTokens <= 0}
                 >
                   {survivorClaimState?.inProgress ? (
-                    <Box display="flex" alignItems="baseline">
-                      <span>Claiming</span>
+                    <Box display="flex" alignItems="baseline" sx={{ color: 'white' }}>
                       <div className="dotLoader white" />
                     </Box>
                   ) : (
                     <Typography sx={styles.claimButtonText}>CLAIM</Typography>
                   )}
                 </Button>
-              </Box>
-
-              {/* Quest Progress Bar */}
-              <Box sx={styles.questProgressSection}>
-                <Box sx={styles.questProgressHeader}>
-                  <Typography sx={styles.questProgressLabel}>Quest Completion</Typography>
-                  <Typography sx={styles.questProgressPercent}>{progressPercent.toFixed(0)}%</Typography>
-                </Box>
-                <LinearProgress
-                  variant="determinate"
-                  value={progressPercent}
-                  sx={styles.questProgressBar}
-                />
-                <Box sx={styles.questProgressValues}>
-                  <Typography sx={styles.questEarned}>{(questTotalEarned / 100).toFixed(2)}</Typography>
-                  <Typography sx={styles.questDivider}>/</Typography>
-                  <Typography sx={styles.questMax}>{(questTotalPossible / 100).toFixed(2)}</Typography>
-                </Box>
               </Box>
             </Box>
           </MenuItem>
@@ -618,13 +597,13 @@ const ClaimRewardsButton = () => {
           <MenuItem sx={styles.menuItem} disableRipple>
             <Box sx={styles.menuItemContent}>
               <Box sx={styles.iconContainer}>
-                <img src={summitIcon} alt="summit" style={styles.tokenIcon} />
+                <img src={survivorTokenIcon} alt="survivor" style={styles.tokenIcon} />
               </Box>
               <Box sx={styles.menuItemInfo}>
                 <Box sx={styles.titleRow}>
-                  <Typography sx={styles.summitTitle}>SURVIVOR</Typography>
+                  <Typography sx={styles.summitTitle}>Summit Reward</Typography>
                   <Tooltip
-                    title="Earned by holding the Summit. The longer you hold, the more SURVIVOR you earn"
+                    title="Earned by holding the Summit. The longer you hold, the more rewards you earn"
                     placement="top"
                     arrow
                     slotProps={{ tooltip: { sx: styles.tooltip } }}
@@ -645,7 +624,6 @@ const ClaimRewardsButton = () => {
               >
                 {summitClaimState?.inProgress ? (
                   <Box display="flex" alignItems="baseline">
-                    <span>Claiming</span>
                     <div className="dotLoader white" />
                   </Box>
                 ) : (
@@ -717,6 +695,7 @@ const styles = {
       backgroundColor: 'transparent',
     },
     py: 0.5,
+    px: 1.5,
   },
   menuItemContent: {
     display: 'flex',
