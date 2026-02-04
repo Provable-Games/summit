@@ -212,7 +212,7 @@ CREATE INDEX "beasts_suffix_idx" ON "beasts" USING btree ("suffix");
 --> statement-breakpoint
 CREATE INDEX "beasts_level_idx" ON "beasts" USING btree ("level" DESC NULLS LAST);
 --> statement-breakpoint
-CREATE UNIQUE INDEX "corpse_events_block_tx_event_idx" ON "corpse_events" USING btree ("block_number","transaction_hash","event_index");
+CREATE UNIQUE INDEX "corpse_events_block_tx_event_adv_idx" ON "corpse_events" USING btree ("block_number","transaction_hash","event_index","adventurer_id");
 --> statement-breakpoint
 CREATE INDEX "corpse_events_adventurer_id_idx" ON "corpse_events" USING btree ("adventurer_id");
 --> statement-breakpoint

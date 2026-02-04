@@ -32,6 +32,7 @@ import {
   uniqueIndex,
   jsonb,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 /**
  * Beast Stats table - current state of each beast
@@ -77,6 +78,8 @@ export const beast_stats = pgTable(
     index("beast_stats_current_health_idx").on(table.current_health),
     index("beast_stats_summit_held_seconds_idx").on(table.summit_held_seconds.desc()),
     index("beast_stats_updated_at_idx").on(table.updated_at.desc()),
+    // Partial index for beasts with diplomacy upgrade
+    index("beast_stats_diplomacy_token_idx").on(table.token_id).where(sql`diplomacy > 0`),
   ]
 );
 
@@ -290,6 +293,7 @@ export const beast_owners = pgTable(
   },
   (table) => [
     index("beast_owners_owner_idx").on(table.owner),
+    index("beast_owners_token_id_idx").on(table.token_id),
   ]
 );
 
@@ -384,9 +388,11 @@ export const summit_log = pgTable(
     index("summit_log_order_idx").on(table.block_number.desc(), table.event_index.desc()),
     // Filter indexes
     index("summit_log_category_idx").on(table.category),
+    index("summit_log_sub_category_idx").on(table.sub_category),
     index("summit_log_player_idx").on(table.player),
     index("summit_log_token_id_idx").on(table.token_id),
-    // Combined index for player activity feed
+    // Combined indexes for filtered activity feeds
+    index("summit_log_category_order_idx").on(table.category, table.block_number.desc(), table.event_index.desc()),
     index("summit_log_player_order_idx").on(table.player, table.block_number.desc(), table.event_index.desc()),
   ]
 );
