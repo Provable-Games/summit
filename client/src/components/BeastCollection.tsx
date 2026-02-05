@@ -1,10 +1,12 @@
 import { useController } from '@/contexts/controller';
-import { useStatistics } from '@/contexts/Statistics';
+import { MAX_BEASTS_PER_ATTACK } from '@/contexts/GameDirector';
+import { useQuestGuide } from '@/contexts/QuestGuide';
 import { BeastTypeFilter, SortMethod, useGameStore } from '@/stores/gameStore';
 import { Beast, selection } from '@/types/game';
 import {
   calculateMaxAttackPotions, calculateOptimalAttackPotions, getBeastCurrentHealth,
-  getBeastRevivalTime, isBeastInTop5000, isBeastLocked
+  getBeastRevivalTime,
+  isBeastLocked
 } from '@/utils/beasts';
 import AddIcon from '@mui/icons-material/Add';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -24,21 +26,19 @@ import { calculateBattleResult } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 import BeastCard from './BeastCard';
 import BeastProfile from './BeastProfile';
-import { MAX_BEASTS_PER_ATTACK } from '@/contexts/GameDirector';
 
 function BeastCollection() {
   const {
     loadingCollection, collection, selectedBeasts, setSelectedBeasts,
     attackInProgress, summit, attackMode,
     hideDeadBeasts, setHideDeadBeasts,
-    hideTop5000, setHideTop5000,
     sortMethod, setSortMethod,
     typeFilter, setTypeFilter,
     nameMatchFilter, setNameMatchFilter,
   } = useGameStore()
   const { tokenBalances } = useController()
-  const { top5000Cutoff } = useStatistics()
   const { address } = useAccount()
+  const { notifyTargetClicked, isStepTarget } = useQuestGuide()
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
   const [filterExpanded, setFilterExpanded] = useState(false)
@@ -97,11 +97,6 @@ function BeastCollection() {
         filtered = filtered.filter(beast => beast.current_health > 0 && !isBeastLocked(beast));
       }
 
-      // Apply hide top 5000 filter
-      if (hideTop5000) {
-        filtered = filtered.filter(beast => !isBeastInTop5000(beast, top5000Cutoff));
-      }
-
       // Sort the filtered collection
       return filtered.sort((a: Beast, b: Beast) => {
         // Always keep summit beast at the top
@@ -157,18 +152,23 @@ function BeastCollection() {
     }
 
     return collection.sort((a, b) => b.power - a.power)
-  }, [collection, summit, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, hideTop5000]);
+  }, [collection, summit, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts]);
 
-  const selectBeast = useCallback((beast: Beast) => {
+  const selectBeast = useCallback((beast: Beast, isFirstBeast: boolean = false) => {
     if (attackInProgress || attackMode === 'autopilot') return;
     if (isBeastLocked(beast)) return;
+
+    // Notify quest guide if this is the first beast being clicked
+    if (isFirstBeast) {
+      notifyTargetClicked('beast-card-first');
+    }
 
     if (selectedBeasts.find(selection => selection[0].token_id === beast.token_id)) {
       setSelectedBeasts((prev: selection) => prev.filter(selection => selection[0].token_id !== beast.token_id));
     } else {
       setSelectedBeasts((prev: selection) => [...prev, [beast, 1, 0]]);
     }
-  }, [attackInProgress, attackMode, selectedBeasts]);
+  }, [attackInProgress, attackMode, selectedBeasts, notifyTargetClicked]);
 
   const selectAllBeasts = () => {
     if (attackInProgress) return;
@@ -485,14 +485,6 @@ function BeastCollection() {
                           <Typography sx={styles.compactToggleText}>Name Match</Typography>
                         </Box>
                       </Box>
-                      <Box sx={styles.compactToggles} mt={0.5}>
-                        <Box
-                          sx={[styles.compactToggle, hideTop5000 && styles.compactToggleActive]}
-                          onClick={() => setHideTop5000(!hideTop5000)}
-                        >
-                          <Typography sx={[styles.compactToggleText, { lineHeight: '14px' }]}>Hide Top 5000</Typography>
-                        </Box>
-                      </Box>
                     </Box>
                   </Box>
                 </motion.div>
@@ -503,6 +495,7 @@ function BeastCollection() {
           {/* Beast Grid - Virtualized horizontal scrolling */}
           {collectionWithCombat.length > 0 && (
             <Box
+              id="beast-collection-container"
               ref={parentRef}
               sx={{
                 ...styles.beastGrid,
@@ -528,6 +521,7 @@ function BeastCollection() {
                   const isLocked = isBeastLocked(beast);
                   const selectionIndex = selectedBeasts.findIndex(b => b[0].token_id === beast.token_id) + 1;
                   const combat = summit && !isSavage ? beast.combat : null;
+                  const isFirstBeast = virtualItem.index === 0;
 
                   return (
                     <div
@@ -541,7 +535,10 @@ function BeastCollection() {
                         transform: `translateX(${virtualItem.start}px)`,
                       }}
                     >
-                      <Box sx={styles.cardWithSettings}>
+                      <Box
+                        id={isFirstBeast ? 'beast-card-first' : undefined}
+                        sx={styles.cardWithSettings}
+                      >
                         <BeastCard
                           beast={beast}
                           isSelected={isSelected}
@@ -552,7 +549,7 @@ function BeastCollection() {
                           selectionIndex={selectionIndex}
                           summitHealth={summit?.beast.current_health || 0}
                           attackMode={attackMode}
-                          onClick={() => selectBeast(beast)}
+                          onClick={() => selectBeast(beast, isFirstBeast)}
                           onMouseEnter={(e) => handleHoverEnter(e, beast)}
                           onMouseLeave={handleHoverLeave}
                         />
@@ -572,7 +569,16 @@ function BeastCollection() {
                                   <img src="/images/sword.png" alt="" style={styles.quickPillIcon} />
                                   <Typography sx={styles.quickPillText}>{selectedBeasts.find(selection => selection[0].token_id === beast.token_id)?.[1]}</Typography>
                                 </Box>
-                                <Box sx={styles.quickPill} onClick={(e) => openPotionSettings(e, beast.token_id)}>
+                                <Box
+                                  id={isFirstBeast && isSelected ? 'beast-card-potion-pill' : undefined}
+                                  sx={styles.quickPill}
+                                  onClick={(e) => {
+                                    openPotionSettings(e, beast.token_id);
+                                    if (isFirstBeast) {
+                                      notifyTargetClicked('beast-card-potion-pill');
+                                    }
+                                  }}
+                                >
                                   <img src={attackPotionIcon} alt="" style={styles.quickPillIcon} />
                                   <Typography sx={styles.quickPillText}>{selectedBeasts.find(selection => selection[0].token_id === beast.token_id)?.[2]}</Typography>
                                 </Box>

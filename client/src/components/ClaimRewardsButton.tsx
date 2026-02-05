@@ -7,7 +7,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import { gameColors } from '@/utils/themes';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import { Badge, Box, Button, Divider, IconButton, LinearProgress, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
+import { Badge, Box, Button, Divider, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 
 const survivorTokenIcon = '/images/survivor_token.png';
@@ -16,8 +16,6 @@ const SKULL_LIMIT = 250;
 const CORPSE_LIMIT = 250;
 const QUEST_REWARD_LIMIT = 2450;
 const SUMMIT_REWARD_LIMIT = 295;
-
-const summitIcon = '/images/summit.png';
 
 interface ClaimState {
   inProgress: boolean;
@@ -30,8 +28,8 @@ interface ClaimState {
 const calculateQuestRewards = (beast: Beast): number => {
   let totalRewards = 0;
 
-  // First Blood - attacked the summit (last_death_timestamp > 0)
-  if (beast.last_death_timestamp > 0) {
+  // First Blood - attacked the summit (bonus_xp > 0)
+  if (beast.bonus_xp > 0) {
     totalRewards += 5;
   }
 

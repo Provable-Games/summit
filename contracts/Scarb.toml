@@ -1,5 +1,5 @@
 [package]
-cairo-version = "2.13.1"
+cairo-version = "2.15.0"
 name = "summit"
 version = "0.1.0"
 edition = "2024_07"
@@ -8,10 +8,11 @@ edition = "2024_07"
 sierra-replace-ids = true
 
 [dependencies]
-starknet = "2.13.1"
-openzeppelin_token = "2.0.0"
-openzeppelin_access = "2.0.0"
-openzeppelin_upgrades = "2.0.0"
+starknet = "2.15.1"
+openzeppelin_interfaces = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
+openzeppelin_token = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
+openzeppelin_access = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
+openzeppelin_upgrades = { git = "https://github.com/OpenZeppelin/cairo-contracts.git", tag = "v3.0.0" }
 beasts_nft = { git = "https://github.com/Provable-Games/beasts.git" }
 death_mountain_combat = { git = "https://github.com/Provable-Games/death-mountain.git", branch = "componentize" }
 death_mountain_beast = { git = "https://github.com/Provable-Games/death-mountain.git", branch = "componentize" }
@@ -20,7 +21,7 @@ death_mountain_beast = { git = "https://github.com/Provable-Games/death-mountain
 test = "snforge test"
 
 [dev-dependencies]
-snforge_std = "0.54.0"
+snforge_std = { git = "https://github.com/foundry-rs/starknet-foundry", tag = "v0.55.0" }
 
 [[target.starknet-contract]]
 build-external-contracts = ["beasts_nft::beasts_nft"] 

@@ -72,7 +72,7 @@ const ProfileCard = () => {
             {renderPotionItem(corpseTokenImg, "CORPSE")}
           </Box>
         </Box>
-        <Button sx={[styles.buyPotionsButton, { width: isMobile ? '100%' : '145px' }]} onClick={() => setPotionShopOpen(true)}>
+        <Button id="marketplace-button" sx={[styles.buyPotionsButton, { width: isMobile ? '100%' : '145px' }]} onClick={() => setPotionShopOpen(true)}>
           <Typography sx={styles.buyPotionsButtonText}>
             MARKETPLACE
           </Typography>

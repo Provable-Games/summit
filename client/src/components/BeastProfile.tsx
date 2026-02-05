@@ -1,11 +1,9 @@
-import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
 import { Box, LinearProgress, Typography } from "@mui/material";
 import revivePotionIcon from '../assets/images/revive-potion.png';
-import { fetchBeastImage, isBeastInTop5000, normaliseHealth } from "../utils/beasts";
+import { fetchBeastImage, normaliseHealth } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 
 const MAX_HEALTH = 2000;
@@ -17,14 +15,10 @@ interface BeastProfileProps {
 
 export default function BeastProfile({ beast }: BeastProfileProps) {
   const { summit } = useGameStore()
-  const { top5000Cutoff } = useStatistics()
   const originalExperience = Math.pow(beast.level, 2);
   const currentExperience = originalExperience + beast.bonus_xp;
   const nextLevelExperience = Math.pow(beast.current_level + 1, 2);
   const bonusLevels = Math.floor(Math.sqrt(currentExperience)) - beast.level;
-
-  // Calculate if beast is in top 5000
-  const isInTop5000 = isBeastInTop5000(beast, top5000Cutoff);
 
   const diff = ((beast.last_death_timestamp * 1000) + 46 * 60 * 60 * 1000) - Date.now();
   const timeLeft = diff > 3600000 ? `${Math.floor(diff / 3600000)}h` : `${Math.floor((diff % 3600000) / 60000)}m`;
@@ -224,6 +218,8 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
               </Box>
             </Box>
 
+            <Typography sx={styles.pixelRevivalOrText}>or</Typography>
+
             <Box sx={styles.pixelRevivalRight}>
               <Typography sx={styles.pixelRevivalCostText}>
                 {beast.revival_count + 1}
@@ -231,30 +227,6 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
               <Box sx={styles.pixelRevivalIcon}>
                 <img src={revivePotionIcon} alt="Revive Potion" width="12" height="12" />
               </Box>
-            </Box>
-          </Box>
-
-          {/* Divider */}
-          <Box sx={styles.divider} />
-
-          {/* Rewards Section */}
-          <Box sx={styles.rewardsContainer}>
-            <Box sx={styles.rewardsRow}>
-              <Box sx={styles.rewardsLeft}>
-                <Box sx={styles.rewardsEarnedSection}>
-                  <Typography sx={styles.rewardsEarnedValue}>
-                    blocks: {beast.summit_held_seconds ? Number(beast.summit_held_seconds).toLocaleString() : 0}
-                  </Typography>
-                </Box>
-              </Box>
-              {isInTop5000 && (
-                <Box sx={styles.top5000Badge}>
-                  <EmojiEventsIcon sx={{ fontSize: '16px', color: gameColors.yellow }} />
-                  <Box sx={styles.top5000TextContainer}>
-                    <Typography sx={styles.top5000Label}>TOP 5000</Typography>
-                  </Box>
-                </Box>
-              )}
             </Box>
           </Box>
         </Box>
@@ -483,6 +455,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
+    mb: '2px',
   },
 
   // Pixel streak title
@@ -509,6 +482,7 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     gap: '2px',
+    mb: '2px',
   },
 
   // Pixel fire icon
@@ -686,6 +660,7 @@ const styles = {
     borderRadius: '4px',
     padding: '2px 6px 1px',
     border: '1px solid #3a3a3e',
+    mb: '1px',
   },
 
   // Pixel revival left side
@@ -742,6 +717,15 @@ const styles = {
     color: gameColors.orange,
     textShadow: '1px 1px 0px #000000',
     fontWeight: 'bold',
+  },
+
+  // Pixel revival or text
+  pixelRevivalOrText: {
+    fontSize: '11px',
+    color: '#FFF',
+    opacity: 0.5,
+    textShadow: '1px 1px 0px #000000',
+    fontWeight: '600',
   },
 
   // Pixel revival status dot (compact)

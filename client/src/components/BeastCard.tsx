@@ -35,7 +35,6 @@ const BeastCard = memo(({
   combat,
   selectionIndex,
   summitHealth,
-  attackMode,
   onClick,
   onMouseEnter,
   onMouseLeave,

@@ -29,7 +29,6 @@ pub trait ISummitSystem<T> {
     fn set_skull_token_address(ref self: T, skull_token_address: ContractAddress);
     fn set_corpse_token_address(ref self: T, corpse_token_address: ContractAddress);
     fn withdraw_funds(ref self: T, token_address: ContractAddress, amount: u256);
-    fn emit_skull_event(ref self: T, beast_token_ids: Span<u32>, skulls_claimed: u64);
     fn emit_corpse_event(ref self: T, adventurer_ids: Span<u64>, corpse_amount: u32, player: ContractAddress);
 
     fn get_summit_data(ref self: T) -> (Beast, u64, ContractAddress, u16, u64, felt252);
@@ -62,15 +61,15 @@ pub mod summit_systems {
     use death_mountain_beast::beast::ImplBeast;
     use death_mountain_combat::combat::{CombatSpec, ImplCombat};
     use openzeppelin_access::ownable::OwnableComponent;
-    use openzeppelin_token::erc20::interface::{IERC20Dispatcher, IERC20DispatcherTrait};
-    use openzeppelin_token::erc721::interface::{IERC721Dispatcher, IERC721DispatcherTrait};
+    use openzeppelin_interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
+    use openzeppelin_interfaces::erc721::{IERC721Dispatcher, IERC721DispatcherTrait};
+    use openzeppelin_interfaces::upgrades::IUpgradeable;
     use openzeppelin_upgrades::UpgradeableComponent;
-    use openzeppelin_upgrades::interface::IUpgradeable;
     use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
     use summit::constants::{
         BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_ATTRIBUTES, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS,
-        BEAST_MAX_EXTRA_LIVES, DAY_SECONDS, DIPLOMACY_COST, MAX_REVIVAL_COUNT, MINIMUM_DAMAGE, SPECIALS_COST,
+        BEAST_MAX_EXTRA_LIVES, DAY_SECONDS, DIPLOMACY_COST, MAX_REVIVAL_COUNT, MAX_U32, MINIMUM_DAMAGE, SPECIALS_COST,
         TOKEN_DECIMALS, WISDOM_COST, errors,
     };
     use summit::erc20::interface::{SummitERC20Dispatcher, SummitERC20DispatcherTrait};
@@ -79,7 +78,7 @@ pub mod summit_systems {
     use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, PackableLiveStatsStorePacking, Stats};
     use summit::models::events::{
         BattleEvent, BeastUpdatesEvent, CorpseEvent, LiveBeastStatsEvent, PoisonEvent, QuestRewardsClaimedEvent,
-        RewardsClaimedEvent, RewardsEarnedEvent, SkullEvent,
+        RewardsClaimedEvent, RewardsEarnedEvent,
     };
     use summit::vrf::VRFImpl;
 
@@ -111,6 +110,8 @@ pub mod summit_systems {
         summit_duration_seconds: u64,
         summit_reward_amount_per_second: u128,
         quest_rewards_claimed: Map<u32, u8>,
+        quest_rewards_total_amount: u128,
+        quest_rewards_total_claimed: u128,
         // Addresses
         dungeon_address: ContractAddress,
         beast_dispatcher: IERC721Dispatcher,
@@ -139,7 +140,6 @@ pub mod summit_systems {
         RewardsClaimedEvent: RewardsClaimedEvent,
         PoisonEvent: PoisonEvent,
         CorpseEvent: CorpseEvent,
-        SkullEvent: SkullEvent,
         QuestRewardsClaimedEvent: QuestRewardsClaimedEvent,
     }
 
@@ -150,6 +150,7 @@ pub mod summit_systems {
         start_timestamp: u64,
         summit_duration_seconds: u64,
         summit_reward_amount_per_second: u128,
+        quest_rewards_total_amount: u128,
         dungeon_address: ContractAddress,
         beast_address: ContractAddress,
         beast_data_address: ContractAddress,
@@ -158,11 +159,14 @@ pub mod summit_systems {
         revive_potion_address: ContractAddress,
         extra_life_potion_address: ContractAddress,
         poison_potion_address: ContractAddress,
+        skull_token_address: ContractAddress,
+        corpse_token_address: ContractAddress,
     ) {
         self.ownable.initializer(owner);
         self.start_timestamp.write(start_timestamp);
         self.summit_duration_seconds.write(summit_duration_seconds);
         self.summit_reward_amount_per_second.write(summit_reward_amount_per_second);
+        self.quest_rewards_total_amount.write(quest_rewards_total_amount);
         self.dungeon_address.write(dungeon_address);
         self.beast_dispatcher.write(IERC721Dispatcher { contract_address: beast_address });
         self.beast_nft_dispatcher.write(IBeastsDispatcher { contract_address: beast_address });
@@ -172,6 +176,8 @@ pub mod summit_systems {
         self.revive_potion_dispatcher.write(SummitERC20Dispatcher { contract_address: revive_potion_address });
         self.extra_life_potion_dispatcher.write(SummitERC20Dispatcher { contract_address: extra_life_potion_address });
         self.poison_potion_dispatcher.write(SummitERC20Dispatcher { contract_address: poison_potion_address });
+        self.skull_token_dispatcher.write(SummitERC20Dispatcher { contract_address: skull_token_address });
+        self.corpse_token_dispatcher.write(SummitERC20Dispatcher { contract_address: corpse_token_address });
     }
 
     #[abi(embed_v0)]
@@ -257,12 +263,16 @@ pub mod summit_systems {
         }
 
         fn claim_quest_rewards(ref self: ContractState, beast_token_ids: Span<u32>) {
+            let quest_rewards_total_claimed = self.quest_rewards_total_claimed.read();
+            let quest_rewards_total_amount = self.quest_rewards_total_amount.read();
+            assert!(quest_rewards_total_claimed < quest_rewards_total_amount, "Quest rewards pool is empty");
+
             let caller = get_caller_address();
 
             let beast_dispatcher = self.beast_dispatcher.read();
             let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
 
-            let mut total_claimable: u256 = 0;
+            let mut total_claimable: u128 = 0;
             let mut quest_rewards_claimed: Array<felt252> = array![];
 
             let mut i = 0;
@@ -289,8 +299,16 @@ pub mod summit_systems {
 
             assert!(total_claimable > 0, "No quest rewards to claim");
 
+            let claimable_amount = if quest_rewards_total_claimed + total_claimable > quest_rewards_total_amount {
+                quest_rewards_total_amount - quest_rewards_total_claimed
+            } else {
+                total_claimable
+            };
+
+            self.quest_rewards_total_claimed.write(quest_rewards_total_claimed + claimable_amount);
+
             // Transfer rewards to caller
-            let transfer_amount: u256 = total_claimable * 10_000_000_000_000_000;
+            let transfer_amount: u256 = claimable_amount.into() * 10_000_000_000_000_000;
             self.reward_dispatcher.read().transfer(caller, transfer_amount);
 
             // Emit events - use slice() to avoid copying
@@ -502,12 +520,6 @@ pub mod summit_systems {
             self.emit(CorpseEvent { adventurer_ids, corpse_amount, player });
         }
 
-        fn emit_skull_event(ref self: ContractState, beast_token_ids: Span<u32>, skulls_claimed: u64) {
-            let skull_address = self.skull_token_dispatcher.read().contract_address;
-            assert(skull_address == starknet::get_caller_address(), 'Invalid caller');
-            self.emit(SkullEvent { beast_token_ids, skulls_claimed });
-        }
-
         fn get_start_timestamp(self: @ContractState) -> u64 {
             self.start_timestamp.read()
         }
@@ -710,7 +722,13 @@ pub mod summit_systems {
 
                 // Store rewards earned with 13 decimals removed
                 let reward_amount_u32: u32 = (summit_reward_amount / 10_000_000_000_000).try_into().unwrap();
-                beast.live.rewards_earned += reward_amount_u32;
+
+                if (MAX_U32 - reward_amount_u32) < beast.live.rewards_earned {
+                    beast.live.rewards_earned = MAX_U32;
+                } else {
+                    beast.live.rewards_earned += reward_amount_u32;
+                }
+
                 self.emit(RewardsEarnedEvent { beast_token_id: beast.live.token_id, amount: reward_amount_u32 });
             }
         }
