@@ -4,7 +4,7 @@ export default defineConfig({
   runtimeConfig: {
     summit: {
       // Summit game contract address (mainnet)
-      summitContractAddress: "0x05dacc0d17aaada0d82284e6c2b6f9fa4a00e4d4fa3584313bb45937ba5c7be6",
+      summitContractAddress: "0x0784e5bac3de23ad40cf73e61c7b559dafb2495136ca474d1603815bb223408c",
       // Beasts NFT contract address (mainnet)
       beastsContractAddress: "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
       // Dojo World contract address (Loot Survivor mainnet)
