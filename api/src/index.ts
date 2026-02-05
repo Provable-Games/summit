@@ -459,41 +459,6 @@ app.get("/beasts/stats/counts", async (c) => {
 });
 
 /**
- * GET /beasts/stats/top5000-cutoff - Get the cutoff values for top 5000 beasts
- */
-app.get("/beasts/stats/top5000-cutoff", async (c) => {
-  const results = await db
-    .select({
-      summit_held_seconds: beast_stats.summit_held_seconds,
-      bonus_xp: beast_stats.bonus_xp,
-      last_death_timestamp: beast_stats.last_death_timestamp,
-    })
-    .from(beast_stats)
-    .where(sql`${beast_stats.summit_held_seconds} > 0`)
-    .orderBy(
-      desc(beast_stats.summit_held_seconds),
-      desc(beast_stats.bonus_xp),
-      desc(beast_stats.last_death_timestamp)
-    )
-    .limit(5000);
-
-  if (results.length < 5000) {
-    return c.json({
-      summit_held_seconds: 0,
-      bonus_xp: 0,
-      last_death_timestamp: 0,
-    });
-  }
-
-  const cutoff = results[4999];
-  return c.json({
-    summit_held_seconds: cutoff.summit_held_seconds,
-    bonus_xp: cutoff.bonus_xp,
-    last_death_timestamp: Number(cutoff.last_death_timestamp),
-  });
-});
-
-/**
  * GET /beasts/stats/top - Get paginated top beasts by summit_held_seconds with metadata
  *
  * Query params:
@@ -683,6 +648,17 @@ app.get("/leaderboard", async (c) => {
 });
 
 /**
+ * GET /quest-rewards/total - Get total quest rewards claimed
+ */
+app.get("/quest-rewards/total", async (c) => {
+  const result = await db
+    .select({ total: sql<number>`coalesce(sum(${quest_rewards_claimed.amount}), 0)` })
+    .from(quest_rewards_claimed);
+
+  return c.json({ total: Number(result[0]?.total ?? 0) });
+});
+
+/**
  * GET /adventurers/:player - Get all adventurer_ids for a player address
  * - Not paginated
  * - Returns distinct adventurer_ids as strings
@@ -720,6 +696,9 @@ app.get("/", (c) => {
       by_player: "GET /adventurers/:player",
     },
     leaderboard: "GET /leaderboard",
+    quest_rewards: {
+      total: "GET /quest-rewards/total",
+    },
     websocket: {
       endpoint: "WS /ws",
       channels: ["summit", "event"],

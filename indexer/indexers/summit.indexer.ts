@@ -63,6 +63,8 @@ interface SummitConfig {
   summitContractAddress: string;
   beastsContractAddress: string;
   dojoWorldAddress: string;
+  corpseContractAddress: string;
+  skullContractAddress: string;
   streamUrl: string;
   startingBlock: string;
   databaseUrl: string;
@@ -753,6 +755,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     summitContractAddress,
     beastsContractAddress,
     dojoWorldAddress,
+    corpseContractAddress,
+    skullContractAddress,
     streamUrl,
     startingBlock: startBlockStr,
     databaseUrl,
@@ -764,11 +768,15 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   const summitAddressBigInt = addressToBigInt(summitContractAddress);
   const beastsAddressBigInt = addressToBigInt(beastsContractAddress);
   const dojoWorldAddressBigInt = addressToBigInt(dojoWorldAddress);
+  const corpseAddressBigInt = addressToBigInt(corpseContractAddress);
+  const skullAddressBigInt = addressToBigInt(skullContractAddress);
 
   // Log configuration on startup
   console.log("[Summit Indexer] Summit Contract:", summitContractAddress);
   console.log("[Summit Indexer] Beasts Contract:", beastsContractAddress);
   console.log("[Summit Indexer] Dojo World:", dojoWorldAddress);
+  console.log("[Summit Indexer] Corpse Contract:", corpseContractAddress);
+  console.log("[Summit Indexer] Skull Contract:", skullContractAddress);
   console.log("[Summit Indexer] Stream:", streamUrl);
   console.log("[Summit Indexer] Starting Block:", startingBlock.toString());
   console.log("[Summit Indexer] RPC URL:", rpcUrl);
@@ -864,6 +872,16 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             DOJO_EVENT_SELECTORS.StoreSetRecord as `0x${string}`,
             DOJO_EVENT_SELECTORS.CollectableEntity as `0x${string}`,
           ],
+        },
+        // Corpse contract - CorpseEvent only
+        {
+          address: corpseContractAddress.toLowerCase() as `0x${string}`,
+          keys: [EVENT_SELECTORS.CorpseEvent as `0x${string}`],
+        },
+        // Skull contract - SkullEvent only
+        {
+          address: skullContractAddress.toLowerCase() as `0x${string}`,
+          keys: [EVENT_SELECTORS.SkullEvent as `0x${string}`],
         },
       ],
     },
@@ -993,6 +1011,19 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           }
         }
 
+        // Skull contract - SkullEvent pre-scan
+        if (addressToBigInt(event_address) === skullAddressBigInt && selector === EVENT_SELECTORS.SkullEvent) {
+          const decoded = decodeSkullEvent([...keys], [...event.data]);
+          // Collect all token IDs from the span for batch lookup
+          skullEventTokenIds.push(...decoded.beast_token_ids);
+          skullEventData.push({
+            decoded,
+            event_index: event.eventIndex,
+            transaction_hash: event.transactionHash,
+          });
+        }
+
+        // Summit contract pre-scan
         if (addressToBigInt(event_address) === summitAddressBigInt) {
           switch (selector) {
             case EVENT_SELECTORS.BeastUpdatesEvent: {
@@ -1016,17 +1047,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             case EVENT_SELECTORS.RewardsEarnedEvent: {
               const decoded = decodeRewardsEarnedEvent([...keys], [...event.data]);
               rewardsEarnedTokenIds.push(decoded.beast_token_id);
-              break;
-            }
-            case EVENT_SELECTORS.SkullEvent: {
-              const decoded = decodeSkullEvent([...keys], [...event.data]);
-              // Collect all token IDs from the span for batch lookup
-              skullEventTokenIds.push(...decoded.beast_token_ids);
-              skullEventData.push({
-                decoded,
-                event_index: event.eventIndex,
-                transaction_hash: event.transactionHash,
-              });
               break;
             }
           }
@@ -1296,6 +1316,84 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 indexed_at,
               });
             }
+            continue;
+          }
+
+          // Corpse contract - CorpseEvent
+          if (addressToBigInt(event_address) === corpseAddressBigInt && selector === EVENT_SELECTORS.CorpseEvent) {
+            const decoded = decodeCorpseEvent([...keys], [...data]);
+
+            // Process each adventurer_id individually into corpse_events
+            for (const adventurer_id of decoded.adventurer_ids) {
+              batches.corpse_events.push({
+                adventurer_id,
+                player: decoded.player,
+                created_at: block_timestamp,
+                indexed_at: indexed_at,
+                block_number,
+                transaction_hash,
+                event_index,
+              });
+            }
+
+            // Single summit_log entry for the batch
+            collectSummitLog(batches, {
+              block_number,
+              event_index,
+              category: "Rewards",
+              sub_category: "Claimed Corpses",
+              data: {
+                player: decoded.player,
+                adventurer_count: decoded.adventurer_ids.length,
+                corpse_amount: decoded.corpse_amount,
+              },
+              player: decoded.player,
+              token_id: null,
+              transaction_hash,
+              created_at: block_timestamp,
+              indexed_at,
+            });
+            continue;
+          }
+
+          // Skull contract - SkullEvent
+          if (addressToBigInt(event_address) === skullAddressBigInt && selector === EVENT_SELECTORS.SkullEvent) {
+            const decoded = decodeSkullEvent([...keys], [...data]);
+
+            // Get player from first beast's owner (all beasts in batch belong to same player)
+            const firstContext = beastContextMap.get(decoded.beast_token_ids[0]) ?? { prev_stats: null, metadata: null, owner: null };
+            const skull_player = firstContext.owner;
+
+            // Process each beast_token_id individually
+            for (const beast_token_id of decoded.beast_token_ids) {
+              // Get skulls (adventurers_killed) from beast_data lookup
+              const skulls = beastDataSkullsMap.get(beast_token_id) ?? 0n;
+
+              // Collect skulls_claimed upsert for each beast
+              batches.skulls_claimed.push({
+                beast_token_id,
+                skulls,
+                updated_at: block_timestamp,
+              });
+            }
+
+            // Single summit_log entry for the batch
+            collectSummitLog(batches, {
+              block_number,
+              event_index,
+              category: "Rewards",
+              sub_category: "Claimed Skulls",
+              data: {
+                player: skull_player,
+                beast_count: decoded.beast_token_ids.length,
+                skulls_claimed: decoded.skulls_claimed.toString(),
+              },
+              player: skull_player,
+              token_id: null,  // No single token_id for batch
+              transaction_hash,
+              created_at: block_timestamp,
+              indexed_at,
+            });
             continue;
           }
 
@@ -1679,82 +1777,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 },
                 player: decoded.player,
                 token_id: decoded.beast_token_id,
-                transaction_hash,
-                created_at: block_timestamp,
-                indexed_at,
-              });
-              break;
-            }
-
-            case EVENT_SELECTORS.CorpseEvent: {
-              const decoded = decodeCorpseEvent([...keys], [...data]);
-
-              // Process each adventurer_id individually into corpse_events
-              for (const adventurer_id of decoded.adventurer_ids) {
-                batches.corpse_events.push({
-                  adventurer_id,
-                  player: decoded.player,
-                  created_at: block_timestamp,
-                  indexed_at: indexed_at,
-                  block_number,
-                  transaction_hash,
-                  event_index,
-                });
-              }
-
-              // Single summit_log entry for the batch
-              collectSummitLog(batches, {
-                block_number,
-                event_index,
-                category: "Rewards",
-                sub_category: "Claimed Corpses",
-                data: {
-                  player: decoded.player,
-                  adventurer_count: decoded.adventurer_ids.length,
-                  corpse_amount: decoded.corpse_amount,
-                },
-                player: decoded.player,
-                token_id: null,
-                transaction_hash,
-                created_at: block_timestamp,
-                indexed_at,
-              });
-              break;
-            }
-
-            case EVENT_SELECTORS.SkullEvent: {
-              const decoded = decodeSkullEvent([...keys], [...data]);
-
-              // Get player from first beast's owner (all beasts in batch belong to same player)
-              const firstContext = beastContextMap.get(decoded.beast_token_ids[0]) ?? { prev_stats: null, metadata: null, owner: null };
-              const skull_player = firstContext.owner;
-
-              // Process each beast_token_id individually
-              for (const beast_token_id of decoded.beast_token_ids) {
-                // Get skulls (adventurers_killed) from beast_data lookup
-                const skulls = beastDataSkullsMap.get(beast_token_id) ?? 0n;
-
-                // Collect skulls_claimed upsert for each beast
-                batches.skulls_claimed.push({
-                  beast_token_id,
-                  skulls,
-                  updated_at: block_timestamp,
-                });
-              }
-
-              // Single summit_log entry for the batch
-              collectSummitLog(batches, {
-                block_number,
-                event_index,
-                category: "Rewards",
-                sub_category: "Claimed Skulls",
-                data: {
-                  player: skull_player,
-                  beast_count: decoded.beast_token_ids.length,
-                  skulls_claimed: decoded.skulls_claimed.toString(),
-                },
-                player: skull_player,
-                token_id: null,  // No single token_id for batch
                 transaction_hash,
                 created_at: block_timestamp,
                 indexed_at,
