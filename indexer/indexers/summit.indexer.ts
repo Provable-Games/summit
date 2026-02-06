@@ -888,7 +888,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     plugins: [
       drizzleStorage({
         db: database,
-        persistState: false, // Always start from startingBlock, don't resume from checkpoint
+        persistState: true, // Resume from checkpoint after restart
         indexerName: "summit",
         idColumn: "id",
         migrate: {
