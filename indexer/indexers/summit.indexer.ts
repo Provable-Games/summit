@@ -781,8 +781,23 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   console.log("[Summit Indexer] Starting Block:", startingBlock.toString());
   console.log("[Summit Indexer] RPC URL:", rpcUrl);
 
-  // Create Drizzle database instance
-  const database = drizzle({ schema, connectionString: databaseUrl });
+  // Create Drizzle database instance with pooled node-postgres connection
+  const database = drizzle({
+    schema,
+    connectionString: databaseUrl,
+    type: "node-postgres",
+    poolConfig: {
+      max: 5,
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 10_000,
+    },
+  });
+
+  // Attach error handler to the underlying pg.Pool to prevent
+  // unhandled 'error' events from crashing the process on connection drops
+  database.$client.on("error", (err) => {
+    console.error("[Summit Indexer] Pool background connection error:", err.message);
+  });
 
   // getBeast selector: starknet_keccak("getBeast")
   const GET_BEAST_SELECTOR = "0x0385b69551f247794fe651459651cdabc76b6cdf4abacafb5b28ceb3b1ac2e98";
