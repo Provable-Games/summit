@@ -20,6 +20,7 @@ export interface ControllerContext {
   tokenBalances: Record<string, number>;
   setTokenBalances: (tokenBalances: Record<string, number>) => void;
   fetchTokenBalances: (delayMs: number) => void;
+  fetchStrkBalance: (delayMs?: number) => void;
   fetchPaymentTokenBalances: () => void;
   fetchBeastCollection: () => void;
   filterValidAdventurers: () => void;
@@ -128,6 +129,15 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     setTokenBalances(prev => ({ ...prev, ...balances }));
   }
 
+  async function fetchStrkBalance(delayMs: number = 0) {
+    await delay(delayMs);
+    const strkToken = currentNetworkConfig.tokens.erc20.find((t: any) => t.name === "STRK");
+    if (strkToken) {
+      let balances = await getTokenBalances([strkToken]);
+      setTokenBalances(prev => ({ ...prev, ...balances }));
+    }
+  }
+
   const acceptTermsOfService = () => {
     setShowTermsOfService(false);
   };
@@ -141,6 +151,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         tokenBalances,
         fetchPaymentTokenBalances,
         fetchTokenBalances,
+        fetchStrkBalance,
         fetchBeastCollection,
         filterValidAdventurers,
         showTermsOfService,

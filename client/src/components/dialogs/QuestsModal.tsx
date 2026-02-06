@@ -1,7 +1,10 @@
+import { useSummitApi } from '@/api/summitApi';
 import attackPotionIcon from '@/assets/images/attack-potion.png';
 import questsIcon from '@/assets/images/quest.png';
 import revivePotionIcon from '@/assets/images/revive-potion.png';
 import swordIcon from '@/assets/images/sword.png';
+import { REWARD_NAME } from '@/contexts/GameDirector';
+import { questGuides, useQuestGuide } from '@/contexts/QuestGuide';
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import { gameColors } from '@/utils/themes';
@@ -9,18 +12,16 @@ import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import BoltIcon from '@mui/icons-material/Bolt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
-import LockIcon from '@mui/icons-material/Lock';
 import DiamondIcon from '@mui/icons-material/Diamond';
+import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import LockIcon from '@mui/icons-material/Lock';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import { Box, Dialog, IconButton, LinearProgress, Tooltip, Typography } from '@mui/material';
-import { useMemo } from 'react';
+import { Box, Dialog, IconButton, LinearProgress, Typography } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import { REWARD_NAME } from '@/contexts/GameDirector';
-import { useQuestGuide, questGuides } from '@/contexts/QuestGuide';
 
 const survivorTokenIcon = '/images/survivor_token.png';
 
@@ -55,7 +56,7 @@ const questDefinitions: QuestDefinition[] = [
     id: 'max_attack_streak',
     name: 'Consistency is Key',
     description: 'Reach the max attack streak of 10',
-    reward: 0.05,
+    reward: 0.1,
     icon: <LocalFireDepartmentIcon sx={{ color: '#ff5722' }} />,
     check: (beast) => beast.max_attack_streak === true,
   },
@@ -63,7 +64,7 @@ const questDefinitions: QuestDefinition[] = [
     id: 'level_up_1',
     name: 'Growing Stronger',
     description: 'Level up your beast once',
-    reward: 0.02,
+    reward: 0.04,
     icon: <TrendingUpIcon sx={{ color: '#4fc3f7' }} />,
     check: (beast) => beast.current_level - beast.level >= 1,
     tier: 1,
@@ -73,7 +74,7 @@ const questDefinitions: QuestDefinition[] = [
     id: 'level_up_3',
     name: 'Rising Power',
     description: 'Level up your beast 3 times',
-    reward: 0.03,
+    reward: 0.06,
     icon: <KeyboardDoubleArrowUpIcon sx={{ color: '#7c4dff' }} />,
     check: (beast) => beast.current_level - beast.level >= 3,
     tier: 2,
@@ -83,7 +84,7 @@ const questDefinitions: QuestDefinition[] = [
     id: 'level_up_5',
     name: 'Apex Predator',
     description: 'Level up your beast 5 times',
-    reward: 0.04,
+    reward: 0.08,
     icon: <BoltIcon sx={{ color: '#ffab00' }} />,
     check: (beast) => beast.current_level - beast.level >= 5,
     tier: 3,
@@ -93,7 +94,7 @@ const questDefinitions: QuestDefinition[] = [
     id: 'level_up_10',
     name: 'Mastery',
     description: 'Level up your beast 10 times',
-    reward: 0.06,
+    reward: 0.12,
     icon: <DiamondIcon sx={{ color: '#e040fb' }} />,
     check: (beast) => beast.current_level - beast.level >= 10,
     tier: 4,
@@ -103,7 +104,7 @@ const questDefinitions: QuestDefinition[] = [
     id: 'take_summit',
     name: 'Summit Conqueror',
     description: 'Capture the Summit',
-    reward: 0.05,
+    reward: 0.1,
     icon: <MilitaryTechIcon sx={{ color: '#ffd54f' }} />,
     check: (beast) => beast.captured_summit === true,
   },
@@ -111,7 +112,7 @@ const questDefinitions: QuestDefinition[] = [
     id: 'hold_summit_10s',
     name: 'Iron Grip',
     description: 'Hold the Summit for at least 10 seconds',
-    reward: 0.1,
+    reward: 0.2,
     icon: <AutoAwesomeIcon sx={{ color: '#26c6da' }} />,
     check: (beast) => beast.summit_held_seconds >= 10,
   },
@@ -119,7 +120,7 @@ const questDefinitions: QuestDefinition[] = [
     id: 'revival_potion',
     name: 'Second Wind',
     description: 'Buy a revival potion and attack with a dead beast',
-    reward: 0.05,
+    reward: 0.1,
     icon: <img src={revivePotionIcon} alt="revive" style={{ width: 22, height: 22 }} />,
     check: (beast) => beast.used_revival_potion === true,
   },
@@ -127,7 +128,7 @@ const questDefinitions: QuestDefinition[] = [
     id: 'attack_potion',
     name: 'A Vital Boost',
     description: 'Buy an attack potion and attack using it',
-    reward: 0.05,
+    reward: 0.1,
     icon: <img src={attackPotionIcon} alt="attack" style={{ width: 22, height: 22 }} />,
     check: (beast) => beast.used_attack_potion === true,
   },
@@ -138,6 +139,17 @@ const TOTAL_REWARD_PER_BEAST = 0.5;
 export default function QuestsModal({ open, onClose }: QuestsModalProps) {
   const { collection } = useGameStore();
   const { startGuide } = useQuestGuide();
+  const { getQuestRewardsTotal } = useSummitApi();
+  const [remainingRewards, setRemainingRewards] = useState(QUEST_REWARD_POOL_TOTAL);
+
+  useEffect(() => {
+    if (!open) return;
+    getQuestRewardsTotal().then((claimed) => {
+      setRemainingRewards(Math.max(0, QUEST_REWARD_POOL_TOTAL - claimed));
+    }).catch(() => {
+      // Fall back to total pool on error
+    });
+  }, [open]);
 
   const hasGuide = (questId: string) => {
     return questGuides.some(g => g.questId === questId);
@@ -231,7 +243,7 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
                   <Box sx={styles.rewardPoolAmountRow}>
                     <img src={survivorTokenIcon} alt="token" style={{ width: 28, height: 28 }} />
                     <Typography sx={styles.rewardPoolAmount}>
-                      {QUEST_REWARD_POOL_TOTAL.toFixed(2)}
+                      {remainingRewards.toFixed(2)}
                     </Typography>
                   </Box>
                 </Box>

@@ -40,8 +40,8 @@ export const NETWORKS = {
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
-    apiUrl: "https://summit-api-7lmt.onrender.com",
-    wsUrl: "wss://summit-api-7lmt.onrender.com/ws",
+    apiUrl: "https://summit-api-vzr7.onrender.com",
+    wsUrl: "wss://summit-api-vzr7.onrender.com/ws",
     tokens: {
       erc20: [
         // {
@@ -50,6 +50,12 @@ export const NETWORKS = {
         //     "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
         //   displayDecimals: 0,
         // },
+        {
+          name: "STRK",
+          address:
+            "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+          displayDecimals: 0,
+        },
         {
           name: "ATTACK",
           address: TOKEN_ADDRESS.ATTACK,

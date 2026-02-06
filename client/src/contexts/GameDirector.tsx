@@ -85,7 +85,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     applyStatPoints,
     applyPoison,
   } = useSystemCalls();
-  const { tokenBalances, setTokenBalances } = useController();
+  const { tokenBalances, setTokenBalances, fetchStrkBalance } = useController();
   const { play } = useSound();
 
   const [nextSummit, setNextSummit] = useState<Summit | null>(null);
@@ -100,10 +100,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (!sameBeast && summit?.beast.token_id) {
       if (collection.some(b => b.token_id === summit.beast.token_id)) {
         const now = Math.floor(Date.now() / 1000);
+        const secondsHeld = now - summit.block_timestamp;
+
         setCollection(prevCollection =>
           prevCollection.map(beast =>
             beast.token_id === summit.beast.token_id
-              ? { ...beast, last_death_timestamp: now, current_health: 0 }
+              ? { ...beast, last_death_timestamp: now, current_health: 0, summit_held_seconds: beast.summit_held_seconds + (secondsHeld > 5 ? secondsHeld : 0) }
               : beast
           )
         );
@@ -631,6 +633,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         CORPSE: tokenBalances["CORPSE"] - action.corpseTokens,
       });
     }
+
+    fetchStrkBalance(2000);
 
     return true;
   };

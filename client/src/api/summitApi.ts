@@ -324,6 +324,18 @@ export const useSummitApi = () => {
     return response.json();
   };
 
+  /**
+   * Get total quest rewards claimed
+   */
+  const getQuestRewardsTotal = async (): Promise<number> => {
+    const response = await fetch(`${currentNetworkConfig.apiUrl}/quest-rewards/total`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch quest rewards total: ${response.status}`);
+    }
+    const data: { total: number } = await response.json();
+    return data.total;
+  };
+
   return {
     getBeastsByOwner,
     getAllBeasts,
@@ -334,5 +346,6 @@ export const useSummitApi = () => {
     getDiplomacy,
     getDiplomacyLeaderboard,
     getLogs,
+    getQuestRewardsTotal,
   };
 };

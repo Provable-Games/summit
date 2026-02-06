@@ -7,20 +7,20 @@ import revivePotionImg from '@/assets/images/revive-potion.png';
 import { useController } from '@/contexts/controller';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
-import { ellipseAddress, formatRewardNumber } from '@/utils/utils';
+import { ellipseAddress } from '@/utils/utils';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { Box, Button, IconButton, Tooltip, Typography, Skeleton } from '@mui/material';
 import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import { addAddressPadding } from 'starknet';
 import BeastDexModal from './dialogs/BeastDexModal';
 import MarketplaceModal from './dialogs/MarketplaceModal';
 import { useStatistics } from '@/contexts/Statistics';
 
 const ProfileCard = () => {
-  const { collection, leaderboard, loadingCollection, summitEnded } = useGameStore()
+  const { collection, loadingCollection, summitEnded } = useGameStore()
   const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
   const { playerName, tokenBalances, openProfile } = useController()
@@ -117,15 +117,31 @@ const ProfileCard = () => {
 
       {!loadingCollection && <>
         <Box display={'flex'} width={'100%'}>
-          <Box sx={[styles.infoSection, styles.leftSection]}>
-            <Typography sx={styles.infoLabel}>SCORE</Typography>
+          <Tooltip
+            title={tokenBalances["STRK"] !== undefined && tokenBalances["STRK"] < 10
+              ? <Box sx={styles.tooltip}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <WarningAmberIcon sx={{ fontSize: '14px', color: '#ff9800' }} />
+                    <span>Low on gas! Top up STRK to continue playing.</span>
+                  </Box>
+                </Box>
+              : undefined
+            }
+            open={tokenBalances["STRK"] !== undefined && tokenBalances["STRK"] < 10 ? undefined : false}
+          >
+            <Box sx={[styles.infoSection, styles.leftSection]}>
+              <Typography sx={styles.infoLabel}>STRK</Typography>
 
-            <Box display={'flex'} alignItems={'start'}>
-              <Typography sx={styles.infoValue}>
-                {formatRewardNumber((leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount || 0))}
-              </Typography>
+              <Box display={'flex'} alignItems={'start'}>
+                {tokenBalances["STRK"] !== undefined
+                  ? <Typography sx={[styles.infoValue, tokenBalances["STRK"] < 10 && { color: '#ff9800' }]}>
+                      {tokenBalances["STRK"].toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </Typography>
+                  : <Skeleton variant="text" width={40} sx={{ bgcolor: 'grey.700' }} />
+                }
+              </Box>
             </Box>
-          </Box>
+          </Tooltip>
 
           <Box sx={[styles.infoSection, styles.rightSection]}>
             <Typography sx={styles.infoLabel}>BEASTS</Typography>

@@ -35,46 +35,46 @@ const calculateQuestRewards = (beast: Beast): number => {
 
   // Second Wind - used revival potion
   if (beast.used_revival_potion) {
-    totalRewards += 5;
+    totalRewards += 10;
   }
 
   // A Vital Boost - used attack potion
   if (beast.used_attack_potion) {
-    totalRewards += 5;
+    totalRewards += 10;
   }
 
   // Level up bonuses (cumulative - expressed as running totals)
   const bonusLevels = beast.current_level - beast.level;
   if (bonusLevels >= 10) {
-    totalRewards += 15; // 2+3+4+6
+    totalRewards += 30; // 2+3+4+6
   } else if (bonusLevels >= 5) {
-    totalRewards += 9;  // 2+3+4
+    totalRewards += 18;  // 2+3+4
   } else if (bonusLevels >= 3) {
-    totalRewards += 5;  // 2+3
+    totalRewards += 10;  // 2+3
   } else if (bonusLevels >= 1) {
-    totalRewards += 2;
+    totalRewards += 4;
   }
 
   // Summit Conqueror - captured the summit
   if (beast.captured_summit) {
-    totalRewards += 5;
+    totalRewards += 10;
   }
 
   // Iron Grip - held summit for 10+ seconds
   if (beast.summit_held_seconds >= 10) {
-    totalRewards += 10;
+    totalRewards += 20;
   }
 
   // Consistency is Key - reached max attack streak
   if (beast.max_attack_streak) {
-    totalRewards += 5;
+    totalRewards += 10;
   }
 
   return totalRewards;
 };
 
 // Max possible reward per beast (in integer units)
-const MAX_REWARD_PER_BEAST = 50; // 5+5+5+15+5+10+5
+const MAX_REWARD_PER_BEAST = 95;
 
 const ClaimRewardsButton = () => {
   const { collection, setCollection, adventurerCollection, setAdventurerCollection } = useGameStore();
