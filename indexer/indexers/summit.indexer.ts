@@ -622,9 +622,10 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
       db.insert(schema.beast_data).values([...deduped.values()]).onConflictDoUpdate({
         target: schema.beast_data.entity_hash,
         set: {
-          adventurers_killed: sql`excluded.adventurers_killed`,
-          last_death_timestamp: sql`excluded.last_death_timestamp`,
-          last_killed_by: sql`excluded.last_killed_by`,
+          // Use GREATEST to preserve highest value - kills can only increase, prevents CollectableEntity (0n) from overwriting EntityStats
+          adventurers_killed: sql`GREATEST(beast_data.adventurers_killed, excluded.adventurers_killed)`,
+          last_death_timestamp: sql`GREATEST(beast_data.last_death_timestamp, excluded.last_death_timestamp)`,
+          last_killed_by: sql`COALESCE(NULLIF(excluded.last_killed_by, 0), beast_data.last_killed_by)`,
           // Preserve existing token_id if set, only update if new value is provided
           token_id: sql`COALESCE(beast_data.token_id, excluded.token_id)`,
           updated_at: sql`excluded.updated_at`,

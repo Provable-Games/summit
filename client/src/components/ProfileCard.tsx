@@ -4,10 +4,12 @@ import killTokenImg from '@/assets/images/kill-token.png';
 import lifePotionImg from '@/assets/images/life-potion.png';
 import poisonPotionImg from '@/assets/images/poison-potion.png';
 import revivePotionImg from '@/assets/images/revive-potion.png';
+import starkImg from '@/assets/images/stark.svg';
 import { useController } from '@/contexts/controller';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { ellipseAddress } from '@/utils/utils';
+import CloseIcon from '@mui/icons-material/Close';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
@@ -31,9 +33,12 @@ const ProfileCard = () => {
 
   const [beastDexOpen, setBeastDexOpen] = useState(false)
   const [potionShopOpen, setPotionShopOpen] = useState(false)
+  const [lowGasTooltipDismissed, setLowGasTooltipDismissed] = useState(false)
   const isCartridge = connector?.id === 'controller'
   const killTokens = tokenBalances["SKULL"] || 0
   const corpseTokens = tokenBalances["CORPSE"] || 0
+  const strkBalance = tokenBalances["STRK"]
+  const isLowGas = false // strkBalance !== undefined && strkBalance < 10
 
   const renderPotionItem = (imgSrc: string, tokenName: string) => {
     const price = tokenPrices[tokenName]
@@ -118,25 +123,37 @@ const ProfileCard = () => {
       {!loadingCollection && <>
         <Box display={'flex'} width={'100%'}>
           <Tooltip
-            title={tokenBalances["STRK"] !== undefined && tokenBalances["STRK"] < 10
-              ? <Box sx={styles.tooltip}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <WarningAmberIcon sx={{ fontSize: '14px', color: '#ff9800' }} />
-                    <span>Low on gas! Top up STRK to continue playing.</span>
-                  </Box>
+            title={isLowGas
+              ? <Box sx={styles.lowGasTooltip}>
+                <Box sx={styles.lowGasTooltipHeader}>
+                  <WarningAmberIcon sx={{ fontSize: '16px', color: '#ff9800' }} />
+                  <Typography sx={styles.lowGasTooltipTitle}>Low on Gas!</Typography>
+                  <IconButton
+                    size="small"
+                    onClick={() => setLowGasTooltipDismissed(true)}
+                    sx={styles.lowGasTooltipClose}
+                  >
+                    <CloseIcon sx={{ fontSize: '14px', mt: -2, mr: -1 }} />
+                  </IconButton>
                 </Box>
+                <Typography sx={styles.lowGasTooltipText}>
+                  Top up STRK to continue playing.
+                </Typography>
+              </Box>
               : undefined
             }
-            open={tokenBalances["STRK"] !== undefined && tokenBalances["STRK"] < 10 ? undefined : false}
+            open={isLowGas && !lowGasTooltipDismissed}
+            placement="left"
           >
             <Box sx={[styles.infoSection, styles.leftSection]}>
-              <Typography sx={styles.infoLabel}>STRK</Typography>
+              <Typography sx={styles.infoLabel}>STRK (gas)</Typography>
 
-              <Box display={'flex'} alignItems={'start'}>
-                {tokenBalances["STRK"] !== undefined
-                  ? <Typography sx={[styles.infoValue, tokenBalances["STRK"] < 10 && { color: '#ff9800' }]}>
-                      {tokenBalances["STRK"].toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                    </Typography>
+              <Box display={'flex'} alignItems={'center'} gap={0.5}>
+                <img src={starkImg} alt="STRK" style={{ width: '16px', height: '16px' }} />
+                {strkBalance !== undefined
+                  ? <Typography sx={[styles.infoValue, isLowGas && { color: '#ff9800' }]}>
+                    {strkBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                  </Typography>
                   : <Skeleton variant="text" width={40} sx={{ bgcolor: 'grey.700' }} />
                 }
               </Box>
@@ -272,6 +289,49 @@ const styles = {
     borderRadius: '4px',
     border: `1px solid ${gameColors.accentGreen}60`,
     color: '#ffedbb',
+  },
+  lowGasTooltip: {
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
+    border: `2px solid #ff9800`,
+    borderRadius: '8px',
+    padding: '10px 14px',
+    boxShadow: `0 4px 20px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 152, 0, 0.25)`,
+  },
+  lowGasTooltipHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    mb: 0.5,
+  },
+  lowGasTooltipTitle: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#ff9800',
+    letterSpacing: '0.5px',
+    flex: 1,
+  },
+  lowGasTooltipClose: {
+    padding: '2px',
+    marginLeft: 'auto',
+    color: '#ffedbb',
+    opacity: 0.7,
+    '&:hover': {
+      opacity: 1,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+  },
+  lowGasTooltipText: {
+    fontSize: '12px',
+    color: '#ffedbb',
+    lineHeight: 1.3,
+  },
+  lowGasTooltipArrow: {
+    padding: 0,
+    color: '#ff9800',
+    '&::before': {
+      border: `1px solid #ff9800`,
+      background: gameColors.mediumGreen,
+    },
   },
   infoSection: {
     display: 'flex',

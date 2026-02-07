@@ -88,7 +88,7 @@ const getNotificationDisplay = (notification: GameNotification): { icon: React.R
     case 'survivor_earned':
       return {
         icon: <img src={survivorTokenIcon} alt="" style={iconStyle} />,
-        text: `+${value} CLAIMED`,
+        text: `+${value} EARNED`,
         color: '#f2cc8f',
       };
     case 'claimed_survivor':

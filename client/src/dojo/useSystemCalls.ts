@@ -52,6 +52,7 @@ export const useSystemCalls = () => {
     } catch (error) {
       console.error("Error executing action:", error);
       forceResetAction();
+      return null;
     }
   };
 

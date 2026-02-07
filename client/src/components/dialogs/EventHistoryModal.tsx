@@ -176,6 +176,11 @@ for (const [cat, subs] of Object.entries(CATEGORIES)) {
   }
 }
 
+// Check if an event has a defined sub-category
+const isDefinedEvent = (event: LogEntry): boolean => {
+  return ALL_SUB_CATEGORIES.includes(event.sub_category);
+};
+
 const STORAGE_KEY = 'summit-event-filters';
 
 // Load saved filters from localStorage
@@ -223,6 +228,10 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     if (page !== 1) return [];
 
     return liveEvents.filter((event) => {
+      // Only show events with defined sub-categories
+      if (!isDefinedEvent(event)) {
+        return false;
+      }
       // Filter by sub-category if any are selected
       if (selectedSubCategories.length > 0 && !selectedSubCategories.includes(event.sub_category)) {
         return false;
@@ -239,16 +248,19 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     });
   }, [liveEvents, selectedSubCategories, activeTab, address, page]);
 
-  // Merge live events with fetched events, deduplicating by ID
+  // Merge live events with fetched events, deduplicating by ID and filtering undefined events
   const displayEvents = useMemo(() => {
+    // Filter fetched events to only show defined sub-categories
+    const filteredEvents = events.filter(isDefinedEvent);
+
     if (page !== 1 || filteredLiveEvents.length === 0) {
-      return events;
+      return filteredEvents;
     }
 
-    const fetchedIds = new Set(events.map((e) => e.id));
+    const fetchedIds = new Set(filteredEvents.map((e) => e.id));
     const newLiveEvents = filteredLiveEvents.filter((e) => !fetchedIds.has(e.id));
 
-    return [...newLiveEvents, ...events];
+    return [...newLiveEvents, ...filteredEvents];
   }, [events, filteredLiveEvents, page]);
 
   // Track which events are "new" (arrived via WebSocket after modal opened)

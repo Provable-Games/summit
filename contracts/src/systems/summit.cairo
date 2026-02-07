@@ -22,6 +22,7 @@ pub trait ISummitSystem<T> {
 
     fn set_summit_reward(ref self: T, amount: u128);
     fn set_start_timestamp(ref self: T, start_timestamp: u64);
+    fn set_reward_address(ref self: T, reward_address: ContractAddress);
     fn set_attack_potion_address(ref self: T, attack_potion_address: ContractAddress);
     fn set_revive_potion_address(ref self: T, revive_potion_address: ContractAddress);
     fn set_extra_life_potion_address(ref self: T, extra_life_potion_address: ContractAddress);
@@ -472,6 +473,11 @@ pub mod summit_systems {
             self.ownable.assert_only_owner();
             assert(self.start_timestamp.read() > get_block_timestamp(), 'Summit already started');
             self.start_timestamp.write(start_timestamp);
+        }
+
+        fn set_reward_address(ref self: ContractState, reward_address: ContractAddress) {
+            self.ownable.assert_only_owner();
+            self.reward_dispatcher.write(IERC20Dispatcher { contract_address: reward_address });
         }
 
         fn set_attack_potion_address(ref self: ContractState, attack_potion_address: ContractAddress) {

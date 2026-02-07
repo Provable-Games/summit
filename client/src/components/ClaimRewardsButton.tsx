@@ -231,9 +231,9 @@ const ClaimRewardsButton = () => {
           }),
         );
       }
+      setSkullClaimState(null);
     } catch (ex) {
-      console.log(ex);
-    } finally {
+      console.error("Error claiming skulls:", ex);
       setSkullClaimState(null);
     }
   };
@@ -277,9 +277,9 @@ const ClaimRewardsButton = () => {
         });
         setAdventurerCollection([]);
       }
+      setCorpseClaimState(null);
     } catch (ex) {
-      console.log(ex);
-    } finally {
+      console.error("Error claiming corpses:", ex);
       setCorpseClaimState(null);
     }
   };
@@ -342,9 +342,9 @@ const ClaimRewardsButton = () => {
           }),
         );
       }
+      setSurvivorClaimState(null);
     } catch (ex) {
-      console.log(ex);
-    } finally {
+      console.error("Error claiming survivor:", ex);
       setSurvivorClaimState(null);
     }
   };
@@ -401,9 +401,9 @@ const ClaimRewardsButton = () => {
           }),
         );
       }
+      setSummitClaimState(null);
     } catch (ex) {
-      console.log(ex);
-    } finally {
+      console.error("Error claiming summit rewards:", ex);
       setSummitClaimState(null);
     }
   };
@@ -416,6 +416,8 @@ const ClaimRewardsButton = () => {
   const showCorpse = unclaimedCorpseTokens > 0 || corpseClaimState;
   const showSurvivor = unclaimedSurvivorTokens > 0 || survivorClaimState;
   const showSummit = unclaimedSummitTokens > 0 || summitClaimState;
+
+  const isAnyClaiming = skullClaimState?.inProgress || corpseClaimState?.inProgress || survivorClaimState?.inProgress || summitClaimState?.inProgress;
 
   const progressPercent = questTotalPossible > 0
     ? (questTotalEarned / questTotalPossible) * 100
@@ -481,7 +483,7 @@ const ClaimRewardsButton = () => {
               <Button
                 sx={styles.claimButton}
                 onClick={claimSkulls}
-                disabled={skullClaimState?.inProgress || unclaimedSkullBeasts.length === 0}
+                disabled={isAnyClaiming || unclaimedSkullBeasts.length === 0}
               >
                 {skullClaimState?.inProgress ? (
                   <Box display="flex" alignItems="baseline">
@@ -526,7 +528,7 @@ const ClaimRewardsButton = () => {
               <Button
                 sx={styles.claimButton}
                 onClick={claimCorpse}
-                disabled={corpseClaimState?.inProgress || adventurerCollection.length === 0}
+                disabled={isAnyClaiming || adventurerCollection.length === 0}
               >
                 {corpseClaimState?.inProgress ? (
                   <Box display="flex" alignItems="baseline">
@@ -572,7 +574,7 @@ const ClaimRewardsButton = () => {
                 <Button
                   sx={styles.claimButton}
                   onClick={claimSurvivor}
-                  disabled={survivorClaimState?.inProgress || unclaimedSurvivorTokens <= 0}
+                  disabled={isAnyClaiming || unclaimedSurvivorTokens <= 0}
                 >
                   {survivorClaimState?.inProgress ? (
                     <Box display="flex" alignItems="baseline" sx={{ color: 'white' }}>
@@ -612,13 +614,13 @@ const ClaimRewardsButton = () => {
                 <Typography sx={styles.summitSubtitle}>
                   {summitClaimState
                     ? `${summitClaimState.claimed}/${summitClaimState.total} claimed`
-                    : `${unclaimedSummitTokens} available`}
+                    : `${unclaimedSummitTokens.toFixed(2)} available`}
                 </Typography>
               </Box>
               <Button
                 sx={styles.claimButton}
                 onClick={claimSummitRewards}
-                disabled={summitClaimState?.inProgress || unclaimedSummitBeasts.length === 0}
+                disabled={isAnyClaiming || unclaimedSummitBeasts.length === 0}
               >
                 {summitClaimState?.inProgress ? (
                   <Box display="flex" alignItems="baseline">

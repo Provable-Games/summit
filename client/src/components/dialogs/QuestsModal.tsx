@@ -134,7 +134,7 @@ const questDefinitions: QuestDefinition[] = [
   },
 ];
 
-const TOTAL_REWARD_PER_BEAST = 0.5;
+const TOTAL_REWARD_PER_BEAST = 0.95;
 
 export default function QuestsModal({ open, onClose }: QuestsModalProps) {
   const { collection } = useGameStore();
