@@ -565,17 +565,18 @@ export interface CollectableEntityEventData {
 /**
  * Decode EntityStats Dojo event
  * Keys: [StoreSetRecord, EntityStats_model, key_hash]
- * Data: [field_count, dungeon, entity_hash, adventurers_killed, ...]
+ * Data: [keys_length, dungeon, entity_hash, values_length, adventurers_killed]
  */
 export function decodeEntityStatsEvent(_keys: string[], data: string[]): EntityStatsEventData {
-  // Data layout:
-  // data[0] = field_count (skip)
-  // data[1] = dungeon
-  // data[2] = entity_hash
-  // data[3] = adventurers_killed
+  // Data layout (Dojo StoreSetRecord format: keys span then values span):
+  // data[0] = keys_length (2)
+  // data[1] = dungeon (key)
+  // data[2] = entity_hash (key)
+  // data[3] = values_length (1)
+  // data[4] = adventurers_killed (value)
   const dungeon = feltToHex(data[1]);
   const entity_hash = feltToHex(data[2]);
-  const adventurers_killed = hexToBigInt(data[3]);
+  const adventurers_killed = hexToBigInt(data[4]);
 
   return {
     dungeon,
@@ -587,18 +588,18 @@ export function decodeEntityStatsEvent(_keys: string[], data: string[]): EntityS
 /**
  * Decode CollectableEntity Dojo event
  * Keys: [StoreSetRecord, CollectableEntity_model, key_hash]
- * Data: [field_count, dungeon, entity_hash, ...other_fields, timestamp]
+ * Data: [keys_length, dungeon, entity_hash, key3, values_length, ...values, last_killed_by, timestamp]
  *
  * The timestamp is the last field and represents when the entity was collected (death time)
  */
 export function decodeCollectableEntityEvent(_keys: string[], data: string[]): CollectableEntityEventData {
-  // Data layout (similar to EntityStats):
-  // data[0] = field_count
-  // data[1] = dungeon
-  // data[2] = entity_hash
-  // ... other fields
-  // last_killed_by at data[data.length - 2]
-  // timestamp at the end
+  // Data layout (Dojo StoreSetRecord format: keys span then values span):
+  // data[0] = keys_length (3)
+  // data[1] = dungeon (key)
+  // data[2] = entity_hash (key)
+  // data[3] = third key
+  // data[4] = values_length (8)
+  // data[5..12] = value fields, with last_killed_by and timestamp at the end
   const dungeon = feltToHex(data[1]);
   const entity_hash = feltToHex(data[2]);
   const last_killed_by = hexToBigInt(data[data.length - 2]);
