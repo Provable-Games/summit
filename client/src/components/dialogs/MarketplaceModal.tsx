@@ -1,5 +1,5 @@
 import ROUTER_ABI from '@/abi/router-abi.json';
-import { generateSwapCalls, getSwapQuote, SwapQuote, getPoolsForPair, getBestPool, getFullRangeBounds, estimateApy, decodeFee, calculatePairAmount, generateAddLiquidityCalls, getPositionsForOwner, generateWithdrawLiquidityCalls, generateCollectFeesCalls, positionBoundsToContractBounds, PoolInfo, PoolKey, Bounds, EkuboPosition } from '@/api/ekubo';
+import { generateSwapCalls, getSwapQuote, SwapQuote, getPoolsForPair, getBestPool, getFullRangeBounds, estimateApy, decodeFee, calculatePairAmount, generateAddLiquidityCalls, getPositionsForOwner, generateWithdrawLiquidityCalls, generateCollectFeesCalls, positionBoundsToContractBounds, discoverPoolFromQuote, PoolInfo, PoolKey, Bounds, EkuboPosition } from '@/api/ekubo';
 import attackPotionImg from '@/assets/images/attack-potion.png';
 import corpseTokenImg from '@/assets/images/corpse-token.png';
 import killTokenImg from '@/assets/images/kill-token.png';
@@ -780,9 +780,17 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
     (async () => {
       try {
+        // Try pair API first, fall back to swap quote discovery
         const pools = await getPoolsForPair(earnTokenAddress, testUsdAddress);
         if (cancelled) return;
-        const best = getBestPool(pools);
+        let best = getBestPool(pools);
+
+        if (!best) {
+          // Pair API didn't return pools — discover from swap quoter
+          best = await discoverPoolFromQuote(earnTokenAddress, testUsdAddress);
+        }
+
+        if (cancelled) return;
         if (best) {
           setEarnPoolData(best);
           const tvl = parseFloat(best.tvl0_total || '0') + parseFloat(best.tvl1_total || '0');

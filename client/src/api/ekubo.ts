@@ -359,12 +359,47 @@ export const getPoolsForPair = async (
 
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Failed to fetch pools: ${response.status}`);
+    // API may not recognize some tokens — caller should fall back to discoverPoolFromQuote
+    return [];
   }
 
   const data = await response.json();
   const pools: PoolInfo[] = data.topPools || data || [];
   return pools;
+};
+
+/**
+ * Discover pool parameters by doing a tiny swap quote.
+ * The quoter works even when the pair API doesn't recognize a token.
+ * Returns a synthetic PoolInfo from the first route's pool_key.
+ */
+export const discoverPoolFromQuote = async (
+  tokenA: string,
+  tokenB: string
+): Promise<PoolInfo | null> => {
+  try {
+    const quote = await getSwapQuote(-1n * 10n ** 18n, tokenA, tokenB);
+    if (!quote || !quote.splits || quote.splits.length === 0) return null;
+
+    const firstRoute = quote.splits[0].route;
+    if (!firstRoute || firstRoute.length === 0) return null;
+
+    const poolKey = firstRoute[0].pool_key;
+    return {
+      fee: poolKey.fee,
+      tick_spacing: Number(poolKey.tick_spacing),
+      extension: poolKey.extension,
+      tvl0_total: '0',
+      tvl1_total: '0',
+      fees0_24h: '0',
+      fees1_24h: '0',
+      volume0_24h: '0',
+      volume1_24h: '0',
+    };
+  } catch (err) {
+    console.warn('discoverPoolFromQuote: failed', err);
+    return null;
+  }
 };
 
 export const getBestPool = (pools: PoolInfo[]): PoolInfo | null => {
