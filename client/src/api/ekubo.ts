@@ -88,7 +88,7 @@ export const getSwapQuote = async (
       let response: Response;
       try {
         response = await fetch(
-          `https://prod-api-quoter.ekubo.org/23448594291968334/${amountParam}/${token}/${otherToken}`
+          `${EKUBO_QUOTER_BASE}/${amountParam}/${token}/${otherToken}`
         );
       } catch (err) {
         // Network/CORS-style failures
@@ -345,9 +345,29 @@ export interface PoolInfo {
   volume1_24h: string;
 }
 
+const EKUBO_QUOTER_BASE = "https://prod-api-quoter.ekubo.org/23448594291968334";
 const EKUBO_API_BASE = "https://prod-api.ekubo.org";
-const EKUBO_CHAIN_ID = "0x534e5f4d41494e";
+const EKUBO_CHAIN_ID = "23448594291968334";
 const EKUBO_MAX_TICK = 88722839;
+
+// Default pool parameters for game token / TEST USD pools.
+// These are hardcoded so liquidity provision works without any API dependency.
+// 0.05% fee tier: fee = 0.0005 * 2^128 = 170141183460469235273462165868118016
+export const DEFAULT_POOL_FEE = "170141183460469235273462165868118016";
+export const DEFAULT_POOL_TICK_SPACING = 1000;
+export const DEFAULT_POOL_EXTENSION = "0x0";
+
+export const getDefaultPoolInfo = (): PoolInfo => ({
+  fee: DEFAULT_POOL_FEE,
+  tick_spacing: DEFAULT_POOL_TICK_SPACING,
+  extension: DEFAULT_POOL_EXTENSION,
+  tvl0_total: '0',
+  tvl1_total: '0',
+  fees0_24h: '0',
+  fees1_24h: '0',
+  volume0_24h: '0',
+  volume1_24h: '0',
+});
 
 export const getPoolsForPair = async (
   tokenA: string,

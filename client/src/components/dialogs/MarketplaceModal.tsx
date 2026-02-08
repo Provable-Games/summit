@@ -1,5 +1,5 @@
 import ROUTER_ABI from '@/abi/router-abi.json';
-import { generateSwapCalls, getSwapQuote, SwapQuote, getPoolsForPair, getBestPool, getFullRangeBounds, estimateApy, decodeFee, calculatePairAmount, generateAddLiquidityCalls, getPositionsForOwner, generateWithdrawLiquidityCalls, generateCollectFeesCalls, positionBoundsToContractBounds, discoverPoolFromQuote, PoolInfo, PoolKey, Bounds, EkuboPosition } from '@/api/ekubo';
+import { generateSwapCalls, getSwapQuote, SwapQuote, getPoolsForPair, getBestPool, getFullRangeBounds, estimateApy, decodeFee, calculatePairAmount, generateAddLiquidityCalls, getPositionsForOwner, generateWithdrawLiquidityCalls, generateCollectFeesCalls, positionBoundsToContractBounds, discoverPoolFromQuote, getDefaultPoolInfo, PoolInfo, PoolKey, Bounds, EkuboPosition } from '@/api/ekubo';
 import attackPotionImg from '@/assets/images/attack-potion.png';
 import corpseTokenImg from '@/assets/images/corpse-token.png';
 import killTokenImg from '@/assets/images/kill-token.png';
@@ -330,8 +330,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   const earnHasValidInput = useMemo(() => {
     const amount = parseFloat(earnAmount);
-    return amount > 0 && earnPoolData !== null;
-  }, [earnAmount, earnPoolData]);
+    return amount > 0;
+  }, [earnAmount]);
 
   const fetchPotionQuote = useCallback(
     async (potionId: string, tokenSymbol: string, quantity: number) => {
@@ -937,12 +937,15 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   };
 
   const handleAddLiquidity = async () => {
-    if (!earnHasValidInput || !earnCanAfford || !earnPoolData || !positionsAddress) return;
+    if (!earnHasValidInput || !earnCanAfford || !positionsAddress) return;
     setEarnInProgress(true);
 
     try {
       const gameTokenAddr = earnTokenAddress;
       const testUsdAddr = testUsdAddress;
+
+      // Use fetched pool data, or fall back to hardcoded default (0.05% fee tier)
+      const poolData = earnPoolData || getDefaultPoolInfo();
 
       // Determine token ordering (token0 < token1 by address)
       const gameTokenBig = BigInt(gameTokenAddr);
@@ -955,12 +958,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       const poolKey: PoolKey = {
         token0,
         token1,
-        fee: earnPoolData.fee,
-        tick_spacing: num.toHex(earnPoolData.tick_spacing),
-        extension: earnPoolData.extension || '0x0',
+        fee: poolData.fee,
+        tick_spacing: num.toHex(poolData.tick_spacing),
+        extension: poolData.extension || '0x0',
       };
 
-      const bounds = getFullRangeBounds(earnPoolData.tick_spacing);
+      const bounds = getFullRangeBounds(poolData.tick_spacing);
 
       const gameTokenWei = BigInt(Math.floor(parseFloat(earnAmount) * 1e18));
       const testUsdWei = BigInt(Math.floor(parseFloat(earnTestUsdAmount) * 1e18));
@@ -1350,13 +1353,13 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               }}>
                 {earnPoolLoading ? (
                   <Skeleton variant="text" width={200} height={20} />
-                ) : earnPoolData ? (
+                ) : (
                   <>
                     <Box component="span" sx={{
                       px: 1, py: 0.25, borderRadius: '10px', fontSize: '11px',
                       fontWeight: 700, bgcolor: `${gameColors.accentGreen}30`, color: '#bbb',
                     }}>
-                      Fee: {(decodeFee(earnPoolData.fee) * 100).toFixed(2)}%
+                      Fee: {earnPoolData ? (decodeFee(earnPoolData.fee) * 100).toFixed(2) : '0.05'}%
                     </Box>
                     <Box component="span" sx={{
                       px: 1, py: 0.25, borderRadius: '10px', fontSize: '11px',
@@ -1373,10 +1376,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       Full Range
                     </Box>
                   </>
-                ) : (
-                  <Typography sx={{ fontSize: '12px', color: '#999' }}>
-                    No pool available for this pair
-                  </Typography>
                 )}
               </Box>
 
