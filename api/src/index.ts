@@ -39,25 +39,28 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 const CACHE_TTL_MS = 60_000; // 60 seconds
 const CACHE_MAX_ENTRIES = 1_000;
 
-interface CacheEntry {
-  data: object[];
+interface CacheEntry<T> {
+  data: T;
   timestamp: number;
 }
 
-const beastOwnerCache = new Map<string, CacheEntry>();
+const beastOwnerCache = new Map<string, CacheEntry<any[]>>();
 
-function getCacheEntry(key: string): object[] | null {
+function getCacheEntry<T>(key: string): T | null {
   const entry = beastOwnerCache.get(key);
   if (!entry) return null;
   if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
     beastOwnerCache.delete(key);
     return null;
   }
-  return entry.data;
+  // LRU: move to end of Map insertion order on access
+  beastOwnerCache.delete(key);
+  beastOwnerCache.set(key, entry);
+  return entry.data as T;
 }
 
-function setCacheEntry(key: string, data: object[]): void {
-  // FIFO eviction: delete oldest entry if at capacity
+function setCacheEntry(key: string, data: any[]): void {
+  // LRU eviction: delete least recently used entry if at capacity
   if (beastOwnerCache.size >= CACHE_MAX_ENTRIES && !beastOwnerCache.has(key)) {
     const oldestKey = beastOwnerCache.keys().next().value!;
     beastOwnerCache.delete(oldestKey);
@@ -264,65 +267,71 @@ app.get("/beasts/:owner", async (c) => {
   const startTime = Date.now();
   const owner = normalizeAddress(c.req.param("owner"));
 
-  // Check cache first
-  const cached = getCacheEntry(owner);
-  if (cached) {
-    console.log(`[Cache] HIT /beasts/:owner ${owner} (${cached.length} beasts, ${Date.now() - startTime}ms)`);
-    return c.json(cached);
+  // Check cache for raw DB rows
+  let rows = getCacheEntry<any[]>(owner);
+  let cacheStatus: string;
+
+  if (rows) {
+    cacheStatus = "HIT";
+  } else {
+    cacheStatus = "MISS";
+    // Get beast data with all joins including skulls
+    rows = await db
+      .select({
+        // Beast NFT metadata
+        token_id: beasts.token_id,
+        beast_id: beasts.beast_id,
+        prefix: beasts.prefix,
+        suffix: beasts.suffix,
+        level: beasts.level,
+        health: beasts.health,
+        shiny: beasts.shiny,
+        animated: beasts.animated,
+        // Beast data (Loot Survivor stats)
+        adventurers_killed: beast_data.adventurers_killed,
+        last_death_loot_survivor: beast_data.last_death_timestamp,
+        last_killed_by: beast_data.last_killed_by,
+        entity_hash: beast_data.entity_hash,
+        // Beast stats (Summit game state)
+        current_health: beast_stats.current_health,
+        bonus_health: beast_stats.bonus_health,
+        bonus_xp: beast_stats.bonus_xp,
+        attack_streak: beast_stats.attack_streak,
+        last_death_summit: beast_stats.last_death_timestamp,
+        revival_count: beast_stats.revival_count,
+        extra_lives: beast_stats.extra_lives,
+        captured_summit: beast_stats.captured_summit,
+        used_revival_potion: beast_stats.used_revival_potion,
+        used_attack_potion: beast_stats.used_attack_potion,
+        max_attack_streak: beast_stats.max_attack_streak,
+        summit_held_seconds: beast_stats.summit_held_seconds,
+        spirit: beast_stats.spirit,
+        luck: beast_stats.luck,
+        specials: beast_stats.specials,
+        wisdom: beast_stats.wisdom,
+        diplomacy: beast_stats.diplomacy,
+        rewards_earned: beast_stats.rewards_earned,
+        rewards_claimed: beast_stats.rewards_claimed,
+        // Skulls claimed (one row per beast)
+        skulls: skulls_claimed.skulls,
+        // Quest rewards claimed
+        quest_rewards_amount: quest_rewards_claimed.amount,
+      })
+      .from(beast_owners)
+      .innerJoin(beasts, eq(beasts.token_id, beast_owners.token_id))
+      .leftJoin(beast_data, eq(beast_data.token_id, beast_owners.token_id))
+      .leftJoin(beast_stats, eq(beast_stats.token_id, beast_owners.token_id))
+      .leftJoin(skulls_claimed, eq(skulls_claimed.beast_token_id, beast_owners.token_id))
+      .leftJoin(quest_rewards_claimed, eq(quest_rewards_claimed.beast_token_id, beast_owners.token_id))
+      .where(eq(beast_owners.owner, owner));
+
+    // Cache raw DB rows (time-dependent fields are computed fresh below)
+    setCacheEntry(owner, rows);
   }
 
-  // Get beast data with all joins including skulls
-  const results = await db
-    .select({
-      // Beast NFT metadata
-      token_id: beasts.token_id,
-      beast_id: beasts.beast_id,
-      prefix: beasts.prefix,
-      suffix: beasts.suffix,
-      level: beasts.level,
-      health: beasts.health,
-      shiny: beasts.shiny,
-      animated: beasts.animated,
-      // Beast data (Loot Survivor stats)
-      adventurers_killed: beast_data.adventurers_killed,
-      last_death_loot_survivor: beast_data.last_death_timestamp,
-      last_killed_by: beast_data.last_killed_by,
-      entity_hash: beast_data.entity_hash,
-      // Beast stats (Summit game state)
-      current_health: beast_stats.current_health,
-      bonus_health: beast_stats.bonus_health,
-      bonus_xp: beast_stats.bonus_xp,
-      attack_streak: beast_stats.attack_streak,
-      last_death_summit: beast_stats.last_death_timestamp,
-      revival_count: beast_stats.revival_count,
-      extra_lives: beast_stats.extra_lives,
-      captured_summit: beast_stats.captured_summit,
-      used_revival_potion: beast_stats.used_revival_potion,
-      used_attack_potion: beast_stats.used_attack_potion,
-      max_attack_streak: beast_stats.max_attack_streak,
-      summit_held_seconds: beast_stats.summit_held_seconds,
-      spirit: beast_stats.spirit,
-      luck: beast_stats.luck,
-      specials: beast_stats.specials,
-      wisdom: beast_stats.wisdom,
-      diplomacy: beast_stats.diplomacy,
-      rewards_earned: beast_stats.rewards_earned,
-      rewards_claimed: beast_stats.rewards_claimed,
-      // Skulls claimed (one row per beast)
-      skulls: skulls_claimed.skulls,
-      // Quest rewards claimed
-      quest_rewards_amount: quest_rewards_claimed.amount,
-    })
-    .from(beast_owners)
-    .innerJoin(beasts, eq(beasts.token_id, beast_owners.token_id))
-    .leftJoin(beast_data, eq(beast_data.token_id, beast_owners.token_id))
-    .leftJoin(beast_stats, eq(beast_stats.token_id, beast_owners.token_id))
-    .leftJoin(skulls_claimed, eq(skulls_claimed.beast_token_id, beast_owners.token_id))
-    .leftJoin(quest_rewards_claimed, eq(quest_rewards_claimed.beast_token_id, beast_owners.token_id))
-    .where(eq(beast_owners.owner, owner));
-
-  // Transform to Beast interface format
-  const transformed = results.map((r) => {
+  // Transform to Beast interface format (always runs fresh so time-dependent fields like current_health are accurate)
+  const now = Date.now();
+  const transformed = rows.map((r) => {
     const beastId = r.beast_id;
     const prefixId = r.prefix;
     const suffixId = r.suffix;
@@ -334,11 +343,11 @@ app.get("/beasts/:owner", async (c) => {
     const revivalTime = getBeastRevivalTime(spirit);
     const lastDeathTimestamp = Number(r.last_death_summit ?? 0n);
 
-    // Compute current health based on revival logic
+    // Compute current health based on revival logic (uses current time, not cached)
     let currentHealth = r.current_health ?? null;
     if (currentHealth === null || (lastDeathTimestamp === 0 && currentHealth === 0)) {
       currentHealth = r.health + bonusHealth;
-    } else if (currentHealth === 0 && lastDeathTimestamp * 1000 + revivalTime < Date.now()) {
+    } else if (currentHealth === 0 && lastDeathTimestamp * 1000 + revivalTime < now) {
       currentHealth = r.health + bonusHealth;
     }
 
@@ -402,9 +411,7 @@ app.get("/beasts/:owner", async (c) => {
     };
   });
 
-  // Cache the transformed result
-  setCacheEntry(owner, transformed);
-  console.log(`[Cache] MISS /beasts/:owner ${owner} (${transformed.length} beasts, ${Date.now() - startTime}ms)`);
+  console.log(`[Cache] ${cacheStatus} /beasts/:owner ${owner} (${transformed.length} beasts, ${Date.now() - startTime}ms)`);
 
   return c.json(transformed);
 });
