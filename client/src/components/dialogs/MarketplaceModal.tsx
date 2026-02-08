@@ -146,6 +146,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   // Earn tab state
   const [selectedEarnToken, setSelectedEarnToken] = useState<string>('ATTACK');
   const [earnAmount, setEarnAmount] = useState<string>('');
+  const [earnTestUsdManual, setEarnTestUsdManual] = useState<string>('');
   const [earnPoolData, setEarnPoolData] = useState<PoolInfo | null>(null);
   const [earnPoolLoading, setEarnPoolLoading] = useState(false);
   const [earnApy, setEarnApy] = useState<string>('');
@@ -308,10 +309,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   }, [tokenPrices, selectedEarnToken]);
 
   const earnTestUsdAmount = useMemo(() => {
+    if (earnTestUsdManual) return earnTestUsdManual;
     const amount = parseFloat(earnAmount);
-    if (!amount || !earnTokenPrice) return '';
+    if (!amount) return '';
+    if (!earnTokenPrice) return amount.toFixed(4); // default 1:1 if no price data
     return calculatePairAmount(amount, earnTokenPrice).toFixed(4);
-  }, [earnAmount, earnTokenPrice]);
+  }, [earnAmount, earnTokenPrice, earnTestUsdManual]);
 
   const earnTokenBalance = useMemo(() => {
     return tokenBalances[selectedEarnToken] || 0;
@@ -570,6 +573,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     setSellQuantities(createEmptyQuantities());
     setTokenQuotes(createEmptyTokenQuotesState());
     setEarnAmount('');
+    setEarnTestUsdManual('');
   };
 
   const applyOptimisticPrice = (
@@ -965,8 +969,10 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
       const bounds = getFullRangeBounds(poolData.tick_spacing);
 
-      const gameTokenWei = BigInt(Math.floor(parseFloat(earnAmount) * 1e18));
-      const testUsdWei = BigInt(Math.floor(parseFloat(earnTestUsdAmount) * 1e18));
+      const gameTokenParsed = parseFloat(earnAmount) || 0;
+      const testUsdParsed = parseFloat(earnTestUsdAmount) || gameTokenParsed;
+      const gameTokenWei = BigInt(Math.floor(gameTokenParsed * 1e18));
+      const testUsdWei = BigInt(Math.floor(testUsdParsed * 1e18));
 
       const amount0 = isGameToken0 ? gameTokenWei : testUsdWei;
       const amount1 = isGameToken0 ? testUsdWei : gameTokenWei;
@@ -1411,18 +1417,32 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                 </Box>
               </Box>
 
-              {/* Computed TEST USD */}
+              {/* TEST USD Amount */}
               <Box sx={styles.potionCard}>
                 <Box sx={{ flex: 1 }}>
                   <Typography sx={{ ...styles.totalLabel, mb: 0.5 }}>
                     TEST USD (paired)
                   </Typography>
-                  <Typography sx={{
-                    fontSize: '18px', fontWeight: 'bold',
-                    color: earnTestUsdAmount ? '#fff' : '#666',
-                  }}>
-                    {earnTestUsdAmount || '0'}
-                  </Typography>
+                  <InputBase
+                    value={earnTestUsdAmount}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (/^\d*\.?\d*$/.test(val)) {
+                        setEarnTestUsdManual(val);
+                      }
+                    }}
+                    placeholder="0"
+                    inputProps={{
+                      inputMode: 'decimal',
+                      style: { textAlign: 'left' }
+                    }}
+                    sx={{
+                      ...styles.quantityInputField,
+                      width: '100%',
+                      fontSize: '18px',
+                      '& input': { textAlign: 'left', padding: '4px 0' },
+                    }}
+                  />
                   <Typography sx={{
                     fontSize: '11px', mt: 0.25,
                     color: earnTestUsdAmount && parseFloat(earnTestUsdAmount) > earnTestUsdBalance
