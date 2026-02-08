@@ -13,6 +13,7 @@ export interface NetworkConfig {
   tokens: any;
   denshokan: string;
   ekuboRouter: string;
+  ekuboPositions: string;
   beasts: string;
   dungeon: string;
   paymentTokens: any[];
@@ -96,6 +97,8 @@ export const NETWORKS = {
       "0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4",
     ekuboRouter:
       "0x04505a9f06f2bd639b6601f37a4dc0908bb70e8e0e0c34b1220827d64f4fc066",
+    ekuboPositions:
+      "0x02e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
     paymentTokens: [
       {
         name: "TEST USD",
@@ -167,6 +170,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
   if (!network) throw new Error(`Network ${networkKey} not found`);
 
   const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS
+  const POSITIONS_ADDRESS = network.ekuboPositions;
 
   const policies = {
     "contracts": {
@@ -226,6 +230,11 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Attack Potion",
             "entrypoint": "approve"
+          },
+          {
+            "name": "Transfer",
+            "description": "Transfer Attack Potion for liquidity",
+            "entrypoint": "transfer"
           }
         ]
       },
@@ -239,6 +248,11 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Revive Potion",
             "entrypoint": "approve"
+          },
+          {
+            "name": "Transfer",
+            "description": "Transfer Revive Potion for liquidity",
+            "entrypoint": "transfer"
           }
         ]
       },
@@ -252,6 +266,11 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Extra Life Potion",
             "entrypoint": "approve"
+          },
+          {
+            "name": "Transfer",
+            "description": "Transfer Extra Life for liquidity",
+            "entrypoint": "transfer"
           }
         ]
       },
@@ -265,6 +284,11 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Poison Potion",
             "entrypoint": "approve"
+          },
+          {
+            "name": "Transfer",
+            "description": "Transfer Poison Potion for liquidity",
+            "entrypoint": "transfer"
           }
         ]
       },
@@ -283,6 +307,11 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Skull Token",
             "entrypoint": "approve"
+          },
+          {
+            "name": "Transfer",
+            "description": "Transfer Skull Token for liquidity",
+            "entrypoint": "transfer"
           }
         ]
       },
@@ -306,6 +335,48 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Corpse Token",
             "entrypoint": "approve"
+          },
+          {
+            "name": "Transfer",
+            "description": "Transfer Corpse Token for liquidity",
+            "entrypoint": "transfer"
+          }
+        ]
+      },
+      "0x0308c4d176d5525055EFE847D77113ad9005E693CeDAE8ae90C02dA8D2774d2e": {
+        "name": "TEST USD",
+        "description": "Payment token for marketplace",
+        "methods": [
+          {
+            "name": "Transfer",
+            "description": "Transfer TEST USD for liquidity",
+            "entrypoint": "transfer"
+          }
+        ]
+      },
+      [POSITIONS_ADDRESS]: {
+        "name": "Ekubo Positions",
+        "description": "Ekubo LP positions contract for liquidity provision",
+        "methods": [
+          {
+            "name": "Mint and Deposit",
+            "description": "Mint a new LP position and deposit tokens",
+            "entrypoint": "mint_and_deposit"
+          },
+          {
+            "name": "Clear",
+            "description": "Clear remaining token balance after deposit",
+            "entrypoint": "clear"
+          },
+          {
+            "name": "Withdraw",
+            "description": "Withdraw liquidity from a position",
+            "entrypoint": "withdraw_v2"
+          },
+          {
+            "name": "Collect Fees",
+            "description": "Collect accumulated fees from a position",
+            "entrypoint": "collect_fees"
           }
         ]
       },
@@ -336,6 +407,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     tokens: network.tokens,
     denshokan: network.denshokan,
     ekuboRouter: network.ekuboRouter,
+    ekuboPositions: network.ekuboPositions,
     beasts: network.beasts,
     dungeon: network.dungeon,
     paymentTokens: network.paymentTokens,
