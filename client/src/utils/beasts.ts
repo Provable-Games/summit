@@ -2,7 +2,6 @@ import { Beast, Combat, Summit, selection } from '@/types/game';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
 import { SoundName } from '@/contexts/sound';
 import * as starknet from "@scure/starknet";
-import { Top5000Cutoff } from '@/contexts/Statistics';
 import { addAddressPadding } from 'starknet';
 
 export const fetchBeastTypeImage = (type: string): string => {
@@ -286,14 +285,6 @@ export const getEntityHash = (id: number, prefix: number, suffix: number): strin
   const params = [BigInt(id), BigInt(prefix), BigInt(suffix)];
   let hash = starknet.poseidonHashMany(params);
   return addAddressPadding(hash.toString(16));
-}
-
-export const isBeastInTop5000 = (beast: Beast, top5000Cutoff: Top5000Cutoff): boolean => {
-  if (!top5000Cutoff || beast.summit_held_seconds === 0) return false;
-
-  return beast.summit_held_seconds > top5000Cutoff.summit_held_seconds
-    || (beast.summit_held_seconds === top5000Cutoff.summit_held_seconds && beast.bonus_xp > top5000Cutoff.bonus_xp)
-    || (beast.summit_held_seconds === top5000Cutoff.summit_held_seconds && beast.bonus_xp === top5000Cutoff.bonus_xp && beast.last_death_timestamp > top5000Cutoff.last_death_timestamp);
 }
 
 export const calculateOptimalAttackPotions = (selection: any, summit: Summit, maxAllowed: number) => {

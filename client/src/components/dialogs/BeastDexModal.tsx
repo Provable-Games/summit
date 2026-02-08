@@ -1,8 +1,8 @@
 import { AllBeast, useSummitApi } from '@/api/summitApi';
 import { useGameStore } from '@/stores/gameStore';
-import { useAccount } from '@starknet-react/core';
 import { Beast } from '@/types/game';
 import { lookupAddressName } from '@/utils/addressNameCache';
+import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from '@/utils/BeastData';
 import { fetchBeastImage, getBeastCurrentLevel, getBeastDetails } from '@/utils/beasts';
 import { gameColors } from '@/utils/themes';
 import BarChartIcon from '@mui/icons-material/BarChart';
@@ -16,8 +16,8 @@ import PsychologyIcon from '@mui/icons-material/Psychology';
 import SortByAlphaIcon from '@mui/icons-material/SortByAlpha';
 import StarIcon from '@mui/icons-material/Star';
 import { Autocomplete, Box, CircularProgress, Dialog, FormControl, IconButton, InputLabel, MenuItem, Pagination, Select, Tab, Tabs, TextField, Typography } from '@mui/material';
-import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from '@/utils/BeastData';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAccount } from '@starknet-react/core';
+import { useEffect, useMemo, useState } from 'react';
 import BeastUpgradeModal from './BeastUpgradeModal';
 import SummitGiftModal from './SummitGiftModal';
 
@@ -66,6 +66,8 @@ const transformAllBeast = (ab: AllBeast): Beast => {
     used_attack_potion: false,
     max_attack_streak: false,
     kills_claimed: 0,
+    rewards_earned: 0,
+    rewards_claimed: 0,
   };
 };
 
