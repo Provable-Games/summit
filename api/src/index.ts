@@ -35,6 +35,36 @@ import {
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
+// --- In-memory response cache for /beasts/:owner ---
+const CACHE_TTL_MS = 60_000; // 60 seconds
+const CACHE_MAX_ENTRIES = 1_000;
+
+interface CacheEntry {
+  data: object[];
+  timestamp: number;
+}
+
+const beastOwnerCache = new Map<string, CacheEntry>();
+
+function getCacheEntry(key: string): object[] | null {
+  const entry = beastOwnerCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    beastOwnerCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCacheEntry(key: string, data: object[]): void {
+  // FIFO eviction: delete oldest entry if at capacity
+  if (beastOwnerCache.size >= CACHE_MAX_ENTRIES && !beastOwnerCache.has(key)) {
+    const oldestKey = beastOwnerCache.keys().next().value!;
+    beastOwnerCache.delete(oldestKey);
+  }
+  beastOwnerCache.set(key, { data, timestamp: Date.now() });
+}
+
 // Helper functions for beast calculations
 function getSpiritRevivalReductionSeconds(points: number): number {
   const p = Math.max(0, Math.floor(points));
@@ -231,7 +261,15 @@ app.get("/beasts/all", async (c) => {
  * Returns data in Beast interface format compatible with getBeastCollection
  */
 app.get("/beasts/:owner", async (c) => {
+  const startTime = Date.now();
   const owner = normalizeAddress(c.req.param("owner"));
+
+  // Check cache first
+  const cached = getCacheEntry(owner);
+  if (cached) {
+    console.log(`[Cache] HIT /beasts/:owner ${owner} (${cached.length} beasts, ${Date.now() - startTime}ms)`);
+    return c.json(cached);
+  }
 
   // Get beast data with all joins including skulls
   const results = await db
@@ -284,87 +322,91 @@ app.get("/beasts/:owner", async (c) => {
     .where(eq(beast_owners.owner, owner));
 
   // Transform to Beast interface format
-  return c.json(
-    results.map((r) => {
-      const beastId = r.beast_id;
-      const prefixId = r.prefix;
-      const suffixId = r.suffix;
-      const tier = BEAST_TIERS[beastId] ?? 5;
-      const spirit = r.spirit ?? 0;
-      const bonusXp = r.bonus_xp ?? 0;
-      const bonusHealth = r.bonus_health ?? 0;
-      const currentLevel = getBeastCurrentLevel(r.level, bonusXp);
-      const revivalTime = getBeastRevivalTime(spirit);
-      const lastDeathTimestamp = Number(r.last_death_summit ?? 0n);
+  const transformed = results.map((r) => {
+    const beastId = r.beast_id;
+    const prefixId = r.prefix;
+    const suffixId = r.suffix;
+    const tier = BEAST_TIERS[beastId] ?? 5;
+    const spirit = r.spirit ?? 0;
+    const bonusXp = r.bonus_xp ?? 0;
+    const bonusHealth = r.bonus_health ?? 0;
+    const currentLevel = getBeastCurrentLevel(r.level, bonusXp);
+    const revivalTime = getBeastRevivalTime(spirit);
+    const lastDeathTimestamp = Number(r.last_death_summit ?? 0n);
 
-      // Compute current health based on revival logic
-      let currentHealth = r.current_health ?? null;
-      if (currentHealth === null || (lastDeathTimestamp === 0 && currentHealth === 0)) {
-        currentHealth = r.health + bonusHealth;
-      } else if (currentHealth === 0 && lastDeathTimestamp * 1000 + revivalTime < Date.now()) {
-        currentHealth = r.health + bonusHealth;
-      }
+    // Compute current health based on revival logic
+    let currentHealth = r.current_health ?? null;
+    if (currentHealth === null || (lastDeathTimestamp === 0 && currentHealth === 0)) {
+      currentHealth = r.health + bonusHealth;
+    } else if (currentHealth === 0 && lastDeathTimestamp * 1000 + revivalTime < Date.now()) {
+      currentHealth = r.health + bonusHealth;
+    }
 
-      return {
-        // Identity
-        id: beastId,
-        token_id: r.token_id,
-        name: BEAST_NAMES[beastId] ?? "Unknown",
-        prefix: ITEM_NAME_PREFIXES[prefixId] ?? "",
-        suffix: ITEM_NAME_SUFFIXES[suffixId] ?? "",
+    return {
+      // Identity
+      id: beastId,
+      token_id: r.token_id,
+      name: BEAST_NAMES[beastId] ?? "Unknown",
+      prefix: ITEM_NAME_PREFIXES[prefixId] ?? "",
+      suffix: ITEM_NAME_SUFFIXES[suffixId] ?? "",
 
-        // Type info
-        tier,
-        type: BEAST_TYPES[beastId] ?? "Unknown",
-        power: (6 - tier) * currentLevel,
+      // Type info
+      tier,
+      type: BEAST_TYPES[beastId] ?? "Unknown",
+      power: (6 - tier) * currentLevel,
 
-        // Base stats
-        level: r.level,
-        health: r.health,
-        shiny: r.shiny,
-        animated: r.animated,
+      // Base stats
+      level: r.level,
+      health: r.health,
+      shiny: r.shiny,
+      animated: r.animated,
 
-        // Computed stats
-        current_level: currentLevel,
-        current_health: currentHealth,
-        revival_time: revivalTime,
+      // Computed stats
+      current_level: currentLevel,
+      current_health: currentHealth,
+      revival_time: revivalTime,
 
-        // Summit game state
-        bonus_health: bonusHealth,
-        bonus_xp: bonusXp,
-        attack_streak: r.attack_streak ?? 0,
-        last_death_timestamp: lastDeathTimestamp,
-        revival_count: r.revival_count ?? 0,
-        extra_lives: r.extra_lives ?? 0,
-        captured_summit: Boolean(r.captured_summit),
-        used_revival_potion: Boolean(r.used_revival_potion),
-        used_attack_potion: Boolean(r.used_attack_potion),
-        max_attack_streak: Boolean(r.max_attack_streak),
-        summit_held_seconds: r.summit_held_seconds ?? 0,
+      // Summit game state
+      bonus_health: bonusHealth,
+      bonus_xp: bonusXp,
+      attack_streak: r.attack_streak ?? 0,
+      last_death_timestamp: lastDeathTimestamp,
+      revival_count: r.revival_count ?? 0,
+      extra_lives: r.extra_lives ?? 0,
+      captured_summit: Boolean(r.captured_summit),
+      used_revival_potion: Boolean(r.used_revival_potion),
+      used_attack_potion: Boolean(r.used_attack_potion),
+      max_attack_streak: Boolean(r.max_attack_streak),
+      summit_held_seconds: r.summit_held_seconds ?? 0,
 
-        // Upgrades
-        spirit,
-        luck: r.luck ?? 0,
-        specials: Boolean(r.specials),
-        wisdom: Boolean(r.wisdom),
-        diplomacy: Boolean(r.diplomacy),
+      // Upgrades
+      spirit,
+      luck: r.luck ?? 0,
+      specials: Boolean(r.specials),
+      wisdom: Boolean(r.wisdom),
+      diplomacy: Boolean(r.diplomacy),
 
-        // Rewards
-        rewards_earned: r.rewards_earned ?? 0,
-        rewards_claimed: r.rewards_claimed ?? 0,
-        kills_claimed: Number(r.skulls ?? 0n),
-        quest_rewards_claimed: r.quest_rewards_amount ?? 0,
+      // Rewards
+      rewards_earned: r.rewards_earned ?? 0,
+      rewards_claimed: r.rewards_claimed ?? 0,
+      kills_claimed: Number(r.skulls ?? 0n),
+      quest_rewards_claimed: r.quest_rewards_amount ?? 0,
 
-        // Loot Survivor data
-        adventurers_killed: Number(r.adventurers_killed ?? 0n),
-        last_dm_death_timestamp: Number(r.last_death_loot_survivor ?? 0n),
-        last_killed_by: Number(r.last_killed_by ?? 0n),
+      // Loot Survivor data
+      adventurers_killed: Number(r.adventurers_killed ?? 0n),
+      last_dm_death_timestamp: Number(r.last_death_loot_survivor ?? 0n),
+      last_killed_by: Number(r.last_killed_by ?? 0n),
 
-        // Hash from beast_data (if linked)
-        entity_hash: r.entity_hash ?? undefined,
-      };
-    })
-  );
+      // Hash from beast_data (if linked)
+      entity_hash: r.entity_hash ?? undefined,
+    };
+  });
+
+  // Cache the transformed result
+  setCacheEntry(owner, transformed);
+  console.log(`[Cache] MISS /beasts/:owner ${owner} (${transformed.length} beasts, ${Date.now() - startTime}ms)`);
+
+  return c.json(transformed);
 });
 
 /**
