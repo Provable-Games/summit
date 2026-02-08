@@ -66,6 +66,8 @@ const transformAllBeast = (ab: AllBeast): Beast => {
     used_attack_potion: false,
     max_attack_streak: false,
     kills_claimed: 0,
+    rewards_earned: 0,
+    rewards_claimed: 0,
   };
 };
 

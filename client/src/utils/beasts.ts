@@ -2,7 +2,11 @@ import { Beast, Combat, Summit, selection } from '@/types/game';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
 import { SoundName } from '@/contexts/sound';
 import * as starknet from "@scure/starknet";
-import { Top5000Cutoff } from '@/contexts/Statistics';
+export interface Top5000Cutoff {
+  summit_held_seconds: number;
+  bonus_xp: number;
+  last_death_timestamp: number;
+}
 import { addAddressPadding } from 'starknet';
 
 export const fetchBeastTypeImage = (type: string): string => {
