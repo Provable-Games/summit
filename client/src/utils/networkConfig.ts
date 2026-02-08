@@ -41,8 +41,8 @@ export const NETWORKS = {
     slot: "pg-mainnet-10",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
-    apiUrl: "https://summit-api-vzr7.onrender.com",
-    wsUrl: "wss://summit-api-vzr7.onrender.com/ws",
+    apiUrl: "https://summit-api-rjb2.onrender.com",
+    wsUrl: "wss://summit-api-rjb2.onrender.com/ws",
     tokens: {
       erc20: [
         // {

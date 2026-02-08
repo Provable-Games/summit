@@ -1064,12 +1064,14 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               iconPosition="start"
               sx={styles.tab}
             />
+            {/* Earn tab hidden - not ready yet
             <Tab
               label="Earn"
               icon={<SavingsIcon sx={{ fontSize: '18px' }} />}
               iconPosition="start"
               sx={styles.tab}
             />
+            */}
           </Tabs>
         </Box>
 

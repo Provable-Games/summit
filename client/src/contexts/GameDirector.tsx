@@ -344,7 +344,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           value: amount,
         });
       } else if (sub_category === "Claimed $SURVIVOR") {
-        const amount = typeof eventData.amount === 'number' ? eventData.amount.toFixed(1) : String(eventData.amount);
+        const rawAmount = typeof eventData.amount === 'number' ? eventData.amount : parseFloat(String(eventData.amount)) || 0;
+        const amount = parseFloat((rawAmount / 100000).toFixed(2));
+
         addNotificationWithPlayer({
           type: 'claimed_survivor',
           value: amount,
