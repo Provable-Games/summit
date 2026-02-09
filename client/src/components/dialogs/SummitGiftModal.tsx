@@ -183,13 +183,13 @@ function SummitGiftModal(props: SummitGiftModalProps) {
       });
 
       if (result) {
-        // Optimistically update local token balances
-        setTokenBalances({
-          ...tokenBalances,
-          SKULL: killTokens - killTokenCost,
-          CORPSE: corpseTokens - corpseTokenCost,
-          'EXTRA LIFE': extraLifeTokens - extraLivesGift,
-        });
+        // Optimistically update local token balances using functional update to avoid stale closure
+        setTokenBalances((prev: Record<string, number>) => ({
+          ...prev,
+          SKULL: (prev["SKULL"] || 0) - killTokenCost,
+          CORPSE: (prev["CORPSE"] || 0) - corpseTokenCost,
+          'EXTRA LIFE': (prev["EXTRA LIFE"] || 0) - extraLivesGift,
+        }));
 
         close();
       }

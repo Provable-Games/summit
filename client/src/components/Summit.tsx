@@ -529,7 +529,7 @@ function Summit() {
                 </Box>
 
                 <Box sx={styles.outcomeRow}>
-                  <Typography sx={styles.outcomeKey}>Lethal Hit</Typography>
+                  <Typography sx={styles.outcomeKey}>Take Summit</Typography>
                   <Typography
                     sx={[
                       styles.outcomeTakeSummit,
@@ -655,6 +655,7 @@ function Summit() {
           );
         })}
       </AnimatePresence>
+
       {summit && (
         <SummitGiftModal
           open={giftModalOpen}

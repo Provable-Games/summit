@@ -36,12 +36,6 @@ pub struct CorpseEvent {
     pub player: ContractAddress,
 }
 
-#[derive(Drop, starknet::Event)]
-pub struct SkullEvent {
-    pub beast_token_ids: Span<u32>,
-    pub skulls_claimed: u64,
-}
-
 #[derive(Copy, Drop, Serde, starknet::Event, starknet::Store)]
 pub struct BattleEvent {
     pub attacking_beast_token_id: u32,
@@ -58,4 +52,9 @@ pub struct BattleEvent {
     pub attack_potions: u8,
     pub revive_potions: u16,
     pub xp_gained: u16,
+}
+
+#[derive(Drop, starknet::Event)]
+pub struct QuestRewardsClaimedEvent {
+    pub quest_rewards_claimed: Span<felt252>,
 }

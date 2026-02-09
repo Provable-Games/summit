@@ -6,7 +6,9 @@ import { EventData, SummitData, useWebSocket } from "@/hooks/useWebSocket";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
 import { BattleEvent, Beast, GameAction, SpectatorBattleEvent, Summit } from "@/types/game";
-import { ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
+import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
+import { fetchBeastImage } from "@/utils/beasts";
+import { lookupAddressName } from "@/utils/addressNameCache";
 import {
   applyPoisonDamage,
   getBeastCurrentHealth,
@@ -34,9 +36,10 @@ export interface GameDirectorContext {
   pauseUpdates: boolean;
 }
 
+export const REWARD_NAME = "Test Money";
 export const START_TIMESTAMP = 1769683726;
 export const SUMMIT_DURATION_SECONDS = 4320000;
-export const SUMMIT_REWARDS_PER_SECOND = 0.01;
+export const SUMMIT_REWARDS_PER_SECOND = 0.0075;
 export const MAX_BEASTS_PER_ATTACK = 295;
 
 const GameDirectorContext = createContext<GameDirectorContext>(
@@ -60,6 +63,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     poisonEvent,
     setPoisonEvent,
     addLiveEvent,
+    addGameNotification,
   } = useGameStore();
   const {
     setRevivePotionsUsed,
@@ -73,9 +77,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     executeAction,
     attack,
     feed,
-    claimBeastReward,
     claimCorpses,
     claimSkulls,
+    claimQuestRewards,
+    claimRewards,
     addExtraLife,
     applyStatPoints,
     applyPoison,
@@ -95,10 +100,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (!sameBeast && summit?.beast.token_id) {
       if (collection.some(b => b.token_id === summit.beast.token_id)) {
         const now = Math.floor(Date.now() / 1000);
+        const secondsHeld = now - summit.block_timestamp;
+
         setCollection(prevCollection =>
           prevCollection.map(beast =>
             beast.token_id === summit.beast.token_id
-              ? { ...beast, last_death_timestamp: now, current_health: 0 }
+              ? { ...beast, last_death_timestamp: now, current_health: 0, summit_held_seconds: beast.summit_held_seconds + (secondsHeld > 5 ? secondsHeld : 0) }
               : beast
           )
         );
@@ -126,18 +133,94 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     addLiveEvent(data);
 
     const { category, sub_category, data: eventData } = data;
+    const isOwnEvent = data.player === addAddressPadding(account?.address);
+
+    // Helper to get beast info from event data
+    const getBeastInfo = () => {
+      const beastId = eventData.beast_id as number;
+      const beastPrefix = eventData.prefix as number | undefined;
+      const beastSuffix = eventData.suffix as number | undefined;
+      const beastTypeName = BEAST_NAMES[beastId] || 'Unknown';
+      const prefixName = beastPrefix ? ITEM_NAME_PREFIXES[beastPrefix as keyof typeof ITEM_NAME_PREFIXES] : null;
+      const suffixName = beastSuffix ? ITEM_NAME_SUFFIXES[beastSuffix as keyof typeof ITEM_NAME_SUFFIXES] : null;
+
+      let fullBeastName: string;
+      if (prefixName && suffixName && beastTypeName) {
+        fullBeastName = `"${prefixName} ${suffixName}" ${beastTypeName}`;
+      } else if (beastTypeName) {
+        fullBeastName = beastTypeName;
+      } else {
+        fullBeastName = `Beast #${eventData.token_id || 'Unknown'}`;
+      }
+
+      const beastImageSrc = fetchBeastImage({ name: beastTypeName, shiny: false, animated: false } as any);
+      return { beastName: fullBeastName, beastImageSrc };
+    };
+
+    // Helper to add notification with player name lookup
+    const addNotificationWithPlayer = (notification: Parameters<typeof addGameNotification>[0]) => {
+      if (data.player) {
+        lookupAddressName(data.player).then(playerName => {
+          addGameNotification({ ...notification, playerName });
+        }).catch(() => {
+          addGameNotification({ ...notification, playerName: 'Unknown' });
+        });
+      } else {
+        addGameNotification(notification);
+      }
+    };
 
     // Handle Battle events
     if (category === "Battle") {
       if (sub_category === "BattleEvent") {
         // Add to spectator battle events for activity feed
         setSpectatorBattleEvents(prev => [...prev, eventData as unknown as SpectatorBattleEvent]);
-      } else if (sub_category === "Applied Poison" && data.player !== addAddressPadding(account?.address)) {
+
+        // Show battle notification (only for other players)
+        if (!isOwnEvent) {
+          const damage = eventData.total_damage as number;
+          const xpGained = eventData.xp_gained as number | undefined;
+          const attackPotions = eventData.attack_potions as number | undefined;
+          const revivePotions = eventData.revive_potions as number | undefined;
+          const beastCount = eventData.beast_count as number | undefined;
+          addNotificationWithPlayer({
+            type: 'battle',
+            value: damage,
+            xpGained,
+            attackPotions,
+            revivePotions,
+            beastCount,
+          });
+        }
+      } else if (sub_category === "Applied Poison" && !isOwnEvent) {
         setPoisonEvent({
           beast_token_id: eventData.beast_token_id as number,
           block_timestamp: Math.floor(new Date(data.created_at).getTime() / 1000),
           count: eventData.count as number,
           player: data.player,
+        });
+
+        // Show poison notification
+        addNotificationWithPlayer({
+          type: 'poison',
+          value: eventData.count as number,
+        });
+      } else if (sub_category === "Applied Extra Life" && !isOwnEvent) {
+        const { beastName, beastImageSrc } = getBeastInfo();
+        addNotificationWithPlayer({
+          type: 'extra_life',
+          value: eventData.count as number,
+          beastName,
+          beastImageSrc,
+        });
+      } else if (sub_category === "Summit Change" && !isOwnEvent) {
+        const { beastName, beastImageSrc } = getBeastInfo();
+        const extraLives = eventData.extra_lives as number | undefined;
+        addNotificationWithPlayer({
+          type: 'summit_change',
+          beastName,
+          beastImageSrc,
+          extraLives,
         });
       }
     }
@@ -145,8 +228,23 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     // Handle LS (Loot Survivor) Events - update collection beasts
     if (category === "LS Events") {
       const entityHash = eventData.entity_hash as string;
+      const { beastName, beastImageSrc } = getBeastInfo();
 
       if (sub_category === "EntityStats") {
+        // Find the beast in collection to check if kills increased
+        const matchingBeast = collection.find(b => b.entity_hash === entityHash);
+        const previousKills = matchingBeast?.adventurers_killed || 0;
+        const newKills = Number(eventData.adventurers_killed);
+
+        // Show kill notification when a beast kills an adventurer
+        if (newKills > previousKills) {
+          addNotificationWithPlayer({
+            type: 'kill',
+            beastName,
+            beastImageSrc,
+          });
+        }
+
         setCollection(prevCollection =>
           prevCollection.map(beast =>
             beast.entity_hash === entityHash
@@ -155,6 +253,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           )
         );
       } else if (sub_category === "CollectableEntity") {
+        // Show locked notification when a beast is killed in LS
+        addNotificationWithPlayer({
+          type: 'locked',
+          beastName,
+          beastImageSrc,
+        });
+
         setCollection(prevCollection =>
           prevCollection.map(beast =>
             beast.entity_hash === entityHash
@@ -169,23 +274,98 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       }
     }
 
-    // Handle Beast Upgrade/Diplomacy - refresh diplomacy bonus if a matching beast upgraded
-    if (category === "Beast Upgrade" && sub_category === "Diplomacy") {
-      const prefix = eventData.prefix as number;
-      const suffix = eventData.suffix as number;
-      const prefixName = ITEM_NAME_PREFIXES[prefix as keyof typeof ITEM_NAME_PREFIXES];
-      const suffixName = ITEM_NAME_SUFFIXES[suffix as keyof typeof ITEM_NAME_SUFFIXES];
+    // Handle Beast Upgrade events - show notifications and refresh diplomacy
+    if (category === "Beast Upgrade") {
+      const { beastName, beastImageSrc } = getBeastInfo();
 
-      // Refresh diplomacy bonus if upgraded beast's name matches summit beast
-      if (summit?.beast.prefix === prefixName && summit?.beast.suffix === suffixName) {
-        getDiplomacy(prefix, suffix).then(beasts => {
-          if (beasts.length > 0) {
-            const totalPower = beasts.reduce((sum, b) => sum + b.power, 0);
-            // Exclude summit beast's own power if it has diplomacy (can't give bonus to itself)
-            const adjustedPower = summit.beast.diplomacy ? totalPower - summit.beast.power : totalPower;
-            const bonus = Math.floor(adjustedPower / 250);
-            setSummit(prev => prev ? { ...prev, diplomacy: { beasts, totalPower, bonus } } : prev);
-          }
+      // Show notifications for upgrades (only for other players)
+      if (!isOwnEvent) {
+        const upgradeTypeMap: Record<string, Parameters<typeof addGameNotification>[0]['type']> = {
+          'Specials': 'specials',
+          'Wisdom': 'wisdom',
+          'Diplomacy': 'diplomacy',
+          'Spirit': 'spirit',
+          'Luck': 'luck',
+          'Bonus Health': 'bonus_health',
+        };
+
+        const notificationType = upgradeTypeMap[sub_category];
+        if (notificationType) {
+          // For numeric upgrades, show the difference
+          const oldValue = eventData.old_value as number | undefined;
+          const newValue = eventData.new_value as number | undefined;
+          const diff = (oldValue !== undefined && newValue !== undefined) ? newValue - oldValue : undefined;
+
+          // For Bonus Health, use amount field
+          const value = sub_category === 'Bonus Health'
+            ? (eventData.amount as number) || (eventData.bonus_health as number) || diff
+            : diff;
+
+          addNotificationWithPlayer({
+            type: notificationType,
+            value: value,
+            beastName,
+            beastImageSrc,
+            oldValue,
+            newValue,
+          });
+        }
+      }
+
+      // Refresh diplomacy bonus if a matching beast upgraded diplomacy
+      if (sub_category === "Diplomacy") {
+        const prefix = eventData.prefix as number;
+        const suffix = eventData.suffix as number;
+        const prefixName = ITEM_NAME_PREFIXES[prefix as keyof typeof ITEM_NAME_PREFIXES];
+        const suffixName = ITEM_NAME_SUFFIXES[suffix as keyof typeof ITEM_NAME_SUFFIXES];
+
+        // Refresh diplomacy bonus if upgraded beast's name matches summit beast
+        if (summit?.beast.prefix === prefixName && summit?.beast.suffix === suffixName) {
+          getDiplomacy(prefix, suffix).then(beasts => {
+            if (beasts.length > 0) {
+              const totalPower = beasts.reduce((sum, b) => sum + b.power, 0);
+              // Exclude summit beast's own power if it has diplomacy (can't give bonus to itself)
+              const adjustedPower = summit.beast.diplomacy ? totalPower - summit.beast.power : totalPower;
+              const bonus = Math.floor(adjustedPower / 250);
+              setSummit(prev => prev ? { ...prev, diplomacy: { beasts, totalPower, bonus } } : prev);
+            }
+          });
+        }
+      }
+    }
+
+    // Handle Rewards events
+    if (category === "Rewards" && !isOwnEvent) {
+      if (sub_category === "$SURVIVOR Earned") {
+        const rawAmount = typeof eventData.amount === 'number' ? eventData.amount : parseFloat(String(eventData.amount)) || 0;
+        const amount = parseFloat((rawAmount / 100000).toFixed(2));
+        addNotificationWithPlayer({
+          type: 'survivor_earned',
+          value: amount,
+        });
+      } else if (sub_category === "Claimed $SURVIVOR") {
+        const rawAmount = typeof eventData.amount === 'number' ? eventData.amount : parseFloat(String(eventData.amount)) || 0;
+        const amount = parseFloat((rawAmount / 100000).toFixed(2));
+
+        addNotificationWithPlayer({
+          type: 'claimed_survivor',
+          value: amount,
+        });
+      } else if (sub_category === "Claimed Corpses") {
+        const corpseAmount = (eventData.corpse_amount as number) || 1;
+        const adventurerCount = (eventData.adventurer_count as number) || 1;
+        addNotificationWithPlayer({
+          type: 'claimed_corpses',
+          value: corpseAmount,
+          adventurerCount,
+        });
+      } else if (sub_category === "Claimed Skulls") {
+        const skullsClaimed = eventData.skulls_claimed
+          ? (typeof eventData.skulls_claimed === 'string' ? parseInt(eventData.skulls_claimed, 10) : (eventData.skulls_claimed as number))
+          : 1;
+        addNotificationWithPlayer({
+          type: 'claimed_skulls',
+          value: skullsClaimed,
         });
       }
     }
@@ -341,16 +521,20 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       txs.push(...attack(action.beasts, false, true, action.extraLifePotions));
     }
 
-    if (action.type === "claim_starter_pack") {
-      txs.push(claimBeastReward(action.beastIds));
-    }
-
     if (action.type === "claim_corpse_reward") {
       txs.push(claimCorpses(action.adventurerIds));
     }
 
     if (action.type === "claim_skull_reward") {
       txs.push(claimSkulls(action.beastIds));
+    }
+
+    if (action.type === "claim_quest_reward") {
+      txs.push(claimQuestRewards(action.beastIds));
+    }
+
+    if (action.type === "claim_summit_reward") {
+      txs.push(claimRewards(action.beastIds));
     }
 
     if (action.type === "add_extra_life") {
@@ -395,14 +579,14 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         (event: any) => event.componentName === "Summit"
       );
       if (summitEvent) {
-        setTokenBalances({
-          ...tokenBalances,
-          ATTACK: tokenBalances["ATTACK"] - summitEvent.attack_potions,
-          EXTRA_LIFE:
-            tokenBalances["EXTRA LIFE"] -
+        setTokenBalances((prev: Record<string, number>) => ({
+          ...prev,
+          ATTACK: (prev["ATTACK"] || 0) - summitEvent.attack_potions,
+          "EXTRA LIFE":
+            (prev["EXTRA LIFE"] || 0) -
             (captured ? summitEvent.extra_life_potions : 0),
-          REVIVE: tokenBalances["REVIVE"] - summitEvent.revival_potions,
-        });
+          REVIVE: (prev["REVIVE"] || 0) - summitEvent.revival_potions,
+        }));
 
         setAttackPotionsUsed((prev) => prev + summitEvent.attack_potions);
         setRevivePotionsUsed((prev) => prev + summitEvent.revival_potions);
@@ -423,19 +607,19 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       setAttackInProgress(false);
       return false;
     } else if (action.type === "add_extra_life") {
-      setTokenBalances({
-        ...tokenBalances,
-        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - action.extraLifePotions,
-      });
+      setTokenBalances((prev: Record<string, number>) => ({
+        ...prev,
+        "EXTRA LIFE": (prev["EXTRA LIFE"] || 0) - action.extraLifePotions,
+      }));
       setApplyingPotions(false);
       setAppliedExtraLifePotions(0);
       setExtraLifePotionsUsed((prev) => prev + action.extraLifePotions);
       setSummit(prev => prev ? { ...prev, extra_lives: (prev.beast.extra_lives || 0) + action.extraLifePotions } : prev);
     } else if (action.type === "apply_poison") {
-      setTokenBalances({
-        ...tokenBalances,
-        POISON: tokenBalances["POISON"] - action.count,
-      });
+      setTokenBalances((prev: Record<string, number>) => ({
+        ...prev,
+        POISON: (prev["POISON"] || 0) - action.count,
+      }));
       setApplyingPotions(false);
       setPoisonPotionsUsed((prev) => prev + action.count);
       setPoisonEvent({
@@ -445,11 +629,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         player: account?.address,
       })
     } else if (action.type === "upgrade_beast") {
-      setTokenBalances({
-        ...tokenBalances,
-        SKULL: tokenBalances["SKULL"] - action.killTokens,
-        CORPSE: tokenBalances["CORPSE"] - action.corpseTokens,
-      });
+      setTokenBalances((prev: Record<string, number>) => ({
+        ...prev,
+        SKULL: (prev["SKULL"] || 0) - action.killTokens,
+        CORPSE: (prev["CORPSE"] || 0) - action.corpseTokens,
+      }));
     }
 
     return true;

@@ -4,10 +4,11 @@ version = 1
 [[package]]
 name = "beasts_nft"
 version = "0.1.0"
-source = "git+https://github.com/Provable-Games/beasts.git#cde97d05e636871aadef26c324210a5933a101fc"
+source = "git+https://github.com/Provable-Games/beasts.git#b2bfdd365dc2feb950dce6cd1d03ddac39b29131"
 dependencies = [
  "openzeppelin_access",
  "openzeppelin_governance",
+ "openzeppelin_interfaces",
  "openzeppelin_introspection",
  "openzeppelin_token",
  "openzeppelin_utils",
@@ -28,77 +29,71 @@ source = "git+https://github.com/Provable-Games/death-mountain.git?branch=compon
 
 [[package]]
 name = "openzeppelin_access"
-version = "2.0.0"
-source = "registry+https://scarbs.xyz/"
-checksum = "sha256:511681dd26d814ee2bc996d44ff8cb4aaa5ae9d14272130def7eb901cf004850"
+version = "3.0.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v3.0.0#ddd3338e787a3fbf4a92b366640a57ee364390cb"
 dependencies = [
+ "openzeppelin_interfaces",
  "openzeppelin_introspection",
-]
-
-[[package]]
-name = "openzeppelin_account"
-version = "2.0.0"
-source = "registry+https://scarbs.xyz/"
-checksum = "sha256:fb3381c50d68b028d3801feb43df378e2bd62137b6884844f8f60aefe796188b"
-dependencies = [
- "openzeppelin_introspection",
- "openzeppelin_utils",
 ]
 
 [[package]]
 name = "openzeppelin_governance"
-version = "2.0.0"
-source = "registry+https://scarbs.xyz/"
-checksum = "sha256:056e6d6f3d48193b53f06283884f8a9675f986fc85425f6a40e8c1aeb3b3ecfa"
+version = "3.0.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v3.0.0#ddd3338e787a3fbf4a92b366640a57ee364390cb"
 dependencies = [
  "openzeppelin_access",
- "openzeppelin_account",
+ "openzeppelin_interfaces",
  "openzeppelin_introspection",
  "openzeppelin_token",
  "openzeppelin_utils",
 ]
 
 [[package]]
+name = "openzeppelin_interfaces"
+version = "2.1.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v3.0.0#ddd3338e787a3fbf4a92b366640a57ee364390cb"
+
+[[package]]
 name = "openzeppelin_introspection"
-version = "2.0.0"
-source = "registry+https://scarbs.xyz/"
-checksum = "sha256:87773ed6cd2318f169283ecbbb161890d1996260a80302d81ec45b70ee5e54c1"
+version = "3.0.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v3.0.0#ddd3338e787a3fbf4a92b366640a57ee364390cb"
+dependencies = [
+ "openzeppelin_interfaces",
+]
 
 [[package]]
 name = "openzeppelin_token"
-version = "2.0.0"
-source = "registry+https://scarbs.xyz/"
-checksum = "sha256:6fe61f63b5a6706018265fb7373b6e5bd3ff829bdc760b2b90296b1e708d180c"
+version = "3.0.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v3.0.0#ddd3338e787a3fbf4a92b366640a57ee364390cb"
 dependencies = [
  "openzeppelin_access",
- "openzeppelin_account",
+ "openzeppelin_interfaces",
  "openzeppelin_introspection",
  "openzeppelin_utils",
 ]
 
 [[package]]
 name = "openzeppelin_upgrades"
-version = "2.0.0"
-source = "registry+https://scarbs.xyz/"
-checksum = "sha256:560d57a9c3f3ec5a476e82fec8963c93c8df63a4ff9ff134f64ab8383bde3c61"
+version = "3.0.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v3.0.0#ddd3338e787a3fbf4a92b366640a57ee364390cb"
 
 [[package]]
 name = "openzeppelin_utils"
-version = "2.0.0"
-source = "registry+https://scarbs.xyz/"
-checksum = "sha256:bf799c794139837f397975ffdf6a7ed5032d198bbf70e87a8f44f144a9dfc505"
+version = "2.1.0"
+source = "git+https://github.com/OpenZeppelin/cairo-contracts.git?tag=v3.0.0#ddd3338e787a3fbf4a92b366640a57ee364390cb"
+dependencies = [
+ "openzeppelin_interfaces",
+]
 
 [[package]]
 name = "snforge_scarb_plugin"
-version = "0.54.1"
-source = "registry+https://scarbs.xyz/"
-checksum = "sha256:5c754ba8c262633e60c2cd06710cb96604c8bf20595fe60965013fedd8a55df9"
+version = "0.55.0"
+source = "git+https://github.com/foundry-rs/starknet-foundry?tag=v0.55.0#8891212a4fe99f1787298042f828ebd4e4abe9a3"
 
 [[package]]
 name = "snforge_std"
-version = "0.54.1"
-source = "registry+https://scarbs.xyz/"
-checksum = "sha256:e0532e6149ffc580e282d0774404e512a6814d477cd65529b91d5a09ac6e07d6"
+version = "0.55.0"
+source = "git+https://github.com/foundry-rs/starknet-foundry?tag=v0.55.0#8891212a4fe99f1787298042f828ebd4e4abe9a3"
 dependencies = [
  "snforge_scarb_plugin",
 ]
@@ -111,6 +106,7 @@ dependencies = [
  "death_mountain_beast",
  "death_mountain_combat",
  "openzeppelin_access",
+ "openzeppelin_interfaces",
  "openzeppelin_token",
  "openzeppelin_upgrades",
  "snforge_std",

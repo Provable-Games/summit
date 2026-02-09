@@ -20,6 +20,7 @@ import {
   beast_stats,
   summit_log,
   skulls_claimed,
+  quest_rewards_claimed,
   rewards_earned,
   corpse_events,
 } from "./db/schema.js";
@@ -257,7 +258,10 @@ app.get("/beasts/:owner", async (c) => {
       last_death_summit: beast_stats.last_death_timestamp,
       revival_count: beast_stats.revival_count,
       extra_lives: beast_stats.extra_lives,
-      has_claimed_potions: beast_stats.has_claimed_potions,
+      captured_summit: beast_stats.captured_summit,
+      used_revival_potion: beast_stats.used_revival_potion,
+      used_attack_potion: beast_stats.used_attack_potion,
+      max_attack_streak: beast_stats.max_attack_streak,
       summit_held_seconds: beast_stats.summit_held_seconds,
       spirit: beast_stats.spirit,
       luck: beast_stats.luck,
@@ -268,12 +272,15 @@ app.get("/beasts/:owner", async (c) => {
       rewards_claimed: beast_stats.rewards_claimed,
       // Skulls claimed (one row per beast)
       skulls: skulls_claimed.skulls,
+      // Quest rewards claimed
+      quest_rewards_amount: quest_rewards_claimed.amount,
     })
     .from(beast_owners)
     .innerJoin(beasts, eq(beasts.token_id, beast_owners.token_id))
     .leftJoin(beast_data, eq(beast_data.token_id, beast_owners.token_id))
     .leftJoin(beast_stats, eq(beast_stats.token_id, beast_owners.token_id))
     .leftJoin(skulls_claimed, eq(skulls_claimed.beast_token_id, beast_owners.token_id))
+    .leftJoin(quest_rewards_claimed, eq(quest_rewards_claimed.beast_token_id, beast_owners.token_id))
     .where(eq(beast_owners.owner, owner));
 
   // Transform to Beast interface format
@@ -329,7 +336,10 @@ app.get("/beasts/:owner", async (c) => {
         last_death_timestamp: lastDeathTimestamp,
         revival_count: r.revival_count ?? 0,
         extra_lives: r.extra_lives ?? 0,
-        has_claimed_potions: Boolean(r.has_claimed_potions),
+        captured_summit: Boolean(r.captured_summit),
+        used_revival_potion: Boolean(r.used_revival_potion),
+        used_attack_potion: Boolean(r.used_attack_potion),
+        max_attack_streak: Boolean(r.max_attack_streak),
         summit_held_seconds: r.summit_held_seconds ?? 0,
 
         // Upgrades
@@ -343,6 +353,7 @@ app.get("/beasts/:owner", async (c) => {
         rewards_earned: r.rewards_earned ?? 0,
         rewards_claimed: r.rewards_claimed ?? 0,
         kills_claimed: Number(r.skulls ?? 0n),
+        quest_rewards_claimed: r.quest_rewards_amount ?? 0,
 
         // Loot Survivor data
         adventurers_killed: Number(r.adventurers_killed ?? 0n),
@@ -444,41 +455,6 @@ app.get("/beasts/stats/counts", async (c) => {
     total: Number(total),
     alive: Number(alive),
     dead: Number(total) - Number(alive),
-  });
-});
-
-/**
- * GET /beasts/stats/top5000-cutoff - Get the cutoff values for top 5000 beasts
- */
-app.get("/beasts/stats/top5000-cutoff", async (c) => {
-  const results = await db
-    .select({
-      summit_held_seconds: beast_stats.summit_held_seconds,
-      bonus_xp: beast_stats.bonus_xp,
-      last_death_timestamp: beast_stats.last_death_timestamp,
-    })
-    .from(beast_stats)
-    .where(sql`${beast_stats.summit_held_seconds} > 0`)
-    .orderBy(
-      desc(beast_stats.summit_held_seconds),
-      desc(beast_stats.bonus_xp),
-      desc(beast_stats.last_death_timestamp)
-    )
-    .limit(5000);
-
-  if (results.length < 5000) {
-    return c.json({
-      summit_held_seconds: 0,
-      bonus_xp: 0,
-      last_death_timestamp: 0,
-    });
-  }
-
-  const cutoff = results[4999];
-  return c.json({
-    summit_held_seconds: cutoff.summit_held_seconds,
-    bonus_xp: cutoff.bonus_xp,
-    last_death_timestamp: Number(cutoff.last_death_timestamp),
   });
 });
 
@@ -666,9 +642,20 @@ app.get("/leaderboard", async (c) => {
   return c.json(
     results.map((r) => ({
       owner: r.owner,
-      amount: Number(r.amount) / 10000,
+      amount: Number(r.amount) / 100000,
     }))
   );
+});
+
+/**
+ * GET /quest-rewards/total - Get total quest rewards claimed
+ */
+app.get("/quest-rewards/total", async (c) => {
+  const result = await db
+    .select({ total: sql<number>`coalesce(sum(${quest_rewards_claimed.amount}), 0)` })
+    .from(quest_rewards_claimed);
+
+  return c.json({ total: Number(result[0]?.total ?? 0) });
 });
 
 /**
@@ -709,6 +696,9 @@ app.get("/", (c) => {
       by_player: "GET /adventurers/:player",
     },
     leaderboard: "GET /leaderboard",
+    quest_rewards: {
+      total: "GET /quest-rewards/total",
+    },
     websocket: {
       endpoint: "WS /ws",
       channels: ["summit", "event"],

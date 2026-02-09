@@ -277,7 +277,6 @@ Total files analyzed: 8 source files (excluding tests and interfaces)
 | `add_extra_life` | external | Read/Write | Yes |
 | `apply_stat_points` | external | Read/Write | Yes |
 | `apply_poison` | external | Read/Write | Yes |
-| `claim_summit` | external | Read/Write | No |
 | `add_beast_to_leaderboard` | external | Read/Write | No |
 | `distribute_beast_tokens` | external | Read/Write | No |
 | `set_*` (12 functions) | external | Write | No |

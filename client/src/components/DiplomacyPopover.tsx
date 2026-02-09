@@ -59,7 +59,7 @@ export function DiplomacyPopover({
               <Box key={beast.token_id} sx={styles.beastRow}>
                 <Box sx={styles.beastInfo}>
                   <Typography sx={styles.beastName}>
-                    "{beast.prefix} {beast.suffix}" {beast.name}
+                    "{summitBeast.prefix} {summitBeast.suffix}" {beast.name}
                   </Typography>
                   <Typography sx={styles.beastMeta}>
                     Lvl {beast.current_level} | Pwr {beast.power}
@@ -71,7 +71,7 @@ export function DiplomacyPopover({
                 </Box>
                 <Box sx={styles.beastReward}>
                   <Typography sx={styles.rewardValue}>
-                    +{rewardPerSecond.toFixed(4)}
+                    +{rewardPerSecond.toFixed(5)}
                   </Typography>
                   <Typography sx={styles.rewardLabel}>/sec</Typography>
                 </Box>

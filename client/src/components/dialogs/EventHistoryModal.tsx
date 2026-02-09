@@ -46,6 +46,7 @@ import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import { useAccount } from '@starknet-react/core';
 import { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import { useGameStore } from '@/stores/gameStore';
+import { REWARD_NAME } from '@/contexts/GameDirector';
 
 interface EventHistoryModalProps {
   open: boolean;
@@ -73,6 +74,8 @@ const CATEGORY_COLORS: Record<string, string> = {
 const SUB_CATEGORY_DISPLAY_NAMES: Record<string, string> = {
   'EntityStats': 'Adventurer Killed',
   'CollectableEntity': 'Beast Killed',
+  '$SURVIVOR Earned': `${REWARD_NAME} Earned`,
+  'Claimed $SURVIVOR': `Claimed ${REWARD_NAME}`,
 };
 
 // Sub-category specific icons
@@ -173,6 +176,11 @@ for (const [cat, subs] of Object.entries(CATEGORIES)) {
   }
 }
 
+// Check if an event has a defined sub-category
+const isDefinedEvent = (event: LogEntry): boolean => {
+  return ALL_SUB_CATEGORIES.includes(event.sub_category);
+};
+
 const STORAGE_KEY = 'summit-event-filters';
 
 // Load saved filters from localStorage
@@ -220,6 +228,10 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     if (page !== 1) return [];
 
     return liveEvents.filter((event) => {
+      // Only show events with defined sub-categories
+      if (!isDefinedEvent(event)) {
+        return false;
+      }
       // Filter by sub-category if any are selected
       if (selectedSubCategories.length > 0 && !selectedSubCategories.includes(event.sub_category)) {
         return false;
@@ -236,16 +248,19 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     });
   }, [liveEvents, selectedSubCategories, activeTab, address, page]);
 
-  // Merge live events with fetched events, deduplicating by ID
+  // Merge live events with fetched events, deduplicating by ID and filtering undefined events
   const displayEvents = useMemo(() => {
+    // Filter fetched events to only show defined sub-categories
+    const filteredEvents = events.filter(isDefinedEvent);
+
     if (page !== 1 || filteredLiveEvents.length === 0) {
-      return events;
+      return filteredEvents;
     }
 
-    const fetchedIds = new Set(events.map((e) => e.id));
+    const fetchedIds = new Set(filteredEvents.map((e) => e.id));
     const newLiveEvents = filteredLiveEvents.filter((e) => !fetchedIds.has(e.id));
 
-    return [...newLiveEvents, ...events];
+    return [...newLiveEvents, ...filteredEvents];
   }, [events, filteredLiveEvents, page]);
 
   // Track which events are "new" (arrived via WebSocket after modal opened)
@@ -648,24 +663,25 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
       const displayName = player || 'Unknown';
       if (event.sub_category === '$SURVIVOR Earned') {
         const rawAmount = typeof data.amount === 'number' ? data.amount : parseFloat(String(data.amount)) || 0;
-        const amount = parseFloat((rawAmount / 10000).toFixed(3));
+        const amount = parseFloat((rawAmount / 100000).toFixed(3));
         return (
           <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
             <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
             {' earned '}
             <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{amount}</Box>
-            {' $SURVIVOR'}
+            {` ${REWARD_NAME}`}
           </Typography>
         );
       }
       if (event.sub_category === 'Claimed $SURVIVOR') {
-        const amount = typeof data.amount === 'number' ? data.amount.toFixed(2) : String(data.amount);
+        const rawAmount = typeof data.amount === 'number' ? data.amount : parseFloat(String(data.amount)) || 0;
+        const amount = parseFloat((rawAmount / 100000).toFixed(3));
         return (
           <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
             <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
             {' claimed '}
             <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{amount}</Box>
-            {' $SURVIVOR'}
+            {` ${REWARD_NAME}`}
           </Typography>
         );
       }
@@ -701,6 +717,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     // LS Events
     if (event.category === 'LS Events') {
       if (event.sub_category === 'EntityStats') {
+        const displayName = player || 'Unknown';
         // Build full beast name
         const beastId = data.beast_id as number | undefined;
         const beastPrefix = data.prefix as number | undefined;
@@ -720,12 +737,15 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
 
         return (
           <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+            <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}'s</Box>
+            {" "}
             <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastName}</Box>
             {' killed an adventurer'}
           </Typography>
         );
       }
       if (event.sub_category === 'CollectableEntity') {
+        const displayName = player || 'Unknown';
         // Build full beast name
         const beastId = data.beast_id as number | undefined;
         const beastPrefix = data.prefix as number | undefined;
@@ -751,8 +771,10 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+              <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}'s</Box>
+              {" "}
               <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastName}</Box>
-              {' has been killed in Loot Survivor'}
+              {' has been killed in LS2'}
             </Typography>
             {watchUrl && (
               <Link
@@ -783,7 +805,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
 
     return (
       <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
-        {event.category}: {event.sub_category}
+        {event.category}: {SUB_CATEGORY_DISPLAY_NAMES[event.sub_category] || event.sub_category}
       </Typography>
     );
   };

@@ -4,6 +4,7 @@ import App from "./App";
 
 // Dojo related imports
 import { SoundProvider } from "@/contexts/sound";
+import { QuestGuideProvider } from "@/contexts/QuestGuide";
 import {
   DynamicConnectorProvider
 } from "@/contexts/starknet.tsx";
@@ -25,7 +26,9 @@ async function main() {
       <DynamicConnectorProvider>
         <Analytics />
         <SoundProvider>
-          <App />
+          <QuestGuideProvider>
+            <App />
+          </QuestGuideProvider>
         </SoundProvider>
       </DynamicConnectorProvider>
     </PostHogProvider>
