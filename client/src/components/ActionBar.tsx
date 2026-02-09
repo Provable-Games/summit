@@ -158,7 +158,7 @@ function ActionBar() {
     }
 
     return [];
-  }, [summit?.beast?.token_id, collection.length, revivePotionsUsed, attackPotionsUsed]);
+  }, [summit?.beast?.token_id, collection.length, revivePotionsUsed, attackPotionsUsed, useRevivePotions, useAttackPotions]);
 
   const handleAttackUntilCapture = async (extraLifePotions) => {
     if (!enableAttack) return;
