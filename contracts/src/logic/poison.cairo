@@ -111,7 +111,7 @@ mod tests {
     use super::{calculate_poison_damage, pack_poison_state, unpack_poison_state};
 
     #[test]
-    #[available_gas(gas: 160000)]
+    #[available_gas(l2_gas: 160000)]
     fn test_no_poison_damage() {
         // No poison stacks
         let result = calculate_poison_damage(100, 5, 50, 50, 0, 100);
@@ -125,7 +125,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 100000)]
+    #[available_gas(l2_gas: 100000)]
     fn test_partial_health_damage() {
         // 10 poison * 3 seconds = 30 damage
         let result = calculate_poison_damage(100, 0, 50, 50, 10, 3);
@@ -135,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 100000)]
+    #[available_gas(l2_gas: 100000)]
     fn test_exact_health_kill() {
         // 50 damage on 50 health with no extra lives
         let result = calculate_poison_damage(50, 0, 50, 0, 10, 5);
@@ -145,7 +145,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 100000)]
+    #[available_gas(l2_gas: 100000)]
     fn test_overkill_no_lives() {
         // 100 damage on 50 health with no extra lives
         let result = calculate_poison_damage(50, 0, 50, 0, 10, 10);
@@ -155,7 +155,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 100000)]
+    #[available_gas(l2_gas: 100000)]
     fn test_uses_one_extra_life() {
         // 60 damage on 50 health, 50 full health, 2 extra lives
         // Kills current health (50), then 10 remaining damage
@@ -167,7 +167,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 100000)]
+    #[available_gas(l2_gas: 100000)]
     fn test_uses_multiple_extra_lives() {
         // 150 damage on 50 health, 50 full health, 5 extra lives
         // Kills current (50), remaining 100 damage
@@ -181,7 +181,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 100000)]
+    #[available_gas(l2_gas: 100000)]
     fn test_exhausts_all_lives() {
         // 500 damage on 50 health, 50 full health, 2 extra lives
         // Far exceeds available health pool
@@ -192,7 +192,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 100000)]
+    #[available_gas(l2_gas: 100000)]
     fn test_with_bonus_health() {
         // 80 damage on 100 health (50 base + 50 bonus), no extra lives
         let result = calculate_poison_damage(100, 0, 50, 50, 8, 10);
@@ -201,7 +201,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 100000)]
+    #[available_gas(l2_gas: 100000)]
     fn test_extra_life_with_bonus_health() {
         // 120 damage on 100 health (50+50), 1 extra life
         // Kills current (100), 20 remaining damage
@@ -213,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 100000)]
+    #[available_gas(l2_gas: 100000)]
     fn test_large_poison_stacks() {
         // 1000 poison * 1 second = 1000 damage
         let result = calculate_poison_damage(100, 10, 50, 50, 1000, 1);

@@ -1,10 +1,14 @@
+[![Scarb](https://img.shields.io/badge/Scarb-2.15.1-blue)](https://github.com/software-mansion/scarb)
+[![Starknet Foundry](https://img.shields.io/badge/snforge-0.56.0-purple)](https://foundry-rs.github.io/starknet-foundry/)
+[![codecov](https://codecov.io/gh/Provable-Games/summit/graph/badge.svg?token=FNL0D8QP4P)](https://codecov.io/gh/Provable-Games/summit)
+
 # Savage Summit
 
-A king-of-the-hill style game on Starknet featuring collectible NFT beasts from [Loot Survivor](https://lootsurvivor.io). Players battle their beasts to claim and defend the summit, earning token rewards through combat victories.
+A fully onchain, king-of-the-hill game featuring collectible NFT beasts from [Loot Survivor](https://lootsurvivor.io). Battle, level up, and upgrade your Beasts while earning token rewards!
 
 ## Overview
 
-In Savage Summit, one beast holds the summit at any time. Challengers attack to claim the position, earning XP and rewards while the current king accumulates **0.1 $SURVIVOR per block**. The game distributes a total of **100,000 $SURVIVOR** tokens.
+In Savage Summit, one beast holds the summit at any time. Challengers attack to claim the position, earning XP and rewards while the current king accumulates token rewards.
 
 - **Summit Combat** - Turn-based battles with attack streaks, critical hits, and counter-attacks
 - **Beast Progression** - Level up stats, unlock special abilities, and earn XP from victories
@@ -15,12 +19,12 @@ In Savage Summit, one beast holds the summit at any time. Challengers attack to 
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 18, TypeScript, Vite, Material-UI |
-| Web3 | Starknet.js, Cartridge Connector, Dojo SDK |
-| Contracts | Cairo, Scarb 2.13.1, Starknet Foundry 0.53.0 |
-| Libraries | OpenZeppelin Cairo, Dojo Engine |
+| Layer     | Technology                                   |
+| --------- | -------------------------------------------- |
+| Frontend  | React 18, TypeScript, Vite, Material-UI      |
+| Web3      | Starknet.js, Cartridge Connector, Dojo SDK   |
+| Contracts | Cairo, Scarb 2.15.1, Starknet Foundry 0.56.0 |
+| Libraries | OpenZeppelin Cairo, Dojo Engine              |
 
 ## Project Structure
 
@@ -39,13 +43,15 @@ summit/
 │   ├── src/
 │   │   ├── systems/      # Summit game logic
 │   │   ├── models/       # Beast data structures
+│   │   ├── logic/        # Pure business logic
 │   │   └── constants.cairo
 │   └── tests/
 │
-├── dojo/             # Dojo world & events
+├── api/              # Backend API server
 │   └── src/
-│       ├── systems/      # Event emitters
-│       └── models/       # Event structures
+│
+├── indexer/          # Blockchain event indexer
+│   └── src/
 │
 └── .github/workflows/  # CI/CD
 ```
@@ -56,8 +62,8 @@ summit/
 
 - Node.js 20+
 - pnpm
-- [Scarb 2.13.1](https://docs.swmansion.com/scarb/)
-- [Starknet Foundry 0.53.0](https://foundry-rs.github.io/starknet-foundry/)
+- [Scarb 2.15.1](https://docs.swmansion.com/scarb/)
+- [Starknet Foundry 0.56.0](https://foundry-rs.github.io/starknet-foundry/)
 
 ### Client Development
 
@@ -92,44 +98,44 @@ Create `client/.env`:
 
 ```env
 VITE_PUBLIC_CHAIN=SN_MAIN
-VITE_PUBLIC_SUMMIT_ADDRESS=0x06015596D10cBc6DD695a964827eEe290d3487ffFCF60d02264b81524Dd275E4
+VITE_PUBLIC_SUMMIT_ADDRESS=0x0784e5bac3de23ad40cf73e61c7b559dafb2495136ca474d1603815bb223408c
 ```
 
 ### Contract Parameters
 
 Key game constants in `contracts/src/constants.cairo`:
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| `BASE_REVIVAL_TIME_SECONDS` | 86400 (24h) | Time before beast can revive |
-| `BEAST_MAX_EXTRA_LIVES` | 4000 | Maximum extra lives per beast |
-| `BEAST_MAX_BONUS_HEALTH` | 2000 | Maximum bonus health |
-| `MINIMUM_DAMAGE` | 4 | Floor damage per attack |
+| Parameter                   | Value       | Description                   |
+| --------------------------- | ----------- | ----------------------------- |
+| `BASE_REVIVAL_TIME_SECONDS` | 86400 (24h) | Time before beast can revive  |
+| `BEAST_MAX_EXTRA_LIVES`     | 4000        | Maximum extra lives per beast |
+| `BEAST_MAX_BONUS_HEALTH`    | 2000        | Maximum bonus health          |
+| `MINIMUM_DAMAGE`            | 4           | Floor damage per attack       |
 
 ## Game Mechanics
 
 ### Beast Stats
 
-Upgraded using **Kill Tokens** (earned when beasts kill adventurers in Loot Survivor):
+Upgraded using **$SKULL Tokens** (earned when beasts $SKULL adventurers in Loot Survivor):
 
-| Stat | Cost | Effect |
-|------|------|--------|
-| Luck | 1 Kill/level | Critical hit chance (up to 95%) |
-| Spirit | 1 Kill/level | Reduces 24h revival cooldown |
-| Specials | 10 Kill | Unlocks prefix/suffix name bonuses |
-| Diplomacy | 15 Kill | Share rewards with matching beasts |
-| Wisdom | 20 Kill | Earn XP when defending |
+| Stat      | Cost           | Effect                             |
+| --------- | -------------- | ---------------------------------- |
+| Luck      | 1 $SKULL/level | Critical hit chance (up to 95%)    |
+| Spirit    | 1 $SKULL/level | Reduces 24h revival cooldown       |
+| Specials  | 10 $SKULL      | Unlocks prefix/suffix name bonuses |
+| Diplomacy | 15 $SKULL      | Share rewards with matching beasts |
+| Wisdom    | 20 $SKULL      | Earn XP when defending             |
 
 **Vitality:** Use **Corpse Tokens** (from dead adventurers) to add bonus health (max 2,000)
 
 ### Consumables
 
-| Potion | Effect |
-|--------|--------|
-| Attack | Boost damage output |
-| Revival | Reduce revival cooldown |
-| Extra Life | Additional lives in combat |
-| Poison | Damage over time on summit beast |
+| Potion     | Effect                           |
+| ---------- | -------------------------------- |
+| Attack     | Boost damage output              |
+| Revival    | Reduce revival cooldown          |
+| Extra Life | Additional lives in combat       |
+| Poison     | Damage over time on summit beast |
 
 ### Game Phases
 
@@ -141,17 +147,18 @@ Upgraded using **Kill Tokens** (earned when beasts kill adventurers in Loot Surv
 
 The main `summit_systems` contract implements:
 
-- `start_summit()` - Initialize with first beast
-- `attack()` / `attack_unsafe()` - Combat with/without VRF
-- `feed()` - Increase beast health
+- `start_summit()` - Initialize the summit
+- `attack()` - Battle with beasts (supports VRF, multi-beast attacks)
+- `feed()` - Increase beast health using corpse tokens
 - `apply_stat_points()` - Upgrade beast attributes
 - `apply_poison()` - Apply poison to summit beast
-- `claim_starter_pack()` - Claim potion rewards
-- `distribute_beast_tokens()` - Distribute rewards to winners
+- `add_extra_life()` - Add extra lives to a beast
+- `claim_rewards()` - Claim summit holding rewards
+- `claim_quest_rewards()` - Claim quest completion rewards
 
 ## Deployment
 
-**Mainnet Contract:** `0x06015596D10cBc6DD695a964827eEe290d3487ffFCF60d02264b81524Dd275E4`
+**Mainnet Contract:** [0x0784e5bac3de23ad40cf73e61c7b559dafb2495136ca474d1603815bb223408c](https://voyager.online/contract/0x0784e5bac3de23ad40cf73e61c7b559dafb2495136ca474d1603815bb223408c)
 
 ## Contributing
 
@@ -166,9 +173,6 @@ MIT
 
 ## Links
 
-- [Game Documentation](https://docs.provable.games/summit) - Full game guide
-- [Loot Survivor](https://lootsurvivor.io)
+- [Game Documentation](https://docs.provable.games/summit) - Game Guide
+- [Loot Survivor](https://lootsurvivor.io) - Collect Beasts
 - [Realms Marketplace](https://empire.realms.world/trade/beasts) - Buy beasts
-- [Provable Games](https://github.com/Provable-Games)
-- [Starknet](https://starknet.io)
-- [Dojo Engine](https://dojoengine.org)
