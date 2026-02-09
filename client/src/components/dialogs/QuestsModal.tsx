@@ -3,6 +3,7 @@ import attackPotionIcon from '@/assets/images/attack-potion.png';
 import questsIcon from '@/assets/images/quest.png';
 import revivePotionIcon from '@/assets/images/revive-potion.png';
 import swordIcon from '@/assets/images/sword.png';
+import QuestRewardsRemainingBar from '@/components/QuestRewardsRemainingBar';
 import { REWARD_NAME } from '@/contexts/GameDirector';
 import { questGuides, useQuestGuide } from '@/contexts/QuestGuide';
 import { useGameStore } from '@/stores/gameStore';
@@ -19,7 +20,7 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import LockIcon from '@mui/icons-material/Lock';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import { Box, Dialog, IconButton, LinearProgress, Skeleton, Typography } from '@mui/material';
+import { Box, Dialog, IconButton, LinearProgress, Typography } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 
@@ -240,32 +241,12 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
 
           {questStats.hasFirstBlood && (
             <>
-              {/* Reward Pool Banner */}
-              < Box sx={styles.rewardPoolBanner}>
-                <Box sx={styles.rewardPoolContent}>
-                  <Typography sx={styles.rewardPoolLabel}>Remaining Quest Rewards</Typography>
-                  <Box sx={styles.rewardPoolAmountRow}>
-                    <img src={survivorTokenIcon} alt="token" style={{ width: 28, height: 28 }} />
-                    {isLoadingRewards ? (
-                      <Skeleton
-                        variant="text"
-                        width={100}
-                        height={36}
-                        sx={{ bgcolor: `${gameColors.yellow}20` }}
-                      />
-                    ) : (
-                      <Typography sx={styles.rewardPoolAmount}>
-                        {remainingRewards.toFixed(2)}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
-                <Box sx={styles.rewardPoolWarningBadge}>
-                  <Typography sx={styles.rewardPoolWarning}>
-                    Quest rewards are first come, first serve. Once the pool is empty, quests will no longer reward {REWARD_NAME}.
-                  </Typography>
-                </Box>
-              </Box>
+              {/* Quest Rewards Remaining Bar */}
+              <QuestRewardsRemainingBar
+                remainingRewards={remainingRewards}
+                totalPool={QUEST_REWARD_POOL_TOTAL}
+                isLoading={isLoadingRewards}
+              />
 
               {/* Progress Bar - only shown after first blood */}
               <Box sx={styles.summaryBar}>
@@ -428,52 +409,6 @@ const styles = {
   subtitle: {
     fontSize: '13px',
     color: '#bbb',
-  },
-  rewardPoolBanner: {
-    my: 2,
-    background: `linear-gradient(135deg, ${gameColors.yellow}15 0%, ${gameColors.yellow}08 50%, ${gameColors.yellow}15 100%)`,
-    border: `1px solid ${gameColors.yellow}40`,
-    borderRadius: '10px',
-    padding: '12px 16px',
-  },
-  rewardPoolContent: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 0.5,
-  },
-  rewardPoolLabel: {
-    fontSize: '10px',
-    fontWeight: 'bold',
-    color: gameColors.yellow,
-    letterSpacing: '2px',
-    textTransform: 'uppercase',
-    opacity: 0.9,
-  },
-  rewardPoolAmountRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 1,
-  },
-  rewardPoolAmount: {
-    fontSize: '24px',
-    fontWeight: 'bold',
-    color: gameColors.yellow,
-    textShadow: `0 0 20px ${gameColors.yellow}60, 0 2px 4px rgba(0,0,0,0.5)`,
-    letterSpacing: '1px',
-  },
-  rewardPoolWarningBadge: {
-    display: 'flex',
-    justifyContent: 'center',
-    mt: 1,
-  },
-  rewardPoolWarning: {
-    fontSize: '10px',
-    color: '#999',
-    fontStyle: 'italic',
-    background: 'rgba(0,0,0,0.3)',
-    padding: '3px 10px',
-    borderRadius: '10px',
   },
   summaryBar: {
     display: 'flex',
