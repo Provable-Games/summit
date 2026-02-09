@@ -49,6 +49,8 @@ import {
   decodePoisonEvent,
   decodeCorpseEvent,
   decodeSkullEvent,
+  decodeQuestRewardsClaimedEvent,
+  unpackQuestRewardsClaimed,
   decodeTransferEvent,
   decodeEntityStatsEvent,
   decodeCollectableEntityEvent,
@@ -61,6 +63,8 @@ interface SummitConfig {
   summitContractAddress: string;
   beastsContractAddress: string;
   dojoWorldAddress: string;
+  corpseContractAddress: string;
+  skullContractAddress: string;
   streamUrl: string;
   startingBlock: string;
   databaseUrl: string;
@@ -102,7 +106,10 @@ interface BeastStatsSnapshot {
   diplomacy: number;
   bonus_health: number;
   extra_lives: number;
-  has_claimed_potions: number;
+  captured_summit: number;
+  used_revival_potion: number;
+  used_attack_potion: number;
+  max_attack_streak: number;
   current_health?: number;
 }
 
@@ -175,7 +182,10 @@ async function getBeastContextBatch(
       bs_diplomacy: schema.beast_stats.diplomacy,
       bs_bonus_health: schema.beast_stats.bonus_health,
       bs_extra_lives: schema.beast_stats.extra_lives,
-      bs_has_claimed_potions: schema.beast_stats.has_claimed_potions,
+      bs_captured_summit: schema.beast_stats.captured_summit,
+      bs_used_revival_potion: schema.beast_stats.used_revival_potion,
+      bs_used_attack_potion: schema.beast_stats.used_attack_potion,
+      bs_max_attack_streak: schema.beast_stats.max_attack_streak,
       bs_current_health: schema.beast_stats.current_health,
       b_beast_id: schema.beasts.beast_id,
       b_prefix: schema.beasts.prefix,
@@ -204,7 +214,10 @@ async function getBeastContextBatch(
         diplomacy: row.bs_diplomacy,
         bonus_health: row.bs_bonus_health,
         extra_lives: row.bs_extra_lives,
-        has_claimed_potions: row.bs_has_claimed_potions,
+        captured_summit: row.bs_captured_summit,
+        used_revival_potion: row.bs_used_revival_potion,
+        used_attack_potion: row.bs_used_attack_potion,
+        max_attack_streak: row.bs_max_attack_streak,
         current_health: row.bs_current_health,
       },
       metadata: row.b_beast_id !== null ? {
@@ -306,7 +319,10 @@ type BeastStatsRow = {
   last_death_timestamp: bigint;
   revival_count: number;
   extra_lives: number;
-  has_claimed_potions: number;
+  captured_summit: number;
+  used_revival_potion: number;
+  used_attack_potion: number;
+  max_attack_streak: number;
   summit_held_seconds: number;
   spirit: number;
   luck: number;
@@ -327,6 +343,7 @@ type RewardsClaimedRow = typeof schema.rewards_claimed.$inferInsert;
 type PoisonEventRow = typeof schema.poison_events.$inferInsert;
 type CorpseEventRow = typeof schema.corpse_events.$inferInsert;
 type SkullsClaimedRow = typeof schema.skulls_claimed.$inferInsert;
+type QuestRewardsClaimedRow = typeof schema.quest_rewards_claimed.$inferInsert;
 type SummitLogRow = typeof schema.summit_log.$inferInsert;
 type BeastOwnerRow = typeof schema.beast_owners.$inferInsert;
 type BeastRow = typeof schema.beasts.$inferInsert;
@@ -343,6 +360,7 @@ interface BulkInsertBatches {
   poison_events: PoisonEventRow[];
   corpse_events: CorpseEventRow[];
   skulls_claimed: SkullsClaimedRow[];
+  quest_rewards_claimed: QuestRewardsClaimedRow[];
   summit_log: SummitLogRow[];
   beast_owners: BeastOwnerRow[];
   beasts: BeastRow[];
@@ -472,7 +490,10 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
           last_death_timestamp: sql`excluded.last_death_timestamp`,
           revival_count: sql`excluded.revival_count`,
           extra_lives: sql`excluded.extra_lives`,
-          has_claimed_potions: sql`excluded.has_claimed_potions`,
+          captured_summit: sql`excluded.captured_summit`,
+          used_revival_potion: sql`excluded.used_revival_potion`,
+          used_attack_potion: sql`excluded.used_attack_potion`,
+          max_attack_streak: sql`excluded.max_attack_streak`,
           summit_held_seconds: sql`excluded.summit_held_seconds`,
           spirit: sql`excluded.spirit`,
           luck: sql`excluded.luck`,
@@ -542,6 +563,23 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
     );
   }
 
+  // quest_rewards_claimed - batch upsert
+  if (batches.quest_rewards_claimed.length > 0) {
+    const deduped = new Map<number, QuestRewardsClaimedRow>();
+    for (const row of batches.quest_rewards_claimed) {
+      deduped.set(row.beast_token_id, row);
+    }
+    insertPromises.push(
+      db.insert(schema.quest_rewards_claimed).values([...deduped.values()]).onConflictDoUpdate({
+        target: schema.quest_rewards_claimed.beast_token_id,
+        set: {
+          amount: sql`excluded.amount`,
+          updated_at: sql`excluded.updated_at`,
+        },
+      })
+    );
+  }
+
   // summit_log - aggregate battles by tx, then bulk insert
   if (batches.summit_log.length > 0) {
     const aggregatedLogs = aggregateBattleEvents(batches.summit_log);
@@ -584,9 +622,10 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
       db.insert(schema.beast_data).values([...deduped.values()]).onConflictDoUpdate({
         target: schema.beast_data.entity_hash,
         set: {
-          adventurers_killed: sql`excluded.adventurers_killed`,
-          last_death_timestamp: sql`excluded.last_death_timestamp`,
-          last_killed_by: sql`excluded.last_killed_by`,
+          // Use GREATEST to preserve highest value - kills can only increase, prevents CollectableEntity (0n) from overwriting EntityStats
+          adventurers_killed: sql`GREATEST(beast_data.adventurers_killed, excluded.adventurers_killed)`,
+          last_death_timestamp: sql`GREATEST(beast_data.last_death_timestamp, excluded.last_death_timestamp)`,
+          last_killed_by: sql`COALESCE(NULLIF(excluded.last_killed_by, 0), beast_data.last_killed_by)`,
           // Preserve existing token_id if set, only update if new value is provided
           token_id: sql`COALESCE(beast_data.token_id, excluded.token_id)`,
           updated_at: sql`excluded.updated_at`,
@@ -610,6 +649,7 @@ function createEmptyBatches(): BulkInsertBatches {
     poison_events: [],
     corpse_events: [],
     skulls_claimed: [],
+    quest_rewards_claimed: [],
     summit_log: [],
     beast_owners: [],
     beasts: [],
@@ -664,7 +704,10 @@ function collectBeastStatChangeLogs(
     diplomacy: 0,
     bonus_health: 0,
     extra_lives: 0,
-    has_claimed_potions: 0,
+    captured_summit: 0,
+    used_revival_potion: 0,
+    used_attack_potion: 0,
+    max_attack_streak: 0,
   };
 
   // Check each stat for increases
@@ -713,6 +756,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     summitContractAddress,
     beastsContractAddress,
     dojoWorldAddress,
+    corpseContractAddress,
+    skullContractAddress,
     streamUrl,
     startingBlock: startBlockStr,
     databaseUrl,
@@ -724,16 +769,19 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   const summitAddressBigInt = addressToBigInt(summitContractAddress);
   const beastsAddressBigInt = addressToBigInt(beastsContractAddress);
   const dojoWorldAddressBigInt = addressToBigInt(dojoWorldAddress);
+  const corpseAddressBigInt = addressToBigInt(corpseContractAddress);
+  const skullAddressBigInt = addressToBigInt(skullContractAddress);
 
   // Log configuration on startup
   console.log("[Summit Indexer] Summit Contract:", summitContractAddress);
   console.log("[Summit Indexer] Beasts Contract:", beastsContractAddress);
   console.log("[Summit Indexer] Dojo World:", dojoWorldAddress);
+  console.log("[Summit Indexer] Corpse Contract:", corpseContractAddress);
+  console.log("[Summit Indexer] Skull Contract:", skullContractAddress);
   console.log("[Summit Indexer] Stream:", streamUrl);
   console.log("[Summit Indexer] Starting Block:", startingBlock.toString());
   console.log("[Summit Indexer] RPC URL:", rpcUrl);
 
-  // Create Drizzle database instance
   // Create Drizzle database instance with pooled node-postgres connection
   const database = drizzle({
     schema,
@@ -841,12 +889,22 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             DOJO_EVENT_SELECTORS.CollectableEntity as `0x${string}`,
           ],
         },
+        // Corpse contract - CorpseEvent only
+        {
+          address: corpseContractAddress.toLowerCase() as `0x${string}`,
+          keys: [EVENT_SELECTORS.CorpseEvent as `0x${string}`],
+        },
+        // Skull contract - SkullEvent only
+        {
+          address: skullContractAddress.toLowerCase() as `0x${string}`,
+          keys: [EVENT_SELECTORS.SkullEvent as `0x${string}`],
+        },
       ],
     },
     plugins: [
       drizzleStorage({
         db: database,
-        persistState: true, // Always start from startingBlock, don't resume from checkpoint
+        persistState: true, // Resume from checkpoint after restart
         indexerName: "summit",
         idColumn: "id",
         migrate: {
@@ -969,6 +1027,19 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           }
         }
 
+        // Skull contract - SkullEvent pre-scan
+        if (addressToBigInt(event_address) === skullAddressBigInt && selector === EVENT_SELECTORS.SkullEvent) {
+          const decoded = decodeSkullEvent([...keys], [...event.data]);
+          // Collect all token IDs from the span for batch lookup
+          skullEventTokenIds.push(...decoded.beast_token_ids);
+          skullEventData.push({
+            decoded,
+            event_index: event.eventIndex,
+            transaction_hash: event.transactionHash,
+          });
+        }
+
+        // Summit contract pre-scan
         if (addressToBigInt(event_address) === summitAddressBigInt) {
           switch (selector) {
             case EVENT_SELECTORS.BeastUpdatesEvent: {
@@ -992,17 +1063,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             case EVENT_SELECTORS.RewardsEarnedEvent: {
               const decoded = decodeRewardsEarnedEvent([...keys], [...event.data]);
               rewardsEarnedTokenIds.push(decoded.beast_token_id);
-              break;
-            }
-            case EVENT_SELECTORS.SkullEvent: {
-              const decoded = decodeSkullEvent([...keys], [...event.data]);
-              // Collect all token IDs from the span for batch lookup
-              skullEventTokenIds.push(...decoded.beast_token_ids);
-              skullEventData.push({
-                decoded,
-                event_index: event.eventIndex,
-                transaction_hash: event.transactionHash,
-              });
               break;
             }
           }
@@ -1060,13 +1120,13 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
 
       // Batch lookup beast metadata for LS Events via entity_hash → beast_data → beasts
       let lsMetadataQueryTime = 0;
-      const lsMetadataMap = new Map<string, { token_id: number; beast_id: number; prefix: number; suffix: number }>();
+      const lsMetadataMap = new Map<string, { token_id: number; beast_id: number; prefix: number; suffix: number; owner: string | null }>();
 
       if (lsEventEntityHashes.length > 0) {
         const lsMetadataStart = Date.now();
         const uniqueHashes = [...new Set(lsEventEntityHashes)];
 
-        // Join beast_data with beasts to get metadata
+        // Join beast_data with beasts and beast_owners to get metadata and owner
         const lsMetadataResult = await db
           .select({
             entity_hash: schema.beast_data.entity_hash,
@@ -1074,9 +1134,11 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             beast_id: schema.beasts.beast_id,
             prefix: schema.beasts.prefix,
             suffix: schema.beasts.suffix,
+            owner: schema.beast_owners.owner,
           })
           .from(schema.beast_data)
           .innerJoin(schema.beasts, eq(schema.beast_data.token_id, schema.beasts.token_id))
+          .leftJoin(schema.beast_owners, eq(schema.beast_data.token_id, schema.beast_owners.token_id))
           .where(inArray(schema.beast_data.entity_hash, uniqueHashes));
 
         for (const row of lsMetadataResult) {
@@ -1086,6 +1148,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               beast_id: row.beast_id,
               prefix: row.prefix,
               suffix: row.suffix,
+              owner: row.owner ?? null,
             });
           }
         }
@@ -1207,8 +1270,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   beast_id: entityMetadata.beast_id,
                   prefix: entityMetadata.prefix,
                   suffix: entityMetadata.suffix,
+                  owner: entityMetadata.owner,
                 },
-                player: null,
+                player: entityMetadata.owner,
                 token_id: entityMetadata.token_id,
                 transaction_hash,
                 created_at: block_timestamp,
@@ -1259,14 +1323,93 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   beast_id: collectableMetadata?.beast_id ?? null,
                   prefix: collectableMetadata?.prefix ?? null,
                   suffix: collectableMetadata?.suffix ?? null,
+                  owner: collectableMetadata?.owner ?? null,
                 },
-                player: null,
+                player: collectableMetadata?.owner ?? null,
                 token_id: collectableMetadata?.token_id ?? null,
                 transaction_hash,
                 created_at: block_timestamp,
                 indexed_at,
               });
             }
+            continue;
+          }
+
+          // Corpse contract - CorpseEvent
+          if (addressToBigInt(event_address) === corpseAddressBigInt && selector === EVENT_SELECTORS.CorpseEvent) {
+            const decoded = decodeCorpseEvent([...keys], [...data]);
+
+            // Process each adventurer_id individually into corpse_events
+            for (const adventurer_id of decoded.adventurer_ids) {
+              batches.corpse_events.push({
+                adventurer_id,
+                player: decoded.player,
+                created_at: block_timestamp,
+                indexed_at: indexed_at,
+                block_number,
+                transaction_hash,
+                event_index,
+              });
+            }
+
+            // Single summit_log entry for the batch
+            collectSummitLog(batches, {
+              block_number,
+              event_index,
+              category: "Rewards",
+              sub_category: "Claimed Corpses",
+              data: {
+                player: decoded.player,
+                adventurer_count: decoded.adventurer_ids.length,
+                corpse_amount: decoded.corpse_amount,
+              },
+              player: decoded.player,
+              token_id: null,
+              transaction_hash,
+              created_at: block_timestamp,
+              indexed_at,
+            });
+            continue;
+          }
+
+          // Skull contract - SkullEvent
+          if (addressToBigInt(event_address) === skullAddressBigInt && selector === EVENT_SELECTORS.SkullEvent) {
+            const decoded = decodeSkullEvent([...keys], [...data]);
+
+            // Get player from first beast's owner (all beasts in batch belong to same player)
+            const firstContext = beastContextMap.get(decoded.beast_token_ids[0]) ?? { prev_stats: null, metadata: null, owner: null };
+            const skull_player = firstContext.owner;
+
+            // Process each beast_token_id individually
+            for (const beast_token_id of decoded.beast_token_ids) {
+              // Get skulls (adventurers_killed) from beast_data lookup
+              const skulls = beastDataSkullsMap.get(beast_token_id) ?? 0n;
+
+              // Collect skulls_claimed upsert for each beast
+              batches.skulls_claimed.push({
+                beast_token_id,
+                skulls,
+                updated_at: block_timestamp,
+              });
+            }
+
+            // Single summit_log entry for the batch
+            collectSummitLog(batches, {
+              block_number,
+              event_index,
+              category: "Rewards",
+              sub_category: "Claimed Skulls",
+              data: {
+                player: skull_player,
+                beast_count: decoded.beast_token_ids.length,
+                skulls_claimed: decoded.skulls_claimed.toString(),
+              },
+              player: skull_player,
+              token_id: null,  // No single token_id for batch
+              transaction_hash,
+              created_at: block_timestamp,
+              indexed_at,
+            });
             continue;
           }
 
@@ -1295,7 +1438,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   last_death_timestamp: stats.last_death_timestamp,
                   revival_count: stats.revival_count,
                   extra_lives: stats.extra_lives,
-                  has_claimed_potions: stats.has_claimed_potions,
+                  captured_summit: stats.captured_summit,
+                  used_revival_potion: stats.used_revival_potion,
+                  used_attack_potion: stats.used_attack_potion,
+                  max_attack_streak: stats.max_attack_streak,
                   summit_held_seconds: stats.summit_held_seconds,
                   spirit: stats.spirit,
                   luck: stats.luck,
@@ -1347,7 +1493,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                     diplomacy: stats.diplomacy,
                     bonus_health: stats.bonus_health,
                     extra_lives: stats.extra_lives,
-                    has_claimed_potions: stats.has_claimed_potions,
+                    captured_summit: stats.captured_summit,
+                    used_revival_potion: stats.used_revival_potion,
+                    used_attack_potion: stats.used_attack_potion,
+                    max_attack_streak: stats.max_attack_streak,
                   },
                   beast_metadata,
                   beast_owner,
@@ -1369,7 +1518,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                     diplomacy: stats.diplomacy,
                     bonus_health: stats.bonus_health,
                     extra_lives: stats.extra_lives,
-                    has_claimed_potions: stats.has_claimed_potions,
+                    captured_summit: stats.captured_summit,
+                    used_revival_potion: stats.used_revival_potion,
+                    used_attack_potion: stats.used_attack_potion,
+                    max_attack_streak: stats.max_attack_streak,
                     current_health: stats.current_health,
                   },
                   metadata: beast_metadata,
@@ -1397,7 +1549,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 last_death_timestamp: stats.last_death_timestamp,
                 revival_count: stats.revival_count,
                 extra_lives: stats.extra_lives,
-                has_claimed_potions: stats.has_claimed_potions,
+                captured_summit: stats.captured_summit,
+                used_revival_potion: stats.used_revival_potion,
+                used_attack_potion: stats.used_attack_potion,
+                max_attack_streak: stats.max_attack_streak,
                 summit_held_seconds: stats.summit_held_seconds,
                 spirit: stats.spirit,
                 luck: stats.luck,
@@ -1425,7 +1580,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   diplomacy: stats.diplomacy,
                   bonus_health: stats.bonus_health,
                   extra_lives: stats.extra_lives,
-                  has_claimed_potions: stats.has_claimed_potions,
+                  captured_summit: stats.captured_summit,
+                  used_revival_potion: stats.used_revival_potion,
+                  used_attack_potion: stats.used_attack_potion,
+                  max_attack_streak: stats.max_attack_streak,
                 },
                 metadata,
                 live_beast_owner,
@@ -1448,7 +1606,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   diplomacy: stats.diplomacy,
                   bonus_health: stats.bonus_health,
                   extra_lives: stats.extra_lives,
-                  has_claimed_potions: stats.has_claimed_potions,
+                  captured_summit: stats.captured_summit,
+                  used_revival_potion: stats.used_revival_potion,
+                  used_attack_potion: stats.used_attack_potion,
+                  max_attack_streak: stats.max_attack_streak,
                   current_health: stats.current_health,
                 },
                 metadata,
@@ -1639,75 +1800,45 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               break;
             }
 
-            case EVENT_SELECTORS.CorpseEvent: {
-              const decoded = decodeCorpseEvent([...keys], [...data]);
+            case EVENT_SELECTORS.QuestRewardsClaimedEvent: {
+              const decoded = decodeQuestRewardsClaimedEvent([...keys], [...data]);
 
-              // Process each adventurer_id individually into corpse_events
-              for (const adventurer_id of decoded.adventurer_ids) {
-                batches.corpse_events.push({
-                  adventurer_id,
-                  player: decoded.player,
-                  created_at: block_timestamp,
-                  indexed_at: indexed_at,
-                  block_number,
-                  transaction_hash,
-                  event_index,
-                });
+              // Unpack and accumulate by beast_token_id
+              const rewardsByBeast = new Map<number, number>();
+              for (const packed of decoded.packed_rewards) {
+                const { beast_token_id, amount } = unpackQuestRewardsClaimed(packed);
+                const existing = rewardsByBeast.get(beast_token_id) || 0;
+                rewardsByBeast.set(beast_token_id, existing + amount);
               }
 
-              // Single summit_log entry for the batch
-              collectSummitLog(batches, {
-                block_number,
-                event_index,
-                category: "Rewards",
-                sub_category: "Claimed Corpses",
-                data: {
-                  player: decoded.player,
-                  adventurer_count: decoded.adventurer_ids.length,
-                  corpse_amount: decoded.corpse_amount,
-                },
-                player: decoded.player,
-                token_id: null,
-                transaction_hash,
-                created_at: block_timestamp,
-                indexed_at,
-              });
-              break;
-            }
+              // Get owner from first beast
+              const firstBeastId = Array.from(rewardsByBeast.keys())[0];
+              const firstQuestContext = beastContextMap.get(firstBeastId);
+              const quest_player = firstQuestContext?.owner ?? null;
 
-            case EVENT_SELECTORS.SkullEvent: {
-              const decoded = decodeSkullEvent([...keys], [...data]);
-
-              // Get player from first beast's owner (all beasts in batch belong to same player)
-              const firstContext = beastContextMap.get(decoded.beast_token_ids[0]) ?? { prev_stats: null, metadata: null, owner: null };
-              const skull_player = firstContext.owner;
-
-              // Process each beast_token_id individually
-              for (const beast_token_id of decoded.beast_token_ids) {
-                // Get skulls (adventurers_killed) from beast_data lookup
-                const skulls = beastDataSkullsMap.get(beast_token_id) ?? 0n;
-
-                // Collect skulls_claimed upsert for each beast
-                batches.skulls_claimed.push({
+              // Collect upserts
+              for (const [beast_token_id, total_amount] of rewardsByBeast.entries()) {
+                batches.quest_rewards_claimed.push({
                   beast_token_id,
-                  skulls,
+                  amount: total_amount,
                   updated_at: block_timestamp,
                 });
               }
 
-              // Single summit_log entry for the batch
+              // Single summit_log entry
               collectSummitLog(batches, {
                 block_number,
                 event_index,
                 category: "Rewards",
-                sub_category: "Claimed Skulls",
+                sub_category: "Claimed Quest Rewards",
                 data: {
-                  player: skull_player,
-                  beast_count: decoded.beast_token_ids.length,
-                  skulls_claimed: decoded.skulls_claimed.toString(),
+                  player: quest_player,
+                  beast_count: rewardsByBeast.size,
+                  total_amount: Array.from(rewardsByBeast.values()).reduce((sum, amt) => sum + amt, 0),
+                  beast_rewards: Array.from(rewardsByBeast.entries()).map(([id, amt]) => ({ beast_token_id: id, amount: amt })),
                 },
-                player: skull_player,
-                token_id: null,  // No single token_id for batch
+                player: quest_player,
+                token_id: null,
                 transaction_hash,
                 created_at: block_timestamp,
                 indexed_at,

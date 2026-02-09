@@ -18,7 +18,7 @@ export interface ControllerContext {
   playerName: string | undefined;
   isPending: boolean;
   tokenBalances: Record<string, number>;
-  setTokenBalances: (tokenBalances: Record<string, number>) => void;
+  setTokenBalances: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   fetchTokenBalances: (delayMs: number) => void;
   fetchPaymentTokenBalances: () => void;
   fetchBeastCollection: () => void;
@@ -28,6 +28,8 @@ export interface ControllerContext {
   logout: () => void;
   showTermsOfService: boolean;
   acceptTermsOfService: () => void;
+  gasSpent: number | null;
+  triggerGasSpent: (amount: number) => void;
 }
 
 // Create a context
@@ -47,6 +49,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { getValidAdventurers } = useGameTokens();
   const [userName, setUserName] = useState<string>();
   const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({});
+  const [gasSpent, setGasSpent] = useState<number | null>(null);
 
   const [showTermsOfService, setShowTermsOfService] = useState(false);
   const { identifyAddress } = useAnalytics();
@@ -132,6 +135,13 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     setShowTermsOfService(false);
   };
 
+  const triggerGasSpent = async (amount: number) => {
+    await delay(1000);
+    setGasSpent(amount);
+    // Auto-clear after animation duration
+    setTimeout(() => setGasSpent(null), 2500);
+  };
+
   return (
     <ControllerContext.Provider
       value={{
@@ -145,6 +155,8 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         filterValidAdventurers,
         showTermsOfService,
         acceptTermsOfService,
+        gasSpent,
+        triggerGasSpent,
 
         openProfile: () => (connector as any)?.controller?.openProfile(),
         login: () =>

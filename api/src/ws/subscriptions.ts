@@ -31,7 +31,10 @@ interface SummitPayload {
   last_death_timestamp: string;
   revival_count: number;
   extra_lives: number;
-  has_claimed_potions: number;
+  captured_summit: boolean;
+  used_revival_potion: boolean;
+  used_attack_potion: boolean;
+  max_attack_streak: boolean;
   summit_held_seconds: number;
   spirit: number;
   luck: number;

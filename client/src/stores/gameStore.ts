@@ -7,6 +7,34 @@ export type BeastTypeFilter = 'all' | 'strong';
 
 const MAX_LIVE_EVENTS = 100;
 
+export type NotificationType =
+  // Battle events
+  | 'battle' | 'poison' | 'summit_change' | 'extra_life'
+  // Beast upgrades
+  | 'specials' | 'wisdom' | 'diplomacy' | 'spirit' | 'luck' | 'bonus_health'
+  // Rewards
+  | 'survivor_earned' | 'claimed_survivor' | 'claimed_corpses' | 'claimed_skulls'
+  // LS Events
+  | 'kill' | 'locked';
+
+export interface GameNotification {
+  id: string;
+  type: NotificationType;
+  value?: number | string;
+  playerName?: string;
+  beastName?: string;
+  beastImageSrc?: string;
+  // Extended data for richer notifications
+  extraLives?: number;
+  xpGained?: number;
+  attackPotions?: number;
+  revivePotions?: number;
+  beastCount?: number;
+  oldValue?: number;
+  newValue?: number;
+  adventurerCount?: number;
+}
+
 interface GameState {
   summit: Summit | null;
   summitEnded: boolean;
@@ -29,6 +57,7 @@ interface GameState {
   autopilotEnabled: boolean;
   autopilotLog: string;
   liveEvents: LogEntry[];
+  gameNotifications: GameNotification[];
 
   // Beast Collection Filters
   hideDeadBeasts: boolean;
@@ -59,6 +88,8 @@ interface GameState {
   setAutopilotLog: (autopilotLog: string) => void;
   addLiveEvent: (event: LogEntry) => void;
   clearLiveEvents: () => void;
+  addGameNotification: (notification: Omit<GameNotification, 'id'>) => void;
+  removeGameNotification: (id: string) => void;
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => void;
@@ -92,6 +123,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   autopilotEnabled: false,
   autopilotLog: '',
   liveEvents: [],
+  gameNotifications: [],
 
   // Beast Collection Filters - Default Values
   hideDeadBeasts: false,
@@ -122,6 +154,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       attackMode: 'unsafe',
       autopilotEnabled: false,
       liveEvents: [],
+      gameNotifications: [],
       // Reset filters to defaults
       hideDeadBeasts: false,
       typeFilter: 'all',
@@ -159,6 +192,22 @@ export const useGameStore = create<GameState>((set, get) => ({
       liveEvents: [event, ...state.liveEvents].slice(0, MAX_LIVE_EVENTS),
     })),
   clearLiveEvents: () => set({ liveEvents: [] }),
+  addGameNotification: (notification: Omit<GameNotification, 'id'>) => {
+    const id = `notification-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    set(state => ({
+      gameNotifications: [...state.gameNotifications, { ...notification, id }],
+    }));
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+      set(state => ({
+        gameNotifications: state.gameNotifications.filter(n => n.id !== id),
+      }));
+    }, 3000);
+  },
+  removeGameNotification: (id: string) =>
+    set(state => ({
+      gameNotifications: state.gameNotifications.filter(n => n.id !== id),
+    })),
 
   // Beast Collection Filter Setters
   setHideDeadBeasts: (hideDeadBeasts: boolean) => set({ hideDeadBeasts }),

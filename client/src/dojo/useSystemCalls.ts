@@ -1,3 +1,4 @@
+import { useController } from "@/contexts/controller";
 import { useDynamicConnector } from "@/contexts/starknet";
 import { useGameStore } from "@/stores/gameStore";
 import { selection, Stats } from "@/types/game";
@@ -5,17 +6,17 @@ import { calculateRevivalRequired } from "@/utils/beasts";
 import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
-import { useSnackbar } from "notistack";
 import { CallData } from "starknet";
 
 export const useSystemCalls = () => {
   const { summit } = useGameStore()
-  const { enqueueSnackbar } = useSnackbar();
   const { account } = useAccount();
   const { currentNetworkConfig } = useDynamicConnector();
+  const { triggerGasSpent, tokenBalances, setTokenBalances } = useController();
 
   const VRF_PROVIDER_ADDRESS = "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f"
   const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS
+  const PAYMASTER = true;
 
   /**
    * Custom hook to handle system calls and state management in the Dojo application.
@@ -42,7 +43,23 @@ export const useSystemCalls = () => {
         return
       }
 
-      console.log('Receipt Timestamp', new Date().toISOString());
+      // Extract fee from receipt and trigger gas animation
+      if (receipt.actual_fee && !PAYMASTER) {
+        const feeInWei = BigInt(receipt.actual_fee.amount || receipt.actual_fee);
+        const feeAmount = Number(feeInWei) / 1e18;
+
+        if (feeAmount > 0) {
+          triggerGasSpent(feeAmount);
+          // Update STRK balance after a short delay to sync with animation
+          setTimeout(() => {
+            setTokenBalances((prev: Record<string, number>) => ({
+              ...prev,
+              STRK: Math.max(0, (prev["STRK"] || 0) - feeAmount),
+            }));
+          }, 1400); // Delay to let the animation start before balance updates
+        }
+      }
+
       const translatedEvents = receipt.events
         .map((event: any) => translateGameEvent(event, account!.address))
         .flat()
@@ -52,6 +69,7 @@ export const useSystemCalls = () => {
     } catch (error) {
       console.error("Error executing action:", error);
       forceResetAction();
+      return null;
     }
   };
 
@@ -188,10 +206,18 @@ export const useSystemCalls = () => {
     };
   };
 
-  const claimBeastReward = (beastIds: number[]) => {
+  const claimRewards = (beastIds: number[]) => {
     return {
       contractAddress: SUMMIT_ADDRESS,
-      entrypoint: "claim_test_money",
+      entrypoint: "claim_rewards",
+      calldata: CallData.compile([beastIds]),
+    };
+  };
+
+  const claimQuestRewards = (beastIds: number[]) => {
+    return {
+      contractAddress: SUMMIT_ADDRESS,
+      entrypoint: "claim_quest_rewards",
       calldata: CallData.compile([beastIds]),
     };
   };
@@ -243,7 +269,8 @@ export const useSystemCalls = () => {
   return {
     feed,
     attack,
-    claimBeastReward,
+    claimRewards,
+    claimQuestRewards,
     claimCorpses,
     claimSkulls,
     executeAction,

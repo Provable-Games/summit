@@ -4,26 +4,29 @@ import killTokenImg from '@/assets/images/kill-token.png';
 import lifePotionImg from '@/assets/images/life-potion.png';
 import poisonPotionImg from '@/assets/images/poison-potion.png';
 import revivePotionImg from '@/assets/images/revive-potion.png';
+import starkImg from '@/assets/images/stark.svg';
 import { useController } from '@/contexts/controller';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
-import { ellipseAddress, formatRewardNumber } from '@/utils/utils';
+import { ellipseAddress } from '@/utils/utils';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { Box, Button, IconButton, Tooltip, Typography, Skeleton } from '@mui/material';
 import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
-import { addAddressPadding } from 'starknet';
 import BeastDexModal from './dialogs/BeastDexModal';
 import MarketplaceModal from './dialogs/MarketplaceModal';
+import TopUpStrkModal from './dialogs/TopUpStrkModal';
 import { useStatistics } from '@/contexts/Statistics';
 
 const ProfileCard = () => {
-  const { collection, leaderboard, loadingCollection, summitEnded } = useGameStore()
+  const { collection, loadingCollection, summitEnded } = useGameStore()
   const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
-  const { playerName, tokenBalances, openProfile } = useController()
+  const { playerName, tokenBalances, openProfile, gasSpent } = useController()
   const { tokenPrices } = useStatistics();
   const { connect, connectors } = useConnect();
 
@@ -31,9 +34,12 @@ const ProfileCard = () => {
 
   const [beastDexOpen, setBeastDexOpen] = useState(false)
   const [potionShopOpen, setPotionShopOpen] = useState(false)
+  const [topUpStrkOpen, setTopUpStrkOpen] = useState(false)
   const isCartridge = connector?.id === 'controller'
   const killTokens = tokenBalances["SKULL"] || 0
   const corpseTokens = tokenBalances["CORPSE"] || 0
+  const strkBalance = tokenBalances["STRK"]
+  const isLowGas = false // strkBalance !== undefined && strkBalance < 10
 
   const renderPotionItem = (imgSrc: string, tokenName: string) => {
     const price = tokenPrices[tokenName]
@@ -72,7 +78,7 @@ const ProfileCard = () => {
             {renderPotionItem(corpseTokenImg, "CORPSE")}
           </Box>
         </Box>
-        <Button sx={[styles.buyPotionsButton, { width: isMobile ? '100%' : '145px' }]} onClick={() => setPotionShopOpen(true)}>
+        <Button id="marketplace-button" sx={[styles.buyPotionsButton, { width: isMobile ? '100%' : '145px' }]} onClick={() => setPotionShopOpen(true)}>
           <Typography sx={styles.buyPotionsButtonText}>
             MARKETPLACE
           </Typography>
@@ -117,15 +123,64 @@ const ProfileCard = () => {
 
       {!loadingCollection && <>
         <Box display={'flex'} width={'100%'}>
-          <Box sx={[styles.infoSection, styles.leftSection]}>
-            <Typography sx={styles.infoLabel}>SCORE</Typography>
+          <Tooltip
+            title={
+              <Box sx={styles.strkTooltip}>
+                {isLowGas && (
+                  <Box sx={styles.lowGasTooltipHeader}>
+                    <WarningAmberIcon sx={{ fontSize: '16px', color: '#ff9800' }} />
+                    <Typography sx={styles.lowGasTooltipTitle}>Low on Gas!</Typography>
+                  </Box>
+                )}
+                <Typography
+                  sx={styles.topUpLink}
+                  onClick={() => setTopUpStrkOpen(true)}
+                >
+                  Top up STRK
+                </Typography>
+              </Box>
+            }
+            placement="left"
+          >
+            <Box sx={[styles.infoSection, styles.leftSection, gasSpent && styles.gasSpentContainer]}>
+              <Typography sx={styles.infoLabel}>STRK (gas)</Typography>
 
-            <Box display={'flex'} alignItems={'start'}>
-              <Typography sx={styles.infoValue}>
-                {formatRewardNumber((leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(address))?.amount || 0))}
-              </Typography>
+              <Box display={'flex'} alignItems={'center'} gap={0.5} position={'relative'}>
+                <Box
+                  component="img"
+                  src={starkImg}
+                  alt="STRK"
+                  sx={[
+                    { width: '14px', height: '14px', pb: '4px' },
+                    gasSpent && styles.gasIconPulse
+                  ]}
+                />
+                {strkBalance !== undefined
+                  ? <>
+                    <Typography sx={[styles.infoValue, isLowGas && { color: '#ff9800' }, gasSpent && styles.gasSpentValue]}>
+                      {strkBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </Typography>
+                    {/* <IconButton
+                      size="small"
+                      onClick={(e) => { e.stopPropagation(); setTopUpStrkOpen(true); }}
+                      sx={styles.topUpIcon}
+                    >
+                      <AddCircleOutlineIcon sx={{ fontSize: '14px' }} />
+                    </IconButton> */}
+                  </>
+                  : <Skeleton variant="text" width={40} sx={{ bgcolor: 'grey.700' }} />
+                }
+                {/* Gas spent floating animation */}
+                {gasSpent && (
+                  <Box sx={styles.gasSpentBadge}>
+                    <Typography sx={styles.gasSpentText}>
+                      -{gasSpent.toFixed(3)}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
             </Box>
-          </Box>
+          </Tooltip>
 
           <Box sx={[styles.infoSection, styles.rightSection]}>
             <Typography sx={styles.infoLabel}>BEASTS</Typography>
@@ -166,6 +221,7 @@ const ProfileCard = () => {
         </>}
 
         {beastDexOpen && <BeastDexModal open={beastDexOpen} close={() => setBeastDexOpen(false)} />}
+        {topUpStrkOpen && <TopUpStrkModal open={topUpStrkOpen} close={() => setTopUpStrkOpen(false)} />}
       </>}
     </Box>
   )
@@ -257,6 +313,73 @@ const styles = {
     border: `1px solid ${gameColors.accentGreen}60`,
     color: '#ffedbb',
   },
+  lowGasTooltip: {
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
+    border: `2px solid #ff9800`,
+    borderRadius: '8px',
+    padding: '10px 14px',
+    boxShadow: `0 4px 20px rgba(0, 0, 0, 0.5), 0 0 16px rgba(255, 152, 0, 0.25)`,
+  },
+  lowGasTooltipHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    mb: 0.5,
+  },
+  lowGasTooltipTitle: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#ff9800',
+    letterSpacing: '0.5px',
+    flex: 1,
+  },
+  lowGasTooltipClose: {
+    padding: '2px',
+    marginLeft: 'auto',
+    color: '#ffedbb',
+    opacity: 0.7,
+    '&:hover': {
+      opacity: 1,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+  },
+  lowGasTooltipText: {
+    fontSize: '12px',
+    color: '#ffedbb',
+    lineHeight: 1.3,
+  },
+  lowGasTooltipArrow: {
+    padding: 0,
+    color: '#ff9800',
+    '&::before': {
+      border: `1px solid #ff9800`,
+      background: gameColors.mediumGreen,
+    },
+  },
+  strkTooltip: {
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
+    borderRadius: '6px',
+    padding: '8px 12px',
+    boxShadow: `0 4px 16px rgba(0, 0, 0, 0.4)`,
+  },
+  topUpLink: {
+    fontSize: '12px',
+    color: gameColors.brightGreen,
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    '&:hover': {
+      textDecoration: 'underline',
+    },
+  },
+  topUpIcon: {
+    padding: '2px',
+    color: gameColors.brightGreen,
+    opacity: 0.7,
+    '&:hover': {
+      opacity: 1,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    },
+  },
   infoSection: {
     display: 'flex',
     flexDirection: 'column',
@@ -281,7 +404,7 @@ const styles = {
     fontWeight: 'bold',
   },
   infoValue: {
-    fontSize: '18px',
+    fontSize: '16px',
     fontWeight: 'bold',
     color: '#FFD700',
     mb: '2px',
@@ -592,5 +715,98 @@ const styles = {
     fontWeight: 'bold',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
     textTransform: 'uppercase',
+  },
+  gasSpentContainer: {
+    animation: 'gasGlow 0.6s ease-out',
+    '@keyframes gasGlow': {
+      '0%': {
+        boxShadow: '0 0 0 0 rgba(255, 107, 107, 0)',
+      },
+      '30%': {
+        boxShadow: '0 0 12px 4px rgba(255, 107, 107, 0.6)',
+      },
+      '100%': {
+        boxShadow: '0 0 0 0 rgba(255, 107, 107, 0)',
+      },
+    },
+  },
+  gasSpentValue: {
+    animation: 'gasPulse 0.5s ease-out',
+    '@keyframes gasPulse': {
+      '0%': {
+        transform: 'scale(1)',
+        color: '#FFD700',
+      },
+      '25%': {
+        transform: 'scale(1.15)',
+        color: '#ff6b6b',
+      },
+      '50%': {
+        transform: 'scale(0.95)',
+        color: '#ff6b6b',
+      },
+      '100%': {
+        transform: 'scale(1)',
+        color: '#FFD700',
+      },
+    },
+  },
+  gasSpentBadge: {
+    position: 'absolute',
+    top: '-8px',
+    right: '-35px',
+    background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)',
+    borderRadius: '12px',
+    padding: '2px 6px',
+    boxShadow: '0 2px 8px rgba(255, 107, 107, 0.5)',
+    animation: 'gasFlyUp 2s ease-out forwards',
+    zIndex: 10,
+    '@keyframes gasFlyUp': {
+      '0%': {
+        opacity: 1,
+        transform: 'translateY(0) scale(1)',
+      },
+      '20%': {
+        opacity: 1,
+        transform: 'translateY(-5px) scale(1.1)',
+      },
+      '80%': {
+        opacity: 0.8,
+        transform: 'translateY(-20px) scale(0.9)',
+      },
+      '100%': {
+        opacity: 0,
+        transform: 'translateY(-30px) scale(0.7)',
+      },
+    },
+  },
+  gasSpentText: {
+    fontSize: '10px',
+    fontWeight: 'bold',
+    color: '#fff',
+    whiteSpace: 'nowrap',
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
+  },
+  gasIconPulse: {
+    animation: 'iconBurn 0.8s ease-out',
+    filter: 'drop-shadow(0 0 4px #ff6b6b)',
+    '@keyframes iconBurn': {
+      '0%': {
+        filter: 'drop-shadow(0 0 0px #ff6b6b)',
+        transform: 'scale(1)',
+      },
+      '30%': {
+        filter: 'drop-shadow(0 0 8px #ff6b6b)',
+        transform: 'scale(1.2) rotate(-10deg)',
+      },
+      '60%': {
+        filter: 'drop-shadow(0 0 4px #ff6b6b)',
+        transform: 'scale(1.1) rotate(5deg)',
+      },
+      '100%': {
+        filter: 'drop-shadow(0 0 0px #ff6b6b)',
+        transform: 'scale(1) rotate(0deg)',
+      },
+    },
   },
 }

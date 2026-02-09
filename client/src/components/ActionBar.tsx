@@ -1,5 +1,6 @@
 import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
+import { useQuestGuide } from '@/contexts/QuestGuide';
 import { useAutopilotStore } from '@/stores/autopilotStore';
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
@@ -32,6 +33,7 @@ import { MAX_BEASTS_PER_ATTACK } from '@/contexts/GameDirector';
 function ActionBar() {
   const { executeGameAction } = useGameDirector();
   const { tokenBalances } = useController();
+  const { notifyTargetClicked } = useQuestGuide();
   const reviveBalance = Number((tokenBalances as any)?.['REVIVE'] ?? 0) || 0;
   const attackBalance = Number((tokenBalances as any)?.['ATTACK'] ?? 0) || 0;
   const extraLifeBalance = Number((tokenBalances as any)?.['EXTRA LIFE'] ?? 0) || 0;
@@ -99,6 +101,9 @@ function ActionBar() {
 
   const handleAttack = () => {
     if (!enableAttack) return;
+
+    // Notify quest guide
+    notifyTargetClicked('attack-button');
 
     executeGameAction({
       type: 'attack',
@@ -437,6 +442,7 @@ function ActionBar() {
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <Box sx={styles.attackButtonGroup}>
                   <Box
+                    id="attack-button"
                     sx={[
                       styles.attackButton,
                       highlightAttackButton && styles.attackButtonEnabled,
@@ -624,10 +630,13 @@ function ActionBar() {
                     </Typography>
                   )}
                 </Box>}>
-                  <Box sx={[
-                    styles.potionDisplay,
-                    revivalPotionsRequired > tokenBalances["REVIVE"] && styles.potionDisplayInsufficient
-                  ]}>
+                  <Box
+                    id="revive-potion-display"
+                    sx={[
+                      styles.potionDisplay,
+                      revivalPotionsRequired > tokenBalances["REVIVE"] && styles.potionDisplayInsufficient
+                    ]}
+                  >
                     <img src={revivePotionIcon} alt='' height={'32px'} />
                     {revivalPotionsRequired > 0 && (
                       <Box sx={styles.requiredIndicator}>

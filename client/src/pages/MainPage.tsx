@@ -7,14 +7,15 @@ import { useAccount } from "@starknet-react/core"
 import { useState } from 'react'
 import { isBrowser, isMobile } from 'react-device-detect'
 import ActionBar from '../components/ActionBar'
-import BeastBoard from '../components/BeastBoard'
+import QuestBoard from '../components/QuestBoard'
 import BeastCollection from '../components/BeastCollection'
 import BurgerMenu from '../components/BurgerMenu'
 import ClaimRewardsButton from '../components/ClaimRewardsButton'
 import EventHistoryModal from '../components/dialogs/EventHistoryModal'
 import LeaderboardModal from '../components/dialogs/LeaderboardModal'
-import Top5000BeastsModal from '../components/dialogs/Top5000BeastsModal'
+import QuestsModal from '../components/dialogs/QuestsModal'
 import EventHistoryButton from '../components/EventHistoryButton'
+import GameNotificationFeed from '../components/GameNotificationFeed'
 import Leaderboard from '../components/Leaderboard'
 import LeaderboardButton from '../components/LeaderboardButton'
 import ProfileCard from '../components/ProfileCard'
@@ -25,7 +26,7 @@ function MainPage() {
   const { address } = useAccount()
   const { summit, attackInProgress, selectedBeasts, attackMode } = useGameStore()
   const { pauseUpdates } = useGameDirector();
-  const [top5000ModalOpen, setTop5000ModalOpen] = useState(false);
+  const [questsModalOpen, setQuestsModalOpen] = useState(false);
   const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false);
   const [eventHistoryModalOpen, setEventHistoryModalOpen] = useState(false);
 
@@ -50,11 +51,13 @@ function MainPage() {
 
         {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
           <Box sx={styles.profileSection}>
+            {address ? <QuestBoard onClick={() => setQuestsModalOpen(true)} /> : null}
             {address ? <ClaimRewardsButton /> : null}
-            {address ? <BeastBoard onClick={() => setTop5000ModalOpen(true)} /> : null}
             <ProfileCard />
           </Box>
         </Box>}
+
+        {isBrowser && <GameNotificationFeed />}
 
         <>
           {(attackInProgress && pauseUpdates && selectedBeasts.length > 0 && attackMode !== 'autopilot')
@@ -79,10 +82,10 @@ function MainPage() {
       <Countdown />
     </Box >
 
-    {top5000ModalOpen && (
-      <Top5000BeastsModal
-        open={top5000ModalOpen}
-        onClose={() => setTop5000ModalOpen(false)}
+    {questsModalOpen && (
+      <QuestsModal
+        open={questsModalOpen}
+        onClose={() => setQuestsModalOpen(false)}
       />
     )}
 

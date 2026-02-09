@@ -1,20 +1,16 @@
 import { useSummitApi } from '@/api/summitApi';
+import { START_TIMESTAMP, SUMMIT_DURATION_SECONDS, SUMMIT_REWARDS_PER_SECOND } from '@/contexts/GameDirector';
 import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
-import { gameColors } from '@/utils/themes';
-import { addAddressPadding } from 'starknet';
 import { lookupAddressNames } from '@/utils/addressNameCache';
-import { Box, Typography, IconButton } from '@mui/material';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import { gameColors } from '@/utils/themes';
 import HandshakeIcon from '@mui/icons-material/Handshake';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import { Box, IconButton, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
+import { addAddressPadding } from 'starknet';
 import { DiplomacyPopover } from './DiplomacyPopover';
-import { START_TIMESTAMP, SUMMIT_DURATION_SECONDS, SUMMIT_REWARDS_PER_SECOND } from '@/contexts/GameDirector';
-import FinalShowdown from './FinalShowdown';
 import RewardsRemainingBar from './RewardsRemainingBar';
-
-// End timestamp for the summit
-const END_TIMESTAMP = START_TIMESTAMP + SUMMIT_DURATION_SECONDS;
 
 function Leaderboard() {
   const { beastsRegistered, beastsAlive, fetchBeastCounts } = useStatistics()
@@ -25,9 +21,6 @@ function Leaderboard() {
   const [currentTimestamp, setCurrentTimestamp] = useState(() => Math.floor(Date.now() / 1000))
   const [summitOwnerRank, setSummitOwnerRank] = useState(null)
   const [diplomacyAnchor, setDiplomacyAnchor] = useState(null)
-
-  // Check if we're in the final showdown phase (summit ended)
-  const isFinalShowdown = currentTimestamp >= END_TIMESTAMP;
 
   // Update current timestamp every second
   useEffect(() => {
@@ -142,10 +135,6 @@ function Leaderboard() {
         </Typography>
       </Box>
     )
-  }
-
-  if (isFinalShowdown) {
-    return <FinalShowdown summit={summit} currentTimestamp={currentTimestamp} />;
   }
 
   return <Box sx={styles.container}>

@@ -1,0 +1,17 @@
+1. Attack the Summit: 0.05 SURVIVOR
+
+3. Buy revival potion and attack with dead beast: 0.05
+4. Buy attack potion & attack using the potion: 0.05
+
+5. Take Summit: 0.05
+5.1 Held Summit for 10 seconds: 0.1
+
+6. Level up beast
+    6.1 One level: 0.02
+    6.2 three levels: 0.03
+    6.3 five levels: 0.05
+
+7. Upgrade Diplomacy: 0.1
+
+Total Possible Reward Per Beast:
+0.5

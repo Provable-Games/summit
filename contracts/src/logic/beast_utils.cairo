@@ -16,6 +16,15 @@ pub fn get_level_from_xp(xp: u32) -> u16 {
 }
 
 #[inline(always)]
+pub fn get_bonus_levels(base_level: u16, bonus_xp: u16) -> u16 {
+    let base: u32 = base_level.into();
+    let total_xp = base * base + bonus_xp.into();
+    let current_level = get_level_from_xp(total_xp);
+
+    current_level - base_level
+}
+
+#[inline(always)]
 pub fn level_up(base_level: u16, bonus_xp: u16, xp_gained: u16) -> bool {
     let base: u32 = base_level.into();
     let total_xp = base * base + bonus_xp.into();

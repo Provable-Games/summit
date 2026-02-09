@@ -51,7 +51,10 @@ export interface Beast {
   revival_count: number;
   revival_time: number;
   extra_lives: number;
-  has_claimed_potions: boolean;
+  captured_summit: boolean;
+  used_revival_potion: boolean;
+  used_attack_potion: boolean;
+  max_attack_streak: boolean;
   summit_held_seconds: number;
   spirit: number;
   luck: number;
@@ -59,6 +62,9 @@ export interface Beast {
   wisdom: boolean;
   diplomacy: boolean;
   kills_claimed: number;
+  rewards_earned: number;
+  rewards_claimed: number;
+  quest_rewards_claimed?: number;
   entity_hash?: string;
   rank?: number;
   last_dm_death_timestamp?: number;
