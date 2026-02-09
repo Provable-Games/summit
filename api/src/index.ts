@@ -271,7 +271,7 @@ app.get("/beasts/:owner", async (c) => {
   let rows = getCacheEntry<any[]>(owner);
   let cacheStatus: string;
 
-  if (rows) {
+  if (rows !== null) {
     cacheStatus = "HIT";
   } else {
     cacheStatus = "MISS";
