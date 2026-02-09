@@ -72,7 +72,7 @@ mod tests {
     use super::{calculate_revival_potions, increment_revival_count, is_killed_recently};
 
     #[test]
-    #[available_gas(gas: 70000)]
+    #[available_gas(l2_gas: 70000)]
     fn test_revival_not_needed_after_full_time() {
         let current = BASE_REVIVAL_TIME_SECONDS + 1000;
         let last_death = 0;
@@ -81,7 +81,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 65000)]
+    #[available_gas(l2_gas: 65000)]
     fn test_revival_not_needed_exactly_at_time() {
         let current = BASE_REVIVAL_TIME_SECONDS;
         let last_death = 0;
@@ -90,7 +90,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 70000)]
+    #[available_gas(l2_gas: 70000)]
     fn test_revival_needed_before_time() {
         let current = BASE_REVIVAL_TIME_SECONDS - 1;
         let last_death = 0;
@@ -99,7 +99,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 150000)]
+    #[available_gas(l2_gas: 150000)]
     fn test_revival_cost_increases() {
         let current = BASE_REVIVAL_TIME_SECONDS - 1;
         let last_death = 0;
@@ -111,7 +111,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 70000)]
+    #[available_gas(l2_gas: 70000)]
     fn test_spirit_reduction_removes_need() {
         let current = BASE_REVIVAL_TIME_SECONDS - 1000;
         let last_death = 0;
@@ -123,7 +123,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 65000)]
+    #[available_gas(l2_gas: 65000)]
     fn test_spirit_reduction_partial() {
         let current: u64 = 10000;
         let last_death: u64 = 0;
@@ -139,7 +139,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 70000)]
+    #[available_gas(l2_gas: 70000)]
     fn test_spirit_reduction_exceeds_base() {
         let current: u64 = 100;
         let last_death: u64 = 0;
@@ -151,7 +151,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 60000)]
+    #[available_gas(l2_gas: 60000)]
     fn test_is_killed_recently_true() {
         let current: u64 = 100000;
         let last_killed = current - DAY_SECONDS + 1; // Just within cooldown
@@ -160,7 +160,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 60000)]
+    #[available_gas(l2_gas: 60000)]
     fn test_is_killed_recently_false() {
         let current: u64 = 100000;
         let last_killed = current - DAY_SECONDS - 1; // Just past cooldown
@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 55000)]
+    #[available_gas(l2_gas: 55000)]
     fn test_is_killed_recently_exactly_at_boundary() {
         let current: u64 = 100000;
         let last_killed = current - DAY_SECONDS; // Exactly at boundary
@@ -178,7 +178,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 70000)]
+    #[available_gas(l2_gas: 70000)]
     fn test_increment_revival_count_normal() {
         assert!(increment_revival_count(0, 31) == 1, "0 -> 1");
         assert!(increment_revival_count(15, 31) == 16, "15 -> 16");
@@ -186,7 +186,7 @@ mod tests {
     }
 
     #[test]
-    #[available_gas(gas: 60000)]
+    #[available_gas(l2_gas: 60000)]
     fn test_increment_revival_count_at_max() {
         assert!(increment_revival_count(31, 31) == 31, "Should stay at max");
         assert!(increment_revival_count(31, 31) == 31, "Should stay at max (retry)");
