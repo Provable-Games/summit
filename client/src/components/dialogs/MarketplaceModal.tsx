@@ -657,20 +657,22 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         let result = await executeAction(calls, () => { });
 
         if (result) {
-          // Optimistically update token balances
-          const updatedBalances = { ...tokenBalances };
-          // Decrease payment token balance
-          if (selectedTokenData) {
-            updatedBalances[selectedToken] = (updatedBalances[selectedToken] || 0) - totalTokenCost;
-          }
-          // Increase potion balances
-          for (const potion of POTIONS) {
-            const quantity = quantities[potion.id];
-            if (quantity > 0) {
-              updatedBalances[potion.id] = (updatedBalances[potion.id] || 0) + quantity;
+          // Optimistically update token balances using functional update to avoid stale closure
+          setTokenBalances((prev: Record<string, number>) => {
+            const updated = { ...prev };
+            // Decrease payment token balance
+            if (selectedTokenData) {
+              updated[selectedToken] = (updated[selectedToken] || 0) - totalTokenCost;
             }
-          }
-          setTokenBalances(updatedBalances);
+            // Increase potion balances
+            for (const potion of POTIONS) {
+              const quantity = quantities[potion.id];
+              if (quantity > 0) {
+                updated[potion.id] = (updated[potion.id] || 0) + quantity;
+              }
+            }
+            return updated;
+          });
 
           quotedPotions.forEach((q) => applyOptimisticPrice(q.id, q.quote, 'buy'));
           resetAfterAction();
@@ -730,20 +732,22 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         const result = await executeAction(calls, () => { });
 
         if (result) {
-          // Optimistically update token balances
-          const updatedBalances = { ...tokenBalances };
-          // Decrease potion balances
-          for (const potion of POTIONS) {
-            const quantity = sellQuantities[potion.id];
-            if (quantity > 0) {
-              updatedBalances[potion.id] = Math.max(0, (updatedBalances[potion.id] || 0) - quantity);
+          // Optimistically update token balances using functional update to avoid stale closure
+          setTokenBalances((prev: Record<string, number>) => {
+            const updated = { ...prev };
+            // Decrease potion balances
+            for (const potion of POTIONS) {
+              const quantity = sellQuantities[potion.id];
+              if (quantity > 0) {
+                updated[potion.id] = Math.max(0, (updated[potion.id] || 0) - quantity);
+              }
             }
-          }
-          // Increase receive token balance
-          if (selectedReceiveTokenData) {
-            updatedBalances[selectedReceiveToken] = (updatedBalances[selectedReceiveToken] || 0) + totalReceiveAmount;
-          }
-          setTokenBalances(updatedBalances);
+            // Increase receive token balance
+            if (selectedReceiveTokenData) {
+              updated[selectedReceiveToken] = (updated[selectedReceiveToken] || 0) + totalReceiveAmount;
+            }
+            return updated;
+          });
 
           // Apply optimistic pricing for sells based on the quote used
           POTIONS.forEach((potion) => {
@@ -1000,11 +1004,13 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       const result = await executeAction(calls, () => {});
 
       if (result) {
-        // Optimistically update balances
-        const updatedBalances = { ...tokenBalances };
-        updatedBalances[selectedEarnToken] = Math.max(0, (updatedBalances[selectedEarnToken] || 0) - parseFloat(earnAmount));
-        updatedBalances['TEST USD'] = Math.max(0, (updatedBalances['TEST USD'] || 0) - parseFloat(earnTestUsdAmount));
-        setTokenBalances(updatedBalances);
+        // Optimistically update balances using functional update to avoid stale closure
+        setTokenBalances((prev: Record<string, number>) => {
+          const updated = { ...prev };
+          updated[selectedEarnToken] = Math.max(0, (updated[selectedEarnToken] || 0) - parseFloat(earnAmount));
+          updated['TEST USD'] = Math.max(0, (updated['TEST USD'] || 0) - parseFloat(earnTestUsdAmount));
+          return updated;
+        });
         resetAfterAction();
         // Re-fetch positions to show new position
         fetchPositions();

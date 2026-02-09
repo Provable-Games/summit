@@ -52,11 +52,10 @@ export const useSystemCalls = () => {
           triggerGasSpent(feeAmount);
           // Update STRK balance after a short delay to sync with animation
           setTimeout(() => {
-            const currentStrk = tokenBalances["STRK"] || 0;
-            setTokenBalances({
-              ...tokenBalances,
-              STRK: Math.max(0, currentStrk - feeAmount),
-            });
+            setTokenBalances((prev: Record<string, number>) => ({
+              ...prev,
+              STRK: Math.max(0, (prev["STRK"] || 0) - feeAmount),
+            }));
           }, 1400); // Delay to let the animation start before balance updates
         }
       }

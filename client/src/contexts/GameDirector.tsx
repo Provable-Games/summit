@@ -579,14 +579,14 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         (event: any) => event.componentName === "Summit"
       );
       if (summitEvent) {
-        setTokenBalances({
-          ...tokenBalances,
-          ATTACK: tokenBalances["ATTACK"] - summitEvent.attack_potions,
-          EXTRA_LIFE:
-            tokenBalances["EXTRA LIFE"] -
+        setTokenBalances((prev: Record<string, number>) => ({
+          ...prev,
+          ATTACK: (prev["ATTACK"] || 0) - summitEvent.attack_potions,
+          "EXTRA LIFE":
+            (prev["EXTRA LIFE"] || 0) -
             (captured ? summitEvent.extra_life_potions : 0),
-          REVIVE: tokenBalances["REVIVE"] - summitEvent.revival_potions,
-        });
+          REVIVE: (prev["REVIVE"] || 0) - summitEvent.revival_potions,
+        }));
 
         setAttackPotionsUsed((prev) => prev + summitEvent.attack_potions);
         setRevivePotionsUsed((prev) => prev + summitEvent.revival_potions);
@@ -607,19 +607,19 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       setAttackInProgress(false);
       return false;
     } else if (action.type === "add_extra_life") {
-      setTokenBalances({
-        ...tokenBalances,
-        EXTRA_LIFE: tokenBalances["EXTRA LIFE"] - action.extraLifePotions,
-      });
+      setTokenBalances((prev: Record<string, number>) => ({
+        ...prev,
+        "EXTRA LIFE": (prev["EXTRA LIFE"] || 0) - action.extraLifePotions,
+      }));
       setApplyingPotions(false);
       setAppliedExtraLifePotions(0);
       setExtraLifePotionsUsed((prev) => prev + action.extraLifePotions);
       setSummit(prev => prev ? { ...prev, extra_lives: (prev.beast.extra_lives || 0) + action.extraLifePotions } : prev);
     } else if (action.type === "apply_poison") {
-      setTokenBalances({
-        ...tokenBalances,
-        POISON: tokenBalances["POISON"] - action.count,
-      });
+      setTokenBalances((prev: Record<string, number>) => ({
+        ...prev,
+        POISON: (prev["POISON"] || 0) - action.count,
+      }));
       setApplyingPotions(false);
       setPoisonPotionsUsed((prev) => prev + action.count);
       setPoisonEvent({
@@ -629,11 +629,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         player: account?.address,
       })
     } else if (action.type === "upgrade_beast") {
-      setTokenBalances({
-        ...tokenBalances,
-        SKULL: tokenBalances["SKULL"] - action.killTokens,
-        CORPSE: tokenBalances["CORPSE"] - action.corpseTokens,
-      });
+      setTokenBalances((prev: Record<string, number>) => ({
+        ...prev,
+        SKULL: (prev["SKULL"] || 0) - action.killTokens,
+        CORPSE: (prev["CORPSE"] || 0) - action.corpseTokens,
+      }));
     }
 
     return true;

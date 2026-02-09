@@ -18,7 +18,7 @@ export interface ControllerContext {
   playerName: string | undefined;
   isPending: boolean;
   tokenBalances: Record<string, number>;
-  setTokenBalances: (tokenBalances: Record<string, number>) => void;
+  setTokenBalances: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   fetchTokenBalances: (delayMs: number) => void;
   fetchPaymentTokenBalances: () => void;
   fetchBeastCollection: () => void;

@@ -180,11 +180,13 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
         const result = await executeAction(swapCalls, () => { });
 
         if (result) {
-          // Optimistic balance update
-          const updatedBalances = { ...tokenBalances };
-          updatedBalances[selectedToken] = Math.max(0, (updatedBalances[selectedToken] || 0) - numericAmount);
-          updatedBalances['STRK'] = (updatedBalances['STRK'] || 0) + estimatedStrk;
-          setTokenBalances(updatedBalances);
+          // Optimistic balance update using functional update to avoid stale closure
+          setTokenBalances((prev: Record<string, number>) => {
+            const updated = { ...prev };
+            updated[selectedToken] = Math.max(0, (updated[selectedToken] || 0) - numericAmount);
+            updated['STRK'] = (updated['STRK'] || 0) + estimatedStrk;
+            return updated;
+          });
           close();
         }
       }

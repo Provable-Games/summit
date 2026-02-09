@@ -212,11 +212,11 @@ const ClaimRewardsButton = () => {
       }
 
       if (allSucceeded) {
-        // Update local token balances
-        setTokenBalances({
-          ...tokenBalances,
-          SKULL: (tokenBalances['SKULL'] || 0) + totalSkulls,
-        });
+        // Update local token balances using functional update to avoid stale closure
+        setTokenBalances((prev: Record<string, number>) => ({
+          ...prev,
+          SKULL: (prev['SKULL'] || 0) + totalSkulls,
+        }));
 
         // Optimistically mark skulls as claimed for these beasts
         setCollection(prevCollection =>
@@ -271,10 +271,11 @@ const ClaimRewardsButton = () => {
       }
 
       if (allSucceeded) {
-        setTokenBalances({
-          ...tokenBalances,
-          CORPSE: (tokenBalances['CORPSE'] || 0) + tokenAmount,
-        });
+        // Update local token balances using functional update to avoid stale closure
+        setTokenBalances((prev: Record<string, number>) => ({
+          ...prev,
+          CORPSE: (prev['CORPSE'] || 0) + tokenAmount,
+        }));
         setAdventurerCollection([]);
       }
       setCorpseClaimState(null);
@@ -321,11 +322,11 @@ const ClaimRewardsButton = () => {
       }
 
       if (allSucceeded) {
-        // Update local token balances
-        setTokenBalances({
-          ...tokenBalances,
-          SURVIVOR: (tokenBalances['SURVIVOR'] || 0) + totalTokens,
-        });
+        // Update local token balances using functional update to avoid stale closure
+        setTokenBalances((prev: Record<string, number>) => ({
+          ...prev,
+          SURVIVOR: (prev['SURVIVOR'] || 0) + totalTokens,
+        }));
 
         // Optimistically mark quest rewards as claimed for these beasts
         setCollection(prevCollection =>
@@ -382,11 +383,11 @@ const ClaimRewardsButton = () => {
       }
 
       if (allSucceeded) {
-        // Update local token balances
-        setTokenBalances({
-          ...tokenBalances,
-          SURVIVOR: (tokenBalances['SURVIVOR'] || 0) + totalTokens,
-        });
+        // Update local token balances using functional update to avoid stale closure
+        setTokenBalances((prev: Record<string, number>) => ({
+          ...prev,
+          SURVIVOR: (prev['SURVIVOR'] || 0) + totalTokens,
+        }));
 
         // Optimistically mark summit rewards as claimed for these beasts
         setCollection(prevCollection =>
