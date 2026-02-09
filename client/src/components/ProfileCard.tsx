@@ -25,7 +25,7 @@ const ProfileCard = () => {
   const { collection, loadingCollection, summitEnded } = useGameStore()
   const { address, connector } = useAccount()
   const { disconnect } = useDisconnect()
-  const { playerName, tokenBalances, openProfile } = useController()
+  const { playerName, tokenBalances, openProfile, gasSpent } = useController()
   const { tokenPrices } = useStatistics();
   const { connect, connectors } = useConnect();
 
@@ -145,17 +145,33 @@ const ProfileCard = () => {
             open={isLowGas && !lowGasTooltipDismissed}
             placement="left"
           >
-            <Box sx={[styles.infoSection, styles.leftSection]}>
+            <Box sx={[styles.infoSection, styles.leftSection, gasSpent && styles.gasSpentContainer]}>
               <Typography sx={styles.infoLabel}>STRK (gas)</Typography>
 
-              <Box display={'flex'} alignItems={'center'} gap={0.5}>
-                <img src={starkImg} alt="STRK" style={{ width: '16px', height: '16px' }} />
+              <Box display={'flex'} alignItems={'center'} gap={0.5} position={'relative'}>
+                <Box
+                  component="img"
+                  src={starkImg}
+                  alt="STRK"
+                  sx={[
+                    { width: '14px', height: '14px', pb: '4px' },
+                    gasSpent && styles.gasIconPulse
+                  ]}
+                />
                 {strkBalance !== undefined
-                  ? <Typography sx={[styles.infoValue, isLowGas && { color: '#ff9800' }]}>
+                  ? <Typography sx={[styles.infoValue, isLowGas && { color: '#ff9800' }, gasSpent && styles.gasSpentValue]}>
                     {strkBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   </Typography>
                   : <Skeleton variant="text" width={40} sx={{ bgcolor: 'grey.700' }} />
                 }
+                {/* Gas spent floating animation */}
+                {gasSpent && (
+                  <Box sx={styles.gasSpentBadge}>
+                    <Typography sx={styles.gasSpentText}>
+                      -{gasSpent.toFixed(3)}
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </Box>
           </Tooltip>
@@ -357,7 +373,7 @@ const styles = {
     fontWeight: 'bold',
   },
   infoValue: {
-    fontSize: '18px',
+    fontSize: '16px',
     fontWeight: 'bold',
     color: '#FFD700',
     mb: '2px',
@@ -668,5 +684,98 @@ const styles = {
     fontWeight: 'bold',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
     textTransform: 'uppercase',
+  },
+  gasSpentContainer: {
+    animation: 'gasGlow 0.6s ease-out',
+    '@keyframes gasGlow': {
+      '0%': {
+        boxShadow: '0 0 0 0 rgba(255, 107, 107, 0)',
+      },
+      '30%': {
+        boxShadow: '0 0 12px 4px rgba(255, 107, 107, 0.6)',
+      },
+      '100%': {
+        boxShadow: '0 0 0 0 rgba(255, 107, 107, 0)',
+      },
+    },
+  },
+  gasSpentValue: {
+    animation: 'gasPulse 0.5s ease-out',
+    '@keyframes gasPulse': {
+      '0%': {
+        transform: 'scale(1)',
+        color: '#FFD700',
+      },
+      '25%': {
+        transform: 'scale(1.15)',
+        color: '#ff6b6b',
+      },
+      '50%': {
+        transform: 'scale(0.95)',
+        color: '#ff6b6b',
+      },
+      '100%': {
+        transform: 'scale(1)',
+        color: '#FFD700',
+      },
+    },
+  },
+  gasSpentBadge: {
+    position: 'absolute',
+    top: '-8px',
+    right: '-35px',
+    background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)',
+    borderRadius: '12px',
+    padding: '2px 6px',
+    boxShadow: '0 2px 8px rgba(255, 107, 107, 0.5)',
+    animation: 'gasFlyUp 2s ease-out forwards',
+    zIndex: 10,
+    '@keyframes gasFlyUp': {
+      '0%': {
+        opacity: 1,
+        transform: 'translateY(0) scale(1)',
+      },
+      '20%': {
+        opacity: 1,
+        transform: 'translateY(-5px) scale(1.1)',
+      },
+      '80%': {
+        opacity: 0.8,
+        transform: 'translateY(-20px) scale(0.9)',
+      },
+      '100%': {
+        opacity: 0,
+        transform: 'translateY(-30px) scale(0.7)',
+      },
+    },
+  },
+  gasSpentText: {
+    fontSize: '10px',
+    fontWeight: 'bold',
+    color: '#fff',
+    whiteSpace: 'nowrap',
+    textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
+  },
+  gasIconPulse: {
+    animation: 'iconBurn 0.8s ease-out',
+    filter: 'drop-shadow(0 0 4px #ff6b6b)',
+    '@keyframes iconBurn': {
+      '0%': {
+        filter: 'drop-shadow(0 0 0px #ff6b6b)',
+        transform: 'scale(1)',
+      },
+      '30%': {
+        filter: 'drop-shadow(0 0 8px #ff6b6b)',
+        transform: 'scale(1.2) rotate(-10deg)',
+      },
+      '60%': {
+        filter: 'drop-shadow(0 0 4px #ff6b6b)',
+        transform: 'scale(1.1) rotate(5deg)',
+      },
+      '100%': {
+        filter: 'drop-shadow(0 0 0px #ff6b6b)',
+        transform: 'scale(1) rotate(0deg)',
+      },
+    },
   },
 }

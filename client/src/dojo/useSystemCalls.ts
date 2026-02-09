@@ -1,3 +1,4 @@
+import { useController } from "@/contexts/controller";
 import { useDynamicConnector } from "@/contexts/starknet";
 import { useGameStore } from "@/stores/gameStore";
 import { selection, Stats } from "@/types/game";
@@ -5,17 +6,17 @@ import { calculateRevivalRequired } from "@/utils/beasts";
 import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
-import { useSnackbar } from "notistack";
 import { CallData } from "starknet";
 
 export const useSystemCalls = () => {
   const { summit } = useGameStore()
-  const { enqueueSnackbar } = useSnackbar();
   const { account } = useAccount();
   const { currentNetworkConfig } = useDynamicConnector();
+  const { triggerGasSpent, tokenBalances, setTokenBalances } = useController();
 
   const VRF_PROVIDER_ADDRESS = "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f"
   const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS
+  const PAYMASTER = false;
 
   /**
    * Custom hook to handle system calls and state management in the Dojo application.
@@ -42,7 +43,24 @@ export const useSystemCalls = () => {
         return
       }
 
-      console.log('Receipt Timestamp', new Date().toISOString());
+      // Extract fee from receipt and trigger gas animation
+      if (receipt.actual_fee && !PAYMASTER) {
+        const feeInWei = BigInt(receipt.actual_fee.amount || receipt.actual_fee);
+        const feeAmount = Number(feeInWei) / 1e18;
+
+        if (feeAmount > 0) {
+          triggerGasSpent(feeAmount);
+          // Update STRK balance after a short delay to sync with animation
+          setTimeout(() => {
+            const currentStrk = tokenBalances["STRK"] || 0;
+            setTokenBalances({
+              ...tokenBalances,
+              STRK: Math.max(0, currentStrk - feeAmount),
+            });
+          }, 1400); // Delay to let the animation start before balance updates
+        }
+      }
+
       const translatedEvents = receipt.events
         .map((event: any) => translateGameEvent(event, account!.address))
         .flat()

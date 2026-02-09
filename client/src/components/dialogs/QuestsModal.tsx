@@ -19,7 +19,7 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import LockIcon from '@mui/icons-material/Lock';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import { Box, Dialog, IconButton, LinearProgress, Typography } from '@mui/material';
+import { Box, Dialog, IconButton, LinearProgress, Skeleton, Typography } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 
@@ -141,13 +141,17 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
   const { startGuide } = useQuestGuide();
   const { getQuestRewardsTotal } = useSummitApi();
   const [remainingRewards, setRemainingRewards] = useState(QUEST_REWARD_POOL_TOTAL);
+  const [isLoadingRewards, setIsLoadingRewards] = useState(false);
 
   useEffect(() => {
     if (!open) return;
+    setIsLoadingRewards(true);
     getQuestRewardsTotal().then((claimed) => {
       setRemainingRewards(Math.max(0, QUEST_REWARD_POOL_TOTAL - claimed));
     }).catch(() => {
       // Fall back to total pool on error
+    }).finally(() => {
+      setIsLoadingRewards(false);
     });
   }, [open]);
 
@@ -242,9 +246,18 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
                   <Typography sx={styles.rewardPoolLabel}>Remaining Quest Rewards</Typography>
                   <Box sx={styles.rewardPoolAmountRow}>
                     <img src={survivorTokenIcon} alt="token" style={{ width: 28, height: 28 }} />
-                    <Typography sx={styles.rewardPoolAmount}>
-                      {remainingRewards.toFixed(2)}
-                    </Typography>
+                    {isLoadingRewards ? (
+                      <Skeleton
+                        variant="text"
+                        width={100}
+                        height={36}
+                        sx={{ bgcolor: `${gameColors.yellow}20` }}
+                      />
+                    ) : (
+                      <Typography sx={styles.rewardPoolAmount}>
+                        {remainingRewards.toFixed(2)}
+                      </Typography>
+                    )}
                   </Box>
                 </Box>
                 <Box sx={styles.rewardPoolWarningBadge}>

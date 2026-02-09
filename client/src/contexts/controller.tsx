@@ -20,7 +20,6 @@ export interface ControllerContext {
   tokenBalances: Record<string, number>;
   setTokenBalances: (tokenBalances: Record<string, number>) => void;
   fetchTokenBalances: (delayMs: number) => void;
-  fetchStrkBalance: (delayMs?: number) => void;
   fetchPaymentTokenBalances: () => void;
   fetchBeastCollection: () => void;
   filterValidAdventurers: () => void;
@@ -29,6 +28,8 @@ export interface ControllerContext {
   logout: () => void;
   showTermsOfService: boolean;
   acceptTermsOfService: () => void;
+  gasSpent: number | null;
+  triggerGasSpent: (amount: number) => void;
 }
 
 // Create a context
@@ -48,6 +49,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { getValidAdventurers } = useGameTokens();
   const [userName, setUserName] = useState<string>();
   const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({});
+  const [gasSpent, setGasSpent] = useState<number | null>(null);
 
   const [showTermsOfService, setShowTermsOfService] = useState(false);
   const { identifyAddress } = useAnalytics();
@@ -129,17 +131,15 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     setTokenBalances(prev => ({ ...prev, ...balances }));
   }
 
-  async function fetchStrkBalance(delayMs: number = 0) {
-    await delay(delayMs);
-    const strkToken = currentNetworkConfig.tokens.erc20.find((t: any) => t.name === "STRK");
-    if (strkToken) {
-      let balances = await getTokenBalances([strkToken]);
-      setTokenBalances(prev => ({ ...prev, ...balances }));
-    }
-  }
-
   const acceptTermsOfService = () => {
     setShowTermsOfService(false);
+  };
+
+  const triggerGasSpent = async (amount: number) => {
+    await delay(1000);
+    setGasSpent(amount);
+    // Auto-clear after animation duration
+    setTimeout(() => setGasSpent(null), 2500);
   };
 
   return (
@@ -151,11 +151,12 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         tokenBalances,
         fetchPaymentTokenBalances,
         fetchTokenBalances,
-        fetchStrkBalance,
         fetchBeastCollection,
         filterValidAdventurers,
         showTermsOfService,
         acceptTermsOfService,
+        gasSpent,
+        triggerGasSpent,
 
         openProfile: () => (connector as any)?.controller?.openProfile(),
         login: () =>

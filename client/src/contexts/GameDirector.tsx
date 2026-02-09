@@ -85,7 +85,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     applyStatPoints,
     applyPoison,
   } = useSystemCalls();
-  const { tokenBalances, setTokenBalances, fetchStrkBalance } = useController();
+  const { tokenBalances, setTokenBalances } = useController();
   const { play } = useSound();
 
   const [nextSummit, setNextSummit] = useState<Summit | null>(null);
@@ -635,8 +635,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         CORPSE: tokenBalances["CORPSE"] - action.corpseTokens,
       });
     }
-
-    fetchStrkBalance(2000);
 
     return true;
   };
