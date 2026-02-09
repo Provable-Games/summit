@@ -14,7 +14,7 @@ const survivorTokenIcon = '/images/survivor_token.png';
 
 const SKULL_LIMIT = 250;
 const CORPSE_LIMIT = 250;
-const QUEST_REWARD_LIMIT = 2450;
+const QUEST_REWARD_LIMIT = 900;
 const SUMMIT_REWARD_LIMIT = 295;
 
 interface ClaimState {
