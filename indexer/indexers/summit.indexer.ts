@@ -465,19 +465,6 @@ function createAggregatedBattleEntry(events: SummitLogRow[]): SummitLogRow {
   };
 }
 
-/** Max rows per INSERT to stay well under PostgreSQL's ~65K parameter limit */
-const BULK_INSERT_CHUNK_SIZE = 500;
-
-/** Split rows into chunks and insert each chunk sequentially to avoid payload overflow */
-async function chunkedInsert<T>(
-  rows: T[],
-  insertFn: (chunk: T[]) => Promise<unknown>,
-): Promise<void> {
-  for (let i = 0; i < rows.length; i += BULK_INSERT_CHUNK_SIZE) {
-    await insertFn(rows.slice(i, i + BULK_INSERT_CHUNK_SIZE));
-  }
-}
-
 /**
  * Execute bulk inserts for all collected batches
  * Uses true batch upserts (single query per table) instead of individual queries
@@ -486,188 +473,164 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
   // Execute all inserts in parallel
   const insertPromises: Promise<unknown>[] = [];
 
-  // beast_stats - batch upsert (dedupe first, then chunked insert)
+  // beast_stats - batch upsert (dedupe first, then single query)
   if (batches.beast_stats.length > 0) {
     const deduped = new Map<number, BeastStatsRow>();
     for (const row of batches.beast_stats) {
       deduped.set(row.token_id, row);
     }
     insertPromises.push(
-      chunkedInsert([...deduped.values()], (chunk) =>
-        db.insert(schema.beast_stats).values(chunk).onConflictDoUpdate({
-          target: schema.beast_stats.token_id,
-          set: {
-            current_health: sql`excluded.current_health`,
-            bonus_health: sql`excluded.bonus_health`,
-            bonus_xp: sql`excluded.bonus_xp`,
-            attack_streak: sql`excluded.attack_streak`,
-            last_death_timestamp: sql`excluded.last_death_timestamp`,
-            revival_count: sql`excluded.revival_count`,
-            extra_lives: sql`excluded.extra_lives`,
-            captured_summit: sql`excluded.captured_summit`,
-            used_revival_potion: sql`excluded.used_revival_potion`,
-            used_attack_potion: sql`excluded.used_attack_potion`,
-            max_attack_streak: sql`excluded.max_attack_streak`,
-            summit_held_seconds: sql`excluded.summit_held_seconds`,
-            spirit: sql`excluded.spirit`,
-            luck: sql`excluded.luck`,
-            specials: sql`excluded.specials`,
-            wisdom: sql`excluded.wisdom`,
-            diplomacy: sql`excluded.diplomacy`,
-            rewards_earned: sql`excluded.rewards_earned`,
-            rewards_claimed: sql`excluded.rewards_claimed`,
-            indexed_at: sql`excluded.indexed_at`,
-            updated_at: sql`excluded.created_at`,
-            block_number: sql`excluded.block_number`,
-            transaction_hash: sql`excluded.transaction_hash`,
-          },
-        })
-      )
+      db.insert(schema.beast_stats).values([...deduped.values()]).onConflictDoUpdate({
+        target: schema.beast_stats.token_id,
+        set: {
+          current_health: sql`excluded.current_health`,
+          bonus_health: sql`excluded.bonus_health`,
+          bonus_xp: sql`excluded.bonus_xp`,
+          attack_streak: sql`excluded.attack_streak`,
+          last_death_timestamp: sql`excluded.last_death_timestamp`,
+          revival_count: sql`excluded.revival_count`,
+          extra_lives: sql`excluded.extra_lives`,
+          captured_summit: sql`excluded.captured_summit`,
+          used_revival_potion: sql`excluded.used_revival_potion`,
+          used_attack_potion: sql`excluded.used_attack_potion`,
+          max_attack_streak: sql`excluded.max_attack_streak`,
+          summit_held_seconds: sql`excluded.summit_held_seconds`,
+          spirit: sql`excluded.spirit`,
+          luck: sql`excluded.luck`,
+          specials: sql`excluded.specials`,
+          wisdom: sql`excluded.wisdom`,
+          diplomacy: sql`excluded.diplomacy`,
+          rewards_earned: sql`excluded.rewards_earned`,
+          rewards_claimed: sql`excluded.rewards_claimed`,
+          indexed_at: sql`excluded.indexed_at`,
+          updated_at: sql`excluded.created_at`,
+          block_number: sql`excluded.block_number`,
+          transaction_hash: sql`excluded.transaction_hash`,
+        },
+      })
     );
   }
 
-  // battles - chunked insert with onConflictDoNothing
+  // battles - bulk insert with onConflictDoNothing
   if (batches.battles.length > 0) {
     insertPromises.push(
-      chunkedInsert(batches.battles, (chunk) =>
-        db.insert(schema.battles).values(chunk).onConflictDoNothing()
-      )
+      db.insert(schema.battles).values(batches.battles).onConflictDoNothing()
     );
   }
 
-  // rewards_earned - chunked insert with onConflictDoNothing
+  // rewards_earned - bulk insert with onConflictDoNothing
   if (batches.rewards_earned.length > 0) {
     insertPromises.push(
-      chunkedInsert(batches.rewards_earned, (chunk) =>
-        db.insert(schema.rewards_earned).values(chunk).onConflictDoNothing()
-      )
+      db.insert(schema.rewards_earned).values(batches.rewards_earned).onConflictDoNothing()
     );
   }
 
-  // rewards_claimed - chunked insert with onConflictDoNothing
+  // rewards_claimed - bulk insert with onConflictDoNothing
   if (batches.rewards_claimed.length > 0) {
     insertPromises.push(
-      chunkedInsert(batches.rewards_claimed, (chunk) =>
-        db.insert(schema.rewards_claimed).values(chunk).onConflictDoNothing()
-      )
+      db.insert(schema.rewards_claimed).values(batches.rewards_claimed).onConflictDoNothing()
     );
   }
 
-  // poison_events - chunked insert with onConflictDoNothing
+  // poison_events - bulk insert with onConflictDoNothing
   if (batches.poison_events.length > 0) {
     insertPromises.push(
-      chunkedInsert(batches.poison_events, (chunk) =>
-        db.insert(schema.poison_events).values(chunk).onConflictDoNothing()
-      )
+      db.insert(schema.poison_events).values(batches.poison_events).onConflictDoNothing()
     );
   }
 
-  // corpse_events - chunked insert with onConflictDoNothing
+  // corpse_events - bulk insert with onConflictDoNothing
   if (batches.corpse_events.length > 0) {
     insertPromises.push(
-      chunkedInsert(batches.corpse_events, (chunk) =>
-        db.insert(schema.corpse_events).values(chunk).onConflictDoNothing()
-      )
+      db.insert(schema.corpse_events).values(batches.corpse_events).onConflictDoNothing()
     );
   }
 
-  // skulls_claimed - chunked upsert
+  // skulls_claimed - batch upsert
   if (batches.skulls_claimed.length > 0) {
     const deduped = new Map<number, SkullsClaimedRow>();
     for (const row of batches.skulls_claimed) {
       deduped.set(row.beast_token_id, row);
     }
     insertPromises.push(
-      chunkedInsert([...deduped.values()], (chunk) =>
-        db.insert(schema.skulls_claimed).values(chunk).onConflictDoUpdate({
-          target: schema.skulls_claimed.beast_token_id,
-          set: {
-            skulls: sql`excluded.skulls`,
-            updated_at: sql`excluded.updated_at`,
-          },
-        })
-      )
+      db.insert(schema.skulls_claimed).values([...deduped.values()]).onConflictDoUpdate({
+        target: schema.skulls_claimed.beast_token_id,
+        set: {
+          skulls: sql`excluded.skulls`,
+          updated_at: sql`excluded.updated_at`,
+        },
+      })
     );
   }
 
-  // quest_rewards_claimed - chunked upsert
+  // quest_rewards_claimed - batch upsert
   if (batches.quest_rewards_claimed.length > 0) {
     const deduped = new Map<number, QuestRewardsClaimedRow>();
     for (const row of batches.quest_rewards_claimed) {
       deduped.set(row.beast_token_id, row);
     }
     insertPromises.push(
-      chunkedInsert([...deduped.values()], (chunk) =>
-        db.insert(schema.quest_rewards_claimed).values(chunk).onConflictDoUpdate({
-          target: schema.quest_rewards_claimed.beast_token_id,
-          set: {
-            amount: sql`excluded.amount`,
-            updated_at: sql`excluded.updated_at`,
-          },
-        })
-      )
+      db.insert(schema.quest_rewards_claimed).values([...deduped.values()]).onConflictDoUpdate({
+        target: schema.quest_rewards_claimed.beast_token_id,
+        set: {
+          amount: sql`excluded.amount`,
+          updated_at: sql`excluded.updated_at`,
+        },
+      })
     );
   }
 
-  // summit_log - aggregate battles by tx, then chunked insert
+  // summit_log - aggregate battles by tx, then bulk insert
   if (batches.summit_log.length > 0) {
     const aggregatedLogs = aggregateBattleEvents(batches.summit_log);
     insertPromises.push(
-      chunkedInsert(aggregatedLogs, (chunk) =>
-        db.insert(schema.summit_log).values(chunk).onConflictDoNothing()
-      )
+      db.insert(schema.summit_log).values(aggregatedLogs).onConflictDoNothing()
     );
   }
 
-  // beast_owners - chunked upsert
+  // beast_owners - batch upsert
   if (batches.beast_owners.length > 0) {
     const deduped = new Map<number, BeastOwnerRow>();
     for (const row of batches.beast_owners) {
       deduped.set(row.token_id, row);
     }
     insertPromises.push(
-      chunkedInsert([...deduped.values()], (chunk) =>
-        db.insert(schema.beast_owners).values(chunk).onConflictDoUpdate({
-          target: schema.beast_owners.token_id,
-          set: {
-            owner: sql`excluded.owner`,
-            updated_at: sql`excluded.updated_at`,
-          },
-        })
-      )
+      db.insert(schema.beast_owners).values([...deduped.values()]).onConflictDoUpdate({
+        target: schema.beast_owners.token_id,
+        set: {
+          owner: sql`excluded.owner`,
+          updated_at: sql`excluded.updated_at`,
+        },
+      })
     );
   }
 
-  // beasts - chunked insert with onConflictDoNothing
+  // beasts - bulk insert with onConflictDoNothing
   if (batches.beasts.length > 0) {
     insertPromises.push(
-      chunkedInsert(batches.beasts, (chunk) =>
-        db.insert(schema.beasts).values(chunk).onConflictDoNothing()
-      )
+      db.insert(schema.beasts).values(batches.beasts).onConflictDoNothing()
     );
   }
 
-  // beast_data - chunked upsert
+  // beast_data - batch upsert
   if (batches.beast_data.length > 0) {
     const deduped = new Map<string, BeastDataRow>();
     for (const row of batches.beast_data) {
       deduped.set(row.entity_hash, row);
     }
     insertPromises.push(
-      chunkedInsert([...deduped.values()], (chunk) =>
-        db.insert(schema.beast_data).values(chunk).onConflictDoUpdate({
-          target: schema.beast_data.entity_hash,
-          set: {
-            // Use GREATEST to preserve highest value - kills can only increase, prevents CollectableEntity (0n) from overwriting EntityStats
-            adventurers_killed: sql`GREATEST(beast_data.adventurers_killed, excluded.adventurers_killed)`,
-            last_death_timestamp: sql`GREATEST(beast_data.last_death_timestamp, excluded.last_death_timestamp)`,
-            last_killed_by: sql`COALESCE(NULLIF(excluded.last_killed_by, 0), beast_data.last_killed_by)`,
-            // Preserve existing token_id if set, only update if new value is provided
-            token_id: sql`COALESCE(beast_data.token_id, excluded.token_id)`,
-            updated_at: sql`excluded.updated_at`,
-          },
-        })
-      )
+      db.insert(schema.beast_data).values([...deduped.values()]).onConflictDoUpdate({
+        target: schema.beast_data.entity_hash,
+        set: {
+          // Use GREATEST to preserve highest value - kills can only increase, prevents CollectableEntity (0n) from overwriting EntityStats
+          adventurers_killed: sql`GREATEST(beast_data.adventurers_killed, excluded.adventurers_killed)`,
+          last_death_timestamp: sql`GREATEST(beast_data.last_death_timestamp, excluded.last_death_timestamp)`,
+          last_killed_by: sql`COALESCE(NULLIF(excluded.last_killed_by, 0), beast_data.last_killed_by)`,
+          // Preserve existing token_id if set, only update if new value is provided
+          token_id: sql`COALESCE(beast_data.token_id, excluded.token_id)`,
+          updated_at: sql`excluded.updated_at`,
+        },
+      })
     );
   }
 
@@ -1872,7 +1835,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   player: quest_player,
                   beast_count: rewardsByBeast.size,
                   total_amount: Array.from(rewardsByBeast.values()).reduce((sum, amt) => sum + amt, 0),
-                  beast_rewards: Array.from(rewardsByBeast.entries()).map(([id, amt]) => ({ beast_token_id: id, amount: amt })),
                 },
                 player: quest_player,
                 token_id: null,
