@@ -17,6 +17,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RemoveIcon from '@mui/icons-material/Remove';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import SavingsIcon from '@mui/icons-material/Savings';
 import SellIcon from '@mui/icons-material/Sell';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
@@ -206,6 +207,16 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const selectedReceiveTokenData = userTokens.find(
     (t: any) => t.symbol === selectedReceiveToken
   );
+
+  // Get icon for a token symbol (uses POTIONS images when available)
+  const getTokenIcon = useCallback((symbol: string) => {
+    const potion = POTIONS.find(p => p.id === symbol);
+    if (potion) {
+      return <img src={potion.image} alt={symbol} style={{ width: '20px', height: '20px' }} />;
+    }
+    // Fallback icon for tokens without images (like TEST USD)
+    return <AttachMoneyIcon sx={{ fontSize: '20px', color: gameColors.yellow }} />;
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -1680,6 +1691,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                     </Box>
                     <Box sx={styles.tokenRow}>
                       <Box sx={styles.tokenLeft}>
+                        {selectedTokenData && getTokenIcon(selectedTokenData.symbol)}
                         <Typography sx={styles.tokenName}>
                           {selectedTokenData ? selectedTokenData.symbol : 'Select token'}
                         </Typography>
@@ -1747,6 +1759,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       >
                         <Box sx={styles.tokenRow}>
                           <Box sx={styles.tokenLeft}>
+                            {getTokenIcon(token.symbol)}
                             <Typography sx={styles.tokenName}>
                               {token.symbol}
                             </Typography>
@@ -1815,6 +1828,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                     </Box>
                     <Box sx={styles.tokenRow}>
                       <Box sx={styles.tokenLeft}>
+                        {selectedReceiveToken && getTokenIcon(selectedReceiveToken)}
                         <Typography sx={styles.tokenName}>
                           {selectedReceiveToken || 'Select token'}
                         </Typography>
@@ -1877,6 +1891,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       >
                         <Box sx={styles.tokenRow}>
                           <Box sx={styles.tokenLeft}>
+                            {getTokenIcon(token.symbol)}
                             <Typography sx={styles.tokenName}>
                               {token.symbol}
                             </Typography>

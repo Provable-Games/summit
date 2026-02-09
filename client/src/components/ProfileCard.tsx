@@ -9,7 +9,7 @@ import { useController } from '@/contexts/controller';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { ellipseAddress } from '@/utils/utils';
-import CloseIcon from '@mui/icons-material/Close';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import BeastDexModal from './dialogs/BeastDexModal';
 import MarketplaceModal from './dialogs/MarketplaceModal';
+import TopUpStrkModal from './dialogs/TopUpStrkModal';
 import { useStatistics } from '@/contexts/Statistics';
 
 const ProfileCard = () => {
@@ -33,7 +34,7 @@ const ProfileCard = () => {
 
   const [beastDexOpen, setBeastDexOpen] = useState(false)
   const [potionShopOpen, setPotionShopOpen] = useState(false)
-  const [lowGasTooltipDismissed, setLowGasTooltipDismissed] = useState(false)
+  const [topUpStrkOpen, setTopUpStrkOpen] = useState(false)
   const isCartridge = connector?.id === 'controller'
   const killTokens = tokenBalances["SKULL"] || 0
   const corpseTokens = tokenBalances["CORPSE"] || 0
@@ -123,26 +124,22 @@ const ProfileCard = () => {
       {!loadingCollection && <>
         <Box display={'flex'} width={'100%'}>
           <Tooltip
-            title={isLowGas
-              ? <Box sx={styles.lowGasTooltip}>
-                <Box sx={styles.lowGasTooltipHeader}>
-                  <WarningAmberIcon sx={{ fontSize: '16px', color: '#ff9800' }} />
-                  <Typography sx={styles.lowGasTooltipTitle}>Low on Gas!</Typography>
-                  <IconButton
-                    size="small"
-                    onClick={() => setLowGasTooltipDismissed(true)}
-                    sx={styles.lowGasTooltipClose}
-                  >
-                    <CloseIcon sx={{ fontSize: '14px', mt: -2, mr: -1 }} />
-                  </IconButton>
-                </Box>
-                <Typography sx={styles.lowGasTooltipText}>
-                  Top up STRK to continue playing.
+            title={
+              <Box sx={styles.strkTooltip}>
+                {isLowGas && (
+                  <Box sx={styles.lowGasTooltipHeader}>
+                    <WarningAmberIcon sx={{ fontSize: '16px', color: '#ff9800' }} />
+                    <Typography sx={styles.lowGasTooltipTitle}>Low on Gas!</Typography>
+                  </Box>
+                )}
+                <Typography
+                  sx={styles.topUpLink}
+                  onClick={() => setTopUpStrkOpen(true)}
+                >
+                  Top up STRK
                 </Typography>
               </Box>
-              : undefined
             }
-            open={isLowGas && !lowGasTooltipDismissed}
             placement="left"
           >
             <Box sx={[styles.infoSection, styles.leftSection, gasSpent && styles.gasSpentContainer]}>
@@ -159,9 +156,18 @@ const ProfileCard = () => {
                   ]}
                 />
                 {strkBalance !== undefined
-                  ? <Typography sx={[styles.infoValue, isLowGas && { color: '#ff9800' }, gasSpent && styles.gasSpentValue]}>
-                    {strkBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </Typography>
+                  ? <>
+                    <Typography sx={[styles.infoValue, isLowGas && { color: '#ff9800' }, gasSpent && styles.gasSpentValue]}>
+                      {strkBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </Typography>
+                    {/* <IconButton
+                      size="small"
+                      onClick={(e) => { e.stopPropagation(); setTopUpStrkOpen(true); }}
+                      sx={styles.topUpIcon}
+                    >
+                      <AddCircleOutlineIcon sx={{ fontSize: '14px' }} />
+                    </IconButton> */}
+                  </>
                   : <Skeleton variant="text" width={40} sx={{ bgcolor: 'grey.700' }} />
                 }
                 {/* Gas spent floating animation */}
@@ -215,6 +221,7 @@ const ProfileCard = () => {
         </>}
 
         {beastDexOpen && <BeastDexModal open={beastDexOpen} close={() => setBeastDexOpen(false)} />}
+        {topUpStrkOpen && <TopUpStrkModal open={topUpStrkOpen} close={() => setTopUpStrkOpen(false)} />}
       </>}
     </Box>
   )
@@ -347,6 +354,30 @@ const styles = {
     '&::before': {
       border: `1px solid #ff9800`,
       background: gameColors.mediumGreen,
+    },
+  },
+  strkTooltip: {
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
+    borderRadius: '6px',
+    padding: '8px 12px',
+    boxShadow: `0 4px 16px rgba(0, 0, 0, 0.4)`,
+  },
+  topUpLink: {
+    fontSize: '12px',
+    color: gameColors.brightGreen,
+    cursor: 'pointer',
+    fontWeight: 'bold',
+    '&:hover': {
+      textDecoration: 'underline',
+    },
+  },
+  topUpIcon: {
+    padding: '2px',
+    color: gameColors.brightGreen,
+    opacity: 0.7,
+    '&:hover': {
+      opacity: 1,
+      backgroundColor: 'rgba(255, 255, 255, 0.1)',
     },
   },
   infoSection: {
