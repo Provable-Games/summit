@@ -51,8 +51,71 @@ jobs:
             echo "has-reviews=true" >> $GITHUB_OUTPUT
           fi
 
-  review:
+  gate:
     needs: changes
+    if: needs.changes.outputs.has-reviews == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      checks: read
+    steps:
+      - name: Wait for build and lint checks
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA="${{ github.event.pull_request.head.sha }}"
+          REQUIRED_CHECKS=("scarb-fmt" "scarb-test" "client-tests" "indexer-tests")
+          MAX_WAIT=900  # 15 minutes
+          POLL=30
+          ELAPSED=0
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            ALL_DONE=true
+            ANY_FAILED=false
+
+            for CHECK in "${REQUIRED_CHECKS[@]}"; do
+              STATUS=$(gh api "repos/${{ github.repository }}/commits/${SHA}/check-runs" \
+                --jq ".check_runs[] | select(.name == \"${CHECK}\") | .status + \":\" + (.conclusion // \"\")" \
+                2>/dev/null | head -1)
+
+              if [ -z "$STATUS" ]; then
+                # Check hasn't started yet — may be skipped by path filter
+                continue
+              fi
+
+              RUN_STATUS="${STATUS%%:*}"
+              CONCLUSION="${STATUS##*:}"
+
+              if [ "$RUN_STATUS" != "completed" ]; then
+                ALL_DONE=false
+                echo "⏳ ${CHECK}: ${RUN_STATUS}"
+              elif [ "$CONCLUSION" != "success" ] && [ "$CONCLUSION" != "skipped" ]; then
+                echo "❌ ${CHECK}: ${CONCLUSION}"
+                ANY_FAILED=true
+              else
+                echo "✅ ${CHECK}: ${CONCLUSION}"
+              fi
+            done
+
+            if $ANY_FAILED; then
+              echo "::error::One or more build/lint checks failed. Skipping review."
+              exit 1
+            fi
+
+            if $ALL_DONE; then
+              echo "All build/lint checks passed."
+              exit 0
+            fi
+
+            echo "Waiting ${POLL}s for checks to complete... (${ELAPSED}/${MAX_WAIT}s)"
+            sleep $POLL
+            ELAPSED=$((ELAPSED + POLL))
+          done
+
+          echo "::error::Timed out waiting for build/lint checks."
+          exit 1
+
+  review:
+    needs: [changes, gate]
     if: needs.changes.outputs.has-reviews == 'true'
     runs-on: ubuntu-latest
     permissions:

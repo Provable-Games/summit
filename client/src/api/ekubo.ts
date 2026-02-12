@@ -173,7 +173,7 @@ export const generateSwapCalls = (
     return [];
   }
 
-  let { tokenAddress, minimumAmount, quote } = tokenQuote;
+  const { tokenAddress, minimumAmount, quote } = tokenQuote;
 
   let totalQuoteSum = 0n;
   const total = BigInt(tokenQuote.quote.total);
@@ -205,7 +205,7 @@ export const generateSwapCalls = (
     return [transferCall, clearCall];
   }
 
-  let { splits } = quote;
+  const { splits } = quote;
 
   let minimumClear: string;
   if (total < 0n) {

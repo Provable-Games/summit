@@ -72,7 +72,7 @@ Focus on these 8 areas:
 
 8. VALIDATION BAR FOR UI CHANGES
 
-- Minimum bar for relevant changes: `cd ui && npm run lint` and `cd ui && npm run build`.
+- Build and lint checks are handled by dedicated CI workflows — do NOT run them yourself.
 - Wallet/network/query changes require manual smoke checks on core routes (`/`, `/tournament/:id`, `/create-tournament`, `/play`).
 - Visual changes should include screenshots/GIFs and responsive behavior checks.
 - Bug fixes should include a reproducible regression scenario (steps, expected, actual, fix verification).

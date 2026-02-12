@@ -33,7 +33,7 @@ const ProfileCard = () => {
   const { tokenPrices } = useStatistics();
   const { connect, connectors } = useConnect();
 
-  let cartridgeConnector = connectors.find(conn => conn.id === "controller")
+  const cartridgeConnector = connectors.find(conn => conn.id === "controller")
 
   const { muted, setMuted, volume, setVolume } = useSound()
 

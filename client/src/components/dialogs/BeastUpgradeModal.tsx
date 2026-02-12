@@ -113,7 +113,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
         diplomacy: diplomacySelected,
       };
 
-      let result = await executeGameAction({
+      const result = await executeGameAction({
         type: 'upgrade_beast',
         beastId: currentBeast.token_id,
         stats: newStats,

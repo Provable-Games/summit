@@ -82,8 +82,8 @@ export const useSystemCalls = () => {
    */
   const executeAction = async (calls: any[], forceResetAction: () => void) => {
     try {
-      let tx = await account!.execute(calls);
-      let receipt: any = await waitForTransaction(tx.transaction_hash, 0);
+      const tx = await account!.execute(calls);
+      const receipt: any = await waitForTransaction(tx.transaction_hash, 0);
 
       if (receipt.execution_status === "REVERTED") {
         console.log('action failed reverted', receipt);
@@ -152,7 +152,7 @@ export const useSystemCalls = () => {
    * @param tillBeast Whether to explore until encountering a beast
    */
   const feed = (beastId: number, amount: number, corpseRequired: number) => {
-    let txs: any[] = [];
+    const txs: any[] = [];
 
     // if (corpseRequired > 0) {
     //   let corpseTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE")?.address;
@@ -175,9 +175,9 @@ export const useSystemCalls = () => {
    * @param vrf Whether to use VRF
    */
   const attack = (beasts: selection, safeAttack: boolean, vrf: boolean, extraLifePotions: number) => {
-    let txs: any[] = [];
+    const txs: any[] = [];
 
-    let revivalPotions = calculateRevivalRequired(beasts);
+    const revivalPotions = calculateRevivalRequired(beasts);
 
     // if (revivalPotions > 0) {
     //   let reviveAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "REVIVE")?.address;
@@ -216,7 +216,7 @@ export const useSystemCalls = () => {
   };
 
   const addExtraLife = (beastId: number, extraLifePotions: number) => {
-    let txs: any[] = [];
+    const txs: any[] = [];
 
     // if (extraLifePotions > 0) {
     //   let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
@@ -233,7 +233,7 @@ export const useSystemCalls = () => {
   };
 
   const applyStatPoints = (beastId: number, stats: Stats, skullRequired: number) => {
-    let txs: any[] = [];
+    const txs: any[] = [];
 
     // if (skullRequired > 0) {
     //   let skullTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL")?.address;
@@ -290,7 +290,7 @@ export const useSystemCalls = () => {
   };
 
   const applyPoison = (beastId: number, count: number) => {
-    let txs: any[] = [];
+    const txs: any[] = [];
 
     // if (count > 0) {
     //   let poisonAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "POISON")?.address;

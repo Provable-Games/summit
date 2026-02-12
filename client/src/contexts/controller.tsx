@@ -122,12 +122,12 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
   async function fetchTokenBalances(delayMs: number = 0) {
     await delay(delayMs);
-    let balances = await getTokenBalances(currentNetworkConfig.tokens.erc20);
+    const balances = await getTokenBalances(currentNetworkConfig.tokens.erc20);
     setTokenBalances(prev => ({ ...prev, ...balances }));
   }
 
   async function fetchPaymentTokenBalances() {
-    let balances = await getTokenBalances(currentNetworkConfig.paymentTokens);
+    const balances = await getTokenBalances(currentNetworkConfig.paymentTokens);
     setTokenBalances(prev => ({ ...prev, ...balances }));
   }
 

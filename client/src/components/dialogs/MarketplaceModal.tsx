@@ -654,7 +654,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       }
 
       if (calls.length > 0) {
-        let result = await executeAction(calls, () => { });
+        const result = await executeAction(calls, () => { });
 
         if (result) {
           // Optimistically update token balances using functional update to avoid stale closure

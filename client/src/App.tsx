@@ -1,4 +1,3 @@
-// MUI theme and styling
 import { StyledEngineProvider, ThemeProvider } from '@mui/material/styles';
 import { AnimatePresence } from "framer-motion";
 import { BrowserRouter } from "react-router-dom";

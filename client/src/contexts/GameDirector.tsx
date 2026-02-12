@@ -388,7 +388,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     async function processNextSummit() {
-      let newSummit = { ...nextSummit };
+      const newSummit = { ...nextSummit };
       const { currentHealth, extraLives } = applyPoisonDamage(newSummit);
       newSummit.beast.current_health = currentHealth;
       newSummit.beast.extra_lives = extraLives;
@@ -466,12 +466,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     setCollection((prevCollection) =>
       prevCollection.map((beast: Beast) => {
-        let beastLiveStat = beastLiveStats.find(
+        const beastLiveStat = beastLiveStats.find(
           (liveStat: any) => liveStat.token_id === beast.token_id
         );
 
         if (beastLiveStat) {
-          let newBeast = { ...beast, ...beastLiveStat };
+          const newBeast = { ...beast, ...beastLiveStat };
           newBeast.current_health = getBeastCurrentHealth(newBeast);
           newBeast.revival_time = getBeastRevivalTime(newBeast);
           newBeast.current_level = getBeastCurrentLevel(
@@ -488,7 +488,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   };
 
   const executeGameAction = async (action: GameAction) => {
-    let txs: any[] = [];
+    const txs: any[] = [];
 
     if (action.pauseUpdates) {
       setPauseUpdates(true);
@@ -561,7 +561,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     updateLiveStats(
       events.filter((event: any) => event.componentName === "LiveBeastStatsEvent")
     );
-    let captured = events
+    const captured = events
       .filter((event: any) => event.componentName === "BattleEvent")
       .find(
         (event: BattleEvent) =>
@@ -570,7 +570,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       );
 
     if (action.type === "attack" || action.type === "attack_until_capture") {
-      let summitEvent = events.find(
+      const summitEvent = events.find(
         (event: any) => event.componentName === "Summit"
       );
       if (summitEvent) {

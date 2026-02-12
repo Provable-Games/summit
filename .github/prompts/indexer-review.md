@@ -53,7 +53,7 @@ Focus on these 7 areas:
 
 7. TESTING AND VERIFICATION
 
-- Minimum bar: `npm run build` passes for indexer changes.
+- Build and lint checks are handled by dedicated CI workflows — do NOT run them yourself.
 - Decoder/filter/schema changes should include reproducible validation evidence (sample event payloads, expected rows, or replay notes).
 - Migration changes should include generation/apply verification and rollback/reindex considerations.
 - Bug fixes must include a regression test or deterministic reproduction steps.
