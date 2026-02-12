@@ -170,6 +170,10 @@ jobs:
           Where SEVERITY is one of: CRITICAL, HIGH, MEDIUM, LOW, INFO
 
           End with a summary: counts of findings by severity.
+
+          IMPORTANT: Always produce output, even when no issues are found.
+          If there are no actionable findings, respond with:
+            "No issues found." followed by "Summary: 0 CRITICAL, 0 HIGH, 0 MEDIUM, 0 LOW, 0 INFO"
           EOF
           } > /tmp/prompt.txt
 
@@ -179,9 +183,53 @@ jobs:
           echo "${DELIMITER}" >> $GITHUB_OUTPUT
 
       - name: Run Claude review
+        id: claude-review
         uses: anthropics/claude-code-action@beta
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           direct_prompt: ${{ steps.build-prompt.outputs.prompt }}
           use_sticky_comment: true
           allowed_tools: "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
+
+      - name: Check for blocking findings
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sleep 5  # allow comment to propagate
+
+          # Fetch the review comment posted by the action
+          BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+            --paginate --jq '[.[] | select(.user.type == "Bot")] | last | .body // ""')
+
+          if [ -z "$BODY" ]; then
+            echo "::warning::Could not find review comment — treating as pass"
+            exit 0
+          fi
+
+          # [CRITICAL] and [HIGH] with brackets only appear in actual findings,
+          # not in summary lines like "0 CRITICAL, 0 HIGH"
+          if echo "$BODY" | grep -qE '\[(CRITICAL|HIGH)\]'; then
+            echo "::error::Review found CRITICAL or HIGH severity issues"
+            exit 1
+          fi
+
+          echo "No blocking findings detected"
+
+  summary:
+    needs: [changes, review]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate results
+        run: |
+          if [ "${{ needs.changes.outputs.has-reviews }}" != "true" ]; then
+            echo "No reviewable changes — pass"
+            exit 0
+          fi
+          if [ "${{ needs.review.result }}" == "success" ]; then
+            echo "All reviews passed"
+            exit 0
+          fi
+          echo "::error::Review result: ${{ needs.review.result }}"
+          exit 1

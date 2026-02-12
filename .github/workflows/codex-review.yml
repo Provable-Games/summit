@@ -179,6 +179,10 @@ jobs:
           Where SEVERITY is one of: CRITICAL, HIGH, MEDIUM, LOW, INFO
 
           End with a summary: counts of findings by severity.
+
+          IMPORTANT: Always produce output, even when no issues are found.
+          If there are no actionable findings, respond with:
+            "No issues found." followed by "Summary: 0 CRITICAL, 0 HIGH, 0 MEDIUM, 0 LOW, 0 INFO"
           EOF
           } > /tmp/prompt.txt
 
@@ -188,7 +192,9 @@ jobs:
             -c 'model="gpt-5.3-codex"' \
             -c 'model_reasoning_effort="high"' \
             -o /tmp/review.txt \
-            "$(cat /tmp/prompt.txt)" 2>&1 || true
+            "$(cat /tmp/prompt.txt)" 2>&1 || {
+              echo "Review process failed to complete." > /tmp/review.txt
+            }
           if [ -f /tmp/review.txt ]; then
             cat /tmp/review.txt
           else
@@ -200,11 +206,44 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -s /tmp/review.txt ]; then
-            {
-              echo "## ${{ matrix.comment-header }}"
-              echo ""
+          {
+            echo "## ${{ matrix.comment-header }}"
+            echo ""
+            if [ -s /tmp/review.txt ]; then
               cat /tmp/review.txt
-            } > /tmp/review-formatted.txt
-            gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
+            else
+              echo "No review output was produced."
+            fi
+          } > /tmp/review-formatted.txt
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
+
+      - name: Check for blocking findings
+        if: always()
+        run: |
+          if [ ! -s /tmp/review.txt ]; then
+            echo "::warning::No review output — treating as pass"
+            exit 0
           fi
+          if grep -qE '\[(CRITICAL|HIGH)\]' /tmp/review.txt; then
+            echo "::error::Review found CRITICAL or HIGH severity issues"
+            exit 1
+          fi
+          echo "No blocking findings detected"
+
+  summary:
+    needs: [changes, review]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate results
+        run: |
+          if [ "${{ needs.changes.outputs.has-reviews }}" != "true" ]; then
+            echo "No reviewable changes — pass"
+            exit 0
+          fi
+          if [ "${{ needs.review.result }}" == "success" ]; then
+            echo "All reviews passed"
+            exit 0
+          fi
+          echo "::error::Review result: ${{ needs.review.result }}"
+          exit 1
