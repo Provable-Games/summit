@@ -133,7 +133,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     addLiveEvent(data);
 
     const { category, sub_category, data: eventData } = data;
-    const isOwnEvent = data.player === addAddressPadding(account?.address);
 
     // Helper to get beast info from event data
     const getBeastInfo = () => {
@@ -177,22 +176,20 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         setSpectatorBattleEvents(prev => [...prev, eventData as unknown as SpectatorBattleEvent]);
 
         // Show battle notification (only for other players)
-        if (!isOwnEvent) {
-          const damage = eventData.total_damage as number;
-          const xpGained = eventData.xp_gained as number | undefined;
-          const attackPotions = eventData.attack_potions as number | undefined;
-          const revivePotions = eventData.revive_potions as number | undefined;
-          const beastCount = eventData.beast_count as number | undefined;
-          addNotificationWithPlayer({
-            type: 'battle',
-            value: damage,
-            xpGained,
-            attackPotions,
-            revivePotions,
-            beastCount,
-          });
-        }
-      } else if (sub_category === "Applied Poison" && !isOwnEvent) {
+        const damage = eventData.total_damage as number;
+        const xpGained = eventData.xp_gained as number | undefined;
+        const attackPotions = eventData.attack_potions as number | undefined;
+        const revivePotions = eventData.revive_potions as number | undefined;
+        const beastCount = eventData.beast_count as number | undefined;
+        addNotificationWithPlayer({
+          type: 'battle',
+          value: damage,
+          xpGained,
+          attackPotions,
+          revivePotions,
+          beastCount,
+        });
+      } else if (sub_category === "Applied Poison") {
         setPoisonEvent({
           beast_token_id: eventData.beast_token_id as number,
           block_timestamp: Math.floor(new Date(data.created_at).getTime() / 1000),
@@ -205,15 +202,15 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           type: 'poison',
           value: eventData.count as number,
         });
-      } else if (sub_category === "Applied Extra Life" && !isOwnEvent) {
+      } else if (sub_category === "Applied Extra Life") {
         const { beastName, beastImageSrc } = getBeastInfo();
         addNotificationWithPlayer({
           type: 'extra_life',
-          value: eventData.count as number,
+          value: eventData.difference as number,
           beastName,
           beastImageSrc,
         });
-      } else if (sub_category === "Summit Change" && !isOwnEvent) {
+      } else if (sub_category === "Summit Change") {
         const { beastName, beastImageSrc } = getBeastInfo();
         const extraLives = eventData.extra_lives as number | undefined;
         addNotificationWithPlayer({
@@ -279,37 +276,35 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       const { beastName, beastImageSrc } = getBeastInfo();
 
       // Show notifications for upgrades (only for other players)
-      if (!isOwnEvent) {
-        const upgradeTypeMap: Record<string, Parameters<typeof addGameNotification>[0]['type']> = {
-          'Specials': 'specials',
-          'Wisdom': 'wisdom',
-          'Diplomacy': 'diplomacy',
-          'Spirit': 'spirit',
-          'Luck': 'luck',
-          'Bonus Health': 'bonus_health',
-        };
+      const upgradeTypeMap: Record<string, Parameters<typeof addGameNotification>[0]['type']> = {
+        'Specials': 'specials',
+        'Wisdom': 'wisdom',
+        'Diplomacy': 'diplomacy',
+        'Spirit': 'spirit',
+        'Luck': 'luck',
+        'Bonus Health': 'bonus_health',
+      };
 
-        const notificationType = upgradeTypeMap[sub_category];
-        if (notificationType) {
-          // For numeric upgrades, show the difference
-          const oldValue = eventData.old_value as number | undefined;
-          const newValue = eventData.new_value as number | undefined;
-          const diff = (oldValue !== undefined && newValue !== undefined) ? newValue - oldValue : undefined;
+      const notificationType = upgradeTypeMap[sub_category];
+      if (notificationType) {
+        // For numeric upgrades, show the difference
+        const oldValue = eventData.old_value as number | undefined;
+        const newValue = eventData.new_value as number | undefined;
+        const diff = (oldValue !== undefined && newValue !== undefined) ? newValue - oldValue : undefined;
 
-          // For Bonus Health, use amount field
-          const value = sub_category === 'Bonus Health'
-            ? (eventData.amount as number) || (eventData.bonus_health as number) || diff
-            : diff;
+        // For Bonus Health, use amount field
+        const value = sub_category === 'Bonus Health'
+          ? (eventData.amount as number) || (eventData.bonus_health as number) || diff
+          : diff;
 
-          addNotificationWithPlayer({
-            type: notificationType,
-            value: value,
-            beastName,
-            beastImageSrc,
-            oldValue,
-            newValue,
-          });
-        }
+        addNotificationWithPlayer({
+          type: notificationType,
+          value: value,
+          beastName,
+          beastImageSrc,
+          oldValue,
+          newValue,
+        });
       }
 
       // Refresh diplomacy bonus if a matching beast upgraded diplomacy
@@ -335,7 +330,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     // Handle Rewards events
-    if (category === "Rewards" && !isOwnEvent) {
+    if (category === "Rewards") {
       if (sub_category === "$SURVIVOR Earned") {
         const rawAmount = typeof eventData.amount === 'number' ? eventData.amount : parseFloat(String(eventData.amount)) || 0;
         const amount = parseFloat((rawAmount / 100000).toFixed(2));

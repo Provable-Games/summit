@@ -6,21 +6,24 @@ import poisonPotionImg from '@/assets/images/poison-potion.png';
 import revivePotionImg from '@/assets/images/revive-potion.png';
 import starkImg from '@/assets/images/stark.svg';
 import { useController } from '@/contexts/controller';
+import { useSound } from '@/contexts/sound';
+import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { ellipseAddress } from '@/utils/utils';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import LogoutIcon from '@mui/icons-material/Logout';
+import SettingsIcon from '@mui/icons-material/Settings';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
+import VolumeOff from '@mui/icons-material/VolumeOff';
+import VolumeUp from '@mui/icons-material/VolumeUp';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { Box, Button, IconButton, Tooltip, Typography, Skeleton } from '@mui/material';
+import { Box, Button, Divider, IconButton, Popover, Skeleton, Slider, Switch, Tooltip, Typography } from '@mui/material';
 import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import BeastDexModal from './dialogs/BeastDexModal';
 import MarketplaceModal from './dialogs/MarketplaceModal';
 import TopUpStrkModal from './dialogs/TopUpStrkModal';
-import { useStatistics } from '@/contexts/Statistics';
 
 const ProfileCard = () => {
   const { collection, loadingCollection, summitEnded } = useGameStore()
@@ -32,9 +35,12 @@ const ProfileCard = () => {
 
   let cartridgeConnector = connectors.find(conn => conn.id === "controller")
 
+  const { muted, setMuted, volume, setVolume } = useSound()
+
   const [beastDexOpen, setBeastDexOpen] = useState(false)
   const [potionShopOpen, setPotionShopOpen] = useState(false)
   const [topUpStrkOpen, setTopUpStrkOpen] = useState(false)
+  const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null)
   const isCartridge = connector?.id === 'controller'
   const killTokens = tokenBalances["SKULL"] || 0
   const corpseTokens = tokenBalances["CORPSE"] || 0
@@ -103,21 +109,65 @@ const ProfileCard = () => {
   return (
     <Box sx={styles.container}>
       <Box sx={styles.profileContainer}>
-        <Tooltip title={!isCartridge ? <Box sx={styles.tooltip}>Copy address</Box> : undefined}>
-          <Button variant='text' sx={styles.addressButton} onClick={handleProfileClick}>
-            <SportsEsportsIcon sx={styles.gameIcon} />
-            <Typography sx={styles.addressText}>
-              {playerName || ellipseAddress(address, 5, 4)}
-            </Typography>
-          </Button>
-        </Tooltip>
+        <Button variant='text' sx={styles.addressButton} onClick={handleProfileClick}>
+          <SportsEsportsIcon sx={styles.gameIcon} />
+          <Typography sx={styles.addressText}>
+            {playerName || ellipseAddress(address, 5, 4)}
+          </Typography>
+        </Button>
 
         <Box sx={{ display: 'flex' }}>
-          <Tooltip title={<Box sx={styles.tooltip}>Disconnect</Box>}>
-            <IconButton size={isMobile ? 'medium' : 'small'} sx={styles.logoutButton} onClick={() => { disconnect(); }}>
-              <LogoutIcon fontSize={isMobile ? 'medium' : 'small'} sx={styles.logoutIcon} />
-            </IconButton>
-          </Tooltip>
+          <IconButton sx={styles.settingsButton} onClick={(e) => setSettingsAnchor(e.currentTarget)}>
+            <SettingsIcon fontSize={isMobile ? 'medium' : 'small'} sx={{ color: '#ffedbb' }} />
+          </IconButton>
+
+          <Popover
+            open={Boolean(settingsAnchor)}
+            anchorEl={settingsAnchor}
+            onClose={() => setSettingsAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            slotProps={{ paper: { sx: styles.settingsPopover } }}
+          >
+            <Box sx={styles.settingsSection}>
+              <Box sx={styles.settingsRow}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  {muted ? <VolumeOff sx={{ fontSize: '16px', color: '#ffedbb' }} /> : <VolumeUp sx={{ fontSize: '16px', color: '#ffedbb' }} />}
+                  <Typography sx={styles.settingsLabel}>Sound</Typography>
+                </Box>
+                <Switch
+                  checked={!muted}
+                  onChange={(e) => setMuted(!e.target.checked)}
+                  size="small"
+                  sx={styles.switch}
+                />
+              </Box>
+              <Slider
+                value={Math.round(volume * 100)}
+                onChange={(_, v) => setVolume((v as number) / 100)}
+                min={0}
+                max={100}
+                step={1}
+                disabled={muted}
+                size="small"
+                sx={styles.volumeSlider}
+              />
+            </Box>
+
+            <Divider sx={{ borderColor: `${gameColors.accentGreen}30` }} />
+
+            <Box sx={{ px: '6px', pb: '6px', pt: '4px' }}>
+              <Button
+                variant="text"
+                fullWidth
+                startIcon={<LogoutIcon sx={{ fontSize: '14px' }} />}
+                onClick={() => { setSettingsAnchor(null); disconnect(); }}
+                sx={styles.disconnectButton}
+              >
+                Disconnect
+              </Button>
+            </Box>
+          </Popover>
         </Box>
       </Box>
 
@@ -270,14 +320,16 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: '4px',
     width: '100%',
     borderBottom: `1px solid ${gameColors.accentGreen}40`,
     pb: isMobile ? '8px' : '4px',
   },
   addressButton: {
     display: 'flex',
+    flex: 1,
     textTransform: 'none',
-    padding: isMobile ? '8px 16px' : '2px 8px',
+    minHeight: '20px !important',
     border: `1px solid #ffedbb`,
     borderRadius: '4px',
     '&:hover': {
@@ -298,13 +350,90 @@ const styles = {
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
-  logoutButton: {
+  settingsButton: {
     '&:hover': {
-      backgroundColor: `${gameColors.mediumGreen}30`,
+      backgroundColor: `${gameColors.mediumGreen}`,
     },
   },
-  logoutIcon: {
+  settingsPopover: {
+    background: `${gameColors.darkGreen}f5`,
+    backdropFilter: 'blur(12px)',
+    border: `1px solid rgba(255,255,255,0.08)`,
+    borderRadius: '8px',
+    minWidth: '200px',
+  },
+  settingsSection: {
+    padding: '12px 14px',
+  },
+  settingsRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    mb: 0.5,
+  },
+  settingsLabel: {
+    fontSize: '13px',
+    fontWeight: 'bold',
     color: '#ffedbb',
+    letterSpacing: '0.5px',
+  },
+  switch: {
+    '& .MuiSwitch-switchBase.Mui-checked': {
+      color: gameColors.brightGreen,
+    },
+    '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+      backgroundColor: `${gameColors.brightGreen}AA`,
+    },
+    '& .MuiSwitch-track': {
+      backgroundColor: `${gameColors.accentGreen}55`,
+    },
+  },
+  volumeSlider: {
+    color: gameColors.gameYellow,
+    '& .MuiSlider-thumb': {
+      backgroundColor: gameColors.gameYellow,
+      width: 14,
+      height: 14,
+      '&:hover, &.Mui-focusVisible': {
+        boxShadow: 'none',
+      },
+    },
+    '& .MuiSlider-track': {
+      backgroundColor: gameColors.gameYellow,
+      height: 4,
+      border: 'none',
+    },
+    '& .MuiSlider-rail': {
+      backgroundColor: `${gameColors.gameYellow}20`,
+      height: 4,
+    },
+    '&.Mui-disabled': {
+      color: `${gameColors.gameYellow}40`,
+      '& .MuiSlider-thumb': {
+        backgroundColor: `${gameColors.gameYellow}40`,
+      },
+      '& .MuiSlider-track': {
+        backgroundColor: `${gameColors.gameYellow}40`,
+      },
+    },
+  },
+  disconnectButton: {
+    color: '#ffedbb',
+    textTransform: 'none',
+    fontSize: '12px',
+    fontWeight: 600,
+    justifyContent: 'flex-start',
+    padding: '4px 8px',
+    minHeight: 0,
+    border: 'none',
+    lineHeight: 1,
+    borderRadius: '4px',
+    opacity: 0.8,
+    '&:hover': {
+      color: '#ffedbb',
+      backgroundColor: `${gameColors.mediumGreen}30`,
+      opacity: 1,
+    },
   },
   tooltip: {
     background: `${gameColors.darkGreen}`,

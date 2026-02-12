@@ -23,6 +23,7 @@ export function DiplomacyPopover({
   addressNames,
 }: DiplomacyPopoverProps) {
   const rewardPerSecond = SUMMIT_REWARDS_PER_SECOND / 100;
+  const totalPower = diplomacy.totalPower - (summitBeast.diplomacy ? summitBeast.power : 0);
 
   return (
     <Popover
@@ -43,7 +44,7 @@ export function DiplomacyPopover({
           <Typography sx={styles.title}>Diplomacy Beasts</Typography>
         </Box>
         <Typography sx={styles.subtitle}>
-          +{diplomacy.bonus} STR bonus ({diplomacy.totalPower} power)
+          +{diplomacy.bonus} STR bonus ({totalPower} power)
         </Typography>
       </Box>
       <Box sx={styles.list}>
@@ -52,8 +53,8 @@ export function DiplomacyPopover({
           .map((beast) => {
             const ownerRank = beast.owner
               ? leaderboard.findIndex(p =>
-                  addAddressPadding(p.owner) === addAddressPadding(beast.owner!)
-                ) + 1
+                addAddressPadding(p.owner) === addAddressPadding(beast.owner!)
+              ) + 1
               : 0;
             return (
               <Box key={beast.token_id} sx={styles.beastRow}>
@@ -71,7 +72,7 @@ export function DiplomacyPopover({
                 </Box>
                 <Box sx={styles.beastReward}>
                   <Typography sx={styles.rewardValue}>
-                    +{rewardPerSecond.toFixed(5)}
+                    +{rewardPerSecond.toFixed(6)}
                   </Typography>
                   <Typography sx={styles.rewardLabel}>/sec</Typography>
                 </Box>

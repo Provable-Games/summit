@@ -517,7 +517,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
       }
       if (event.sub_category === 'Applied Extra Life') {
         const displayName = player || 'Unknown';
-        const count = (data.count as number) || 1;
+        const count = (data.difference as number) || "";
         // Build full beast name
         const beastId = data.beast_id as number | undefined;
         const beastPrefix = data.prefix as number | undefined;

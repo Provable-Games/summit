@@ -118,7 +118,7 @@ const getNotificationDisplay = (notification: GameNotification): { icon: React.R
     case 'locked':
       return {
         icon: <HeartBrokenIcon sx={{ fontSize: 14, color: '#ff4444' }} />,
-        text: 'Locked',
+        text: 'Killed in LS2',
         color: '#ff4444',
       };
     default:

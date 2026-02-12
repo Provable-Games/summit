@@ -139,7 +139,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     await delay(1000);
     setGasSpent(amount);
     // Auto-clear after animation duration
-    setTimeout(() => setGasSpent(null), 2500);
+    setTimeout(() => setGasSpent(null), 4000);
   };
 
   return (

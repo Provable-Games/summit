@@ -8,7 +8,7 @@ import { Beast } from '@/types/game';
 import { gameColors } from '@/utils/themes';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { Badge, Box, Button, Divider, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 const survivorTokenIcon = '/images/survivor_token.png';
 
@@ -79,7 +79,7 @@ const MAX_REWARD_PER_BEAST = 95;
 const ClaimRewardsButton = () => {
   const { collection, setCollection, adventurerCollection, setAdventurerCollection } = useGameStore();
   const { executeGameAction, actionFailed } = useGameDirector();
-  const { tokenBalances, setTokenBalances } = useController();
+  const { setTokenBalances } = useController();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [skullClaimState, setSkullClaimState] = useState<ClaimState | null>(null);
@@ -143,8 +143,6 @@ const ClaimRewardsButton = () => {
     unclaimedSkullTokens,
     unclaimedSurvivorBeasts,
     unclaimedSurvivorTokens,
-    questTotalEarned,
-    questTotalPossible,
     unclaimedSummitBeasts,
     unclaimedSummitTokens,
   } = claimableRewards;
@@ -157,6 +155,22 @@ const ClaimRewardsButton = () => {
 
   const totalRewards = (unclaimedSkullTokens > 0 ? 1 : 0) + (unclaimedCorpseTokens > 0 ? 1 : 0) + (unclaimedSurvivorTokens > 0 ? 1 : 0) + (unclaimedSummitTokens > 0 ? 1 : 0);
 
+  // Badge bounce when reward count changes, glow pulse with auto-expire
+  const prevTotalRewards = useRef(totalRewards);
+  const [badgeBounce, setBadgeBounce] = useState(false);
+  const [glowActive, setGlowActive] = useState(totalRewards > 0);
+
+  useEffect(() => {
+    if (totalRewards > prevTotalRewards.current) {
+      setBadgeBounce(true);
+      setGlowActive(true);
+      const bounceTimer = setTimeout(() => setBadgeBounce(false), 1000);
+      const glowTimer = setTimeout(() => setGlowActive(false), 4000);
+      return () => { clearTimeout(bounceTimer); clearTimeout(glowTimer); };
+    }
+    prevTotalRewards.current = totalRewards;
+  }, [totalRewards]);
+
   // Reset claim state on action failure
   useEffect(() => {
     if (actionFailed) {
@@ -168,6 +182,7 @@ const ClaimRewardsButton = () => {
   }, [actionFailed]);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    setGlowActive(false);
     setAnchorEl(event.currentTarget);
   };
 
@@ -420,20 +435,31 @@ const ClaimRewardsButton = () => {
 
   const isAnyClaiming = skullClaimState?.inProgress || corpseClaimState?.inProgress || survivorClaimState?.inProgress || summitClaimState?.inProgress;
 
-  const progressPercent = questTotalPossible > 0
-    ? (questTotalEarned / questTotalPossible) * 100
-    : 0;
-
   return (
     <>
       <Badge
         badgeContent={totalRewards}
-        color="error"
-        sx={styles.badge}
+        sx={{
+          ...styles.badge,
+          ...(badgeBounce && {
+            '& .MuiBadge-badge': {
+              ...styles.badge['& .MuiBadge-badge'],
+              '@keyframes badgeBounce': {
+                '0%': { transform: 'scale(1) translate(50%, -50%)' },
+                '30%': { transform: 'scale(1.4) translate(50%, -50%)' },
+                '50%': { transform: 'scale(0.9) translate(50%, -50%)' },
+                '70%': { transform: 'scale(1.15) translate(50%, -50%)' },
+                '100%': { transform: 'scale(1) translate(50%, -50%)' },
+              },
+              animation: 'badgeBounce 1000ms ease-out',
+              transformOrigin: 'top right',
+            },
+          }),
+        }}
       >
         <IconButton
           onClick={handleClick}
-          sx={styles.iconButton}
+          sx={glowActive ? styles.glowIconButton : styles.iconButton}
         >
           <img src={rewardsIcon} alt="rewards" style={styles.buttonIcon} />
         </IconButton>
@@ -644,8 +670,9 @@ export default ClaimRewardsButton;
 const styles = {
   badge: {
     '& .MuiBadge-badge': {
-      background: `linear-gradient(135deg, #ff6b6b 0%, ${gameColors.red} 50%, #cc3333 100%)`,
+      background: `linear-gradient(135deg, #ffb300 0%, #ff8f00 50%, #e65100 100%)`,
       color: '#fff',
+      textShadow: '0 1px 2px rgba(0, 0, 0, 0.3)',
       fontWeight: 'bold',
       fontSize: '10px',
       minWidth: '18px',
@@ -670,6 +697,39 @@ const styles = {
     '&:hover': {
       background: `${gameColors.mediumGreen}90`,
       borderColor: gameColors.brightGreen,
+    },
+    '&:disabled': {
+      opacity: 0.5,
+      cursor: 'not-allowed',
+    },
+  },
+  glowIconButton: {
+    width: '46px',
+    height: '46px',
+    background: `${gameColors.darkGreen}90`,
+    backdropFilter: 'blur(12px) saturate(1.2)',
+    border: `2px solid ${gameColors.accentGreen}60`,
+    borderRadius: '8px',
+    boxShadow: `
+      0 4px 12px rgba(0, 0, 0, 0.4),
+      0 0 0 1px ${gameColors.darkGreen}
+    `,
+    transition: 'all 0.2s ease',
+    '@keyframes rewardGlow': {
+      '0%, 100%': {
+        boxShadow: `0 0 8px ${gameColors.yellow}4D, 0 4px 12px rgba(0, 0, 0, 0.4)`,
+        borderColor: `${gameColors.accentGreen}60`,
+      },
+      '50%': {
+        boxShadow: `0 0 16px ${gameColors.yellow}99, 0 4px 12px rgba(0, 0, 0, 0.4)`,
+        borderColor: gameColors.yellow,
+      },
+    },
+    animation: 'rewardGlow 2s ease-in-out infinite',
+    '&:hover': {
+      background: `${gameColors.mediumGreen}90`,
+      borderColor: gameColors.brightGreen,
+      animationPlayState: 'paused',
     },
     '&:disabled': {
       opacity: 0.5,
