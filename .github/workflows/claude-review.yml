@@ -196,15 +196,28 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          sleep 5  # allow comment to propagate
+          MAX_ATTEMPTS=6
+          SLEEP_SECONDS=10
+          BODY=""
 
-          # Fetch the review comment posted by the action
-          BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
-            --paginate --jq '[.[] | select(.user.type == "Bot")] | last | .body // ""')
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+              --paginate --jq '[.[] | select(.user.login | test("claude"))] | last | .body // ""')
+
+            if [ -n "$BODY" ]; then
+              echo "Found Claude review comment on attempt $i"
+              break
+            fi
+
+            if [ "$i" -lt "$MAX_ATTEMPTS" ]; then
+              echo "Claude review comment not found yet; sleeping ${SLEEP_SECONDS}s... (attempt $i/$MAX_ATTEMPTS)"
+              sleep "$SLEEP_SECONDS"
+            fi
+          done
 
           if [ -z "$BODY" ]; then
-            echo "::warning::Could not find review comment — treating as pass"
-            exit 0
+            echo "::error::Could not find Claude review comment after $MAX_ATTEMPTS attempts"
+            exit 1
           fi
 
           # [CRITICAL] and [HIGH] with brackets only appear in actual findings,

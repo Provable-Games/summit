@@ -194,6 +194,7 @@ jobs:
             -o /tmp/review.txt \
             "$(cat /tmp/prompt.txt)" 2>&1 || {
               echo "Review process failed to complete." > /tmp/review.txt
+              exit 1
             }
           if [ -f /tmp/review.txt ]; then
             cat /tmp/review.txt
@@ -221,8 +222,8 @@ jobs:
         if: always()
         run: |
           if [ ! -s /tmp/review.txt ]; then
-            echo "::warning::No review output — treating as pass"
-            exit 0
+            echo "::error::No review output was produced despite reviewable changes"
+            exit 1
           fi
           if grep -qE '\[(CRITICAL|HIGH)\]' /tmp/review.txt; then
             echo "::error::Review found CRITICAL or HIGH severity issues"
