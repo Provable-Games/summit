@@ -71,6 +71,7 @@ jobs:
           while [ $ELAPSED -lt $MAX_WAIT ]; do
             ALL_DONE=true
             ANY_FAILED=false
+            ANY_FOUND=false
 
             for CHECK in "${REQUIRED_CHECKS[@]}"; do
               STATUS=$(gh api "repos/${{ github.repository }}/commits/${SHA}/check-runs" \
@@ -82,6 +83,7 @@ jobs:
                 continue
               fi
 
+              ANY_FOUND=true
               RUN_STATUS="${STATUS%%:*}"
               CONCLUSION="${STATUS##*:}"
 
@@ -101,9 +103,13 @@ jobs:
               exit 1
             fi
 
-            if $ALL_DONE; then
+            if $ALL_DONE && $ANY_FOUND; then
               echo "All build/lint checks passed."
               exit 0
+            fi
+
+            if ! $ANY_FOUND; then
+              echo "No checks found yet, waiting for workflows to start..."
             fi
 
             echo "Waiting ${POLL}s for checks to complete... (${ELAPSED}/${MAX_WAIT}s)"
