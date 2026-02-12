@@ -1,0 +1,48 @@
+name: test-client
+
+on:
+  pull_request:
+    paths:
+      - "client/**"
+      - "contracts/src/models/beast.cairo"
+      - ".github/workflows/test-client.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "client/**"
+      - "contracts/src/models/beast.cairo"
+      - ".github/workflows/test-client.yml"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  client-tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run parity test
+        run: pnpm test:parity
