@@ -150,19 +150,6 @@ function decodeSpanU64(data: string[], startIndex: number): { values: bigint[]; 
 // ============ Bit manipulation constants ============
 // Mirrors contracts/src/models/beast.cairo packed layout.
 
-const TWO_POW_1 = 0x2n;
-const TWO_POW_4 = 0x10n;
-const TWO_POW_6 = 0x40n;
-const TWO_POW_8 = 0x100n;
-const TWO_POW_11 = 0x800n;
-const TWO_POW_12 = 0x1000n;
-const TWO_POW_15 = 0x8000n;
-const TWO_POW_17 = 0x20000n;
-const TWO_POW_23 = 0x800000n;
-const TWO_POW_32 = 0x100000000n;
-const TWO_POW_64 = 0x10000000000000000n;
-const TWO_POW_128 = 0x100000000000000000000000000000000n;
-
 const MASK_1 = 0x1n;
 const MASK_4 = 0xFn;
 const MASK_6 = 0x3Fn;
@@ -174,7 +161,7 @@ const MASK_17 = 0x1FFFFn;
 const MASK_23 = 0x7FFFFFn;
 const MASK_32 = 0xFFFFFFFFn;
 const MASK_64 = 0xFFFFFFFFFFFFFFFFn;
-const MASK_128 = TWO_POW_128 - 1n;
+const MASK_128 = (1n << 128n) - 1n;
 
 // ============ Event Data Interfaces ============
 
@@ -280,46 +267,46 @@ function toBitFlag(value: bigint): BitFlag {
 export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   const packed = hexToBigInt(packedFelt);
   let low = packed & MASK_128;
-  let high = packed / TWO_POW_128;
+  let high = packed >> 128n;
 
   const last_death_timestamp = low & MASK_64;
-  low = low / TWO_POW_64;
+  low = low >> 64n;
   const rewards_earned = Number(low & MASK_32);
-  low = low / TWO_POW_32;
+  low = low >> 32n;
   const rewards_claimed = Number(low & MASK_32);
 
   const token_id = Number(high & MASK_17);
-  high = high / TWO_POW_17;
+  high = high >> 17n;
   const current_health = Number(high & MASK_12);
-  high = high / TWO_POW_12;
+  high = high >> 12n;
   const bonus_health = Number(high & MASK_11);
-  high = high / TWO_POW_11;
+  high = high >> 11n;
   const bonus_xp = Number(high & MASK_15);
-  high = high / TWO_POW_15;
+  high = high >> 15n;
   const attack_streak = Number(high & MASK_4);
-  high = high / TWO_POW_4;
+  high = high >> 4n;
   const revival_count = Number(high & MASK_6);
-  high = high / TWO_POW_6;
+  high = high >> 6n;
   const extra_lives = Number(high & MASK_12);
-  high = high / TWO_POW_12;
+  high = high >> 12n;
   const summit_held_seconds = Number(high & MASK_23);
-  high = high / TWO_POW_23;
+  high = high >> 23n;
   const spirit = Number(high & MASK_8);
-  high = high / TWO_POW_8;
+  high = high >> 8n;
   const luck = Number(high & MASK_8);
-  high = high / TWO_POW_8;
+  high = high >> 8n;
   const specials = toBitFlag(high & MASK_1);
-  high = high / TWO_POW_1;
+  high = high >> 1n;
   const wisdom = toBitFlag(high & MASK_1);
-  high = high / TWO_POW_1;
+  high = high >> 1n;
   const diplomacy = toBitFlag(high & MASK_1);
-  high = high / TWO_POW_1;
+  high = high >> 1n;
   const captured_summit = toBitFlag(high & MASK_1);
-  high = high / TWO_POW_1;
+  high = high >> 1n;
   const used_revival_potion = toBitFlag(high & MASK_1);
-  high = high / TWO_POW_1;
+  high = high >> 1n;
   const used_attack_potion = toBitFlag(high & MASK_1);
-  high = high / TWO_POW_1;
+  high = high >> 1n;
   const max_attack_streak = toBitFlag(high & MASK_1);
 
   return {
@@ -458,7 +445,7 @@ export function decodeSkullEvent(keys: string[], data: string[]): SkullEventData
 export function unpackQuestRewardsClaimed(packed: string): { beast_token_id: number; amount: number } {
   const packed_u256 = hexToBigInt(packed);
   const amount = Number(packed_u256 & MASK_8);
-  const beast_token_id = Number((packed_u256 / TWO_POW_8) & MASK_32);
+  const beast_token_id = Number((packed_u256 >> 8n) & MASK_32);
   return { beast_token_id, amount };
 }
 
