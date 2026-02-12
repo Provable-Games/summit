@@ -209,9 +209,9 @@ app.get("/beasts/all", async (c) => {
       summit_held_seconds: r.summit_held_seconds ?? 0,
       spirit: r.spirit ?? 0,
       luck: r.luck ?? 0,
-      specials: Boolean(r.specials),
-      wisdom: Boolean(r.wisdom),
-      diplomacy: Boolean(r.diplomacy),
+      specials: r.specials ?? false,
+      wisdom: r.wisdom ?? false,
+      diplomacy: r.diplomacy ?? false,
       extra_lives: r.extra_lives ?? 0,
       owner: r.owner,
       shiny: r.shiny,
@@ -336,18 +336,18 @@ app.get("/beasts/:owner", async (c) => {
         last_death_timestamp: lastDeathTimestamp,
         revival_count: r.revival_count ?? 0,
         extra_lives: r.extra_lives ?? 0,
-        captured_summit: Boolean(r.captured_summit),
-        used_revival_potion: Boolean(r.used_revival_potion),
-        used_attack_potion: Boolean(r.used_attack_potion),
-        max_attack_streak: Boolean(r.max_attack_streak),
+        captured_summit: r.captured_summit ?? false,
+        used_revival_potion: r.used_revival_potion ?? false,
+        used_attack_potion: r.used_attack_potion ?? false,
+        max_attack_streak: r.max_attack_streak ?? false,
         summit_held_seconds: r.summit_held_seconds ?? 0,
 
         // Upgrades
         spirit,
         luck: r.luck ?? 0,
-        specials: Boolean(r.specials),
-        wisdom: Boolean(r.wisdom),
-        diplomacy: Boolean(r.diplomacy),
+        specials: r.specials ?? false,
+        wisdom: r.wisdom ?? false,
+        diplomacy: r.diplomacy ?? false,
 
         // Rewards
         rewards_earned: r.rewards_earned ?? 0,
@@ -570,7 +570,7 @@ app.get("/diplomacy", async (c) => {
       and(
         eq(beasts.prefix, prefix),
         eq(beasts.suffix, suffix),
-        sql`${beast_stats.diplomacy} > 0`
+        eq(beast_stats.diplomacy, true)
       )
     );
 
@@ -621,7 +621,7 @@ app.get("/diplomacy/all", async (c) => {
     })
     .from(beasts)
     .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
-    .where(sql`${beast_stats.diplomacy} > 0`);
+    .where(eq(beast_stats.diplomacy, true));
 
   return c.json(results);
 });

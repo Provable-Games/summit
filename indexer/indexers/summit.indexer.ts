@@ -101,15 +101,15 @@ interface BeastStatsSnapshot {
   token_id: number;
   spirit: number;
   luck: number;
-  specials: number;
-  wisdom: number;
-  diplomacy: number;
+  specials: boolean;
+  wisdom: boolean;
+  diplomacy: boolean;
   bonus_health: number;
   extra_lives: number;
-  captured_summit: number;
-  used_revival_potion: number;
-  used_attack_potion: number;
-  max_attack_streak: number;
+  captured_summit: boolean;
+  used_revival_potion: boolean;
+  used_attack_potion: boolean;
+  max_attack_streak: boolean;
   current_health?: number;
 }
 
@@ -319,16 +319,16 @@ type BeastStatsRow = {
   last_death_timestamp: bigint;
   revival_count: number;
   extra_lives: number;
-  captured_summit: number;
-  used_revival_potion: number;
-  used_attack_potion: number;
-  max_attack_streak: number;
+  captured_summit: boolean;
+  used_revival_potion: boolean;
+  used_attack_potion: boolean;
+  max_attack_streak: boolean;
   summit_held_seconds: number;
   spirit: number;
   luck: number;
-  specials: number;
-  wisdom: number;
-  diplomacy: number;
+  specials: boolean;
+  wisdom: boolean;
+  diplomacy: boolean;
   rewards_earned: number;
   rewards_claimed: number;
   created_at: Date;
@@ -693,27 +693,30 @@ function collectBeastStatChangeLogs(
 ): number {
   let derived_offset = 0;
 
+  const toNumericUpgradeValue = (value: number | boolean): number =>
+    typeof value === "boolean" ? Number(value) : value;
+
   // If no previous stats, treat as default values (all zeros)
   // This allows detecting upgrades for beasts without existing beast_stats records
   const effective_prev_stats: BeastStatsSnapshot = prev_stats ?? {
     token_id: new_stats.token_id,
     spirit: 0,
     luck: 0,
-    specials: 0,
-    wisdom: 0,
-    diplomacy: 0,
+    specials: false,
+    wisdom: false,
+    diplomacy: false,
     bonus_health: 0,
     extra_lives: 0,
-    captured_summit: 0,
-    used_revival_potion: 0,
-    used_attack_potion: 0,
-    max_attack_streak: 0,
+    captured_summit: false,
+    used_revival_potion: false,
+    used_attack_potion: false,
+    max_attack_streak: false,
   };
 
   // Check each stat for increases
   for (const { field, sub_category } of STAT_UPGRADES) {
-    const old_value = effective_prev_stats[field];
-    const new_value = new_stats[field];
+    const old_value = toNumericUpgradeValue(effective_prev_stats[field]);
+    const new_value = toNumericUpgradeValue(new_stats[field]);
 
     if (new_value > old_value) {
       derived_offset++;
