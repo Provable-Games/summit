@@ -27,7 +27,6 @@ import {
 } from "react";
 import { useController } from "./controller";
 import { useDynamicConnector } from "./starknet";
-import { addAddressPadding } from "starknet";
 
 export interface GameDirectorContext {
   executeGameAction: (action: GameAction) => Promise<boolean>;
@@ -85,7 +84,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     applyStatPoints,
     applyPoison,
   } = useSystemCalls();
-  const { tokenBalances, setTokenBalances } = useController();
+  const { tokenBalances: _tokenBalances, setTokenBalances } = useController();
   const { play } = useSound();
 
   const [nextSummit, setNextSummit] = useState<Summit | null>(null);
@@ -379,16 +378,18 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     fetchSummitData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     setAttackInProgress(false);
     setApplyingPotions(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionFailed]);
 
   useEffect(() => {
     async function processNextSummit() {
-      let newSummit = { ...nextSummit };
+      const newSummit = { ...nextSummit };
       const { currentHealth, extraLives } = applyPoisonDamage(newSummit);
       newSummit.beast.current_health = currentHealth;
       newSummit.beast.extra_lives = extraLives;
@@ -401,6 +402,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (nextSummit && !pauseUpdates) {
       processNextSummit();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextSummit, pauseUpdates]);
 
   // Play roar and fetch diplomacy when summit beast changes
@@ -432,6 +434,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
       fetchDiplomacy();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summit?.beast.token_id]);
 
   useEffect(() => {
@@ -450,6 +453,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         }));
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poisonEvent]);
 
   const fetchSummitData = async () => {
@@ -466,12 +470,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     setCollection((prevCollection) =>
       prevCollection.map((beast: Beast) => {
-        let beastLiveStat = beastLiveStats.find(
+        const beastLiveStat = beastLiveStats.find(
           (liveStat: any) => liveStat.token_id === beast.token_id
         );
 
         if (beastLiveStat) {
-          let newBeast = { ...beast, ...beastLiveStat };
+          const newBeast = { ...beast, ...beastLiveStat };
           newBeast.current_health = getBeastCurrentHealth(newBeast);
           newBeast.revival_time = getBeastRevivalTime(newBeast);
           newBeast.current_level = getBeastCurrentLevel(
@@ -488,7 +492,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   };
 
   const executeGameAction = async (action: GameAction) => {
-    let txs: any[] = [];
+    const txs: any[] = [];
 
     if (action.pauseUpdates) {
       setPauseUpdates(true);
@@ -561,7 +565,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     updateLiveStats(
       events.filter((event: any) => event.componentName === "LiveBeastStatsEvent")
     );
-    let captured = events
+    const captured = events
       .filter((event: any) => event.componentName === "BattleEvent")
       .find(
         (event: BattleEvent) =>
@@ -570,7 +574,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       );
 
     if (action.type === "attack" || action.type === "attack_until_capture") {
-      let summitEvent = events.find(
+      const summitEvent = events.find(
         (event: any) => event.componentName === "Summit"
       );
       if (summitEvent) {
@@ -647,6 +651,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useGameDirector = () => {
   return useContext(GameDirectorContext);
 };

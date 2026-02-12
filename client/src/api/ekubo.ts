@@ -173,18 +173,18 @@ export const generateSwapCalls = (
     return [];
   }
 
-  let { tokenAddress, minimumAmount, quote } = tokenQuote;
+  const { tokenAddress, minimumAmount, quote } = tokenQuote;
 
-  let totalQuoteSum = 0n;
   const total = BigInt(tokenQuote.quote.total);
+  let totalQuoteSum: bigint;
 
   if (total < 0n) {
-    totalQuoteSum = -total;
-    const doubledTotal = totalQuoteSum * 2n;
+    const absTotal = -total;
+    const doubledTotal = absTotal * 2n;
     totalQuoteSum =
-      doubledTotal < totalQuoteSum + BigInt(1e19)
+      doubledTotal < absTotal + BigInt(1e19)
         ? doubledTotal
-        : totalQuoteSum + BigInt(1e19);
+        : absTotal + BigInt(1e19);
   } else {
     totalQuoteSum = BigInt(minimumAmount * 1e18);
   }
@@ -205,7 +205,7 @@ export const generateSwapCalls = (
     return [transferCall, clearCall];
   }
 
-  let { splits } = quote;
+  const { splits } = quote;
 
   let minimumClear: string;
   if (total < 0n) {

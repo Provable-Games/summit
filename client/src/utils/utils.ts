@@ -15,8 +15,8 @@ export function ellipseAddress(address: string, start: number, end: number) {
 }
 
 export const getShortNamespace = (namespace: string) => {
-  let parts = namespace.split('_');
-  let short = parts[0] + parts.slice(1).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
+  const parts = namespace.split('_');
+  const short = parts[0] + parts.slice(1).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join('');
   return short;
 }
 
@@ -44,7 +44,7 @@ export function parseBalances(
     }
 
     // Take up to `showDecimals` digits, then trim trailing zeros
-    let frac = fracPart
+    const frac = fracPart
       .toString()
       .padStart(tokenDecimals, "0")
       .slice(0, showDecimals)

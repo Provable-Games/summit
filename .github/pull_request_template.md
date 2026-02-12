@@ -13,6 +13,7 @@
 <!-- Mark every area touched by this PR. -->
 
 - [ ] `contracts/**` (Cairo/Starknet contracts)
+- [ ] `ui/**` (React client)
 - [ ] `client/**` (frontend client)
 - [ ] `indexer/**` (indexer pipeline)
 - [ ] `api/**` (backend/API)
@@ -36,7 +37,7 @@
 
 ```bash
 # example:
-# cd client && pnpm lint && pnpm build
+# cd ui && npm run lint && npm run build
 ```
 
 ### Area-specific verification
@@ -47,10 +48,10 @@
 - [ ] `cd contracts && scarb test` (or targeted tests listed below)
 - [ ] Security-sensitive paths (auth, external calls, arithmetic, state transitions) reviewed
 
-#### If `client/**` changed
+#### If `ui/**` or `client/**` changed
 
-- [ ] `cd client && pnpm lint`
-- [ ] `cd client && pnpm build`
+- [ ] `cd ui && npm run lint`
+- [ ] `cd ui && npm run build`
 - [ ] Manual smoke test completed for impacted routes/states
 - [ ] Visual evidence attached for UI changes (screenshots/GIF)
 
@@ -113,5 +114,5 @@
 ### Codex review routing reminder
 
 - Cairo review: `contracts/**`
-- Frontend review: `client/**`
+- Frontend review: `ui/**` + `client/**`
 - Indexer/API review: `indexer/**` + `api/**`

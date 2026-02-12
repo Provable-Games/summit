@@ -78,6 +78,7 @@ export function DynamicConnectorProvider({ children }: PropsWithChildren) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useDynamicConnector() {
   const context = useContext(DynamicConnectorContext);
   if (!context) {

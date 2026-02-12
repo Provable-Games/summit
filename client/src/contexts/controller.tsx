@@ -67,6 +67,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     if (account?.address) {
       filterValidAdventurers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account?.address]);
 
   useEffect(() => {
@@ -86,6 +87,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     } else {
       setCollection([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account]);
 
   // Get username when connector changes
@@ -122,12 +124,12 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
   async function fetchTokenBalances(delayMs: number = 0) {
     await delay(delayMs);
-    let balances = await getTokenBalances(currentNetworkConfig.tokens.erc20);
+    const balances = await getTokenBalances(currentNetworkConfig.tokens.erc20);
     setTokenBalances(prev => ({ ...prev, ...balances }));
   }
 
   async function fetchPaymentTokenBalances() {
-    let balances = await getTokenBalances(currentNetworkConfig.paymentTokens);
+    const balances = await getTokenBalances(currentNetworkConfig.paymentTokens);
     setTokenBalances(prev => ({ ...prev, ...balances }));
   }
 
@@ -171,6 +173,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useController = () => {
   const context = useContext(ControllerContext);
   if (!context) {

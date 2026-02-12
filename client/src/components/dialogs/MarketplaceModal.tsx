@@ -1,5 +1,5 @@
 import ROUTER_ABI from '@/abi/router-abi.json';
-import { generateSwapCalls, getSwapQuote, SwapQuote, getPoolsForPair, getBestPool, getFullRangeBounds, estimateApy, decodeFee, calculatePairAmount, generateAddLiquidityCalls, getPositionsForOwner, generateWithdrawLiquidityCalls, generateCollectFeesCalls, positionBoundsToContractBounds, discoverPoolFromQuote, getDefaultPoolInfo, PoolInfo, PoolKey, Bounds, EkuboPosition } from '@/api/ekubo';
+import { generateSwapCalls, getSwapQuote, SwapQuote, getPoolsForPair, getBestPool, getFullRangeBounds, estimateApy, decodeFee, calculatePairAmount, generateAddLiquidityCalls, getPositionsForOwner, generateWithdrawLiquidityCalls, generateCollectFeesCalls, positionBoundsToContractBounds, discoverPoolFromQuote, getDefaultPoolInfo, PoolInfo, PoolKey, EkuboPosition } from '@/api/ekubo';
 import attackPotionImg from '@/assets/images/attack-potion.png';
 import corpseTokenImg from '@/assets/images/corpse-token.png';
 import killTokenImg from '@/assets/images/kill-token.png';
@@ -18,7 +18,6 @@ import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RemoveIcon from '@mui/icons-material/Remove';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import SavingsIcon from '@mui/icons-material/Savings';
 import SellIcon from '@mui/icons-material/Sell';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import { Box, Button, Dialog, IconButton, InputBase, Menu, MenuItem, Skeleton, Tab, Tabs, Typography } from '@mui/material';
@@ -233,6 +232,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         }
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
@@ -273,6 +273,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     }, 60000);
 
     return () => clearInterval(intervalId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const totalItems = activeTab === 0
@@ -377,7 +378,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       try {
         const quote = await getSwapQuote(
           -toBaseUnits(quantity),
-          currentNetworkConfig.tokens.erc20.find(token => token.name === potionId)?.address!,
+          currentNetworkConfig.tokens.erc20.find(token => token.name === potionId)?.address ?? '',
           selectedTokenData.address
         );
 
@@ -436,7 +437,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
       const potionAddress = currentNetworkConfig.tokens.erc20.find(
         (token: any) => token.name === potionId
-      )?.address!;
+      )?.address ?? '';
 
       setTokenQuotes(prev => ({
         ...prev,
@@ -623,7 +624,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       const quotedPotions: { id: string; quote: any }[] = [];
 
       for (const potion of POTIONS) {
-        const potionAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === potion.id)?.address!;
+        const potionAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === potion.id)?.address ?? '';
         const quantity = quantities[potion.id];
         if (quantity > 0 && tokenQuotes[potion.id].amount) {
           let quote = tokenQuotes[potion.id].quote;
@@ -654,7 +655,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       }
 
       if (calls.length > 0) {
-        let result = await executeAction(calls, () => { });
+        const result = await executeAction(calls, () => { });
 
         if (result) {
           // Optimistically update token balances using functional update to avoid stale closure
@@ -692,12 +693,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     try {
       const calls: any[] = [];
       const tradedPotionIds: string[] = [];
-      const isPotionTokenName = (name: string) => POTIONS.some((p) => p.id === name);
+      const _isPotionTokenName = (name: string) => POTIONS.some((p) => p.id === name);
 
       for (const potion of POTIONS) {
         const potionAddress = currentNetworkConfig.tokens.erc20.find(
           (token: any) => token.name === potion.id
-        )?.address!;
+        )?.address ?? '';
         const quantity = sellQuantities[potion.id];
 
         if (quantity > 0) {
@@ -775,6 +776,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       const quantity = quantities[potion.id] || 0;
       fetchPotionQuote(potion.id, selectedToken, quantity);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedToken, activeTab]);
 
   useEffect(() => {
