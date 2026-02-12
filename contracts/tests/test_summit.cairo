@@ -6,6 +6,7 @@ use snforge_std::{
 use starknet::{ContractAddress, get_block_timestamp};
 use summit::models::beast::{Beast, BeastUtilsTrait, LiveBeastStats};
 use summit::systems::summit::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
+use crate::constants::{BEAST_WHALE, SUPER_BEAST_OWNER, SUPER_BEAST_TOKEN_ID, whale_beast_token_ids};
 
 // Real mainnet contract addresses
 fn BEAST_ADDRESS() -> ContractAddress {
@@ -122,53 +123,23 @@ fn test_attack_basic() {
 }
 
 #[test]
-#[fork("mainnet")]
+#[fork("mainnet_6704808")]
 fn test_attack_stress() {
     let summit = deploy_summit_and_start();
 
-    // Beast 20301 is owned by this address on mainnet
-    let beast_20301_owner: ContractAddress = 0x0251Af358c691dbda28c96dD2D3d41F9844d56213Dc19d072fAb13FAc22F6bd9
-        .try_into()
-        .unwrap();
-
-    // Take the summit with beast 20301 as its real owner
-    start_cheat_caller_address(summit.contract_address, beast_20301_owner);
-    let setup_beasts = array![(20301_u32, 1_u16, 0_u8)].span();
+    // Take the summit with SUPER_BEAST as its real owner
+    start_cheat_caller_address(summit.contract_address, SUPER_BEAST_OWNER());
+    let setup_beasts = array![(SUPER_BEAST_TOKEN_ID, 1_u16, 0_u8)].span();
     summit.attack(1, setup_beasts, 0, 0, false);
-    assert(summit.get_summit_beast_token_id() == 20301, 'Beast 20301 should be on summit');
+    assert(summit.get_summit_beast_token_id() == SUPER_BEAST_TOKEN_ID, 'SUPER_BEAST should be on summit');
 
     // Give it 100 extra lives
     mock_erc20_burn_from(summit.get_extra_life_potion_address(), true);
-    summit.add_extra_life(20301, 100);
+    summit.add_extra_life(SUPER_BEAST_TOKEN_ID, 100);
     stop_cheat_caller_address(summit.contract_address);
 
     // Attacker owns 6288 beasts on mainnet - use 300 of them
-    let attacker: ContractAddress = 0x03C0F67740e3fE298a52FE75Dd24B4981217406f133E0835331379731B67dC92
-        .try_into()
-        .unwrap();
-
-    // 300 real beast token IDs owned by attacker on mainnet
-    let token_ids: Array<u32> = array![
-        78029, 77598, 68607, 68600, 67720, 67711, 67447, 67439, 67429, 65353, 65119, 64916, 64805, 64803, 64786, 64754,
-        64749, 64739, 64706, 64688, 64586, 64552, 64532, 64519, 64411, 64385, 64342, 64317, 64171, 64013, 63608, 63550,
-        63389, 63368, 63117, 62754, 62298, 61756, 61643, 61507, 61335, 61309, 61229, 61193, 61101, 61035, 61005, 61004,
-        60999, 60965, 60947, 60935, 60925, 60915, 60913, 60885, 60880, 60871, 60844, 60843, 60833, 60832, 60829, 60816,
-        60805, 60798, 60782, 60773, 60767, 60763, 60748, 60745, 60739, 60737, 60735, 60734, 60732, 60717, 60714, 60709,
-        60706, 60705, 60701, 60699, 60690, 60687, 60685, 60680, 60668, 60662, 60652, 60650, 60639, 60637, 60626, 60625,
-        60615, 60596, 60588, 60578, 60567, 60565, 60564, 60562, 60558, 60556, 60553, 60549, 60533, 60523, 60522, 60512,
-        60505, 60494, 60482, 60475, 60471, 60470, 60450, 60447, 60446, 60443, 60434, 60433, 60431, 60426, 60424, 60408,
-        60407, 60406, 60402, 60392, 60389, 60388, 60387, 60383, 60382, 60373, 60370, 60369, 60364, 60363, 60362, 60360,
-        60355, 60351, 60331, 60325, 60324, 60323, 60314, 60296, 60295, 60289, 60269, 60266, 60241, 60230, 60198, 60195,
-        60185, 60183, 60174, 60170, 60165, 60161, 60150, 60138, 60135, 60134, 60118, 60098, 60094, 60089, 60087, 60082,
-        60071, 60067, 60020, 60016, 60015, 60013, 59996, 59993, 59986, 59971, 59970, 59962, 59961, 59958, 59957, 59955,
-        59951, 59948, 59945, 59932, 59928, 59914, 59904, 59903, 59896, 59895, 59891, 59886, 59867, 59849, 59847, 59838,
-        59831, 59822, 59808, 59802, 59795, 59779, 59758, 59752, 59749, 59732, 59718, 59700, 59694, 59684, 59679, 59671,
-        59669, 59661, 59653, 59646, 59645, 59637, 59630, 59628, 59618, 59613, 59610, 59593, 59584, 59581, 59575, 59566,
-        59552, 59549, 59548, 59542, 59541, 59532, 59528, 59527, 59521, 59517, 59515, 59513, 59510, 59506, 59493, 59492,
-        59482, 59476, 59453, 59452, 59450, 59440, 59436, 59430, 59427, 59425, 59422, 59421, 59419, 59414, 59406, 59403,
-        59402, 59400, 59399, 59397, 59395, 59394, 59390, 59386, 59374, 59354, 59338, 59337, 59319, 59285, 59282, 59280,
-        59266, 59259, 59249, 59247, 59245, 59243, 59220, 59206, 59198, 59196, 59189, 59186,
-    ];
+    let token_ids = whale_beast_token_ids();
 
     // Build attacking beasts array: (token_id, attack_count, attack_potions)
     let mut attacking_beasts: Array<(u32, u16, u8)> = array![];
@@ -178,9 +149,9 @@ fn test_attack_stress() {
         i += 1;
     }
 
-    // Attack beast 20301 with 300 beasts (no mocking needed - real mainnet ownership)
+    // Attack SUPER_BEAST with 300 beasts (no mocking needed - real mainnet ownership)
     // Use defending_beast_token_id=0 for unsafe mode (skips beasts killed recently in Death Mountain)
-    start_cheat_caller_address(summit.contract_address, attacker);
+    start_cheat_caller_address(summit.contract_address, BEAST_WHALE());
     summit.attack(0, attacking_beasts.span(), 0, 0, false);
     stop_cheat_caller_address(summit.contract_address);
 }

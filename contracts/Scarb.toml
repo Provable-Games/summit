@@ -30,10 +30,15 @@ build-external-contracts = ["beasts_nft::beasts_nft"]
 sort-module-level-items = true
 max-line-length = 120
 
-[tool.snforge]
-fork = [
-    { name = "mainnet", url = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10", block_id = { tag = "latest" } }
-]
+[[tool.snforge.fork]]
+name = "mainnet"
+url = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"
+block_id.tag = "latest"
+
+[[tool.snforge.fork]]
+name = "mainnet_6704808"
+url = "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10"
+block_id.number = "6704808"
 
 [profile.dev.cairo]
 unstable-add-statements-functions-debug-info = true
