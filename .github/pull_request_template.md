@@ -44,8 +44,8 @@
 
 #### If `contracts/**` changed
 
-- [ ] `cd contracts && sozo build`
-- [ ] `cd contracts && sozo test` (or targeted tests listed below)
+- [ ] `cd contracts && scarb build`
+- [ ] `cd contracts && scarb test` (or targeted tests listed below)
 - [ ] Security-sensitive paths (auth, external calls, arithmetic, state transitions) reviewed
 
 #### If `ui/**` or `client/**` changed
