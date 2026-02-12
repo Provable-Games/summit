@@ -203,7 +203,7 @@ const loadSavedFilters = (): string[] => {
 export default function EventHistoryModal({ open, onClose }: EventHistoryModalProps) {
   const { address } = useAccount();
   const { getLogs } = useSummitApi();
-  const { liveEvents, clearLiveEvents } = useGameStore();
+  const { liveEvents, clearLiveEvents: _clearLiveEvents } = useGameStore();
 
   const [activeTab, setActiveTab] = useState<'all' | 'mine'>('all');
   const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>(loadSavedFilters);
@@ -375,6 +375,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, selectedSubCategories, activeTab, address, addressNames]);
 
   // Fetch events when filters change
@@ -382,6 +383,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     if (open) {
       fetchEvents();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, page, selectedSubCategories, activeTab]);
 
   // Reset page when filters change

@@ -48,6 +48,7 @@ function FinalShowdown({ summit, currentTimestamp }: FinalShowdownProps) {
     if (isComplete) {
       setSummitEnded(true);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isComplete]);
 
   // Fetch holder name

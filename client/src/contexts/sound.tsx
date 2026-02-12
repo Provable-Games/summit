@@ -55,7 +55,7 @@ export function SoundProvider({ children }: PropsWithChildren) {
     setMutedState(m);
     try {
       localStorage.setItem(STORAGE_KEYS.muted, m ? "1" : "0");
-    } catch { }
+    } catch { /* intentionally empty */ }
   }, []);
 
   const setVolume = useCallback((v: number) => {
@@ -63,7 +63,7 @@ export function SoundProvider({ children }: PropsWithChildren) {
     setVolumeState(clamped);
     try {
       localStorage.setItem(STORAGE_KEYS.volume, String(clamped));
-    } catch { }
+    } catch { /* intentionally empty */ }
   }, []);
 
   const pendingRef = useRef<Array<{ name: SoundName; opts?: PlayOptions }>>([]);
@@ -73,7 +73,7 @@ export function SoundProvider({ children }: PropsWithChildren) {
     const a = new Audio(SOUNDS[name]);
     a.volume = opts?.volume ?? volume;
     if (opts?.rate && Number.isFinite(opts.rate)) {
-      try { a.playbackRate = opts.rate; } catch { }
+      try { a.playbackRate = opts.rate; } catch { /* intentionally empty */ }
     }
     void a.play().catch(() => { });
   }, [muted, volume]);
@@ -100,6 +100,7 @@ export function SoundProvider({ children }: PropsWithChildren) {
   return <SoundContext.Provider value={value}>{children}</SoundContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSound = () => {
   const ctx = useContext(SoundContext);
   if (!ctx) throw new Error("useSound must be used within SoundProvider");

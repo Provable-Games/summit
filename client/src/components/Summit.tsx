@@ -59,7 +59,7 @@ function Summit() {
         try {
           const name = await lookupAddressName(summit.owner);
           setCartridgeName(name);
-        } catch (error) {
+        } catch {
           setCartridgeName(null);
         }
       } else {
@@ -101,6 +101,7 @@ function Summit() {
       play("poison");
       return () => { cancelled = true; };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poisonEvent]);
 
   // Per-second poison ticker
@@ -147,11 +148,12 @@ function Summit() {
 
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summit?.poison_count]);
 
   useEffect(() => {
     if (summit) {
-      setEstimatedDamage(selectedBeasts.reduce((acc: number, selectedBeast: any, idx: number) => {
+      setEstimatedDamage(selectedBeasts.reduce((acc: number, selectedBeast: any, _idx: number) => {
         const [beast, attacks] = selectedBeast;
         return acc + calculateBattleResult(beast, summit, selectedBeast[2]).estimatedDamage * attacks;
       }, 0))
@@ -251,6 +253,7 @@ function Summit() {
     if (enqueued && spectatorQueueRef.current.length > 0) {
       processSpectatorQueue();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spectatorBattleEvents, summit?.beast.token_id, pauseUpdates]);
 
   // Reset queue and visuals when summit changes or updates are paused

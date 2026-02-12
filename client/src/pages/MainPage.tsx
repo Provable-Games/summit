@@ -2,7 +2,7 @@ import AttackingBeasts from "@/components/AttackingBeasts"
 import Countdown from "@/components/Countdown"
 import { useGameDirector } from "@/contexts/GameDirector"
 import { useGameStore } from "@/stores/gameStore"
-import { Box, Typography } from '@mui/material'
+import { Box } from '@mui/material'
 import { useAccount } from "@starknet-react/core"
 import { useState } from 'react'
 import { isBrowser, isMobile } from 'react-device-detect'

@@ -224,6 +224,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
       mountedRef.current = false;
       disconnect();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, enabled]);
 
   return { connectionState };

@@ -9,12 +9,13 @@ function ConnectWallet(props) {
   const { connect, connectors } = useConnect();
   const { address } = useAccount()
 
-  let cartridgeConnector = connectors.find(conn => conn.id === "controller")
+  const cartridgeConnector = connectors.find(conn => conn.id === "controller")
 
   useEffect(() => {
     if (address) {
       close(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address])
 
   return (
