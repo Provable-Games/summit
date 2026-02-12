@@ -1,8 +1,7 @@
 use beasts_nft::pack::PackableBeast;
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, mock_call, start_cheat_block_number_global,
-    start_cheat_block_timestamp_global, start_cheat_caller_address, stop_cheat_block_number_global,
-    stop_cheat_block_timestamp_global, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, mock_call, start_cheat_block_timestamp_global,
+    start_cheat_caller_address, stop_cheat_block_timestamp_global, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, get_block_timestamp};
 use summit::models::beast::{Beast, BeastUtilsTrait, LiveBeastStats};
@@ -29,33 +28,55 @@ fn REWARD_ADDRESS() -> ContractAddress {
     0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B.try_into().unwrap()
 }
 
+fn ATTACK_POTION_ADDRESS() -> ContractAddress {
+    0x111.try_into().unwrap()
+}
+
+fn REVIVE_POTION_ADDRESS() -> ContractAddress {
+    0x222.try_into().unwrap()
+}
+
+fn EXTRA_LIFE_POTION_ADDRESS() -> ContractAddress {
+    0x333.try_into().unwrap()
+}
+
+fn POISON_POTION_ADDRESS() -> ContractAddress {
+    0x444.try_into().unwrap()
+}
+
+fn SKULL_TOKEN_ADDRESS() -> ContractAddress {
+    0x555.try_into().unwrap()
+}
+
+fn CORPSE_TOKEN_ADDRESS() -> ContractAddress {
+    0x666.try_into().unwrap()
+}
+
 // Deploy summit contract without starting it
 fn deploy_summit() -> ISummitSystemDispatcher {
     let contract = declare("summit_systems").unwrap().contract_class();
     let owner = REAL_PLAYER();
     let start_timestamp = 1000_u64;
-    let summit_duration_blocks = 1000000_u64;
-    let summit_reward_amount = 0;
-    let showdown_duration_seconds = 100_u64;
-    let showdown_reward_amount = 100;
-    let beast_tokens_amount = 100;
-    let beast_submission_blocks = 100_u64;
-    let beast_top_spots = 100_u32;
+    let summit_duration_seconds = 1000000_u64;
+    let summit_reward_amount_per_second = 0_u128;
+    let quest_rewards_total_amount = 100_u128;
 
     let mut calldata = array![];
     calldata.append(owner.into());
     calldata.append(start_timestamp.into());
-    calldata.append(summit_duration_blocks.into());
-    calldata.append(summit_reward_amount.into());
-    calldata.append(showdown_duration_seconds.into());
-    calldata.append(showdown_reward_amount.into());
-    calldata.append(beast_tokens_amount.into());
-    calldata.append(beast_submission_blocks.into());
-    calldata.append(beast_top_spots.into());
+    calldata.append(summit_duration_seconds.into());
+    calldata.append(summit_reward_amount_per_second.into());
+    calldata.append(quest_rewards_total_amount.into());
     calldata.append(DUNGEON_ADDRESS().into());
     calldata.append(BEAST_ADDRESS().into());
     calldata.append(BEAST_DATA_ADDRESS().into());
     calldata.append(REWARD_ADDRESS().into());
+    calldata.append(ATTACK_POTION_ADDRESS().into());
+    calldata.append(REVIVE_POTION_ADDRESS().into());
+    calldata.append(EXTRA_LIFE_POTION_ADDRESS().into());
+    calldata.append(POISON_POTION_ADDRESS().into());
+    calldata.append(SKULL_TOKEN_ADDRESS().into());
+    calldata.append(CORPSE_TOKEN_ADDRESS().into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap();
     let summit = ISummitSystemDispatcher { contract_address };
@@ -353,28 +374,26 @@ fn test_set_start_timestamp() {
     let contract = declare("summit_systems").unwrap().contract_class();
     let owner = REAL_PLAYER();
     let start_timestamp = 9999999999_u64; // Future timestamp
-    let summit_duration_blocks = 1000000_u64;
-    let summit_reward_amount = 0_u128;
-    let showdown_duration_seconds = 100_u64;
-    let showdown_reward_amount = 100_u128;
-    let beast_tokens_amount = 100_u128;
-    let beast_submission_blocks = 100_u64;
-    let beast_top_spots = 100_u32;
+    let summit_duration_seconds = 1000000_u64;
+    let summit_reward_amount_per_second = 0_u128;
+    let quest_rewards_total_amount = 100_u128;
 
     let mut calldata = array![];
     calldata.append(owner.into());
     calldata.append(start_timestamp.into());
-    calldata.append(summit_duration_blocks.into());
-    calldata.append(summit_reward_amount.into());
-    calldata.append(showdown_duration_seconds.into());
-    calldata.append(showdown_reward_amount.into());
-    calldata.append(beast_tokens_amount.into());
-    calldata.append(beast_submission_blocks.into());
-    calldata.append(beast_top_spots.into());
+    calldata.append(summit_duration_seconds.into());
+    calldata.append(summit_reward_amount_per_second.into());
+    calldata.append(quest_rewards_total_amount.into());
     calldata.append(DUNGEON_ADDRESS().into());
     calldata.append(BEAST_ADDRESS().into());
     calldata.append(BEAST_DATA_ADDRESS().into());
     calldata.append(REWARD_ADDRESS().into());
+    calldata.append(ATTACK_POTION_ADDRESS().into());
+    calldata.append(REVIVE_POTION_ADDRESS().into());
+    calldata.append(EXTRA_LIFE_POTION_ADDRESS().into());
+    calldata.append(POISON_POTION_ADDRESS().into());
+    calldata.append(SKULL_TOKEN_ADDRESS().into());
+    calldata.append(CORPSE_TOKEN_ADDRESS().into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap();
     let summit = ISummitSystemDispatcher { contract_address };
@@ -424,13 +443,6 @@ fn test_get_terminal_timestamp() {
     assert(terminal_block > 0, 'Terminal block not set');
 }
 
-#[test]
-#[fork("mainnet")]
-fn test_get_submission_blocks() {
-    let summit = deploy_summit();
-    let submission_blocks = summit.get_beast_submission_seconds();
-    assert(submission_blocks == 100_u64, 'Wrong submission blocks');
-}
 
 #[test]
 #[fork("mainnet")]
@@ -468,109 +480,6 @@ fn test_get_all_addresses() {
     assert(summit.get_reward_address() == REWARD_ADDRESS(), 'Wrong reward address');
 }
 
-// ===========================================
-// LEADERBOARD TESTS
-// ===========================================
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: ('Summit not over',))]
-fn test_add_beast_to_leaderboard_before_terminal() {
-    let summit = deploy_summit_and_start();
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-
-    // Try to add to leaderboard before summit ends
-    summit.add_beast_to_leaderboard(60989, 1);
-
-    stop_cheat_caller_address(summit.contract_address);
-}
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: ('Submission period over',))]
-fn test_add_beast_to_leaderboard_after_submission() {
-    let summit = deploy_summit_and_start();
-    let terminal_block = summit.get_terminal_timestamp();
-    let submission_blocks = summit.get_beast_submission_seconds();
-
-    // Set block past submission window
-    start_cheat_block_number_global(terminal_block + submission_blocks + 1);
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    summit.add_beast_to_leaderboard(60989, 1);
-
-    stop_cheat_caller_address(summit.contract_address);
-    stop_cheat_block_number_global();
-}
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: ('Invalid position',))]
-fn test_add_beast_to_leaderboard_invalid_position_zero() {
-    let summit = deploy_summit_and_start();
-    let terminal_block = summit.get_terminal_timestamp();
-
-    start_cheat_block_number_global(terminal_block + 1);
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    summit.add_beast_to_leaderboard(60989, 0); // Position 0 is invalid
-
-    stop_cheat_caller_address(summit.contract_address);
-    stop_cheat_block_number_global();
-}
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: ('Invalid position',))]
-fn test_add_beast_to_leaderboard_invalid_position_too_high() {
-    let summit = deploy_summit_and_start();
-    let terminal_block = summit.get_terminal_timestamp();
-    let top_spots = summit.get_beast_top_spots();
-
-    start_cheat_block_number_global(terminal_block + 1);
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    summit.add_beast_to_leaderboard(60989, top_spots + 1); // Beyond max position
-
-    stop_cheat_caller_address(summit.contract_address);
-    stop_cheat_block_number_global();
-}
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: "Beast has no rewards earned")]
-fn test_add_beast_to_leaderboard_no_summit_held_seconds() {
-    let summit = deploy_summit_and_start();
-    let terminal_block = summit.get_terminal_timestamp();
-
-    start_cheat_block_number_global(terminal_block + 1);
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    // Beast 60989 never held the summit, so summit_held_seconds = 0
-    // Should panic with "Beast has no rewards earned"
-    summit.add_beast_to_leaderboard(60989, 1);
-
-    stop_cheat_caller_address(summit.contract_address);
-    stop_cheat_block_number_global();
-}
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: ('Submission not over',))]
-fn test_distribute_beast_tokens_before_submission_ends() {
-    let summit = deploy_summit_and_start();
-    let terminal_block = summit.get_terminal_timestamp();
-
-    // Set block to during submission window
-    start_cheat_block_number_global(terminal_block + 1);
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    summit.distribute_beast_tokens(1);
-
-    stop_cheat_caller_address(summit.contract_address);
-    stop_cheat_block_number_global();
-}
 
 // ===========================================
 // BEAST MODEL TESTS (crit_chance, spirit_reduction)
@@ -1004,37 +913,6 @@ fn test_get_summit_reward_amount() {
     assert(amount == 0, 'Wrong summit reward amount');
 }
 
-#[test]
-#[fork("mainnet")]
-fn test_get_showdown_duration_seconds() {
-    let summit = deploy_summit();
-    let duration = summit.get_showdown_duration_seconds();
-    assert(duration == 100_u64, 'Wrong showdown duration');
-}
-
-#[test]
-#[fork("mainnet")]
-fn test_get_showdown_reward_amount() {
-    let summit = deploy_summit();
-    let amount = summit.get_showdown_reward_amount();
-    assert(amount == 100, 'Wrong showdown reward');
-}
-
-#[test]
-#[fork("mainnet")]
-fn test_get_beast_tokens_amount() {
-    let summit = deploy_summit();
-    let amount = summit.get_beast_tokens_amount();
-    assert(amount == 100, 'Wrong beast tokens amount');
-}
-
-#[test]
-#[fork("mainnet")]
-fn test_get_beast_top_spots() {
-    let summit = deploy_summit();
-    let spots = summit.get_beast_top_spots();
-    assert(spots == 100_u32, 'Wrong beast top spots');
-}
 
 // ===========================================
 // POISON EDGE CASE TESTS
@@ -1411,28 +1289,26 @@ fn test_set_start_timestamp_non_owner() {
     let contract = declare("summit_systems").unwrap().contract_class();
     let owner = REAL_PLAYER();
     let start_timestamp = 9999999999_u64;
-    let summit_duration_blocks = 1000000_u64;
-    let summit_reward_amount = 0_u128;
-    let showdown_duration_seconds = 100_u64;
-    let showdown_reward_amount = 100_u128;
-    let beast_tokens_amount = 100_u128;
-    let beast_submission_blocks = 100_u64;
-    let beast_top_spots = 100_u32;
+    let summit_duration_seconds = 1000000_u64;
+    let summit_reward_amount_per_second = 0_u128;
+    let quest_rewards_total_amount = 100_u128;
 
     let mut calldata = array![];
     calldata.append(owner.into());
     calldata.append(start_timestamp.into());
-    calldata.append(summit_duration_blocks.into());
-    calldata.append(summit_reward_amount.into());
-    calldata.append(showdown_duration_seconds.into());
-    calldata.append(showdown_reward_amount.into());
-    calldata.append(beast_tokens_amount.into());
-    calldata.append(beast_submission_blocks.into());
-    calldata.append(beast_top_spots.into());
+    calldata.append(summit_duration_seconds.into());
+    calldata.append(summit_reward_amount_per_second.into());
+    calldata.append(quest_rewards_total_amount.into());
     calldata.append(DUNGEON_ADDRESS().into());
     calldata.append(BEAST_ADDRESS().into());
     calldata.append(BEAST_DATA_ADDRESS().into());
     calldata.append(REWARD_ADDRESS().into());
+    calldata.append(ATTACK_POTION_ADDRESS().into());
+    calldata.append(REVIVE_POTION_ADDRESS().into());
+    calldata.append(EXTRA_LIFE_POTION_ADDRESS().into());
+    calldata.append(POISON_POTION_ADDRESS().into());
+    calldata.append(SKULL_TOKEN_ADDRESS().into());
+    calldata.append(CORPSE_TOKEN_ADDRESS().into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap();
     let summit = ISummitSystemDispatcher { contract_address };
@@ -1444,33 +1320,6 @@ fn test_set_start_timestamp_non_owner() {
     stop_cheat_caller_address(summit.contract_address);
 }
 
-#[test]
-#[fork("mainnet")]
-fn test_set_test_money_address() {
-    let summit = deploy_summit();
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-
-    let new_address: ContractAddress = 0xABC.try_into().unwrap();
-    summit.set_test_money_address(new_address);
-
-    stop_cheat_caller_address(summit.contract_address);
-}
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: ('Caller is not the owner',))]
-fn test_set_test_money_address_non_owner() {
-    let summit = deploy_summit();
-
-    let fake_owner: ContractAddress = 0x123.try_into().unwrap();
-    start_cheat_caller_address(summit.contract_address, fake_owner);
-
-    let new_address: ContractAddress = 0xABC.try_into().unwrap();
-    summit.set_test_money_address(new_address);
-
-    stop_cheat_caller_address(summit.contract_address);
-}
 
 // ==========================
 // P0 TESTS: COMBAT LOGIC
@@ -1590,16 +1439,6 @@ fn test_poison_damage_over_time() {
     stop_cheat_block_timestamp_global();
     stop_cheat_caller_address(summit.contract_address);
 }
-
-// ==========================
-// P1 TESTS: LEADERBOARD
-// ==========================
-
-// Note: test_leaderboard_valid_submission removed - the beast needs summit_held_seconds > 0
-// to be added to leaderboard, and summit_held_seconds only gets updated when summit is finalized
-// (when another beast takes over). This requires two separate players/beasts to properly test.
-// The existing tests test_add_beast_to_leaderboard_no_summit_held_seconds and
-// test_add_beast_to_leaderboard_before_terminal cover the negative cases.
 
 // ==========================
 // ADDITIONAL EDGE CASES
@@ -1761,15 +1600,6 @@ fn test_set_start_timestamp_after_summit_started() {
 
     stop_cheat_caller_address(summit.contract_address);
 }
-
-// ==========================
-// DISTRIBUTE BEAST TOKENS TESTS
-// ==========================
-
-// Note: test_distribute_beast_tokens_after_submission - the beast needs summit_held_seconds > 0
-// to be added to leaderboard, and summit_held_seconds only updates when another beast takes the summit.
-// This requires multiple owners/beasts to properly test. The existing test
-// test_distribute_beast_tokens_before_submission_ends covers the timing validation.
 
 // ==========================
 // SHOWDOWN TESTS
