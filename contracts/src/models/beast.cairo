@@ -320,28 +320,23 @@ mod tests {
     }
 
     fn build_cross_layer_parity_stats() -> LiveBeastStats {
-        build_stats(
-            4242_u32,
-            1337_u16,
-            777_u16,
-            12345_u16,
-            9_u8,
-            1735689600_u64,
-            17_u8,
-            3210_u16,
-            654321_u32,
-            88_u8,
-            199_u8,
-            1_u8,
-            0_u8,
-            1_u8,
-            987654321_u32,
-            123456789_u32,
-            1_u8,
-            0_u8,
-            1_u8,
-            1_u8,
-        )
+        LiveBeastStats {
+            token_id: 4242_u32,
+            current_health: 1337_u16,
+            bonus_health: 777_u16,
+            bonus_xp: 12345_u16,
+            attack_streak: 9_u8,
+            last_death_timestamp: 1735689600_u64,
+            revival_count: 17_u8,
+            extra_lives: 3210_u16,
+            summit_held_seconds: 654321_u32,
+            stats: Stats { spirit: 88_u8, luck: 199_u8, specials: 1_u8, wisdom: 0_u8, diplomacy: 1_u8 },
+            rewards_earned: 987654321_u32,
+            rewards_claimed: 123456789_u32,
+            quest: Quest {
+                captured_summit: 1_u8, used_revival_potion: 0_u8, used_attack_potion: 1_u8, max_attack_streak: 1_u8,
+            },
+        }
     }
 
     #[test]

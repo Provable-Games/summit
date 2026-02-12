@@ -178,6 +178,8 @@ const MASK_128 = TWO_POW_128 - 1n;
 
 // ============ Event Data Interfaces ============
 
+type BitFlag = 0 | 1;
+
 export interface LiveBeastStats {
   token_id: number;
   current_health: number;
@@ -191,17 +193,17 @@ export interface LiveBeastStats {
   // Stats struct
   spirit: number;
   luck: number;
-  specials: number;
-  wisdom: number;
-  diplomacy: number;
+  specials: BitFlag;
+  wisdom: BitFlag;
+  diplomacy: BitFlag;
   // Rewards
   rewards_earned: number;
   rewards_claimed: number;
   // Quest struct
-  captured_summit: number;
-  used_revival_potion: number;
-  used_attack_potion: number;
-  max_attack_streak: number;
+  captured_summit: BitFlag;
+  used_revival_potion: BitFlag;
+  used_attack_potion: BitFlag;
+  max_attack_streak: BitFlag;
 }
 
 export interface BeastUpdatesEventData {
@@ -260,6 +262,10 @@ export interface QuestRewardsClaimedEventData {
   packed_rewards: string[];
 }
 
+function toBitFlag(value: bigint): BitFlag {
+  return value === 1n ? 1 : 0;
+}
+
 // ============ Packed Data Decoders ============
 
 /**
@@ -302,19 +308,19 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   high = high / TWO_POW_8;
   const luck = Number(high & MASK_8);
   high = high / TWO_POW_8;
-  const specials = Number(high & MASK_1);
+  const specials = toBitFlag(high & MASK_1);
   high = high / TWO_POW_1;
-  const wisdom = Number(high & MASK_1);
+  const wisdom = toBitFlag(high & MASK_1);
   high = high / TWO_POW_1;
-  const diplomacy = Number(high & MASK_1);
+  const diplomacy = toBitFlag(high & MASK_1);
   high = high / TWO_POW_1;
-  const captured_summit = Number(high & MASK_1);
+  const captured_summit = toBitFlag(high & MASK_1);
   high = high / TWO_POW_1;
-  const used_revival_potion = Number(high & MASK_1);
+  const used_revival_potion = toBitFlag(high & MASK_1);
   high = high / TWO_POW_1;
-  const used_attack_potion = Number(high & MASK_1);
+  const used_attack_potion = toBitFlag(high & MASK_1);
   high = high / TWO_POW_1;
-  const max_attack_streak = Number(high & MASK_1);
+  const max_attack_streak = toBitFlag(high & MASK_1);
 
   return {
     token_id,
@@ -339,42 +345,6 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
     max_attack_streak,
   };
 }
-
-const CROSS_LAYER_PARITY_PACKED =
-  "0x6dc75813f7e39148cb039612a721092075bcd153ade68b10000000067748580";
-const CROSS_LAYER_PARITY_EXPECTED: LiveBeastStats = {
-  token_id: 4242,
-  current_health: 1337,
-  bonus_health: 777,
-  bonus_xp: 12345,
-  attack_streak: 9,
-  last_death_timestamp: 1735689600n,
-  revival_count: 17,
-  extra_lives: 3210,
-  summit_held_seconds: 654321,
-  spirit: 88,
-  luck: 199,
-  specials: 1,
-  wisdom: 0,
-  diplomacy: 1,
-  rewards_earned: 987654321,
-  rewards_claimed: 123456789,
-  captured_summit: 1,
-  used_revival_potion: 0,
-  used_attack_potion: 1,
-  max_attack_streak: 1,
-};
-
-function assertLiveBeastStatsParityVector(): void {
-  const decoded = unpackLiveBeastStats(CROSS_LAYER_PARITY_PACKED);
-  for (const [key, value] of Object.entries(CROSS_LAYER_PARITY_EXPECTED)) {
-    if (decoded[key as keyof LiveBeastStats] !== value) {
-      throw new Error(`LiveBeastStats parity mismatch at ${key}`);
-    }
-  }
-}
-
-assertLiveBeastStatsParityVector();
 
 // ============ Event Decoders ============
 

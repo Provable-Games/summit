@@ -6,6 +6,7 @@
     "dev": "apibara dev",
     "build": "apibara build",
     "start": "apibara start",
+    "test:parity": "tsx scripts/test-live-beast-stats-parity.ts",
     "check-dna": "tsx scripts/check-dna-status.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

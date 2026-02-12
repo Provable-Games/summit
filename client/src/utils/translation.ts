@@ -49,6 +49,14 @@ const MASK_23 = 0x7FFFFFn;
 const MASK_32 = 0xFFFFFFFFn;
 const MASK_64 = 0xFFFFFFFFFFFFFFFFn;
 const MASK_128 = TWO_POW_128 - 1n;
+const MAX_SAFE_INTEGER_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
+
+function bigintToSafeNumber(value: bigint, fieldName: string): number {
+  if (value > MAX_SAFE_INTEGER_BIGINT) {
+    throw new Error(`${fieldName} exceeds Number.MAX_SAFE_INTEGER`);
+  }
+  return Number(value);
+}
 
 // ============ Packed Data Types ============
 
@@ -89,7 +97,7 @@ function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   let low = packed & MASK_128;
   let high = packed / TWO_POW_128;
 
-  const last_death_timestamp = Number(low & MASK_64);
+  const last_death_timestamp = bigintToSafeNumber(low & MASK_64, "last_death_timestamp");
   low = low / TWO_POW_64;
   const rewards_earned = Number(low & MASK_32);
   low = low / TWO_POW_32;
