@@ -6,6 +6,8 @@
     "dev": "apibara dev",
     "build": "apibara build",
     "start": "apibara start",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:parity": "tsx scripts/test-live-beast-stats-parity.ts",
     "check-dna": "tsx scripts/check-dna-status.ts",
     "db:generate": "drizzle-kit generate",
@@ -34,8 +36,10 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.0",
+    "@vitest/coverage-v8": "^3.1.1",
     "drizzle-kit": "^0.30.0",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^3.1.1"
   }
 }

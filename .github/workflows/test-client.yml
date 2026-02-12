@@ -49,3 +49,13 @@ jobs:
 
       - name: Run parity test
         run: pnpm test:parity
+
+      - name: Run tests with coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./client/coverage/lcov.info
+          flags: client
+          token: ${{ secrets.CODECOV_TOKEN }}
