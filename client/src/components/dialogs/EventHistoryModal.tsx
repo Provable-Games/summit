@@ -53,7 +53,7 @@ interface EventHistoryModalProps {
   onClose: () => void;
 }
 
-const PAGE_SIZE = 25;
+const PAGE_SIZE = 50;
 
 // Category definitions with their sub-categories (order matters for display)
 const CATEGORIES: Record<string, string[]> = {
@@ -258,7 +258,16 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     }
 
     const fetchedIds = new Set(filteredEvents.map((e) => e.id));
-    const newLiveEvents = filteredLiveEvents.filter((e) => !fetchedIds.has(e.id));
+    const newestFetchedTime = filteredEvents.length > 0
+      ? new Date(filteredEvents[0].created_at).getTime()
+      : 0;
+
+    // Only show live events that are newer than the latest fetched event and not already in fetched data
+    const newLiveEvents = filteredLiveEvents.filter((e) => {
+      if (fetchedIds.has(e.id)) return false;
+      const eventTime = new Date(e.created_at).getTime();
+      return eventTime > newestFetchedTime || newestFetchedTime === 0;
+    });
 
     return [...newLiveEvents, ...filteredEvents];
   }, [events, filteredLiveEvents, page]);

@@ -15,8 +15,8 @@ interface LeaderboardModalProps {
 const PAGE_SIZE = 25;
 
 export default function LeaderboardModal({ open, onClose }: LeaderboardModalProps) {
-  const { leaderboard } = useGameStore();
-  const { getTopBeasts } = useSummitApi();
+  const { leaderboard, setLeaderboard } = useGameStore();
+  const { getTopBeasts, getLeaderboard } = useSummitApi();
 
   const [activeTab, setActiveTab] = useState<'players' | 'beasts'>('players');
 
@@ -30,6 +30,15 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
   const [beastsLoading, setBeastsLoading] = useState(false);
   const [beastsTotal, setBeastsTotal] = useState(0);
   const [beastOwnerNames, setBeastOwnerNames] = useState<Record<string, string | null>>({});
+
+  // Fetch leaderboard data if not already loaded (e.g. on mobile where Leaderboard component doesn't render)
+  useEffect(() => {
+    if (open && leaderboard.length === 0) {
+      getLeaderboard()
+        .then((data) => setLeaderboard(data))
+        .catch((error) => console.error('Error fetching leaderboard:', error));
+    }
+  }, [open]);
 
   const playersTotalPages = Math.max(1, Math.ceil(leaderboard.length / PAGE_SIZE));
   const beastsTotalPages = Math.max(1, Math.ceil(beastsTotal / PAGE_SIZE));

@@ -3,13 +3,13 @@ import attackPotionIcon from '@/assets/images/attack-potion.png';
 import questsIcon from '@/assets/images/quest.png';
 import revivePotionIcon from '@/assets/images/revive-potion.png';
 import swordIcon from '@/assets/images/sword.png';
+import bruteIcon from '@/assets/types/brute.svg';
 import QuestRewardsRemainingBar from '@/components/QuestRewardsRemainingBar';
 import { REWARD_NAME } from '@/contexts/GameDirector';
 import { questGuides, useQuestGuide } from '@/contexts/QuestGuide';
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
 import { gameColors } from '@/utils/themes';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import BoltIcon from '@mui/icons-material/Bolt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
@@ -114,7 +114,7 @@ const questDefinitions: QuestDefinition[] = [
     name: 'Iron Grip',
     description: 'Hold the Summit for at least 10 seconds',
     reward: 0.2,
-    icon: <AutoAwesomeIcon sx={{ color: '#26c6da' }} />,
+    icon: <Box component="img" src={bruteIcon} sx={{ width: 24, height: 24, filter: 'invert(60%) sepia(80%) saturate(500%) hue-rotate(5deg) brightness(1.1)' }} />,
     check: (beast) => beast.summit_held_seconds >= 10,
   },
   {

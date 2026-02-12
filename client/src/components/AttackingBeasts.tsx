@@ -1,4 +1,3 @@
-import attackPotionImg from '@/assets/images/attack-potion.png';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
@@ -8,16 +7,131 @@ import FastForwardIcon from '@mui/icons-material/FastForward';
 import StarIcon from '@mui/icons-material/Star';
 import { Box, Typography } from '@mui/material';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { fetchBeastImage } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 import { shuffle } from '../utils/utils';
+
+/** Max beasts to render — the rest are off-screen due to overflow:hidden */
+const MAX_VISIBLE_CARDS = 15;
 
 type AttackingBeastEntity = Beast & {
   /** Composite id so a single beast can appear multiple times (multi-attack) */
   attack_index: number;
   entity_key: string;
 };
+
+const AttackingBeastCard = React.memo(function AttackingBeastCard({
+  beast,
+  index,
+  isAttacking,
+}: {
+  beast: AttackingBeastEntity;
+  index: number;
+  isAttacking: boolean;
+}) {
+  const isActiveBeast = index === 0;
+  const health = beast.current_health;
+  const maxHealth = beast.health + (beast.bonus_health || 0);
+  const healthPercentage = (health / maxHealth) * 100;
+
+  return (
+    <motion.div
+      key={beast.entity_key}
+      layout
+      initial={{ opacity: 0, x: 50 }}
+      animate={{
+        opacity: 1,
+        x: 0,
+        scale: isActiveBeast && isAttacking ? 1 : isActiveBeast ? 1 : 0.7,
+      }}
+      exit={{ opacity: 0, scale: 0.3, y: -30 }}
+      transition={{
+        layout: { type: "spring", stiffness: 400, damping: 30 },
+        scale: { duration: 0.15 },
+      }}
+      style={{
+        position: 'relative',
+        marginLeft: index > 1 ? '-35px' : '0'
+      }}
+    >
+      <Box sx={[
+        styles.beastCard,
+        isActiveBeast ? styles.activeBeastCard : styles.waitingBeastCard,
+        isAttacking && isActiveBeast && styles.attackingCard
+      ]}>
+        {/* Beast image */}
+        <Box sx={styles.imageContainer}>
+          <img
+            src={fetchBeastImage(beast)}
+            alt={beast.name}
+            style={styles.beastImage}
+          />
+          {(beast.spirit || beast.luck || beast.specials) && (
+            <Box sx={styles.upgradeIconsContainer}>
+              {beast.luck && (
+                <Box sx={{ color: '#ff69b4' }}>
+                  <CasinoIcon sx={{ fontSize: '12px' }} />
+                </Box>
+              )}
+              {beast.spirit && (
+                <Box sx={{ color: '#00ffff' }}>
+                  <EnergyIcon sx={{ fontSize: '12px' }} />
+                </Box>
+              )}
+              {beast.specials && (
+                <Box sx={{ color: '#ffd700' }}>
+                  <StarIcon sx={{ fontSize: '12px' }} />
+                </Box>
+              )}
+            </Box>
+          )}
+        </Box>
+
+        <Typography sx={[styles.beastName, index !== 0 && styles.smallBeastName]}>
+          {beast.name}
+        </Typography>
+
+        {index === 0 && (
+          <Box sx={styles.healthBarContainer}>
+            <Box sx={styles.healthBarBackground}>
+              <motion.div
+                style={{
+                  ...styles.healthBarFill,
+                  backgroundColor: healthPercentage > 50 ? gameColors.brightGreen :
+                    healthPercentage > 25 ? gameColors.yellow :
+                      gameColors.red
+                }}
+                initial={{ width: '100%' }}
+                animate={{ width: `${healthPercentage}%` }}
+                transition={{ duration: 0.5 }}
+              />
+            </Box>
+            <Typography sx={styles.healthText}>
+              {health}/{maxHealth}
+            </Typography>
+          </Box>
+        )}
+
+        <Box sx={[styles.statsRow]}>
+          <Box sx={[styles.statBox, index !== 0 && styles.smallStatBox]}>
+            <Typography sx={[styles.statLabel, index !== 0 && styles.smallStatLabel]}>POWER</Typography>
+            <Box sx={styles.powerValueContainer}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill={gameColors.yellow}>
+                <path d="M7 2v11h3v9l7-12h-4l4-8z" />
+              </svg>
+              <Typography sx={[styles.powerValue]}>{beast.power}</Typography>
+            </Box>
+          </Box>
+          <Box sx={[styles.statBox]}>
+            <Typography sx={[styles.statLabel, index !== 0 && styles.smallStatLabel]}>TYPE</Typography>
+            <Typography sx={[styles.typeValue]}>{beast.type}</Typography>
+          </Box>
+        </Box>
+      </Box>
+    </motion.div>
+  );
+});
 
 function AttackingBeasts() {
   const { selectedBeasts, setAttackInProgress, setSelectedBeasts, battleEvents, setSummit, summit } = useGameStore();
@@ -258,7 +372,10 @@ function AttackingBeasts() {
     };
   }, [damageQueue]);
 
-  const visibleBeasts = beasts.filter(beast => !deadBeasts.has(beast.entity_key));
+  const visibleBeasts = useMemo(
+    () => beasts.filter(beast => !deadBeasts.has(beast.entity_key)),
+    [beasts, deadBeasts]
+  );
 
   const handleSkip = () => {
     setPauseUpdates(false);
@@ -324,115 +441,23 @@ function AttackingBeasts() {
       </Box>
       <Box sx={styles.beastsRow}>
         <AnimatePresence mode="popLayout">
-          {visibleBeasts.map((beast, index) => {
-            const isActiveBeast = index === 0;
-            const health = beast.current_health;
-            const maxHealth = beast.health + (beast.bonus_health || 0);
-            const healthPercentage = (health / maxHealth) * 100;
-
-            return (
-              <motion.div
-                key={beast.entity_key}
-                layout
-                initial={{ opacity: 0, x: 50 }}
-                animate={{
-                  opacity: 1,
-                  x: 0,
-                  scale: isActiveBeast && isAttacking ? 1 : isActiveBeast ? 1 : 0.7,
-                }}
-                exit={{ opacity: 0, scale: 0.3, y: -30 }}
-                transition={{
-                  layout: { type: "spring", stiffness: 400, damping: 30 },
-                  scale: { duration: 0.15 },
-                }}
-                style={{
-                  position: 'relative',
-                  marginLeft: index > 1 ? '-35px' : '0'
-                }}
-              >
-                <Box sx={[
-                  styles.beastCard,
-                  isActiveBeast ? styles.activeBeastCard : styles.waitingBeastCard,
-                  isAttacking && isActiveBeast && styles.attackingCard
-                ]}>
-
-                  {/* Beast image */}
-                  <Box sx={styles.imageContainer}>
-                    <img
-                      src={fetchBeastImage(beast)}
-                      alt={beast.name}
-                      style={styles.beastImage}
-                    />
-                    {/* Upgrade Icons */}
-                    {(beast.spirit || beast.luck || beast.specials) && (
-                      <Box sx={styles.upgradeIconsContainer}>
-                        {beast.luck && (
-                          <Box sx={{ color: '#ff69b4' }}>
-                            <CasinoIcon sx={{ fontSize: '12px' }} />
-                          </Box>
-                        )}
-                        {beast.spirit && (
-                          <Box sx={{ color: '#00ffff' }}>
-                            <EnergyIcon sx={{ fontSize: '12px' }} />
-                          </Box>
-                        )}
-                        {beast.specials && (
-                          <Box sx={{ color: '#ffd700' }}>
-                            <StarIcon sx={{ fontSize: '12px' }} />
-                          </Box>
-                        )}
-                      </Box>
-                    )}
-                  </Box>
-
-                  {/* Beast name */}
-                  <Typography sx={[styles.beastName, index !== 0 && styles.smallBeastName]}>
-                    {beast.name}
-                  </Typography>
-
-                  {/* Health bar - only show for active beast */}
-                  {index === 0 && (
-                    <Box sx={styles.healthBarContainer}>
-                      <Box sx={styles.healthBarBackground}>
-                        <motion.div
-                          style={{
-                            ...styles.healthBarFill,
-                            backgroundColor: healthPercentage > 50 ? gameColors.brightGreen :
-                              healthPercentage > 25 ? gameColors.yellow :
-                                gameColors.red
-                          }}
-                          initial={{ width: '100%' }}
-                          animate={{ width: `${healthPercentage}%` }}
-                          transition={{ duration: 0.5 }}
-                        />
-                      </Box>
-                      <Typography sx={styles.healthText}>
-                        {health}/{maxHealth}
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {/* Stats row - show for all but smaller for waiting */}
-                  <Box sx={[styles.statsRow]}>
-                    <Box sx={[styles.statBox, index !== 0 && styles.smallStatBox]}>
-                      <Typography sx={[styles.statLabel, index !== 0 && styles.smallStatLabel]}>POWER</Typography>
-                      <Box sx={styles.powerValueContainer}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill={gameColors.yellow}>
-                          <path d="M7 2v11h3v9l7-12h-4l4-8z" />
-                        </svg>
-                        <Typography sx={[styles.powerValue]}>{beast.power}</Typography>
-                      </Box>
-                    </Box>
-                    <Box sx={[styles.statBox]}>
-                      <Typography sx={[styles.statLabel, index !== 0 && styles.smallStatLabel]}>TYPE</Typography>
-                      <Typography sx={[styles.typeValue]}>{beast.type}</Typography>
-                    </Box>
-                  </Box>
-                </Box>
-              </motion.div>
-            );
-          })}
+          {visibleBeasts.slice(0, MAX_VISIBLE_CARDS).map((beast, index) => (
+            <AttackingBeastCard
+              key={beast.entity_key}
+              beast={beast}
+              index={index}
+              isAttacking={isAttacking}
+            />
+          ))}
         </AnimatePresence>
+
+        {visibleBeasts.length > MAX_VISIBLE_CARDS && (
+          <Box sx={styles.overflowBadge}>
+            <Typography sx={styles.overflowText}>
+              +{visibleBeasts.length - MAX_VISIBLE_CARDS}
+            </Typography>
+          </Box>
+        )}
       </Box>
 
       {/* Damage numbers overlay */}
@@ -794,5 +819,24 @@ const styles: any = {
     alignItems: 'center',
     justifyContent: 'center',
     gap: '1px',
+  },
+  overflowBadge: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: '48px',
+    height: '32px',
+    borderRadius: '16px',
+    background: `${gameColors.darkGreen}90`,
+    border: `1px solid ${gameColors.accentGreen}40`,
+    alignSelf: 'flex-end',
+    marginBottom: '40px',
+    marginLeft: '-20px',
+  },
+  overflowText: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    color: gameColors.accentGreen,
+    letterSpacing: '0.5px',
   },
 };

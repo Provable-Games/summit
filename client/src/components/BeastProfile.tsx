@@ -1,7 +1,12 @@
+import attackPotionIcon from '@/assets/images/attack-potion.png';
+import swordIcon from '@/assets/images/sword.png';
+import bruteIcon from '@/assets/types/brute.svg';
 import { useGameStore } from '@/stores/gameStore';
 import { Beast } from '@/types/game';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import WhatshotIcon from '@mui/icons-material/Whatshot';
-import { Box, LinearProgress, Typography } from "@mui/material";
+import { Box, LinearProgress, Tooltip, Typography } from "@mui/material";
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import { fetchBeastImage, normaliseHealth } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
@@ -227,6 +232,43 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
               <Box sx={styles.pixelRevivalIcon}>
                 <img src={revivePotionIcon} alt="Revive Potion" width="12" height="12" />
               </Box>
+            </Box>
+          </Box>
+
+          {/* Quests Row */}
+          <Box sx={styles.questsRow}>
+            <Typography sx={styles.questsLabel}>Quests</Typography>
+            <Box sx={styles.questIcons}>
+              <Tooltip title="First Blood" placement="top">
+                <Box sx={[styles.questIcon, beast.bonus_xp > 0 && styles.questCompleted]}>
+                  <img src={swordIcon} alt="sword" style={{ width: 14, height: 14, opacity: beast.bonus_xp > 0 ? 1 : 0.25 }} />
+                </Box>
+              </Tooltip>
+              <Tooltip title="Consistency is Key" placement="top">
+                <Box sx={[styles.questIcon, beast.max_attack_streak && styles.questCompleted]}>
+                  <LocalFireDepartmentIcon sx={{ fontSize: '14px', color: beast.max_attack_streak ? '#ff5722' : '#444' }} />
+                </Box>
+              </Tooltip>
+              <Tooltip title="Summit Conqueror" placement="top">
+                <Box sx={[styles.questIcon, beast.captured_summit && styles.questCompleted]}>
+                  <MilitaryTechIcon sx={{ fontSize: '14px', color: beast.captured_summit ? '#ffd54f' : '#444' }} />
+                </Box>
+              </Tooltip>
+              <Tooltip title="Iron Grip" placement="top">
+                <Box sx={[styles.questIcon, beast.summit_held_seconds >= 10 && styles.questCompleted]}>
+                  <Box component="img" src={bruteIcon} sx={{ width: 14, height: 14, filter: beast.summit_held_seconds >= 10 ? 'invert(60%) sepia(80%) saturate(500%) hue-rotate(5deg) brightness(1.1)' : 'invert(30%) brightness(0.8)' }} />
+                </Box>
+              </Tooltip>
+              <Tooltip title="Second Wind" placement="top">
+                <Box sx={[styles.questIcon, beast.used_revival_potion && styles.questCompleted]}>
+                  <img src={revivePotionIcon} alt="revive" style={{ width: 14, height: 14, opacity: beast.used_revival_potion ? 1 : 0.25 }} />
+                </Box>
+              </Tooltip>
+              <Tooltip title="A Vital Boost" placement="top">
+                <Box sx={[styles.questIcon, beast.used_attack_potion && styles.questCompleted]}>
+                  <img src={attackPotionIcon} alt="attack" style={{ width: 14, height: 14, opacity: beast.used_attack_potion ? 1 : 0.25 }} />
+                </Box>
+              </Tooltip>
             </Box>
           </Box>
         </Box>
@@ -660,7 +702,6 @@ const styles = {
     borderRadius: '4px',
     padding: '2px 6px 1px',
     border: '1px solid #3a3a3e',
-    mb: '1px',
   },
 
   // Pixel revival left side
@@ -817,5 +858,38 @@ const styles = {
     fontWeight: 'bold',
     letterSpacing: '0.5px',
     lineHeight: '1.2',
+  },
+
+  // Quests row
+  questsRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  questsLabel: {
+    fontSize: '10px',
+    color: gameColors.yellow,
+    opacity: 0.9,
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase',
+  },
+  questIcons: {
+    display: 'flex',
+    gap: '3px',
+  },
+  questIcon: {
+    width: '22px',
+    height: '22px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#1a1a1e',
+    borderRadius: '3px',
+    border: '1px solid #333',
+  },
+  questCompleted: {
+    border: '1px solid #555',
+    background: '#2a2a2e',
   },
 }
