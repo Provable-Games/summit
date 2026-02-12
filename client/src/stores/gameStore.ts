@@ -101,7 +101,7 @@ interface GameState {
   disconnect: () => void;
 }
 
-export const useGameStore = create<GameState>((set, get) => ({
+export const useGameStore = create<GameState>((set, _get) => ({
   summit: null,
   summitEnded: false,
   leaderboard: [],

@@ -151,7 +151,7 @@ export const useSystemCalls = () => {
    * @param beastId The ID of the beast
    * @param tillBeast Whether to explore until encountering a beast
    */
-  const feed = (beastId: number, amount: number, corpseRequired: number) => {
+  const feed = (beastId: number, amount: number, _corpseRequired: number) => {
     const txs: any[] = [];
 
     // if (corpseRequired > 0) {
@@ -232,7 +232,7 @@ export const useSystemCalls = () => {
     return txs;
   };
 
-  const applyStatPoints = (beastId: number, stats: Stats, skullRequired: number) => {
+  const applyStatPoints = (beastId: number, stats: Stats, _skullRequired: number) => {
     const txs: any[] = [];
 
     // if (skullRequired > 0) {
@@ -249,7 +249,7 @@ export const useSystemCalls = () => {
     return txs;
   };
 
-  const approveTokens = (address: string, amount: number) => {
+  const _approveTokens = (address: string, amount: number) => {
     return {
       contractAddress: address,
       entrypoint: "approve",

@@ -38,7 +38,7 @@ function BeastCollection() {
   } = useGameStore()
   const { tokenBalances } = useController()
   const { address } = useAccount()
-  const { notifyTargetClicked, isStepTarget } = useQuestGuide()
+  const { notifyTargetClicked, isStepTarget: _isStepTarget } = useQuestGuide()
   const [hoveredBeast, setHoveredBeast] = useState<Beast | null>(null)
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null)
   const [filterExpanded, setFilterExpanded] = useState(false)
@@ -168,6 +168,7 @@ function BeastCollection() {
     } else {
       setSelectedBeasts((prev: selection) => [...prev, [beast, 1, 0]]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attackInProgress, attackMode, selectedBeasts, notifyTargetClicked]);
 
   const selectAllBeasts = () => {

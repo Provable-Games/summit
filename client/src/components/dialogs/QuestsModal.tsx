@@ -154,6 +154,7 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
     }).finally(() => {
       setIsLoadingRewards(false);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const hasGuide = (questId: string) => {

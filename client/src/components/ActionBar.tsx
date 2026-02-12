@@ -157,6 +157,7 @@ function ActionBar() {
     }
 
     return [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summit?.beast?.token_id, collection.length, revivePotionsUsed, attackPotionsUsed, useRevivePotions, useAttackPotions]);
 
   const handleAttackUntilCapture = async (extraLifePotions: number) => {
@@ -220,6 +221,7 @@ function ActionBar() {
 
   useEffect(() => {
     initializeMaxCapsFromBalances(tokenBalances);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviveBalance, attackBalance, extraLifeBalance, poisonBalance]);
 
   useEffect(() => {
@@ -231,6 +233,7 @@ function ActionBar() {
     if (attackMode !== 'autopilot' && autopilotEnabled) {
       setAutopilotEnabled(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attackMode]);
 
   useEffect(() => {
@@ -239,6 +242,7 @@ function ActionBar() {
     } else if (attackInProgress) {
       setAutopilotLog('Attacking...')
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autopilotEnabled, attackInProgress, applyingPotions])
 
   useEffect(() => {
@@ -249,6 +253,7 @@ function ActionBar() {
     const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
     const poisonBalance = tokenBalances?.["POISON"] || 0;
     handleApplyPoison(Math.min(poisonAggressiveAmount, poisonBalance, remainingCap));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summit?.beast?.token_id]);
 
   useEffect(() => {
@@ -303,6 +308,7 @@ function ActionBar() {
         attackPotions: beasts[0].combat?.attackPotions || 0
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
 
   const startAutopilot = () => {
@@ -1044,14 +1050,11 @@ function ActionBar() {
           const minutes = Math.floor((secondsToKill % 3600) / 60);
           const seconds = secondsToKill % 60;
 
-          let timeString = '';
-          if (hours > 0) {
-            timeString = `${hours}h ${minutes}m ${seconds}s`;
-          } else if (minutes > 0) {
-            timeString = `${minutes}m ${seconds}s`;
-          } else {
-            timeString = `${seconds}s`;
-          }
+          const timeString = hours > 0
+            ? `${hours}h ${minutes}m ${seconds}s`
+            : minutes > 0
+              ? `${minutes}m ${seconds}s`
+              : `${seconds}s`;
 
           return (
             <Box sx={{

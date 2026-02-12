@@ -27,7 +27,6 @@ import {
 } from "react";
 import { useController } from "./controller";
 import { useDynamicConnector } from "./starknet";
-import { addAddressPadding } from "starknet";
 
 export interface GameDirectorContext {
   executeGameAction: (action: GameAction) => Promise<boolean>;
@@ -85,7 +84,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     applyStatPoints,
     applyPoison,
   } = useSystemCalls();
-  const { tokenBalances, setTokenBalances } = useController();
+  const { tokenBalances: _tokenBalances, setTokenBalances } = useController();
   const { play } = useSound();
 
   const [nextSummit, setNextSummit] = useState<Summit | null>(null);
@@ -379,11 +378,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     fetchSummitData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     setAttackInProgress(false);
     setApplyingPotions(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionFailed]);
 
   useEffect(() => {
@@ -401,6 +402,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (nextSummit && !pauseUpdates) {
       processNextSummit();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextSummit, pauseUpdates]);
 
   // Play roar and fetch diplomacy when summit beast changes
@@ -432,6 +434,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
       fetchDiplomacy();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summit?.beast.token_id]);
 
   useEffect(() => {
@@ -450,6 +453,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         }));
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poisonEvent]);
 
   const fetchSummitData = async () => {
@@ -647,6 +651,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useGameDirector = () => {
   return useContext(GameDirectorContext);
 };

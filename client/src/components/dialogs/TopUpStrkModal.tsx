@@ -44,10 +44,10 @@ const SOURCE_TOKENS: SourceToken[] = [
 ];
 
 export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
-  const { currentNetworkConfig } = useDynamicConnector();
+  const { currentNetworkConfig: _currentNetworkConfig } = useDynamicConnector();
   const { tokenBalances, setTokenBalances, fetchPaymentTokenBalances } = useController();
   const { provider } = useProvider();
-  const { address: accountAddress } = useAccount();
+  const { address: _accountAddress } = useAccount();
   const { executeAction } = useSystemCalls();
 
   const [selectedToken, setSelectedToken] = useState<string>('ATTACK');
@@ -93,6 +93,7 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
     if (open) {
       fetchPaymentTokenBalances();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const fetchQuote = useCallback(async (tokenName: string, qty: number) => {

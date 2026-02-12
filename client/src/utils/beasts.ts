@@ -7,7 +7,7 @@ import { addAddressPadding } from 'starknet';
 export const fetchBeastTypeImage = (type: string): string => {
   try {
     return new URL(`../assets/types/${type.toLowerCase()}.svg`, import.meta.url).href
-  } catch (ex) {
+  } catch {
     return ""
   }
 }

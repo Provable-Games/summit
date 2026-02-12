@@ -16,7 +16,6 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import StarIcon from '@mui/icons-material/Star';
 import { Box, Button, Dialog, IconButton, InputBase, Slider, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { isMobile } from 'react-device-detect';
 
 const UPGRADE_COSTS = {
   luck_per_level: 1,

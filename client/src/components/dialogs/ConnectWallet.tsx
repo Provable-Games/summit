@@ -15,6 +15,7 @@ function ConnectWallet(props) {
     if (address) {
       close(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address])
 
   return (

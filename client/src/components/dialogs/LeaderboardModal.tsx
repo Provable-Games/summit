@@ -38,6 +38,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
         .then((data) => setLeaderboard(data))
         .catch((error) => console.error('Error fetching leaderboard:', error));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const playersTotalPages = Math.max(1, Math.ceil(leaderboard.length / PAGE_SIZE));
@@ -112,6 +113,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
     if (activeTab === 'beasts') {
       fetchBeasts();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, beastsPage]);
 
   const formatRewards = (rewards: number) =>

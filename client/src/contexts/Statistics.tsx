@@ -25,7 +25,7 @@ const StatisticsContext = createContext<StatisticsContext>(
 
 const USDC_ADDRESS = NETWORKS.SN_MAIN.paymentTokens.find(
   (token) => token.name === "TEST USD"
-)?.address!;
+)?.address as string;
 
 // Create a provider component
 export const StatisticsProvider = ({ children }: PropsWithChildren) => {
@@ -67,6 +67,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     fetchBeastCounts();
     refreshTokenPrices();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -84,6 +85,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useStatistics = () => {
   const context = useContext(StatisticsContext);
   if (!context) {

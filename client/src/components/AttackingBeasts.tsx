@@ -178,12 +178,14 @@ function AttackingBeasts() {
     } else {
       setBeasts([]);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBeasts, battleEvents]);
 
   useEffect(() => {
     if (beasts.length > 0 && !activeBeastKey && beasts[0]?.battle) {
       setActiveBeastKey(beasts[0]?.entity_key);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [beasts]);
 
   // Build damage queue for the CURRENT active beast only
@@ -261,6 +263,7 @@ function AttackingBeasts() {
     }
 
     setDamageQueue(queue);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBeastKey]);
 
   // Process damage queue continuously
@@ -370,6 +373,7 @@ function AttackingBeasts() {
     return () => {
       timeouts.forEach(timeout => clearTimeout(timeout));
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [damageQueue]);
 
   const visibleBeasts = useMemo(
