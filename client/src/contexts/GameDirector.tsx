@@ -599,7 +599,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         setAttackInProgress(false);
       }
     } else if (action.type === "attack_until_capture" && captured) {
-      setAttackInProgress(false);
       return false;
     } else if (action.type === "add_extra_life") {
       setTokenBalances((prev: Record<string, number>) => ({

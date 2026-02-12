@@ -6,13 +6,61 @@ import { calculateRevivalRequired } from "@/utils/beasts";
 import { translateGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
+import { useSnackbar } from "notistack";
 import { CallData } from "starknet";
 
+/**
+ * Extracts a human-readable error message from a Starknet execution error.
+ * Looks for quoted strings that aren't standard error codes.
+ */
+const parseExecutionError = (error: unknown): string => {
+  const fallback = "Error executing action";
+  const isValidMessage = (m: string) =>
+    m.length > 3 && !m.includes("FAILED") && !m.includes("argent/") && !m.startsWith("0x");
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  try {
+    if (!error || typeof error !== "string") return fallback;
+
+    // Try single quotes in parentheses: ('message') - common format
+    const singleQuoteMatches = error.match(/\('([^']+)'\)/g);
+    if (singleQuoteMatches && singleQuoteMatches.length > 0) {
+      const message = singleQuoteMatches
+        .map(m => m.slice(2, -2)) // Remove ('...')
+        .find(isValidMessage);
+      if (message) return capitalize(message);
+    }
+
+    // Try escaped double quotes: \"message\"
+    const escapedMatches = error.match(/\\"([^"\\]+)\\"/g);
+    if (escapedMatches && escapedMatches.length > 0) {
+      const message = escapedMatches
+        .map(m => m.replace(/\\"/g, ""))
+        .find(isValidMessage);
+      if (message) return capitalize(message);
+    }
+
+    // Try regular double quotes: "message"
+    const doubleQuoteMatches = error.match(/"([^"]+)"/g);
+    if (doubleQuoteMatches && doubleQuoteMatches.length > 0) {
+      const message = doubleQuoteMatches
+        .map(m => m.slice(1, -1)) // Remove "..."
+        .find(isValidMessage);
+      if (message) return capitalize(message);
+    }
+
+    return fallback;
+  } catch {
+    return fallback;
+  }
+};
+
 export const useSystemCalls = () => {
-  const { summit } = useGameStore()
+  const { summit, autopilotEnabled } = useGameStore();
   const { account } = useAccount();
   const { currentNetworkConfig } = useDynamicConnector();
-  const { triggerGasSpent, tokenBalances, setTokenBalances } = useController();
+  const { triggerGasSpent, setTokenBalances } = useController();
+  const { enqueueSnackbar } = useSnackbar();
 
   const VRF_PROVIDER_ADDRESS = "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f"
   const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS
@@ -68,6 +116,9 @@ export const useSystemCalls = () => {
       return translatedEvents;
     } catch (error) {
       console.error("Error executing action:", error);
+      if (!autopilotEnabled) {
+        enqueueSnackbar(parseExecutionError(error?.data?.execution_error), { variant: "error" });
+      }
       forceResetAction();
       return null;
     }

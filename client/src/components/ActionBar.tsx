@@ -75,7 +75,6 @@ function ActionBar() {
   const [potion, setPotion] = useState(null)
   const [attackDropdownAnchor, setAttackDropdownAnchor] = useState<null | HTMLElement>(null);
   const [autopilotConfigOpen, setAutopilotConfigOpen] = useState(false);
-  const [lastBeastAttacked, setLastBeastAttacked] = useState(null);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeBeast, setUpgradeBeast] = useState<Beast | null>(null);
   const [beastDexFilterIds, setBeastDexFilterIds] = useState<number[] | null>(null);
@@ -160,52 +159,34 @@ function ActionBar() {
     return [];
   }, [summit?.beast?.token_id, collection.length, revivePotionsUsed, attackPotionsUsed, useRevivePotions, useAttackPotions]);
 
-  const handleAttackUntilCapture = async (extraLifePotions) => {
+  const handleAttackUntilCapture = async (extraLifePotions: number) => {
     if (!enableAttack) return;
 
     setBattleEvents([]);
     setAttackInProgress(true);
 
-    const BATCH_SIZE = MAX_BEASTS_PER_ATTACK;
-    const CONCURRENT_BATCHES = 10;
     const allBeasts: [Beast, number, number][] = collectionWithCombat.map((beast: Beast) => [beast, 1, beast.combat?.attackPotions || 0]);
 
     // Split into batches of MAX_BEASTS_PER_ATTACK
     const batches: [Beast, number, number][][] = [];
-    for (let i = 0; i < allBeasts.length; i += BATCH_SIZE) {
-      batches.push(allBeasts.slice(i, i + BATCH_SIZE));
+    for (let i = 0; i < allBeasts.length; i += MAX_BEASTS_PER_ATTACK) {
+      batches.push(allBeasts.slice(i, i + MAX_BEASTS_PER_ATTACK));
     }
 
-    // Process batches in groups of 10
-    for (let groupStart = 0; groupStart < batches.length; groupStart += CONCURRENT_BATCHES) {
-      const groupBatches = batches.slice(groupStart, groupStart + CONCURRENT_BATCHES);
-      const promises: Promise<unknown>[] = [];
+    // Process one batch at a time, stopping if executeGameAction returns false
+    for (const batch of batches) {
+      const result = await executeGameAction({
+        type: 'attack_until_capture',
+        beasts: batch,
+        extraLifePotions
+      });
 
-      for (let i = 0; i < groupBatches.length; i++) {
-        // Fire the call without awaiting
-        promises.push(
-          executeGameAction({
-            type: 'attack_until_capture',
-            beasts: groupBatches[i],
-            extraLifePotions
-          })
-        );
-        // Wait 500ms before firing the next batch
-        if (i < groupBatches.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-
-      // Wait for all calls in this group to complete
-      const results = await Promise.all(promises);
-      const allSucceeded = results.every(res => res);
-
-      // If any failed, stop processing
-      if (!allSucceeded) {
-        setAttackInProgress(false);
-        break;
+      if (!result) {
+        return;
       }
     }
+
+    setAttackInProgress(false);
   }
 
   const handleApplyExtraLife = (amount: number) => {
@@ -272,7 +253,6 @@ function ActionBar() {
 
   useEffect(() => {
     if (!autopilotEnabled || attackInProgress || !collectionWithCombat) return;
-    if (lastBeastAttacked === summit?.beast.token_id) return;
 
     let myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
 
@@ -304,7 +284,6 @@ function ActionBar() {
     if (attackStrategy === 'never') {
       return;
     } else if (attackStrategy === 'all_out') {
-      setLastBeastAttacked(summit?.beast.token_id);
       handleAttackUntilCapture(extraLifePotions);
     } else if (attackStrategy === 'guaranteed') {
       let beasts = collectionWithCombat.slice(0, MAX_BEASTS_PER_ATTACK)
@@ -315,7 +294,6 @@ function ActionBar() {
         return;
       }
 
-      setLastBeastAttacked(summit?.beast.token_id);
       executeGameAction({
         type: 'attack',
         beasts: beasts.map((beast: Beast) => ([beast, 1, beast.combat?.attackPotions || 0])),
@@ -328,10 +306,10 @@ function ActionBar() {
   }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
 
   const startAutopilot = () => {
-    setRevivePotionsUsed(0);
-    setAttackPotionsUsed(0);
-    setExtraLifePotionsUsed(0);
-    setPoisonPotionsUsed(0);
+    setRevivePotionsUsed(() => 0);
+    setAttackPotionsUsed(() => 0);
+    setExtraLifePotionsUsed(() => 0);
+    setPoisonPotionsUsed(() => 0);
     setAutopilotEnabled(true);
   }
 

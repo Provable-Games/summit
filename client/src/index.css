@@ -91,20 +91,77 @@ input:-webkit-autofill {
   }
 }
 
+/* Snackbar base styling */
 #notistack-snackbar {
   font-family: 'New Amsterdam';
-  font-size: 16px;
-  color: rgb(40, 39, 41);
+  font-size: 14px;
+  letter-spacing: 0.3px;
 }
 
-.notistack-MuiContent-warning,
-.notistack-MuiContent-info {
-  background-color: #FFE97F;
+.notistack-MuiContent {
+  border-radius: 3px !important;
+  border: 1px solid;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  padding: 4px 12px !important;
+  min-width: auto !important;
+}
+
+/* Success snackbar - green */
+.notistack-MuiContent-success {
+  background: linear-gradient(135deg, #1a2e1a 0%, #0d1f0d 100%) !important;
+  border-color: #4A8762 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+.notistack-MuiContent-success #notistack-snackbar {
+  color: #7FFF00;
+}
+
+/* Error snackbar - red/orange */
+.notistack-MuiContent-error {
+  background: linear-gradient(135deg, #2e1a1a 0%, #1f0d0d 100%) !important;
+  border-color: #800e0b !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
 }
 
 .notistack-MuiContent-error #notistack-snackbar {
-  color: white;
+  color: #fc5c1d;
 }
+
+/* Warning snackbar - gold */
+.notistack-MuiContent-warning {
+  background: linear-gradient(135deg, #2e2a1a 0%, #1f1a0d 100%) !important;
+  border-color: #806914 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+.notistack-MuiContent-warning #notistack-snackbar {
+  color: #FFE97F;
+}
+
+/* Info snackbar - cyan */
+.notistack-MuiContent-info {
+  background: linear-gradient(135deg, #1a2a2e 0%, #0d1a1f 100%) !important;
+  border-color: #2a6a7a !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+}
+
+.notistack-MuiContent-info #notistack-snackbar {
+  color: #64c8ff;
+}
+
+/* Default/neutral snackbar */
+.notistack-MuiContent-default {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%) !important;
+  border-color: #444 !important;
+}
+
+.notistack-MuiContent-default #notistack-snackbar {
+  color: #f5efcb;
+}
+
 
 .dotLoader {
   width: 16px;
