@@ -70,4 +70,5 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           file: ./coverage.lcov
+          flags: contracts
           token: ${{ secrets.CODECOV_TOKEN }}

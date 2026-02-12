@@ -1,27 +1,53 @@
 comment:
-  layout: "diff, files, header, footer"
+  layout: "diff, flags, files, header, footer"
   behavior: default
+
+flags:
+  contracts:
+    paths:
+      - contracts/src/
+    carryforward: true
+  client:
+    paths:
+      - client/src/
+    carryforward: true
+  indexer:
+    paths:
+      - indexer/src/
+    carryforward: true
 
 coverage:
   range: 90..100
   status:
     project:
-      coverage:
+      contracts:
         target: auto
-        threshold: 4%
+        flags:
+          - contracts
+      client:
+        target: auto
+        flags:
+          - client
+      indexer:
+        target: auto
+        flags:
+          - indexer
     patch:
       default:
         target: 90%
         threshold: 4%
 
 ignore:
-  # Test files — covered by test runner, not measured for coverage
+  # Test files
   - "**/tests/**"
+  - "**/*.test.ts"
+  - "**/*.test.tsx"
+  - "**/scripts/**"
+  - "**/coverage/**"
+  - "**/dist/**"
 
-  # Non-Cairo directories — no testable contract source code
-  - "client/"
+  # No test infrastructure
   - "api/"
-  - "indexer/"
 
   # Infrastructure & configuration
   - ".github/"
