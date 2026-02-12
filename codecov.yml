@@ -15,10 +15,22 @@ coverage:
         threshold: 4%
 
 ignore:
+  # Test files — covered by test runner, not measured for coverage
   - "**/tests/**"
-  - "**/assets**"
-  - "dojo/"
+
+  # Non-Cairo directories — no testable contract source code
   - "client/"
+  - "api/"
+  - "indexer/"
+
+  # Infrastructure & configuration
+  - ".github/"
+  - ".devcontainer/"
+  - "data-snapshot/"
+
+  # Generated artifacts & non-source assets
+  - "**/assets/**"
+  - "contracts/gas_reports/"
 
 github_checks:
   annotations: false
