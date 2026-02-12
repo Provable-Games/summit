@@ -1,3 +1,4 @@
+// Summit identifier
 pub const SUMMIT_ID: u8 = 1;
 pub const MAINNET_CHAIN_ID: felt252 = 0x534e5f4d41494e;
 pub const SEPOLIA_CHAIN_ID: felt252 = 0x534e5f5345504f4c4941;

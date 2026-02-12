@@ -1,7 +1,7 @@
 /**
  * Summit Event Decoder Utilities
  *
- * Decodes standard Starknet events from the Summit contract.
+ * Decodes standard Starknet events emitted by the Summit contract.
  * Uses standard sn_keccak selectors (not Dojo namespace patterns).
  *
  * Cairo types are serialized as follows:
