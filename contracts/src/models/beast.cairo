@@ -1,19 +1,20 @@
 use beasts_nft::pack::PackableBeast;
+use core::traits::DivRem;
 
 #[derive(Drop, Copy, Serde)]
 pub struct LiveBeastStats {
-    pub last_death_timestamp: u64, // 64 bits
-    pub rewards_earned: u32, // 32 bits
-    pub rewards_claimed: u32, // 32 bits
     pub token_id: u32, // 17 bits
     pub current_health: u16, // 12 bits
     pub bonus_health: u16, // 11 bits
     pub bonus_xp: u16, // 15 bits
     pub attack_streak: u8, // 4 bits
+    pub last_death_timestamp: u64, // 64 bits
     pub revival_count: u8, // 6 bits
     pub extra_lives: u16, // 12 bits
     pub summit_held_seconds: u32, // 23 bits
     pub stats: Stats, // 19 bits
+    pub rewards_earned: u32, // 32 bits
+    pub rewards_claimed: u32, // 32 bits
     pub quest: Quest // 4 bits
 }
 
@@ -45,6 +46,7 @@ pub struct Beast {
 /// DivRem extracts field (remainder) and shifts (quotient) in one operation.
 mod nz128 {
     // Low half divisors
+    pub const TWO_POW_1: NonZero<u128> = 0x2;
     pub const TWO_POW_32: NonZero<u128> = 0x100000000;
     pub const TWO_POW_64: NonZero<u128> = 0x10000000000000000;
     // High half divisors
@@ -56,6 +58,31 @@ mod nz128 {
     pub const TWO_POW_15: NonZero<u128> = 0x8000;
     pub const TWO_POW_17: NonZero<u128> = 0x20000;
     pub const TWO_POW_23: NonZero<u128> = 0x800000;
+}
+
+/// u128 shift constants used by pack() to avoid inlined magic numbers.
+mod shift128 {
+    // Low half shifts
+    pub const REWARDS_EARNED_SHIFT: u128 = 0x10000000000000000; // shift 64
+    pub const REWARDS_CLAIMED_SHIFT: u128 = 0x1000000000000000000000000; // shift 96
+
+    // High half shifts
+    pub const CURRENT_HEALTH_SHIFT: u128 = 0x20000; // shift 17
+    pub const BONUS_HEALTH_SHIFT: u128 = 0x20000000; // shift 29
+    pub const BONUS_XP_SHIFT: u128 = 0x10000000000; // shift 40
+    pub const ATTACK_STREAK_SHIFT: u128 = 0x80000000000000; // shift 55
+    pub const REVIVAL_COUNT_SHIFT: u128 = 0x800000000000000; // shift 59
+    pub const EXTRA_LIVES_SHIFT: u128 = 0x20000000000000000; // shift 65
+    pub const SUMMIT_HELD_SECONDS_SHIFT: u128 = 0x20000000000000000000; // shift 77
+    pub const SPIRIT_SHIFT: u128 = 0x10000000000000000000000000; // shift 100
+    pub const LUCK_SHIFT: u128 = 0x1000000000000000000000000000; // shift 108
+    pub const SPECIALS_SHIFT: u128 = 0x100000000000000000000000000000; // shift 116
+    pub const WISDOM_SHIFT: u128 = 0x200000000000000000000000000000; // shift 117
+    pub const DIPLOMACY_SHIFT: u128 = 0x400000000000000000000000000000; // shift 118
+    pub const CAPTURED_SUMMIT_SHIFT: u128 = 0x800000000000000000000000000000; // shift 119
+    pub const USED_REVIVAL_POTION_SHIFT: u128 = 0x1000000000000000000000000000000; // shift 120
+    pub const USED_ATTACK_POTION_SHIFT: u128 = 0x2000000000000000000000000000000; // shift 121
+    pub const MAX_ATTACK_STREAK_SHIFT: u128 = 0x4000000000000000000000000000000; // shift 122
 }
 
 /// u128-aligned StorePacking for LiveBeastStats.
@@ -76,27 +103,27 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
     fn pack(value: LiveBeastStats) -> felt252 {
         // Low u128: last_death_timestamp(64) + rewards_earned(32) + rewards_claimed(32) = 128 bits
         let low: u128 = value.last_death_timestamp.into()
-            + value.rewards_earned.into() * 0x10000000000000000_u128 // shift 64
-            + value.rewards_claimed.into() * 0x1000000000000000000000000_u128; // shift 96
+            + value.rewards_earned.into() * shift128::REWARDS_EARNED_SHIFT
+            + value.rewards_claimed.into() * shift128::REWARDS_CLAIMED_SHIFT;
 
         // High u128: remaining 17 fields = 123 bits
         let high: u128 = value.token_id.into() // 17 bits @ 0
-            + value.current_health.into() * 0x20000_u128 // shift 17
-            + value.bonus_health.into() * 0x20000000_u128 // shift 29
-            + value.bonus_xp.into() * 0x10000000000_u128 // shift 40
-            + value.attack_streak.into() * 0x80000000000000_u128 // shift 55
-            + value.revival_count.into() * 0x800000000000000_u128 // shift 59
-            + value.extra_lives.into() * 0x20000000000000000_u128 // shift 65
-            + value.summit_held_seconds.into() * 0x20000000000000000000_u128 // shift 77
-            + value.stats.spirit.into() * 0x10000000000000000000000000_u128 // shift 100
-            + value.stats.luck.into() * 0x1000000000000000000000000000_u128 // shift 108
-            + value.stats.specials.into() * 0x100000000000000000000000000000_u128 // shift 116
-            + value.stats.wisdom.into() * 0x200000000000000000000000000000_u128 // shift 117
-            + value.stats.diplomacy.into() * 0x400000000000000000000000000000_u128 // shift 118
-            + value.quest.captured_summit.into() * 0x800000000000000000000000000000_u128 // shift 119
-            + value.quest.used_revival_potion.into() * 0x1000000000000000000000000000000_u128 // shift 120
-            + value.quest.used_attack_potion.into() * 0x2000000000000000000000000000000_u128 // shift 121
-            + value.quest.max_attack_streak.into() * 0x4000000000000000000000000000000_u128; // shift 122
+            + value.current_health.into() * shift128::CURRENT_HEALTH_SHIFT
+            + value.bonus_health.into() * shift128::BONUS_HEALTH_SHIFT
+            + value.bonus_xp.into() * shift128::BONUS_XP_SHIFT
+            + value.attack_streak.into() * shift128::ATTACK_STREAK_SHIFT
+            + value.revival_count.into() * shift128::REVIVAL_COUNT_SHIFT
+            + value.extra_lives.into() * shift128::EXTRA_LIVES_SHIFT
+            + value.summit_held_seconds.into() * shift128::SUMMIT_HELD_SECONDS_SHIFT
+            + value.stats.spirit.into() * shift128::SPIRIT_SHIFT
+            + value.stats.luck.into() * shift128::LUCK_SHIFT
+            + value.stats.specials.into() * shift128::SPECIALS_SHIFT
+            + value.stats.wisdom.into() * shift128::WISDOM_SHIFT
+            + value.stats.diplomacy.into() * shift128::DIPLOMACY_SHIFT
+            + value.quest.captured_summit.into() * shift128::CAPTURED_SUMMIT_SHIFT
+            + value.quest.used_revival_potion.into() * shift128::USED_REVIVAL_POTION_SHIFT
+            + value.quest.used_attack_potion.into() * shift128::USED_ATTACK_POTION_SHIFT
+            + value.quest.max_attack_streak.into() * shift128::MAX_ATTACK_STREAK_SHIFT;
 
         let packed = u256 { low, high };
         packed.try_into().expect('pack beast overflow')
@@ -125,13 +152,13 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
         let (hi, spirit) = DivRem::div_rem(hi, nz128::TWO_POW_8);
         let (hi, luck) = DivRem::div_rem(hi, nz128::TWO_POW_8);
         // 7 single-bit fields
-        let (hi, specials) = DivRem::div_rem(hi, 2);
-        let (hi, wisdom) = DivRem::div_rem(hi, 2);
-        let (hi, diplomacy) = DivRem::div_rem(hi, 2);
-        let (hi, captured_summit) = DivRem::div_rem(hi, 2);
-        let (hi, used_revival_potion) = DivRem::div_rem(hi, 2);
-        let (hi, used_attack_potion) = DivRem::div_rem(hi, 2);
-        let (_, max_attack_streak) = DivRem::div_rem(hi, 2);
+        let (hi, specials) = DivRem::div_rem(hi, nz128::TWO_POW_1);
+        let (hi, wisdom) = DivRem::div_rem(hi, nz128::TWO_POW_1);
+        let (hi, diplomacy) = DivRem::div_rem(hi, nz128::TWO_POW_1);
+        let (hi, captured_summit) = DivRem::div_rem(hi, nz128::TWO_POW_1);
+        let (hi, used_revival_potion) = DivRem::div_rem(hi, nz128::TWO_POW_1);
+        let (hi, used_attack_potion) = DivRem::div_rem(hi, nz128::TWO_POW_1);
+        let (_, max_attack_streak) = DivRem::div_rem(hi, nz128::TWO_POW_1);
 
         LiveBeastStats {
             token_id: token_id.try_into().expect('unpack token_id'),
@@ -153,10 +180,10 @@ pub impl PackableLiveStatsStorePacking of starknet::storage_access::StorePacking
             rewards_earned: rewards_earned.try_into().expect('unpack rewards_earned'),
             rewards_claimed: rewards_claimed.try_into().expect('unpack rewards_claimed'),
             quest: Quest {
-                captured_summit: captured_summit.try_into().expect('unpack quest'),
-                used_revival_potion: used_revival_potion.try_into().expect('unpack quest'),
-                used_attack_potion: used_attack_potion.try_into().expect('unpack quest'),
-                max_attack_streak: max_attack_streak.try_into().expect('unpack quest'),
+                captured_summit: captured_summit.try_into().expect('unpack q.captured'),
+                used_revival_potion: used_revival_potion.try_into().expect('unpack q.revival'),
+                used_attack_potion: used_attack_potion.try_into().expect('unpack q.attack'),
+                max_attack_streak: max_attack_streak.try_into().expect('unpack q.max_streak'),
             },
         }
     }
@@ -222,6 +249,8 @@ pub impl BeastUtilsImpl of BeastUtilsTrait {
 mod tests {
     use super::*;
 
+    const CROSS_LAYER_PARITY_PACKED: felt252 = 0x6dc75813f7e39148cb039612a721092075bcd153ade68b10000000067748580;
+
     fn build_stats(
         token_id: u32,
         current_health: u16,
@@ -261,29 +290,65 @@ mod tests {
         }
     }
 
+    fn assert_stats_equal(actual: LiveBeastStats, expected: LiveBeastStats) {
+        assert(actual.token_id == expected.token_id, 'token_id mismatch');
+        assert(actual.current_health == expected.current_health, 'current_health mismatch');
+        assert(actual.bonus_health == expected.bonus_health, 'bonus_health mismatch');
+        assert(actual.bonus_xp == expected.bonus_xp, 'bonus_xp mismatch');
+        assert(actual.attack_streak == expected.attack_streak, 'attack_streak mismatch');
+        assert(actual.last_death_timestamp == expected.last_death_timestamp, 'timestamp mismatch');
+        assert(actual.revival_count == expected.revival_count, 'revival_count mismatch');
+        assert(actual.extra_lives == expected.extra_lives, 'extra_lives mismatch');
+        assert(actual.summit_held_seconds == expected.summit_held_seconds, 'summit_secs mismatch');
+        assert(actual.stats.spirit == expected.stats.spirit, 'spirit mismatch');
+        assert(actual.stats.luck == expected.stats.luck, 'luck mismatch');
+        assert(actual.stats.specials == expected.stats.specials, 'specials mismatch');
+        assert(actual.stats.wisdom == expected.stats.wisdom, 'wisdom mismatch');
+        assert(actual.stats.diplomacy == expected.stats.diplomacy, 'diplomacy mismatch');
+        assert(actual.rewards_earned == expected.rewards_earned, 'rewards_earned mismatch');
+        assert(actual.rewards_claimed == expected.rewards_claimed, 'rewards_claimed mismatch');
+        assert(actual.quest.captured_summit == expected.quest.captured_summit, 'captured_summit mismatch');
+        assert(actual.quest.used_revival_potion == expected.quest.used_revival_potion, 'used_revival_potion mismatch');
+        assert(actual.quest.used_attack_potion == expected.quest.used_attack_potion, 'used_attack_potion mismatch');
+        assert(actual.quest.max_attack_streak == expected.quest.max_attack_streak, 'max_attack_streak mismatch');
+    }
+
     fn assert_roundtrip(stats: LiveBeastStats) {
         let packed = PackableLiveStatsStorePacking::pack(stats);
         let u = PackableLiveStatsStorePacking::unpack(packed);
-        assert(u.token_id == stats.token_id, 'token_id mismatch');
-        assert(u.current_health == stats.current_health, 'current_health mismatch');
-        assert(u.bonus_health == stats.bonus_health, 'bonus_health mismatch');
-        assert(u.bonus_xp == stats.bonus_xp, 'bonus_xp mismatch');
-        assert(u.attack_streak == stats.attack_streak, 'attack_streak mismatch');
-        assert(u.last_death_timestamp == stats.last_death_timestamp, 'timestamp mismatch');
-        assert(u.revival_count == stats.revival_count, 'revival_count mismatch');
-        assert(u.extra_lives == stats.extra_lives, 'extra_lives mismatch');
-        assert(u.summit_held_seconds == stats.summit_held_seconds, 'summit_secs mismatch');
-        assert(u.stats.spirit == stats.stats.spirit, 'spirit mismatch');
-        assert(u.stats.luck == stats.stats.luck, 'luck mismatch');
-        assert(u.stats.specials == stats.stats.specials, 'specials mismatch');
-        assert(u.stats.wisdom == stats.stats.wisdom, 'wisdom mismatch');
-        assert(u.stats.diplomacy == stats.stats.diplomacy, 'diplomacy mismatch');
-        assert(u.rewards_earned == stats.rewards_earned, 'rewards_earned mismatch');
-        assert(u.rewards_claimed == stats.rewards_claimed, 'rewards_claimed mismatch');
-        assert(u.quest.captured_summit == stats.quest.captured_summit, 'captured_summit mm');
-        assert(u.quest.used_revival_potion == stats.quest.used_revival_potion, 'revival_potion mm');
-        assert(u.quest.used_attack_potion == stats.quest.used_attack_potion, 'attack_potion mm');
-        assert(u.quest.max_attack_streak == stats.quest.max_attack_streak, 'max_streak mm');
+        assert_stats_equal(u, stats);
+    }
+
+    fn build_cross_layer_parity_stats() -> LiveBeastStats {
+        LiveBeastStats {
+            token_id: 4242_u32,
+            current_health: 1337_u16,
+            bonus_health: 777_u16,
+            bonus_xp: 12345_u16,
+            attack_streak: 9_u8,
+            last_death_timestamp: 1735689600_u64,
+            revival_count: 17_u8,
+            extra_lives: 3210_u16,
+            summit_held_seconds: 654321_u32,
+            stats: Stats { spirit: 88_u8, luck: 199_u8, specials: 1_u8, wisdom: 0_u8, diplomacy: 1_u8 },
+            rewards_earned: 987654321_u32,
+            rewards_claimed: 123456789_u32,
+            quest: Quest {
+                captured_summit: 1_u8, used_revival_potion: 0_u8, used_attack_potion: 1_u8, max_attack_streak: 1_u8,
+            },
+        }
+    }
+
+    #[test]
+    fn pack_matches_cross_layer_parity_vector() {
+        let packed = PackableLiveStatsStorePacking::pack(build_cross_layer_parity_stats());
+        assert(packed == CROSS_LAYER_PARITY_PACKED, 'parity packed mismatch');
+    }
+
+    #[test]
+    fn unpack_matches_cross_layer_parity_vector() {
+        let unpacked = PackableLiveStatsStorePacking::unpack(CROSS_LAYER_PARITY_PACKED);
+        assert_stats_equal(unpacked, build_cross_layer_parity_stats());
     }
 
     // --- Zero values ---
