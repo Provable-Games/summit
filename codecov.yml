@@ -45,6 +45,9 @@ ignore:
   - "**/scripts/**"
   - "**/coverage/**"
   - "**/dist/**"
+  - "**/*.d.ts"
+  - "**/vite.config.ts"
+  - "**/vitest.config.ts"
 
   # No test infrastructure
   - "api/"

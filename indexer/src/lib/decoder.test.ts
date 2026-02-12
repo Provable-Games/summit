@@ -146,7 +146,16 @@ const MIXED_VECTOR: LiveBeastStats = {
 const CROSS_LAYER_PARITY_PACKED =
   "0x6dc75813f7e39148cb039612a721092075bcd153ade68b10000000067748580";
 
-const FLAG_CASES: Array<{ name: string; key: keyof LiveBeastStats }> = [
+type FlagKey =
+  | "specials"
+  | "wisdom"
+  | "diplomacy"
+  | "captured_summit"
+  | "used_revival_potion"
+  | "used_attack_potion"
+  | "max_attack_streak";
+
+const FLAG_CASES: Array<{ name: string; key: FlagKey }> = [
   { name: "specials", key: "specials" },
   { name: "wisdom", key: "wisdom" },
   { name: "diplomacy", key: "diplomacy" },
