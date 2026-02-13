@@ -11,7 +11,6 @@
     "test:parity": "tsx scripts/test-live-beast-stats-parity.ts",
     "lint": "eslint . --cache --cache-strategy content --cache-location .cache/eslint --concurrency auto",
     "lint:ci": "eslint . --max-warnings=0 --report-unused-inline-configs error",
-    "lint:fast": "eslint . --cache --cache-strategy content --cache-location .cache/eslint --concurrency auto",
     "lint:stats": "eslint . --stats",
     "lint:suppress:any:init": "eslint . --rule '{\"@typescript-eslint/no-explicit-any\":\"error\"}' --suppress-all --suppressions-location .eslint-suppressions.json",
     "lint:suppress:any:check": "eslint . --rule '{\"@typescript-eslint/no-explicit-any\":\"error\"}' --suppressions-location .eslint-suppressions.json",

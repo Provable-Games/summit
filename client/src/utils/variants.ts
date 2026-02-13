@@ -15,7 +15,7 @@ export const fadeVariant = {
 export const slideVariant = {
   enter: (direction: number) => {
     return {
-      x: direction ? 1000 : -1000,
+      x: direction < 0 ? -1000 : 1000,
       opacity: 0
     };
   },

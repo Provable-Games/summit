@@ -14,7 +14,11 @@ interface ValidAdventurerRow {
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
-  const getValidAdventurers = async (owner: string): Promise<ValidAdventurer[]> => {
+  const getValidAdventurers = async (owner?: string): Promise<ValidAdventurer[]> => {
+    if (!owner) {
+      return [];
+    }
+
     const namespace = "relayer_0_0_1"
 
     // Fetch adventurer_ids that already have corpse events from the API

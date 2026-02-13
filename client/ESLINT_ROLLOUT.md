@@ -4,7 +4,7 @@ This project uses flat config (`eslint.config.js`) and supports ESLint suppressi
 
 ## Fast and diagnostic runs
 
-- `pnpm lint:fast`
+- `pnpm lint`
   - Cached, content-based, multithreaded lint for local development.
 - `pnpm lint:stats`
   - Shows ESLint timing stats to identify slow rules/files.

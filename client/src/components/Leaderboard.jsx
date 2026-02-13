@@ -7,7 +7,7 @@ import { gameColors } from '@/utils/themes';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { Box, IconButton, Typography } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { addAddressPadding } from 'starknet';
 import { DiplomacyPopover } from './DiplomacyPopover';
 import RewardsRemainingBar from './RewardsRemainingBar';
@@ -21,6 +21,13 @@ function Leaderboard() {
   const [currentTimestamp, setCurrentTimestamp] = useState(() => Math.floor(Date.now() / 1000))
   const [summitOwnerRank, setSummitOwnerRank] = useState(null)
   const [diplomacyAnchor, setDiplomacyAnchor] = useState(null)
+  const getLeaderboardRef = useRef(getLeaderboard)
+
+  const summitTokenId = summit?.beast?.token_id
+  const summitOwner = summit?.owner ?? null
+  const summitBlockTimestamp = summit?.block_timestamp ?? null
+  const summitDiplomacyBeasts = summit?.diplomacy?.beasts
+  const summitBeastHasDiplomacy = Boolean(summit?.beast?.diplomacy)
 
   // Update current timestamp every second
   useEffect(() => {
@@ -32,9 +39,15 @@ function Leaderboard() {
   }, [])
 
   useEffect(() => {
+    getLeaderboardRef.current = getLeaderboard
+  }, [getLeaderboard])
+
+  useEffect(() => {
     const fetchLeaderboard = async () => {
+      setLoadingLeaderboard(true)
+
       try {
-        const data = await getLeaderboard()
+        const data = await getLeaderboardRef.current()
         setLeaderboard(data)
 
         // Fetch names only for top 5 and summit owner (with caching)
@@ -46,15 +59,15 @@ function Leaderboard() {
         });
 
         // Add summit owner if exists
-        if (summit?.owner) {
-          addressesToLookup.push(summit.owner);
+        if (summitOwner) {
+          addressesToLookup.push(summitOwner);
         }
 
         // Add diplomacy beast owners
-        if (summit?.diplomacy?.beasts) {
-          summit.diplomacy.beasts.forEach(beast => {
-            if (beast.owner) addressesToLookup.push(beast.owner);
-          });
+        if (summitDiplomacyBeasts) {
+          summitDiplomacyBeasts.forEach(beast => {
+            if (beast.owner) addressesToLookup.push(beast.owner)
+          })
         }
 
         if (addressesToLookup.length > 0) {
@@ -78,24 +91,23 @@ function Leaderboard() {
     }
 
     fetchLeaderboard()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summit?.beast?.token_id, summit?.owner, summit?.diplomacy?.beasts?.length])
+  }, [setLeaderboard, summitTokenId, summitOwner, summitDiplomacyBeasts])
 
   // Calculate summit owner's live score and rank
   useEffect(() => {
-    if (!summit?.owner || !summit?.block_timestamp || !currentTimestamp || leaderboard.length === 0) {
+    if (!summitOwner || !summitBlockTimestamp || !currentTimestamp || leaderboard.length === 0) {
       setSummitOwnerRank(null)
       return
     }
 
     // Calculate rewards from seconds held
-    const secondsHeld = Math.max(0, currentTimestamp - summit.block_timestamp)
-    const diplomacyCount = (summit?.diplomacy?.beasts.length || 0) - (summit.beast.diplomacy ? 1 : 0);
+    const secondsHeld = Math.max(0, currentTimestamp - summitBlockTimestamp)
+    const diplomacyCount = (summitDiplomacyBeasts?.length || 0) - (summitBeastHasDiplomacy ? 1 : 0);
     const diplomacyRewardPerSecond = SUMMIT_REWARDS_PER_SECOND / 100;
     const diplomacyRewards = diplomacyRewardPerSecond * secondsHeld * diplomacyCount;
 
     // Find summit owner in leaderboard
-    const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summit.owner))
+    const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summitOwner))
     const gainedSince = (secondsHeld * SUMMIT_REWARDS_PER_SECOND) - diplomacyRewards;
     const score = (player?.amount || 0) + gainedSince;
 
@@ -109,8 +121,7 @@ function Leaderboard() {
       gainedSince: gainedSince,
       diplomacyCount: diplomacyCount,
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summit?.owner, summit?.beast?.token_id, summit?.block_timestamp, summit?.diplomacy, currentTimestamp, leaderboard])
+  }, [summitOwner, summitBlockTimestamp, summitDiplomacyBeasts, summitBeastHasDiplomacy, currentTimestamp, leaderboard])
 
   const formatRewards = (rewards) => {
     const n = Number(rewards ?? 0);

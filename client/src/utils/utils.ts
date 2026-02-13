@@ -1,4 +1,4 @@
-import type { BigNumberish} from "starknet";
+import type { BigNumberish } from "starknet";
 import { shortString } from "starknet";
 
 export const stringToFelt = (v: string): BigNumberish =>

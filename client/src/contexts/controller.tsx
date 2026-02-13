@@ -57,7 +57,12 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { identifyAddress } = useAnalytics();
 
   const filterValidAdventurers = async () => {
-    const validAdventurers = await getValidAdventurers(account?.address);
+    if (!account?.address) {
+      setAdventurerCollection([]);
+      return;
+    }
+
+    const validAdventurers = await getValidAdventurers(account.address);
 
     setAdventurerCollection(validAdventurers.map((adventurer): Adventurer => ({
       id: adventurer.token_id,
