@@ -78,8 +78,8 @@ pub mod summit_systems {
     use summit::logic::{beast_utils, combat, poison, quest, revival};
     use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, PackableLiveStatsStorePacking, Stats};
     use summit::models::events::{
-        BattleEvent, BeastUpdatesEvent, LiveBeastStatsEvent, PoisonEvent, QuestRewardsClaimedEvent,
-        RewardsClaimedEvent, RewardsEarnedEvent,
+        BattleEvent, BeastUpdatesEvent, LiveBeastStatsEvent, PoisonEvent, QuestRewardsClaimedEvent, RewardsClaimedEvent,
+        RewardsEarnedEvent,
     };
     use summit::vrf::VRFImpl;
 
