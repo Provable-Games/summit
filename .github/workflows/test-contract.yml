@@ -63,8 +63,26 @@ jobs:
       - name: Install cairo-coverage
         run: curl -L https://raw.githubusercontent.com/software-mansion/cairo-coverage/main/scripts/install.sh | sh
 
+      - name: Clean snforge cache
+        run: cd contracts && snforge clean cache
+
       - name: Run Tests
-        run: cd contracts && scarb test --coverage
+        run: |
+          set -o pipefail
+          cd contracts
+          LOG_FILE="$(mktemp)"
+
+          scarb test --coverage 2>&1 | tee "$LOG_FILE"
+          STATUS=${PIPESTATUS[0]}
+
+          if [ "$STATUS" -ne 0 ] && grep -q "Could not deserialize cache from json" "$LOG_FILE"; then
+            echo "Detected snforge fork-cache panic; cleaning cache and retrying once."
+            snforge clean cache
+            scarb test --coverage
+            STATUS=$?
+          fi
+
+          exit "$STATUS"
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
