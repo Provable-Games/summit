@@ -17,8 +17,11 @@ concurrency:
 jobs:
   scarb-fmt:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Extract scarb version
         run: |
@@ -29,13 +32,16 @@ jobs:
         with:
           scarb-version: ${{ env.SCARB_VERSION }}
 
-      - run: cd contracts && scarb fmt --check
+      - run: scarb fmt --check
 
   scarb-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Extract versions
         run: |
@@ -64,11 +70,28 @@ jobs:
         run: curl -L https://raw.githubusercontent.com/software-mansion/cairo-coverage/main/scripts/install.sh | sh
 
       - name: Run Tests
-        run: cd contracts && scarb test --coverage
+        run: |
+          set -o pipefail
+          LOG_FILE="$RUNNER_TEMP/scarb-test.log"
+          RATE_LIMIT_REGEX="(429|too many requests|rate[ -]?limit)"
+
+          if scarb test --coverage 2>&1 | tee "$LOG_FILE"; then
+            exit 0
+          fi
+
+          if grep -Eiq "$RATE_LIMIT_REGEX" "$LOG_FILE"; then
+            echo "Detected RPC rate limiting; waiting 30 seconds before one retry."
+            sleep 30
+            scarb test --coverage
+            exit $?
+          fi
+
+          echo "Tests failed without rate-limit signature. Not retrying."
+          exit 1
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          file: ./coverage.lcov
+          file: ./contracts/coverage.lcov
           flags: contracts
           token: ${{ secrets.CODECOV_TOKEN }}

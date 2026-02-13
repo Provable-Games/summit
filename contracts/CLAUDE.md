@@ -707,6 +707,8 @@ GitHub Actions runs on PRs and pushes to main:
 
 - `scarb-test` - Runs `scarb test`
 - `scarb-fmt` - Checks Cairo formatting
+- `scarb-test` retries once after a 30-second wait only when logs show RPC rate limiting (`429`, `too many requests`, `rate limit`).
+- Do not rely on `snforge clean cache` to address transient CI failures in this workflow; rate-limited RPC calls are the known intermittent cause.
 
 ## Parent Project
 

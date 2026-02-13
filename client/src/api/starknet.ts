@@ -4,6 +4,8 @@ import { getBeastCurrentLevel, getBeastDetails } from "@/utils/beasts";
 import { parseBalances } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
 
+const hexToFlag = (hex: string | undefined): boolean => parseInt(hex || "0x0", 16) === 1;
+
 export const useStarknetApi = () => {
   const { currentNetworkConfig } = useDynamicConnector();
   const { address } = useAccount();
@@ -76,15 +78,15 @@ export const useStarknetApi = () => {
         summit_held_seconds: parseInt(data?.result[15], 16),
         spirit: parseInt(data?.result[16], 16),
         luck: parseInt(data?.result[17], 16),
-        specials: parseInt(data?.result[18], 16) === 1,
-        wisdom: parseInt(data?.result[19], 16) === 1,
-        diplomacy: parseInt(data?.result[20], 16) === 1,
+        specials: hexToFlag(data?.result[18]),
+        wisdom: hexToFlag(data?.result[19]),
+        diplomacy: hexToFlag(data?.result[20]),
         rewards_earned: parseInt(data?.result[21], 16),
         rewards_claimed: parseInt(data?.result[22], 16),
-        captured_summit: parseInt(data?.result[23], 16) === 1,
-        used_revival_potion: parseInt(data?.result[24], 16) === 1,
-        used_attack_potion: parseInt(data?.result[25], 16) === 1,
-        max_attack_streak: parseInt(data?.result[26], 16) === 1,
+        captured_summit: hexToFlag(data?.result[23]),
+        used_revival_potion: hexToFlag(data?.result[24]),
+        used_attack_potion: hexToFlag(data?.result[25]),
+        max_attack_streak: hexToFlag(data?.result[26]),
         kills_claimed: 0,
       }
       beast.current_level = getBeastCurrentLevel(beast.level, beast.bonus_xp);
