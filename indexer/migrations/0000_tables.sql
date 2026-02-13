@@ -52,16 +52,16 @@ CREATE TABLE "beast_stats" (
 	"last_death_timestamp" bigint NOT NULL,
 	"revival_count" smallint NOT NULL,
 	"extra_lives" smallint NOT NULL,
-	"captured_summit" smallint NOT NULL,
-	"used_revival_potion" smallint NOT NULL,
-	"used_attack_potion" smallint NOT NULL,
-	"max_attack_streak" smallint NOT NULL,
+	"captured_summit" boolean NOT NULL,
+	"used_revival_potion" boolean NOT NULL,
+	"used_attack_potion" boolean NOT NULL,
+	"max_attack_streak" boolean NOT NULL,
 	"summit_held_seconds" integer NOT NULL,
 	"spirit" smallint NOT NULL,
 	"luck" smallint NOT NULL,
-	"specials" smallint NOT NULL,
-	"wisdom" smallint NOT NULL,
-	"diplomacy" smallint NOT NULL,
+	"specials" boolean NOT NULL,
+	"wisdom" boolean NOT NULL,
+	"diplomacy" boolean NOT NULL,
 	"rewards_earned" integer NOT NULL,
 	"rewards_claimed" integer NOT NULL,
 	"created_at" timestamp NOT NULL,
@@ -172,92 +172,48 @@ CREATE TABLE "summit_log" (
 	"inserted_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
-CREATE UNIQUE INDEX "battles_block_tx_event_idx" ON "battles" USING btree ("block_number","transaction_hash","event_index");
---> statement-breakpoint
-CREATE INDEX "battles_attacking_beast_idx" ON "battles" USING btree ("attacking_beast_token_id");
---> statement-breakpoint
-CREATE INDEX "battles_attacking_player_idx" ON "battles" USING btree ("attacking_player");
---> statement-breakpoint
-CREATE INDEX "battles_defending_beast_idx" ON "battles" USING btree ("defending_beast_token_id");
---> statement-breakpoint
-CREATE INDEX "battles_created_at_idx" ON "battles" USING btree ("created_at" DESC NULLS LAST);
---> statement-breakpoint
-CREATE INDEX "battles_block_number_idx" ON "battles" USING btree ("block_number");
---> statement-breakpoint
-CREATE INDEX "beast_data_token_id_idx" ON "beast_data" USING btree ("token_id");
---> statement-breakpoint
-CREATE INDEX "beast_data_adventurers_killed_idx" ON "beast_data" USING btree ("adventurers_killed" DESC NULLS LAST);
---> statement-breakpoint
-CREATE INDEX "beast_data_updated_at_idx" ON "beast_data" USING btree ("updated_at" DESC NULLS LAST);
---> statement-breakpoint
-CREATE INDEX "beast_owners_owner_idx" ON "beast_owners" USING btree ("owner");
---> statement-breakpoint
-CREATE INDEX "beast_owners_token_id_idx" ON "beast_owners" USING btree ("token_id");
---> statement-breakpoint
-CREATE INDEX "beast_stats_current_health_idx" ON "beast_stats" USING btree ("current_health");
---> statement-breakpoint
-CREATE INDEX "beast_stats_summit_held_seconds_idx" ON "beast_stats" USING btree ("summit_held_seconds" DESC NULLS LAST);
---> statement-breakpoint
-CREATE INDEX "beast_stats_updated_at_idx" ON "beast_stats" USING btree ("updated_at" DESC NULLS LAST);
---> statement-breakpoint
-CREATE INDEX "beast_stats_diplomacy_token_idx" ON "beast_stats" USING btree ("token_id") WHERE diplomacy > 0;
---> statement-breakpoint
-CREATE INDEX "beasts_token_id_idx" ON "beasts" USING btree ("token_id");
---> statement-breakpoint
-CREATE INDEX "beasts_beast_id_idx" ON "beasts" USING btree ("beast_id");
---> statement-breakpoint
-CREATE INDEX "beasts_prefix_idx" ON "beasts" USING btree ("prefix");
---> statement-breakpoint
-CREATE INDEX "beasts_suffix_idx" ON "beasts" USING btree ("suffix");
---> statement-breakpoint
-CREATE INDEX "beasts_level_idx" ON "beasts" USING btree ("level" DESC NULLS LAST);
---> statement-breakpoint
-CREATE UNIQUE INDEX "corpse_events_block_tx_event_adv_idx" ON "corpse_events" USING btree ("block_number","transaction_hash","event_index","adventurer_id");
---> statement-breakpoint
-CREATE INDEX "corpse_events_adventurer_id_idx" ON "corpse_events" USING btree ("adventurer_id");
---> statement-breakpoint
-CREATE INDEX "corpse_events_player_idx" ON "corpse_events" USING btree ("player");
---> statement-breakpoint
-CREATE INDEX "corpse_events_created_at_idx" ON "corpse_events" USING btree ("created_at" DESC NULLS LAST);
---> statement-breakpoint
-CREATE UNIQUE INDEX "poison_events_block_tx_event_idx" ON "poison_events" USING btree ("block_number","transaction_hash","event_index");
---> statement-breakpoint
-CREATE INDEX "poison_events_beast_token_id_idx" ON "poison_events" USING btree ("beast_token_id");
---> statement-breakpoint
-CREATE INDEX "poison_events_player_idx" ON "poison_events" USING btree ("player");
---> statement-breakpoint
-CREATE INDEX "poison_events_created_at_idx" ON "poison_events" USING btree ("created_at" DESC NULLS LAST);
---> statement-breakpoint
-CREATE INDEX "quest_rewards_claimed_beast_token_id_idx" ON "quest_rewards_claimed" USING btree ("beast_token_id");
---> statement-breakpoint
-CREATE UNIQUE INDEX "rewards_claimed_block_tx_event_idx" ON "rewards_claimed" USING btree ("block_number","transaction_hash","event_index");
---> statement-breakpoint
-CREATE INDEX "rewards_claimed_player_idx" ON "rewards_claimed" USING btree ("player");
---> statement-breakpoint
-CREATE INDEX "rewards_claimed_created_at_idx" ON "rewards_claimed" USING btree ("created_at" DESC NULLS LAST);
---> statement-breakpoint
-CREATE UNIQUE INDEX "rewards_earned_block_tx_event_idx" ON "rewards_earned" USING btree ("block_number","transaction_hash","event_index");
---> statement-breakpoint
-CREATE INDEX "rewards_earned_owner_idx" ON "rewards_earned" USING btree ("owner");
---> statement-breakpoint
-CREATE INDEX "rewards_earned_beast_token_id_idx" ON "rewards_earned" USING btree ("beast_token_id");
---> statement-breakpoint
-CREATE INDEX "rewards_earned_created_at_idx" ON "rewards_earned" USING btree ("created_at" DESC NULLS LAST);
---> statement-breakpoint
-CREATE INDEX "skulls_claimed_skulls_idx" ON "skulls_claimed" USING btree ("skulls" DESC NULLS LAST);
---> statement-breakpoint
-CREATE UNIQUE INDEX "summit_log_block_tx_event_idx" ON "summit_log" USING btree ("block_number","transaction_hash","event_index");
---> statement-breakpoint
-CREATE INDEX "summit_log_order_idx" ON "summit_log" USING btree ("block_number" DESC NULLS LAST,"event_index" DESC NULLS LAST);
---> statement-breakpoint
-CREATE INDEX "summit_log_category_idx" ON "summit_log" USING btree ("category");
---> statement-breakpoint
-CREATE INDEX "summit_log_sub_category_idx" ON "summit_log" USING btree ("sub_category");
---> statement-breakpoint
-CREATE INDEX "summit_log_category_order_idx" ON "summit_log" USING btree ("category","block_number" DESC NULLS LAST,"event_index" DESC NULLS LAST);
---> statement-breakpoint
-CREATE INDEX "summit_log_player_idx" ON "summit_log" USING btree ("player");
---> statement-breakpoint
-CREATE INDEX "summit_log_token_id_idx" ON "summit_log" USING btree ("token_id");
---> statement-breakpoint
+CREATE UNIQUE INDEX "battles_block_tx_event_idx" ON "battles" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
+CREATE INDEX "battles_attacking_beast_idx" ON "battles" USING btree ("attacking_beast_token_id");--> statement-breakpoint
+CREATE INDEX "battles_attacking_player_idx" ON "battles" USING btree ("attacking_player");--> statement-breakpoint
+CREATE INDEX "battles_defending_beast_idx" ON "battles" USING btree ("defending_beast_token_id");--> statement-breakpoint
+CREATE INDEX "battles_created_at_idx" ON "battles" USING btree ("created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "battles_block_number_idx" ON "battles" USING btree ("block_number");--> statement-breakpoint
+CREATE INDEX "beast_data_token_id_idx" ON "beast_data" USING btree ("token_id");--> statement-breakpoint
+CREATE INDEX "beast_data_adventurers_killed_idx" ON "beast_data" USING btree ("adventurers_killed" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "beast_data_updated_at_idx" ON "beast_data" USING btree ("updated_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "beast_owners_owner_idx" ON "beast_owners" USING btree ("owner");--> statement-breakpoint
+CREATE INDEX "beast_owners_token_id_idx" ON "beast_owners" USING btree ("token_id");--> statement-breakpoint
+CREATE INDEX "beast_stats_current_health_idx" ON "beast_stats" USING btree ("current_health");--> statement-breakpoint
+CREATE INDEX "beast_stats_summit_held_seconds_idx" ON "beast_stats" USING btree ("summit_held_seconds" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "beast_stats_updated_at_idx" ON "beast_stats" USING btree ("updated_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "beast_stats_diplomacy_token_idx" ON "beast_stats" USING btree ("token_id") WHERE diplomacy;--> statement-breakpoint
+CREATE INDEX "beasts_token_id_idx" ON "beasts" USING btree ("token_id");--> statement-breakpoint
+CREATE INDEX "beasts_beast_id_idx" ON "beasts" USING btree ("beast_id");--> statement-breakpoint
+CREATE INDEX "beasts_prefix_idx" ON "beasts" USING btree ("prefix");--> statement-breakpoint
+CREATE INDEX "beasts_suffix_idx" ON "beasts" USING btree ("suffix");--> statement-breakpoint
+CREATE INDEX "beasts_level_idx" ON "beasts" USING btree ("level" DESC NULLS LAST);--> statement-breakpoint
+CREATE UNIQUE INDEX "corpse_events_block_tx_event_adv_idx" ON "corpse_events" USING btree ("block_number","transaction_hash","event_index","adventurer_id");--> statement-breakpoint
+CREATE INDEX "corpse_events_adventurer_id_idx" ON "corpse_events" USING btree ("adventurer_id");--> statement-breakpoint
+CREATE INDEX "corpse_events_player_idx" ON "corpse_events" USING btree ("player");--> statement-breakpoint
+CREATE INDEX "corpse_events_created_at_idx" ON "corpse_events" USING btree ("created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE UNIQUE INDEX "poison_events_block_tx_event_idx" ON "poison_events" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
+CREATE INDEX "poison_events_beast_token_id_idx" ON "poison_events" USING btree ("beast_token_id");--> statement-breakpoint
+CREATE INDEX "poison_events_player_idx" ON "poison_events" USING btree ("player");--> statement-breakpoint
+CREATE INDEX "poison_events_created_at_idx" ON "poison_events" USING btree ("created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "quest_rewards_claimed_beast_token_id_idx" ON "quest_rewards_claimed" USING btree ("beast_token_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "rewards_claimed_block_tx_event_idx" ON "rewards_claimed" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
+CREATE INDEX "rewards_claimed_player_idx" ON "rewards_claimed" USING btree ("player");--> statement-breakpoint
+CREATE INDEX "rewards_claimed_created_at_idx" ON "rewards_claimed" USING btree ("created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE UNIQUE INDEX "rewards_earned_block_tx_event_idx" ON "rewards_earned" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
+CREATE INDEX "rewards_earned_owner_idx" ON "rewards_earned" USING btree ("owner");--> statement-breakpoint
+CREATE INDEX "rewards_earned_beast_token_id_idx" ON "rewards_earned" USING btree ("beast_token_id");--> statement-breakpoint
+CREATE INDEX "rewards_earned_created_at_idx" ON "rewards_earned" USING btree ("created_at" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "skulls_claimed_skulls_idx" ON "skulls_claimed" USING btree ("skulls" DESC NULLS LAST);--> statement-breakpoint
+CREATE UNIQUE INDEX "summit_log_block_tx_event_idx" ON "summit_log" USING btree ("block_number","transaction_hash","event_index");--> statement-breakpoint
+CREATE INDEX "summit_log_order_idx" ON "summit_log" USING btree ("block_number" DESC NULLS LAST,"event_index" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "summit_log_category_idx" ON "summit_log" USING btree ("category");--> statement-breakpoint
+CREATE INDEX "summit_log_sub_category_idx" ON "summit_log" USING btree ("sub_category");--> statement-breakpoint
+CREATE INDEX "summit_log_player_idx" ON "summit_log" USING btree ("player");--> statement-breakpoint
+CREATE INDEX "summit_log_token_id_idx" ON "summit_log" USING btree ("token_id");--> statement-breakpoint
+CREATE INDEX "summit_log_category_order_idx" ON "summit_log" USING btree ("category","block_number" DESC NULLS LAST,"event_index" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "summit_log_player_order_idx" ON "summit_log" USING btree ("player","block_number" DESC NULLS LAST,"event_index" DESC NULLS LAST);

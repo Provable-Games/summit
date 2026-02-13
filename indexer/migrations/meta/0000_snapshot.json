@@ -1,6 +1,6 @@
 {
-  "id": "5b0b4af8-d6df-4629-8249-3268585d95f7",
-  "prevId": "fbb3ff03-e8f1-449c-b3bb-0850b635f124",
+  "id": "915c1fe2-8986-43a9-a313-2051039abfbe",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -283,6 +283,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "last_killed_by": {
+          "name": "last_killed_by",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
         "token_id": {
           "name": "token_id",
           "type": "integer",
@@ -405,6 +411,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "beast_owners_token_id_idx": {
+          "name": "beast_owners_token_id_idx",
+          "columns": [
+            {
+              "expression": "token_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -481,9 +502,27 @@
           "primaryKey": false,
           "notNull": true
         },
-        "has_claimed_potions": {
-          "name": "has_claimed_potions",
-          "type": "smallint",
+        "captured_summit": {
+          "name": "captured_summit",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_revival_potion": {
+          "name": "used_revival_potion",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "used_attack_potion": {
+          "name": "used_attack_potion",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "max_attack_streak": {
+          "name": "max_attack_streak",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true
         },
@@ -507,19 +546,19 @@
         },
         "specials": {
           "name": "specials",
-          "type": "smallint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true
         },
         "wisdom": {
           "name": "wisdom",
-          "type": "smallint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true
         },
         "diplomacy": {
           "name": "diplomacy",
-          "type": "smallint",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true
         },
@@ -616,6 +655,22 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "beast_stats_diplomacy_token_idx": {
+          "name": "beast_stats_diplomacy_token_idx",
+          "columns": [
+            {
+              "expression": "token_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "diplomacy",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -869,8 +924,8 @@
         }
       },
       "indexes": {
-        "corpse_events_block_tx_event_idx": {
-          "name": "corpse_events_block_tx_event_idx",
+        "corpse_events_block_tx_event_adv_idx": {
+          "name": "corpse_events_block_tx_event_adv_idx",
           "columns": [
             {
               "expression": "block_number",
@@ -886,6 +941,12 @@
             },
             {
               "expression": "event_index",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "adventurer_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -928,139 +989,6 @@
         },
         "corpse_events_created_at_idx": {
           "name": "corpse_events_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": false,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.diplomacy_groups": {
-      "name": "diplomacy_groups",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "specials_hash": {
-          "name": "specials_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "beast_token_ids": {
-          "name": "beast_token_ids",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "total_power": {
-          "name": "total_power",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "indexed_at": {
-          "name": "indexed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "inserted_at": {
-          "name": "inserted_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
-        },
-        "block_number": {
-          "name": "block_number",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "transaction_hash": {
-          "name": "transaction_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "event_index": {
-          "name": "event_index",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {
-        "diplomacy_groups_block_tx_event_idx": {
-          "name": "diplomacy_groups_block_tx_event_idx",
-          "columns": [
-            {
-              "expression": "block_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "transaction_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "event_index",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "diplomacy_groups_specials_hash_idx": {
-          "name": "diplomacy_groups_specials_hash_idx",
-          "columns": [
-            {
-              "expression": "specials_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "diplomacy_groups_created_at_idx": {
-          "name": "diplomacy_groups_created_at_idx",
           "columns": [
             {
               "expression": "created_at",
@@ -1232,6 +1160,69 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.quest_rewards_claimed": {
+      "name": "quest_rewards_claimed",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "beast_token_id": {
+          "name": "beast_token_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "quest_rewards_claimed_beast_token_id_idx": {
+          "name": "quest_rewards_claimed_beast_token_id_idx",
+          "columns": [
+            {
+              "expression": "beast_token_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "quest_rewards_claimed_beast_token_id_unique": {
+          "name": "quest_rewards_claimed_beast_token_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "beast_token_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1517,8 +1508,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.skull_events": {
-      "name": "skull_events",
+    "public.skulls_claimed": {
+      "name": "skulls_claimed",
       "schema": "",
       "columns": {
         "id": {
@@ -1540,128 +1531,20 @@
           "primaryKey": false,
           "notNull": true
         },
-        "player": {
-          "name": "player",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "indexed_at": {
-          "name": "indexed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "inserted_at": {
-          "name": "inserted_at",
+        "updated_at": {
+          "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
-        },
-        "block_number": {
-          "name": "block_number",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "transaction_hash": {
-          "name": "transaction_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "event_index": {
-          "name": "event_index",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
         }
       },
       "indexes": {
-        "skull_events_block_tx_event_idx": {
-          "name": "skull_events_block_tx_event_idx",
-          "columns": [
-            {
-              "expression": "block_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "transaction_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "event_index",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "skull_events_beast_token_id_idx": {
-          "name": "skull_events_beast_token_id_idx",
-          "columns": [
-            {
-              "expression": "beast_token_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "skull_events_skulls_idx": {
-          "name": "skull_events_skulls_idx",
+        "skulls_claimed_skulls_idx": {
+          "name": "skulls_claimed_skulls_idx",
           "columns": [
             {
               "expression": "skulls",
-              "isExpression": false,
-              "asc": false,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "skull_events_player_idx": {
-          "name": "skull_events_player_idx",
-          "columns": [
-            {
-              "expression": "player",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "skull_events_created_at_idx": {
-          "name": "skull_events_created_at_idx",
-          "columns": [
-            {
-              "expression": "created_at",
               "isExpression": false,
               "asc": false,
               "nulls": "last"
@@ -1675,7 +1558,15 @@
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "skulls_claimed_beast_token_id_unique": {
+          "name": "skulls_claimed_beast_token_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "beast_token_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1823,6 +1714,21 @@
           "method": "btree",
           "with": {}
         },
+        "summit_log_sub_category_idx": {
+          "name": "summit_log_sub_category_idx",
+          "columns": [
+            {
+              "expression": "sub_category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "summit_log_player_idx": {
           "name": "summit_log_player_idx",
           "columns": [
@@ -1845,6 +1751,33 @@
               "expression": "token_id",
               "isExpression": false,
               "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "summit_log_category_order_idx": {
+          "name": "summit_log_category_order_idx",
+          "columns": [
+            {
+              "expression": "category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "block_number",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "event_index",
+              "isExpression": false,
+              "asc": false,
               "nulls": "last"
             }
           ],
