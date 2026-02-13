@@ -1,2 +1,0 @@
-probe: contracts-only
-purpose: verify contracts path triggers contracts lint/test/review only
