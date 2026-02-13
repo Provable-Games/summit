@@ -29,13 +29,6 @@ pub struct PoisonEvent {
     pub player: ContractAddress,
 }
 
-#[derive(Drop, starknet::Event)]
-pub struct CorpseEvent {
-    pub adventurer_ids: Span<u64>,
-    pub corpse_amount: u32,
-    pub player: ContractAddress,
-}
-
 #[derive(Copy, Drop, Serde, starknet::Event, starknet::Store)]
 pub struct BattleEvent {
     pub attacking_beast_token_id: u32,

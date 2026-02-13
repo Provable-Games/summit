@@ -1,7 +1,7 @@
 import { useSummitApi, LogEntry } from '@/api/summitApi';
 import attackPotionIcon from '@/assets/images/attack-potion.png';
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
-import killTokenIcon from '@/assets/images/kill-token.png';
+import killTokenIcon from '@/assets/images/skull-token.png';
 import lifePotionIcon from '@/assets/images/life-potion.png';
 import poisonPotionIcon from '@/assets/images/poison-potion.png';
 import revivePotionIcon from '@/assets/images/revive-potion.png';

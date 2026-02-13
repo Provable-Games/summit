@@ -30,7 +30,6 @@ pub trait ISummitSystem<T> {
     fn set_skull_token_address(ref self: T, skull_token_address: ContractAddress);
     fn set_corpse_token_address(ref self: T, corpse_token_address: ContractAddress);
     fn withdraw_funds(ref self: T, token_address: ContractAddress, amount: u256);
-    fn emit_corpse_event(ref self: T, adventurer_ids: Span<u64>, corpse_amount: u32, player: ContractAddress);
 
     fn get_summit_data(ref self: T) -> (Beast, u64, ContractAddress, u16, u64, felt252);
     fn get_summit_beast_token_id(self: @T) -> u32;
@@ -42,6 +41,7 @@ pub trait ISummitSystem<T> {
     fn get_terminal_timestamp(self: @T) -> u64;
     fn get_summit_duration_seconds(self: @T) -> u64;
     fn get_summit_reward_amount_per_second(self: @T) -> u128;
+    fn get_diplomacy_reward_amount_per_second(self: @T) -> u128;
 
     fn get_dungeon_address(self: @T) -> ContractAddress;
     fn get_beast_address(self: @T) -> ContractAddress;
@@ -78,7 +78,7 @@ pub mod summit_systems {
     use summit::logic::{beast_utils, combat, poison, quest, revival};
     use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, PackableLiveStatsStorePacking, Stats};
     use summit::models::events::{
-        BattleEvent, BeastUpdatesEvent, CorpseEvent, LiveBeastStatsEvent, PoisonEvent, QuestRewardsClaimedEvent,
+        BattleEvent, BeastUpdatesEvent, LiveBeastStatsEvent, PoisonEvent, QuestRewardsClaimedEvent,
         RewardsClaimedEvent, RewardsEarnedEvent,
     };
     use summit::vrf::VRFImpl;
@@ -110,6 +110,7 @@ pub mod summit_systems {
         terminal_timestamp: u64,
         summit_duration_seconds: u64,
         summit_reward_amount_per_second: u128,
+        diplomacy_reward_amount_per_second: u128,
         quest_rewards_claimed: Map<u32, u8>,
         quest_rewards_total_amount: u128,
         quest_rewards_total_claimed: u128,
@@ -140,7 +141,6 @@ pub mod summit_systems {
         RewardsEarnedEvent: RewardsEarnedEvent,
         RewardsClaimedEvent: RewardsClaimedEvent,
         PoisonEvent: PoisonEvent,
-        CorpseEvent: CorpseEvent,
         QuestRewardsClaimedEvent: QuestRewardsClaimedEvent,
     }
 
@@ -151,6 +151,7 @@ pub mod summit_systems {
         start_timestamp: u64,
         summit_duration_seconds: u64,
         summit_reward_amount_per_second: u128,
+        diplomacy_reward_amount_per_second: u128,
         quest_rewards_total_amount: u128,
         dungeon_address: ContractAddress,
         beast_address: ContractAddress,
@@ -167,6 +168,7 @@ pub mod summit_systems {
         self.start_timestamp.write(start_timestamp);
         self.summit_duration_seconds.write(summit_duration_seconds);
         self.summit_reward_amount_per_second.write(summit_reward_amount_per_second);
+        self.diplomacy_reward_amount_per_second.write(diplomacy_reward_amount_per_second);
         self.quest_rewards_total_amount.write(quest_rewards_total_amount);
         self.dungeon_address.write(dungeon_address);
         self.beast_dispatcher.write(IERC721Dispatcher { contract_address: beast_address });
@@ -518,14 +520,6 @@ pub mod summit_systems {
             token.transfer(self.ownable.Ownable_owner.read(), amount);
         }
 
-        fn emit_corpse_event(
-            ref self: ContractState, adventurer_ids: Span<u64>, corpse_amount: u32, player: ContractAddress,
-        ) {
-            let corpse_address = self.corpse_token_dispatcher.read().contract_address;
-            assert(corpse_address == starknet::get_caller_address(), 'Invalid caller');
-            self.emit(CorpseEvent { adventurer_ids, corpse_amount, player });
-        }
-
         fn get_start_timestamp(self: @ContractState) -> u64 {
             self.start_timestamp.read()
         }
@@ -540,6 +534,10 @@ pub mod summit_systems {
 
         fn get_summit_reward_amount_per_second(self: @ContractState) -> u128 {
             self.summit_reward_amount_per_second.read()
+        }
+
+        fn get_diplomacy_reward_amount_per_second(self: @ContractState) -> u128 {
+            self.diplomacy_reward_amount_per_second.read()
         }
 
         fn get_summit_data(ref self: ContractState) -> (Beast, u64, ContractAddress, u16, u64, felt252) {
@@ -627,8 +625,9 @@ pub mod summit_systems {
     #[generate_trait]
     pub impl InternalSummitImpl of InternalSummitUtils {
         fn _summit_playable(self: @ContractState) -> bool {
-            let current_timestamp = get_block_timestamp();
-            current_timestamp < self.terminal_timestamp.read()
+            let summit_beast_token_id = self.summit_beast_token_id.read();
+            let taken_at = self.summit_history.entry(summit_beast_token_id).read();
+            taken_at < self.terminal_timestamp.read()
         }
 
         /// @title get_beast
@@ -694,7 +693,7 @@ pub mod summit_systems {
             if time_on_summit > 0 {
                 beast.live.summit_held_seconds += time_on_summit.try_into().unwrap();
                 let total_reward_amount = time_on_summit.into() * self.summit_reward_amount_per_second.read();
-                let diplomacy_reward_amount = total_reward_amount / 100;
+                let diplomacy_reward_amount = time_on_summit.into() * self.diplomacy_reward_amount_per_second.read();
 
                 let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
                 let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();

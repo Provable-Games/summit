@@ -14,7 +14,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 import swordIcon from '@/assets/images/sword.png';
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
-import killTokenIcon from '@/assets/images/kill-token.png';
+import killTokenIcon from '@/assets/images/skull-token.png';
 import lifePotionIcon from '@/assets/images/life-potion.png';
 import poisonPotionIcon from '@/assets/images/poison-potion.png';
 
