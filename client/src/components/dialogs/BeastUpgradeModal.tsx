@@ -1,5 +1,5 @@
 import corpseTokenImg from '@/assets/images/corpse-token.png';
-import killTokenImg from '@/assets/images/kill-token.png';
+import killTokenImg from '@/assets/images/skull-token.png';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useController } from '@/contexts/controller';
 import { fetchBeastImage, getLuckCritChancePercent, getSpiritRevivalReductionSeconds } from '@/utils/beasts';

@@ -1,5 +1,5 @@
 import corpseTokenImg from '@/assets/images/corpse-token.png';
-import killTokenImg from '@/assets/images/kill-token.png';
+import killTokenImg from '@/assets/images/skull-token.png';
 import lifePotionImg from '@/assets/images/life-potion.png';
 import { useController } from '@/contexts/controller';
 import { useSystemCalls } from '@/dojo/useSystemCalls';

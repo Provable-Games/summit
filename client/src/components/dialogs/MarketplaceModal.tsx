@@ -2,7 +2,7 @@ import ROUTER_ABI from '@/abi/router-abi.json';
 import { generateSwapCalls, getSwapQuote, SwapQuote, getPoolsForPair, getBestPool, getFullRangeBounds, estimateApy, decodeFee, calculatePairAmount, generateAddLiquidityCalls, getPositionsForOwner, generateWithdrawLiquidityCalls, generateCollectFeesCalls, positionBoundsToContractBounds, discoverPoolFromQuote, getDefaultPoolInfo, PoolInfo, PoolKey, EkuboPosition } from '@/api/ekubo';
 import attackPotionImg from '@/assets/images/attack-potion.png';
 import corpseTokenImg from '@/assets/images/corpse-token.png';
-import killTokenImg from '@/assets/images/kill-token.png';
+import killTokenImg from '@/assets/images/skull-token.png';
 import lifePotionImg from '@/assets/images/life-potion.png';
 import poisonPotionImg from '@/assets/images/poison-potion.png';
 import revivePotionImg from '@/assets/images/revive-potion.png';

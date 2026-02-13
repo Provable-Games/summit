@@ -1,5 +1,5 @@
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
-import killTokenIcon from '@/assets/images/kill-token.png';
+import killTokenIcon from '@/assets/images/skull-token.png';
 import rewardsIcon from '@/assets/images/rewards.png';
 import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
