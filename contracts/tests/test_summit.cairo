@@ -60,6 +60,7 @@ fn deploy_summit() -> ISummitSystemDispatcher {
     let start_timestamp = 1000_u64;
     let summit_duration_seconds = 1000000_u64;
     let summit_reward_amount_per_second = 0_u128;
+    let diplomacy_reward_amount_per_second = 0_u128;
     let quest_rewards_total_amount = 100_u128;
 
     let mut calldata = array![];
@@ -67,6 +68,7 @@ fn deploy_summit() -> ISummitSystemDispatcher {
     calldata.append(start_timestamp.into());
     calldata.append(summit_duration_seconds.into());
     calldata.append(summit_reward_amount_per_second.into());
+    calldata.append(diplomacy_reward_amount_per_second.into());
     calldata.append(quest_rewards_total_amount.into());
     calldata.append(DUNGEON_ADDRESS().into());
     calldata.append(BEAST_ADDRESS().into());
@@ -411,6 +413,7 @@ fn test_set_start_timestamp() {
     let start_timestamp = 9999999999_u64; // Future timestamp
     let summit_duration_seconds = 1000000_u64;
     let summit_reward_amount_per_second = 0_u128;
+    let diplomacy_reward_amount_per_second = 0_u128;
     let quest_rewards_total_amount = 100_u128;
 
     let mut calldata = array![];
@@ -418,6 +421,7 @@ fn test_set_start_timestamp() {
     calldata.append(start_timestamp.into());
     calldata.append(summit_duration_seconds.into());
     calldata.append(summit_reward_amount_per_second.into());
+    calldata.append(diplomacy_reward_amount_per_second.into());
     calldata.append(quest_rewards_total_amount.into());
     calldata.append(DUNGEON_ADDRESS().into());
     calldata.append(BEAST_ADDRESS().into());
@@ -1326,6 +1330,7 @@ fn test_set_start_timestamp_non_owner() {
     let start_timestamp = 9999999999_u64;
     let summit_duration_seconds = 1000000_u64;
     let summit_reward_amount_per_second = 0_u128;
+    let diplomacy_reward_amount_per_second = 0_u128;
     let quest_rewards_total_amount = 100_u128;
 
     let mut calldata = array![];
@@ -1333,6 +1338,7 @@ fn test_set_start_timestamp_non_owner() {
     calldata.append(start_timestamp.into());
     calldata.append(summit_duration_seconds.into());
     calldata.append(summit_reward_amount_per_second.into());
+    calldata.append(diplomacy_reward_amount_per_second.into());
     calldata.append(quest_rewards_total_amount.into());
     calldata.append(DUNGEON_ADDRESS().into());
     calldata.append(BEAST_ADDRESS().into());
