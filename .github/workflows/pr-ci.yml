@@ -219,13 +219,13 @@ jobs:
         with:
           version: 10
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js (indexer cache)
+        if: needs.changes.outputs.indexer_ci == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: |
-            indexer/pnpm-lock.yaml
-            api/pnpm-lock.yaml
+          cache-dependency-path: indexer/pnpm-lock.yaml
 
       - name: Lint indexer
         if: needs.changes.outputs.indexer_ci == 'true'
@@ -233,6 +233,14 @@ jobs:
           cd indexer
           pnpm install --frozen-lockfile
           pnpm exec tsc --noEmit
+
+      - name: Setup Node.js (api cache)
+        if: needs.changes.outputs.api == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: api/pnpm-lock.yaml
 
       - name: Lint api
         if: needs.changes.outputs.api == 'true'
