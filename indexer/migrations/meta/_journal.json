@@ -15,6 +15,13 @@
       "when": 1768996160131,
       "tag": "0001_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768996160132,
+      "tag": "0002_boolean_flags",
+      "breakpoints": true
     }
   ]
 }

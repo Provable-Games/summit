@@ -38,9 +38,9 @@ interface SummitPayload {
   summit_held_seconds: number;
   spirit: number;
   luck: number;
-  specials: number;
-  wisdom: number;
-  diplomacy: number;
+  specials: boolean;
+  wisdom: boolean;
+  diplomacy: boolean;
   rewards_earned: number;
   rewards_claimed: number;
   block_number: string;
