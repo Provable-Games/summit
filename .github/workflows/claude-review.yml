@@ -160,6 +160,9 @@ jobs:
             echo ""
             echo "---"
             echo ""
+            echo "Start your response with this exact heading:"
+            echo "## Claude Review - ${{ matrix.comment-header }}"
+            echo ""
 
             cat <<'EOF'
           Format each finding as:

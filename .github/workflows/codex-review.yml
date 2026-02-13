@@ -36,13 +36,13 @@ jobs:
         run: |
           ENTRIES='[]'
           if [ "${{ steps.filter.outputs.contracts }}" == "true" ]; then
-            ENTRIES=$(echo "$ENTRIES" | jq -c '. + [{"prompt-file":".github/prompts/cairo-review.md","comment-header":"Cairo/Starknet Contract Review","diff-paths":"contracts/"}]')
+            ENTRIES=$(echo "$ENTRIES" | jq -c '. + [{"prompt-file":".github/prompts/cairo-review.md","comment-key":"contracts","comment-header":"Cairo/Starknet Contract Review","diff-paths":"contracts/"}]')
           fi
           if [ "${{ steps.filter.outputs.frontend }}" == "true" ]; then
-            ENTRIES=$(echo "$ENTRIES" | jq -c '. + [{"prompt-file":".github/prompts/client-review.md","comment-header":"React/Frontend Review","diff-paths":"ui/ client/"}]')
+            ENTRIES=$(echo "$ENTRIES" | jq -c '. + [{"prompt-file":".github/prompts/client-review.md","comment-key":"frontend","comment-header":"React/Frontend Review","diff-paths":"ui/ client/"}]')
           fi
           if [ "${{ steps.filter.outputs.indexer-api }}" == "true" ]; then
-            ENTRIES=$(echo "$ENTRIES" | jq -c '. + [{"prompt-file":".github/prompts/indexer-review.md","comment-header":"Indexer/API Review","diff-paths":"indexer/ api/"}]')
+            ENTRIES=$(echo "$ENTRIES" | jq -c '. + [{"prompt-file":".github/prompts/indexer-review.md","comment-key":"indexer-api","comment-header":"Indexer/API Review","diff-paths":"indexer/ api/"}]')
           fi
           echo "matrix={\"include\":$ENTRIES}" >> $GITHUB_OUTPUT
           if [ "$ENTRIES" = '[]' ]; then
@@ -207,8 +207,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          COMMENT_MARKER="<!-- codex-review:${{ matrix.comment-key }} -->"
           {
-            echo "## ${{ matrix.comment-header }}"
+            echo "${COMMENT_MARKER}"
+            echo "## Codex Review - ${{ matrix.comment-header }}"
             echo ""
             if [ -s /tmp/review.txt ]; then
               cat /tmp/review.txt
@@ -216,7 +218,26 @@ jobs:
               echo "No review output was produced."
             fi
           } > /tmp/review-formatted.txt
-          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
+
+          EXISTING_COMMENT_ID=$(
+            gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+              | jq -r --arg marker "$COMMENT_MARKER" '
+                .[] |
+                select(.user.login == "github-actions[bot]") |
+                select((.body // "") | contains($marker)) |
+                .id
+              ' \
+              | tail -n 1
+          )
+
+          if [ -n "$EXISTING_COMMENT_ID" ]; then
+            jq -n --rawfile body /tmp/review-formatted.txt '{body: $body}' \
+              | gh api "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}" \
+                  --method PATCH \
+                  --input -
+          else
+            gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
+          fi
 
       - name: Check for blocking findings
         if: always()
