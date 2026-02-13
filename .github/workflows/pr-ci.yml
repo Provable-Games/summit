@@ -93,6 +93,18 @@ jobs:
         with:
           tool-versions: .tool-versions
 
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+            ~/.cargo/git/db
+            ~/.cargo/git/checkouts
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('contracts/Scarb.lock', '.tool-versions') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ runner.arch }}-
+
       - name: Cache cairo-coverage
         id: cairo_coverage_cache
         uses: actions/cache@v4
