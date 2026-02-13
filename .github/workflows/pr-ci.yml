@@ -1,0 +1,1040 @@
+name: PR CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+concurrency:
+  group: pr-ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      contracts: ${{ steps.filter.outputs.contracts }}
+      client: ${{ steps.filter.outputs.client }}
+      indexer: ${{ steps.filter.outputs.indexer }}
+      api: ${{ steps.filter.outputs.api }}
+      indexer_api: ${{ steps.set-outputs.outputs.indexer_api }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            contracts:
+              - "contracts/**"
+            client:
+              - "client/**"
+            indexer:
+              - "indexer/**"
+            api:
+              - "api/**"
+
+      - id: set-outputs
+        run: |
+          if [ "${{ steps.filter.outputs.indexer }}" = "true" ] || [ "${{ steps.filter.outputs.api }}" = "true" ]; then
+            echo "indexer_api=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "indexer_api=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  contracts-lint:
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract Scarb version
+        run: |
+          SCARB_VERSION=$(grep '^scarb ' .tool-versions | awk '{print $2}')
+          echo "SCARB_VERSION=$SCARB_VERSION" >> "$GITHUB_ENV"
+
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: ${{ env.SCARB_VERSION }}
+
+      - name: Scarb fmt
+        run: scarb fmt --check
+
+  contracts-test:
+    needs: [changes, contracts-lint]
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract versions
+        run: |
+          SCARB_VERSION=$(grep '^scarb ' .tool-versions | awk '{print $2}')
+          echo "SCARB_VERSION=$SCARB_VERSION" >> "$GITHUB_ENV"
+          SNFORGE_VERSION=$(grep '^starknet-foundry ' .tool-versions | awk '{print $2}')
+          echo "SNFORGE_VERSION=$SNFORGE_VERSION" >> "$GITHUB_ENV"
+
+      - name: Cache Scarb
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/scarb
+          key: scarb-${{ env.SCARB_VERSION }}-${{ hashFiles('contracts/Scarb.lock') }}
+
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          scarb-version: ${{ env.SCARB_VERSION }}
+
+      - name: Install Starknet Foundry
+        uses: foundry-rs/setup-snfoundry@v3
+        with:
+          starknet-foundry-version: ${{ env.SNFORGE_VERSION }}
+
+      - name: Install cairo-coverage
+        run: curl -L https://raw.githubusercontent.com/software-mansion/cairo-coverage/main/scripts/install.sh | sh
+
+      - name: Run contract tests with coverage
+        run: |
+          set -o pipefail
+          LOG_FILE="$RUNNER_TEMP/scarb-test.log"
+          RATE_LIMIT_REGEX="(429|too many requests|rate[ -]?limit)"
+
+          if scarb test --coverage 2>&1 | tee "$LOG_FILE"; then
+            exit 0
+          fi
+
+          if grep -Eiq "$RATE_LIMIT_REGEX" "$LOG_FILE"; then
+            echo "Detected RPC rate limiting; waiting 30 seconds before one retry."
+            sleep 30
+            scarb test --coverage
+            exit $?
+          fi
+
+          echo "Tests failed without rate-limit signature. Not retrying."
+          exit 1
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./contracts/coverage.lcov
+          flags: contracts
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  client-lint:
+    needs: changes
+    if: needs.changes.outputs.client == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+  client-test:
+    needs: [changes, client-lint]
+    if: needs.changes.outputs.client == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run parity test
+        run: pnpm test:parity
+
+      - name: Run tests with coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./client/coverage/lcov.info
+          flags: client
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  indexer-api-lint:
+    needs: changes
+    if: needs.changes.outputs.indexer_api == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            indexer/pnpm-lock.yaml
+            api/pnpm-lock.yaml
+
+      - name: Lint indexer
+        if: needs.changes.outputs.indexer == 'true'
+        run: |
+          cd indexer
+          pnpm install --frozen-lockfile
+          pnpm exec tsc --noEmit
+
+      - name: Lint api
+        if: needs.changes.outputs.api == 'true'
+        run: |
+          cd api
+          pnpm install --frozen-lockfile
+          pnpm exec tsc --noEmit
+
+  indexer-test:
+    needs: [changes, indexer-api-lint]
+    if: needs.changes.outputs.indexer == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: indexer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: indexer/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run parity test
+        run: pnpm test:parity
+
+      - name: Run tests with coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./indexer/coverage/lcov.info
+          flags: indexer
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  api-test:
+    needs: [changes, indexer-api-lint]
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: api/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+  claude-review-contracts:
+    needs: [changes, contracts-lint]
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build review prompt
+        id: build-prompt
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          {
+            cat .github/prompts/cairo-review.md
+
+            echo ""
+            echo "---"
+            echo ""
+            echo "This is PR #${{ github.event.pull_request.number }} for ${{ github.repository }}."
+            echo ""
+            echo "Review ONLY the changes introduced by the PR. Run this command to see the diff:"
+            echo "  git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} -- contracts/"
+            echo ""
+            echo "Pull request title: ${PR_TITLE}"
+            echo "Pull request body:"
+            echo "${PR_BODY}"
+            echo ""
+            echo "---"
+            echo ""
+            echo "Start your response with this exact heading:"
+            echo "## Claude Review - Cairo/Starknet Contract Review"
+            echo ""
+
+            cat <<'PROMPT_EOF'
+          Format each finding as:
+          [SEVERITY] file_path:line_number - description
+          Impact: what could go wrong
+          Fix: concrete code change
+
+          Where SEVERITY is one of: CRITICAL, HIGH, MEDIUM, LOW, INFO
+
+          End with a summary: counts of findings by severity.
+
+          IMPORTANT: Always produce output, even when no issues are found.
+          If there are no actionable findings, respond with:
+            "No issues found." followed by "Summary: 0 CRITICAL, 0 HIGH, 0 MEDIUM, 0 LOW, 0 INFO"
+          PROMPT_EOF
+          } > /tmp/prompt.txt
+
+          DELIMITER=$(openssl rand -hex 16)
+          echo "prompt<<${DELIMITER}" >> "$GITHUB_OUTPUT"
+          cat /tmp/prompt.txt >> "$GITHUB_OUTPUT"
+          echo "${DELIMITER}" >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude review
+        uses: anthropics/claude-code-action@beta
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          direct_prompt: ${{ steps.build-prompt.outputs.prompt }}
+          use_sticky_comment: true
+          allowed_tools: "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
+
+      - name: Check for blocking findings
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEADER: "## Claude Review - Cairo/Starknet Contract Review"
+        run: |
+          MAX_ATTEMPTS=6
+          SLEEP_SECONDS=10
+          BODY=""
+
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+              | jq -r --arg header "$HEADER" \
+                '[.[] | select(.user.login | test("claude")) | select((.body // "") | contains($header))] | last | .body // ""')
+
+            if [ -n "$BODY" ]; then
+              echo "Found Claude review comment on attempt $i"
+              break
+            fi
+
+            if [ "$i" -lt "$MAX_ATTEMPTS" ]; then
+              echo "Claude review comment not found yet; sleeping ${SLEEP_SECONDS}s... (attempt $i/$MAX_ATTEMPTS)"
+              sleep "$SLEEP_SECONDS"
+            fi
+          done
+
+          if [ -z "$BODY" ]; then
+            echo "::error::Could not find Claude review output for contracts"
+            exit 1
+          fi
+
+          if echo "$BODY" | grep -qE '\[(CRITICAL|HIGH)\]'; then
+            echo "::error::Review found CRITICAL or HIGH severity issues"
+            exit 1
+          fi
+
+          echo "No blocking findings detected"
+
+  codex-review-contracts:
+    needs: [changes, contracts-lint]
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Inject OAuth session
+        run: |
+          mkdir -p ~/.codex
+          echo '${{ secrets.CODEX_AUTH_DOT_JSON }}' > ~/.codex/auth.json
+          chmod 600 ~/.codex/auth.json
+
+      - name: Build review prompt
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          {
+            cat .github/prompts/cairo-review.md
+
+            echo ""
+            echo "---"
+            echo ""
+            echo "This is PR #${{ github.event.pull_request.number }} for ${{ github.repository }}."
+            echo ""
+            echo "Review ONLY the changes introduced by the PR. Run this command to see the diff:"
+            echo "  git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} -- contracts/"
+            echo ""
+            echo "Pull request title: ${PR_TITLE}"
+            echo "Pull request body:"
+            echo "${PR_BODY}"
+            echo ""
+            echo "---"
+            echo ""
+
+            cat <<'PROMPT_EOF'
+          Format each finding as:
+          [SEVERITY] file_path:line_number - description
+          Impact: what could go wrong
+          Fix: concrete code change
+
+          Where SEVERITY is one of: CRITICAL, HIGH, MEDIUM, LOW, INFO
+
+          End with a summary: counts of findings by severity.
+
+          IMPORTANT: Always produce output, even when no issues are found.
+          If there are no actionable findings, respond with:
+            "No issues found." followed by "Summary: 0 CRITICAL, 0 HIGH, 0 MEDIUM, 0 LOW, 0 INFO"
+          PROMPT_EOF
+          } > /tmp/prompt.txt
+
+      - name: Run Codex review
+        run: |
+          npx -y @openai/codex@0.98.0 exec --full-auto \
+            -c 'model="gpt-5.3-codex"' \
+            -c 'model_reasoning_effort="high"' \
+            -o /tmp/review.txt \
+            "$(cat /tmp/prompt.txt)" 2>&1 || {
+              echo "Review process failed to complete." > /tmp/review.txt
+              exit 1
+            }
+
+          if [ -f /tmp/review.txt ]; then
+            cat /tmp/review.txt
+          else
+            echo "Codex did not produce /tmp/review.txt"
+          fi
+
+      - name: Post review comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMENT_MARKER="<!-- codex-review:contracts -->"
+          {
+            echo "${COMMENT_MARKER}"
+            echo "## Codex Review - Cairo/Starknet Contract Review"
+            echo ""
+            if [ -s /tmp/review.txt ]; then
+              cat /tmp/review.txt
+            else
+              echo "No review output was produced."
+            fi
+          } > /tmp/review-formatted.txt
+
+          EXISTING_COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+            | jq -r --arg marker "$COMMENT_MARKER" '
+                .[] |
+                select(.user.login == "github-actions[bot]") |
+                select((.body // "") | contains($marker)) |
+                .id
+              ' \
+            | tail -n 1)
+
+          if [ -n "$EXISTING_COMMENT_ID" ]; then
+            jq -n --rawfile body /tmp/review-formatted.txt '{body: $body}' \
+              | gh api "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}" --method PATCH --input -
+          else
+            gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
+          fi
+
+      - name: Check for blocking findings
+        if: always()
+        run: |
+          if [ ! -s /tmp/review.txt ]; then
+            echo "::error::No review output was produced despite reviewable changes"
+            exit 1
+          fi
+
+          if grep -qE '\[(CRITICAL|HIGH)\]' /tmp/review.txt; then
+            echo "::error::Review found CRITICAL or HIGH severity issues"
+            exit 1
+          fi
+
+          echo "No blocking findings detected"
+
+  claude-review-client:
+    needs: [changes, client-lint]
+    if: needs.changes.outputs.client == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build review prompt
+        id: build-prompt
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          {
+            cat .github/prompts/client-review.md
+
+            echo ""
+            echo "---"
+            echo ""
+            echo "This is PR #${{ github.event.pull_request.number }} for ${{ github.repository }}."
+            echo ""
+            echo "Review ONLY the changes introduced by the PR. Run this command to see the diff:"
+            echo "  git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} -- client/"
+            echo ""
+            echo "Pull request title: ${PR_TITLE}"
+            echo "Pull request body:"
+            echo "${PR_BODY}"
+            echo ""
+            echo "---"
+            echo ""
+            echo "Start your response with this exact heading:"
+            echo "## Claude Review - React/Frontend Review"
+            echo ""
+
+            cat <<'PROMPT_EOF'
+          Format each finding as:
+          [SEVERITY] file_path:line_number - description
+          Impact: what could go wrong
+          Fix: concrete code change
+
+          Where SEVERITY is one of: CRITICAL, HIGH, MEDIUM, LOW, INFO
+
+          End with a summary: counts of findings by severity.
+
+          IMPORTANT: Always produce output, even when no issues are found.
+          If there are no actionable findings, respond with:
+            "No issues found." followed by "Summary: 0 CRITICAL, 0 HIGH, 0 MEDIUM, 0 LOW, 0 INFO"
+          PROMPT_EOF
+          } > /tmp/prompt.txt
+
+          DELIMITER=$(openssl rand -hex 16)
+          echo "prompt<<${DELIMITER}" >> "$GITHUB_OUTPUT"
+          cat /tmp/prompt.txt >> "$GITHUB_OUTPUT"
+          echo "${DELIMITER}" >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude review
+        uses: anthropics/claude-code-action@beta
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          direct_prompt: ${{ steps.build-prompt.outputs.prompt }}
+          use_sticky_comment: true
+          allowed_tools: "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
+
+      - name: Check for blocking findings
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEADER: "## Claude Review - React/Frontend Review"
+        run: |
+          MAX_ATTEMPTS=6
+          SLEEP_SECONDS=10
+          BODY=""
+
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+              | jq -r --arg header "$HEADER" \
+                '[.[] | select(.user.login | test("claude")) | select((.body // "") | contains($header))] | last | .body // ""')
+
+            if [ -n "$BODY" ]; then
+              echo "Found Claude review comment on attempt $i"
+              break
+            fi
+
+            if [ "$i" -lt "$MAX_ATTEMPTS" ]; then
+              echo "Claude review comment not found yet; sleeping ${SLEEP_SECONDS}s... (attempt $i/$MAX_ATTEMPTS)"
+              sleep "$SLEEP_SECONDS"
+            fi
+          done
+
+          if [ -z "$BODY" ]; then
+            echo "::error::Could not find Claude review output for client"
+            exit 1
+          fi
+
+          if echo "$BODY" | grep -qE '\[(CRITICAL|HIGH)\]'; then
+            echo "::error::Review found CRITICAL or HIGH severity issues"
+            exit 1
+          fi
+
+          echo "No blocking findings detected"
+
+  codex-review-client:
+    needs: [changes, client-lint]
+    if: needs.changes.outputs.client == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Inject OAuth session
+        run: |
+          mkdir -p ~/.codex
+          echo '${{ secrets.CODEX_AUTH_DOT_JSON }}' > ~/.codex/auth.json
+          chmod 600 ~/.codex/auth.json
+
+      - name: Build review prompt
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          {
+            cat .github/prompts/client-review.md
+
+            echo ""
+            echo "---"
+            echo ""
+            echo "This is PR #${{ github.event.pull_request.number }} for ${{ github.repository }}."
+            echo ""
+            echo "Review ONLY the changes introduced by the PR. Run this command to see the diff:"
+            echo "  git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} -- client/"
+            echo ""
+            echo "Pull request title: ${PR_TITLE}"
+            echo "Pull request body:"
+            echo "${PR_BODY}"
+            echo ""
+            echo "---"
+            echo ""
+
+            cat <<'PROMPT_EOF'
+          Format each finding as:
+          [SEVERITY] file_path:line_number - description
+          Impact: what could go wrong
+          Fix: concrete code change
+
+          Where SEVERITY is one of: CRITICAL, HIGH, MEDIUM, LOW, INFO
+
+          End with a summary: counts of findings by severity.
+
+          IMPORTANT: Always produce output, even when no issues are found.
+          If there are no actionable findings, respond with:
+            "No issues found." followed by "Summary: 0 CRITICAL, 0 HIGH, 0 MEDIUM, 0 LOW, 0 INFO"
+          PROMPT_EOF
+          } > /tmp/prompt.txt
+
+      - name: Run Codex review
+        run: |
+          npx -y @openai/codex@0.98.0 exec --full-auto \
+            -c 'model="gpt-5.3-codex"' \
+            -c 'model_reasoning_effort="high"' \
+            -o /tmp/review.txt \
+            "$(cat /tmp/prompt.txt)" 2>&1 || {
+              echo "Review process failed to complete." > /tmp/review.txt
+              exit 1
+            }
+
+          if [ -f /tmp/review.txt ]; then
+            cat /tmp/review.txt
+          else
+            echo "Codex did not produce /tmp/review.txt"
+          fi
+
+      - name: Post review comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMENT_MARKER="<!-- codex-review:client -->"
+          {
+            echo "${COMMENT_MARKER}"
+            echo "## Codex Review - React/Frontend Review"
+            echo ""
+            if [ -s /tmp/review.txt ]; then
+              cat /tmp/review.txt
+            else
+              echo "No review output was produced."
+            fi
+          } > /tmp/review-formatted.txt
+
+          EXISTING_COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+            | jq -r --arg marker "$COMMENT_MARKER" '
+                .[] |
+                select(.user.login == "github-actions[bot]") |
+                select((.body // "") | contains($marker)) |
+                .id
+              ' \
+            | tail -n 1)
+
+          if [ -n "$EXISTING_COMMENT_ID" ]; then
+            jq -n --rawfile body /tmp/review-formatted.txt '{body: $body}' \
+              | gh api "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}" --method PATCH --input -
+          else
+            gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
+          fi
+
+      - name: Check for blocking findings
+        if: always()
+        run: |
+          if [ ! -s /tmp/review.txt ]; then
+            echo "::error::No review output was produced despite reviewable changes"
+            exit 1
+          fi
+
+          if grep -qE '\[(CRITICAL|HIGH)\]' /tmp/review.txt; then
+            echo "::error::Review found CRITICAL or HIGH severity issues"
+            exit 1
+          fi
+
+          echo "No blocking findings detected"
+
+  claude-review-indexer-api:
+    needs: [changes, indexer-api-lint]
+    if: needs.changes.outputs.indexer_api == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build review prompt
+        id: build-prompt
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          {
+            cat .github/prompts/indexer-review.md
+
+            echo ""
+            echo "---"
+            echo ""
+            echo "This is PR #${{ github.event.pull_request.number }} for ${{ github.repository }}."
+            echo ""
+            echo "Review ONLY the changes introduced by the PR. Run this command to see the diff:"
+            echo "  git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} -- indexer/ api/"
+            echo ""
+            echo "Pull request title: ${PR_TITLE}"
+            echo "Pull request body:"
+            echo "${PR_BODY}"
+            echo ""
+            echo "---"
+            echo ""
+            echo "Start your response with this exact heading:"
+            echo "## Claude Review - Indexer/API Review"
+            echo ""
+
+            cat <<'PROMPT_EOF'
+          Format each finding as:
+          [SEVERITY] file_path:line_number - description
+          Impact: what could go wrong
+          Fix: concrete code change
+
+          Where SEVERITY is one of: CRITICAL, HIGH, MEDIUM, LOW, INFO
+
+          End with a summary: counts of findings by severity.
+
+          IMPORTANT: Always produce output, even when no issues are found.
+          If there are no actionable findings, respond with:
+            "No issues found." followed by "Summary: 0 CRITICAL, 0 HIGH, 0 MEDIUM, 0 LOW, 0 INFO"
+          PROMPT_EOF
+          } > /tmp/prompt.txt
+
+          DELIMITER=$(openssl rand -hex 16)
+          echo "prompt<<${DELIMITER}" >> "$GITHUB_OUTPUT"
+          cat /tmp/prompt.txt >> "$GITHUB_OUTPUT"
+          echo "${DELIMITER}" >> "$GITHUB_OUTPUT"
+
+      - name: Run Claude review
+        uses: anthropics/claude-code-action@beta
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          direct_prompt: ${{ steps.build-prompt.outputs.prompt }}
+          use_sticky_comment: true
+          allowed_tools: "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
+
+      - name: Check for blocking findings
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEADER: "## Claude Review - Indexer/API Review"
+        run: |
+          MAX_ATTEMPTS=6
+          SLEEP_SECONDS=10
+          BODY=""
+
+          for i in $(seq 1 "$MAX_ATTEMPTS"); do
+            BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+              | jq -r --arg header "$HEADER" \
+                '[.[] | select(.user.login | test("claude")) | select((.body // "") | contains($header))] | last | .body // ""')
+
+            if [ -n "$BODY" ]; then
+              echo "Found Claude review comment on attempt $i"
+              break
+            fi
+
+            if [ "$i" -lt "$MAX_ATTEMPTS" ]; then
+              echo "Claude review comment not found yet; sleeping ${SLEEP_SECONDS}s... (attempt $i/$MAX_ATTEMPTS)"
+              sleep "$SLEEP_SECONDS"
+            fi
+          done
+
+          if [ -z "$BODY" ]; then
+            echo "::error::Could not find Claude review output for indexer/api"
+            exit 1
+          fi
+
+          if echo "$BODY" | grep -qE '\[(CRITICAL|HIGH)\]'; then
+            echo "::error::Review found CRITICAL or HIGH severity issues"
+            exit 1
+          fi
+
+          echo "No blocking findings detected"
+
+  codex-review-indexer-api:
+    needs: [changes, indexer-api-lint]
+    if: needs.changes.outputs.indexer_api == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Inject OAuth session
+        run: |
+          mkdir -p ~/.codex
+          echo '${{ secrets.CODEX_AUTH_DOT_JSON }}' > ~/.codex/auth.json
+          chmod 600 ~/.codex/auth.json
+
+      - name: Build review prompt
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          {
+            cat .github/prompts/indexer-review.md
+
+            echo ""
+            echo "---"
+            echo ""
+            echo "This is PR #${{ github.event.pull_request.number }} for ${{ github.repository }}."
+            echo ""
+            echo "Review ONLY the changes introduced by the PR. Run this command to see the diff:"
+            echo "  git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} -- indexer/ api/"
+            echo ""
+            echo "Pull request title: ${PR_TITLE}"
+            echo "Pull request body:"
+            echo "${PR_BODY}"
+            echo ""
+            echo "---"
+            echo ""
+
+            cat <<'PROMPT_EOF'
+          Format each finding as:
+          [SEVERITY] file_path:line_number - description
+          Impact: what could go wrong
+          Fix: concrete code change
+
+          Where SEVERITY is one of: CRITICAL, HIGH, MEDIUM, LOW, INFO
+
+          End with a summary: counts of findings by severity.
+
+          IMPORTANT: Always produce output, even when no issues are found.
+          If there are no actionable findings, respond with:
+            "No issues found." followed by "Summary: 0 CRITICAL, 0 HIGH, 0 MEDIUM, 0 LOW, 0 INFO"
+          PROMPT_EOF
+          } > /tmp/prompt.txt
+
+      - name: Run Codex review
+        run: |
+          npx -y @openai/codex@0.98.0 exec --full-auto \
+            -c 'model="gpt-5.3-codex"' \
+            -c 'model_reasoning_effort="high"' \
+            -o /tmp/review.txt \
+            "$(cat /tmp/prompt.txt)" 2>&1 || {
+              echo "Review process failed to complete." > /tmp/review.txt
+              exit 1
+            }
+
+          if [ -f /tmp/review.txt ]; then
+            cat /tmp/review.txt
+          else
+            echo "Codex did not produce /tmp/review.txt"
+          fi
+
+      - name: Post review comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          COMMENT_MARKER="<!-- codex-review:indexer-api -->"
+          {
+            echo "${COMMENT_MARKER}"
+            echo "## Codex Review - Indexer/API Review"
+            echo ""
+            if [ -s /tmp/review.txt ]; then
+              cat /tmp/review.txt
+            else
+              echo "No review output was produced."
+            fi
+          } > /tmp/review-formatted.txt
+
+          EXISTING_COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+            | jq -r --arg marker "$COMMENT_MARKER" '
+                .[] |
+                select(.user.login == "github-actions[bot]") |
+                select((.body // "") | contains($marker)) |
+                .id
+              ' \
+            | tail -n 1)
+
+          if [ -n "$EXISTING_COMMENT_ID" ]; then
+            jq -n --rawfile body /tmp/review-formatted.txt '{body: $body}' \
+              | gh api "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}" --method PATCH --input -
+          else
+            gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
+          fi
+
+      - name: Check for blocking findings
+        if: always()
+        run: |
+          if [ ! -s /tmp/review.txt ]; then
+            echo "::error::No review output was produced despite reviewable changes"
+            exit 1
+          fi
+
+          if grep -qE '\[(CRITICAL|HIGH)\]' /tmp/review.txt; then
+            echo "::error::Review found CRITICAL or HIGH severity issues"
+            exit 1
+          fi
+
+          echo "No blocking findings detected"
+
+  pr-ci:
+    needs:
+      - changes
+      - contracts-lint
+      - contracts-test
+      - client-lint
+      - client-test
+      - indexer-api-lint
+      - indexer-test
+      - api-test
+      - claude-review-contracts
+      - codex-review-contracts
+      - claude-review-client
+      - codex-review-client
+      - claude-review-indexer-api
+      - codex-review-indexer-api
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate results
+        env:
+          NEEDS_JSON: ${{ toJson(needs) }}
+        run: |
+          FAILED=$(echo "$NEEDS_JSON" | jq -r '
+            to_entries[]
+            | select(.key != "changes")
+            | select(.value.result == "failure" or .value.result == "cancelled")
+            | .key
+          ')
+
+          if [ -n "$FAILED" ]; then
+            echo "::error::Failing jobs:"
+            echo "$FAILED"
+            exit 1
+          fi
+
+          echo "All required jobs passed or were skipped"
