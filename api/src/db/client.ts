@@ -13,8 +13,7 @@ const pool = new pg.Pool({
   max: parseInt(process.env.DB_POOL_MAX || "15", 10),
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
-  // Render PostgreSQL requires SSL for external connections
-  ssl: process.env.DATABASE_URL?.includes("render.com")
+  ssl: process.env.DATABASE_SSL === "true"
     ? { rejectUnauthorized: false }
     : undefined,
 });

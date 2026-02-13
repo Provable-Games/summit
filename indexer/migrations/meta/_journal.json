@@ -5,22 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1768996160130,
+      "when": 1770987339400,
       "tag": "0000_tables",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1768996160131,
+      "when": 1770987339401,
       "tag": "0001_triggers",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1768996160132,
-      "tag": "0002_boolean_flags",
       "breakpoints": true
     }
   ]
