@@ -17,8 +17,11 @@ concurrency:
 jobs:
   scarb-fmt:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Extract scarb version
         run: |
@@ -29,13 +32,16 @@ jobs:
         with:
           scarb-version: ${{ env.SCARB_VERSION }}
 
-      - run: cd contracts && scarb fmt --check
+      - run: scarb fmt --check
 
   scarb-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Extract versions
         run: |
@@ -63,30 +69,29 @@ jobs:
       - name: Install cairo-coverage
         run: curl -L https://raw.githubusercontent.com/software-mansion/cairo-coverage/main/scripts/install.sh | sh
 
-      - name: Clean snforge cache
-        run: cd contracts && snforge clean cache
-
       - name: Run Tests
         run: |
           set -o pipefail
-          cd contracts
-          LOG_FILE="$(mktemp)"
+          LOG_FILE="$RUNNER_TEMP/scarb-test.log"
+          RATE_LIMIT_REGEX="(429|too many requests|rate[ -]?limit)"
 
-          scarb test --coverage 2>&1 | tee "$LOG_FILE"
-          STATUS=${PIPESTATUS[0]}
-
-          if [ "$STATUS" -ne 0 ] && grep -q "Could not deserialize cache from json" "$LOG_FILE"; then
-            echo "Detected snforge fork-cache panic; cleaning cache and retrying once."
-            snforge clean cache
-            scarb test --coverage
-            STATUS=$?
+          if scarb test --coverage 2>&1 | tee "$LOG_FILE"; then
+            exit 0
           fi
 
-          exit "$STATUS"
+          if grep -Eiq "$RATE_LIMIT_REGEX" "$LOG_FILE"; then
+            echo "Detected RPC rate limiting; waiting 30 seconds before one retry."
+            sleep 30
+            scarb test --coverage
+            exit $?
+          fi
+
+          echo "Tests failed without rate-limit signature. Not retrying."
+          exit 1
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
-          file: ./coverage.lcov
+          file: ./contracts/coverage.lcov
           flags: contracts
           token: ${{ secrets.CODECOV_TOKEN }}
