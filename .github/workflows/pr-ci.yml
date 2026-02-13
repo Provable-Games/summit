@@ -18,7 +18,6 @@ jobs:
       contracts: ${{ steps.filter.outputs.contracts }}
       client_ci: ${{ steps.filter.outputs.client_ci }}
       client_review: ${{ steps.filter.outputs.client_review }}
-      indexer: ${{ steps.filter.outputs.indexer }}
       indexer_ci: ${{ steps.filter.outputs.indexer_ci }}
       api: ${{ steps.filter.outputs.api }}
       indexer_api_ci: ${{ steps.filter.outputs.indexer_api_ci }}
@@ -37,8 +36,6 @@ jobs:
               - "contracts/src/models/beast.cairo"
             client_review:
               - "client/**"
-            indexer:
-              - "indexer/**"
             indexer_ci:
               - "indexer/**"
               - "contracts/src/models/beast.cairo"
