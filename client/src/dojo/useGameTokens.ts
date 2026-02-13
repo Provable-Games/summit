@@ -1,10 +1,20 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { addAddressPadding } from "starknet";
 
+export interface ValidAdventurer {
+  token_id: number;
+  score: number;
+}
+
+interface ValidAdventurerRow {
+  token_id: string;
+  score: string;
+}
+
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
-  const getValidAdventurers = async (owner: string) => {
+  const getValidAdventurers = async (owner: string): Promise<ValidAdventurer[]> => {
     const namespace = "relayer_0_0_1"
 
     // Fetch adventurer_ids that already have corpse events from the API
@@ -40,8 +50,8 @@ export const useGameTokens = () => {
       headers: { "Content-Type": "application/json" }
     })
 
-    const data = await sql.json()
-    return data.map((row: any) => ({
+    const data = await sql.json() as ValidAdventurerRow[]
+    return data.map((row) => ({
       token_id: parseInt(row.token_id, 16),
       score: parseInt(row.score, 16),
     }))

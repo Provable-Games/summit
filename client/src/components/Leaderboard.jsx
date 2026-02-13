@@ -1,5 +1,5 @@
 import { useSummitApi } from '@/api/summitApi';
-import { START_TIMESTAMP, SUMMIT_DURATION_SECONDS, SUMMIT_REWARDS_PER_SECOND } from '@/contexts/GameDirector';
+import { SUMMIT_REWARDS_PER_SECOND } from '@/contexts/GameDirector';
 import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
 import { lookupAddressNames } from '@/utils/addressNameCache';
@@ -78,6 +78,7 @@ function Leaderboard() {
     }
 
     fetchLeaderboard()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summit?.beast?.token_id, summit?.owner, summit?.diplomacy?.beasts?.length])
 
   // Calculate summit owner's live score and rank
@@ -108,6 +109,7 @@ function Leaderboard() {
       gainedSince: gainedSince,
       diplomacyCount: diplomacyCount,
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summit?.owner, summit?.beast?.token_id, summit?.block_timestamp, summit?.diplomacy, currentTimestamp, leaderboard])
 
   const formatRewards = (rewards) => {

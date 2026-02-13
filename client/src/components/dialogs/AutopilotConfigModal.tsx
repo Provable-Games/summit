@@ -1,7 +1,8 @@
-import {
+import type {
   AttackStrategy,
   ExtraLifeStrategy,
-  PoisonStrategy,
+  PoisonStrategy} from '@/stores/autopilotStore';
+import {
   useAutopilotStore,
 } from '@/stores/autopilotStore';
 import { gameColors } from '@/utils/themes';
@@ -765,7 +766,7 @@ const styles = {
   },
   optionGrid: {
     display: 'grid',
-    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } as any,
+    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } as const,
     gap: 1,
   },
   optionCard: {
@@ -990,4 +991,3 @@ const styles = {
     letterSpacing: '0.5px',
   },
 };
-

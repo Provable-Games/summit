@@ -4,7 +4,7 @@ import rewardsIcon from '@/assets/images/rewards.png';
 import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useGameStore } from '@/stores/gameStore';
-import { Beast } from '@/types/game';
+import type { Beast } from '@/types/game';
 import { gameColors } from '@/utils/themes';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
 import { Badge, Box, Button, Divider, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';

@@ -3,7 +3,7 @@ import killTokenImg from '@/assets/images/skull-token.png';
 import lifePotionImg from '@/assets/images/life-potion.png';
 import { useController } from '@/contexts/controller';
 import { useSystemCalls } from '@/dojo/useSystemCalls';
-import { Beast, Stats } from '@/types/game';
+import type { Beast, Stats } from '@/types/game';
 import { gameColors } from '@/utils/themes';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import CasinoIcon from '@mui/icons-material/Casino';
@@ -148,7 +148,7 @@ function SummitGiftModal(props: SummitGiftModalProps) {
 
     setGiftInProgress(true);
     try {
-      const calls: any[] = [];
+      const calls: Parameters<typeof executeAction>[0] = [];
 
       // Bonus health (CORPSE)
       if (bonusHealthGift > 0 && corpseTokenCost > 0) {
@@ -862,4 +862,3 @@ const styles = {
     color: '#ffedbb',
   },
 };
-

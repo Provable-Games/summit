@@ -1,7 +1,8 @@
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { lookupAddressNames } from '@/utils/addressNameCache';
-import { useSummitApi, TopBeast } from '@/api/summitApi';
+import type { TopBeast } from '@/api/summitApi';
+import { useSummitApi } from '@/api/summitApi';
 import CloseIcon from '@mui/icons-material/Close';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { Box, Dialog, IconButton, Pagination, Tab, Tabs, Typography } from '@mui/material';

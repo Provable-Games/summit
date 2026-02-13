@@ -1,5 +1,6 @@
 import ROUTER_ABI from '@/abi/router-abi.json';
-import { generateSwapCalls, getSwapQuote, SwapQuote } from '@/api/ekubo';
+import type { SwapQuote } from '@/api/ekubo';
+import { generateSwapCalls, getSwapQuote } from '@/api/ekubo';
 import attackPotionImg from '@/assets/images/attack-potion.png';
 import corpseTokenImg from '@/assets/images/corpse-token.png';
 import killTokenImg from '@/assets/images/skull-token.png';

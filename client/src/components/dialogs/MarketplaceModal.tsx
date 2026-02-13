@@ -1,5 +1,6 @@
 import ROUTER_ABI from '@/abi/router-abi.json';
-import { generateSwapCalls, getSwapQuote, SwapQuote, getPoolsForPair, getBestPool, getFullRangeBounds, estimateApy, decodeFee, calculatePairAmount, generateAddLiquidityCalls, getPositionsForOwner, generateWithdrawLiquidityCalls, generateCollectFeesCalls, positionBoundsToContractBounds, discoverPoolFromQuote, getDefaultPoolInfo, PoolInfo, PoolKey, EkuboPosition } from '@/api/ekubo';
+import type { SwapQuote, PoolInfo, PoolKey, EkuboPosition } from '@/api/ekubo';
+import { generateSwapCalls, getSwapQuote, getPoolsForPair, getBestPool, getFullRangeBounds, estimateApy, decodeFee, calculatePairAmount, generateAddLiquidityCalls, getPositionsForOwner, generateWithdrawLiquidityCalls, generateCollectFeesCalls, positionBoundsToContractBounds, discoverPoolFromQuote, getDefaultPoolInfo } from '@/api/ekubo';
 import attackPotionImg from '@/assets/images/attack-potion.png';
 import corpseTokenImg from '@/assets/images/corpse-token.png';
 import killTokenImg from '@/assets/images/skull-token.png';

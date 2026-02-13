@@ -1,4 +1,5 @@
-import { useSummitApi, LogEntry } from '@/api/summitApi';
+import type { LogEntry } from '@/api/summitApi';
+import { useSummitApi } from '@/api/summitApi';
 import attackPotionIcon from '@/assets/images/attack-potion.png';
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
 import killTokenIcon from '@/assets/images/skull-token.png';

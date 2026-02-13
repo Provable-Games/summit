@@ -1,6 +1,6 @@
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useGameStore } from '@/stores/gameStore';
-import { Beast } from '@/types/game';
+import type { Beast } from '@/types/game';
 import CasinoIcon from '@mui/icons-material/Casino';
 import EnergyIcon from '@mui/icons-material/ElectricBolt';
 import FastForwardIcon from '@mui/icons-material/FastForward';
@@ -503,7 +503,7 @@ function AttackingBeasts() {
 
 export default AttackingBeasts;
 
-const styles: any = {
+const styles = {
   container: {
     bottom: 0,
     padding: 2,
