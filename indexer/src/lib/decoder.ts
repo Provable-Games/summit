@@ -165,8 +165,6 @@ const MASK_128 = (1n << 128n) - 1n;
 
 // ============ Event Data Interfaces ============
 
-type BitFlag = 0 | 1;
-
 export interface LiveBeastStats {
   token_id: number;
   current_health: number;
@@ -180,17 +178,17 @@ export interface LiveBeastStats {
   // Stats struct
   spirit: number;
   luck: number;
-  specials: BitFlag;
-  wisdom: BitFlag;
-  diplomacy: BitFlag;
+  specials: boolean;
+  wisdom: boolean;
+  diplomacy: boolean;
   // Rewards
   rewards_earned: number;
   rewards_claimed: number;
   // Quest struct
-  captured_summit: BitFlag;
-  used_revival_potion: BitFlag;
-  used_attack_potion: BitFlag;
-  max_attack_streak: BitFlag;
+  captured_summit: boolean;
+  used_revival_potion: boolean;
+  used_attack_potion: boolean;
+  max_attack_streak: boolean;
 }
 
 export interface BeastUpdatesEventData {
@@ -249,10 +247,6 @@ export interface QuestRewardsClaimedEventData {
   packed_rewards: string[];
 }
 
-function toBitFlag(value: bigint): BitFlag {
-  return value === 1n ? 1 : 0;
-}
-
 // ============ Packed Data Decoders ============
 
 /**
@@ -295,19 +289,19 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
   high = high >> 8n;
   const luck = Number(high & MASK_8);
   high = high >> 8n;
-  const specials = toBitFlag(high & MASK_1);
+  const specials = (high & MASK_1) === 1n;
   high = high >> 1n;
-  const wisdom = toBitFlag(high & MASK_1);
+  const wisdom = (high & MASK_1) === 1n;
   high = high >> 1n;
-  const diplomacy = toBitFlag(high & MASK_1);
+  const diplomacy = (high & MASK_1) === 1n;
   high = high >> 1n;
-  const captured_summit = toBitFlag(high & MASK_1);
+  const captured_summit = (high & MASK_1) === 1n;
   high = high >> 1n;
-  const used_revival_potion = toBitFlag(high & MASK_1);
+  const used_revival_potion = (high & MASK_1) === 1n;
   high = high >> 1n;
-  const used_attack_potion = toBitFlag(high & MASK_1);
+  const used_attack_potion = (high & MASK_1) === 1n;
   high = high >> 1n;
-  const max_attack_streak = toBitFlag(high & MASK_1);
+  const max_attack_streak = (high & MASK_1) === 1n;
 
   return {
     token_id,

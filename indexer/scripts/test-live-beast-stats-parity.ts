@@ -18,25 +18,23 @@ const CROSS_LAYER_PARITY_EXPECTED: LiveBeastStats = {
   summit_held_seconds: 654321,
   spirit: 88,
   luck: 199,
-  specials: 1,
-  wisdom: 0,
-  diplomacy: 1,
+  specials: true,
+  wisdom: false,
+  diplomacy: true,
   rewards_earned: 987654321,
   rewards_claimed: 123456789,
-  captured_summit: 1,
-  used_revival_potion: 0,
-  used_attack_potion: 1,
-  max_attack_streak: 1,
+  captured_summit: true,
+  used_revival_potion: false,
+  used_attack_potion: true,
+  max_attack_streak: true,
 };
-
-type BitFlag = 0 | 1;
-
-function bit(value: number): BitFlag {
-  return value === 1 ? 1 : 0;
-}
 
 function toHex(value: bigint): string {
   return `0x${value.toString(16)}`;
+}
+
+function flag(value: boolean): bigint {
+  return value ? 1n : 0n;
 }
 
 function packLiveBeastStats(stats: LiveBeastStats): bigint {
@@ -56,13 +54,13 @@ function packLiveBeastStats(stats: LiveBeastStats): bigint {
     (BigInt(stats.summit_held_seconds) << 77n) |
     (BigInt(stats.spirit) << 100n) |
     (BigInt(stats.luck) << 108n) |
-    (BigInt(stats.specials) << 116n) |
-    (BigInt(stats.wisdom) << 117n) |
-    (BigInt(stats.diplomacy) << 118n) |
-    (BigInt(stats.captured_summit) << 119n) |
-    (BigInt(stats.used_revival_potion) << 120n) |
-    (BigInt(stats.used_attack_potion) << 121n) |
-    (BigInt(stats.max_attack_streak) << 122n);
+    (flag(stats.specials) << 116n) |
+    (flag(stats.wisdom) << 117n) |
+    (flag(stats.diplomacy) << 118n) |
+    (flag(stats.captured_summit) << 119n) |
+    (flag(stats.used_revival_potion) << 120n) |
+    (flag(stats.used_attack_potion) << 121n) |
+    (flag(stats.max_attack_streak) << 122n);
 
   return low | (high << 128n);
 }
@@ -89,15 +87,15 @@ const MAX_VECTOR: LiveBeastStats = {
   summit_held_seconds: 0x7fffff,
   spirit: 0xff,
   luck: 0xff,
-  specials: 1,
-  wisdom: 1,
-  diplomacy: 1,
+  specials: true,
+  wisdom: true,
+  diplomacy: true,
   rewards_earned: 0xffffffff,
   rewards_claimed: 0xffffffff,
-  captured_summit: 1,
-  used_revival_potion: 1,
-  used_attack_potion: 1,
-  max_attack_streak: 1,
+  captured_summit: true,
+  used_revival_potion: true,
+  used_attack_potion: true,
+  max_attack_streak: true,
 };
 
 const ZERO_VECTOR: LiveBeastStats = {
@@ -112,15 +110,15 @@ const ZERO_VECTOR: LiveBeastStats = {
   summit_held_seconds: 0,
   spirit: 0,
   luck: 0,
-  specials: 0,
-  wisdom: 0,
-  diplomacy: 0,
+  specials: false,
+  wisdom: false,
+  diplomacy: false,
   rewards_earned: 0,
   rewards_claimed: 0,
-  captured_summit: 0,
-  used_revival_potion: 0,
-  used_attack_potion: 0,
-  max_attack_streak: 0,
+  captured_summit: false,
+  used_revival_potion: false,
+  used_attack_potion: false,
+  max_attack_streak: false,
 };
 
 const MIXED_VECTOR: LiveBeastStats = {
@@ -135,18 +133,27 @@ const MIXED_VECTOR: LiveBeastStats = {
   summit_held_seconds: 6543,
   spirit: 12,
   luck: 222,
-  specials: 1,
-  wisdom: 0,
-  diplomacy: 1,
+  specials: true,
+  wisdom: false,
+  diplomacy: true,
   rewards_earned: 13579,
   rewards_claimed: 2468,
-  captured_summit: 0,
-  used_revival_potion: 1,
-  used_attack_potion: 0,
-  max_attack_streak: 1,
+  captured_summit: false,
+  used_revival_potion: true,
+  used_attack_potion: false,
+  max_attack_streak: true,
 };
 
-const FLAG_CASES: Array<{ name: string; key: keyof LiveBeastStats }> = [
+type FlagField =
+  | "specials"
+  | "wisdom"
+  | "diplomacy"
+  | "captured_summit"
+  | "used_revival_potion"
+  | "used_attack_potion"
+  | "max_attack_streak";
+
+const FLAG_CASES: Array<{ name: string; key: FlagField }> = [
   { name: "specials", key: "specials" },
   { name: "wisdom", key: "wisdom" },
   { name: "diplomacy", key: "diplomacy" },
@@ -162,7 +169,7 @@ runLiveStatsVector("max values", MAX_VECTOR);
 runLiveStatsVector("mixed values", MIXED_VECTOR);
 
 for (const { name, key } of FLAG_CASES) {
-  const vector: LiveBeastStats = { ...ZERO_VECTOR, [key]: bit(1) };
+  const vector: LiveBeastStats = { ...ZERO_VECTOR, [key]: true };
   runLiveStatsVector(`flag isolation: ${name}`, vector);
 }
 
