@@ -65,7 +65,7 @@ jobs:
           tool-versions: .tool-versions
           scarb-lock: contracts/Scarb.lock
           cache: true
-          cache-targets: true
+          cache-targets: false
 
       - name: Scarb fmt
         run: scarb fmt --check
