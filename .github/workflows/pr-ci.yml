@@ -93,8 +93,16 @@ jobs:
         with:
           tool-versions: .tool-versions
 
+      - name: Cache cairo-coverage
+        id: cairo_coverage_cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/cairo-coverage
+          key: cairo-coverage-${{ runner.os }}-${{ runner.arch }}-v0.6.0
+
       - name: Install cairo-coverage
-        run: curl -L https://raw.githubusercontent.com/software-mansion/cairo-coverage/main/scripts/install.sh | sh
+        if: steps.cairo_coverage_cache.outputs.cache-hit != 'true'
+        run: curl -L https://raw.githubusercontent.com/software-mansion/cairo-coverage/v0.6.0/scripts/install.sh | sh
 
       - name: Run contract tests with coverage
         run: |
