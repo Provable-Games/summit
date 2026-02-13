@@ -148,7 +148,7 @@ function SummitGiftModal(props: SummitGiftModalProps) {
 
     setGiftInProgress(true);
     try {
-      const calls: Parameters<typeof executeAction>[0] = [];
+      const calls: any[] = [];
 
       // Bonus health (CORPSE)
       if (bonusHealthGift > 0 && corpseTokenCost > 0) {

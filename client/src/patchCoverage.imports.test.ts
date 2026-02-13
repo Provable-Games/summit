@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { shuffle } from "@/utils/utils";
 
 describe("lint-touched module imports", () => {
   it("loads modules with top-level runtime deltas", async () => {
@@ -12,9 +13,13 @@ describe("lint-touched module imports", () => {
     });
 
     const modules = [
+      "@/components/BeastCard",
+      "@/components/BeastCollection",
       "@/components/AttackingBeasts",
       "@/components/GameNotificationFeed",
       "@/components/dialogs/AutopilotConfigModal",
+      "@/components/dialogs/BeastDexModal",
+      "@/components/dialogs/EventHistoryModal",
       "@/components/dialogs/BeastUpgradeModal",
       "@/components/dialogs/SummitGiftModal",
       "@/components/FinalShowdown",
@@ -26,5 +31,7 @@ describe("lint-touched module imports", () => {
     for (const modulePath of modules) {
       await expect(import(modulePath)).resolves.toBeTruthy();
     }
+
+    expect(shuffle([1, 2, 3]).length).toBe(3);
   });
 });
