@@ -8,6 +8,7 @@ export default defineConfig({
       reporter: ["lcov", "text"],
       reportsDirectory: "coverage",
       include: ["src/**"],
+      exclude: ["**/*.test.*", "**/*.spec.*"],
     },
   },
 });
