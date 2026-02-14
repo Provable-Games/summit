@@ -65,7 +65,7 @@ Toolchain versions come from `.tool-versions` and `.github/workflows/pr-ci.yml`.
    - Client: `cd client && pnpm dev`
 5. Run contract checks when changing Cairo logic:
    - `cd contracts && scarb fmt --check && scarb test`
-   - Optional coverage: `curl -L https://raw.githubusercontent.com/software-mansion/cairo-coverage/v0.6.0/scripts/install.sh | sh`, then run `scarb test --coverage`
+   - Optional coverage: install `cairo-coverage` `v0.6.0` from the official releases page (`https://github.com/software-mansion/cairo-coverage/releases/tag/v0.6.0`), then run `scarb test --coverage`
 
 ## Cross-Layer Parity Rule
 
