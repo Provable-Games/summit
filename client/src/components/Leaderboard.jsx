@@ -1,5 +1,5 @@
 import { useSummitApi } from '@/api/summitApi';
-import { SUMMIT_REWARDS_PER_SECOND } from '@/contexts/GameDirector';
+import { DIPLOMACY_REWARDS_PER_SECOND, SUMMIT_REWARDS_PER_SECOND } from '@/contexts/GameDirector';
 import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
 import { lookupAddressNames } from '@/utils/addressNameCache';
@@ -103,7 +103,7 @@ function Leaderboard() {
     // Calculate rewards from seconds held
     const secondsHeld = Math.max(0, currentTimestamp - summitBlockTimestamp)
     const diplomacyCount = (summitDiplomacyBeasts?.length || 0) - (summitBeastHasDiplomacy ? 1 : 0);
-    const diplomacyRewardPerSecond = SUMMIT_REWARDS_PER_SECOND / 100;
+    const diplomacyRewardPerSecond = DIPLOMACY_REWARDS_PER_SECOND;
     const diplomacyRewards = diplomacyRewardPerSecond * secondsHeld * diplomacyCount;
 
     // Find summit owner in leaderboard
@@ -156,7 +156,7 @@ function Leaderboard() {
       <Box sx={styles.content}>
 
         <Typography sx={styles.title}>
-          SUMMIT ALPHA
+          SUMMIT
         </Typography>
 
         <RewardsRemainingBar currentTimestamp={currentTimestamp} />

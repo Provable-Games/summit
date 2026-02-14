@@ -128,7 +128,7 @@ describe("Leaderboard", () => {
     );
 
     const renderedText = JSON.stringify(renderer!.toJSON());
-    expect(renderedText).toContain("SUMMIT ALPHA");
+    expect(renderedText).toContain("SUMMIT");
     expect(renderedText).toContain("Diplomacy");
   });
 });

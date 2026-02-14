@@ -37,11 +37,13 @@ export interface GameDirectorContext {
   pauseUpdates: boolean;
 }
 
-export const REWARD_NAME = "Test Money";
-export const START_TIMESTAMP = 1769683726;
-export const SUMMIT_DURATION_SECONDS = 4320000;
+export const REWARD_NAME = "Survivor";
+export const START_TIMESTAMP = 1771164000;
+export const SUMMIT_DURATION_SECONDS = 86400;
 export const SUMMIT_REWARDS_PER_SECOND = 0.0075;
+export const DIPLOMACY_REWARDS_PER_SECOND = 0.0005;
 export const MAX_BEASTS_PER_ATTACK = 295;
+export const QUEST_REWARDS_TOTAL_AMOUNT = 100;
 
 const GameDirectorContext = createContext<GameDirectorContext>(
   {} as GameDirectorContext
