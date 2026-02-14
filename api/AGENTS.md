@@ -1,114 +1,96 @@
-# API
+# API Agent Guide
 
-REST + WebSocket server for Summit frontend. Read [top-level AGENTS.md](../AGENTS.md) first for architecture, game mechanics, and contract addresses.
+Read [`../AGENTS.md`](../AGENTS.md) first for shared addresses/mechanics and indexer-to-client realtime flow.
+
+## Role
+- `api/` is the read API + WebSocket relay consumed by the client.
 
 ## Stack
-
-- TypeScript 5.7.0, Node.js 22
-- Hono 4.6.0 (HTTP framework)
-- Drizzle ORM 0.38.0, PostgreSQL (pg 8.13.0)
-- ws 8.18.0 (WebSocket via @hono/node-ws)
+- Node.js `22` (CI/Docker)
+- TypeScript `5.7.0`
+- Hono `4.6.0`
+- Drizzle ORM `0.38.0`
+- `pg` `8.13.0`
+- `ws` `8.18.0`
 
 ## Key Files
 
 | File | Purpose |
-| ---- | ------- |
-| `src/index.ts` | Main server (787 lines): all REST routes, WebSocket upgrade, middleware |
-| `src/db/client.ts` | PostgreSQL pool config (max 15 via `DB_POOL_MAX`, 5s connect timeout) |
-| `src/db/schema.ts` | Drizzle schema (12 tables, mirrors indexer schema) |
-| `src/ws/subscriptions.ts` | WebSocket hub: PG LISTEN/NOTIFY -> client broadcast |
-| `src/lib/beastData.ts` | Beast metadata lookups (names, tiers, types, item names) |
+| --- | --- |
+| `src/index.ts` | Main server/routes + WebSocket upgrade (`787` lines). |
+| `src/db/client.ts` | Pool config and health check (`DB_POOL_MAX`, SSL, timeout). |
+| `src/db/schema.ts` | Shared 12-table schema mirror from indexer. |
+| `src/ws/subscriptions.ts` | PG LISTEN/NOTIFY bridge to WebSocket clients. |
+| `src/lib/beastData.ts` | Beast metadata dictionaries for response enrichment. |
 
-## REST Endpoints
+## HTTP and WS Surface
+- Data REST endpoints:
+  - `/health`
+  - `/beasts/all`
+  - `/beasts/:owner`
+  - `/logs`
+  - `/beasts/stats/counts`
+  - `/beasts/stats/top`
+  - `/diplomacy`
+  - `/diplomacy/all`
+  - `/leaderboard`
+  - `/quest-rewards/total`
+  - `/adventurers/:player`
+- Root discovery route: `/`
+- WebSocket endpoint: `/ws`
+  - message types: `subscribe`, `unsubscribe`, `ping`
+  - channels: `summit`, `event`
+  - subscribe payload: `{"type":"subscribe","channels":["summit","event"]}`
 
-| Route | Method | Purpose |
-| ----- | ------ | ------- |
-| `/` | GET | Endpoint directory (index) |
-| `/health` | GET | Health check (DB connectivity) |
-| `/beasts/all` | GET | All beast stats |
-| `/beasts/:owner` | GET | Beasts owned by address |
-| `/beasts/stats/counts` | GET | Aggregate beast counts |
-| `/beasts/stats/top` | GET | Top beasts by various metrics |
-| `/logs` | GET | Activity feed from summit_log |
-| `/diplomacy` | GET | Current diplomacy state |
-| `/diplomacy/all` | GET | All diplomacy records |
-| `/leaderboard` | GET | Player leaderboard |
-| `/quest-rewards/total` | GET | Total quest rewards earned |
-| `/adventurers/:player` | GET | Player's adventurer data |
+Query/pagination rules agents usually need:
+- `/beasts/all`: `limit` default `25`, max `100`; `offset`; filters `prefix`, `suffix`, `beast_id`, `name`, `owner`; `sort` in `summit_held_seconds|level`.
+- `/logs`: `limit` default `50`, max `100`; `offset`; `category`, `sub_category` (comma-separated), `player`.
+- `/beasts/stats/top`: `limit` default `25`, max `100`; `offset`.
+- `/diplomacy`: `prefix` and `suffix` required; returns HTTP `400` if missing.
+- Paginated routes return `{ data, pagination: { limit, offset, total, has_more } }`.
 
-Note: `/leaderboard` divides raw amounts by 100,000 for display. This endpoint is not paginated.
+Behavior details that affect integration:
+- `/leaderboard` divides summed reward amounts by `100000` for display.
+- `/beasts/stats/counts` defines alive as `last_death_timestamp < now - 86400`.
+- `/` includes debug endpoint hints in development mode (`NODE_ENV != production`), but handlers are not implemented in this service file.
 
-Development only (`NODE_ENV != "production"`): The root `GET /` discovery response lists `POST /debug/test-summit-update` and `POST /debug/test-summit-log`, but their route handlers are not currently implemented.
+## Real-Time Pattern
+`Indexer writes -> PostgreSQL NOTIFY (summit_update, summit_log_insert) -> SubscriptionHub LISTEN -> WS broadcast`
 
-### Key Query Parameters
+## Middleware and Runtime Patterns
+- Middleware in `src/index.ts`: logger, compress, CORS.
+- CORS is credential-enabled.
+- Address normalization for owner/player queries is mandatory:
+  - lowercase
+  - 66-char `0x` padded form.
+- No auth layer (public read API).
+- No cache layer (responses are DB-backed).
 
-**`/beasts/all`**: `limit` (default 25, max 100), `offset`, `prefix`, `suffix`, `beast_id`, `name`, `owner`, `sort` (`summit_held_seconds` or `level`)
-
-**`/logs`**: `limit` (default 50, max 100), `offset`, `category` (comma-separated), `sub_category` (comma-separated), `player`
-
-**`/beasts/stats/top`**: `limit` (default 25, max 100), `offset`
-
-**`/diplomacy`**: `prefix` (required), `suffix` (required) -- returns 400 if either is missing
-
-Paginated endpoints return: `{ data: [...], pagination: { limit, offset, total, has_more } }`
-
-## WebSocket
-
-Endpoint: `/ws`
-
-Channels:
-- `summit` - Beast stats updates for current summit beast
-- `event` - Activity feed from summit_log
-
-Message types: `subscribe`, `unsubscribe`, `ping` (returns `pong`)
-
-Real-time pipeline: Indexer -> PG NOTIFY (`summit_update`, `summit_log_insert`) -> SubscriptionHub -> WebSocket clients
-
-Subscribe payload: `{"type":"subscribe","channels":["summit","event"]}`
-Key is `channels` (array, plural) -- not `channel`. Server responds with `{"type":"subscribed","channels":[...]}`.
-
-## Middleware
-
-- `logger` - Request logging
-- `compress` - Response compression
-- `cors` - CORS with credentials enabled
-
-## Key Patterns
-
-- **No auth**: Public read-only API
-- **No caching layer**: Queries hit PostgreSQL directly
-- **Address normalization**: All addresses lowercase, 66-char hex padded
-- **Shared schema**: Database schema mirrors indexer's schema (12 tables)
-- **TypeScript strict: true**
+## TypeScript and DB Settings
+- `tsconfig.json`: `strict: true`.
+- Pool defaults (`src/db/client.ts`):
+  - `max = 15` (`DB_POOL_MAX` override)
+  - `connectionTimeoutMillis = 5000`
 
 ## Commands
+- Dev: `pnpm dev` (`tsx watch src/index.ts`)
+- Build: `pnpm build` (`tsc`)
+- Start: `pnpm start` (`node dist/index.js`)
+- Typecheck only: `pnpm exec tsc --noEmit`
 
-```bash
-pnpm dev    # tsx watch src/index.ts (hot reload)
-pnpm build  # tsc (compile to dist/)
-pnpm start  # node dist/index.js (production)
-pnpm exec tsc --noEmit  # Typecheck only
-```
+## CI for API
+- Triggered by `api/**` (and shared indexer/api lint gate).
+- Build gate: `pnpm exec tsc --noEmit` -> `pnpm build`.
 
-## CI Pipeline
-
-`tsc --noEmit` -> build
-
-Triggered by `api/**` (shared `indexer-api-lint` gate with indexer). No runtime tests -- CI gate is typecheck + build only.
+## Deployment Notes
+- `Dockerfile` uses multi-stage Node 22 Alpine.
+- Runs as non-root user.
+- Healthcheck targets `:3001/health`.
+- Graceful shutdown calls `SubscriptionHub.shutdown()` on `SIGINT`/`SIGTERM`.
 
 ## Environment Variables
-
-- `DATABASE_URL` - PostgreSQL connection string
-- `DATABASE_SSL` - Enable SSL for DB connection
-- `DB_POOL_MAX` - Max pool connections (default: 15)
-- `PORT` - Server port (default: 3001)
-- `NODE_ENV` - Set to `"production"` to hide debug endpoints (default: unset)
-
-## Deployment
-
-Multi-stage Docker (Node 22 Alpine):
-- Non-root user
-- Healthcheck on `:3001/health`
-- `Dockerfile` in api root
-
-Handles `SIGINT`/`SIGTERM` with SubscriptionHub cleanup and graceful process exit.
+- `DATABASE_URL` (required)
+- `DATABASE_SSL` (`"true"` enables SSL)
+- `DB_POOL_MAX` (default `15`)
+- `PORT` (default `3001`)
+- `NODE_ENV` (`production` hides debug entries from `/` response)

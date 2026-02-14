@@ -690,7 +690,6 @@ app.get("/", (c) => {
       all: "GET /beasts/all?limit=25&offset=0&prefix=&suffix=&beast_id=&name=&owner=&sort=summit_held_seconds",
       counts: "GET /beasts/stats/counts",
       top: "GET /beasts/stats/top?limit=25&offset=0",
-      top5000_cutoff: "GET /beasts/stats/top5000-cutoff",
     },
     adventurers: {
       by_player: "GET /adventurers/:player",

@@ -1,112 +1,114 @@
-# Indexer
+# Indexer Agent Guide
 
-Real-time Starknet event indexer for Summit game state. Read [top-level AGENTS.md](../AGENTS.md) first for architecture, game mechanics, and contract addresses.
+Read [`../AGENTS.md`](../AGENTS.md) first for shared addresses, mechanics, and LiveBeastStats parity rules.
+
+## Role
+- `indexer/` is the real-time Starknet event indexer that materializes Summit game state into PostgreSQL.
 
 ## Stack
-
-- TypeScript 5.7.0, Node.js 22
-- Apibara DNA (next) + @apibara/starknet (next) - Starknet event streaming
-- Drizzle ORM 0.38.0, PostgreSQL (pg 8.13.0)
-- starknet.js 7.1.0 (selector computation, hash utilities)
-- Vitest 3.1.1
+- Node.js `22` (CI/Docker)
+- TypeScript `5.7.0`
+- Apibara DNA (`next`) + `@apibara/starknet` (`next`)
+- `starknet` `^7.1.0` (selectors/hash utilities in decoder/indexer flow)
+- Drizzle ORM `0.38.0`
+- `pg` `8.13.0`
+- Vitest `3.1.1`
 
 ## Key Files
 
 | File | Purpose |
-| ---- | ------- |
-| `indexers/summit.indexer.ts` | Single indexer (1889 lines): event filtering, decoding, processing, DB writes. Sets `finality: "pending"`. |
-| `src/lib/schema.ts` | Drizzle schema: 12 tables |
-| `src/lib/decoder.ts` | Bit unpacking for LiveBeastStats, event selector constants, hex utilities |
-| `src/lib/decoder.test.ts` | Unit tests for decoder bit unpacking and hex utilities |
-| `vitest.config.ts` | Test runner configuration |
-| `apibara.config.ts` | Stream config: contract addresses, starting block 6767900, RPC URL |
-| `migrations/` | Drizzle migrations + `0001_triggers.sql` (PG NOTIFY triggers) |
+| --- | --- |
+| `indexers/summit.indexer.ts` | Single indexer entrypoint (`1889` lines): filtering, decoding, state updates, writes. |
+| `apibara.config.ts` | Runtime config (contract addresses, starting block `6767900`, DB/stream env bindings). |
+| `src/lib/decoder.ts` | Event selector constants and packed felt decoding. |
+| `src/lib/schema.ts` | Drizzle schema (`12` tables). |
+| `migrations/0000_tables.sql` | Base tables/indexes migration. |
+| `migrations/0001_triggers.sql` | PG NOTIFY trigger functions for realtime API push. |
+| `scripts/test-live-beast-stats-parity.ts` | Cross-layer pack/unpack parity script. |
+| `scripts/check-dna-status.ts` | Startup DNA connectivity/status check. |
 
 ## Architecture
+- Runtime config in `apibara.config.ts`:
+  - starting block: `6767900`
+  - stream URL / DB URL / contract addresses via env bindings
+- Indexer behavior in `indexers/summit.indexer.ts`:
+  - finality: `pending`
+  - filters: Summit, Beast NFT, Dojo World, Corpse, Skull contracts
+- Data pipeline:
+  - `DNA stream -> pre-scan token/entity IDs -> batch context lookups -> ordered event processing -> derived logs -> bulk upserts/inserts -> PostgreSQL NOTIFY`
 
-```
-DNA Stream -> Filter (5 contracts) -> Pre-scan token IDs -> Batch context lookups -> Process events -> Derived events -> Bulk inserts -> PG NOTIFY
-```
+## Database Model (`12` Tables)
+State/upsert tables:
+- `beast_stats`
+- `beast_owners`
+- `beast_data`
+- `skulls_claimed`
+- `quest_rewards_claimed`
 
-### 12 Database Tables
+Insert-once table:
+- `beasts`
 
-1. `beast_stats` - Current beast state (upsert on token_id)
-2. `battles` - Combat history (append-only)
-3. `rewards_earned` - Reward distribution (append-only)
-4. `rewards_claimed` - Rewards claimed by players (append-only)
-5. `poison_events` - Poison attacks (append-only)
-6. `corpse_events` - Corpse creation (append-only)
-7. `skulls_claimed` - Total skulls per beast (upsert on beast_token_id)
-8. `quest_rewards_claimed` - Quest rewards per beast (upsert on beast_token_id)
-9. `beast_owners` - NFT ownership (upsert on token_id)
-10. `beasts` - NFT metadata (insert once)
-11. `beast_data` - Dojo event data (upsert on entity_hash)
-12. `summit_log` - Unified activity feed (append-only with derived events)
+Append/history tables:
+- `battles`
+- `rewards_earned`
+- `rewards_claimed`
+- `poison_events`
+- `corpse_events`
+- `summit_log`
 
-### Indexed Event Surface
+Critical semantic note:
+- `quest_rewards_claimed` is upserted state keyed by `beast_token_id` (not append-only history).
 
-14 event types across 5 contracts:
-- Summit contract (9 selectors): BeastUpdatesEvent, LiveBeastStatsEvent, BattleEvent, RewardsEarnedEvent, RewardsClaimedEvent, PoisonEvent, QuestRewardsClaimedEvent, CorpseEvent, SkullEvent
-- Beast NFT: Transfer
-- Dojo World: EntityStats, CollectableEntity (via StoreSetRecord)
-- Corpse contract: CorpseEvent
-- Skull contract: SkullEvent
-
-Selector constants exported from `src/lib/decoder.ts`: `EVENT_SELECTORS`, `BEAST_EVENT_SELECTORS`, `DOJO_EVENT_SELECTORS`.
+## Indexed Event Surface
+- `14` event types across `5` contracts:
+  - Summit contract events (`9` selectors, including quest rewards claimed)
+  - Beast NFT `Transfer`
+  - Dojo `EntityStats` + `CollectableEntity`
+  - Corpse `CorpseEvent`
+  - Skull `SkullEvent`
 
 ## Key Patterns
+- Batch-first processing:
+  - one context query path per block
+  - one bulk insert/upsert per table
+- Idempotency:
+  - append tables use `onConflictDoNothing`
+  - state tables use `onConflictDoUpdate`
+- Derived logs:
+  - stat upgrades
+  - summit change
+  - battle aggregation by `transaction_hash`
+- Real-time bridge:
+  - DB triggers publish `summit_update` and `summit_log_insert`
+  - consumed by API WS layer
 
-- **Batch processing**: Single query per table per block (bulk inserts)
-- **Idempotency**: Append tables use `onConflictDoNothing`; state tables use `onConflictDoUpdate`
-- **LiveBeastStats unpacking**: Must stay in sync with `contracts/src/models/beast.cairo`
-- **Derived events**: Stat upgrades and summit changes detected by comparing pre/post state
-- **Battle aggregation**: Multiple attack events grouped by `tx_hash`
-- **Real-time push**: DB triggers in `0001_triggers.sql` publish `summit_update` and `summit_log_insert` via PG NOTIFY, consumed by the API WebSocket layer (`api/`)
-
-## Cross-Layer Parity
-
-`scripts/test-live-beast-stats-parity.ts` validates decoder matches contract packing. Run with `pnpm test:parity`. CI triggers on changes to `indexer/**` or `contracts/src/models/beast.cairo`. Rule: never change decoder masks/shifts without matching contract + client changes.
+## Cross-Layer Packing Parity
+- Contract pack source: `contracts/src/models/beast.cairo`
+- Indexer decoder source: `src/lib/decoder.ts`
+- Parity script: `scripts/test-live-beast-stats-parity.ts`
+- Rule: never change decoder masks/shifts without matching contract + client changes
 
 ## Commands
+- Dev: `pnpm dev`
+- Build: `pnpm build`
+- Start: `pnpm start`
+- Typecheck: `pnpm exec tsc --noEmit`
+- Tests: `pnpm test`
+- Coverage: `pnpm test:coverage`
+- Parity: `pnpm test:parity`
+- DB tooling: `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:studio`
 
-```bash
-pnpm dev          # apibara dev (local indexing)
-pnpm build        # apibara build
-pnpm start        # apibara start (production)
-pnpm test         # Vitest run
-pnpm test:coverage # Vitest with coverage
-pnpm test:parity  # LiveBeastStats parity validation
-pnpm exec tsc --noEmit  # Typecheck only
-pnpm db:generate  # drizzle-kit generate migrations
-pnpm db:migrate   # drizzle-kit migrate
-pnpm db:studio    # drizzle-kit studio (DB browser)
-```
+## CI for Indexer
+- Triggered by `indexer/**` and `contracts/src/models/beast.cairo`.
+- Job sequence: `pnpm exec tsc --noEmit` -> build -> parity -> coverage -> Codecov.
 
-## CI Pipeline
-
-`tsc --noEmit` -> build -> parity test -> test:coverage -> Codecov upload
-
-Triggered by `indexer/**` and `contracts/src/models/beast.cairo`.
+## Deployment Notes
+- `Dockerfile` uses multi-stage Node 22 Alpine image.
+- Runs as non-root user.
+- Includes healthcheck.
+- Startup command runs DNA status check before indexer start.
 
 ## Environment Variables
-
-- `STREAM_URL` - Apibara DNA stream URL
-- `DATABASE_URL` - PostgreSQL connection string
-- `DNA_TOKEN` - Auth token for stream provider (optional)
-
-## Deployment
-
-Multi-stage Docker (Node 22 Alpine):
-- Non-root user
-- Healthcheck configured
-- Startup runs DNA status check before indexer start (`check-dna && start`)
-- `Dockerfile` in indexer root
-
-## Database Schema Management
-
-Use Drizzle Kit for all schema changes:
-1. Modify `src/lib/schema.ts`
-2. Run `pnpm db:generate` to create migration
-3. Run `pnpm db:migrate` to apply
-
-All tables include UUID primary key (required by Apibara Drizzle plugin for reorg handling) and three timestamps: `created_at` (Starknet), `indexed_at` (DNA), `inserted_at` (DB). PG NOTIFY triggers are in `migrations/0001_triggers.sql` (not generated by Drizzle).
+- `DATABASE_URL`
+- `STREAM_URL`
+- `DNA_TOKEN` (optional, provider-dependent)
