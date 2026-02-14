@@ -34,21 +34,16 @@ Client (React SPA) -> Summit contract (Cairo on Starknet)
 
 ## CI Pipeline Summary (`.github/workflows/pr-ci.yml`)
 
-Path filters:
-- `contracts`: `contracts/**`
-- `client_ci`: `client/**` or `contracts/src/models/beast.cairo`
-- `client_review`: `client/**`
-- `indexer_ci`: `indexer/**` or `contracts/src/models/beast.cairo`
-- `api`: `api/**`
-- `indexer_api_ci`: `indexer/**` or `api/**` or `contracts/src/models/beast.cairo`
-- `indexer_api_review`: `indexer/**` or `api/**`
-- `general_review`: files outside component folders
-
-Per-component CI:
-- Contracts: `scarb fmt --check` -> `scarb test --coverage` -> Codecov.
-- Client: `pnpm lint` -> `pnpm build` -> `pnpm test:parity` -> `pnpm test:coverage` -> Codecov.
-- Indexer: `tsc --noEmit` -> `pnpm build` -> `pnpm test:parity` -> `pnpm test:coverage` -> Codecov.
-- API: `tsc --noEmit` -> `pnpm build`.
+| Filter Key | Trigger Paths | Runs |
+| --- | --- | --- |
+| `contracts` | `contracts/**` | contracts lint/test/coverage pipeline (`scarb fmt --check` -> `scarb test --coverage` -> Codecov) |
+| `client_ci` | `client/**` or `contracts/src/models/beast.cairo` | client lint/test/coverage pipeline (`pnpm lint` -> `pnpm build` -> `pnpm test:parity` -> `pnpm test:coverage` -> Codecov) |
+| `client_review` | `client/**` | client Claude/Codex review jobs |
+| `indexer_ci` | `indexer/**` or `contracts/src/models/beast.cairo` | indexer pipeline (`pnpm exec tsc --noEmit` -> `pnpm build` -> `pnpm test:parity` -> `pnpm test:coverage` -> Codecov) |
+| `api` | `api/**` | API pipeline (`pnpm exec tsc --noEmit` -> `pnpm build`) |
+| `indexer_api_ci` | `indexer/**` or `api/**` or `contracts/src/models/beast.cairo` | shared indexer/api lint gate job (`indexer-api-lint`) |
+| `indexer_api_review` | `indexer/**` or `api/**` | shared indexer/api Claude/Codex review jobs |
+| `general_review` | files outside `contracts/**`, `client/**`, `indexer/**`, `api/**` | general Claude/Codex review jobs |
 
 AI review gates:
 - Claude + Codex jobs run for `contracts`, `client`, `indexer/api`, and `general` scopes.

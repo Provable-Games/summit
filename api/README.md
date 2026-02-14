@@ -34,11 +34,21 @@ For AI-oriented coding guidance and deeper architecture notes, read `AGENTS.md` 
 ```bash
 cd api
 pnpm install
-export DATABASE_URL="postgresql://user:password@localhost:5432/summit"
+```
+
+Create `api/.env`:
+
+```env
+DATABASE_URL="postgresql://user:password@localhost:5432/summit"
 # optional
-# export DATABASE_SSL="true"
-# export DB_POOL_MAX="15"
-# export PORT="3001"
+# DATABASE_SSL="true"
+# DB_POOL_MAX="15"
+# PORT="3001"
+```
+
+Then start the server:
+
+```bash
 pnpm dev
 ```
 

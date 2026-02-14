@@ -80,7 +80,7 @@ Behavior details that affect integration:
 
 ## CI for API
 - Triggered by `api/**` (and shared indexer/api lint gate).
-- Build gate: `tsc --noEmit` -> `pnpm build`.
+- Build gate: `pnpm exec tsc --noEmit` -> `pnpm build`.
 
 ## Deployment Notes
 - `Dockerfile` uses multi-stage Node 22 Alpine.

@@ -30,6 +30,8 @@ Read [`../AGENTS.md`](../AGENTS.md) first for shared addresses, mechanics, and L
 ## Architecture
 - Runtime config in `apibara.config.ts`:
   - starting block: `6767900`
+  - stream URL / DB URL / contract addresses via env bindings
+- Indexer behavior in `indexers/summit.indexer.ts`:
   - finality: `pending`
   - filters: Summit, Beast NFT, Dojo World, Corpse, Skull contracts
 - Data pipeline:
@@ -98,7 +100,7 @@ Critical semantic note:
 
 ## CI for Indexer
 - Triggered by `indexer/**` and `contracts/src/models/beast.cairo`.
-- Job sequence: `tsc --noEmit` -> build -> parity -> coverage -> Codecov.
+- Job sequence: `pnpm exec tsc --noEmit` -> build -> parity -> coverage -> Codecov.
 
 ## Deployment Notes
 - `Dockerfile` uses multi-stage Node 22 Alpine image.

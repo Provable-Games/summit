@@ -27,6 +27,9 @@ pnpm dev
 
 The dev server runs on `https://localhost:5173` (HTTPS enabled via `vite-plugin-mkcert` in `vite.config.ts`).
 
+If your browser reports certificate trust issues, install and trust `mkcert` locally before rerunning `pnpm dev`:
+- `https://github.com/FiloSottile/mkcert`
+
 ## Environment
 
 The repo includes `client/.env` with mainnet values. If you need to override, set:

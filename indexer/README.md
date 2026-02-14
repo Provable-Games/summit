@@ -40,8 +40,18 @@ Contract addresses and default starting block are in `apibara.config.ts`.
 ```bash
 cd indexer
 pnpm install
-export DATABASE_URL="postgres://postgres:postgres@localhost:5432/summit"
-export STREAM_URL="https://mainnet.starknet.a5a.ch"
+```
+
+Create `indexer/.env`:
+
+```env
+DATABASE_URL="postgres://postgres:postgres@localhost:5432/summit"
+STREAM_URL="https://mainnet.starknet.a5a.ch"
+```
+
+Then run migrations and start the indexer:
+
+```bash
 pnpm db:migrate
 pnpm dev
 ```
@@ -101,7 +111,7 @@ These channels are consumed by the API WebSocket layer.
 - Docker image uses multi-stage Node 22 Alpine build.
 - Container runs as non-root and includes a healthcheck.
 - Startup executes a DNA connectivity check before starting the indexer process.
-- Docker build currently uses npm lockfile (`package-lock.json`) while local development commonly uses pnpm.
+- Docker dependency install uses `pnpm-lock.yaml` (`pnpm`-managed).
 
 ## Cross-Layer Parity
 
