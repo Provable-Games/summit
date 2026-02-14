@@ -72,12 +72,28 @@ Read [`../AGENTS.md`](../AGENTS.md) first for shared game mechanics, addresses, 
   - corpse token.
 
 ## Testing
-- Integration tests in `contracts/tests/test_summit.cairo` are fork-based mainnet tests (`#[fork("mainnet")]`, `#[fork("mainnet_6704808")]`).
-- Fork profiles are defined in `Scarb.toml`:
-  - `mainnet` (`latest`)
-  - `mainnet_6704808` (pinned block)
-- Test fixtures include real player addresses and a large whale token-id set for stress coverage.
-- Pure logic modules include inline unit tests (`#[cfg(test)]`).
+
+Two test layers, all in the `tests/` directory:
+
+**Unit tests** - `tests/unit/`, testing pure business logic:
+- `tests/unit/models/test_beast_packing.cairo` - StorePacking pack/unpack, parity vectors, zero/max values
+- `tests/unit/models/test_beast_stats.cairo` - Beast stat calculations
+- `tests/unit/logic/test_combat.cairo` - Combat calculations
+- `tests/unit/logic/test_poison.cairo` - Poison mechanics
+- `tests/unit/logic/test_revival.cairo` - Revival timing
+- `tests/unit/logic/test_quest.cairo` - Quest rewards
+- `tests/unit/logic/test_beast_utils.cairo` - Beast stat utilities
+
+**Fork/integration tests** - `tests/fork/test_summit.cairo`, all run against mainnet state:
+- Fork configs in `Scarb.toml`: `mainnet` (latest block), `mainnet_6704808` (pinned block)
+- Real player addresses and beast token IDs
+- Includes 300-beast stress test
+
+**Shared test utilities** - `tests/helpers/`, `tests/fixtures/`:
+- `tests/helpers/deployment.cairo` - Contract deployment helpers
+- `tests/helpers/beast_builder.cairo` - Beast stat builder for tests
+- `tests/fixtures/constants.cairo` - Test constants
+- `tests/fixtures/addresses.cairo` - Mainnet addresses for fork tests
 
 ## Commands
 - Format check: `scarb fmt --check`
