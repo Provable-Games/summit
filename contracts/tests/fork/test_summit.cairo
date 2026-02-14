@@ -1,110 +1,12 @@
-use beasts_nft::pack::PackableBeast;
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, mock_call, start_cheat_block_timestamp_global,
-    start_cheat_caller_address, stop_cheat_block_timestamp_global, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global, start_cheat_caller_address,
+    stop_cheat_block_timestamp_global, stop_cheat_caller_address,
 };
 use starknet::{ContractAddress, get_block_timestamp};
-use summit::models::beast::{Beast, BeastUtilsTrait, LiveBeastStats};
 use summit::systems::summit::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
-use crate::constants::{BEAST_WHALE, SUPER_BEAST_OWNER, SUPER_BEAST_TOKEN_ID, whale_beast_token_ids};
-
-// Real mainnet contract addresses
-fn BEAST_ADDRESS() -> ContractAddress {
-    0x046dA8955829ADF2bDa310099A0063451923f02E648cF25A1203aac6335CF0e4.try_into().unwrap()
-}
-
-fn REAL_PLAYER() -> ContractAddress {
-    0x0689701974d95364aAd9C2306Bc322A40a27fb775b0C97733FD0e36E900b1878.try_into().unwrap()
-}
-
-fn DUNGEON_ADDRESS() -> ContractAddress {
-    0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42.try_into().unwrap()
-}
-
-fn BEAST_DATA_ADDRESS() -> ContractAddress {
-    0x74abc15c0ddef39bdf1ede2a643c07968d3ed5bacb0123db2d5b7154fbb35c7.try_into().unwrap()
-}
-
-fn REWARD_ADDRESS() -> ContractAddress {
-    0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B.try_into().unwrap()
-}
-
-fn ATTACK_POTION_ADDRESS() -> ContractAddress {
-    0x111.try_into().unwrap()
-}
-
-fn REVIVE_POTION_ADDRESS() -> ContractAddress {
-    0x222.try_into().unwrap()
-}
-
-fn EXTRA_LIFE_POTION_ADDRESS() -> ContractAddress {
-    0x333.try_into().unwrap()
-}
-
-fn POISON_POTION_ADDRESS() -> ContractAddress {
-    0x444.try_into().unwrap()
-}
-
-fn SKULL_TOKEN_ADDRESS() -> ContractAddress {
-    0x555.try_into().unwrap()
-}
-
-fn CORPSE_TOKEN_ADDRESS() -> ContractAddress {
-    0x666.try_into().unwrap()
-}
-
-// Deploy summit contract without starting it
-fn deploy_summit() -> ISummitSystemDispatcher {
-    let contract = declare("summit_systems").unwrap().contract_class();
-    let owner = REAL_PLAYER();
-    let start_timestamp = 1000_u64;
-    let summit_duration_seconds = 1000000_u64;
-    let summit_reward_amount_per_second = 0_u128;
-    let diplomacy_reward_amount_per_second = 0_u128;
-    let quest_rewards_total_amount = 100_u128;
-
-    let mut calldata = array![];
-    calldata.append(owner.into());
-    calldata.append(start_timestamp.into());
-    calldata.append(summit_duration_seconds.into());
-    calldata.append(summit_reward_amount_per_second.into());
-    calldata.append(diplomacy_reward_amount_per_second.into());
-    calldata.append(quest_rewards_total_amount.into());
-    calldata.append(DUNGEON_ADDRESS().into());
-    calldata.append(BEAST_ADDRESS().into());
-    calldata.append(BEAST_DATA_ADDRESS().into());
-    calldata.append(REWARD_ADDRESS().into());
-    calldata.append(ATTACK_POTION_ADDRESS().into());
-    calldata.append(REVIVE_POTION_ADDRESS().into());
-    calldata.append(EXTRA_LIFE_POTION_ADDRESS().into());
-    calldata.append(POISON_POTION_ADDRESS().into());
-    calldata.append(SKULL_TOKEN_ADDRESS().into());
-    calldata.append(CORPSE_TOKEN_ADDRESS().into());
-
-    let (contract_address, _) = contract.deploy(@calldata).unwrap();
-    let summit = ISummitSystemDispatcher { contract_address };
-
-    summit
-}
-
-// Deploy summit contract and start it (ready for attack testing)
-fn deploy_summit_and_start() -> ISummitSystemDispatcher {
-    let summit = deploy_summit();
-    summit.start_summit();
-    summit
-}
-
-fn mock_erc20_burn_from(token_address: ContractAddress, success: bool) {
-    mock_call(token_address, selector!("burn_from"), success, 1000);
-}
-
-fn mock_erc20_mint(token_address: ContractAddress, success: bool) {
-    mock_call(token_address, selector!("mint"), success, 1000);
-}
-
-fn mock_erc20_transfer(token_address: ContractAddress, success: bool) {
-    mock_call(token_address, selector!("transfer"), success, 1000);
-}
+use crate::fixtures::addresses::{BEAST_WHALE, REAL_PLAYER, REWARD_ADDRESS, SUPER_BEAST_OWNER, whale_beast_token_ids};
+use crate::fixtures::constants::SUPER_BEAST_TOKEN_ID;
+use crate::helpers::deployment::{deploy_summit, deploy_summit_and_start, mock_erc20_burn_from, mock_erc20_transfer};
 
 // ===========================================
 // CORE ATTACK FUNCTIONS TESTS
@@ -423,16 +325,16 @@ fn test_set_start_timestamp() {
     calldata.append(summit_reward_amount_per_second.into());
     calldata.append(diplomacy_reward_amount_per_second.into());
     calldata.append(quest_rewards_total_amount.into());
-    calldata.append(DUNGEON_ADDRESS().into());
-    calldata.append(BEAST_ADDRESS().into());
-    calldata.append(BEAST_DATA_ADDRESS().into());
-    calldata.append(REWARD_ADDRESS().into());
-    calldata.append(ATTACK_POTION_ADDRESS().into());
-    calldata.append(REVIVE_POTION_ADDRESS().into());
-    calldata.append(EXTRA_LIFE_POTION_ADDRESS().into());
-    calldata.append(POISON_POTION_ADDRESS().into());
-    calldata.append(SKULL_TOKEN_ADDRESS().into());
-    calldata.append(CORPSE_TOKEN_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::DUNGEON_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::BEAST_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::BEAST_DATA_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::REWARD_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::ATTACK_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::REVIVE_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::EXTRA_LIFE_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::POISON_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::SKULL_TOKEN_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::CORPSE_TOKEN_ADDRESS().into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap();
     let summit = ISummitSystemDispatcher { contract_address };
@@ -482,7 +384,6 @@ fn test_get_terminal_timestamp() {
     assert(terminal_block > 0, 'Terminal block not set');
 }
 
-
 #[test]
 #[fork("mainnet")]
 fn test_get_summit_data() {
@@ -513,122 +414,12 @@ fn test_get_beast() {
 #[fork("mainnet")]
 fn test_get_all_addresses() {
     let summit = deploy_summit();
-    assert(summit.get_dungeon_address() == DUNGEON_ADDRESS(), 'Wrong dungeon address');
-    assert(summit.get_beast_address() == BEAST_ADDRESS(), 'Wrong beast address');
-    assert(summit.get_beast_data_address() == BEAST_DATA_ADDRESS(), 'Wrong beast data address');
+    assert(summit.get_dungeon_address() == crate::fixtures::addresses::DUNGEON_ADDRESS(), 'Wrong dungeon address');
+    assert(summit.get_beast_address() == crate::fixtures::addresses::BEAST_ADDRESS(), 'Wrong beast address');
+    assert(
+        summit.get_beast_data_address() == crate::fixtures::addresses::BEAST_DATA_ADDRESS(), 'Wrong beast data address',
+    );
     assert(summit.get_reward_address() == REWARD_ADDRESS(), 'Wrong reward address');
-}
-
-
-// ===========================================
-// BEAST MODEL TESTS (crit_chance, spirit_reduction)
-// ===========================================
-
-fn create_test_beast(luck: u8, spirit: u8) -> Beast {
-    // Use default values for fixed properties - they don't affect crit_chance or spirit_reduction
-    let fixed = PackableBeast { id: 1, prefix: 1, suffix: 1, level: 10, health: 100, shiny: 0, animated: 0 };
-
-    let live = LiveBeastStats {
-        token_id: 1,
-        current_health: 100,
-        bonus_health: 0,
-        bonus_xp: 0,
-        attack_streak: 0,
-        last_death_timestamp: 0,
-        revival_count: 0,
-        extra_lives: 0,
-        summit_held_seconds: 0,
-        stats: summit::models::beast::Stats { spirit, luck, specials: 0, wisdom: 0, diplomacy: 0 },
-        rewards_earned: 0,
-        rewards_claimed: 0,
-        quest: summit::models::beast::Quest {
-            captured_summit: 0, used_revival_potion: 0, used_attack_potion: 0, max_attack_streak: 0,
-        },
-    };
-
-    Beast { fixed, live }
-}
-
-#[test]
-fn test_crit_chance_zero_luck() {
-    let beast = create_test_beast(0, 0);
-    let crit = beast.crit_chance();
-    assert(crit == 0, 'Crit should be 0%');
-}
-
-#[test]
-fn test_crit_chance_luck_1() {
-    let beast = create_test_beast(1, 0);
-    let crit = beast.crit_chance();
-    assert(crit == 10, 'Crit should be 10%');
-}
-
-#[test]
-fn test_crit_chance_luck_5() {
-    let beast = create_test_beast(5, 0);
-    let crit = beast.crit_chance();
-    assert(crit == 20, 'Crit should be 20%');
-}
-
-#[test]
-fn test_crit_chance_luck_50() {
-    let beast = create_test_beast(50, 0);
-    let crit = beast.crit_chance();
-    // 2000 + (50-5)*100 = 2000 + 4500 = 6500 bp = 65%
-    assert(crit == 65, 'Crit should be 65%');
-}
-
-#[test]
-fn test_crit_chance_luck_70() {
-    let beast = create_test_beast(70, 0);
-    let crit = beast.crit_chance();
-    // 2000 + (70-5)*100 = 2000 + 6500 = 8500 bp = 85%
-    assert(crit == 85, 'Crit should be 85%');
-}
-
-#[test]
-fn test_crit_chance_luck_100() {
-    let beast = create_test_beast(100, 0);
-    let crit = beast.crit_chance();
-    // 8500 + (100-70)*50 = 8500 + 1500 = 10000 bp = 100%
-    assert(crit == 100, 'Crit should be 100%');
-}
-
-#[test]
-fn test_spirit_reduction_zero_spirit() {
-    let beast = create_test_beast(0, 0);
-    let reduction = beast.spirit_reduction();
-    assert(reduction == 0, 'Reduction should be 0');
-}
-
-#[test]
-fn test_spirit_reduction_spirit_1() {
-    let beast = create_test_beast(0, 1);
-    let reduction = beast.spirit_reduction();
-    assert(reduction == 7200, 'Reduction should be 7200s');
-}
-
-#[test]
-fn test_spirit_reduction_spirit_5() {
-    let beast = create_test_beast(0, 5);
-    let reduction = beast.spirit_reduction();
-    assert(reduction == 14400, 'Reduction should be 14400s');
-}
-
-#[test]
-fn test_spirit_reduction_spirit_50() {
-    let beast = create_test_beast(0, 50);
-    let reduction = beast.spirit_reduction();
-    // 14400 + (50-5)*720 = 14400 + 32400 = 46800
-    assert(reduction == 46800, 'Reduction should be 46800s');
-}
-
-#[test]
-fn test_spirit_reduction_spirit_100() {
-    let beast = create_test_beast(0, 100);
-    let reduction = beast.spirit_reduction();
-    // 61200 + (100-70)*360 = 61200 + 10800 = 72000
-    assert(reduction == 72000, 'Reduction should be 72000s');
 }
 
 // ===========================================
@@ -952,7 +743,6 @@ fn test_get_summit_reward_amount() {
     assert(amount == 0, 'Wrong summit reward amount');
 }
 
-
 // ===========================================
 // POISON EDGE CASE TESTS
 // ===========================================
@@ -1112,12 +902,9 @@ fn test_apply_stat_points_unlock_diplomacy_twice() {
     stop_cheat_caller_address(summit.contract_address);
 }
 
-// ==========================
-// FUZZING TESTS
-// ==========================
-
-// Note: Fuzz tests removed from fork tests due to slow RPC calls and potential flakiness.
-// Using targeted edge-case tests instead for deterministic, fast CI runs.
+// ===========================================
+// TARGETED EDGE CASE TESTS
+// ===========================================
 
 #[test]
 #[fork("mainnet")]
@@ -1340,16 +1127,16 @@ fn test_set_start_timestamp_non_owner() {
     calldata.append(summit_reward_amount_per_second.into());
     calldata.append(diplomacy_reward_amount_per_second.into());
     calldata.append(quest_rewards_total_amount.into());
-    calldata.append(DUNGEON_ADDRESS().into());
-    calldata.append(BEAST_ADDRESS().into());
-    calldata.append(BEAST_DATA_ADDRESS().into());
-    calldata.append(REWARD_ADDRESS().into());
-    calldata.append(ATTACK_POTION_ADDRESS().into());
-    calldata.append(REVIVE_POTION_ADDRESS().into());
-    calldata.append(EXTRA_LIFE_POTION_ADDRESS().into());
-    calldata.append(POISON_POTION_ADDRESS().into());
-    calldata.append(SKULL_TOKEN_ADDRESS().into());
-    calldata.append(CORPSE_TOKEN_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::DUNGEON_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::BEAST_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::BEAST_DATA_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::REWARD_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::ATTACK_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::REVIVE_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::EXTRA_LIFE_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::POISON_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::SKULL_TOKEN_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::CORPSE_TOKEN_ADDRESS().into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap();
     let summit = ISummitSystemDispatcher { contract_address };
@@ -1361,14 +1148,9 @@ fn test_set_start_timestamp_non_owner() {
     stop_cheat_caller_address(summit.contract_address);
 }
 
-
 // ==========================
 // P0 TESTS: COMBAT LOGIC
 // ==========================
-
-// Note: test_attack_too_many_attack_potions removed - the contract accepts u8 parameter
-// so 256+ values fail at type level, not contract level. The existing test_attack_max_attack_potions
-// covers the boundary case of 255 attack potions.
 
 #[test]
 #[fork("mainnet")]
@@ -1424,9 +1206,6 @@ fn test_attack_unused_revival_potions() {
 // P0 TESTS: STATE CONSISTENCY
 // ==========================
 
-// Note: Full summit_held_seconds tracking requires multi-player scenarios where one beast takes
-// the summit from another, which updates summit_held_seconds. With single-player fork testing,
-// we can only verify the basic attack flow. The summit_held_seconds accumulation is implicitly
 #[test]
 #[fork("mainnet")]
 fn test_summit_beast_can_be_attacked() {
@@ -1485,10 +1264,6 @@ fn test_poison_damage_over_time() {
 // ADDITIONAL EDGE CASES
 // ==========================
 
-// Note: Full streak cap testing requires multi-player scenarios where one beast repeatedly
-// attacks another to build streak > 10. With single-player fork testing, a beast can only
-// attack once (taking the empty summit). The attack_streak cap (10) is enforced in the
-// contract's combat logic when updating streak after successful attacks.
 #[test]
 #[fork("mainnet")]
 fn test_attack_initializes_streak() {
@@ -1550,14 +1325,6 @@ fn test_feed_non_summit_beast_only_bonus_health() {
 
     stop_cheat_caller_address(summit.contract_address);
 }
-
-// Note: test_feed_summit_not_playable - The showdown mechanism requires a second player to attack
-// during showdown to set showdown_taken_at. In fork tests, we can't easily control two different
-// beast owners. The _summit_playable check works correctly:
-// - It checks if showdown_taken_at > 0 AND current_timestamp - showdown_taken_at >= showdown_duration
-// - This test would pass once a player takes the summit during showdown period
-// The existing test coverage for Summit not playable scenarios is handled by verifying the
-// _summit_playable function logic is correct in the contract code.
 
 #[test]
 #[fork("mainnet")]
@@ -1643,14 +1410,6 @@ fn test_set_start_timestamp_after_summit_started() {
 }
 
 // ==========================
-// SHOWDOWN TESTS
-// ==========================
-
-// Note: test_attack_during_showdown_sets_timestamp - requires a second player to attack
-// during showdown to verify showdown_taken_at timestamp is set. This requires two different
-// beast owners which is difficult to test with mainnet forking.
-
-// ==========================
 // EXTRA LIVES EDGE CASE TESTS
 // ==========================
 
@@ -1703,174 +1462,6 @@ fn test_add_extra_lives_near_max() {
     assert(beast.live.extra_lives == 3999, 'Extra lives should be 3999');
 
     stop_cheat_caller_address(summit.contract_address);
-}
-
-// ==========================
-// UNIT TESTS FOR BEAST MODEL
-// ==========================
-
-#[test]
-fn test_crit_chance_luck_2() {
-    let beast = create_test_beast(2, 0);
-    let crit = beast.crit_chance();
-    assert(crit == 14, 'Crit should be 14%');
-}
-
-#[test]
-fn test_crit_chance_luck_3() {
-    let beast = create_test_beast(3, 0);
-    let crit = beast.crit_chance();
-    assert(crit == 17, 'Crit should be 17%');
-}
-
-#[test]
-fn test_crit_chance_luck_4() {
-    let beast = create_test_beast(4, 0);
-    let crit = beast.crit_chance();
-    assert(crit == 19, 'Crit should be 19%');
-}
-
-#[test]
-fn test_crit_chance_luck_6() {
-    let beast = create_test_beast(6, 0);
-    let crit = beast.crit_chance();
-    // 2000 + (6-5)*100 = 2000 + 100 = 2100 bp = 21%
-    assert(crit == 21, 'Crit should be 21%');
-}
-
-#[test]
-fn test_crit_chance_luck_71() {
-    let beast = create_test_beast(71, 0);
-    let crit = beast.crit_chance();
-    // 8500 + (71-70)*50 = 8500 + 50 = 8550 bp = 85%
-    assert(crit == 85, 'Crit should be 85%');
-}
-
-#[test]
-fn test_spirit_reduction_spirit_2() {
-    let beast = create_test_beast(0, 2);
-    let reduction = beast.spirit_reduction();
-    assert(reduction == 10080, 'Reduction should be 10080s');
-}
-
-#[test]
-fn test_spirit_reduction_spirit_3() {
-    let beast = create_test_beast(0, 3);
-    let reduction = beast.spirit_reduction();
-    assert(reduction == 12240, 'Reduction should be 12240s');
-}
-
-#[test]
-fn test_spirit_reduction_spirit_4() {
-    let beast = create_test_beast(0, 4);
-    let reduction = beast.spirit_reduction();
-    assert(reduction == 13680, 'Reduction should be 13680s');
-}
-
-#[test]
-fn test_spirit_reduction_spirit_6() {
-    let beast = create_test_beast(0, 6);
-    let reduction = beast.spirit_reduction();
-    // 14400 + (6-5)*720 = 14400 + 720 = 15120
-    assert(reduction == 15120, 'Reduction should be 15120s');
-}
-
-#[test]
-fn test_spirit_reduction_spirit_70() {
-    let beast = create_test_beast(0, 70);
-    let reduction = beast.spirit_reduction();
-    // 14400 + (70-5)*720 = 14400 + 46800 = 61200
-    assert(reduction == 61200, 'Reduction should be 61200s');
-}
-
-#[test]
-fn test_spirit_reduction_spirit_71() {
-    let beast = create_test_beast(0, 71);
-    let reduction = beast.spirit_reduction();
-    // 61200 + (71-70)*360 = 61200 + 360 = 61560
-    assert(reduction == 61560, 'Reduction should be 61560s');
-}
-
-// ==========================
-// FUZZ TESTS FOR BEAST MODEL
-// ==========================
-// These are pure unit tests (no mainnet fork) so fuzzing is fast and deterministic
-
-#[test]
-#[fuzzer(runs: 101)]
-fn fuzz_test_crit_chance_bounds(luck: u8) {
-    let beast = create_test_beast(luck, 0);
-    let crit = beast.crit_chance();
-
-    // Verify the curve behavior based on luck ranges
-    // Note: crit_chance has no cap - it can exceed 100% for very high luck
-    if luck == 0 {
-        assert(crit == 0, 'Luck 0 should give 0% crit');
-    } else if luck == 1 {
-        assert(crit == 10, 'Luck 1 should give 10% crit');
-    } else if luck <= 5 {
-        // Lookup table: 1400, 1700, 1900, 2000 basis points
-        assert(crit >= 10 && crit <= 20, 'Low luck range invalid');
-    } else if luck <= 70 {
-        // 2000 + (luck-5) * 100 basis points = 20% to 85%
-        assert(crit >= 20 && crit <= 85, 'Mid luck range invalid');
-    } else {
-        // 8500 + (luck-70) * 50 basis points = 85%+ (no cap)
-        assert(crit >= 85, 'High luck should be >= 85%');
-    }
-}
-
-#[test]
-#[fuzzer(runs: 101)]
-fn fuzz_test_spirit_reduction_bounds(spirit: u8) {
-    let beast = create_test_beast(0, spirit);
-    let reduction = beast.spirit_reduction();
-
-    // Verify the curve behavior based on spirit ranges
-    if spirit == 0 {
-        assert(reduction == 0, 'Spirit 0 should give 0s');
-    } else if spirit == 1 {
-        assert(reduction == 7200, 'Spirit 1 should give 7200s');
-    } else if spirit <= 5 {
-        // Lookup table: 10080, 12240, 13680, 14400
-        assert(reduction >= 7200 && reduction <= 14400, 'Low spirit range invalid');
-    } else if spirit <= 70 {
-        // 14400 + (spirit-5) * 720
-        assert(reduction >= 14400 && reduction <= 61200, 'Mid spirit range invalid');
-    } else {
-        // 61200 + (spirit-70) * 360
-        assert(reduction >= 61200, 'High spirit range invalid');
-    }
-}
-
-#[test]
-#[fuzzer(runs: 101)]
-fn fuzz_test_crit_chance_monotonic(luck: u8) {
-    // Crit chance should be monotonically increasing with luck
-    if luck > 0 {
-        let beast_current = create_test_beast(luck, 0);
-        let beast_previous = create_test_beast(luck - 1, 0);
-
-        let crit_current = beast_current.crit_chance();
-        let crit_previous = beast_previous.crit_chance();
-
-        assert(crit_current >= crit_previous, 'Crit should increase with luck');
-    }
-}
-
-#[test]
-#[fuzzer(runs: 101)]
-fn fuzz_test_spirit_reduction_monotonic(spirit: u8) {
-    // Spirit reduction should be monotonically increasing with spirit
-    if spirit > 1 {
-        let beast_current = create_test_beast(0, spirit);
-        let beast_previous = create_test_beast(0, spirit - 1);
-
-        let reduction_current = beast_current.spirit_reduction();
-        let reduction_previous = beast_previous.spirit_reduction();
-
-        assert(reduction_current >= reduction_previous, 'Reduction should increase');
-    }
 }
 
 // ==========================

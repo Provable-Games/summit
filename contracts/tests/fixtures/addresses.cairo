@@ -1,13 +1,55 @@
 use starknet::ContractAddress;
 
-pub const SUPER_BEAST_TOKEN_ID: u32 = 20301;
-
 pub fn SUPER_BEAST_OWNER() -> ContractAddress {
     0x0251Af358c691dbda28c96dD2D3d41F9844d56213Dc19d072fAb13FAc22F6bd9.try_into().unwrap()
 }
 
 pub fn BEAST_WHALE() -> ContractAddress {
     0x03C0F67740e3fE298a52FE75Dd24B4981217406f133E0835331379731B67dC92.try_into().unwrap()
+}
+
+pub fn BEAST_ADDRESS() -> ContractAddress {
+    0x046dA8955829ADF2bDa310099A0063451923f02E648cF25A1203aac6335CF0e4.try_into().unwrap()
+}
+
+pub fn REAL_PLAYER() -> ContractAddress {
+    0x0689701974d95364aAd9C2306Bc322A40a27fb775b0C97733FD0e36E900b1878.try_into().unwrap()
+}
+
+pub fn DUNGEON_ADDRESS() -> ContractAddress {
+    0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42.try_into().unwrap()
+}
+
+pub fn BEAST_DATA_ADDRESS() -> ContractAddress {
+    0x74abc15c0ddef39bdf1ede2a643c07968d3ed5bacb0123db2d5b7154fbb35c7.try_into().unwrap()
+}
+
+pub fn REWARD_ADDRESS() -> ContractAddress {
+    0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B.try_into().unwrap()
+}
+
+pub fn ATTACK_POTION_ADDRESS() -> ContractAddress {
+    0x111.try_into().unwrap()
+}
+
+pub fn REVIVE_POTION_ADDRESS() -> ContractAddress {
+    0x222.try_into().unwrap()
+}
+
+pub fn EXTRA_LIFE_POTION_ADDRESS() -> ContractAddress {
+    0x333.try_into().unwrap()
+}
+
+pub fn POISON_POTION_ADDRESS() -> ContractAddress {
+    0x444.try_into().unwrap()
+}
+
+pub fn SKULL_TOKEN_ADDRESS() -> ContractAddress {
+    0x555.try_into().unwrap()
+}
+
+pub fn CORPSE_TOKEN_ADDRESS() -> ContractAddress {
+    0x666.try_into().unwrap()
 }
 
 pub fn whale_beast_token_ids() -> Array<u32> {
