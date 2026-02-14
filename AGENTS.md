@@ -126,7 +126,8 @@ Sources:
 
 ## RPC Endpoints
 - Cartridge mainnet RPC (client): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9`
-- Cartridge mainnet RPC (contracts/indexer): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`
+- Cartridge mainnet RPC (indexer + contract fork tests): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`
+- `sncast` deploy profile RPC (`contracts/snfoundry.toml`): Alchemy Starknet mainnet `v0_10`
 - Cartridge Torii (client): `https://api.cartridge.gg/x/pg-mainnet-10/torii`
 
 ## Common Anti-Patterns (Do NOT)

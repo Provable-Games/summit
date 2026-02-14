@@ -89,7 +89,8 @@ Important interface detail:
 
 - Deployment profiles are configured in `snfoundry.toml`.
 - Prefer `sncast` for declarations/deploys.
-- Contracts and indexer target Cartridge Starknet mainnet RPC `v0_10`.
+- Contract fork tests use Cartridge Starknet mainnet RPC `v0_10` (from `Scarb.toml`).
+- Current `sncast` deploy profile (`sncast.myprofile1.networks.mainnet`) points to an Alchemy Starknet mainnet RPC `v0_10`.
 
 ## Important Development Rule
 

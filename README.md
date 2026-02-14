@@ -101,7 +101,8 @@ Primary contracts:
 Network endpoints:
 
 - Starknet RPC (client): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9`
-- Starknet RPC (contracts/indexer): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`
+- Starknet RPC (indexer + contract fork tests): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`
+- `sncast` deployment profile RPC: Alchemy Starknet mainnet `v0_10` (`contracts/snfoundry.toml`)
 - Torii: `https://api.cartridge.gg/x/pg-mainnet-10/torii`
 
 ## Contributing Workflow
