@@ -14,13 +14,13 @@ export default defineConfig({
       // CollectableEntity dungeon filter (Loot Survivor dungeon)
       collectableEntityDungeon: "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42",
       // Corpse contract address (mainnet)
-      corpseContractAddress: "0x07789e427db2c690c9089e9d11298f99db6eadbb0bcf931a77f9d0c4d13254e2",
+      corpseContractAddress: "0x01f40a78e8d3e0687e30fc173a28cc62cdf976187f23f778b792a71f16e4482f",
       // Skull contract address (mainnet)
-      skullContractAddress: "0x05c2a56002a95c5c1dd5cc44055bcad05c59778274482cee58b074adeb9dd738",
+      skullContractAddress: "0x05dff27b8cdef20e537b5a33bf1feb4dbc5fb0ebfcb59e33cd95a075f5eb8916",
       // Mainnet DNA stream URL
       streamUrl: process.env.STREAM_URL,
       // Starting block - use earliest block needed for Dojo events
-      startingBlock: "2209828",
+      startingBlock: "6767900",
       // PostgreSQL connection string
       databaseUrl: process.env.DATABASE_URL,
       // RPC URL for fetching beast metadata
