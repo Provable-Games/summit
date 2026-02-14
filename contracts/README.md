@@ -236,7 +236,7 @@ Unit tests are defined inline (`#[cfg(test)] mod tests`) within the source files
 Run only unit tests by filtering:
 
 ```bash
-snforge test --filter "test_" -e "test_summit"
+snforge test "test_" -e "test_summit"
 ```
 
 ### Fork and Integration Tests
@@ -272,10 +272,10 @@ snforge test
 snforge test --coverage
 
 # Specific test by name
-snforge test --filter "test_attack"
+snforge test "test_attack"
 ```
 
-Note: `scarb test` also works as a convenience alias -- `Scarb.toml` defines `[scripts] test = "snforge test"`. However, `snforge test` is the canonical command, especially when using flags like `--coverage` or `--filter`.
+Note: `scarb test` also works as a convenience alias -- `Scarb.toml` defines `[scripts] test = "snforge test"`. However, `snforge test` is the canonical command, especially when using flags like `--coverage` or positional test filters.
 
 ---
 

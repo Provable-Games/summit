@@ -228,15 +228,13 @@ Network endpoints:
 2. Make scoped changes -- keep PRs focused on a single component when possible
 3. Run local checks before submitting:
    - Contracts: `scarb fmt --check && snforge test`
-   - Client/Indexer/API: `pnpm lint && pnpm build && pnpm test`
+   - Client: `pnpm lint && pnpm build && pnpm test`
+   - Indexer: `pnpm build && pnpm test`
+   - API: `pnpm build`
 4. If you touch `contracts/src/models/beast.cairo`, run both parity scripts:
    - `cd client && pnpm test:parity`
    - `cd indexer && pnpm test:parity`
 5. Submit a pull request
-
-## License
-
-MIT
 
 ## Links
 

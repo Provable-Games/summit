@@ -108,7 +108,7 @@ A healthy response looks like:
 
 ## API Reference
 
-All endpoints accept `GET` requests and return JSON. Paginated endpoints include a `pagination` object with `limit`, `offset`, `total`, and `has_more` fields.
+All data endpoints accept `GET` requests and return JSON. Paginated endpoints include a `pagination` object with `limit`, `offset`, `total`, and `has_more` fields. In development mode, two `POST` debug endpoints are also available (see [Debug Endpoints](#debug-endpoints)).
 
 ### Health and Discovery
 

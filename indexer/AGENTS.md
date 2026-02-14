@@ -37,7 +37,7 @@ DNA Stream -> Filter (5 contracts) -> Pre-scan token IDs -> Batch context lookup
 5. `poison_events` - Poison attacks (append-only)
 6. `corpse_events` - Corpse creation (append-only)
 7. `skulls_claimed` - Total skulls per beast (upsert on beast_token_id)
-8. `quest_rewards_claimed` - Quest rewards claimed (append-only)
+8. `quest_rewards_claimed` - Quest rewards per beast (upsert on beast_token_id)
 9. `beast_owners` - NFT ownership (upsert on token_id)
 10. `beasts` - NFT metadata (insert once)
 11. `beast_data` - Dojo event data (upsert on entity_hash)
