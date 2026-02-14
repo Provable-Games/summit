@@ -1,6 +1,6 @@
 import { Box, Popover, Typography } from '@mui/material';
 import HandshakeIcon from '@mui/icons-material/Handshake';
-import { Beast, Diplomacy } from '@/types/game';
+import type { Beast, Diplomacy } from '@/types/game';
 import { gameColors } from '@/utils/themes';
 import { addAddressPadding } from 'starknet';
 import { SUMMIT_REWARDS_PER_SECOND } from '@/contexts/GameDirector';

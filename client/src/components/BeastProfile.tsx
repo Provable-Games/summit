@@ -2,7 +2,7 @@ import attackPotionIcon from '@/assets/images/attack-potion.png';
 import swordIcon from '@/assets/images/sword.png';
 import bruteIcon from '@/assets/types/brute.svg';
 import { useGameStore } from '@/stores/gameStore';
-import { Beast } from '@/types/game';
+import type { Beast } from '@/types/game';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import WhatshotIcon from '@mui/icons-material/Whatshot';

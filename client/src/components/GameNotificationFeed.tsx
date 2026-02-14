@@ -1,4 +1,5 @@
-import { GameNotification, useGameStore } from '@/stores/gameStore';
+import type { GameNotification} from '@/stores/gameStore';
+import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import CasinoIcon from '@mui/icons-material/Casino';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';

@@ -1,9 +1,10 @@
 import { getSwapQuote } from "@/api/ekubo";
 import { useSummitApi } from "@/api/summitApi";
 import { NETWORKS } from "@/utils/networkConfig";
+import type {
+  PropsWithChildren} from "react";
 import {
   createContext,
-  PropsWithChildren,
   useContext,
   useEffect,
   useState
@@ -27,6 +28,11 @@ const USDC_ADDRESS = NETWORKS.SN_MAIN.paymentTokens.find(
   (token) => token.name === "TEST USD"
 )?.address as string;
 
+type PriceToken = {
+  name: string;
+  address: string;
+};
+
 // Create a provider component
 export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   const { currentNetworkConfig } = useDynamicConnector();
@@ -45,7 +51,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     }
   };
 
-  const fetchTokenPrice = async (token: any) => {
+  const fetchTokenPrice = async (token: PriceToken) => {
     try {
       const swap = await getSwapQuote(-1n * 10n ** 18n, token.address, USDC_ADDRESS);
       setTokenPrices((prev) => ({ ...prev, [token.name]: ((swap.total * -1) / 1e18).toFixed(4) }));
@@ -58,7 +64,9 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     const tokenNames = ["ATTACK", "REVIVE", "EXTRA LIFE", "POISON", "SKULL", "CORPSE"];
 
     for (const tokenName of tokenNames) {
-      const token = currentNetworkConfig.tokens.erc20.find(token => token.name === tokenName);
+      const token = currentNetworkConfig.tokens.erc20.find(
+        (candidate: PriceToken) => candidate.name === tokenName
+      ) as PriceToken | undefined;
       if (!token) continue;
       await fetchTokenPrice(token);
     }
@@ -85,7 +93,6 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useStatistics = () => {
   const context = useContext(StatisticsContext);
   if (!context) {

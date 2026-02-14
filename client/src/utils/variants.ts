@@ -13,9 +13,9 @@ export const fadeVariant = {
 };
 
 export const slideVariant = {
-  enter: (direction: any) => {
+  enter: (direction: number) => {
     return {
-      x: direction ? 1000 : -1000,
+      x: direction < 0 ? -1000 : 1000,
       opacity: 0
     };
   },
@@ -24,7 +24,7 @@ export const slideVariant = {
     x: 0,
     opacity: 1
   },
-  exit: (direction: any) => {
+  exit: (direction: number) => {
     return {
       zIndex: 0,
       x: direction < 0 ? 1000 : -1000,

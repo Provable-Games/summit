@@ -96,7 +96,7 @@ export interface Adventurer {
   id: number;
   name: string;
   level: number;
-  metadata: any;
+  metadata: unknown;
   soulbound: boolean;
 }
 

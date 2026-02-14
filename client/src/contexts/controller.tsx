@@ -5,13 +5,15 @@ import { useGameStore } from "@/stores/gameStore";
 import { useAnalytics } from "@/utils/analytics";
 import { delay } from "@/utils/utils";
 import { useAccount, useConnect, useDisconnect } from "@starknet-react/core";
+import type {
+  PropsWithChildren} from "react";
 import {
   createContext,
-  PropsWithChildren,
   useContext,
   useEffect,
   useState,
 } from "react";
+import type { Adventurer } from "@/types/game";
 import { useDynamicConnector } from "./starknet";
 
 export interface ControllerContext {
@@ -55,11 +57,19 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { identifyAddress } = useAnalytics();
 
   const filterValidAdventurers = async () => {
-    const validAdventurers = await getValidAdventurers(account?.address);
+    if (!account?.address) {
+      setAdventurerCollection([]);
+      return;
+    }
 
-    setAdventurerCollection(validAdventurers.map((adventurer: any) => ({
+    const validAdventurers = await getValidAdventurers(account.address);
+
+    setAdventurerCollection(validAdventurers.map((adventurer): Adventurer => ({
       id: adventurer.token_id,
+      name: `Adventurer #${adventurer.token_id}`,
       level: Math.floor(Math.sqrt(adventurer.score)),
+      metadata: null,
+      soulbound: false,
     })));
   };
 
@@ -173,7 +183,6 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useController = () => {
   const context = useContext(ControllerContext);
   if (!context) {

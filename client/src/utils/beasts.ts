@@ -1,6 +1,6 @@
-import { Beast, Combat, Summit, selection } from '@/types/game';
+import type { Beast, Combat, Summit, selection } from '@/types/game';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
-import { SoundName } from '@/contexts/sound';
+import type { SoundName } from '@/contexts/sound';
 import * as starknet from "@scure/starknet";
 import { addAddressPadding } from 'starknet';
 

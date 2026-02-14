@@ -1,4 +1,5 @@
-import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { PropsWithChildren} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 export type SoundName = "roar" | "blade" | "bludgeon" | "wand" | "poison";
 
@@ -100,11 +101,9 @@ export function SoundProvider({ children }: PropsWithChildren) {
   return <SoundContext.Provider value={value}>{children}</SoundContext.Provider>;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useSound = () => {
   const ctx = useContext(SoundContext);
   if (!ctx) throw new Error("useSound must be used within SoundProvider");
   return ctx;
 };
-
 

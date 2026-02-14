@@ -3,7 +3,7 @@ import { useGameDirector } from '@/contexts/GameDirector';
 import { useQuestGuide } from '@/contexts/QuestGuide';
 import { useAutopilotStore } from '@/stores/autopilotStore';
 import { useGameStore } from '@/stores/gameStore';
-import { Beast } from '@/types/game';
+import type { Beast } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp';

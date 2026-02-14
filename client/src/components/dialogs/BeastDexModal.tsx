@@ -1,6 +1,7 @@
-import { AllBeast, useSummitApi } from '@/api/summitApi';
+import type { AllBeast} from '@/api/summitApi';
+import { useSummitApi } from '@/api/summitApi';
 import { useGameStore } from '@/stores/gameStore';
-import { Beast } from '@/types/game';
+import type { Beast } from '@/types/game';
 import { lookupAddressName } from '@/utils/addressNameCache';
 import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from '@/utils/BeastData';
 import { fetchBeastImage, getBeastCurrentLevel, getBeastDetails } from '@/utils/beasts';

@@ -1,5 +1,5 @@
 import { useDynamicConnector } from "@/contexts/starknet";
-import { Summit } from "@/types/game";
+import type { Summit } from "@/types/game";
 import { getBeastCurrentLevel, getBeastDetails } from "@/utils/beasts";
 import { parseBalances } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";

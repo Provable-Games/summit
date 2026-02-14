@@ -8,7 +8,7 @@ import QuestRewardsRemainingBar from '@/components/QuestRewardsRemainingBar';
 import { REWARD_NAME } from '@/contexts/GameDirector';
 import { questGuides, useQuestGuide } from '@/contexts/QuestGuide';
 import { useGameStore } from '@/stores/gameStore';
-import { Beast } from '@/types/game';
+import type { Beast } from '@/types/game';
 import { gameColors } from '@/utils/themes';
 import BoltIcon from '@mui/icons-material/Bolt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';

@@ -2,10 +2,11 @@ import { useStarknetApi } from "@/api/starknet";
 import { useSummitApi } from "@/api/summitApi";
 import { useSound } from "@/contexts/sound";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
-import { EventData, SummitData, useWebSocket } from "@/hooks/useWebSocket";
+import type { EventData, SummitData} from "@/hooks/useWebSocket";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
-import { BattleEvent, Beast, GameAction, SpectatorBattleEvent, Summit } from "@/types/game";
+import type { BattleEvent, Beast, GameAction, SpectatorBattleEvent, Summit } from "@/types/game";
 import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import { fetchBeastImage } from "@/utils/beasts";
 import { lookupAddressName } from "@/utils/addressNameCache";
@@ -17,9 +18,10 @@ import {
   getBeastRevivalTime,
 } from "@/utils/beasts";
 import { useAccount } from "@starknet-react/core";
+import type {
+  PropsWithChildren} from "react";
 import {
   createContext,
-  PropsWithChildren,
   useContext,
   useEffect,
   useReducer,
@@ -651,7 +653,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useGameDirector = () => {
   return useContext(GameDirectorContext);
 };

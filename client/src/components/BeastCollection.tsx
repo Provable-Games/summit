@@ -1,8 +1,9 @@
 import { useController } from '@/contexts/controller';
 import { MAX_BEASTS_PER_ATTACK } from '@/contexts/GameDirector';
 import { useQuestGuide } from '@/contexts/QuestGuide';
-import { BeastTypeFilter, SortMethod, useGameStore } from '@/stores/gameStore';
-import { Beast, selection } from '@/types/game';
+import type { BeastTypeFilter, SortMethod} from '@/stores/gameStore';
+import { useGameStore } from '@/stores/gameStore';
+import type { Beast, selection } from '@/types/game';
 import {
   calculateMaxAttackPotions, calculateOptimalAttackPotions, getBeastCurrentHealth,
   getBeastRevivalTime,
