@@ -1,69 +1,42 @@
-# Savage Summit -- Contracts
+# Contracts
 
-Cairo smart contracts for Savage Summit, a king-of-the-hill game on Starknet where beasts battle for control of the summit. Beasts earn token rewards while holding the summit, and players can poison, revive, and upgrade their beasts using consumable ERC20 tokens.
+Cairo smart contracts for Savage Summit game rules, token accounting, and event emission.
 
-For full game mechanics, architecture diagrams, and token addresses, see the [top-level README](../README.md).
+For AI-oriented contract coding rules, read `AGENTS.md` in this folder. For shared addresses/mechanics, read `../README.md`.
 
-For AI agents: see [AGENTS.md](AGENTS.md) for implementation guidance and coding conventions.
+## Stack
 
----
+- Cairo `2.15.0`
+- Scarb `2.15.1`
+- Starknet Foundry (`snforge_std`) `0.56.0`
+- Scarb edition `2024_07`
 
-## Table of Contents
+## Core Layout
 
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
-- [Architecture](#architecture)
-- [Key Game Constants](#key-game-constants)
-- [Testing](#testing)
-- [Deployment](#deployment)
-- [Cross-Layer Data Sync](#cross-layer-data-sync)
+- Main system contract: `src/systems/summit.cairo`
+- Business logic modules: `src/logic/`
+- Models/events: `src/models/`
+- Constants/errors: `src/constants.cairo`
+- Custom ERC20 spend interface: `src/erc20/interface.cairo`
+- VRF integration helper: `src/vrf.cairo`
+- Integration tests: `tests/fork/test_summit.cairo`
 
----
-
-## Prerequisites
-
-| Tool              | Version | Purpose                        |
-| ----------------- | ------- | ------------------------------ |
-| Scarb             | 2.15.1  | Cairo package manager and build tool |
-| Starknet Foundry  | 0.56.0  | Testing framework (`snforge`)  |
-| Cairo             | 2.15.0  | Language (edition `2024_07`)   |
-
-Install Scarb and Starknet Foundry via [asdf](https://asdf-vm.com/) or follow the official installation guides:
-
-- Scarb: https://docs.swmansion.com/scarb/download.html
-- Starknet Foundry: https://foundry-rs.github.io/starknet-foundry/getting-started/installation.html
-
----
-
-## Getting Started
-
-**Build the contracts:**
+## Quick Start
 
 ```bash
 cd contracts
 scarb build
-```
-
-**Run all tests:**
-
-```bash
-snforge test
-```
-
-**Check formatting:**
-
-```bash
 scarb fmt --check
+scarb test
 ```
 
-**Auto-format source files:**
+For coverage:
 
 ```bash
-scarb fmt -w
+scarb test --coverage
 ```
 
-**Run tests with coverage:**
+Direct Foundry runner (equivalent):
 
 ```bash
 snforge test --coverage
@@ -273,87 +246,64 @@ If the RPC returns a 429 (rate limit), CI retries once after a 30-second pause.
 ```bash
 # All tests (unit + fork)
 snforge test
-
-# With coverage report
 snforge test --coverage
-
-# Specific test by name
-snforge test "test_attack"
 ```
 
-Note: `scarb test` also works as a convenience alias -- `Scarb.toml` defines `[scripts] test = "snforge test"`. However, `snforge test` is the canonical command, especially when using flags like `--coverage` or positional test filters.
+## Architecture Notes
 
----
+- Main contract: `summit_systems` in `src/systems/summit.cairo`
+- Interface: `ISummitSystem` (`38` methods)
+- OpenZeppelin components:
+  - `OwnableComponent`
+  - `UpgradeableComponent`
+- Pure logic lives under `src/logic/*`; entrypoints orchestrate storage, transfers, and external calls.
 
-## Deployment
+Token operation pattern:
+- consumables use `burn_from`
+- rewards use `transfer`
 
-### Mainnet Contract
+Important interface detail:
+- The project uses `SummitERC20` in `src/erc20/interface.cairo` with only `transfer` and `burn_from`.
+- Keep token spend paths aligned to this interface.
 
-The summit contract is deployed on Starknet mainnet:
+## Key Constants (`src/constants.cairo`)
 
-```
-0x0455c73741519a2d661cad966913ee5ccb24596c518ad67dd1d189b49c15d4fa
-```
+| Constant | Value |
+| --- | --- |
+| `BASE_REVIVAL_TIME_SECONDS` | `86400` |
+| `REDUCED_REVIVAL_TIME_SECONDS` | `57600` |
+| `MINIMUM_DAMAGE` | `4` |
+| `BEAST_MAX_EXTRA_LIVES` | `4000` |
+| `BEAST_MAX_BONUS_HEALTH` | `2000` |
+| `BEAST_MAX_BONUS_LVLS` | `40` |
+| `BEAST_MAX_ATTRIBUTES` | `100` |
+| `MAX_REVIVAL_COUNT` | `63` |
+| `SPECIALS_COST` | `10` |
+| `DIPLOMACY_COST` | `15` |
+| `WISDOM_COST` | `20` |
+| `TOKEN_DECIMALS` | `1e18` |
 
-View on [StarkScan](https://starkscan.co/contract/0x0455c73741519a2d661cad966913ee5ccb24596c518ad67dd1d189b49c15d4fa) or [Voyager](https://voyager.online/contract/0x0455c73741519a2d661cad966913ee5ccb24596c518ad67dd1d189b49c15d4fa).
+## Testing Model
 
-### Deploying with sncast
+- Main test suite is fork-based against Starknet mainnet.
+- Fork configs are defined in `Scarb.toml` (`mainnet`, `mainnet_6704808`).
+- Tests use real addresses/token IDs, so stable RPC access matters.
+- Integration tests include large-scale attack stress coverage.
+- CI retries `scarb test --coverage` once when RPC rate-limit signatures are detected.
 
-Use Starknet Foundry's `sncast` for deployments. Profiles are configured in `snfoundry.toml`. Do not use Starkli (it is no longer maintained).
+## Deployment Notes
 
-**Warning:** The `snfoundry.toml` file may contain RPC API keys in deployment profiles. Do not commit updated keys. Consider using environment variables for sensitive credentials.
+- Deployment profiles are configured in `snfoundry.toml`.
+- Prefer `sncast` for declarations/deploys.
+- Contract fork tests use Cartridge Starknet mainnet RPC `v0_10` (from `Scarb.toml`).
+- Current `sncast` deploy profile (`sncast.myprofile1.networks.mainnet`) points to an Alchemy Starknet mainnet RPC `v0_10`.
 
-```bash
-# Declare the contract class
-sncast --profile myprofile1 declare --contract-name summit_systems
+## Important Development Rule
 
-# Deploy with constructor arguments
-sncast --profile myprofile1 deploy --class-hash <CLASS_HASH> --constructor-calldata <ARGS>
-```
+`LiveBeastStats` packing in `src/models/beast.cairo` is a cross-layer contract.
 
-### RPC Endpoint
+If you change packed layout or field order, update and re-verify:
 
-Contracts and the indexer use the Cartridge RPC:
-
-```
-https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10
-```
-
----
-
-## Cross-Layer Data Sync
-
-The `LiveBeastStats` struct in `src/models/beast.cairo` is packed into a single `felt252` using a specific bit layout. This packed value is emitted in events, stored on-chain, and decoded by two other layers in the monorepo:
-
-| Layer     | File                                | Role           |
-| --------- | ----------------------------------- | -------------- |
-| Contract  | `contracts/src/models/beast.cairo`  | Packs stats into `felt252` |
-| Indexer   | `indexer/src/lib/decoder.ts`        | Unpacks events from chain  |
-| Client    | `client/src/utils/translation.ts`   | Unpacks for UI display     |
-
-**All three implementations must produce identical results.** A mismatch means the UI or database will show incorrect beast data.
-
-### Parity Tests
-
-Both the indexer and client have parity test scripts that validate their decoders against a known test vector defined in `beast.cairo`:
-
-```bash
-# Run from the client directory
-cd client && pnpm test:parity
-
-# Run from the indexer directory
-cd indexer && pnpm test:parity
-```
-
-These parity tests run in CI whenever `contracts/src/models/beast.cairo` changes.
-
-### Rules for Modifying the Bit Layout
-
-If you change the field order, field widths, or add/remove fields in `LiveBeastStats`:
-
-1. Update the `StorePacking` implementation in `contracts/src/models/beast.cairo`.
-2. Update the decoder in `indexer/src/lib/decoder.ts`.
-3. Update the translator in `client/src/utils/translation.ts`.
-4. Update the parity test vectors in both `client/scripts/test-live-beast-stats-parity.ts` and `indexer/scripts/test-live-beast-stats-parity.ts`.
-5. Submit all changes in a single PR. Do not merge partial updates.
-
+- `indexer/src/lib/decoder.ts`
+- `client/src/utils/translation.ts`
+- parity scripts in `indexer/scripts/` and `client/scripts/`

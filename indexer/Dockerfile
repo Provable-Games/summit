@@ -8,14 +8,16 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Install dependencies
-COPY package.json package-lock.json* ./
-RUN npm ci --legacy-peer-deps
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && \
+    corepack prepare pnpm@10.0.0 --activate && \
+    pnpm install --frozen-lockfile
 
 # Copy source files
 COPY . .
 
 # Build the indexer
-RUN npm run build
+RUN pnpm run build
 
 # ============ Production Stage ============
 FROM node:22-alpine AS production
@@ -27,9 +29,11 @@ RUN addgroup -g 1001 -S nodejs && \
     adduser -S indexer -u 1001 -G nodejs
 
 # Install production dependencies + tsx for status check script
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev --legacy-peer-deps && \
-    npm install --no-save --legacy-peer-deps tsx && \
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && \
+    corepack prepare pnpm@10.0.0 --activate && \
+    pnpm install --prod --frozen-lockfile && \
+    npm install -g tsx@4.19.0 && \
     npm cache clean --force
 
 # Copy built artifacts from builder

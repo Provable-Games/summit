@@ -1,106 +1,101 @@
-# Client
+# Client Agent Guide
 
-React 18 SPA for the Savage Summit game. Read [top-level AGENTS.md](../AGENTS.md) first for architecture, game mechanics, and contract addresses.
+Read [`../AGENTS.md`](../AGENTS.md) first for shared mechanics, addresses, CI filters, and cross-layer packing rules.
 
-Role: React SPA providing real-time game UI with Starknet wallet integration and WebSocket-driven state updates.
+## Role
+- `client/` is the React 18 SPA for gameplay, wallet/session handling, and realtime state projection.
 
 ## Stack
-
-- React 18.2.0, Vite 5.4.21, TypeScript 5.8.3
-- MUI 7.0.2 + Emotion CSS-in-JS (NO Tailwind)
-- Zustand 4.5.6 (state management)
-- Framer Motion 12.7.4 (animations)
-- Vitest 3.1.1
+- React `18.2.0`
+- Vite `5.4.21`
+- TypeScript `5.8.3`
+- MUI `7.0.2` + Emotion (`@emotion/react`, `@emotion/styled`)
+- Zustand `4.5.6`
+- Framer Motion `12.7.4`
+- Vitest `3.1.1`
 
 Blockchain/client SDK stack:
-- starknet.js 8.5.2
-- @starknet-react/core 5.0.1, @starknet-react/chains 5.0.1
-- @cartridge/controller 0.12.1, @cartridge/connector 0.12.1
-- Dojo packages pinned in `pnpm.overrides`: `@dojoengine/sdk` 1.7.3, core/utils/torii-client 1.7.2
+- `starknet` `8.5.2`
+- `@starknet-react/core` `5.0.1`
+- `@starknet-react/chains` `5.0.1`
+- `@cartridge/controller` `0.12.1`
+- `@cartridge/connector` `0.12.1`
+- Dojo packages pinned in `pnpm.overrides` (`@dojoengine/sdk` `1.7.3`, core/utils/torii-client `1.7.2`)
 
 ## Key Files
 
 | File | Purpose |
-| ---- | ------- |
-| `src/main.tsx` | Provider composition: PostHog > DynamicConnector > Sound > QuestGuide > App |
-| `src/contexts/GameDirector.tsx` | Gameplay orchestrator: executes game actions, consumes API + WS streams, merges realtime updates into stores, dispatches notifications |
-| `src/contexts/starknet.tsx` | Starknet + Cartridge Controller setup (StarknetConfig, connectors, RPC) |
-| `src/contexts/controller.tsx` | Controller context (session management) |
-| `src/stores/gameStore.ts` | Zustand store for core game/UI state |
-| `src/stores/autopilotStore.ts` | Zustand store for autopilot policy and spend counters |
-| `src/dojo/useSystemCalls.ts` | Contract interaction hook (all write operations) |
-| `src/dojo/useGameTokens.ts` | Token balance and collection hooks via Dojo/Torii |
-| `src/hooks/useWebSocket.ts` | WebSocket real-time sync (channels: `summit`, `event`) |
-| `src/utils/themes.ts` | MUI custom theme |
-| `src/utils/translation.ts` | LiveBeastStats unpacking (cross-layer parity critical) |
-| `src/utils/beasts.ts` | Beast calculation utilities |
-| `src/utils/networkConfig.ts` | Network-specific addresses and config |
+| --- | --- |
+| `src/main.tsx` | Provider composition entrypoint (`PostHog -> DynamicConnector -> Analytics -> Sound -> QuestGuide -> App`). |
+| `src/contexts/starknet.tsx` | Starknet + Cartridge connector wiring. |
+| `src/contexts/GameDirector.tsx` | Gameplay orchestrator for API/WS/state sync and action dispatch. |
+| `src/stores/gameStore.ts` | Core game + UI global state. |
+| `src/stores/autopilotStore.ts` | Autopilot policy and spend counters. |
+| `src/dojo/useSystemCalls.ts` | Central write path for contract calls + error parsing. |
+| `src/dojo/useGameTokens.ts` | Token and collection reads via Torii/API. |
+| `src/hooks/useWebSocket.ts` | WebSocket `summit`/`event` channel sync. |
+| `src/utils/translation.ts` | `LiveBeastStats` unpacking (parity-critical). |
+| `src/utils/networkConfig.ts` | Network endpoints and contract addresses. |
+| `src/utils/themes.ts` | MUI theme definition. |
+| `src/api/ekubo.ts` | Ekubo quoting/swaps/liquidity helpers used by market flows. |
+
+## Core Architecture Patterns
+- `GameDirector` is the central coordinator for reads, WS events, optimistic updates, and notifications.
+- All write operations route through `useSystemCalls`; user-facing execution errors are normalized by `parseExecutionError`.
+- State is split across two Zustand stores (`gameStore`, `autopilotStore`) to isolate high-frequency gameplay updates.
+- Packed stats decode (`src/utils/translation.ts`) must stay bit-exact with contracts/indexer.
 
 ## Data Flow
+`Contract Event -> Indexer -> PostgreSQL (NOTIFY) -> API WebSocket -> useWebSocket -> GameDirector -> Zustand stores -> React components`
 
-```
-Contract Event -> Indexer -> PostgreSQL (NOTIFY) -> API WebSocket -> useWebSocket -> GameDirector -> Zustand stores -> React components
-
-Parallel read path: Dojo/Torii SQL queries for token/collection data flow through `src/dojo/useGameTokens.ts`.
-```
+Parallel read path:
+- Dojo/Torii SQL reads flow through `src/dojo/useGameTokens.ts` using `currentNetworkConfig.toriiUrl`.
 
 ## Directory Map
+- `src/components/`: gameplay UI and dialogs.
+- `src/contexts/`: provider layer and orchestration.
+- `src/dojo/`: Starknet call helpers and token hooks.
+- `src/hooks/`: realtime hooks.
+- `src/stores/`: Zustand stores.
+- `src/utils/`: theme, network config, unpack helpers.
+- `src/api/`: REST/RPC integrations.
+- `src/types/`: shared TS domain types.
 
-```
-src/
-  api/          # REST/RPC clients
-  components/   # Gameplay UI and dialogs
-  contexts/     # Provider layer and orchestration (GameDirector, wallet, sound, controller)
-  dojo/         # Starknet call helpers and token hooks
-  hooks/        # Realtime hooks (useWebSocket)
-  stores/       # Zustand state (gameStore, autopilotStore)
-  types/        # Shared TS domain types
-  utils/        # Theme, translation, network config, unpack helpers
-  pages/        # Page-level route components (MainPage)
-  abi/          # Contract ABI JSON (router-abi.json)
-  assets/       # Static assets
-```
+## Styling Rules
+- Use MUI theme + Emotion only.
+- Primary theme: `src/utils/themes.ts`.
+- Do not introduce Tailwind.
 
-## TypeScript Config
+## TypeScript and Config
+- `tsconfig.json` is intentionally non-strict:
+  - `strict: false`
+  - `noImplicitAny: false`
+  - `strictNullChecks: false`
+- Path alias: `@/* -> src/*`.
 
-- `strict: false`, `noImplicitAny: false`, `strictNullChecks: false` (tsconfig.json)
-- Path alias: `@/*` maps to `src/*`
-- Target: ES2020, bundler module resolution
+## Address Handling
+- When querying normalized owner data, use padded lowercase formatting (`addAddressPadding(owner.toLowerCase())`) to match DB/API address shape.
+- UI address-name cache uses lowercase trimmed normalization for consistent map lookups.
 
-## Environment Variables
-
-- `VITE_PUBLIC_CHAIN` - Network identifier (e.g., `SN_MAIN`). Optional, defaults to `SN_MAIN`.
-- `VITE_PUBLIC_SUMMIT_ADDRESS` - Summit contract address. Optional, has mainnet default.
-- `VITE_PUBLIC_POSTHOG_KEY` - PostHog analytics project key. Optional.
-- `VITE_PUBLIC_POSTHOG_HOST` - PostHog API host URL. Optional.
+## Tests
+- Test runner: Vitest (`environment: node`, v8 coverage).
+- Coverage remains limited (about 9 test files under `src/`).
+- Cross-layer packing parity script: `scripts/test-live-beast-stats-parity.ts`.
 
 ## Commands
+- Dev: `pnpm dev`
+- Build: `pnpm build`
+- Lint: `pnpm lint`
+- Tests: `pnpm test`
+- Coverage: `pnpm test:coverage`
+- Parity: `pnpm test:parity`
 
-```bash
-pnpm dev          # Start dev server
-pnpm build        # TypeScript check + Vite build
-pnpm lint         # ESLint (cached)
-pnpm test         # Vitest run
-pnpm test:coverage # Vitest with coverage
-pnpm test:parity  # Validate LiveBeastStats unpacking matches contract packing
-```
+## CI for Client
+- Triggered by `client/**` and by `contracts/src/models/beast.cairo`.
+- Job sequence: lint -> build -> parity -> coverage -> Codecov.
 
-## CI Pipeline
-
-lint -> build -> parity test -> test:coverage -> Codecov upload
-
-Triggered by changes to `client/**` or `contracts/src/models/beast.cairo`.
-
-## Testing
-
-- Vitest 3.1.1 with @vitest/coverage-v8
-- Parity test in `scripts/test-live-beast-stats-parity.ts` validates cross-layer LiveBeastStats sync
-- Limited test coverage currently (~9 test files)
-- Test files colocated with source (e.g., `contexts/controller.test.tsx`)
-
-## Patterns
-
-- **Styling**: MUI theme system (`utils/themes.ts`) + Emotion `sx` prop. Do not introduce Tailwind.
-- **State**: Zustand for global game state; React Context for providers (controller, sound, starknet)
-- **Contract calls**: All writes go through `useSystemCalls` hook with error parsing via `parseExecutionError`
-- **Address handling**: Normalize addresses to lowercase 66-char hex (`0x` + 64 chars) before comparison. Source constants use mixed formats; the API's `normalizeAddress()` handles padding.
+## Environment Variables
+- `VITE_PUBLIC_CHAIN` (network key, typically `SN_MAIN`)
+- `VITE_PUBLIC_SUMMIT_ADDRESS` (contract address used in network policy config)
+- `VITE_PUBLIC_POSTHOG_KEY`
+- `VITE_PUBLIC_POSTHOG_HOST`

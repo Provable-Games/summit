@@ -1,59 +1,77 @@
-# Contracts
+# Contracts Agent Guide
 
-Cairo game logic for Savage Summit. Read [top-level AGENTS.md](../AGENTS.md) first for architecture, game mechanics, and contract addresses.
+Read [`../AGENTS.md`](../AGENTS.md) first for shared game mechanics, addresses, and cross-layer parity requirements.
+
+## Role
+- `contracts/` contains Cairo game logic for Savage Summit.
 
 ## Stack
+- Cairo `2.15.0` (`Scarb.toml`)
+- Scarb `2.15.1` (from `.tool-versions`)
+- Starknet Foundry (`snforge_std`) `0.56.0`
+- Scarb edition: `2024_07`
 
-- Cairo 2.15.0 (edition 2024_07), Scarb 2.15.1
-- Starknet Foundry 0.56.0 (snforge 0.56.0)
-- starknet 2.15.1
-- OpenZeppelin v3.0.0 (interfaces, token, access, upgrades)
-- External: beasts_nft, death_mountain_combat, death_mountain_beast
+## Dependencies
+- `starknet = 2.15.1`
+- OpenZeppelin Cairo contracts `v3.0.0`:
+  - `openzeppelin_interfaces`
+  - `openzeppelin_token`
+  - `openzeppelin_access`
+  - `openzeppelin_upgrades`
+- External game deps:
+  - `beasts_nft`
+  - `death_mountain_combat`
+  - `death_mountain_beast`
 
 ## Key Files
 
 | File | Purpose |
-| ---- | ------- |
-| `src/systems/summit.cairo` | Main contract: `summit_systems` with 38-method `ISummitSystem` interface (1208 lines) |
-| `src/models/beast.cairo` | `LiveBeastStats` StorePacking into felt252 (251-bit layout). Cross-layer critical. |
-| `src/models/events.cairo` | Event definitions |
-| `src/logic/combat.cairo` | Combat calculation pure functions |
-| `src/logic/poison.cairo` | Poison mechanics pure functions |
-| `src/logic/revival.cairo` | Revival timing pure functions |
-| `src/logic/quest.cairo` | Quest reward pure functions |
-| `src/logic/beast_utils.cairo` | Beast stat utilities |
-| `src/constants.cairo` | Game constants and error messages |
-| `src/vrf.cairo` | Pragma VRF integration (optional per attack) |
-| `src/interfaces.cairo` | External contract interfaces (`IBeastSystemsDispatcher`, etc.) |
-| `src/erc20/interface.cairo` | Custom `SummitERC20` trait: `transfer`, `burn_from` (not standard OZ IERC20) |
-| `src/utils.cairo` | Utility functions: `felt_to_u32`, `u32_to_u8s` for combat/VRF randomness |
+| --- | --- |
+| `src/systems/summit.cairo` | Main contract implementation (`1208` lines). |
+| `src/models/beast.cairo` | `LiveBeastStats` StorePacking and parity vectors. |
+| `src/models/events.cairo` | Event definitions emitted by the contract. |
+| `src/logic/combat.cairo` | Pure combat math and randomization helpers. |
+| `src/logic/revival.cairo` | Pure revival timing/potion logic. |
+| `src/logic/poison.cairo` | Pure poison damage logic. |
+| `src/logic/quest.cairo` | Pure quest reward packing and calculations. |
+| `src/logic/beast_utils.cairo` | XP/level/streak utility logic. |
+| `src/constants.cairo` | Game constants and error strings. |
+| `src/erc20/interface.cairo` | `SummitERC20` trait (`transfer`, `burn_from`). |
+| `src/vrf.cairo` | VRF integration wrapper used by attack flow. |
 
 ## Architecture
-
-Single main contract (`summit_systems`) using OpenZeppelin components:
-- `OwnableComponent` for admin functions
-- `UpgradeableComponent` for proxy upgrades
-
-**Business logic separation**: Pure functions in `src/logic/`, contract orchestrates storage/events/syscalls.
-
-**StorePacking**: `LiveBeastStats` packs 15+ fields into a single `felt252`. Changes require updating indexer and client decoders. See top-level AGENTS.md for parity test details.
+- Exposed interface: `ISummitSystem` (`38` methods).
+- Components:
+  - `OwnableComponent`
+  - `UpgradeableComponent`
+- Design rule: keep business logic in pure `src/logic/*`; entrypoints orchestrate storage + token I/O.
 
 ## Key Patterns
+- `LiveBeastStats` packs into one felt252 (`251` bits) in `src/models/beast.cairo`.
+- Token spend pattern:
+  - burn consumables via `burn_from`
+  - transfer rewards via `transfer`
+- Upgrade costs are enforced in constants (`SPECIALS_COST`, `WISDOM_COST`, `DIPLOMACY_COST`).
+- VRF integration is optional per attack and routed via `src/vrf.cairo`.
 
-- **Token spend**: Consumables use `burn_from`; rewards use `transfer`
-- **Upgrade costs enforced via constants**: `SPECIALS_COST`, `DIPLOMACY_COST`, `WISDOM_COST` (spirit/luck cost 1 each)
-- **VRF is opt-in**: `vrf: bool` parameter on `attack()` - when true, uses Pragma VRF via `src/vrf.cairo`
-- **Custom ERC20 interface**: `src/erc20/interface.cairo` defines a simplified `SummitERC20` trait with only `transfer` and `burn_from`. Do not import standard OZ `IERC20Dispatcher` for token spend operations -- use the project's custom interface.
+## ERC20 Interface Rule
+- Use project trait `SummitERC20` from `src/erc20/interface.cairo` for game token operations.
+- Do not replace spend paths with standard OZ `IERC20` dispatchers unless you are changing contract interfaces intentionally.
 
 ## External Integrations
-
-- Beast NFT (ERC721 ownership + Beast metadata dispatcher)
-- Loot Survivor beast data contract (`IBeastSystemsDispatcher`)
-- Death Mountain combat/beast libraries
-- 7 ERC20 token contracts: reward, attack potion, revive potion, extra life potion, poison potion, skull, corpse
+- Beast NFT (ERC721 + beast metadata dispatcher).
+- Loot Survivor beast data contract (`IBeastSystemsDispatcher`).
+- Death Mountain combat/beast libraries.
+- Reward + consumable token contracts:
+  - reward token
+  - attack potion
+  - revive potion
+  - extra life potion
+  - poison potion
+  - skull token
+  - corpse token.
 
 ## Testing
-
 Two test layers, all in the `tests/` directory:
 
 **Unit tests** - `tests/unit/`, testing pure business logic:
@@ -77,45 +95,12 @@ Two test layers, all in the `tests/` directory:
 - `tests/fixtures/addresses.cairo` - Mainnet addresses for fork tests
 
 ## Commands
+- Format check: `scarb fmt --check`
+- Build: `scarb build`
+- Test: `scarb test` or `snforge test`
+- Coverage: `scarb test --coverage` or `snforge test --coverage`
 
-```bash
-scarb fmt --check    # Format check (CI)
-scarb fmt -w         # Format and write
-snforge test         # Run all tests
-snforge test --coverage  # Tests with coverage report
-scarb build          # Build contracts
-```
-
-## CI Pipeline
-
-`scarb fmt --check` -> `scarb test --coverage` -> Codecov upload
-
-Rate-limit retry: CI retries once after 30s if RPC 429 detected.
-
-## Scarb.toml Config
-
-```toml
-[tool.fmt]
-sort-module-level-items = true
-max-line-length = 120
-
-[profile.dev.cairo]
-unstable-add-statements-functions-debug-info = true
-unstable-add-statements-code-locations-debug-info = true
-inlining-strategy = "avoid"
-```
-
-**Build config**: `build-external-contracts = ["beasts_nft::beasts_nft"]` in Scarb.toml -- required for fork tests that deploy the beast NFT.
-
-## Error Pattern
-
-Error constants defined in `src/constants.cairo`:
-```cairo
-pub mod errors {
-    pub const NOT_TOKEN_OWNER: felt252 = 'Not token owner';
-    pub const BEAST_ALIVE: felt252 = 'beast is alive';
-    // ...
-}
-```
-
-Use: `assert(condition, errors::CONSTANT_NAME);`
+## CI for Contracts
+- Triggered by `contracts/**`.
+- Job sequence: `scarb fmt --check` -> `scarb test --coverage` -> Codecov.
+- CI auto-retries `scarb test --coverage` once after 30s when RPC rate-limit signatures are detected.
