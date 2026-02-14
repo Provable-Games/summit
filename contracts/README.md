@@ -99,8 +99,13 @@ contracts/
 │       └── summit.cairo          # Main contract: ISummitSystem (38 methods)
 ├── tests/
 │   ├── lib.cairo                 # Test crate root
-│   ├── constants.cairo           # Test-specific constants and addresses
-│   └── test_summit.cairo         # Fork and integration tests
+│   ├── unit/                     # Unit tests for pure functions
+│   │   ├── models/               # Beast packing, stat tests
+│   │   └── logic/                # Combat, poison, revival, quest tests
+│   ├── fork/
+│   │   └── test_summit.cairo     # Fork and integration tests
+│   ├── helpers/                  # Deployment and builder utilities
+│   └── fixtures/                 # Test constants and addresses
 └── gas_reports/                  # Gas optimization analysis documents
 ```
 
@@ -222,18 +227,19 @@ The test suite has two layers that together cover both isolated logic and full c
 
 ### Unit Tests
 
-Unit tests are defined inline (`#[cfg(test)] mod tests`) within the source files they exercise. These test pure functions directly without deploying contracts:
+Unit tests live in `tests/unit/` and test pure functions directly without deploying contracts:
 
-| Source File                  | What It Tests                              |
-| ---------------------------- | ------------------------------------------ |
-| `src/models/beast.cairo`     | StorePacking pack/unpack, parity vectors, zero and max values |
-| `src/logic/combat.cairo`     | Combat spec construction, damage calculations |
-| `src/logic/poison.cairo`     | Poison damage over elapsed time            |
-| `src/logic/revival.cairo`    | Revival potion requirements and timing     |
-| `src/logic/quest.cairo`      | Quest reward calculation                   |
-| `src/logic/beast_utils.cairo`| Level-from-XP, bonus levels, stat utilities |
+| Test File                                      | What It Tests                              |
+| ---------------------------------------------- | ------------------------------------------ |
+| `tests/unit/models/test_beast_packing.cairo`   | StorePacking pack/unpack, parity vectors, zero and max values |
+| `tests/unit/models/test_beast_stats.cairo`     | Beast stat calculations                    |
+| `tests/unit/logic/test_combat.cairo`           | Combat spec construction, damage calculations |
+| `tests/unit/logic/test_poison.cairo`           | Poison damage over elapsed time            |
+| `tests/unit/logic/test_revival.cairo`          | Revival potion requirements and timing     |
+| `tests/unit/logic/test_quest.cairo`            | Quest reward calculation                   |
+| `tests/unit/logic/test_beast_utils.cairo`      | Level-from-XP, bonus levels, stat utilities |
 
-Run only unit tests by skipping the integration test module:
+Run only unit tests by skipping the fork test module:
 
 ```bash
 snforge test --skip test_summit
@@ -241,7 +247,7 @@ snforge test --skip test_summit
 
 ### Fork and Integration Tests
 
-Integration tests live in `tests/test_summit.cairo` and run against real mainnet state using Starknet Foundry's fork testing. They deploy the full contract, use real player addresses and beast token IDs, and verify end-to-end gameplay flows.
+Integration tests live in `tests/fork/test_summit.cairo` and run against real mainnet state using Starknet Foundry's fork testing. They deploy the full contract, use real player addresses and beast token IDs, and verify end-to-end gameplay flows.
 
 Two fork configurations are defined in `Scarb.toml`:
 
