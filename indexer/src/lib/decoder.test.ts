@@ -576,7 +576,7 @@ describe("decodeQuestRewardsClaimedEvent", () => {
 describe("decodeTransferEvent", () => {
   it("decodes from, to, and token_id from keys", () => {
     const keys = [
-      EVENT_SELECTORS.BeastUpdatesEvent, // selector (unused in decode)
+      BEAST_EVENT_SELECTORS.Transfer,     // Transfer selector (unused in decode but correct for context)
       "0xAABB",                           // from
       "0xCCDD",                           // to
       "0x5",                              // token_id_low

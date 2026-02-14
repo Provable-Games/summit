@@ -674,6 +674,50 @@ describe("calculateBattleResult", () => {
     // summitElemental = 30 * 1 = 30; summitDamage = max(4, floor(30 * (1 + 1.0)) - 50) = max(4, floor(60) - 50) = max(4, 10) = 10
     expect(combat.defense).toBe(10);
   });
+
+  it("applies prefix name-match bonus (2x elemental) when specials=true and prefixes match", () => {
+    const attacker = makeBeast({ type: "Magic", power: 50, prefix: "Agony", suffix: "Bane", specials: true, luck: 0 });
+    const summit = makeSummit(
+      { type: "Magic", power: 30, prefix: "Agony", suffix: "Grasp", current_health: 100, extra_lives: 0, luck: 0, specials: false },
+    );
+    const combat = calculateBattleResult(attacker, summit, 0);
+    // elemental = 50; nameMatch = 50*2 = 100 (prefix match)
+    // beastDamage = max(4, floor(50 + 100 - 30)) = 120
+    expect(combat.attack).toBe(120);
+  });
+
+  it("applies suffix name-match bonus (8x elemental) when specials=true and suffixes match", () => {
+    const attacker = makeBeast({ type: "Magic", power: 50, prefix: "Agony", suffix: "Bane", specials: true, luck: 0 });
+    const summit = makeSummit(
+      { type: "Magic", power: 30, prefix: "Death", suffix: "Bane", current_health: 100, extra_lives: 0, luck: 0, specials: false },
+    );
+    const combat = calculateBattleResult(attacker, summit, 0);
+    // elemental = 50; nameMatch = 50*8 = 400 (suffix match)
+    // beastDamage = max(4, floor(50 + 400 - 30)) = 420
+    expect(combat.attack).toBe(420);
+  });
+
+  it("applies both prefix+suffix name-match bonuses when specials=true and both match", () => {
+    const attacker = makeBeast({ type: "Magic", power: 50, prefix: "Agony", suffix: "Bane", specials: true, luck: 0 });
+    const summit = makeSummit(
+      { type: "Magic", power: 30, prefix: "Agony", suffix: "Bane", current_health: 100, extra_lives: 0, luck: 0, specials: false },
+    );
+    const combat = calculateBattleResult(attacker, summit, 0);
+    // elemental = 50; nameMatch = 50*2 + 50*8 = 100 + 400 = 500
+    // beastDamage = max(4, floor(50 + 500 - 30)) = 520
+    expect(combat.attack).toBe(520);
+  });
+
+  it("does not apply name-match bonus when specials=false even if names match", () => {
+    const attacker = makeBeast({ type: "Magic", power: 50, prefix: "Agony", suffix: "Bane", specials: false, luck: 0 });
+    const summit = makeSummit(
+      { type: "Magic", power: 30, prefix: "Agony", suffix: "Bane", current_health: 100, extra_lives: 0, luck: 0, specials: false },
+    );
+    const combat = calculateBattleResult(attacker, summit, 0);
+    // specials=false -> nameMatch = 0
+    // beastDamage = max(4, floor(50 - 30)) = 20
+    expect(combat.attack).toBe(20);
+  });
 });
 
 // ---------------------------------------------------------------------------

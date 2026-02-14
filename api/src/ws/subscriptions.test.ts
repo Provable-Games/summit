@@ -162,6 +162,24 @@ describe("SubscriptionHub", () => {
       expect(messages.length).toBe(1);
       const response = JSON.parse(messages[0]);
       expect(response.type).toBe("subscribed");
+      // channels may be undefined or empty depending on implementation
+      expect(response.channels === undefined || Array.isArray(response.channels)).toBe(true);
+    });
+
+    it("should handle unsubscribe without channels property", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      // First subscribe to something
+      hub.handleMessage("client-1", JSON.stringify({ type: "subscribe", channels: ["summit"] }));
+      messages.length = 0; // clear
+
+      // Unsubscribe without channels property
+      hub.handleMessage("client-1", JSON.stringify({ type: "unsubscribe" }));
+
+      expect(messages.length).toBe(1);
+      const response = JSON.parse(messages[0]);
+      expect(response.type).toBe("unsubscribed");
     });
 
     it("should ignore unknown message types", () => {

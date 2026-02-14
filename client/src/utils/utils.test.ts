@@ -136,8 +136,11 @@ describe("parseBalances", () => {
       { name: "BIG", address: "0xbig", displayDecimals: 4 },
     ];
     const balances = parseBalances(results, tokens);
-    // The integer part of 2^128 / 1e18 is 340282366920938463463
-    expect(balances.BIG).toBeGreaterThan(0);
+    // 2^128 / 1e18 = 340282366920938463463.374...
+    // Verify concrete value: raw bigint is 2^128 = 340282366920938463463374607431768211456
+    // Divided by 1e18 = 340282366920938463463.374...
+    // Number() truncates to ~3.402823669209385e+20
+    expect(balances.BIG).toBeCloseTo(3.402823669209385e20, -5);
   });
 
   it("parses multiple tokens", () => {
