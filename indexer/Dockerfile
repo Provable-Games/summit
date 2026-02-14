@@ -29,7 +29,7 @@ RUN addgroup -g 1001 -S nodejs && \
 # Install production dependencies + tsx for status check script
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev --legacy-peer-deps && \
-    npm install --no-save tsx && \
+    npm install --no-save --legacy-peer-deps tsx && \
     npm cache clean --force
 
 # Copy built artifacts from builder
