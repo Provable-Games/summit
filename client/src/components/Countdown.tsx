@@ -44,8 +44,19 @@ export default function Countdown({ onComplete }: CountdownProps) {
 
   return (
     <Box sx={styles.container}>
-      <Typography sx={styles.title}>SUMMIT OPENS IN</Typography>
+      <Typography sx={styles.title}>SUMMIT BEGINS IN</Typography>
       <Box sx={styles.timeContainer}>
+        {timeRemaining.days > 0 && (
+          <>
+            <Box sx={styles.timeBlock}>
+              <Typography sx={styles.timeNumber}>
+                {String(timeRemaining.days).padStart(2, "0")}
+              </Typography>
+              <Typography sx={styles.timeLabel}>DAYS</Typography>
+            </Box>
+            <Typography sx={styles.separator}>:</Typography>
+          </>
+        )}
         <Box sx={styles.timeBlock}>
           <Typography sx={styles.timeNumber}>
             {String(timeRemaining.hours).padStart(2, "0")}
