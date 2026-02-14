@@ -4,6 +4,7 @@ import { useGameDirector } from '@/contexts/GameDirector';
 import { useController } from '@/contexts/controller';
 import { fetchBeastImage, getLuckCritChancePercent, getSpiritRevivalReductionSeconds } from '@/utils/beasts';
 import { gameColors } from '@/utils/themes';
+import type { Beast } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import CasinoIcon from '@mui/icons-material/Casino';
 import CloseIcon from '@mui/icons-material/Close';
@@ -30,7 +31,7 @@ const MAX_ATTRIBUTES = 100;
 
 interface BeastUpgradeModalProps {
   open: boolean;
-  beast: any;
+  beast: Beast;
   close: () => void;
 }
 

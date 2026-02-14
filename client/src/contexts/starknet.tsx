@@ -1,14 +1,16 @@
-import {
+import type {
   ChainId,
-  getNetworkConfig,
-  NetworkConfig,
+  NetworkConfig} from "@/utils/networkConfig";
+import {
+  getNetworkConfig
 } from "@/utils/networkConfig";
 import ControllerConnector from "@cartridge/connector/controller";
 import { mainnet, sepolia } from "@starknet-react/chains";
 import { argent, braavos, jsonRpcProvider, StarknetConfig, useInjectedConnectors, voyager } from "@starknet-react/core";
+import type {
+  PropsWithChildren} from "react";
 import {
   createContext,
-  PropsWithChildren,
   useCallback,
   useContext,
   useState
@@ -78,7 +80,6 @@ export function DynamicConnectorProvider({ children }: PropsWithChildren) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useDynamicConnector() {
   const context = useContext(DynamicConnectorContext);
   if (!context) {

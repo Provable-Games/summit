@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { Summit, Beast, Adventurer, BattleEvent, SpectatorBattleEvent, Leaderboard, PoisonEvent, selection } from '@/types/game';
-import { LogEntry } from '@/api/summitApi';
+import type { Summit, Beast, Adventurer, BattleEvent, SpectatorBattleEvent, Leaderboard, PoisonEvent, selection } from '@/types/game';
+import type { LogEntry } from '@/api/summitApi';
 
 export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'seconds held';
 export type BeastTypeFilter = 'all' | 'strong';

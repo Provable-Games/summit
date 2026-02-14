@@ -1,4 +1,4 @@
-import { Beast, Combat } from '@/types/game';
+import type { Beast, Combat } from '@/types/game';
 import CasinoIcon from '@mui/icons-material/Casino';
 import EnergyIcon from '@mui/icons-material/ElectricBolt';
 import HandshakeIcon from '@mui/icons-material/Handshake';

@@ -1,7 +1,7 @@
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useSound } from '@/contexts/sound';
 import { useGameStore } from '@/stores/gameStore';
-import { SpectatorBattleEvent } from '@/types/game';
+import type { SpectatorBattleEvent } from '@/types/game';
 import SummitGiftModal from '@/components/dialogs/SummitGiftModal';
 import CasinoIcon from '@mui/icons-material/Casino';
 import HandshakeIcon from '@mui/icons-material/Handshake';

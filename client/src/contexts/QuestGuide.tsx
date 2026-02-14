@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
+import type { ReactNode} from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { Box, Typography, Popper, Fade } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -22,7 +23,6 @@ export interface QuestGuide {
   steps: GuideStep[];
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const questGuides: QuestGuide[] = [
   {
     id: 'first_blood_guide',
@@ -344,7 +344,6 @@ export function QuestGuideProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export function useQuestGuide() {
   const context = useContext(QuestGuideContext);
   if (!context) {
