@@ -19,7 +19,7 @@ For AI-oriented contract coding rules, read `AGENTS.md` in this folder. For shar
 - Constants/errors: `src/constants.cairo`
 - Custom ERC20 spend interface: `src/erc20/interface.cairo`
 - VRF integration helper: `src/vrf.cairo`
-- Integration tests: `tests/test_summit.cairo`
+- Integration tests: `tests/fork/test_summit.cairo`
 
 ## Quick Start
 

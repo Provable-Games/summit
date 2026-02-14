@@ -72,7 +72,6 @@ Read [`../AGENTS.md`](../AGENTS.md) first for shared game mechanics, addresses, 
   - corpse token.
 
 ## Testing
-
 Two test layers, all in the `tests/` directory:
 
 **Unit tests** - `tests/unit/`, testing pure business logic:

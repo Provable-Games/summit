@@ -57,12 +57,15 @@ Toolchain versions come from `.tool-versions` and `.github/workflows/pr-ci.yml`.
    - `cd indexer && pnpm install`
    - `cd api && pnpm install`
 2. Configure environment variables for each component (see each component README).
-3. Start services in separate terminals:
-   - Indexer: `cd indexer && pnpm db:migrate && pnpm dev`
+3. Start PostgreSQL and verify `DATABASE_URL` connectivity.
+4. Start services in separate terminals:
+   - Indexer first run/schema change: `cd indexer && pnpm db:migrate`
+   - Indexer daily start: `cd indexer && pnpm dev`
    - API: `cd api && pnpm dev`
    - Client: `cd client && pnpm dev`
-4. Run contract checks when changing Cairo logic:
-   - `cd contracts && scarb fmt --check && scarb test --coverage`
+5. Run contract checks when changing Cairo logic:
+   - `cd contracts && scarb fmt --check && scarb test`
+   - Optional coverage: `curl -L https://raw.githubusercontent.com/software-mansion/cairo-coverage/v0.6.0/scripts/install.sh | sh`, then run `scarb test --coverage`
 
 ## Cross-Layer Parity Rule
 
