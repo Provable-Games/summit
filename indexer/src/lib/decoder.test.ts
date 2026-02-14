@@ -297,16 +297,19 @@ describe("hexToNumber", () => {
 });
 
 describe("feltToHex", () => {
-  it("returns 0x0 for null", () => {
-    expect(feltToHex(null)).toBe("0x0");
+  it("returns padded zero for null", () => {
+    expect(feltToHex(null)).toBe(`0x${"0".repeat(64)}`);
+    expect(feltToHex(null)).toHaveLength(66);
   });
 
-  it("returns 0x0 for undefined", () => {
-    expect(feltToHex(undefined)).toBe("0x0");
+  it("returns padded zero for undefined", () => {
+    expect(feltToHex(undefined)).toBe(`0x${"0".repeat(64)}`);
+    expect(feltToHex(undefined)).toHaveLength(66);
   });
 
-  it("returns 0x0 for empty string", () => {
-    expect(feltToHex("")).toBe("0x0");
+  it("returns padded zero for empty string", () => {
+    expect(feltToHex("")).toBe(`0x${"0".repeat(64)}`);
+    expect(feltToHex("")).toHaveLength(66);
   });
 
   it("pads 0x0 to 66 characters", () => {

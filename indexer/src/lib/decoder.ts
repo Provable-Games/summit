@@ -94,7 +94,7 @@ export function hexToNumber(hex: string | undefined | null): number {
  * Normalizes to padded lowercase hex (64 chars after 0x) for consistent comparison
  */
 export function feltToHex(felt: string | undefined | null): string {
-  if (!felt) return "0x0";
+  if (!felt) return `0x${'0'.repeat(64)}`;
   // Pad to 64 chars for consistent hash/address comparison
   return `0x${BigInt(felt).toString(16).padStart(64, '0')}`;
 }

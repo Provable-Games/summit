@@ -162,8 +162,7 @@ describe("SubscriptionHub", () => {
       expect(messages.length).toBe(1);
       const response = JSON.parse(messages[0]);
       expect(response.type).toBe("subscribed");
-      // channels may be undefined or empty depending on implementation
-      expect(response.channels === undefined || Array.isArray(response.channels)).toBe(true);
+      expect(response.channels).toEqual([]);
     });
 
     it("should handle unsubscribe without channels property", () => {
@@ -180,6 +179,7 @@ describe("SubscriptionHub", () => {
       expect(messages.length).toBe(1);
       const response = JSON.parse(messages[0]);
       expect(response.type).toBe("unsubscribed");
+      expect(response.channels).toEqual([]);
     });
 
     it("should ignore unknown message types", () => {
