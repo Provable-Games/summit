@@ -388,7 +388,6 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           direct_prompt: ${{ steps.build-prompt.outputs.prompt }}
-          use_sticky_comment: true
           allowed_tools: "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
 
       - name: Check for blocking findings
@@ -514,9 +513,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          COMMENT_MARKER="<!-- codex-review:contracts -->"
           {
-            echo "${COMMENT_MARKER}"
             echo "## Codex Review - Cairo/Starknet Contract Review"
             echo ""
             if [ -s /tmp/review.txt ]; then
@@ -526,21 +523,7 @@ jobs:
             fi
           } > /tmp/review-formatted.txt
 
-          EXISTING_COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-            | jq -r --arg marker "$COMMENT_MARKER" '
-                .[] |
-                select(.user.login == "github-actions[bot]") |
-                select((.body // "") | contains($marker)) |
-                .id
-              ' \
-            | tail -n 1)
-
-          if [ -n "$EXISTING_COMMENT_ID" ]; then
-            jq -n --rawfile body /tmp/review-formatted.txt '{body: $body}' \
-              | gh api "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}" --method PATCH --input -
-          else
-            gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
-          fi
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
 
       - name: Check for blocking findings
         if: always()
@@ -624,7 +607,6 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           direct_prompt: ${{ steps.build-prompt.outputs.prompt }}
-          use_sticky_comment: true
           allowed_tools: "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
 
       - name: Check for blocking findings
@@ -750,9 +732,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          COMMENT_MARKER="<!-- codex-review:client -->"
           {
-            echo "${COMMENT_MARKER}"
             echo "## Codex Review - React/Frontend Review"
             echo ""
             if [ -s /tmp/review.txt ]; then
@@ -762,21 +742,7 @@ jobs:
             fi
           } > /tmp/review-formatted.txt
 
-          EXISTING_COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-            | jq -r --arg marker "$COMMENT_MARKER" '
-                .[] |
-                select(.user.login == "github-actions[bot]") |
-                select((.body // "") | contains($marker)) |
-                .id
-              ' \
-            | tail -n 1)
-
-          if [ -n "$EXISTING_COMMENT_ID" ]; then
-            jq -n --rawfile body /tmp/review-formatted.txt '{body: $body}' \
-              | gh api "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}" --method PATCH --input -
-          else
-            gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
-          fi
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
 
       - name: Check for blocking findings
         if: always()
@@ -860,7 +826,6 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           direct_prompt: ${{ steps.build-prompt.outputs.prompt }}
-          use_sticky_comment: true
           allowed_tools: "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
 
       - name: Check for blocking findings
@@ -986,9 +951,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          COMMENT_MARKER="<!-- codex-review:indexer-api -->"
           {
-            echo "${COMMENT_MARKER}"
             echo "## Codex Review - Indexer/API Review"
             echo ""
             if [ -s /tmp/review.txt ]; then
@@ -998,21 +961,7 @@ jobs:
             fi
           } > /tmp/review-formatted.txt
 
-          EXISTING_COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-            | jq -r --arg marker "$COMMENT_MARKER" '
-                .[] |
-                select(.user.login == "github-actions[bot]") |
-                select((.body // "") | contains($marker)) |
-                .id
-              ' \
-            | tail -n 1)
-
-          if [ -n "$EXISTING_COMMENT_ID" ]; then
-            jq -n --rawfile body /tmp/review-formatted.txt '{body: $body}' \
-              | gh api "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}" --method PATCH --input -
-          else
-            gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
-          fi
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
 
       - name: Check for blocking findings
         if: always()
@@ -1097,7 +1046,6 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           direct_prompt: ${{ steps.build-prompt.outputs.prompt }}
-          use_sticky_comment: true
           allowed_tools: "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
 
       - name: Check for blocking findings
@@ -1224,9 +1172,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          COMMENT_MARKER="<!-- codex-review:general -->"
           {
-            echo "${COMMENT_MARKER}"
             echo "## Codex Review - General Engineering Review"
             echo ""
             if [ -s /tmp/review.txt ]; then
@@ -1236,21 +1182,7 @@ jobs:
             fi
           } > /tmp/review-formatted.txt
 
-          EXISTING_COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-            | jq -r --arg marker "$COMMENT_MARKER" '
-                .[] |
-                select(.user.login == "github-actions[bot]") |
-                select((.body // "") | contains($marker)) |
-                .id
-              ' \
-            | tail -n 1)
-
-          if [ -n "$EXISTING_COMMENT_ID" ]; then
-            jq -n --rawfile body /tmp/review-formatted.txt '{body: $body}' \
-              | gh api "repos/${{ github.repository }}/issues/comments/${EXISTING_COMMENT_ID}" --method PATCH --input -
-          else
-            gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
-          fi
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
 
       - name: Check for blocking findings
         if: always()
