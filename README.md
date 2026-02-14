@@ -21,6 +21,15 @@ Client (React SPA) -> Summit Contract (Cairo on Starknet)
                 +------ PostgreSQL <-----+
 ```
 
+## Tech Stack
+
+| Layer | Stack |
+| --- | --- |
+| Client | React 18, TypeScript, Vite, MUI, Zustand |
+| Contracts | Cairo 2.15.0, Scarb 2.15.1, Starknet Foundry 0.56.0 |
+| Indexer | Apibara DNA, TypeScript, Drizzle ORM, PostgreSQL |
+| API | Hono, TypeScript, PostgreSQL, WebSocket |
+
 ## Monorepo Layout
 
 | Path | Purpose | Human Docs | AI Docs |
@@ -52,7 +61,7 @@ Toolchain versions come from `.tool-versions` and `.github/workflows/pr-ci.yml`.
    - Indexer: `cd indexer && pnpm db:migrate && pnpm dev`
    - API: `cd api && pnpm dev`
    - Client: `cd client && pnpm dev`
-4. Run contract tests when changing Cairo logic:
+4. Run contract checks when changing Cairo logic:
    - `cd contracts && scarb fmt --check && scarb test --coverage`
 
 ## Cross-Layer Parity Rule
@@ -63,8 +72,8 @@ Toolchain versions come from `.tool-versions` and `.github/workflows/pr-ci.yml`.
 - Indexer decoder: `indexer/src/lib/decoder.ts`
 - Client decoder: `client/src/utils/translation.ts`
 - Parity tests:
-  - `indexer/scripts/test-live-beast-stats-parity.ts`
-  - `client/scripts/test-live-beast-stats-parity.ts`
+  - `cd indexer && pnpm test:parity`
+  - `cd client && pnpm test:parity`
 
 If you change packing layout or field order, update all three layers and both parity tests in one PR.
 
@@ -72,10 +81,12 @@ If you change packing layout or field order, update all three layers and both pa
 
 PR CI is path-filtered and runs component-specific checks:
 
-- Contracts: `scarb fmt --check`, `scarb test --coverage`, Codecov upload.
-- Client: `pnpm lint`, `pnpm build`, `pnpm test:parity`, `pnpm test:coverage`, Codecov upload.
-- Indexer: `tsc --noEmit`, `pnpm build`, `pnpm test:parity`, `pnpm test:coverage`, Codecov upload.
-- API: `tsc --noEmit`, `pnpm build`.
+| Component | Trigger Paths | CI Steps |
+| --- | --- | --- |
+| Contracts | `contracts/**` | `scarb fmt --check` -> `scarb test --coverage` -> Codecov |
+| Client | `client/**`, `contracts/src/models/beast.cairo` | `pnpm lint` -> `pnpm build` -> `pnpm test:parity` -> `pnpm test:coverage` -> Codecov |
+| Indexer | `indexer/**`, `contracts/src/models/beast.cairo` | `pnpm exec tsc --noEmit` -> `pnpm build` -> `pnpm test:parity` -> `pnpm test:coverage` -> Codecov |
+| API | `api/**` | `pnpm exec tsc --noEmit` -> `pnpm build` |
 
 Automated AI review jobs run for scoped changes, and any `CRITICAL` or `HIGH` finding fails CI.
 

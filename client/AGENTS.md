@@ -22,36 +22,43 @@ Blockchain/client SDK stack:
 - `@cartridge/connector` `0.12.1`
 - Dojo packages pinned in `pnpm.overrides` (`@dojoengine/sdk` `1.7.3`, core/utils/torii-client `1.7.2`)
 
+## Key Files
+
+| File | Purpose |
+| --- | --- |
+| `src/main.tsx` | Provider composition entrypoint (`PostHog -> DynamicConnector -> Analytics -> Sound -> QuestGuide -> App`). |
+| `src/contexts/starknet.tsx` | Starknet + Cartridge connector wiring. |
+| `src/contexts/GameDirector.tsx` | Gameplay orchestrator for API/WS/state sync and action dispatch. |
+| `src/stores/gameStore.ts` | Core game + UI global state. |
+| `src/stores/autopilotStore.ts` | Autopilot policy and spend counters. |
+| `src/dojo/useSystemCalls.ts` | Central write path for contract calls + error parsing. |
+| `src/dojo/useGameTokens.ts` | Token and collection reads via Torii/API. |
+| `src/hooks/useWebSocket.ts` | WebSocket `summit`/`event` channel sync. |
+| `src/utils/translation.ts` | `LiveBeastStats` unpacking (parity-critical). |
+| `src/utils/networkConfig.ts` | Network endpoints and contract addresses. |
+| `src/utils/themes.ts` | MUI theme definition. |
+| `src/api/ekubo.ts` | Ekubo quoting/swaps/liquidity helpers used by market flows. |
+
 ## Core Architecture Patterns
-- Provider composition starts in `src/main.tsx`:
-  - `PostHogProvider` -> `DynamicConnectorProvider` -> `SoundProvider` -> `QuestGuideProvider` -> `App`.
-- Starknet provider wiring lives in `src/contexts/starknet.tsx` (`StarknetConfig`, connectors, RPC provider).
-- `src/contexts/GameDirector.tsx` is the gameplay orchestrator:
-  - executes game actions
-  - consumes API + WS streams
-  - merges realtime updates into stores
-  - dispatches notifications.
-- Zustand split:
-  - `src/stores/gameStore.ts` for core game/UI state.
-  - `src/stores/autopilotStore.ts` for autopilot policy and spend counters.
-- Contract call assembly is centralized in `src/dojo/useSystemCalls.ts`.
-- WebSocket sync is centralized in `src/hooks/useWebSocket.ts`.
-- Packed `LiveBeastStats` decoding for parity-sensitive paths lives in `src/utils/translation.ts`.
+- `GameDirector` is the central coordinator for reads, WS events, optimistic updates, and notifications.
+- All write operations route through `useSystemCalls`; user-facing execution errors are normalized by `parseExecutionError`.
+- State is split across two Zustand stores (`gameStore`, `autopilotStore`) to isolate high-frequency gameplay updates.
+- Packed stats decode (`src/utils/translation.ts`) must stay bit-exact with contracts/indexer.
 
 ## Data Flow
 `Contract Event -> Indexer -> PostgreSQL (NOTIFY) -> API WebSocket -> useWebSocket -> GameDirector -> Zustand stores -> React components`
 
 Parallel read path:
-- Dojo/Torii SQL queries (for token/collection reads) flow through `src/dojo/useGameTokens.ts` using `currentNetworkConfig.toriiUrl`.
+- Dojo/Torii SQL reads flow through `src/dojo/useGameTokens.ts` using `currentNetworkConfig.toriiUrl`.
 
 ## Directory Map
 - `src/components/`: gameplay UI and dialogs.
-- `src/contexts/`: provider layer and orchestration (`GameDirector`, wallet, sound, controller).
+- `src/contexts/`: provider layer and orchestration.
 - `src/dojo/`: Starknet call helpers and token hooks.
-- `src/hooks/`: realtime hooks (`useWebSocket`).
-- `src/stores/`: Zustand state.
-- `src/utils/`: theme, translation, network config, unpack helpers.
-- `src/api/`: REST/RPC clients.
+- `src/hooks/`: realtime hooks.
+- `src/stores/`: Zustand stores.
+- `src/utils/`: theme, network config, unpack helpers.
+- `src/api/`: REST/RPC integrations.
 - `src/types/`: shared TS domain types.
 
 ## Styling Rules
@@ -66,9 +73,13 @@ Parallel read path:
   - `strictNullChecks: false`
 - Path alias: `@/* -> src/*`.
 
+## Address Handling
+- When querying normalized owner data, use padded lowercase formatting (`addAddressPadding(owner.toLowerCase())`) to match DB/API address shape.
+- UI address-name cache uses lowercase trimmed normalization for consistent map lookups.
+
 ## Tests
-- Test runner: Vitest.
-- Coverage is limited (9 test files currently under `src/`).
+- Test runner: Vitest (`environment: node`, v8 coverage).
+- Coverage remains limited (about 9 test files under `src/`).
 - Cross-layer packing parity script: `scripts/test-live-beast-stats-parity.ts`.
 
 ## Commands
@@ -84,7 +95,7 @@ Parallel read path:
 - Job sequence: lint -> build -> parity -> coverage -> Codecov.
 
 ## Environment Variables
-- `VITE_PUBLIC_CHAIN`
-- `VITE_PUBLIC_SUMMIT_ADDRESS`
+- `VITE_PUBLIC_CHAIN` (network key, typically `SN_MAIN`)
+- `VITE_PUBLIC_SUMMIT_ADDRESS` (contract address used in network policy config)
 - `VITE_PUBLIC_POSTHOG_KEY`
 - `VITE_PUBLIC_POSTHOG_HOST`
