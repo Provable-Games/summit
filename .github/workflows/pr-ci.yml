@@ -321,6 +321,16 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Run tests with coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./api/coverage/lcov.info
+          flags: api
+          token: ${{ secrets.CODECOV_TOKEN }}
+
   claude-review-contracts:
     needs: [changes, contracts-lint]
     if: needs.changes.outputs.contracts == 'true'
