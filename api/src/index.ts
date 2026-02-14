@@ -32,38 +32,9 @@ import {
   ITEM_NAME_PREFIXES,
   ITEM_NAME_SUFFIXES,
 } from "./lib/beastData.js";
+import { getSpiritRevivalReductionSeconds, getBeastRevivalTime, getBeastCurrentLevel, normalizeAddress } from "./lib/helpers.js";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
-
-// Helper functions for beast calculations
-function getSpiritRevivalReductionSeconds(points: number): number {
-  const p = Math.max(0, Math.floor(points));
-  if (p <= 5) {
-    switch (p) {
-      case 0: return 0;
-      case 1: return 7200;
-      case 2: return 10080;
-      case 3: return 12240;
-      case 4: return 13680;
-      case 5: return 14400;
-    }
-  } else if (p <= 70) {
-    return 14400 + (p - 5) * 720;
-  }
-  return 61200 + (p - 70) * 360;
-}
-
-function getBeastRevivalTime(spirit: number): number {
-  const revivalTime = 86400000; // 24 hours in ms
-  if (spirit > 0) {
-    return revivalTime - getSpiritRevivalReductionSeconds(spirit) * 1000;
-  }
-  return revivalTime;
-}
-
-function getBeastCurrentLevel(level: number, bonusXp: number): number {
-  return Math.floor(Math.sqrt(bonusXp + Math.pow(level, 2)));
-}
 
 const app = new Hono();
 
@@ -92,17 +63,6 @@ app.get("/health", async (c) => {
     timestamp: new Date().toISOString(),
   });
 });
-
-/**
- * Normalize a Starknet address to match database format
- * - Lowercase
- * - Pad to 66 chars (0x + 64 hex chars)
- */
-function normalizeAddress(address: string): string {
-  const lower = address.toLowerCase();
-  const withoutPrefix = lower.startsWith("0x") ? lower.slice(2) : lower;
-  return "0x" + withoutPrefix.padStart(64, "0");
-}
 
 /**
  * GET /beasts/all - Get paginated list of all beasts with filtering

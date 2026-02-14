@@ -218,15 +218,19 @@ export class SubscriptionHub {
       if (!client) return;
 
       switch (data.type) {
-        case "subscribe":
-          this.subscribe(id, data.channels || []);
-          this.send(client.ws, JSON.stringify({ type: "subscribed", channels: data.channels }));
+        case "subscribe": {
+          const subChannels = data.channels || [];
+          this.subscribe(id, subChannels);
+          this.send(client.ws, JSON.stringify({ type: "subscribed", channels: subChannels }));
           break;
+        }
 
-        case "unsubscribe":
-          this.unsubscribe(id, data.channels || []);
-          this.send(client.ws, JSON.stringify({ type: "unsubscribed", channels: data.channels }));
+        case "unsubscribe": {
+          const unsubChannels = data.channels || [];
+          this.unsubscribe(id, unsubChannels);
+          this.send(client.ws, JSON.stringify({ type: "unsubscribed", channels: unsubChannels }));
           break;
+        }
 
         case "ping":
           this.send(client.ws, JSON.stringify({ type: "pong" }));
