@@ -9,7 +9,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy source files
 COPY . .
@@ -28,7 +28,7 @@ RUN addgroup -g 1001 -S nodejs && \
 
 # Install production dependencies + tsx for status check script
 COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev && \
+RUN npm ci --omit=dev --legacy-peer-deps && \
     npm install --no-save tsx && \
     npm cache clean --force
 
