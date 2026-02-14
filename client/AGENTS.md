@@ -103,4 +103,4 @@ Triggered by changes to `client/**` or `contracts/src/models/beast.cairo`.
 - **Styling**: MUI theme system (`utils/themes.ts`) + Emotion `sx` prop. Do not introduce Tailwind.
 - **State**: Zustand for global game state; React Context for providers (controller, sound, starknet)
 - **Contract calls**: All writes go through `useSystemCalls` hook with error parsing via `parseExecutionError`
-- **Address handling**: All addresses lowercase, 66-char hex padded with `0x` prefix
+- **Address handling**: Normalize addresses to lowercase 66-char hex (`0x` + 64 chars) before comparison. Source constants use mixed formats; the API's `normalizeAddress()` handles padding.

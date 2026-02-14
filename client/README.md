@@ -138,12 +138,12 @@ A parallel read path exists for token and collection data: Dojo/Torii SQL querie
 The app wraps the component tree in a series of providers, composed in `src/main.tsx`:
 
 ```
-Vercel Analytics          Page view tracking
-  PostHogProvider          Product analytics
-    DynamicConnectorProvider   Starknet wallet + Cartridge Controller
-      SoundProvider            Sound effects
-        QuestGuideProvider     Quest progression tracking
-          App                  Router and game UI
+PostHogProvider                Product analytics
+  DynamicConnectorProvider     Starknet wallet + Cartridge Controller
+    Analytics                  Vercel page view tracking (sibling)
+    SoundProvider              Sound effects
+      QuestGuideProvider       Quest progression tracking
+        App                    Router and game UI
 ```
 
 ### State Management

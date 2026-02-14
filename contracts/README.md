@@ -233,10 +233,10 @@ Unit tests are defined inline (`#[cfg(test)] mod tests`) within the source files
 | `src/logic/quest.cairo`      | Quest reward calculation                   |
 | `src/logic/beast_utils.cairo`| Level-from-XP, bonus levels, stat utilities |
 
-Run only unit tests by filtering:
+Run only unit tests by skipping the integration test module:
 
 ```bash
-snforge test "test_" -e "test_summit"
+snforge test --skip test_summit
 ```
 
 ### Fork and Integration Tests
@@ -351,8 +351,3 @@ If you change the field order, field widths, or add/remove fields in `LiveBeastS
 4. Update the parity test vectors in both `client/scripts/test-live-beast-stats-parity.ts` and `indexer/scripts/test-live-beast-stats-parity.ts`.
 5. Submit all changes in a single PR. Do not merge partial updates.
 
----
-
-## License
-
-This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.

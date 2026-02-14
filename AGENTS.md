@@ -24,11 +24,14 @@ Client (React SPA) -> Summit contract (Cairo on Starknet)
 | `indexer/`   | Apibara event indexer -> PostgreSQL     | [indexer/AGENTS.md](indexer/AGENTS.md) |
 | `api/`       | Hono REST + WebSocket server            | [api/AGENTS.md](api/AGENTS.md) |
 
-## Tooling Versions (`.tool-versions`)
+## Tooling Versions
 
+Pinned in `.tool-versions` (managed by asdf):
 - Scarb 2.15.1
 - Starknet Foundry 0.56.0
 - Rust 1.89.0
+
+CI/runtime expectations (not in `.tool-versions`):
 - Node.js 22 (client, indexer, api)
 - pnpm 10 (package manager for all TS projects)
 

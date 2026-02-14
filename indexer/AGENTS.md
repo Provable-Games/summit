@@ -14,12 +14,12 @@ Real-time Starknet event indexer for Summit game state. Read [top-level AGENTS.m
 
 | File | Purpose |
 | ---- | ------- |
-| `indexers/summit.indexer.ts` | Single indexer (1889 lines): event filtering, decoding, processing, DB writes |
+| `indexers/summit.indexer.ts` | Single indexer (1889 lines): event filtering, decoding, processing, DB writes. Sets `finality: "pending"`. |
 | `src/lib/schema.ts` | Drizzle schema: 12 tables |
 | `src/lib/decoder.ts` | Bit unpacking for LiveBeastStats, event selector constants, hex utilities |
 | `src/lib/decoder.test.ts` | Unit tests for decoder bit unpacking and hex utilities |
 | `vitest.config.ts` | Test runner configuration |
-| `apibara.config.ts` | Stream config: contract addresses, starting block 6767900, finality `pending` |
+| `apibara.config.ts` | Stream config: contract addresses, starting block 6767900, RPC URL |
 | `migrations/` | Drizzle migrations + `0001_triggers.sql` (PG NOTIFY triggers) |
 
 ## Architecture

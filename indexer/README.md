@@ -210,7 +210,7 @@ These tables maintain the current state of an entity. Rows are created on first 
 
 ### Event Tables (append-only)
 
-These tables store an immutable history of game events. Each row has a unique index on `(block_number, transaction_hash, event_index)` for idempotent re-indexing.
+These tables store an immutable history of game events. Each row has a unique index on `(block_number, transaction_hash, event_index)` for idempotent re-indexing. Exception: `corpse_events` adds `adventurer_id` as a fourth column in its unique index because a single event can produce multiple corpse rows.
 
 | Table              | Description                                              |
 |--------------------|----------------------------------------------------------|

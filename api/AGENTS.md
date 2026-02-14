@@ -38,7 +38,7 @@ REST + WebSocket server for Summit frontend. Read [top-level AGENTS.md](../AGENT
 
 Note: `/leaderboard` divides raw amounts by 100,000 for display. This endpoint is not paginated.
 
-Development only (`NODE_ENV != "production"`): `POST /debug/test-summit-update`, `POST /debug/test-summit-log`
+Development only (`NODE_ENV != "production"`): The root `GET /` discovery response lists `POST /debug/test-summit-update` and `POST /debug/test-summit-log`, but their route handlers are not currently implemented.
 
 ### Key Query Parameters
 

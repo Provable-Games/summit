@@ -122,15 +122,7 @@ Returns server health status including database connectivity and WebSocket hub s
 
 ### Debug Endpoints (Development Only)
 
-These endpoints are available only when `NODE_ENV` is not `"production"`:
-
-#### `POST /debug/test-summit-update`
-
-Triggers a test WebSocket broadcast on the `summit` channel. Useful for verifying WebSocket connectivity during development.
-
-#### `POST /debug/test-summit-log`
-
-Triggers a test WebSocket broadcast on the `event` channel.
+When `NODE_ENV` is not `"production"`, the root `GET /` discovery response lists two debug endpoints (`POST /debug/test-summit-update` and `POST /debug/test-summit-log`). However, the route handlers for these endpoints are not currently implemented -- they appear in the discovery JSON but will return 404 if called.
 
 ### Beasts
 
