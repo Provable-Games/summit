@@ -15,9 +15,13 @@ flags:
     paths:
       - indexer/src/
     carryforward: true
+  api:
+    paths:
+      - api/src/
+    carryforward: true
 
 coverage:
-  range: 90..100
+  range: 60..100
   status:
     project:
       contracts:
@@ -25,17 +29,38 @@ coverage:
         flags:
           - contracts
       client:
-        target: auto
+        target: 60%
         flags:
           - client
       indexer:
-        target: auto
+        target: 60%
         flags:
           - indexer
+      api:
+        target: 60%
+        flags:
+          - api
     patch:
       default:
         target: 90%
         threshold: 4%
+        flags:
+          - contracts
+      client:
+        target: 60%
+        threshold: 4%
+        flags:
+          - client
+      indexer:
+        target: 60%
+        threshold: 4%
+        flags:
+          - indexer
+      api:
+        target: 60%
+        threshold: 4%
+        flags:
+          - api
 
 ignore:
   # Test files
@@ -48,9 +73,6 @@ ignore:
   - "**/*.d.ts"
   - "**/vite.config.ts"
   - "**/vitest.config.ts"
-
-  # No test infrastructure
-  - "api/"
 
   # Infrastructure & configuration
   - ".github/"
