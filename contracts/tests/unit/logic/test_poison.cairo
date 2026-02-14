@@ -48,8 +48,8 @@ fn test_overkill_no_lives() {
 #[available_gas(l2_gas: 100000)]
 fn test_uses_one_extra_life() {
     // 60 damage on 50 health, 50 full health, 2 extra lives
-    // Kills current health (50), then 10 remaining damage
-    // Uses one life, restores to 50, takes 10 = 40 HP left
+    // Exceeds current health (50), but remaining 10 damage < full_health (50)
+    // so no extra life is consumed. Health restores to 50, takes 10 = 40 HP
     let result = calculate_poison_damage(50, 2, 50, 0, 10, 6);
     assert!(result.damage == 60, "Damage should be 60");
     assert!(result.new_health == 40, "Should have 40 HP after one life used");
@@ -106,11 +106,12 @@ fn test_extra_life_with_bonus_health() {
 #[available_gas(l2_gas: 100000)]
 fn test_large_poison_stacks() {
     // 1000 poison * 1 second = 1000 damage
+    // 100 current health + 9 lives * 100 full health = 1000 total absorbed
+    // Left with 1 life and full health (100)
     let result = calculate_poison_damage(100, 10, 50, 50, 1000, 1);
     assert!(result.damage == 1000, "Damage should be 1000");
-    // 100 base health + 10 lives * 100 full health = 1100 total
-// 1000 damage uses: 100 current + 9*100 = 1000
-// Should have 1 life left and 100 HP (or 1 HP if calculation differs)
+    assert!(result.new_extra_lives == 1, "Should have 1 life left");
+    assert!(result.new_health == 100, "Should be at full health");
 }
 
 // Pack/unpack tests
