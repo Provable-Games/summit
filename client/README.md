@@ -27,14 +27,16 @@ pnpm dev
 
 The dev server runs on `https://localhost:5173` (HTTPS enabled via `vite-plugin-mkcert` in `vite.config.ts`).
 
-### Environment
+## Environment
 
-The repo currently includes `client/.env` with mainnet values. If you need to override or recreate it, set:
+The repo includes `client/.env` with mainnet values. If you need to override, set:
 
-- `VITE_PUBLIC_CHAIN` (example: `SN_MAIN`)
-- `VITE_PUBLIC_SUMMIT_ADDRESS`
-- `VITE_PUBLIC_POSTHOG_KEY`
-- `VITE_PUBLIC_POSTHOG_HOST`
+| Variable | Purpose |
+| --- | --- |
+| `VITE_PUBLIC_CHAIN` | Network key (typically `SN_MAIN`). |
+| `VITE_PUBLIC_SUMMIT_ADDRESS` | Summit contract address used by client policy config. |
+| `VITE_PUBLIC_POSTHOG_KEY` | PostHog key. |
+| `VITE_PUBLIC_POSTHOG_HOST` | PostHog host. |
 
 Example:
 
@@ -54,12 +56,29 @@ VITE_PUBLIC_POSTHOG_HOST=<your-host>
 - Coverage: `pnpm test:coverage`
 - Packing parity check: `pnpm test:parity`
 
+## Project Structure
+
+```text
+src/
+  api/          REST/RPC/Ekubo integrations
+  components/   Gameplay UI and dialogs
+  contexts/     Provider layer + orchestration (`GameDirector`, wallet, sound)
+  dojo/         Contract write helpers and token-read hooks
+  hooks/        Realtime hooks (`useWebSocket`)
+  stores/       Zustand stores (`gameStore`, `autopilotStore`)
+  types/        Shared domain types
+  utils/        Theme/network config/translation helpers
+  pages/        Route-level pages
+  abi/          Contract ABI artifacts
+```
+
 ## Architecture Notes
 
-- Provider composition starts in `src/main.tsx`.
+- Provider composition starts in `src/main.tsx`:
+  - `PostHogProvider -> DynamicConnectorProvider -> Analytics -> SoundProvider -> QuestGuideProvider -> App`
 - Gameplay orchestration is centralized in `src/contexts/GameDirector.tsx`.
 - State is split between `src/stores/gameStore.ts` and `src/stores/autopilotStore.ts`.
-- Contract call assembly lives in `src/dojo/useSystemCalls.ts`.
+- Contract write assembly lives in `src/dojo/useSystemCalls.ts`.
 - Realtime subscription handling lives in `src/hooks/useWebSocket.ts`.
 - Packed stat decode logic is in `src/utils/translation.ts` and must stay in sync with contracts/indexer.
 
@@ -67,11 +86,25 @@ VITE_PUBLIC_POSTHOG_HOST=<your-host>
 
 `Contract Event -> Indexer -> PostgreSQL (NOTIFY) -> API WS -> useWebSocket -> GameDirector -> Zustand -> UI`
 
+Parallel read path:
+- Dojo/Torii SQL and API reads flow via `src/dojo/useGameTokens.ts`.
+
+## Path Alias
+
+TypeScript + Vite alias:
+- `@/* -> src/*`
+
 ## Styling
 
 Use MUI + Emotion. The primary theme is in `src/utils/themes.ts`.
 
 Tailwind is not used in this project.
+
+## Testing
+
+- Test runner: Vitest (`environment: node`)
+- Coverage provider: v8 (`coverage/` output)
+- Parity script: `scripts/test-live-beast-stats-parity.ts`
 
 ## CI
 

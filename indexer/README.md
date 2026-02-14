@@ -20,6 +20,7 @@ For AI-focused implementation constraints and deeper internals, read `AGENTS.md`
 - Event decoders/bit unpacking: `src/lib/decoder.ts`
 - DB schema: `src/lib/schema.ts`
 - Migrations: `migrations/`
+- Utility scripts: `scripts/check-dna-status.ts`, `scripts/test-live-beast-stats-parity.ts`
 
 ## Environment
 
@@ -56,17 +57,51 @@ The indexer starts from block `6767900` (configured in `apibara.config.ts`) unle
 - Tests: `pnpm test`
 - Coverage: `pnpm test:coverage`
 - Packing parity check: `pnpm test:parity`
+- DNA connectivity check: `pnpm check-dna`
 - DB tooling: `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:studio`
 
 ## Processing Pipeline
 
 `DNA stream -> filter + pre-scan -> batch context lookups -> event decode -> derived events -> bulk DB writes -> PostgreSQL NOTIFY`
 
+## Database Semantics (`12` tables)
+
+State/upsert tables:
+- `beast_stats`
+- `beast_owners`
+- `beast_data`
+- `skulls_claimed`
+- `quest_rewards_claimed`
+
+Insert-once table:
+- `beasts`
+
+Append/history tables:
+- `battles`
+- `rewards_earned`
+- `rewards_claimed`
+- `poison_events`
+- `corpse_events`
+- `summit_log`
+
+Idempotency strategy:
+- history tables use `onConflictDoNothing`
+- state tables use `onConflictDoUpdate`
+
+## Real-Time Bridge
+
+PostgreSQL triggers in `migrations/0001_triggers.sql` publish:
+- `summit_update`
+- `summit_log_insert`
+
+These channels are consumed by the API WebSocket layer.
+
 ## Deployment Notes
 
 - Docker image uses multi-stage Node 22 Alpine build.
 - Container runs as non-root and includes a healthcheck.
 - Startup executes a DNA connectivity check before starting the indexer process.
+- Docker build currently uses npm lockfile (`package-lock.json`) while local development commonly uses pnpm.
 
 ## Cross-Layer Parity
 

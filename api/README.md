@@ -24,9 +24,10 @@ For AI-oriented coding guidance and deeper architecture notes, read `AGENTS.md` 
 ## Environment
 
 - `DATABASE_URL` (required)
-- `DATABASE_SSL` (`true` to enable SSL)
+- `DATABASE_SSL` (`"true"` to enable SSL)
 - `DB_POOL_MAX` (default `15`)
 - `PORT` (default `3001`)
+- `NODE_ENV` (`production` hides debug entries from `/` discovery payload)
 
 ## Quick Start
 
@@ -54,48 +55,103 @@ curl http://localhost:3001/health
 - Start: `pnpm start`
 - Typecheck only: `pnpm exec tsc --noEmit`
 
-## REST and WebSocket Surface
+## REST API
 
-REST routes include:
+### Endpoint Summary
 
-- `/` (endpoint discovery payload)
-- `/health`
-- `/beasts/all`
-- `/beasts/:owner`
-- `/beasts/stats/counts`
-- `/beasts/stats/top`
-- `/logs`
-- `/diplomacy`
-- `/diplomacy/all`
-- `/leaderboard`
-- `/quest-rewards/total`
-- `/adventurers/:player`
+- `GET /` discovery payload
+- `GET /health`
+- `GET /beasts/all`
+- `GET /beasts/:owner`
+- `GET /beasts/stats/counts`
+- `GET /beasts/stats/top`
+- `GET /logs`
+- `GET /diplomacy`
+- `GET /diplomacy/all`
+- `GET /leaderboard`
+- `GET /quest-rewards/total`
+- `GET /adventurers/:player`
 
-WebSocket endpoint:
+### Query Parameters and Response Shapes
 
-- `/ws`
-- Message types: `subscribe`, `unsubscribe`, `ping`
+`GET /beasts/all`
+- params: `limit` (default `25`, max `100`), `offset`, `prefix`, `suffix`, `beast_id`, `name`, `owner`, `sort` (`summit_held_seconds|level`)
+- returns: `{ data: Beast[], pagination: { limit, offset, total, has_more } }`
+
+`GET /logs`
+- params: `limit` (default `50`, max `100`), `offset`, `category`, `sub_category`, `player`
+- `category`/`sub_category` accept comma-separated values
+- returns: `{ data: LogEntry[], pagination: { limit, offset, total, has_more } }`
+
+`GET /beasts/stats/top`
+- params: `limit` (default `25`, max `100`), `offset`
+- returns: paginated top beasts sorted by summit hold time, bonus XP, death timestamp
+
+`GET /diplomacy`
+- params: `prefix` (required), `suffix` (required)
+- returns HTTP `400` if either is missing
+
+`GET /beasts/stats/counts`
+- returns total/alive/dead using alive definition:
+  - `last_death_timestamp < now - 86400`
+
+`GET /leaderboard`
+- returns owner-grouped reward sums
+- amounts are divided by `100000` for display
+
+`GET /adventurers/:player`
+- returns distinct adventurer IDs for the normalized player address
+
+Root discovery notes:
+- In development mode (`NODE_ENV != production`), `/` includes debug endpoint hints.
+- This service currently does not define corresponding `POST` handlers in `src/index.ts`.
+
+## WebSocket Protocol
+
+- Endpoint: `ws://localhost:3001/ws`
 - Channels: `summit`, `event`
-- Subscribe payload:
+- Message types: `subscribe`, `unsubscribe`, `ping`
+
+Subscribe example:
 
 ```json
 {"type":"subscribe","channels":["summit","event"]}
 ```
 
-In development mode (`NODE_ENV != production`), the `/` discovery payload also includes debug endpoint entries.
+Unsubscribe example:
 
-## Realtime Flow
+```json
+{"type":"unsubscribe","channels":["event"]}
+```
 
-`Indexer -> PostgreSQL NOTIFY -> SubscriptionHub LISTEN -> API WebSocket broadcast`
+Ping example:
+
+```json
+{"type":"ping"}
+```
+
+Server responses:
+- `{"type":"subscribed","channels":[...]}`
+- `{"type":"unsubscribed","channels":[...]}`
+- `{"type":"pong"}`
+
+Realtime pipeline:
+- `Indexer -> PostgreSQL NOTIFY (summit_update, summit_log_insert) -> SubscriptionHub LISTEN -> API WS broadcast`
 
 ## Runtime Notes
 
 - Address inputs are normalized to lowercase 66-char `0x`-padded form.
 - API is public read-only (no auth layer).
 - No dedicated caching layer is used.
+- Graceful shutdown closes WS subscriptions/listeners on `SIGINT`/`SIGTERM`.
+
+## Deployment Notes
+
+- Docker image uses multi-stage Node 22 Alpine build.
+- Container runs as non-root and includes a healthcheck against `/health`.
 
 ## CI
 
 API CI runs:
 
-`tsc --noEmit -> pnpm build`.
+`pnpm exec tsc --noEmit -> pnpm build`.

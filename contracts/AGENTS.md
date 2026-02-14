@@ -23,35 +23,43 @@ Read [`../AGENTS.md`](../AGENTS.md) first for shared game mechanics, addresses, 
   - `death_mountain_combat`
   - `death_mountain_beast`
 
+## Key Files
+
+| File | Purpose |
+| --- | --- |
+| `src/systems/summit.cairo` | Main contract implementation (`1208` lines). |
+| `src/models/beast.cairo` | `LiveBeastStats` StorePacking and parity vectors. |
+| `src/models/events.cairo` | Event definitions emitted by the contract. |
+| `src/logic/combat.cairo` | Pure combat math and randomization helpers. |
+| `src/logic/revival.cairo` | Pure revival timing/potion logic. |
+| `src/logic/poison.cairo` | Pure poison damage logic. |
+| `src/logic/quest.cairo` | Pure quest reward packing and calculations. |
+| `src/logic/beast_utils.cairo` | XP/level/streak utility logic. |
+| `src/constants.cairo` | Game constants and error strings. |
+| `src/erc20/interface.cairo` | `SummitERC20` trait (`transfer`, `burn_from`). |
+| `src/vrf.cairo` | VRF integration wrapper used by attack flow. |
+
 ## Architecture
-- Main contract: `src/systems/summit.cairo` (1208 lines).
-- Exposed interface: `ISummitSystem` (38 methods).
+- Exposed interface: `ISummitSystem` (`38` methods).
 - Components:
   - `OwnableComponent`
   - `UpgradeableComponent`
-- Logic split:
-  - `src/logic/combat.cairo`
-  - `src/logic/revival.cairo`
-  - `src/logic/poison.cairo`
-  - `src/logic/quest.cairo`
-  - `src/logic/beast_utils.cairo`
-- Models/events:
-  - `src/models/beast.cairo`
-  - `src/models/events.cairo`
-- Constants/errors:
-  - `src/constants.cairo`
+- Design rule: keep business logic in pure `src/logic/*`; entrypoints orchestrate storage + token I/O.
 
 ## Key Patterns
-- `LiveBeastStats` uses `StorePacking` into one felt252 (251-bit layout) in `src/models/beast.cairo`.
-- Business logic should stay in pure `src/logic/*`; contract entrypoints orchestrate storage + token I/O.
+- `LiveBeastStats` packs into one felt252 (`251` bits) in `src/models/beast.cairo`.
 - Token spend pattern:
   - burn consumables via `burn_from`
-  - transfer rewards via `transfer`.
-- Upgrade costs are enforced in contract using constants (`SPECIALS_COST`, `WISDOM_COST`, `DIPLOMACY_COST`).
+  - transfer rewards via `transfer`
+- Upgrade costs are enforced in constants (`SPECIALS_COST`, `WISDOM_COST`, `DIPLOMACY_COST`).
 - VRF integration is optional per attack and routed via `src/vrf.cairo`.
 
+## ERC20 Interface Rule
+- Use project trait `SummitERC20` from `src/erc20/interface.cairo` for game token operations.
+- Do not replace spend paths with standard OZ `IERC20` dispatchers unless you are changing contract interfaces intentionally.
+
 ## External Integrations
-- Beast NFT (ERC721 + Beast metadata dispatcher).
+- Beast NFT (ERC721 + beast metadata dispatcher).
 - Loot Survivor beast data contract (`IBeastSystemsDispatcher`).
 - Death Mountain combat/beast libraries.
 - Reward + consumable token contracts:
@@ -67,14 +75,15 @@ Read [`../AGENTS.md`](../AGENTS.md) first for shared game mechanics, addresses, 
 - Integration tests in `contracts/tests/test_summit.cairo` are fork-based mainnet tests (`#[fork("mainnet")]`, `#[fork("mainnet_6704808")]`).
 - Fork profiles are defined in `Scarb.toml`:
   - `mainnet` (`latest`)
-  - `mainnet_6704808` (pinned block).
+  - `mainnet_6704808` (pinned block)
 - Test fixtures include real player addresses and a large whale token-id set for stress coverage.
-- Pure logic modules also include inline unit tests (`#[cfg(test)]`).
+- Pure logic modules include inline unit tests (`#[cfg(test)]`).
 
 ## Commands
 - Format check: `scarb fmt --check`
+- Build: `scarb build`
 - Test: `scarb test` or `snforge test`
-- Coverage: `scarb test --coverage`
+- Coverage: `scarb test --coverage` or `snforge test --coverage`
 
 ## CI for Contracts
 - Triggered by `contracts/**`.

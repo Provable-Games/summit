@@ -65,6 +65,10 @@ AI review gates:
   - `client/scripts/test-live-beast-stats-parity.ts`
 - Rule: any bit-layout or field-order change must update all three layers and both parity scripts in one PR.
 
+Run parity after packing changes:
+- `cd client && pnpm test:parity`
+- `cd indexer && pnpm test:parity`
+
 ## Shared Game Mechanics Reference
 - Combat uses `death_mountain_combat` with minimum damage `4` (`contracts/src/constants.cairo`).
 - Token unit scale: `TOKEN_DECIMALS = 1e18` (`contracts/src/constants.cairo`).
@@ -124,3 +128,10 @@ Sources:
 - Cartridge mainnet RPC (client): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9`
 - Cartridge mainnet RPC (contracts/indexer): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`
 - Cartridge Torii (client): `https://api.cartridge.gg/x/pg-mainnet-10/torii`
+
+## Common Anti-Patterns (Do NOT)
+- Do not merge partial `LiveBeastStats` packing changes; update contracts + indexer + client + parity scripts together.
+- Do not use Tailwind in client work; this repo uses MUI + Emotion.
+- Do not treat `quest_rewards_claimed` as append-only data; it is upserted state keyed by `beast_token_id`.
+- Do not use Starkli for deployments; use `sncast` profiles in `contracts/snfoundry.toml`.
+- Do not introduce alternate ERC20 spend traits in contracts; use `contracts/src/erc20/interface.cairo` (`transfer`, `burn_from`).
