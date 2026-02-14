@@ -1,27 +1,90 @@
-# Repository Guidelines
+# Client Agent Guide
 
-## Project Structure & Module Organization
-This repository is a React 18 + Vite frontend. Source lives in `src/`, static assets in `public/` and `src/assets/`. Key folders:
-- `src/components/` UI (for example `Summit.tsx`, dialogs in `src/components/dialogs/`).
-- `src/contexts/` providers and side effects (`starknet.tsx`, `controller.tsx`, `GameDirector.tsx`, `sound.tsx`).
-- `src/stores/` Zustand stores (`gameStore.ts`, `autopilotStore.ts`).
-- `src/dojo/` Dojo SDK hooks (`useSystemCalls.ts`, `useGameTokens.ts`).
-- `src/api/` direct RPC helpers and `src/utils/` shared helpers and config (`networkConfig.ts`).
+Read [`../AGENTS.md`](../AGENTS.md) first for shared mechanics, addresses, CI filters, and cross-layer packing rules.
 
-## Build, Test, and Development Commands
-- `pnpm install`: install dependencies.
-- `pnpm dev`: run the dev server at `http://localhost:5173`.
-- `pnpm build`: TypeScript check plus production build.
-- `pnpm lint`: ESLint checks.
+## Role
+- `client/` is the React 18 SPA for gameplay, wallet/session handling, and realtime state projection.
 
-## Coding Style & Naming Conventions
-Use 2-space indentation, double quotes, and semicolons. Components are `PascalCase.tsx`, hooks are `useXxx`, and stores are named `*Store.ts`. Follow existing patterns in `src/contexts` and `src/stores` before introducing new abstractions.
+## Stack
+- React `18.2.0`
+- Vite `5.4.21`
+- TypeScript `5.8.3`
+- MUI `7.0.2` + Emotion (`@emotion/react`, `@emotion/styled`)
+- Zustand `4.5.6`
+- Framer Motion `12.7.4`
+- Vitest `3.1.1`
 
-## Testing Guidelines
-There is no formal test suite in this client. Validate changes with `pnpm build` and `pnpm lint`, and do a quick UI smoke test in the browser for affected flows.
+Blockchain/client SDK stack:
+- `starknet` `8.5.2`
+- `@starknet-react/core` `5.0.1`
+- `@starknet-react/chains` `5.0.1`
+- `@cartridge/controller` `0.12.1`
+- `@cartridge/connector` `0.12.1`
+- Dojo packages pinned in `pnpm.overrides` (`@dojoengine/sdk` `1.7.3`, core/utils/torii-client `1.7.2`)
 
-## Commit & Pull Request Guidelines
-Commit messages are mixed, but prefer `type(scope): short summary` (example: `feat(client): add leaderboard filter`). PRs should include a concise summary, tests run (for example `pnpm lint`), and screenshots or short clips for UI changes. Call out any changes to network config or environment variables.
+## Core Architecture Patterns
+- Provider composition starts in `src/main.tsx`:
+  - `PostHogProvider` -> `DynamicConnectorProvider` -> `SoundProvider` -> `QuestGuideProvider` -> `App`.
+- Starknet provider wiring lives in `src/contexts/starknet.tsx` (`StarknetConfig`, connectors, RPC provider).
+- `src/contexts/GameDirector.tsx` is the gameplay orchestrator:
+  - executes game actions
+  - consumes API + WS streams
+  - merges realtime updates into stores
+  - dispatches notifications.
+- Zustand split:
+  - `src/stores/gameStore.ts` for core game/UI state.
+  - `src/stores/autopilotStore.ts` for autopilot policy and spend counters.
+- Contract call assembly is centralized in `src/dojo/useSystemCalls.ts`.
+- WebSocket sync is centralized in `src/hooks/useWebSocket.ts`.
+- Packed `LiveBeastStats` decoding for parity-sensitive paths lives in `src/utils/translation.ts`.
 
-## Configuration & Architecture Notes
-Environment variables live in `.env` and use the `VITE_PUBLIC_*` prefix; do not commit secrets. The provider hierarchy in `src/main.tsx` matters (wallet and Dojo providers before game orchestration), and `GameDirector` is the central coordinator for game state updates.
+## Data Flow
+`Contract Event -> Indexer -> PostgreSQL (NOTIFY) -> API WebSocket -> useWebSocket -> GameDirector -> Zustand stores -> React components`
+
+Parallel read path:
+- Dojo/Torii SQL queries (for token/collection reads) flow through `src/dojo/useGameTokens.ts` using `currentNetworkConfig.toriiUrl`.
+
+## Directory Map
+- `src/components/`: gameplay UI and dialogs.
+- `src/contexts/`: provider layer and orchestration (`GameDirector`, wallet, sound, controller).
+- `src/dojo/`: Starknet call helpers and token hooks.
+- `src/hooks/`: realtime hooks (`useWebSocket`).
+- `src/stores/`: Zustand state.
+- `src/utils/`: theme, translation, network config, unpack helpers.
+- `src/api/`: REST/RPC clients.
+- `src/types/`: shared TS domain types.
+
+## Styling Rules
+- Use MUI theme + Emotion only.
+- Primary theme: `src/utils/themes.ts`.
+- Do not introduce Tailwind.
+
+## TypeScript and Config
+- `tsconfig.json` is intentionally non-strict:
+  - `strict: false`
+  - `noImplicitAny: false`
+  - `strictNullChecks: false`
+- Path alias: `@/* -> src/*`.
+
+## Tests
+- Test runner: Vitest.
+- Coverage is limited (9 test files currently under `src/`).
+- Cross-layer packing parity script: `scripts/test-live-beast-stats-parity.ts`.
+
+## Commands
+- Dev: `pnpm dev`
+- Build: `pnpm build`
+- Lint: `pnpm lint`
+- Tests: `pnpm test`
+- Coverage: `pnpm test:coverage`
+- Parity: `pnpm test:parity`
+
+## CI for Client
+- Triggered by `client/**` and by `contracts/src/models/beast.cairo`.
+- Job sequence: lint -> build -> parity -> coverage -> Codecov.
+
+## Environment Variables
+- `VITE_PUBLIC_CHAIN`
+- `VITE_PUBLIC_SUMMIT_ADDRESS`
+- `VITE_PUBLIC_POSTHOG_KEY`
+- `VITE_PUBLIC_POSTHOG_HOST`

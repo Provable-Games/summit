@@ -1,178 +1,106 @@
-[![Scarb](https://img.shields.io/badge/Scarb-2.15.1-blue)](https://github.com/software-mansion/scarb)
-[![Starknet Foundry](https://img.shields.io/badge/snforge-0.56.0-purple)](https://foundry-rs.github.io/starknet-foundry/)
-[![codecov](https://codecov.io/gh/Provable-Games/summit/graph/badge.svg?token=FNL0D8QP4P)](https://codecov.io/gh/Provable-Games/summit)
+# Savage Summit Monorepo
 
-# Savage Summit
+Savage Summit is a Starknet king-of-the-hill game. Players send Beast NFTs to contest the summit, use consumables, and earn tokenized rewards.
 
-A fully onchain, king-of-the-hill game featuring collectible NFT beasts from [Loot Survivor](https://lootsurvivor.io). Battle, level up, and upgrade your Beasts while earning token rewards!
+For AI-oriented contributor instructions, see `AGENTS.md`. For human onboarding, use this README first.
 
-## Overview
+## At a Glance
 
-In Savage Summit, one beast holds the summit at any time. Challengers attack to claim the position, earning XP and rewards while the current king accumulates token rewards.
+- Summit control rotates through onchain combat.
+- Beast progression combines XP, stat upgrades, and consumable token usage.
+- Realtime UX is driven by `Indexer -> PostgreSQL NOTIFY -> API WS -> Client`.
 
-- **Summit Combat** - Turn-based battles with attack streaks, critical hits, and counter-attacks
-- **Beast Progression** - Level up stats, unlock special abilities, and earn XP from victories
-- **Consumable Potions** - Attack boosts, revival acceleration, extra lives, and poison
-- **Diplomacy System** - Beasts with matching names share rewards and boost each other
+## Architecture
 
-**Get Beasts:** Play [Loot Survivor](https://lootsurvivor.io) or purchase on [Realms Marketplace](https://empire.realms.world/trade/beasts)
-
-## Tech Stack
-
-| Layer     | Technology                                   |
-| --------- | -------------------------------------------- |
-| Frontend  | React 18, TypeScript, Vite, Material-UI      |
-| Web3      | Starknet.js, Cartridge Connector, Dojo SDK   |
-| Contracts | Cairo, Scarb 2.15.1, Starknet Foundry 0.56.0 |
-| Libraries | OpenZeppelin Cairo, Dojo Engine              |
-
-## Project Structure
-
-```
-summit/
-├── client/           # React web application
-│   ├── src/
-│   │   ├── components/   # UI components
-│   │   ├── contexts/     # React contexts (Starknet, Sound, etc.)
-│   │   ├── dojo/         # Dojo SDK integration
-│   │   ├── api/          # API clients (Ekubo, Starknet)
-│   │   └── stores/       # Zustand state management
-│   └── package.json
-│
-├── contracts/        # Cairo smart contracts
-│   ├── src/
-│   │   ├── systems/      # Summit game logic
-│   │   ├── models/       # Beast data structures
-│   │   ├── logic/        # Pure business logic
-│   │   └── constants.cairo
-│   └── tests/
-│
-├── api/              # Backend API server
-│   └── src/
-│
-├── indexer/          # Blockchain event indexer
-│   └── src/
-│
-└── .github/workflows/  # CI/CD
+```text
+Client (React SPA) -> Summit Contract (Cairo on Starknet)
+       ^                            |
+       |                            v
+       +-- API (Hono REST + WS) <- Indexer (Apibara DNA)
+                ^                        |
+                +------ PostgreSQL <-----+
 ```
 
-## Getting Started
+## Monorepo Layout
 
-### Prerequisites
+| Path | Purpose | Human Docs | AI Docs |
+| --- | --- | --- | --- |
+| `client/` | React game UI, wallet/session, realtime UX | [`client/README.md`](client/README.md) | [`client/AGENTS.md`](client/AGENTS.md) |
+| `contracts/` | Cairo game logic and storage packing | [`contracts/README.md`](contracts/README.md) | [`contracts/AGENTS.md`](contracts/AGENTS.md) |
+| `indexer/` | Starknet event indexing into PostgreSQL | [`indexer/README.md`](indexer/README.md) | [`indexer/AGENTS.md`](indexer/AGENTS.md) |
+| `api/` | Read API and WebSocket relay | [`api/README.md`](api/README.md) | [`api/AGENTS.md`](api/AGENTS.md) |
 
-- Node.js 20+
-- pnpm
-- [Scarb 2.15.1](https://docs.swmansion.com/scarb/)
-- [Starknet Foundry 0.56.0](https://foundry-rs.github.io/starknet-foundry/)
+## Prerequisites
 
-### Client Development
+- Rust `1.89.0`
+- Scarb `2.15.1`
+- Starknet Foundry (`snforge`) `0.56.0`
+- Node.js `22`
+- pnpm `10`
+- PostgreSQL (local or hosted)
 
-```bash
-cd client
-pnpm install
-pnpm dev
-```
+Toolchain versions come from `.tool-versions` and `.github/workflows/pr-ci.yml`.
 
-The client runs at `http://localhost:5173` and connects to Starknet mainnet by default.
+## Local Development
 
-### Smart Contracts
+1. Install dependencies per Node component:
+   - `cd client && pnpm install`
+   - `cd indexer && pnpm install`
+   - `cd api && pnpm install`
+2. Configure environment variables for each component (see each component README).
+3. Start services in separate terminals:
+   - Indexer: `cd indexer && pnpm db:migrate && pnpm dev`
+   - API: `cd api && pnpm dev`
+   - Client: `cd client && pnpm dev`
+4. Run contract tests when changing Cairo logic:
+   - `cd contracts && scarb fmt --check && scarb test --coverage`
 
-```bash
-cd contracts
+## Cross-Layer Parity Rule
 
-# Run tests
-scarb test
+`LiveBeastStats` bit packing is shared across contracts, indexer, and client.
 
-# Check formatting
-scarb fmt --check
+- Canonical model: `contracts/src/models/beast.cairo`
+- Indexer decoder: `indexer/src/lib/decoder.ts`
+- Client decoder: `client/src/utils/translation.ts`
+- Parity tests:
+  - `indexer/scripts/test-live-beast-stats-parity.ts`
+  - `client/scripts/test-live-beast-stats-parity.ts`
 
-# Build
-scarb build
-```
+If you change packing layout or field order, update all three layers and both parity tests in one PR.
 
-## Configuration
+## CI Overview
 
-### Client Environment Variables
+PR CI is path-filtered and runs component-specific checks:
 
-Create `client/.env`:
+- Contracts: `scarb fmt --check`, `scarb test --coverage`, Codecov upload.
+- Client: `pnpm lint`, `pnpm build`, `pnpm test:parity`, `pnpm test:coverage`, Codecov upload.
+- Indexer: `tsc --noEmit`, `pnpm build`, `pnpm test:parity`, `pnpm test:coverage`, Codecov upload.
+- API: `tsc --noEmit`, `pnpm build`.
 
-```env
-VITE_PUBLIC_CHAIN=SN_MAIN
-VITE_PUBLIC_SUMMIT_ADDRESS=0x0784e5bac3de23ad40cf73e61c7b559dafb2495136ca474d1603815bb223408c
-```
+Automated AI review jobs run for scoped changes, and any `CRITICAL` or `HIGH` finding fails CI.
 
-### Contract Parameters
+## Mainnet Reference
 
-Key game constants in `contracts/src/constants.cairo`:
+Primary contracts:
 
-| Parameter                   | Value       | Description                   |
-| --------------------------- | ----------- | ----------------------------- |
-| `BASE_REVIVAL_TIME_SECONDS` | 86400 (24h) | Time before beast can revive  |
-| `BEAST_MAX_EXTRA_LIVES`     | 4000        | Maximum extra lives per beast |
-| `BEAST_MAX_BONUS_HEALTH`    | 2000        | Maximum bonus health          |
-| `MINIMUM_DAMAGE`            | 4           | Floor damage per attack       |
+- Summit: `0x0455c73741519a2d661cad966913ee5ccb24596c518ad67dd1d189b49c15d4fa`
+- Beast NFT: `0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4`
+- Dojo World: `0x02ef591697f0fd9adc0ba9dbe0ca04dabad80cf95f08ba02e435d9cb6698a28a`
 
-## Game Mechanics
+Network endpoints:
 
-### Beast Stats
+- Starknet RPC (client): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9`
+- Starknet RPC (contracts/indexer): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`
+- Torii: `https://api.cartridge.gg/x/pg-mainnet-10/torii`
 
-Upgraded using **$SKULL Tokens** (earned when beasts $SKULL adventurers in Loot Survivor):
+## Contributing Workflow
 
-| Stat      | Cost           | Effect                             |
-| --------- | -------------- | ---------------------------------- |
-| Luck      | 1 $SKULL/level | Critical hit chance (up to 95%)    |
-| Spirit    | 1 $SKULL/level | Reduces 24h revival cooldown       |
-| Specials  | 10 $SKULL      | Unlocks prefix/suffix name bonuses |
-| Diplomacy | 15 $SKULL      | Share rewards with matching beasts |
-| Wisdom    | 20 $SKULL      | Earn XP when defending             |
+1. Keep changes scoped to the component you modify.
+2. Run that component's local checks before opening a PR.
+3. If you touch `contracts/src/models/beast.cairo`, run both parity scripts (`client` and `indexer`) in the same PR.
 
-**Vitality:** Use **Corpse Tokens** (from dead adventurers) to add bonus health (max 2,000)
+## Useful Links
 
-### Consumables
-
-| Potion     | Effect                           |
-| ---------- | -------------------------------- |
-| Attack     | Boost damage output              |
-| Revival    | Reduce revival cooldown          |
-| Extra Life | Additional lives in combat       |
-| Poison     | Damage over time on summit beast |
-
-### Game Phases
-
-1. **Summit Phase** - Open combat period
-2. **Submission Phase** - Register beasts for leaderboard
-3. **Distribution Phase** - Rewards distributed to top positions
-
-## Contract Architecture
-
-The main `summit_systems` contract implements:
-
-- `start_summit()` - Initialize the summit
-- `attack()` - Battle with beasts (supports VRF, multi-beast attacks)
-- `feed()` - Increase beast health using corpse tokens
-- `apply_stat_points()` - Upgrade beast attributes
-- `apply_poison()` - Apply poison to summit beast
-- `add_extra_life()` - Add extra lives to a beast
-- `claim_rewards()` - Claim summit holding rewards
-- `claim_quest_rewards()` - Claim quest completion rewards
-
-## Deployment
-
-**Mainnet Contract:** [0x0784e5bac3de23ad40cf73e61c7b559dafb2495136ca474d1603815bb223408c](https://voyager.online/contract/0x0784e5bac3de23ad40cf73e61c7b559dafb2495136ca474d1603815bb223408c)
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Run tests: `scarb test` and `pnpm lint`
-4. Submit a pull request
-
-## License
-
-MIT
-
-## Links
-
-- [Game Documentation](https://docs.provable.games/summit) - Game Guide
-- [Loot Survivor](https://lootsurvivor.io) - Collect Beasts
-- [Realms Marketplace](https://empire.realms.world/trade/beasts) - Buy beasts
+- Loot Survivor: `https://lootsurvivor.io`
+- Realms Marketplace (Beasts): `https://empire.realms.world/trade/beasts`
+- Summit docs: `https://docs.provable.games/summit`

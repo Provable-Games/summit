@@ -1,56 +1,126 @@
-# Repository Guidelines
+# Savage Summit Monorepo
 
-## Role & Context
+Read this file first, then read the component guide you are modifying.
 
-You are a senior fullstack developer specializing in complete feature development with expertise across backend and frontend technologies. Your primary focus is delivering cohesive, end-to-end solutions that work seamlessly from database to user interface. On the frontend, you specialize in modern web applications with deep expertise in React 18+, Vite 5+, and TypeScript 5+. On the backend, you specialize in Cairo and Starknet smart contract development.
+## Project Identity
+- Savage Summit is a Starknet king-of-the-hill game.
+- Players send Beast NFTs to attack the summit, apply upgrades/potions, and claim tokenized rewards.
 
-## Project Structure & Module Organization
+## Architecture
+```
+Client (React SPA) -> Summit contract (Cairo on Starknet)
+       ^                           |
+       |                           v
+       +-- API (Hono REST + WS) <- Indexer (Apibara DNA)
+                ^                       |
+                +------ PostgreSQL <----+
+```
 
-- `client/`: React 18 + Vite frontend. Source in `client/src`, static assets in `client/public`.
-- `contracts/`: Cairo smart contracts. Sources in `contracts/src`, tests in `contracts/tests`, assets in `contracts/assets`.
-- `dojo/`: Dojo world/event contracts for Torii indexing. Sources in `dojo/src`.
-- Shared docs: `README.md` for overview, `CLAUDE.md` plus per-folder `CLAUDE.md` files for deeper module notes.
+## Monorepo Map
 
-## Build, Test, and Development Commands
+| Directory | Purpose | Component Guide |
+| --- | --- | --- |
+| `client/` | React game UI + wallet + realtime state | [`client/AGENTS.md`](client/AGENTS.md) |
+| `contracts/` | Cairo game logic and storage packing | [`contracts/AGENTS.md`](contracts/AGENTS.md) |
+| `indexer/` | Starknet event indexing + DB materialization | [`indexer/AGENTS.md`](indexer/AGENTS.md) |
+| `api/` | Read API + WS relay from PostgreSQL notifications | [`api/AGENTS.md`](api/AGENTS.md) |
 
-From repo root:
+## Shared Toolchain
+- Rust: `1.89.0` (`.tool-versions`)
+- Scarb: `2.15.1` (`.tool-versions`)
+- Starknet Foundry (`snforge`): `0.56.0` (`.tool-versions`)
+- Node runtime in CI: `22` (`.github/workflows/pr-ci.yml`)
+- pnpm in CI: `10` (`.github/workflows/pr-ci.yml`)
 
-- `cd client && pnpm install` installs frontend dependencies.
-- `cd client && pnpm dev` starts the dev server at `http://localhost:5173`.
-- `cd client && pnpm build` runs TypeScript checks and a production build.
-- `cd client && pnpm lint` runs ESLint.
+## CI Pipeline Summary (`.github/workflows/pr-ci.yml`)
 
-Contracts:
+Path filters:
+- `contracts`: `contracts/**`
+- `client_ci`: `client/**` or `contracts/src/models/beast.cairo`
+- `client_review`: `client/**`
+- `indexer_ci`: `indexer/**` or `contracts/src/models/beast.cairo`
+- `api`: `api/**`
+- `indexer_api_ci`: `indexer/**` or `api/**` or `contracts/src/models/beast.cairo`
+- `indexer_api_review`: `indexer/**` or `api/**`
+- `general_review`: files outside component folders
 
-- `cd contracts && scarb build` compiles Cairo.
-- `cd contracts && scarb test` runs snforge tests.
-- `cd contracts && scarb fmt --check` checks formatting (`scarb fmt -w` to fix).
+Per-component CI:
+- Contracts: `scarb fmt --check` -> `scarb test --coverage` -> Codecov.
+- Client: `pnpm lint` -> `pnpm build` -> `pnpm test:parity` -> `pnpm test:coverage` -> Codecov.
+- Indexer: `tsc --noEmit` -> `pnpm build` -> `pnpm test:parity` -> `pnpm test:coverage` -> Codecov.
+- API: `tsc --noEmit` -> `pnpm build`.
 
-Dojo:
+AI review gates:
+- Claude + Codex jobs run for `contracts`, `client`, `indexer/api`, and `general` scopes.
+- Any `[CRITICAL]` or `[HIGH]` finding fails the job.
+- Final `pr-ci` job fails if any required job fails/cancels.
 
-- `cd dojo && sozo build` compiles the world.
-- `cd dojo && sozo test` runs Dojo tests.
-- `cd dojo && scarb fmt -w` formats Cairo.
+## Cross-Layer Data Flow and Parity
+- Canonical packed model: `contracts/src/models/beast.cairo` (`LiveBeastStats`, 251-bit felt252 packing).
+- Indexer decoder must match exactly: `indexer/src/lib/decoder.ts`.
+- Client decoder must match exactly: `client/src/utils/translation.ts`.
+- Parity checks:
+  - `contracts/src/models/beast.cairo` cross-layer constant.
+  - `indexer/scripts/test-live-beast-stats-parity.ts`
+  - `client/scripts/test-live-beast-stats-parity.ts`
+- Rule: any bit-layout or field-order change must update all three layers and both parity scripts in one PR.
 
-## Coding Style & Naming Conventions
+## Shared Game Mechanics Reference
+- Combat uses `death_mountain_combat` with minimum damage `4` (`contracts/src/constants.cairo`).
+- Token unit scale: `TOKEN_DECIMALS = 1e18` (`contracts/src/constants.cairo`).
+- Level model:
+  - Effective XP = `base_level^2 + bonus_xp`
+  - Current level = `floor(sqrt(effective_xp))` (`contracts/src/logic/beast_utils.cairo`)
+- XP gain on attack: `10 + attack_streak` if beast has not reached max bonus levels.
+- Max bonus levels: `40` (`BEAST_MAX_BONUS_LVLS`).
+- Upgrade costs in skull tokens:
+  - `specials = 10`
+  - `diplomacy = 15`
+  - `wisdom = 20`
+  - `spirit`/`luck` points cost `1` each
+- Stat limits:
+  - `spirit <= 100`, `luck <= 100`
+  - `extra_lives <= 4000`
+  - `bonus_health <= 2000`
+  - `MAX_REVIVAL_COUNT = 63`
+- Revival:
+  - Base revival window: `86400` seconds.
+  - `REDUCED_REVIVAL_TIME_SECONDS = 57600` (16h) exists as a constant.
+  - Potions required before natural revive: `revival_count + 1`.
+  - Current revival logic path uses base window + spirit reduction (`contracts/src/logic/revival.cairo`), not the reduced constant directly.
+- Poison:
+  - Damage = `elapsed_seconds * poison_count`
+  - Applies to current health, then extra lives
+  - Never kills outright (floors to `1` HP)
+- Quest rewards (per beast) are additive, max tested total `95` (`contracts/src/logic/quest.cairo`).
+- UI reward constants used by client orchestrator:
+  - Summit reward rate: `0.0075`/sec
+  - Diplomacy reward rate: `0.0005`/sec
+  - Quest pool target: `100`
+  - Source: `client/src/contexts/GameDirector.tsx`
 
-- TypeScript/React: 2-space indent, double quotes, semicolons; components are `PascalCase.tsx`, hooks are `useXxx`, stores are `*Store.ts`.
-- Cairo: snake_case modules/files, format with `scarb fmt` (120-char max line length, sorted module items); keep pure logic under `contracts/src/logic/`.
-- Follow existing patterns in each subproject before introducing new abstractions.
+## Mainnet Contract Addresses
 
-## Testing Guidelines
+Primary game contracts:
+- Summit: `0x0455c73741519a2d661cad966913ee5ccb24596c518ad67dd1d189b49c15d4fa`
+- Beast NFT: `0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4`
+- Dojo World: `0x02ef591697f0fd9adc0ba9dbe0ca04dabad80cf95f08ba02e435d9cb6698a28a`
 
-- Frontend has no formal test suite; validate with `pnpm build` and `pnpm lint`, plus a quick UI smoke test.
-- Contract tests live in `contracts/tests/test_*.cairo` and run via `scarb test` (snforge).
-- Dojo tests (if added) should be runnable via `sozo test`.
+Game token contracts:
+- ATTACK: `0x03e2d0ba6993e2662ba7d14f2faf5f60678fd99651db4f93b3994c71e089ee9f`
+- REVIVE: `0x0581959744ccce11c168ce02186e4d9a8221b28a8e8336a5f28b44302aedf2c7`
+- EXTRA LIFE: `0x06db32714906b760273f33a1f9cfd1a7a3c9a03d9405014f0a9de8dda1f279cb`
+- POISON: `0x0802c53c6007540e57390eec9b3dde3c370b54d90fff220bb3fd9e1e0d16c68`
+- SKULL: `0x05dff27b8cdef20e537b5a33bf1feb4dbc5fb0ebfcb59e33cd95a075f5eb8916`
+- CORPSE: `0x01f40a78e8d3e0687e30fc173a28cc62cdf976187f23f778b792a71f16e4482f`
+- SURVIVOR: `0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b`
 
-## Commit & Pull Request Guidelines
+Sources:
+- `client/.env`
+- `client/src/utils/networkConfig.ts`
+- `indexer/apibara.config.ts`
 
-- Git history mixes short messages and Conventional Commit style (e.g., `fix: ...`, `perf(contracts): ...`, `refactor(contracts): ...`), sometimes with PR numbers like `(#55)`.
-- Prefer `type(scope): short summary` with scopes like `client`, `contracts`, or `dojo`; add issue/PR references when relevant.
-- PRs should include a concise summary, tests run (e.g., `pnpm lint`, `scarb test`), and screenshots or clips for UI changes; call out any contract storage/event changes.
-
-## Configuration & Tooling
-
-- Tool versions are pinned in `.tool-versions` (scarb, snforge, sozo).
-- Frontend environment variables live in `client/.env` (e.g., `VITE_PUBLIC_*`); keep secrets out of git.
+## RPC Endpoints
+- Cartridge mainnet RPC (client): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9`
+- Cartridge mainnet RPC (contracts/indexer): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`
+- Cartridge Torii (client): `https://api.cartridge.gg/x/pg-mainnet-10/torii`
