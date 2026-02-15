@@ -39,10 +39,6 @@ function Summit() {
   const processingSpectatorRef = useRef<boolean>(false)
   const spectatorAnimSeqRef = useRef<number>(0)
 
-  const originalExperience = Math.pow(summit.beast.level, 2);
-  const currentExperience = originalExperience + summit.beast.bonus_xp;
-  const nextLevelExperience = Math.pow(summit.beast.current_level + 1, 2);
-
   const strike = useLottie({
     animationData: strikeAnim,
     loop: false,
@@ -58,7 +54,7 @@ function Summit() {
       if (summit?.owner) {
         try {
           const name = await lookupAddressName(summit.owner);
-          setCartridgeName(name);
+          setCartridgeName(name ?? null);
         } catch {
           setCartridgeName(null);
         }
@@ -84,7 +80,7 @@ function Summit() {
         let playerName = 'Unknown';
         if (poisonEvent.player) {
           try {
-            playerName = await lookupAddressName(poisonEvent.player);
+            playerName = (await lookupAddressName(poisonEvent.player)) || 'Unknown';
           } catch {
             playerName = 'Unknown';
           }
@@ -160,17 +156,18 @@ function Summit() {
     }
   }, [selectedBeasts, summit])
 
-  const summitMaxHealth = summit.beast.health + summit.beast.bonus_health;
-  const summitTotalPoolBefore =
-    (summit.beast.extra_lives || 0) * summitMaxHealth + summit.beast.current_health;
+  const summitMaxHealth = summit ? summit.beast.health + summit.beast.bonus_health : 1;
+  const summitTotalPoolBefore = summit
+    ? (summit.beast.extra_lives || 0) * summitMaxHealth + summit.beast.current_health
+    : 0;
   const summitTotalPoolAfter = summitTotalPoolBefore - estimatedDamage;
   const expectedTakeSummit = estimatedDamage > 0 && summitTotalPoolAfter <= 0;
   const expectedExtraLivesAfter = expectedTakeSummit
     ? 0
     : Math.floor((summitTotalPoolAfter - 1) / summitMaxHealth);
   const expectedExtraLivesLost = expectedTakeSummit
-    ? (summit.beast.extra_lives || 0)
-    : Math.max(0, (summit.beast.extra_lives || 0) - expectedExtraLivesAfter);
+    ? (summit?.beast.extra_lives || 0)
+    : Math.max(0, (summit?.beast.extra_lives || 0) - expectedExtraLivesAfter);
 
   const processSpectatorQueue = async () => {
     if (processingSpectatorRef.current) return;
@@ -188,13 +185,13 @@ function Summit() {
         let attackerName = 'Unknown';
         if (event.attacking_beast_owner) {
           try {
-            attackerName = await lookupAddressName(event.attacking_beast_owner);
+            attackerName = (await lookupAddressName(event.attacking_beast_owner)) || 'Unknown';
           } catch {
             attackerName = 'Unknown';
           }
         }
         // Build visual payload
-        const attackerBeastName = BEAST_NAMES[event.attacking_beast_id] || 'Unknown'
+        const attackerBeastName = BEAST_NAMES[event.attacking_beast_id as keyof typeof BEAST_NAMES] || 'Unknown'
         const primaryImageSrc = fetchBeastImage({
           name: attackerBeastName,
           shiny: event.attacking_beast_shiny,
@@ -208,7 +205,7 @@ function Summit() {
           const additionalCount = Math.min(event.beast_count - 1, 2); // Cap at 3 total images
           for (let i = 0; i < additionalCount; i++) {
             const randomId = beastIds[Math.floor(Math.random() * beastIds.length)];
-            const randomBeastName = BEAST_NAMES[randomId] || 'Unknown';
+            const randomBeastName = BEAST_NAMES[randomId as keyof typeof BEAST_NAMES] || 'Unknown';
             imageSrcs.push(fetchBeastImage({ name: randomBeastName, shiny: false, animated: false } as any));
           }
         }
@@ -262,6 +259,14 @@ function Summit() {
     spectatorQueueRef.current = [];
     setSpectatorDamage([]);
   }, [summit?.beast.token_id, pauseUpdates]);
+
+  if (!summit) {
+    return <Box sx={styles.summitContainer} />;
+  }
+
+  const originalExperience = Math.pow(summit.beast.level, 2);
+  const currentExperience = originalExperience + summit.beast.bonus_xp;
+  const nextLevelExperience = Math.pow(summit.beast.current_level + 1, 2);
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit.beast.token_id))
   const showAttack = !isSavage && !attackInProgress && selectedBeasts.length > 0
@@ -659,15 +664,13 @@ function Summit() {
         })}
       </AnimatePresence>
 
-      {summit && (
-        <SummitGiftModal
-          open={giftModalOpen}
-          close={() => setGiftModalOpen(false)}
-          beast={summit.beast}
-          ownerName={cartridgeName}
-          isSavage={isSavage}
-        />
-      )}
+      <SummitGiftModal
+        open={giftModalOpen}
+        close={() => setGiftModalOpen(false)}
+        beast={summit.beast}
+        ownerName={cartridgeName}
+        isSavage={isSavage}
+      />
     </Box>
   );
 }

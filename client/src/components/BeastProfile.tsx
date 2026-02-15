@@ -116,7 +116,7 @@ export default function BeastProfile({ beast }: BeastProfileProps) {
               <Typography sx={styles.pixelStreakTitle}>ATTACK STREAK</Typography>
               {attackStreak > 0 && !streakEnded && (
                 <Typography sx={styles.pixelStreakTimer}>
-                  {beast.token_id === summit.beast.token_id ? "PAUSED" : `ENDS IN ${timeLeft}`}
+                  {beast.token_id === summit?.beast.token_id ? "PAUSED" : `ENDS IN ${timeLeft}`}
                 </Typography>
               )}
             </Box>

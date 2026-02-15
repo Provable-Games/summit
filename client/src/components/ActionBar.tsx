@@ -30,6 +30,8 @@ import BeastDexModal from './dialogs/BeastDexModal';
 import BeastUpgradeModal from './dialogs/BeastUpgradeModal';
 import { MAX_BEASTS_PER_ATTACK } from '@/contexts/GameDirector';
 
+type PotionSelection = 'extraLife' | 'poison';
+
 function ActionBar() {
   const { executeGameAction } = useGameDirector();
   const { tokenBalances } = useController();
@@ -71,15 +73,15 @@ function ActionBar() {
     initializeMaxCapsFromBalances,
   } = useAutopilotStore();
 
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [potion, setPotion] = useState(null)
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [potion, setPotion] = useState<PotionSelection | null>(null)
   const [attackDropdownAnchor, setAttackDropdownAnchor] = useState<null | HTMLElement>(null);
   const [autopilotConfigOpen, setAutopilotConfigOpen] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeBeast, setUpgradeBeast] = useState<Beast | null>(null);
   const [beastDexFilterIds, setBeastDexFilterIds] = useState<number[] | null>(null);
 
-  const handleClick = (event: React.MouseEvent<HTMLElement>, potion: any) => {
+  const handleClick = (event: React.MouseEvent<HTMLElement>, potion: PotionSelection) => {
     setAnchorEl(event.currentTarget);
     setPotion(potion);
   };
@@ -129,7 +131,10 @@ function ActionBar() {
         return newBeast
       }).filter((beast: Beast) => !isBeastLocked(beast));
 
-      filtered = filtered.sort((a: Beast, b: Beast) => b.combat?.score - a.combat?.score);
+      filtered = filtered.sort(
+        (a: Beast, b: Beast) =>
+          (b.combat?.score ?? Number.NEGATIVE_INFINITY) - (a.combat?.score ?? Number.NEGATIVE_INFINITY)
+      );
 
       if (revivePotionsEnabled) {
         let revivePotionsRemaining = revivePotionMax - revivePotionsUsed;
@@ -142,12 +147,12 @@ function ActionBar() {
             }
           }
           return beast;
-        }).filter(Boolean);
+        }).filter((beast): beast is Beast => beast !== null);
       } else {
         filtered = filtered.filter((beast: Beast) => beast.current_health > 0);
       }
 
-      if (attackPotionsEnabled) {
+      if (attackPotionsEnabled && filtered.length > 0) {
         const attackPotions = calculateOptimalAttackPotions(filtered[0], summit, Math.min(attackPotionMax - attackPotionsUsed, 255));
         const newCombat = calculateBattleResult(filtered[0], summit, attackPotions);
         filtered[0].combat = newCombat;
@@ -257,7 +262,7 @@ function ActionBar() {
   }, [summit?.beast?.token_id]);
 
   useEffect(() => {
-    if (!autopilotEnabled || attackInProgress || !collectionWithCombat) return;
+    if (!autopilotEnabled || attackInProgress || !collectionWithCombat || !summit) return;
 
     const myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
 
@@ -272,7 +277,8 @@ function ActionBar() {
       return;
     };
 
-    if (poisonStrategy === 'conservative' && summit?.beast?.extra_lives >= poisonConservativeExtraLivesTrigger
+    if (poisonStrategy === 'conservative'
+      && summit.beast.extra_lives >= poisonConservativeExtraLivesTrigger
       && summit.poison_count < poisonConservativeAmount) {
       const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
       const poisonBalance = tokenBalances?.["POISON"] || 0;
@@ -293,7 +299,7 @@ function ActionBar() {
     } else if (attackStrategy === 'guaranteed') {
       const beasts = collectionWithCombat.slice(0, MAX_BEASTS_PER_ATTACK)
 
-      const totalSummitHealth = ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health;
+      const totalSummitHealth = ((summit.beast.health + summit.beast.bonus_health) * summit.beast.extra_lives) + summit.beast.current_health;
       const totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
       if (totalEstimatedDamage < (totalSummitHealth * 1.1)) {
         return;
@@ -305,7 +311,7 @@ function ActionBar() {
         safeAttack: false,
         vrf: true,
         extraLifePotions: extraLifePotions,
-        attackPotions: beasts[0].combat?.attackPotions || 0
+        attackPotions: beasts[0]?.combat?.attackPotions || 0
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -427,11 +433,11 @@ function ActionBar() {
                 <Box sx={styles.attackButtonGroup}>
                   <Box
                     id="attack-button"
-                    sx={[
-                      styles.attackButton,
-                      highlightAttackButton && styles.attackButtonEnabled,
-                      styles.attackButtonMain
-                    ]}
+                    sx={{
+                      ...styles.attackButton,
+                      ...(highlightAttackButton ? styles.attackButtonEnabled : {}),
+                      ...styles.attackButtonMain,
+                    }}
                     onClick={() => {
                       if (attackMode === 'autopilot') {
                         startAutopilot();
