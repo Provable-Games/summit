@@ -7,7 +7,7 @@ const hoisted = vi.hoisted(() => ({
   getLeaderboardMock: vi.fn(),
   lookupAddressNamesMock: vi.fn(),
   state: {
-    summit: null as any,
+    summit: null as unknown,
     leaderboard: [] as Array<{ owner: string; amount: number }>,
   },
 }));
