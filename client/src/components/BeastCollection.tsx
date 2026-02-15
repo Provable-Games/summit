@@ -123,9 +123,9 @@ function BeastCollection() {
           }
           
           if (a.combat?.score !== b.combat?.score) {
-            return b.combat?.score - a.combat?.score
+            return (b.combat?.score ?? Number.NEGATIVE_INFINITY) - (a.combat?.score ?? Number.NEGATIVE_INFINITY)
           } else if (b.combat?.attack !== a.combat?.attack) {
-            return b.combat?.attack - a.combat?.attack
+            return (b.combat?.attack ?? Number.NEGATIVE_INFINITY) - (a.combat?.attack ?? Number.NEGATIVE_INFINITY)
           } else if (b.power !== a.power) {
             return b.power - a.power
           } else if (b.health + b.bonus_health !== a.health + a.bonus_health) {
@@ -547,7 +547,7 @@ function BeastCollection() {
                           isSavage={isSavage}
                           isDead={isDead}
                           isLocked={isLocked}
-                          combat={combat}
+                          combat={combat ?? null}
                           selectionIndex={selectionIndex}
                           summitHealth={summit?.beast.current_health || 0}
                           attackMode={attackMode}
@@ -724,12 +724,14 @@ function BeastCollection() {
                               if (opt.key === 'none') {
                                 setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], 0] : selection));
                               } else if (opt.key === 'optimal') {
-                                const optimalPotions = calculateOptimalAttackPotions(
-                                  selectedBeasts.find(selection => selection[0].token_id === attackSettingsBeastId), summit, maxAvailable);
+                                const selected = selectedBeasts.find(selection => selection[0].token_id === attackSettingsBeastId);
+                                if (!selected || !summit) return;
+                                const optimalPotions = calculateOptimalAttackPotions(selected, summit, maxAvailable);
                                 setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], optimalPotions] : selection));
                               } else if (opt.key === 'max') {
-                                const maxPotions = calculateMaxAttackPotions(selectedBeasts.find(
-                                  selection => selection[0].token_id === attackSettingsBeastId), summit, maxAvailable);
+                                const selected = selectedBeasts.find(selection => selection[0].token_id === attackSettingsBeastId);
+                                if (!selected || !summit) return;
+                                const maxPotions = calculateMaxAttackPotions(selected, summit, maxAvailable);
                                 setSelectedBeasts((prev) => prev.map(selection => selection[0].token_id === attackSettingsBeastId ? [selection[0], selection[1], maxPotions] : selection));
                               }
                             }}

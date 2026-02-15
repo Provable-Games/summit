@@ -16,7 +16,8 @@
     "lint:suppress:any:check": "eslint . --rule '{\"@typescript-eslint/no-explicit-any\":\"error\"}' --suppressions-location .eslint-suppressions.json",
     "lint:suppress:prune": "eslint . --rule '{\"@typescript-eslint/no-explicit-any\":\"error\"}' --suppressions-location .eslint-suppressions.json --prune-suppressions",
     "preview": "vite preview",
-    "serve": "vite preview"
+    "serve": "vite preview",
+    "typecheck:strict": "tsc -p tsconfig.strict.json --noEmit"
   },
   "dependencies": {
     "@cartridge/connector": "^0.12.1",

@@ -98,6 +98,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const handleSummit = (data: SummitData) => {
     const current_level = getBeastCurrentLevel(data.level, data.bonus_xp);
     const sameBeast = summit?.beast.token_id === data.token_id;
+    const previousSummit = sameBeast ? summit : null;
 
     // If summit beast changed and we owned it, mark it as dead in our collection
     if (!sameBeast && summit?.beast.token_id) {
@@ -124,10 +125,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         revival_time: 0,
         kills_claimed: 0,
       } as Beast,
-      owner: data.owner,
-      block_timestamp: sameBeast ? summit.block_timestamp : Date.now() / 1000,
-      poison_count: sameBeast ? summit.poison_count : 0,
-      poison_timestamp: sameBeast ? summit.poison_timestamp : 0,
+      owner: data.owner ?? "",
+      block_timestamp: previousSummit?.block_timestamp ?? Date.now() / 1000,
+      poison_count: previousSummit?.poison_count ?? 0,
+      poison_timestamp: previousSummit?.poison_timestamp ?? 0,
     });
   };
 
@@ -142,7 +143,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       const beastId = eventData.beast_id as number;
       const beastPrefix = eventData.prefix as number | undefined;
       const beastSuffix = eventData.suffix as number | undefined;
-      const beastTypeName = BEAST_NAMES[beastId] || 'Unknown';
+      const beastTypeName = BEAST_NAMES[beastId as keyof typeof BEAST_NAMES] || 'Unknown';
       const prefixName = beastPrefix ? ITEM_NAME_PREFIXES[beastPrefix as keyof typeof ITEM_NAME_PREFIXES] : null;
       const suffixName = beastSuffix ? ITEM_NAME_SUFFIXES[beastSuffix as keyof typeof ITEM_NAME_SUFFIXES] : null;
 
@@ -163,7 +164,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     const addNotificationWithPlayer = (notification: Parameters<typeof addGameNotification>[0]) => {
       if (data.player) {
         lookupAddressName(data.player).then(playerName => {
-          addGameNotification({ ...notification, playerName });
+          addGameNotification({ ...notification, playerName: playerName || 'Unknown' });
         }).catch(() => {
           addGameNotification({ ...notification, playerName: 'Unknown' });
         });
@@ -392,8 +393,11 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   }, [actionFailed]);
 
   useEffect(() => {
-    async function processNextSummit() {
-      const newSummit = { ...nextSummit };
+    async function processNextSummit(currentSummit: Summit) {
+      const newSummit: Summit = {
+        ...currentSummit,
+        beast: { ...currentSummit.beast },
+      };
       const { currentHealth, extraLives } = applyPoisonDamage(newSummit);
       newSummit.beast.current_health = currentHealth;
       newSummit.beast.extra_lives = extraLives;
@@ -404,7 +408,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     if (nextSummit && !pauseUpdates) {
-      processNextSummit();
+      processNextSummit(nextSummit);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nextSummit, pauseUpdates]);
@@ -444,17 +448,17 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     if (poisonEvent) {
       if (poisonEvent.beast_token_id === summit?.beast.token_id) {
-        setSummit(prevSummit => ({
+        setSummit(prevSummit => prevSummit ? ({
           ...prevSummit,
-          poison_count: (prevSummit?.poison_count || 0) + poisonEvent.count,
+          poison_count: (prevSummit.poison_count || 0) + poisonEvent.count,
           poison_timestamp: poisonEvent.block_timestamp,
-        }));
+        }) : prevSummit);
       } else if (poisonEvent.beast_token_id === nextSummit?.beast.token_id) {
-        setNextSummit(prevSummit => ({
+        setNextSummit(prevSummit => prevSummit ? ({
           ...prevSummit,
-          poison_count: (prevSummit?.poison_count || 0) + poisonEvent.count,
+          poison_count: (prevSummit.poison_count || 0) + poisonEvent.count,
           poison_timestamp: poisonEvent.block_timestamp,
-        }));
+        }) : prevSummit);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -503,60 +507,85 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     if (action.type === "attack") {
+      const beasts = action.beasts ?? [];
+      const safeAttack = action.safeAttack ?? false;
+      const vrf = action.vrf ?? false;
+      const extraLifePotions = action.extraLifePotions ?? 0;
+
       setBattleEvents([]);
       setAttackInProgress(true);
       txs.push(
         ...attack(
-          action.beasts,
-          action.safeAttack,
-          action.vrf,
-          action.extraLifePotions
+          beasts,
+          safeAttack,
+          vrf,
+          extraLifePotions
         )
       );
     }
 
     if (action.type === "attack_until_capture") {
-      if (action.beasts.length === 0) {
+      const beasts = action.beasts ?? [];
+      const extraLifePotions = action.extraLifePotions ?? 0;
+
+      if (beasts.length === 0) {
         setActionFailed();
         return false;
       }
 
-      txs.push(...attack(action.beasts, false, true, action.extraLifePotions));
+      txs.push(...attack(beasts, false, true, extraLifePotions));
     }
 
     if (action.type === "claim_corpse_reward") {
-      txs.push(claimCorpses(action.adventurerIds));
+      txs.push(claimCorpses(action.adventurerIds ?? []));
     }
 
     if (action.type === "claim_skull_reward") {
-      txs.push(claimSkulls(action.beastIds));
+      txs.push(claimSkulls(action.beastIds ?? []));
     }
 
     if (action.type === "claim_quest_reward") {
-      txs.push(claimQuestRewards(action.beastIds));
+      txs.push(claimQuestRewards(action.beastIds ?? []));
     }
 
     if (action.type === "claim_summit_reward") {
-      txs.push(claimRewards(action.beastIds));
+      txs.push(claimRewards(action.beastIds ?? []));
     }
 
     if (action.type === "add_extra_life") {
-      txs.push(...addExtraLife(action.beastId, action.extraLifePotions));
+      if (action.beastId === undefined) {
+        setActionFailed();
+        return false;
+      }
+      txs.push(...addExtraLife(action.beastId, action.extraLifePotions ?? 0));
     }
 
     if (action.type === "upgrade_beast") {
-      if (action.bonusHealth > 0) {
-        txs.push(...feed(action.beastId, action.bonusHealth, action.corpseTokens));
+      if (action.beastId === undefined) {
+        setActionFailed();
+        return false;
       }
-      if (action.killTokens > 0) {
+
+      const bonusHealth = action.bonusHealth ?? 0;
+      const corpseTokens = action.corpseTokens ?? 0;
+      const killTokens = action.killTokens ?? 0;
+
+      if (bonusHealth > 0) {
+        txs.push(...feed(action.beastId, bonusHealth, corpseTokens));
+      }
+      if (killTokens > 0 && action.stats) {
         txs.push(
-          ...applyStatPoints(action.beastId, action.stats, action.killTokens)
+          ...applyStatPoints(action.beastId, action.stats, killTokens)
         );
       }
     }
 
     if (action.type === "apply_poison") {
-      txs.push(...applyPoison(action.beastId, action.count));
+      if (action.beastId === undefined) {
+        setActionFailed();
+        return false;
+      }
+      txs.push(...applyPoison(action.beastId, action.count ?? 0));
     }
 
     const events = await executeAction(txs, setActionFailed);
@@ -609,32 +638,43 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     } else if (action.type === "attack_until_capture" && captured) {
       return false;
     } else if (action.type === "add_extra_life") {
+      const extraLifePotions = action.extraLifePotions ?? 0;
       setTokenBalances((prev: Record<string, number>) => ({
         ...prev,
-        "EXTRA LIFE": (prev["EXTRA LIFE"] || 0) - action.extraLifePotions,
+        "EXTRA LIFE": (prev["EXTRA LIFE"] || 0) - extraLifePotions,
       }));
       setApplyingPotions(false);
       setAppliedExtraLifePotions(0);
-      setExtraLifePotionsUsed((prev) => prev + action.extraLifePotions);
-      setSummit(prev => prev ? { ...prev, extra_lives: (prev.beast.extra_lives || 0) + action.extraLifePotions } : prev);
+      setExtraLifePotionsUsed((prev) => prev + extraLifePotions);
+      setSummit(prev => prev ? {
+        ...prev,
+        beast: {
+          ...prev.beast,
+          extra_lives: (prev.beast.extra_lives || 0) + extraLifePotions,
+        },
+      } : prev);
     } else if (action.type === "apply_poison") {
+      const poisonCount = action.count ?? 0;
+      const beastId = action.beastId ?? 0;
       setTokenBalances((prev: Record<string, number>) => ({
         ...prev,
-        POISON: (prev["POISON"] || 0) - action.count,
+        POISON: (prev["POISON"] || 0) - poisonCount,
       }));
       setApplyingPotions(false);
-      setPoisonPotionsUsed((prev) => prev + action.count);
+      setPoisonPotionsUsed((prev) => prev + poisonCount);
       setPoisonEvent({
-        beast_token_id: action.beastId,
+        beast_token_id: beastId,
         block_timestamp: Math.floor(Date.now() / 1000),
-        count: action.count,
-        player: account?.address,
+        count: poisonCount,
+        player: account?.address ?? null,
       })
     } else if (action.type === "upgrade_beast") {
+      const killTokens = action.killTokens ?? 0;
+      const corpseTokens = action.corpseTokens ?? 0;
       setTokenBalances((prev: Record<string, number>) => ({
         ...prev,
-        SKULL: (prev["SKULL"] || 0) - action.killTokens,
-        CORPSE: (prev["CORPSE"] || 0) - action.corpseTokens,
+        SKULL: (prev["SKULL"] || 0) - killTokens,
+        CORPSE: (prev["CORPSE"] || 0) - corpseTokens,
       }));
     }
 
