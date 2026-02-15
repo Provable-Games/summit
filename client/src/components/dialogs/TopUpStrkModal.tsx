@@ -11,7 +11,8 @@ import starkImg from '@/assets/images/stark.svg';
 import { useController } from '@/contexts/controller';
 import { useDynamicConnector } from '@/contexts/starknet';
 import { useSystemCalls } from '@/dojo/useSystemCalls';
-import { NETWORKS, TOKEN_ADDRESS } from '@/utils/networkConfig';
+import { TOKEN_ADDRESS } from '@/utils/networkConfig';
+import type { TokenConfig } from '@/utils/networkConfig';
 import { gameColors } from '@/utils/themes';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import CloseIcon from '@mui/icons-material/Close';
@@ -26,11 +27,7 @@ interface TopUpStrkModalProps {
   close: () => void;
 }
 
-interface SourceToken {
-  name: string;
-  address: string;
-  image: any;
-}
+type SourceToken = Pick<TokenConfig, 'name' | 'address'> & { image: string | null };
 
 const STRK_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
 const SLIPPAGE_BPS = 100; // 1%
@@ -45,7 +42,7 @@ const SOURCE_TOKENS: SourceToken[] = [
 ];
 
 export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
-  const { currentNetworkConfig: _currentNetworkConfig } = useDynamicConnector();
+  const { currentNetworkConfig } = useDynamicConnector();
   const { tokenBalances, setTokenBalances, fetchPaymentTokenBalances } = useController();
   const { provider } = useProvider();
   const { address: _accountAddress } = useAccount();
@@ -62,13 +59,12 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
 
   // Add TEST USD from paymentTokens
   const testUsdToken = useMemo(() => {
-    const network = NETWORKS[import.meta.env.VITE_PUBLIC_CHAIN as keyof typeof NETWORKS];
-    const testUsd = (network as any)?.paymentTokens?.find((t: any) => t.name === 'TEST USD');
+    const testUsd = currentNetworkConfig.paymentTokens.find((token) => token.name === 'TEST USD');
     if (testUsd) {
-      return { name: 'TEST USD', address: testUsd.address, image: null };
+      return { name: testUsd.name, address: testUsd.address, image: null };
     }
     return null;
-  }, []);
+  }, [currentNetworkConfig.paymentTokens]);
 
   const allSourceTokens = useMemo(() => {
     return testUsdToken ? [...SOURCE_TOKENS, testUsdToken] : SOURCE_TOKENS;
@@ -78,10 +74,10 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
     () =>
       new Contract({
         abi: ROUTER_ABI,
-        address: NETWORKS[import.meta.env.VITE_PUBLIC_CHAIN as keyof typeof NETWORKS].ekuboRouter,
+        address: currentNetworkConfig.ekuboRouter,
         providerOrAccount: provider,
       }),
-    [provider]
+    [currentNetworkConfig.ekuboRouter, provider]
   );
 
   const selectedTokenData = allSourceTokens.find(t => t.name === selectedToken);
@@ -119,10 +115,10 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
         setQuote(null);
         setQuoteError('No route found');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Quote error:', err);
       setQuote(null);
-      setQuoteError(err.message || 'Failed to get quote');
+      setQuoteError(err instanceof Error ? err.message : 'Failed to get quote');
     } finally {
       setQuoteLoading(false);
     }
