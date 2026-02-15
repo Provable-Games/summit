@@ -337,7 +337,7 @@ jobs:
 
   claude-review-contracts:
     needs: [changes, contracts-lint]
-    if: needs.changes.outputs.contracts == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CLAUDE_CODE_OAUTH_TOKEN != ''
+    if: needs.changes.outputs.contracts == 'true' && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -449,7 +449,7 @@ jobs:
 
   codex-review-contracts:
     needs: [changes, contracts-lint]
-    if: needs.changes.outputs.contracts == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CODEX_AUTH_DOT_JSON != ''
+    if: needs.changes.outputs.contracts == 'true' && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -561,7 +561,7 @@ jobs:
 
   claude-review-client:
     needs: [changes, client-lint]
-    if: needs.changes.outputs.client_review == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CLAUDE_CODE_OAUTH_TOKEN != ''
+    if: needs.changes.outputs.client_review == 'true' && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -673,7 +673,7 @@ jobs:
 
   codex-review-client:
     needs: [changes, client-lint]
-    if: needs.changes.outputs.client_review == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CODEX_AUTH_DOT_JSON != ''
+    if: needs.changes.outputs.client_review == 'true' && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -785,7 +785,7 @@ jobs:
 
   claude-review-indexer-api:
     needs: [changes, indexer-api-lint]
-    if: needs.changes.outputs.indexer_api_review == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CLAUDE_CODE_OAUTH_TOKEN != ''
+    if: needs.changes.outputs.indexer_api_review == 'true' && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -897,7 +897,7 @@ jobs:
 
   codex-review-indexer-api:
     needs: [changes, indexer-api-lint]
-    if: needs.changes.outputs.indexer_api_review == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CODEX_AUTH_DOT_JSON != ''
+    if: needs.changes.outputs.indexer_api_review == 'true' && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1009,7 +1009,7 @@ jobs:
 
   claude-review-general:
     needs: [changes]
-    if: needs.changes.outputs.general_review == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CLAUDE_CODE_OAUTH_TOKEN != ''
+    if: needs.changes.outputs.general_review == 'true' && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1122,7 +1122,7 @@ jobs:
 
   codex-review-general:
     needs: [changes]
-    if: needs.changes.outputs.general_review == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CODEX_AUTH_DOT_JSON != ''
+    if: needs.changes.outputs.general_review == 'true' && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
