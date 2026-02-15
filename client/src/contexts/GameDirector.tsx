@@ -3,7 +3,7 @@ import { useSummitApi } from "@/api/summitApi";
 import { useSound } from "@/contexts/sound";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import type { TranslatedGameEvent } from "@/dojo/useSystemCalls";
-import type { EventData, SummitData} from "@/hooks/useWebSocket";
+import type { EventData, SummitData } from "@/hooks/useWebSocket";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
@@ -24,9 +24,10 @@ import {
   getBeastRevivalTime,
 } from "@/utils/beasts";
 import { useAccount } from "@starknet-react/core";
-import type { Call } from "starknet";
+import { addAddressPadding, type Call } from "starknet";
 import type {
-  PropsWithChildren} from "react";
+  PropsWithChildren
+} from "react";
 import {
   createContext,
   useContext,
@@ -157,6 +158,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     addLiveEvent(data);
 
     const { category, sub_category, data: eventData } = data;
+    const isOwnEvent = data.player === addAddressPadding(account?.address ?? "");
 
     // Helper to get beast info from event data
     const getBeastInfo = () => {
@@ -214,12 +216,14 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           beastCount,
         });
       } else if (sub_category === "Applied Poison") {
-        setPoisonEvent({
-          beast_token_id: eventData.beast_token_id as number,
-          block_timestamp: Math.floor(new Date(data.created_at).getTime() / 1000),
-          count: eventData.count as number,
-          player: data.player,
-        });
+        if (!isOwnEvent) {
+          setPoisonEvent({
+            beast_token_id: eventData.beast_token_id as number,
+            block_timestamp: Math.floor(new Date(data.created_at).getTime() / 1000),
+            count: eventData.count as number,
+            player: data.player,
+          });
+        }
 
         // Show poison notification
         addNotificationWithPlayer({
