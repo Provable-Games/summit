@@ -33,13 +33,18 @@ interface TokenQuote {
 
 interface RouterContract {
   address: string;
-  populate: (method: string, params: any[]) => any;
 }
 
-interface SwapCall {
+export interface SwapCall {
   contractAddress: string;
   entrypoint: string;
-  calldata: any[];
+  calldata: string[];
+}
+
+interface SwapQuoteResponse {
+  total_calculated?: number | string;
+  price_impact?: number;
+  splits?: SwapSplit[];
 }
 
 export interface PoolKey {
@@ -122,9 +127,9 @@ export const getSwapQuote = async (
         }
       }
 
-      let data: any;
+      let data: SwapQuoteResponse;
       try {
-        data = await response.json();
+        data = await response.json() as SwapQuoteResponse;
       } catch (err) {
         console.error("getSwapQuote: failed to parse response", err);
         if (attempt < maxRetries - 1) {
@@ -134,12 +139,16 @@ export const getSwapQuote = async (
         throw err;
       }
 
-      if (data.total_calculated) {
+      if (data.total_calculated !== undefined) {
+        const totalCalculated = typeof data.total_calculated === "number"
+          ? data.total_calculated
+          : Number(data.total_calculated);
+
         return {
-          impact: data?.price_impact || 0,
-          price_impact: data?.price_impact || 0,
-          total: data?.total_calculated || 0,
-          splits: data?.splits || [],
+          impact: data.price_impact || 0,
+          price_impact: data.price_impact || 0,
+          total: Number.isFinite(totalCalculated) ? totalCalculated : 0,
+          splits: data.splits || [],
         };
       }
 

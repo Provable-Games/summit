@@ -15,6 +15,7 @@ import PsychologyIcon from '@mui/icons-material/Psychology';
 import StarIcon from '@mui/icons-material/Star';
 import { Box, Button, Dialog, IconButton, InputBase, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
+import type { Call } from 'starknet';
 
 const UPGRADE_COSTS = {
   luck_per_level: 1,
@@ -148,7 +149,7 @@ function SummitGiftModal(props: SummitGiftModalProps) {
 
     setGiftInProgress(true);
     try {
-      const calls: any[] = [];
+      const calls: Call[] = [];
 
       // Bonus health (CORPSE)
       if (bonusHealthGift > 0 && corpseTokenCost > 0) {
