@@ -8,6 +8,18 @@ import { delay } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
 import { useSnackbar } from "notistack";
 import { CallData } from "starknet";
+import type { Call } from "starknet";
+
+type TransactionReceiptLike = {
+  execution_status?: string;
+  actual_fee?: { amount?: string | number | bigint } | string | number | bigint;
+  events?: unknown[];
+};
+
+export type TranslatedGameEvent = {
+  componentName: string;
+  [key: string]: unknown;
+};
 
 /**
  * Extracts a human-readable error message from a Starknet execution error.
@@ -80,10 +92,18 @@ export const useSystemCalls = () => {
    *   - drop: Function to drop items
    *   - levelUp: Function to level up and purchase items
    */
-  const executeAction = async (calls: any[], forceResetAction: () => void) => {
+  const executeAction = async (
+    calls: Call[],
+    forceResetAction: () => void
+  ): Promise<TranslatedGameEvent[] | null | undefined> => {
+    if (!account) {
+      forceResetAction();
+      return null;
+    }
+
     try {
-      const tx = await account!.execute(calls);
-      const receipt: any = await waitForTransaction(tx.transaction_hash, 0);
+      const tx = await account.execute(calls);
+      const receipt = await waitForTransaction(tx.transaction_hash, 0);
 
       if (receipt.execution_status === "REVERTED") {
         console.log('action failed reverted', receipt);
@@ -93,7 +113,11 @@ export const useSystemCalls = () => {
 
       // Extract fee from receipt and trigger gas animation
       if (receipt.actual_fee && !PAYMASTER) {
-        const feeInWei = BigInt(receipt.actual_fee.amount || receipt.actual_fee);
+        const rawFee: string | number | bigint =
+          typeof receipt.actual_fee === "object" && receipt.actual_fee !== null
+            ? receipt.actual_fee.amount ?? 0
+            : receipt.actual_fee;
+        const feeInWei = BigInt(rawFee || 0);
         const feeAmount = Number(feeInWei) / 1e18;
 
         if (feeAmount > 0) {
@@ -108,10 +132,10 @@ export const useSystemCalls = () => {
         }
       }
 
-      const translatedEvents = receipt.events
-        .map((event: any) => translateGameEvent(event, account!.address))
+      const translatedEvents = (receipt.events || [])
+        .map((event) => translateGameEvent(event, account.address))
         .flat()
-        .filter(Boolean);
+        .filter(Boolean) as TranslatedGameEvent[];
 
       return translatedEvents;
     } catch (error) {
@@ -134,13 +158,20 @@ export const useSystemCalls = () => {
     }
   };
 
-  const waitForTransaction = async (txHash: string, retries: number) => {
+  const waitForTransaction = async (
+    txHash: string,
+    retries: number
+  ): Promise<TransactionReceiptLike> => {
     if (retries > 9) {
       throw new Error("Transaction failed");
     }
 
+    if (!account) {
+      throw new Error("Wallet not connected");
+    }
+
     try {
-      const receipt: any = await account!.waitForTransaction(
+      const receipt = await account.waitForTransaction(
         txHash,
         {
           retryInterval: 500,
@@ -148,7 +179,7 @@ export const useSystemCalls = () => {
         }
       );
 
-      return receipt;
+      return receipt as unknown as TransactionReceiptLike;
     } catch (error) {
       console.error("Error waiting for transaction :", error);
       await delay(500);
@@ -162,7 +193,7 @@ export const useSystemCalls = () => {
    * @param tillBeast Whether to explore until encountering a beast
    */
   const feed = (beastId: number, amount: number, _corpseRequired: number) => {
-    const txs: any[] = [];
+    const txs: Call[] = [];
 
     // if (corpseRequired > 0) {
     //   let corpseTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE")?.address;
@@ -185,7 +216,7 @@ export const useSystemCalls = () => {
    * @param vrf Whether to use VRF
    */
   const attack = (beasts: selection, safeAttack: boolean, vrf: boolean, extraLifePotions: number) => {
-    const txs: any[] = [];
+    const txs: Call[] = [];
 
     const revivalPotions = calculateRevivalRequired(beasts);
 
@@ -227,7 +258,7 @@ export const useSystemCalls = () => {
   };
 
   const addExtraLife = (beastId: number, extraLifePotions: number) => {
-    const txs: any[] = [];
+    const txs: Call[] = [];
 
     // if (extraLifePotions > 0) {
     //   let extraLifeAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "EXTRA LIFE")?.address;
@@ -244,7 +275,7 @@ export const useSystemCalls = () => {
   };
 
   const applyStatPoints = (beastId: number, stats: Stats, _skullRequired: number) => {
-    const txs: any[] = [];
+    const txs: Call[] = [];
 
     // if (skullRequired > 0) {
     //   let skullTokenAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL")?.address;
@@ -285,23 +316,35 @@ export const useSystemCalls = () => {
   };
 
   const claimCorpses = (adventurerIds: number[]) => {
+    const corpseAddress = currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === "CORPSE")?.address;
+
+    if (!corpseAddress) {
+      throw new Error("CORPSE token contract not configured");
+    }
+
     return {
-      contractAddress: currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === "CORPSE")?.address,
+      contractAddress: corpseAddress,
       entrypoint: "claim",
       calldata: CallData.compile([adventurerIds]),
     };
   };
 
   const claimSkulls = (beastIds: number[]) => {
+    const skullAddress = currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === "SKULL")?.address;
+
+    if (!skullAddress) {
+      throw new Error("SKULL token contract not configured");
+    }
+
     return {
-      contractAddress: currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === "SKULL")?.address,
+      contractAddress: skullAddress,
       entrypoint: "claim",
       calldata: CallData.compile([beastIds]),
     };
   };
 
   const applyPoison = (beastId: number, count: number) => {
-    const txs: any[] = [];
+    const txs: Call[] = [];
 
     // if (count > 0) {
     //   let poisonAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "POISON")?.address;

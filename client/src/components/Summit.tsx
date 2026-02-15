@@ -1,7 +1,7 @@
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useSound } from '@/contexts/sound';
 import { useGameStore } from '@/stores/gameStore';
-import type { SpectatorBattleEvent } from '@/types/game';
+import type { SpectatorBattleEvent, selection } from '@/types/game';
 import SummitGiftModal from '@/components/dialogs/SummitGiftModal';
 import CasinoIcon from '@mui/icons-material/Casino';
 import HandshakeIcon from '@mui/icons-material/Handshake';
@@ -149,7 +149,7 @@ function Summit() {
 
   useEffect(() => {
     if (summit) {
-      setEstimatedDamage(selectedBeasts.reduce((acc: number, selectedBeast: any, _idx: number) => {
+      setEstimatedDamage(selectedBeasts.reduce((acc: number, selectedBeast: selection[number], _idx: number) => {
         const [beast, attacks] = selectedBeast;
         return acc + calculateBattleResult(beast, summit, selectedBeast[2]).estimatedDamage * attacks;
       }, 0))
@@ -196,7 +196,7 @@ function Summit() {
           name: attackerBeastName,
           shiny: event.attacking_beast_shiny,
           animated: event.attacking_beast_animated,
-        } as any)
+        })
 
         // Generate multiple images for multi-beast attacks
         const imageSrcs: string[] = [primaryImageSrc];
@@ -206,7 +206,7 @@ function Summit() {
           for (let i = 0; i < additionalCount; i++) {
             const randomId = beastIds[Math.floor(Math.random() * beastIds.length)];
             const randomBeastName = BEAST_NAMES[randomId as keyof typeof BEAST_NAMES] || 'Unknown';
-            imageSrcs.push(fetchBeastImage({ name: randomBeastName, shiny: false, animated: false } as any));
+            imageSrcs.push(fetchBeastImage({ name: randomBeastName, shiny: false, animated: false }));
           }
         }
 

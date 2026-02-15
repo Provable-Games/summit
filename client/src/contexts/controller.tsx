@@ -39,6 +39,35 @@ const ControllerContext = createContext<ControllerContext>(
   {} as ControllerContext
 );
 
+type ConnectorWithUsername = {
+  username?: () => Promise<unknown> | unknown;
+};
+
+type ConnectorWithProfile = {
+  controller?: {
+    openProfile?: () => void;
+  };
+};
+
+const getConnectorUsername = async (activeConnector: unknown): Promise<string | undefined> => {
+  if (!activeConnector || typeof activeConnector !== "object") return undefined;
+
+  const usernameFn = (activeConnector as ConnectorWithUsername).username;
+  if (typeof usernameFn !== "function") return undefined;
+
+  const username = await usernameFn.call(activeConnector);
+  return typeof username === "string" && username.length > 0 ? username : undefined;
+};
+
+const openConnectorProfile = (activeConnector: unknown): void => {
+  if (!activeConnector || typeof activeConnector !== "object") return;
+
+  const openProfile = (activeConnector as ConnectorWithProfile).controller?.openProfile;
+  if (typeof openProfile === "function") {
+    openProfile.call((activeConnector as ConnectorWithProfile).controller);
+  }
+};
+
 // Create a provider component
 export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const { currentNetworkConfig } = useDynamicConnector();
@@ -104,7 +133,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     const getUsername = async () => {
       try {
-        const name = await (connector as any)?.username();
+        const name = await getConnectorUsername(connector);
         if (name) setUserName(name);
       } catch (error) {
         console.error("Error getting username:", error);
@@ -170,7 +199,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         gasSpent,
         triggerGasSpent,
 
-        openProfile: () => (connector as any)?.controller?.openProfile(),
+        openProfile: () => openConnectorProfile(connector),
         login: () =>
           connect({
             connector: connectors.find((conn) => conn.id === "controller"),

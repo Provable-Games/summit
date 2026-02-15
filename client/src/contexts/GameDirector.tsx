@@ -2,6 +2,7 @@ import { useStarknetApi } from "@/api/starknet";
 import { useSummitApi } from "@/api/summitApi";
 import { useSound } from "@/contexts/sound";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
+import type { TranslatedGameEvent } from "@/dojo/useSystemCalls";
 import type { EventData, SummitData} from "@/hooks/useWebSocket";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAutopilotStore } from "@/stores/autopilotStore";
@@ -18,6 +19,7 @@ import {
   getBeastRevivalTime,
 } from "@/utils/beasts";
 import { useAccount } from "@starknet-react/core";
+import type { Call } from "starknet";
 import type {
   PropsWithChildren} from "react";
 import {
@@ -156,7 +158,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         fullBeastName = `Beast #${eventData.token_id || 'Unknown'}`;
       }
 
-      const beastImageSrc = fetchBeastImage({ name: beastTypeName, shiny: false, animated: false } as any);
+      const beastImageSrc = fetchBeastImage({ name: beastTypeName, shiny: false, animated: false });
       return { beastName: fullBeastName, beastImageSrc };
     };
 
@@ -471,7 +473,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
   };
 
-  const updateLiveStats = (beastLiveStats: any[]) => {
+  const updateLiveStats = (beastLiveStats: TranslatedGameEvent[]) => {
     if (beastLiveStats.length === 0) return;
 
     beastLiveStats = beastLiveStats.reverse();
@@ -479,7 +481,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     setCollection((prevCollection) =>
       prevCollection.map((beast: Beast) => {
         const beastLiveStat = beastLiveStats.find(
-          (liveStat: any) => liveStat.token_id === beast.token_id
+          (liveStat) => Number(liveStat.token_id) === beast.token_id
         );
 
         if (beastLiveStat) {
@@ -500,7 +502,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   };
 
   const executeGameAction = async (action: GameAction) => {
-    const txs: any[] = [];
+    const txs: Call[] = [];
 
     if (action.pauseUpdates) {
       setPauseUpdates(true);
@@ -596,33 +598,43 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     updateLiveStats(
-      events.filter((event: any) => event.componentName === "LiveBeastStatsEvent")
+      events.filter((event: TranslatedGameEvent) => event.componentName === "LiveBeastStatsEvent")
     );
     const captured = events
-      .filter((event: any) => event.componentName === "BattleEvent")
+      .filter((event: TranslatedGameEvent) => event.componentName === "BattleEvent")
       .find(
-        (event: BattleEvent) =>
-          event.attack_count + event.critical_attack_count >
-          event.counter_attack_count + event.critical_counter_attack_count
+        (event: TranslatedGameEvent) => {
+          const attackCount = Number(event.attack_count ?? 0);
+          const criticalAttackCount = Number(event.critical_attack_count ?? 0);
+          const counterAttackCount = Number(event.counter_attack_count ?? 0);
+          const criticalCounterAttackCount = Number(event.critical_counter_attack_count ?? 0);
+
+          return attackCount + criticalAttackCount >
+            counterAttackCount + criticalCounterAttackCount;
+        }
       );
 
     if (action.type === "attack" || action.type === "attack_until_capture") {
       const summitEvent = events.find(
-        (event: any) => event.componentName === "Summit"
+        (event: TranslatedGameEvent) => event.componentName === "Summit"
       );
       if (summitEvent) {
+        const attackPotions = Number(summitEvent.attack_potions ?? 0);
+        const extraLifePotions = Number(summitEvent.extra_life_potions ?? 0);
+        const revivalPotions = Number(summitEvent.revival_potions ?? 0);
+
         setTokenBalances((prev: Record<string, number>) => ({
           ...prev,
-          ATTACK: (prev["ATTACK"] || 0) - summitEvent.attack_potions,
+          ATTACK: (prev["ATTACK"] || 0) - attackPotions,
           "EXTRA LIFE":
             (prev["EXTRA LIFE"] || 0) -
-            (captured ? summitEvent.extra_life_potions : 0),
-          REVIVE: (prev["REVIVE"] || 0) - summitEvent.revival_potions,
+            (captured ? extraLifePotions : 0),
+          REVIVE: (prev["REVIVE"] || 0) - revivalPotions,
         }));
 
-        setAttackPotionsUsed((prev) => prev + summitEvent.attack_potions);
-        setRevivePotionsUsed((prev) => prev + summitEvent.revival_potions);
-        setExtraLifePotionsUsed((prev) => prev + summitEvent.extra_life_potions);
+        setAttackPotionsUsed((prev) => prev + attackPotions);
+        setRevivePotionsUsed((prev) => prev + revivalPotions);
+        setExtraLifePotionsUsed((prev) => prev + extraLifePotions);
         setAppliedExtraLifePotions(0);
       }
     }
@@ -630,7 +642,9 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (action.type === "attack") {
       if (action.pauseUpdates) {
         setBattleEvents(
-          events.filter((event: any) => event.componentName === "BattleEvent")
+          events
+            .filter((event: TranslatedGameEvent) => event.componentName === "BattleEvent")
+            .map((event) => event as unknown as BattleEvent)
         );
       } else {
         setAttackInProgress(false);
