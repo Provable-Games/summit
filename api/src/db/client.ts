@@ -17,7 +17,7 @@ if (typeof databaseSsl !== "undefined" && databaseSsl !== "true" && databaseSsl 
 }
 
 if (process.env.NODE_ENV === "production" && typeof databaseSsl === "undefined") {
-  throw new Error('[DB CONFIG] DATABASE_SSL must be explicitly set to "true" or "false" in production');
+  console.warn('[DB CONFIG] DATABASE_SSL not set in production, defaulting to SSL enabled');
 }
 
 // Create a connection pool for queries
@@ -27,7 +27,7 @@ const pool = new pg.Pool({
   max: parseInt(process.env.DB_POOL_MAX || "15", 10),
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
-  ssl: databaseSsl === "true"
+  ssl: databaseSsl === "true" || (process.env.NODE_ENV === "production" && typeof databaseSsl === "undefined")
     ? { rejectUnauthorized: false }
     : undefined,
 });

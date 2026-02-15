@@ -70,13 +70,21 @@ describe("db client environment validation", () => {
     );
   });
 
-  it("throws in production when DATABASE_SSL is not explicitly set", async () => {
+  it("warns and defaults to SSL in production when DATABASE_SSL is not set", async () => {
     process.env.DATABASE_URL = "postgres://localhost:5432/summit";
     process.env.NODE_ENV = "production";
 
-    await expect(importDbClientModule()).rejects.toThrow(
-      '[DB CONFIG] DATABASE_SSL must be explicitly set to "true" or "false" in production',
+    const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    await importDbClientModule();
+
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      "[DB CONFIG] DATABASE_SSL not set in production, defaulting to SSL enabled",
     );
+    expect(mocks.poolCtor).toHaveBeenCalledWith(expect.objectContaining({
+      ssl: { rejectUnauthorized: false },
+    }));
+    consoleWarnSpy.mockRestore();
   });
 
   it("configures pool with SSL options when DATABASE_SSL=true", async () => {
