@@ -1,5 +1,5 @@
 import ROUTER_ABI from '@/abi/router-abi.json';
-import type { SwapQuote, PoolInfo, PoolKey, EkuboPosition } from '@/api/ekubo';
+import type { SwapCall, SwapQuote, PoolInfo, PoolKey, EkuboPosition } from '@/api/ekubo';
 import { generateSwapCalls, getSwapQuote, getPoolsForPair, getBestPool, getFullRangeBounds, estimateApy, decodeFee, calculatePairAmount, generateAddLiquidityCalls, getPositionsForOwner, generateWithdrawLiquidityCalls, generateCollectFeesCalls, positionBoundsToContractBounds, discoverPoolFromQuote, getDefaultPoolInfo } from '@/api/ekubo';
 import attackPotionImg from '@/assets/images/attack-potion.png';
 import corpseTokenImg from '@/assets/images/corpse-token.png';
@@ -11,7 +11,8 @@ import { useController } from '@/contexts/controller';
 import { useDynamicConnector } from '@/contexts/starknet';
 import { useStatistics } from '@/contexts/Statistics';
 import { useSystemCalls } from '@/dojo/useSystemCalls';
-import { NETWORKS, TOKEN_ADDRESS } from '@/utils/networkConfig';
+import { TOKEN_ADDRESS } from '@/utils/networkConfig';
+import type { TokenConfig } from '@/utils/networkConfig';
 import { gameColors } from '@/utils/themes';
 import { formatAmount } from '@/utils/utils';
 import AddIcon from '@mui/icons-material/Add';
@@ -37,6 +38,15 @@ interface Potion {
   image: string;
   description: string;
   color: string;
+}
+
+interface UserToken {
+  symbol: string;
+  balance: string;
+  rawBalance: number;
+  address: string;
+  decimals: number;
+  displayDecimals: number;
 }
 
 const POTIONS: Potion[] = [
@@ -164,33 +174,27 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     () =>
       new Contract({
         abi: ROUTER_ABI,
-        address:
-          NETWORKS[import.meta.env.VITE_PUBLIC_CHAIN as keyof typeof NETWORKS]
-            .ekuboRouter,
+        address: currentNetworkConfig.ekuboRouter,
         providerOrAccount: provider,
       }),
-    [provider]
+    [currentNetworkConfig.ekuboRouter, provider]
   );
 
   const testUsdAddress = useMemo(() => {
-    const network = NETWORKS[import.meta.env.VITE_PUBLIC_CHAIN as keyof typeof NETWORKS];
-    return (network as any)?.paymentTokens?.find((t: any) => t.name === 'TEST USD')?.address || '';
-  }, []);
+    return currentNetworkConfig.paymentTokens.find((token) => token.name === 'TEST USD')?.address || '';
+  }, [currentNetworkConfig.paymentTokens]);
 
   const positionsAddress = useMemo(() => {
-    const network = NETWORKS[import.meta.env.VITE_PUBLIC_CHAIN as keyof typeof NETWORKS];
-    return (network as any)?.ekuboPositions || '';
-  }, []);
+    return currentNetworkConfig.ekuboPositions || '';
+  }, [currentNetworkConfig.ekuboPositions]);
 
   const paymentTokens = useMemo(() => {
-    const network =
-      NETWORKS[import.meta.env.VITE_PUBLIC_CHAIN as keyof typeof NETWORKS];
-    return (network as any)?.paymentTokens || [];
-  }, []);
+    return currentNetworkConfig.paymentTokens;
+  }, [currentNetworkConfig.paymentTokens]);
 
   const userTokens = useMemo(() => {
     return paymentTokens
-      .map((token: any) => ({
+      .map((token: TokenConfig): UserToken => ({
         symbol: token.name,
         balance: formatAmount(tokenBalances[token.name] || 0),
         rawBalance: tokenBalances[token.name] || 0,
@@ -201,11 +205,11 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   }, [paymentTokens, tokenBalances]);
 
   const selectedTokenData = userTokens.find(
-    (t: any) => t.symbol === selectedToken
+    (t) => t.symbol === selectedToken
   );
 
   const selectedReceiveTokenData = userTokens.find(
-    (t: any) => t.symbol === selectedReceiveToken
+    (t) => t.symbol === selectedReceiveToken
   );
 
   // Get icon for a token symbol (uses POTIONS images when available)
@@ -308,12 +312,19 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     return total;
   }, [sellQuantities, tokenQuotes, activeTab]);
 
-  const canAfford = selectedTokenData && totalTokenCost <= Number(selectedTokenData.rawBalance);
+  const canAfford = Boolean(selectedTokenData) && totalTokenCost <= Number(selectedTokenData?.rawBalance ?? 0);
   const toBaseUnits = (quantity: number) => BigInt(quantity) * 10n ** 18n;
+  const getPotionAddress = useCallback(
+    (potionId: string): string =>
+      currentNetworkConfig.tokens.erc20.find((token) => token.name === potionId)?.address ?? '',
+    [currentNetworkConfig.tokens.erc20]
+  );
+  const getErrorMessage = (error: unknown): string =>
+    error instanceof Error ? error.message : String(error ?? '');
 
   // Earn tab computed values
   const earnTokenAddress = useMemo(() => {
-    return currentNetworkConfig.tokens.erc20.find((t: any) => t.name === selectedEarnToken)?.address || '';
+    return currentNetworkConfig.tokens.erc20.find((token) => token.name === selectedEarnToken)?.address || '';
   }, [selectedEarnToken, currentNetworkConfig.tokens.erc20]);
 
   const earnTokenPrice = useMemo(() => {
@@ -360,7 +371,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       }
 
       const selectedTokenData = userTokens.find(
-        (t: any) => t.symbol === tokenSymbol
+        (token) => token.symbol === tokenSymbol
       );
 
       if (!selectedTokenData?.address) {
@@ -379,7 +390,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       try {
         const quote = await getSwapQuote(
           -toBaseUnits(quantity),
-          currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === potionId)?.address ?? '',
+          getPotionAddress(potionId),
           selectedTokenData.address
         );
 
@@ -399,9 +410,9 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             }));
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error fetching quote:', error);
-        const emsg = (error?.message || '').toLowerCase();
+        const emsg = getErrorMessage(error).toLowerCase();
         const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
           ? 'Insufficient liquidity'
           : 'Failed to get quote';
@@ -411,7 +422,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         }));
       }
     },
-    [userTokens, currentNetworkConfig.tokens.erc20]
+    [getPotionAddress, userTokens]
   );
 
   const fetchSellQuote = useCallback(
@@ -425,7 +436,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       }
 
       const receiveTokenData = userTokens.find(
-        (t: any) => t.symbol === tokenSymbol
+        (token) => token.symbol === tokenSymbol
       );
 
       if (!receiveTokenData?.address) {
@@ -436,9 +447,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         return;
       }
 
-      const potionAddress = currentNetworkConfig.tokens.erc20.find(
-        (token: any) => token.name === potionId
-      )?.address ?? '';
+      const potionAddress = getPotionAddress(potionId);
 
       setTokenQuotes(prev => ({
         ...prev,
@@ -473,9 +482,9 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             [potionId]: { amount: '', loading: false, error: 'No quote available' }
           }));
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error fetching sell quote:', error);
-        const emsg = (error?.message || '').toLowerCase();
+        const emsg = getErrorMessage(error).toLowerCase();
         const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
           ? 'Insufficient liquidity'
           : 'Failed to get quote';
@@ -485,7 +494,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         }));
       }
     },
-    [userTokens, currentNetworkConfig.tokens.erc20]
+    [getPotionAddress, userTokens]
   );
 
   const adjustQuantity = (potionId: string, delta: number) => {
@@ -621,11 +630,11 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     setPurchaseInProgress(true);
 
     try {
-      const calls: any[] = [];
-      const quotedPotions: { id: string; quote: any }[] = [];
+      const calls: SwapCall[] = [];
+      const quotedPotions: { id: string; quote: SwapQuote }[] = [];
 
       for (const potion of POTIONS) {
-        const potionAddress = currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === potion.id)?.address ?? '';
+        const potionAddress = getPotionAddress(potion.id);
         const quantity = quantities[potion.id];
         if (quantity > 0 && tokenQuotes[potion.id].amount) {
           let quote = tokenQuotes[potion.id].quote;
@@ -692,14 +701,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     setSellInProgress(true);
 
     try {
-      const calls: any[] = [];
+      const calls: SwapCall[] = [];
       const tradedPotionIds: string[] = [];
       const _isPotionTokenName = (name: string) => POTIONS.some((p) => p.id === name);
 
       for (const potion of POTIONS) {
-        const potionAddress = currentNetworkConfig.tokens.erc20.find(
-          (token: any) => token.name === potion.id
-        )?.address ?? '';
+        const potionAddress = getPotionAddress(potion.id);
         const quantity = sellQuantities[potion.id];
 
         if (quantity > 0) {
@@ -871,7 +878,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       ...(paymentTokens || []),
     ];
     const found = allTokens.find(
-      (t: any) => t.address.toLowerCase() === addr
+      (token) => token.address.toLowerCase() === addr
     );
     return found?.name || `${address.slice(0, 6)}...${address.slice(-4)}`;
   }, [currentNetworkConfig.tokens.erc20, paymentTokens, testUsdAddress]);
@@ -1540,11 +1547,11 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
                         // Find potion image for display
                         const potionForToken0 = POTIONS.find(p => {
-                          const tokenAddr = currentNetworkConfig.tokens.erc20.find((t: any) => t.name === p.id)?.address;
+                          const tokenAddr = getPotionAddress(p.id);
                           return tokenAddr && tokenAddr.toLowerCase() === position.pool_key.token0.toLowerCase();
                         });
                         const potionForToken1 = POTIONS.find(p => {
-                          const tokenAddr = currentNetworkConfig.tokens.erc20.find((t: any) => t.name === p.id)?.address;
+                          const tokenAddr = getPotionAddress(p.id);
                           return tokenAddr && tokenAddr.toLowerCase() === position.pool_key.token1.toLowerCase();
                         });
                         const displayPotion = potionForToken0 || potionForToken1;
@@ -1750,7 +1757,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       },
                     }}
                   >
-                    {userTokens.map((token: any) => (
+                    {userTokens.map((token) => (
                       <MenuItem
                         key={token.symbol}
                         onClick={() => handleTokenSelect(token.symbol)}
@@ -1882,7 +1889,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       },
                     }}
                   >
-                    {userTokens.map((token: any) => (
+                    {userTokens.map((token) => (
                       <MenuItem
                         key={token.symbol}
                         onClick={() => handleReceiveTokenSelect(token.symbol)}
