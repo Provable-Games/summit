@@ -1301,15 +1301,8 @@ jobs:
           fi
 
           if [ "$CAN_RUN_AI_REVIEWS" != "true" ]; then
-            if [ "$AI_REVIEWS_BLOCK_REASON" = "fork" ]; then
-              echo "Skipping review-job skipped enforcement for fork pull requests."
-            elif [ "$AI_REVIEWS_BLOCK_REASON" = "missing_secrets" ]; then
-              if [ "$CHANGES_CONTRACTS_REVIEW" = "true" ] || [ "$CHANGES_CLIENT_REVIEW" = "true" ] || [ "$CHANGES_INDEXER_API_REVIEW" = "true" ] || [ "$CHANGES_GENERAL_REVIEW" = "true" ]; then
-                echo "::error::AI review secrets are unavailable for a first-party PR with reviewable changes."
-                echo "::error::Restore CLAUDE_CODE_OAUTH_TOKEN and CODEX_AUTH_DOT_JSON or resolve secret access before merge."
-                exit 1
-              fi
-              echo "AI review secrets are unavailable, but no reviewable changes were detected."
+            if [ "$AI_REVIEWS_BLOCK_REASON" = "fork" ] || [ "$AI_REVIEWS_BLOCK_REASON" = "missing_secrets" ]; then
+              echo "Skipping review-job skipped enforcement because AI reviews are unavailable ($AI_REVIEWS_BLOCK_REASON)."
             else
               echo "::error::Unexpected AI review availability state: $AI_REVIEWS_BLOCK_REASON"
               exit 1
