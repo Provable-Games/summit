@@ -1,8 +1,20 @@
+export interface TokenConfig {
+  name: string;
+  address: string;
+  displayDecimals: number;
+  decimals?: number;
+  symbol?: string;
+}
+
+export interface NetworkTokenConfig {
+  erc20: TokenConfig[];
+}
+
 export interface NetworkConfig {
   chainId: ChainId;
   slot: string;
   preset: string;
-  policies: | any | undefined;
+  policies: Record<string, unknown> | undefined;
   rpcUrl: string;
   toriiUrl: string;
   apiUrl: string;
@@ -10,13 +22,13 @@ export interface NetworkConfig {
   chains: Array<{
     rpcUrl: string;
   }>;
-  tokens: any;
+  tokens: NetworkTokenConfig;
   denshokan: string;
   ekuboRouter: string;
   ekuboPositions: string;
   beasts: string;
   dungeon: string;
-  paymentTokens: any[];
+  paymentTokens: TokenConfig[];
 }
 
 export enum ChainId {
