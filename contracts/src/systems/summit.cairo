@@ -627,7 +627,8 @@ pub mod summit_systems {
     #[generate_trait]
     pub impl InternalSummitImpl of InternalSummitUtils {
         fn _summit_playable(self: @ContractState) -> bool {
-            get_block_timestamp() < self.terminal_timestamp.read()
+            let terminal_timestamp = self.terminal_timestamp.read();
+            terminal_timestamp == 0 || get_block_timestamp() < terminal_timestamp
         }
 
         /// @title get_beast
