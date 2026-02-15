@@ -260,7 +260,7 @@ function Summit() {
     setSpectatorDamage([]);
   }, [summit?.beast.token_id, pauseUpdates]);
 
-  if (!summit) {
+  if (!summit?.beast?.token_id) {
     return <Box sx={styles.summitContainer} />;
   }
 
