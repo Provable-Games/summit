@@ -745,6 +745,14 @@ fn test_get_summit_reward_amount() {
     assert(amount == 0, 'Wrong summit reward amount');
 }
 
+#[test]
+#[fork("mainnet")]
+fn test_get_diplomacy_reward_amount() {
+    let summit = deploy_summit();
+    let amount = summit.get_diplomacy_reward_amount_per_second();
+    assert(amount == 0, 'Wrong diplomacy reward amount');
+}
+
 // ===========================================
 // POISON EDGE CASE TESTS
 // ===========================================
