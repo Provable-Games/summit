@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import { eq, sql, desc, and, inArray } from "drizzle-orm";
 import "dotenv/config";
 
-import { checkDatabaseHealth, db, pool } from "./db/client.js";
+import { checkDatabaseHealth, db } from "./db/client.js";
 import {
   beasts,
   beast_owners,
@@ -32,7 +32,7 @@ import {
   ITEM_NAME_PREFIXES,
   ITEM_NAME_SUFFIXES,
 } from "./lib/beastData.js";
-import { getSpiritRevivalReductionSeconds, getBeastRevivalTime, getBeastCurrentLevel, normalizeAddress } from "./lib/helpers.js";
+import { getBeastRevivalTime, getBeastCurrentLevel, normalizeAddress } from "./lib/helpers.js";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 

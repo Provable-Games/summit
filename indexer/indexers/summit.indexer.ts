@@ -83,18 +83,6 @@ let blocksWithoutEvents = 0;
 let lastProgressLog = Date.now();
 
 /**
- * Helper to look up beast owner from beast_owners table
- */
-async function getBeastOwner(db: any, token_id: number): Promise<string | null> {
-  const result = await db
-    .select({ owner: schema.beast_owners.owner })
-    .from(schema.beast_owners)
-    .where(eq(schema.beast_owners.token_id, token_id))
-    .limit(1);
-  return result.length > 0 ? result[0].owner : null;
-}
-
-/**
  * Beast stats for comparison (used for derived events)
  */
 interface BeastStatsSnapshot {

@@ -476,7 +476,7 @@ export interface PackableBeast {
  * Keys: [selector, from, to, token_id_low, token_id_high]
  * Note: token_id is u256, split into low/high parts in keys for indexed events
  */
-export function decodeTransferEvent(keys: string[], data: string[]): TransferEventData {
+export function decodeTransferEvent(keys: string[], _data: string[]): TransferEventData {
   // For ERC721 Transfer events, the from/to/tokenId are in keys (indexed)
   // Keys format: [selector, from, to, tokenId_low, tokenId_high]
   const from = feltToHex(keys[1]);

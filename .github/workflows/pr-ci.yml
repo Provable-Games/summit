@@ -179,6 +179,9 @@ jobs:
       - name: Enforce no-explicit-any suppressions
         run: pnpm lint:suppress:any:check
 
+      - name: Typecheck (strict)
+        run: pnpm typecheck:strict
+
   client-test:
     needs: [changes, client-lint]
     if: needs.changes.outputs.client_ci == 'true'
@@ -242,6 +245,7 @@ jobs:
         run: |
           cd indexer
           pnpm install --frozen-lockfile
+          pnpm lint:ci
           pnpm exec tsc --noEmit
 
       - name: Setup Node.js (api cache)
@@ -257,6 +261,7 @@ jobs:
         run: |
           cd api
           pnpm install --frozen-lockfile
+          pnpm lint:ci
           pnpm exec tsc --noEmit
 
   indexer-test:
