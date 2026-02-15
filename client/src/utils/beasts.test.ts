@@ -328,7 +328,7 @@ describe("getBeastCurrentLevel", () => {
 // ---------------------------------------------------------------------------
 describe("getBeastCurrentHealth", () => {
   it("returns health + bonus_health when current_health is null", () => {
-    const beast = makeBeast({ health: 100, bonus_health: 50, current_health: null as any });
+    const beast = makeBeast({ health: 100, bonus_health: 50, current_health: null as unknown as number });
     expect(getBeastCurrentHealth(beast)).toBe(150);
   });
 
