@@ -379,7 +379,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       try {
         const quote = await getSwapQuote(
           -toBaseUnits(quantity),
-          currentNetworkConfig.tokens.erc20.find(token => token.name === potionId)?.address ?? '',
+          currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === potionId)?.address ?? '',
           selectedTokenData.address
         );
 
@@ -625,7 +625,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       const quotedPotions: { id: string; quote: any }[] = [];
 
       for (const potion of POTIONS) {
-        const potionAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === potion.id)?.address ?? '';
+        const potionAddress = currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === potion.id)?.address ?? '';
         const quantity = quantities[potion.id];
         if (quantity > 0 && tokenQuotes[potion.id].amount) {
           let quote = tokenQuotes[potion.id].quote;
@@ -1121,28 +1121,33 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                         return 'No liquidity';
                       })()}
                     </Typography>
-                    {tokenQuotes[potion.id]?.quote?.price_impact !== undefined ||
-                      tokenQuotes[potion.id]?.quote?.impact !== undefined || tokenQuotes[potion.id]?.error ? (
-                      <Box
-                        component="span"
-                        sx={{
-                          ml: 1,
-                          px: 0.75,
-                          py: 0.25,
-                          borderRadius: '10px',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          bgcolor: tokenQuotes[potion.id]?.error
-                            ? '#f7b4b4'
-                            : getImpactColor(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact),
-                          color: '#0d1511',
-                        }}
-                      >
-                        {tokenQuotes[potion.id]?.error
-                          ? 'insufficient liquidity'
-                          : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
-                      </Box>
-                    ) : null}
+                    {(() => {
+                      const quote = tokenQuotes[potion.id]?.quote;
+                      const quoteError = tokenQuotes[potion.id]?.error;
+                      const impact = quote?.price_impact ?? quote?.impact;
+
+                      if (impact === undefined && !quoteError) return null;
+
+                      return (
+                        <Box
+                          component="span"
+                          sx={{
+                            ml: 1,
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: '10px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            bgcolor: quoteError ? '#f7b4b4' : getImpactColor(impact ?? 0),
+                            color: '#0d1511',
+                          }}
+                        >
+                          {quoteError
+                            ? 'insufficient liquidity'
+                            : formatImpactLabel(impact ?? 0)}
+                        </Box>
+                      );
+                    })()}
                   </Box>
                 </Box>
 

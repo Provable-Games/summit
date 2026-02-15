@@ -55,7 +55,7 @@ export interface Bounds {
   upper: { mag: string; sign: boolean };
 }
 
-const inflightQuotes: Record<string, Promise<SwapQuote>> = {};
+const inflightQuotes: Partial<Record<string, Promise<SwapQuote>>> = {};
 let rateLimitUntil = 0;
 const RATE_LIMIT_COOLDOWN_MS = 60_000;
 

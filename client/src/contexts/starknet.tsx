@@ -60,6 +60,10 @@ export function DynamicConnectorProvider({ children }: PropsWithChildren) {
     return { nodeUrl: controllerConfig.chains[0].rpcUrl };
   }, []);
 
+  const allConnectors = cartridgeController
+    ? [...connectors, cartridgeController]
+    : connectors;
+
   return (
     <DynamicConnectorContext.Provider
       value={{
@@ -70,7 +74,7 @@ export function DynamicConnectorProvider({ children }: PropsWithChildren) {
       <StarknetConfig
         chains={[mainnet, sepolia]}
         provider={jsonRpcProvider({ rpc })}
-        connectors={[...connectors, cartridgeController]}
+        connectors={allConnectors}
         explorer={voyager}
         autoConnect
       >

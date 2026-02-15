@@ -117,7 +117,17 @@ export const useSystemCalls = () => {
     } catch (error) {
       console.error("Error executing action:", error);
       if (!autopilotEnabled) {
-        enqueueSnackbar(parseExecutionError(error?.data?.execution_error), { variant: "error" });
+        const executionError =
+          typeof error === "object" &&
+          error !== null &&
+          "data" in error &&
+          typeof (error as { data?: unknown }).data === "object" &&
+          (error as { data?: unknown }).data !== null &&
+          "execution_error" in ((error as { data: Record<string, unknown> }).data)
+            ? (error as { data: { execution_error?: unknown } }).data.execution_error
+            : undefined;
+
+        enqueueSnackbar(parseExecutionError(executionError), { variant: "error" });
       }
       forceResetAction();
       return null;
@@ -199,11 +209,12 @@ export const useSystemCalls = () => {
     }
 
     const beastsData = beasts.map(beast => [beast[0].token_id, beast[1], beast[2]]);
+    const summitTokenId = safeAttack ? (summit?.beast.token_id ?? 0) : 0;
     txs.push({
       contractAddress: SUMMIT_ADDRESS,
       entrypoint: "attack",
       calldata: [
-        safeAttack ? summit.beast.token_id : 0,
+        summitTokenId,
         beastsData.length,
         ...beastsData.flat(),
         revivalPotions,
@@ -275,7 +286,7 @@ export const useSystemCalls = () => {
 
   const claimCorpses = (adventurerIds: number[]) => {
     return {
-      contractAddress: currentNetworkConfig.tokens.erc20.find(token => token.name === "CORPSE")?.address,
+      contractAddress: currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === "CORPSE")?.address,
       entrypoint: "claim",
       calldata: CallData.compile([adventurerIds]),
     };
@@ -283,7 +294,7 @@ export const useSystemCalls = () => {
 
   const claimSkulls = (beastIds: number[]) => {
     return {
-      contractAddress: currentNetworkConfig.tokens.erc20.find(token => token.name === "SKULL")?.address,
+      contractAddress: currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === "SKULL")?.address,
       entrypoint: "claim",
       calldata: CallData.compile([beastIds]),
     };

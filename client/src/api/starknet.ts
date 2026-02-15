@@ -36,7 +36,7 @@ export const useStarknetApi = () => {
     return parseBalances(data || [], tokens);
   }
 
-  const getSummitData = async (): Promise<Summit> => {
+  const getSummitData = async (): Promise<Summit | null> => {
     try {
       const response = await fetch(currentNetworkConfig.rpcUrl, {
         method: "POST",

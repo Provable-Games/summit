@@ -4,7 +4,12 @@ import { useEffect } from "react";
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import { gameColors } from '@/utils/themes';
 
-function ConnectWallet(props) {
+interface ConnectWalletProps {
+  open: boolean;
+  close: (open: boolean) => void;
+}
+
+function ConnectWallet(props: ConnectWalletProps) {
   const { open, close } = props
   const { connect, connectors } = useConnect();
   const { address } = useAccount()
