@@ -723,6 +723,9 @@ pub mod summit_systems {
                     }
                 }
 
+                // Diplomacy rewards are an independent incentive layer with a separately configured
+                // rate. When diplomacy payouts exceed the summit holder budget, the holder gets 0
+                // (not a negative/underflow). The owner sets rates to align with token economics.
                 let total_diplomacy_payout = diplomacy_reward_amount * diplomacy_count.into();
                 let summit_reward_amount = if total_diplomacy_payout >= total_reward_amount {
                     0

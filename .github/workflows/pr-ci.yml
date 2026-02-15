@@ -335,7 +335,7 @@ jobs:
 
   claude-review-contracts:
     needs: [changes, contracts-lint]
-    if: needs.changes.outputs.contracts == 'true' && github.event.pull_request.head.repo.fork == false
+    if: needs.changes.outputs.contracts == 'true' && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -372,7 +372,7 @@ jobs:
             echo ""
             echo "Start your response with this exact heading (include the HTML comment exactly):"
             echo "## Claude Review - Cairo/Starknet Contract Review"
-            echo "<!-- run-id: ${{ github.run_id }} -->"
+            echo "<!-- run-id: ${{ github.run_id }}-${{ github.run_attempt }} -->"
             echo ""
 
             cat <<'PROMPT_EOF'
@@ -408,7 +408,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - Cairo/Starknet Contract Review"
-          RUN_MARKER: "run-id: ${{ github.run_id }}"
+          RUN_MARKER: "run-id: ${{ github.run_id }}-${{ github.run_attempt }}"
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -444,7 +444,7 @@ jobs:
 
   codex-review-contracts:
     needs: [changes, contracts-lint]
-    if: needs.changes.outputs.contracts == 'true' && github.event.pull_request.head.repo.fork == false
+    if: needs.changes.outputs.contracts == 'true' && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -529,7 +529,7 @@ jobs:
         run: |
           {
             echo "## Codex Review - Cairo/Starknet Contract Review"
-            echo "<!-- run-id: ${{ github.run_id }} -->"
+            echo "<!-- run-id: ${{ github.run_id }}-${{ github.run_attempt }} -->"
             echo ""
             if [ -s /tmp/review.txt ]; then
               cat /tmp/review.txt
@@ -557,7 +557,7 @@ jobs:
 
   claude-review-client:
     needs: [changes, client-lint]
-    if: needs.changes.outputs.client_review == 'true' && github.event.pull_request.head.repo.fork == false
+    if: needs.changes.outputs.client_review == 'true' && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -584,7 +584,7 @@ jobs:
             echo "This is PR #${{ github.event.pull_request.number }} for ${{ github.repository }}."
             echo ""
             echo "Review ONLY the changes introduced by the PR. Run this command to see the diff:"
-            echo "  git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} -- client/"
+            echo "  git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} -- client/ contracts/src/models/beast.cairo"
             echo ""
             echo "Pull request title: ${PR_TITLE}"
             echo "Pull request body:"
@@ -594,7 +594,7 @@ jobs:
             echo ""
             echo "Start your response with this exact heading (include the HTML comment exactly):"
             echo "## Claude Review - React/Frontend Review"
-            echo "<!-- run-id: ${{ github.run_id }} -->"
+            echo "<!-- run-id: ${{ github.run_id }}-${{ github.run_attempt }} -->"
             echo ""
 
             cat <<'PROMPT_EOF'
@@ -630,7 +630,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - React/Frontend Review"
-          RUN_MARKER: "run-id: ${{ github.run_id }}"
+          RUN_MARKER: "run-id: ${{ github.run_id }}-${{ github.run_attempt }}"
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -666,7 +666,7 @@ jobs:
 
   codex-review-client:
     needs: [changes, client-lint]
-    if: needs.changes.outputs.client_review == 'true' && github.event.pull_request.head.repo.fork == false
+    if: needs.changes.outputs.client_review == 'true' && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -702,7 +702,7 @@ jobs:
             echo "This is PR #${{ github.event.pull_request.number }} for ${{ github.repository }}."
             echo ""
             echo "Review ONLY the changes introduced by the PR. Run this command to see the diff:"
-            echo "  git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} -- client/"
+            echo "  git diff ${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }} -- client/ contracts/src/models/beast.cairo"
             echo ""
             echo "Pull request title: ${PR_TITLE}"
             echo "Pull request body:"
@@ -751,7 +751,7 @@ jobs:
         run: |
           {
             echo "## Codex Review - React/Frontend Review"
-            echo "<!-- run-id: ${{ github.run_id }} -->"
+            echo "<!-- run-id: ${{ github.run_id }}-${{ github.run_attempt }} -->"
             echo ""
             if [ -s /tmp/review.txt ]; then
               cat /tmp/review.txt
@@ -779,7 +779,7 @@ jobs:
 
   claude-review-indexer-api:
     needs: [changes, indexer-api-lint]
-    if: needs.changes.outputs.indexer_api_review == 'true' && github.event.pull_request.head.repo.fork == false
+    if: needs.changes.outputs.indexer_api_review == 'true' && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -816,7 +816,7 @@ jobs:
             echo ""
             echo "Start your response with this exact heading (include the HTML comment exactly):"
             echo "## Claude Review - Indexer/API Review"
-            echo "<!-- run-id: ${{ github.run_id }} -->"
+            echo "<!-- run-id: ${{ github.run_id }}-${{ github.run_attempt }} -->"
             echo ""
 
             cat <<'PROMPT_EOF'
@@ -852,7 +852,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - Indexer/API Review"
-          RUN_MARKER: "run-id: ${{ github.run_id }}"
+          RUN_MARKER: "run-id: ${{ github.run_id }}-${{ github.run_attempt }}"
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -888,7 +888,7 @@ jobs:
 
   codex-review-indexer-api:
     needs: [changes, indexer-api-lint]
-    if: needs.changes.outputs.indexer_api_review == 'true' && github.event.pull_request.head.repo.fork == false
+    if: needs.changes.outputs.indexer_api_review == 'true' && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -973,7 +973,7 @@ jobs:
         run: |
           {
             echo "## Codex Review - Indexer/API Review"
-            echo "<!-- run-id: ${{ github.run_id }} -->"
+            echo "<!-- run-id: ${{ github.run_id }}-${{ github.run_attempt }} -->"
             echo ""
             if [ -s /tmp/review.txt ]; then
               cat /tmp/review.txt
@@ -1001,7 +1001,7 @@ jobs:
 
   claude-review-general:
     needs: [changes]
-    if: needs.changes.outputs.general_review == 'true' && github.event.pull_request.head.repo.fork == false
+    if: needs.changes.outputs.general_review == 'true' && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1039,7 +1039,7 @@ jobs:
             echo ""
             echo "Start your response with this exact heading (include the HTML comment exactly):"
             echo "## Claude Review - General Engineering Review"
-            echo "<!-- run-id: ${{ github.run_id }} -->"
+            echo "<!-- run-id: ${{ github.run_id }}-${{ github.run_attempt }} -->"
             echo ""
 
             cat <<'PROMPT_EOF'
@@ -1075,7 +1075,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - General Engineering Review"
-          RUN_MARKER: "run-id: ${{ github.run_id }}"
+          RUN_MARKER: "run-id: ${{ github.run_id }}-${{ github.run_attempt }}"
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -1111,7 +1111,7 @@ jobs:
 
   codex-review-general:
     needs: [changes]
-    if: needs.changes.outputs.general_review == 'true' && github.event.pull_request.head.repo.fork == false
+    if: needs.changes.outputs.general_review == 'true' && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1197,7 +1197,7 @@ jobs:
         run: |
           {
             echo "## Codex Review - General Engineering Review"
-            echo "<!-- run-id: ${{ github.run_id }} -->"
+            echo "<!-- run-id: ${{ github.run_id }}-${{ github.run_attempt }} -->"
             echo ""
             if [ -s /tmp/review.txt ]; then
               cat /tmp/review.txt
