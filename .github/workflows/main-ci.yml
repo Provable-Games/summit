@@ -27,6 +27,8 @@ jobs:
       general_ci: ${{ steps.filter.outputs.general_ci }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: dorny/paths-filter@v3
         id: filter
@@ -45,6 +47,7 @@ jobs:
               - ".tool-versions"
             api:
               - "api/**"
+              - ".tool-versions"
             indexer_api_ci:
               - "indexer/**"
               - "api/**"
