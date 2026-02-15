@@ -2,8 +2,11 @@ name: Main CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, next]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: main-ci-${{ github.ref }}
@@ -20,6 +23,7 @@ jobs:
       indexer_ci: ${{ steps.filter.outputs.indexer_ci }}
       api: ${{ steps.filter.outputs.api }}
       indexer_api_ci: ${{ steps.filter.outputs.indexer_api_ci }}
+      infra_ci: ${{ steps.filter.outputs.infra_ci }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,6 +49,24 @@ jobs:
               - "api/**"
               - "contracts/src/models/beast.cairo"
               - ".tool-versions"
+            infra_ci:
+              - ".github/workflows/**"
+              - ".github/actions/**"
+              - ".github/prompts/**"
+              - ".github/pull_request_template.md"
+
+  infra-validate:
+    needs: changes
+    if: needs.changes.outputs.infra_ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate workflow YAML
+        run: |
+          for file in .github/workflows/*.yml; do
+            npx -y yaml valid < "$file"
+          done
 
   contracts-lint:
     needs: changes
@@ -331,6 +353,7 @@ jobs:
       - indexer-api-lint
       - indexer-test
       - api-test
+      - infra-validate
     if: always()
     runs-on: ubuntu-latest
     steps:

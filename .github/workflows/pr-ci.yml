@@ -1237,6 +1237,10 @@ jobs:
       - name: Evaluate results
         env:
           NEEDS_JSON: ${{ toJson(needs) }}
+          CHANGES_CONTRACTS: ${{ needs.changes.outputs.contracts }}
+          CHANGES_CLIENT_REVIEW: ${{ needs.changes.outputs.client_review }}
+          CHANGES_INDEXER_API_REVIEW: ${{ needs.changes.outputs.indexer_api_review }}
+          CHANGES_GENERAL_REVIEW: ${{ needs.changes.outputs.general_review }}
         run: |
           FAILED=$(echo "$NEEDS_JSON" | jq -r '
             to_entries[]
@@ -1247,6 +1251,35 @@ jobs:
           if [ -n "$FAILED" ]; then
             echo "::error::Failing jobs:"
             echo "$FAILED"
+            exit 1
+          fi
+
+          MISSING_REVIEWS=""
+
+          check_skipped_reviews() {
+            local changed="$1"
+            shift
+
+            if [ "$changed" != "true" ]; then
+              return
+            fi
+
+            for job in "$@"; do
+              RESULT=$(echo "$NEEDS_JSON" | jq -r --arg job "$job" '.[$job].result // "unknown"')
+              if [ "$RESULT" = "skipped" ]; then
+                MISSING_REVIEWS="${MISSING_REVIEWS}${job}"$'\n'
+              fi
+            done
+          }
+
+          check_skipped_reviews "$CHANGES_CONTRACTS" "claude-review-contracts" "codex-review-contracts"
+          check_skipped_reviews "$CHANGES_CLIENT_REVIEW" "claude-review-client" "codex-review-client"
+          check_skipped_reviews "$CHANGES_INDEXER_API_REVIEW" "claude-review-indexer-api" "codex-review-indexer-api"
+          check_skipped_reviews "$CHANGES_GENERAL_REVIEW" "claude-review-general" "codex-review-general"
+
+          if [ -n "$MISSING_REVIEWS" ]; then
+            echo "::error::Required review jobs were skipped:"
+            echo "$MISSING_REVIEWS"
             exit 1
           fi
 
