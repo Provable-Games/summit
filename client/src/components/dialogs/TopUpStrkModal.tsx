@@ -84,7 +84,7 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
   const balance = tokenBalances[selectedToken] || 0;
   const numericAmount = parseFloat(amount) || 0;
   const hasInsufficientBalance = numericAmount > balance;
-  const estimatedStrk = quote ? Math.abs(quote.total) / 1e18 : 0;
+  const estimatedStrk = quote ? Math.abs(quote.totalDisplay) / 1e18 : 0;
 
   useEffect(() => {
     if (open) {
@@ -109,7 +109,7 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
     try {
       const amountInWei = BigInt(Math.floor(qty)) * 10n ** 18n;
       const result = await getSwapQuote(amountInWei, tokenData.address, STRK_ADDRESS);
-      if (result && result.total !== 0) {
+      if (result && result.totalDisplay !== 0) {
         setQuote(result);
       } else {
         setQuote(null);
@@ -158,7 +158,7 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
       // Re-fetch quote for freshness
       const freshQuote = await getSwapQuote(amountInWei, selectedTokenData.address, STRK_ADDRESS);
 
-      if (!freshQuote || freshQuote.total === 0) {
+      if (!freshQuote || freshQuote.totalDisplay === 0) {
         setQuoteError('No route found');
         return;
       }

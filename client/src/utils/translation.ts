@@ -195,7 +195,8 @@ function hexToNumber(hex: string | undefined): number {
   return Number(BigInt(hex || "0x0"));
 }
 
-function decodeBattleEvent(data: string[]): BattleEventTranslation {
+function decodeBattleEvent(data: string[]): BattleEventTranslation | null {
+  if (data.length < 14) return null;
   return {
     componentName: 'BattleEvent',
     attacking_beast_token_id: hexToNumber(data[0]),
@@ -215,7 +216,8 @@ function decodeBattleEvent(data: string[]): BattleEventTranslation {
   };
 }
 
-function decodeLiveBeastStatsEvent(data: string[]): LiveBeastStatsEventTranslation {
+function decodeLiveBeastStatsEvent(data: string[]): LiveBeastStatsEventTranslation | null {
+  if (data.length < 1) return null;
   const stats = unpackLiveBeastStats(data[0]);
   return {
     componentName: 'LiveBeastStatsEvent',
@@ -226,6 +228,7 @@ function decodeLiveBeastStatsEvent(data: string[]): LiveBeastStatsEventTranslati
 function decodeBeastUpdatesEvent(data: string[]): LiveBeastStatsEventTranslation[] {
   // Data format: [length, packed1, packed2, ...]
   // Returns array of LiveBeastStatsEvent objects
+  if (data.length < 1) return [];
   const length = hexToNumber(data[0]);
   const events: LiveBeastStatsEventTranslation[] = [];
 
@@ -256,6 +259,7 @@ export const translateGameEvent = (event: StarknetEventLike, address: string): T
 
   // Fallback: Summit contract event from user's address
   if (!name && event.from_address === address) {
+    if (data.length < 3) return [];
     return [{
       componentName: 'Summit',
       attack_potions: hexToNumber(data[data.length - 3]),
@@ -267,10 +271,14 @@ export const translateGameEvent = (event: StarknetEventLike, address: string): T
   if (!name) return [];
 
   switch (name) {
-    case 'BattleEvent':
-      return [decodeBattleEvent(data)];
-    case 'LiveBeastStatsEvent':
-      return [decodeLiveBeastStatsEvent(data)];
+    case 'BattleEvent': {
+      const decoded = decodeBattleEvent(data);
+      return decoded ? [decoded] : [];
+    }
+    case 'LiveBeastStatsEvent': {
+      const decoded = decodeLiveBeastStatsEvent(data);
+      return decoded ? [decoded] : [];
+    }
     case 'BeastUpdatesEvent':
       return decodeBeastUpdatesEvent(data); // Already returns array
     default:

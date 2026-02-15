@@ -4,7 +4,10 @@ import { num } from "starknet";
 export interface SwapQuote {
   impact: number;
   price_impact?: number;
-  total: number;
+  /** Raw total as a string to preserve BigInt precision for on-chain calls. */
+  total: string;
+  /** Lossy number conversion of total, safe for UI display only. */
+  totalDisplay: number;
   splits: SwapSplit[];
 }
 
@@ -42,7 +45,7 @@ export interface SwapCall {
 }
 
 interface SwapQuoteResponse {
-  total_calculated?: number | string;
+  total_calculated?: string;
   price_impact?: number;
   splits?: SwapSplit[];
 }
@@ -140,14 +143,14 @@ export const getSwapQuote = async (
       }
 
       if (data.total_calculated !== undefined) {
-        const totalCalculated = typeof data.total_calculated === "number"
-          ? data.total_calculated
-          : Number(data.total_calculated);
+        const totalStr = String(data.total_calculated);
+        const totalNum = Number(totalStr);
 
         return {
           impact: data.price_impact || 0,
           price_impact: data.price_impact || 0,
-          total: Number.isFinite(totalCalculated) ? totalCalculated : 0,
+          total: totalStr,
+          totalDisplay: Number.isFinite(totalNum) ? totalNum : 0,
           splits: data.splits || [],
         };
       }
@@ -160,7 +163,8 @@ export const getSwapQuote = async (
 
     return {
       impact: 0,
-      total: 0,
+      total: "0",
+      totalDisplay: 0,
       splits: [],
     };
   })();
