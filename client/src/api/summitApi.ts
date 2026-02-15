@@ -333,7 +333,7 @@ export const useSummitApi = () => {
       throw new Error(`Failed to fetch quest rewards total: ${response.status}`);
     }
     const data: { total: number } = await response.json();
-    return data.total / 1000;
+    return data.total / 100;
   };
 
   return {
