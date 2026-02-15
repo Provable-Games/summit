@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockState = {
   accountAddress: undefined as string | undefined,
+  connector: null as unknown,
+  connectors: [] as Array<{ id: string }>,
 };
 
 const connectMock = vi.fn();
@@ -25,8 +27,8 @@ vi.mock("@starknet-react/core", () => ({
     isConnecting: false,
   }),
   useConnect: () => ({
-    connector: null,
-    connectors: [],
+    connector: mockState.connector,
+    connectors: mockState.connectors,
     connect: connectMock,
     isPending: false,
   }),
@@ -98,10 +100,18 @@ async function renderProvider() {
   });
 }
 
+async function flushEffects() {
+  await act(async () => {
+    await Promise.resolve();
+  });
+}
+
 describe("ControllerProvider.filterValidAdventurers", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockState.accountAddress = undefined;
+    mockState.connector = null;
+    mockState.connectors = [];
   });
 
   it("guards when no account address is present", async () => {
@@ -144,5 +154,64 @@ describe("ControllerProvider.filterValidAdventurers", () => {
         soulbound: false,
       },
     ]);
+  });
+
+  it("sets username when connector provides username()", async () => {
+    const usernameMock = vi.fn(async () => "Savage");
+    mockState.connector = { username: usernameMock };
+
+    await renderProvider();
+    await flushEffects();
+
+    expect(usernameMock).toHaveBeenCalled();
+    expect(capturedController.playerName).toBe("Savage");
+  });
+
+  it("clears username when connector does not provide username()", async () => {
+    mockState.connector = {};
+
+    await renderProvider();
+    await flushEffects();
+
+    expect(capturedController.playerName).toBeUndefined();
+  });
+
+  it("handles username fetch failures without throwing", async () => {
+    const error = new Error("username failed");
+    const usernameMock = vi.fn(async () => {
+      throw error;
+    });
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockState.connector = { username: usernameMock };
+
+    await renderProvider();
+    await flushEffects();
+
+    expect(usernameMock).toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledWith("Error getting username:", error);
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("opens profile when connector exposes controller.openProfile()", async () => {
+    const openProfileMock = vi.fn();
+    mockState.connector = { controller: { openProfile: openProfileMock } };
+
+    await renderProvider();
+    await act(async () => {
+      capturedController.openProfile();
+    });
+
+    expect(openProfileMock).toHaveBeenCalled();
+  });
+
+  it("no-ops openProfile when connector has no controller profile API", async () => {
+    mockState.connector = {};
+
+    await renderProvider();
+    await act(async () => {
+      capturedController.openProfile();
+    });
+
+    expect(connectMock).not.toHaveBeenCalled();
   });
 });

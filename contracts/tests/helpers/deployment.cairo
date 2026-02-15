@@ -7,22 +7,27 @@ use crate::fixtures::addresses::{
     SKULL_TOKEN_ADDRESS,
 };
 
-/// Deploy summit contract without starting it
+/// Deploy summit contract without starting it (zero reward rates)
 pub fn deploy_summit() -> ISummitSystemDispatcher {
+    deploy_summit_with_rewards(0, 0)
+}
+
+/// Deploy summit contract with custom reward rates
+pub fn deploy_summit_with_rewards(
+    summit_reward_per_second: u128, diplomacy_reward_per_second: u128,
+) -> ISummitSystemDispatcher {
     let contract = declare("summit_systems").unwrap().contract_class();
     let owner = REAL_PLAYER();
     let start_timestamp = 1000_u64;
     let summit_duration_seconds = 1000000_u64;
-    let summit_reward_amount_per_second = 0_u128;
-    let diplomacy_reward_amount_per_second = 0_u128;
     let quest_rewards_total_amount = 100_u128;
 
     let mut calldata = array![];
     calldata.append(owner.into());
     calldata.append(start_timestamp.into());
     calldata.append(summit_duration_seconds.into());
-    calldata.append(summit_reward_amount_per_second.into());
-    calldata.append(diplomacy_reward_amount_per_second.into());
+    calldata.append(summit_reward_per_second.into());
+    calldata.append(diplomacy_reward_per_second.into());
     calldata.append(quest_rewards_total_amount.into());
     calldata.append(DUNGEON_ADDRESS().into());
     calldata.append(BEAST_ADDRESS().into());

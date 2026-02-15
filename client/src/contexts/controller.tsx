@@ -8,6 +8,7 @@ import { useAccount, useConnect, useDisconnect } from "@starknet-react/core";
 import type {
   PropsWithChildren} from "react";
 import {
+  useCallback,
   createContext,
   useContext,
   useEffect,
@@ -24,7 +25,7 @@ export interface ControllerContext {
   fetchTokenBalances: (delayMs: number) => void;
   fetchPaymentTokenBalances: () => void;
   fetchBeastCollection: () => void;
-  filterValidAdventurers: () => void;
+  filterValidAdventurers: () => Promise<void>;
   openProfile: () => void;
   login: () => void;
   logout: () => void;
@@ -85,13 +86,14 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const [showTermsOfService, setShowTermsOfService] = useState(false);
   const { identifyAddress } = useAnalytics();
 
-  const filterValidAdventurers = async () => {
-    if (!account?.address) {
+  const filterValidAdventurers = useCallback(async () => {
+    const accountAddress = account?.address;
+    if (!accountAddress) {
       setAdventurerCollection([]);
       return;
     }
 
-    const validAdventurers = await getValidAdventurers(account.address);
+    const validAdventurers = await getValidAdventurers(accountAddress);
 
     setAdventurerCollection(validAdventurers.map((adventurer): Adventurer => ({
       id: adventurer.token_id,
@@ -100,14 +102,13 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
       metadata: null,
       soulbound: false,
     })));
-  };
+  }, [account?.address, getValidAdventurers, setAdventurerCollection]);
 
   useEffect(() => {
     if (account?.address) {
       filterValidAdventurers();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [account?.address]);
+  }, [account?.address, filterValidAdventurers]);
 
   useEffect(() => {
     if (account) {
@@ -141,6 +142,10 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
     };
 
     if (connector) getUsername();
+  }, [connector]);
+
+  const openProfile = useCallback(() => {
+    openConnectorProfile(connector);
   }, [connector]);
 
   async function fetchBeastCollection() {
@@ -199,7 +204,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         gasSpent,
         triggerGasSpent,
 
-        openProfile: () => openConnectorProfile(connector),
+        openProfile,
         login: () =>
           connect({
             connector: connectors.find((conn) => conn.id === "controller"),

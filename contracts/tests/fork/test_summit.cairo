@@ -1,12 +1,14 @@
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global, start_cheat_caller_address,
-    stop_cheat_block_timestamp_global, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, map_entry_address, start_cheat_block_timestamp_global,
+    start_cheat_caller_address, stop_cheat_block_timestamp_global, stop_cheat_caller_address, store,
 };
 use starknet::{ContractAddress, get_block_timestamp};
 use summit::systems::summit::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
 use crate::fixtures::addresses::{BEAST_WHALE, REAL_PLAYER, REWARD_ADDRESS, SUPER_BEAST_OWNER, whale_beast_token_ids};
 use crate::fixtures::constants::SUPER_BEAST_TOKEN_ID;
-use crate::helpers::deployment::{deploy_summit, deploy_summit_and_start, mock_erc20_burn_from, mock_erc20_transfer};
+use crate::helpers::deployment::{
+    deploy_summit, deploy_summit_and_start, deploy_summit_with_rewards, mock_erc20_burn_from, mock_erc20_transfer,
+};
 
 // ===========================================
 // CORE ATTACK FUNCTIONS TESTS
@@ -1232,6 +1234,67 @@ fn test_summit_not_started_returns_zero_beast_id() {
     assert(beast_id == 0, 'Should be 0 before start');
 }
 
+#[test]
+#[fork("mainnet_6704808")]
+#[should_panic(expected: ('Summit not playable',))]
+fn test_attack_reverts_after_terminal_timestamp() {
+    let summit = deploy_summit_and_start();
+    let terminal_timestamp = summit.get_terminal_timestamp();
+
+    start_cheat_block_timestamp_global(terminal_timestamp + 1);
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
+}
+
+#[test]
+#[fork("mainnet_6704808")]
+fn test_claim_rewards_finalizes_terminal_holder() {
+    let summit = deploy_summit_with_rewards(100_000_000_000_000, 0);
+    summit.start_summit();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
+
+    let terminal_timestamp = summit.get_terminal_timestamp();
+    start_cheat_block_timestamp_global(terminal_timestamp + 1);
+
+    let claim_ids = array![60989].span();
+    summit.claim_rewards(claim_ids);
+
+    let beast = summit.get_beast(60989);
+    assert(beast.live.rewards_claimed > 0, 'Rewards were not finalized');
+
+    stop_cheat_block_timestamp_global();
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet_6704808")]
+fn test_diplomacy_rewards_are_clamped_to_total_reward() {
+    let summit = deploy_summit_with_rewards(100_000_000_000_000, 200_000_000_000_000);
+    summit.start_summit();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 1, spirit: 0, luck: 0 };
+    summit.apply_stat_points(1, stats);
+
+    start_cheat_block_timestamp_global(get_block_timestamp() + 1);
+
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
+    assert(summit.get_summit_beast_token_id() == 60989, 'Attack should still succeed');
+
+    stop_cheat_block_timestamp_global();
+    stop_cheat_caller_address(summit.contract_address);
+}
+
 // ==========================
 // P1 TESTS: POISON MECHANICS
 // ==========================
@@ -1516,4 +1579,134 @@ fn test_attack_multi_iteration_gas_benchmark() {
     summit.attack(0, attacking_beasts, 100, 0, false);
 
     stop_cheat_caller_address(summit.contract_address);
+}
+
+// ===========================================
+// DIPLOMACY REWARD CLAMPING
+// ===========================================
+
+/// Tests that _finalize_summit_history does not underflow when
+/// diplomacy_reward_amount_per_second * diplomacy_count > summit_reward_amount_per_second.
+/// Uses direct storage access to stage diplomacy state without needing
+/// matching prefix/suffix beasts.
+#[test]
+#[fork("mainnet_6704808")]
+fn test_diplomacy_reward_no_underflow_when_exceeds_total() {
+    // Deploy with diplomacy reward (2e15) > summit reward (1e15)
+    let summit_rate: u128 = 1_000_000_000_000_000;
+    let diplomacy_rate: u128 = 2_000_000_000_000_000;
+    let summit = deploy_summit_with_rewards(summit_rate, diplomacy_rate);
+    summit.start_summit();
+
+    // REAL_PLAYER takes summit with beast 60989
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
+    assert(summit.get_summit_beast_token_id() == 60989, 'Beast 60989 should be on summit');
+    stop_cheat_caller_address(summit.contract_address);
+
+    // Read beast 60989's prefix/suffix and compute specials_hash
+    let beast = summit.get_beast(60989);
+    let specials_hash = summit::logic::beast_utils::get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
+    let mut holder_live = beast.live;
+    holder_live.rewards_earned = 5000;
+    let holder_packed = summit::models::beast::PackableLiveStatsStorePacking::pack(holder_live);
+    let holder_live_stats_addr = map_entry_address(selector!("live_beast_stats"), array![60989].span());
+    store(summit.contract_address, holder_live_stats_addr, array![holder_packed].span());
+
+    // Use direct storage access to stage diplomacy state.
+    // Register a separate beast (token 99999) as diplomacy ally to avoid
+    // the summit holder save overwriting diplomacy reward writes.
+    let diplomacy_beast_id: felt252 = 99999;
+
+    // Set diplomacy_count[specials_hash] = 1
+    let diplomacy_count_addr = map_entry_address(selector!("diplomacy_count"), array![specials_hash].span());
+    store(summit.contract_address, diplomacy_count_addr, array![1].span());
+
+    // Set diplomacy_beast[specials_hash][0] = 99999
+    let diplomacy_beast_outer_addr = map_entry_address(selector!("diplomacy_beast"), array![specials_hash].span());
+    let diplomacy_beast_entry_addr = map_entry_address(diplomacy_beast_outer_addr, array![0].span());
+    store(summit.contract_address, diplomacy_beast_entry_addr, array![diplomacy_beast_id].span());
+
+    // Advance time by 100 seconds so rewards accumulate
+    let current_ts = get_block_timestamp();
+    start_cheat_block_timestamp_global(current_ts + 100);
+
+    // Mock reward token transfer (finalization mints rewards)
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    // SUPER_BEAST_OWNER attacks to displace 60989, triggering _finalize_summit_history.
+    start_cheat_caller_address(summit.contract_address, SUPER_BEAST_OWNER());
+    let attack_beasts = array![(SUPER_BEAST_TOKEN_ID, 10, 0)].span();
+    summit.attack(60989, attack_beasts, 0, 0, false);
+    stop_cheat_caller_address(summit.contract_address);
+
+    // If we reach here, no underflow occurred - the clamped payout path handled the edge case.
+    let new_summit_beast = summit.get_summit_beast_token_id();
+    assert(new_summit_beast == SUPER_BEAST_TOKEN_ID, 'SUPER_BEAST should take summit');
+
+    // Clamped diplomacy payout: min(100 * 2e15, 100 * 1e15) = 1e17 -> 10000
+    let diplomacy_beast_stats = summit.get_live_stats(array![99999].span());
+    assert(*diplomacy_beast_stats.at(0).rewards_earned == 10000, 'diplomacy reward clamped');
+
+    // Existing summit-holder rewards are preserved through the clamped finalization path.
+    let beast_after = summit.get_beast(60989);
+    assert(beast_after.live.rewards_earned == 5000, 'summit holder rewards kept');
+
+    stop_cheat_block_timestamp_global();
+}
+
+/// Tests the branch where diplomacy payout is less than total reward,
+/// so summit holder receives total_reward - diplomacy_payout.
+#[test]
+#[fork("mainnet_6704808")]
+fn test_diplomacy_reward_subtracted_from_summit_holder() {
+    // summit_rate (3e15) > diplomacy_rate (1e15) so holder gets remainder
+    let summit_rate: u128 = 3_000_000_000_000_000;
+    let diplomacy_rate: u128 = 1_000_000_000_000_000;
+    let summit = deploy_summit_with_rewards(summit_rate, diplomacy_rate);
+    summit.start_summit();
+
+    // REAL_PLAYER takes summit with beast 60989
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
+    assert(summit.get_summit_beast_token_id() == 60989, 'Beast 60989 should be on summit');
+    stop_cheat_caller_address(summit.contract_address);
+
+    // Stage diplomacy state for beast 60989's specials_hash
+    let beast = summit.get_beast(60989);
+    let specials_hash = summit::logic::beast_utils::get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
+    let diplomacy_beast_id: felt252 = 99999;
+
+    let diplomacy_count_addr = map_entry_address(selector!("diplomacy_count"), array![specials_hash].span());
+    store(summit.contract_address, diplomacy_count_addr, array![1].span());
+
+    let diplomacy_beast_outer_addr = map_entry_address(selector!("diplomacy_beast"), array![specials_hash].span());
+    let diplomacy_beast_entry_addr = map_entry_address(diplomacy_beast_outer_addr, array![0].span());
+    store(summit.contract_address, diplomacy_beast_entry_addr, array![diplomacy_beast_id].span());
+
+    // Advance time 100s
+    let current_ts = get_block_timestamp();
+    start_cheat_block_timestamp_global(current_ts + 100);
+
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    // Displace 60989, triggering _finalize_summit_history
+    start_cheat_caller_address(summit.contract_address, SUPER_BEAST_OWNER());
+    let attack_beasts = array![(SUPER_BEAST_TOKEN_ID, 10, 0)].span();
+    summit.attack(60989, attack_beasts, 0, 0, false);
+    stop_cheat_caller_address(summit.contract_address);
+
+    // diplomacy_payout = 100 * 1e15 = 1e17, total = 100 * 3e15 = 3e17
+    // summit_reward = 3e17 - 1e17 = 2e17
+    // reward_u32 = 2e17 / 1e13 = 20000
+    let beast_after = summit.get_beast(60989);
+    assert(beast_after.live.rewards_earned == 20000, 'Summit holder gets remainder');
+
+    // diplomacy_reward_u32 = 1e17 / 1e13 = 10000
+    let diplomacy_beast_stats = summit.get_live_stats(array![99999].span());
+    assert(*diplomacy_beast_stats.at(0).rewards_earned == 10000, 'Diplomacy reward should be 10k');
+
+    stop_cheat_block_timestamp_global();
 }

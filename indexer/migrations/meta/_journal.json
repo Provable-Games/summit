@@ -15,6 +15,13 @@
       "when": 1770987339401,
       "tag": "0001_triggers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770990939402,
+      "tag": "0002_beast_stats_flags_and_trigger_refresh",
+      "breakpoints": true
     }
   ]
 }
