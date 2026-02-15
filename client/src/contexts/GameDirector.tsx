@@ -11,6 +11,11 @@ import type { BattleEvent, Beast, GameAction, SpectatorBattleEvent, Summit } fro
 import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import { fetchBeastImage } from "@/utils/beasts";
 import { lookupAddressName } from "@/utils/addressNameCache";
+import type {
+  BattleEventTranslation,
+  LiveBeastStatsEventTranslation,
+  SummitEventTranslation,
+} from "@/utils/translation";
 import {
   applyPoisonDamage,
   getBeastCurrentHealth,
@@ -50,6 +55,19 @@ export const QUEST_REWARDS_TOTAL_AMOUNT = 100;
 const GameDirectorContext = createContext<GameDirectorContext>(
   {} as GameDirectorContext
 );
+
+const isLiveBeastStatsEvent = (
+  event: TranslatedGameEvent
+): event is LiveBeastStatsEventTranslation =>
+  event.componentName === "LiveBeastStatsEvent";
+
+const isBattleEvent = (
+  event: TranslatedGameEvent
+): event is BattleEventTranslation => event.componentName === "BattleEvent";
+
+const isSummitEvent = (
+  event: TranslatedGameEvent
+): event is SummitEventTranslation => event.componentName === "Summit";
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { account } = useAccount();
@@ -473,7 +491,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
   };
 
-  const updateLiveStats = (beastLiveStats: TranslatedGameEvent[]) => {
+  const updateLiveStats = (beastLiveStats: LiveBeastStatsEventTranslation[]) => {
     if (beastLiveStats.length === 0) return;
 
     beastLiveStats = beastLiveStats.reverse();
@@ -598,12 +616,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     updateLiveStats(
-      events.filter((event: TranslatedGameEvent) => event.componentName === "LiveBeastStatsEvent")
+      events.filter(isLiveBeastStatsEvent)
     );
     const captured = events
-      .filter((event: TranslatedGameEvent) => event.componentName === "BattleEvent")
+      .filter(isBattleEvent)
       .find(
-        (event: TranslatedGameEvent) => {
+        (event) => {
           const attackCount = Number(event.attack_count ?? 0);
           const criticalAttackCount = Number(event.critical_attack_count ?? 0);
           const counterAttackCount = Number(event.counter_attack_count ?? 0);
@@ -615,9 +633,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       );
 
     if (action.type === "attack" || action.type === "attack_until_capture") {
-      const summitEvent = events.find(
-        (event: TranslatedGameEvent) => event.componentName === "Summit"
-      );
+      const summitEvent = events.find(isSummitEvent);
       if (summitEvent) {
         const attackPotions = Number(summitEvent.attack_potions ?? 0);
         const extraLifePotions = Number(summitEvent.extra_life_potions ?? 0);
@@ -641,11 +657,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     if (action.type === "attack") {
       if (action.pauseUpdates) {
-        setBattleEvents(
-          events
-            .filter((event: TranslatedGameEvent) => event.componentName === "BattleEvent")
-            .map((event) => event as unknown as BattleEvent)
-        );
+        const battleEvents: BattleEvent[] = events
+          .filter(isBattleEvent)
+          .map(({ componentName: _componentName, ...battleEvent }) => battleEvent);
+        setBattleEvents(battleEvents);
       } else {
         setAttackInProgress(false);
       }
