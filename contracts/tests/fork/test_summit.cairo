@@ -1,12 +1,14 @@
 use snforge_std::{
-    ContractClassTrait, DeclareResultTrait, declare, start_cheat_block_timestamp_global, start_cheat_caller_address,
-    stop_cheat_block_timestamp_global, stop_cheat_caller_address,
+    ContractClassTrait, DeclareResultTrait, declare, map_entry_address, start_cheat_block_timestamp_global,
+    start_cheat_caller_address, stop_cheat_block_timestamp_global, stop_cheat_caller_address, store,
 };
 use starknet::{ContractAddress, get_block_timestamp};
 use summit::systems::summit::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
 use crate::fixtures::addresses::{BEAST_WHALE, REAL_PLAYER, REWARD_ADDRESS, SUPER_BEAST_OWNER, whale_beast_token_ids};
 use crate::fixtures::constants::SUPER_BEAST_TOKEN_ID;
-use crate::helpers::deployment::{deploy_summit, deploy_summit_and_start, mock_erc20_burn_from, mock_erc20_transfer};
+use crate::helpers::deployment::{
+    deploy_summit, deploy_summit_and_start, deploy_summit_with_rewards, mock_erc20_burn_from, mock_erc20_transfer,
+};
 
 // ===========================================
 // CORE ATTACK FUNCTIONS TESTS
@@ -1516,4 +1518,78 @@ fn test_attack_multi_iteration_gas_benchmark() {
     summit.attack(0, attacking_beasts, 100, 0, false);
 
     stop_cheat_caller_address(summit.contract_address);
+}
+
+// ===========================================
+// DIPLOMACY REWARD UNDERFLOW PROTECTION
+// ===========================================
+
+/// Tests that _finalize_summit_history does not underflow when
+/// diplomacy_reward_amount_per_second * diplomacy_count > summit_reward_amount_per_second.
+/// Uses direct storage access to stage diplomacy state without needing
+/// matching prefix/suffix beasts.
+#[test]
+#[fork("mainnet")]
+fn test_diplomacy_reward_no_underflow_when_exceeds_total() {
+    // Deploy with diplomacy reward (2e15) > summit reward (1e15)
+    let summit_rate: u128 = 1_000_000_000_000_000;
+    let diplomacy_rate: u128 = 2_000_000_000_000_000;
+    let summit = deploy_summit_with_rewards(summit_rate, diplomacy_rate);
+    summit.start_summit();
+
+    // REAL_PLAYER takes summit with beast 60989
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
+    assert(summit.get_summit_beast_token_id() == 60989, 'Beast 60989 should be on summit');
+    stop_cheat_caller_address(summit.contract_address);
+
+    // Read beast 60989's prefix/suffix and compute specials_hash
+    let beast = summit.get_beast(60989);
+    let specials_hash = summit::logic::beast_utils::get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
+
+    // Use direct storage access to stage diplomacy state.
+    // Register a separate beast (token 99999) as diplomacy ally to avoid
+    // the summit holder save overwriting diplomacy reward writes.
+    let diplomacy_beast_id: felt252 = 99999;
+
+    // Set diplomacy_count[specials_hash] = 1
+    let diplomacy_count_addr = map_entry_address(selector!("diplomacy_count"), array![specials_hash].span());
+    store(summit.contract_address, diplomacy_count_addr, array![1].span());
+
+    // Set diplomacy_beast[specials_hash][0] = 99999
+    let diplomacy_beast_outer_addr = map_entry_address(selector!("diplomacy_beast"), array![specials_hash].span());
+    let diplomacy_beast_entry_addr = map_entry_address(diplomacy_beast_outer_addr, array![0].span());
+    store(summit.contract_address, diplomacy_beast_entry_addr, array![diplomacy_beast_id].span());
+
+    // Advance time by 100 seconds so rewards accumulate
+    let current_ts = get_block_timestamp();
+    start_cheat_block_timestamp_global(current_ts + 100);
+
+    // Mock reward token transfer (finalization mints rewards)
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    // SUPER_BEAST_OWNER attacks to displace 60989, triggering _finalize_summit_history
+    // Before the underflow fix, this would panic with arithmetic underflow
+    // because diplomacy_payout (100 * 2e15 = 2e17) > total_reward (100 * 1e15 = 1e17)
+    start_cheat_caller_address(summit.contract_address, SUPER_BEAST_OWNER());
+    let attack_beasts = array![(SUPER_BEAST_TOKEN_ID, 10, 0)].span();
+    summit.attack(60989, attack_beasts, 0, 0, false);
+    stop_cheat_caller_address(summit.contract_address);
+
+    // If we reach here, no underflow occurred - the bounds check worked.
+    // Verify summit beast changed (SUPER_BEAST displaced 60989)
+    let new_summit_beast = summit.get_summit_beast_token_id();
+    assert(new_summit_beast == SUPER_BEAST_TOKEN_ID, 'SUPER_BEAST should take summit');
+
+    // Verify the diplomacy beast (99999) received rewards
+    // diplomacy_reward_u32 = (100 * 2e15) / 1e13 = 20000
+    let diplomacy_beast_stats = summit.get_live_stats(array![99999].span());
+    assert(*diplomacy_beast_stats.at(0).rewards_earned == 20000, 'Diplomacy reward should be 20k');
+
+    // Summit holder (60989) gets 0 because diplomacy payout exceeded total reward
+    let beast_after = summit.get_beast(60989);
+    assert(beast_after.live.rewards_earned == 0, 'Summit reward should be capped');
+
+    stop_cheat_block_timestamp_global();
 }

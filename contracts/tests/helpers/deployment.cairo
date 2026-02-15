@@ -39,6 +39,38 @@ pub fn deploy_summit() -> ISummitSystemDispatcher {
     ISummitSystemDispatcher { contract_address }
 }
 
+/// Deploy summit contract with custom reward rates
+pub fn deploy_summit_with_rewards(
+    summit_reward_per_second: u128, diplomacy_reward_per_second: u128,
+) -> ISummitSystemDispatcher {
+    let contract = declare("summit_systems").unwrap().contract_class();
+    let owner = REAL_PLAYER();
+    let start_timestamp = 1000_u64;
+    let summit_duration_seconds = 1000000_u64;
+    let quest_rewards_total_amount = 100_u128;
+
+    let mut calldata = array![];
+    calldata.append(owner.into());
+    calldata.append(start_timestamp.into());
+    calldata.append(summit_duration_seconds.into());
+    calldata.append(summit_reward_per_second.into());
+    calldata.append(diplomacy_reward_per_second.into());
+    calldata.append(quest_rewards_total_amount.into());
+    calldata.append(DUNGEON_ADDRESS().into());
+    calldata.append(BEAST_ADDRESS().into());
+    calldata.append(BEAST_DATA_ADDRESS().into());
+    calldata.append(REWARD_ADDRESS().into());
+    calldata.append(ATTACK_POTION_ADDRESS().into());
+    calldata.append(REVIVE_POTION_ADDRESS().into());
+    calldata.append(EXTRA_LIFE_POTION_ADDRESS().into());
+    calldata.append(POISON_POTION_ADDRESS().into());
+    calldata.append(SKULL_TOKEN_ADDRESS().into());
+    calldata.append(CORPSE_TOKEN_ADDRESS().into());
+
+    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    ISummitSystemDispatcher { contract_address }
+}
+
 /// Deploy summit contract and start it (ready for attack testing)
 pub fn deploy_summit_and_start() -> ISummitSystemDispatcher {
     let summit = deploy_summit();
