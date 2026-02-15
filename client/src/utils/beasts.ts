@@ -301,9 +301,10 @@ export const getEntityHash = (id: number, prefix: number, suffix: number): strin
   return addAddressPadding(hash.toString(16));
 }
 
-export const calculateOptimalAttackPotions = (selection: any, summit: Summit, maxAllowed: number) => {
-  const beast = selection[0];
-  const attacks = selection[1];
+type AttackSelection = selection[number];
+
+export const calculateOptimalAttackPotions = (selection: AttackSelection, summit: Summit, maxAllowed: number) => {
+  const [beast, attacks] = selection;
 
   const targetDamage = ((summit.beast.health + summit.beast.bonus_health) * summit.beast.extra_lives)
     + Math.max(1, summit.beast.current_health || 0);
@@ -313,13 +314,11 @@ export const calculateOptimalAttackPotions = (selection: any, summit: Summit, ma
 
 
   let bestRequired = Number.POSITIVE_INFINITY;
-  if (beast) {
-    for (let n = 0; n <= maxAllowed; n++) {
-      const combat = calculateBattleResult(beast, summit, n);
-      if ((combat.estimatedDamage * attacks) > targetDamage || combat.attack >= target) {
-        bestRequired = n;
-        break;
-      }
+  for (let n = 0; n <= maxAllowed; n++) {
+    const combat = calculateBattleResult(beast, summit, n);
+    if ((combat.estimatedDamage * attacks) > targetDamage || combat.attack >= target) {
+      bestRequired = n;
+      break;
     }
   }
 
@@ -327,9 +326,8 @@ export const calculateOptimalAttackPotions = (selection: any, summit: Summit, ma
   return value;
 }
 
-export const calculateMaxAttackPotions = (selection: any, summit: Summit, maxAllowed: number) => {
-  const beast = selection[0];
-  const attacks = selection[1];
+export const calculateMaxAttackPotions = (selection: AttackSelection, summit: Summit, maxAllowed: number) => {
+  const [beast, attacks] = selection;
 
   const target = (summit.beast.extra_lives > 0)
     ? (summit.beast.health + summit.beast.bonus_health)

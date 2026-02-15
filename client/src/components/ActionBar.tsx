@@ -3,7 +3,7 @@ import { useGameDirector } from '@/contexts/GameDirector';
 import { useQuestGuide } from '@/contexts/QuestGuide';
 import { useAutopilotStore } from '@/stores/autopilotStore';
 import { useGameStore } from '@/stores/gameStore';
-import type { Beast } from '@/types/game';
+import type { Beast, selection } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp';
@@ -153,7 +153,12 @@ function ActionBar() {
       }
 
       if (attackPotionsEnabled && filtered.length > 0) {
-        const attackPotions = calculateOptimalAttackPotions(filtered[0], summit, Math.min(attackPotionMax - attackPotionsUsed, 255));
+        const attackSelection: selection[number] = [filtered[0], 1, 0];
+        const attackPotions = calculateOptimalAttackPotions(
+          attackSelection,
+          summit,
+          Math.min(attackPotionMax - attackPotionsUsed, 255)
+        );
         const newCombat = calculateBattleResult(filtered[0], summit, attackPotions);
         filtered[0].combat = newCombat;
       }
