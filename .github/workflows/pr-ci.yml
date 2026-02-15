@@ -69,11 +69,17 @@ jobs:
         id: ai-gate
         env:
           IS_FORK: ${{ github.event.pull_request.head.repo.fork }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CODEX_AUTH_DOT_JSON: ${{ secrets.CODEX_AUTH_DOT_JSON }}
         run: |
           CAN_RUN_AI_REVIEWS="true"
           AI_REVIEWS_BLOCK_REASON="available"
+          IS_TRUSTED_BOT_PR="false"
+
+          if printf '%s' "$PR_AUTHOR" | tr '[:upper:]' '[:lower:]' | grep -Eq '^(dependabot\[bot\]|dependabot-preview\[bot\]|renovate\[bot\])$'; then
+            IS_TRUSTED_BOT_PR="true"
+          fi
 
           if [ "$IS_FORK" = "true" ]; then
             CAN_RUN_AI_REVIEWS="false"
@@ -81,8 +87,13 @@ jobs:
             echo "AI reviews disabled for fork pull requests."
           elif [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ] || [ -z "$CODEX_AUTH_DOT_JSON" ]; then
             CAN_RUN_AI_REVIEWS="false"
-            AI_REVIEWS_BLOCK_REASON="missing_secrets"
-            echo "AI reviews disabled because required secrets are unavailable."
+            if [ "$IS_TRUSTED_BOT_PR" = "true" ]; then
+              AI_REVIEWS_BLOCK_REASON="missing_secrets_trusted_bot"
+              echo "AI reviews disabled because required secrets are unavailable for a trusted bot PR."
+            else
+              AI_REVIEWS_BLOCK_REASON="missing_secrets"
+              echo "AI reviews disabled because required secrets are unavailable."
+            fi
           fi
 
           echo "can_run_ai_reviews=$CAN_RUN_AI_REVIEWS" >> "$GITHUB_OUTPUT"
@@ -1301,8 +1312,15 @@ jobs:
           fi
 
           if [ "$CAN_RUN_AI_REVIEWS" != "true" ]; then
-            if [ "$AI_REVIEWS_BLOCK_REASON" = "fork" ] || [ "$AI_REVIEWS_BLOCK_REASON" = "missing_secrets" ]; then
+            if [ "$AI_REVIEWS_BLOCK_REASON" = "fork" ] || [ "$AI_REVIEWS_BLOCK_REASON" = "missing_secrets_trusted_bot" ]; then
               echo "Skipping review-job skipped enforcement because AI reviews are unavailable ($AI_REVIEWS_BLOCK_REASON)."
+            elif [ "$AI_REVIEWS_BLOCK_REASON" = "missing_secrets" ]; then
+              if [ "$CHANGES_CONTRACTS_REVIEW" = "true" ] || [ "$CHANGES_CLIENT_REVIEW" = "true" ] || [ "$CHANGES_INDEXER_API_REVIEW" = "true" ] || [ "$CHANGES_GENERAL_REVIEW" = "true" ]; then
+                echo "::error::AI review secrets are unavailable for a first-party PR with reviewable changes."
+                echo "::error::Restore CLAUDE_CODE_OAUTH_TOKEN and CODEX_AUTH_DOT_JSON or resolve secret access before merge."
+                exit 1
+              fi
+              echo "AI review secrets are unavailable, but no reviewable changes were detected."
             else
               echo "::error::Unexpected AI review availability state: $AI_REVIEWS_BLOCK_REASON"
               exit 1
