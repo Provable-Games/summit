@@ -12,6 +12,8 @@ import {
   getBeastLockedTimeRemaining,
   applyPoisonDamage,
   calculateBattleResult,
+  calculateOptimalAttackPotions,
+  calculateMaxAttackPotions,
   calculateRevivalRequired,
   BEAST_LOCK_DURATION_MS,
 } from "./beasts";
@@ -717,6 +719,49 @@ describe("calculateBattleResult", () => {
     // specials=false -> nameMatch = 0
     // beastDamage = max(4, floor(50 - 30)) = 20
     expect(combat.attack).toBe(20);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// calculateOptimalAttackPotions / calculateMaxAttackPotions
+// ---------------------------------------------------------------------------
+describe("calculateAttackPotions", () => {
+  it("finds the minimum attack potion count needed for estimated damage threshold", () => {
+    const beast = makeBeast({ type: "Magic", power: 95, current_health: 100, luck: 0, specials: false });
+    const summit = makeSummit(
+      { type: "Magic", power: 100, health: 100, bonus_health: 0, current_health: 100, extra_lives: 0, luck: 0, specials: false },
+    );
+
+    const selected: [Beast, number, number] = [beast, 1, 0];
+    expect(calculateOptimalAttackPotions(selected, summit, 5)).toBe(2);
+  });
+
+  it("returns maxAllowed when optimal threshold is unreachable", () => {
+    const beast = makeBeast({ type: "Magic", power: 95, current_health: 100, luck: 0, specials: false });
+    const summit = makeSummit(
+      { type: "Magic", power: 100, health: 10000, bonus_health: 0, current_health: 10000, extra_lives: 0, luck: 0, specials: false },
+    );
+
+    const selected: [Beast, number, number] = [beast, 1, 0];
+    expect(calculateOptimalAttackPotions(selected, summit, 2)).toBe(2);
+  });
+
+  it("finds minimum max-potions for multi-attack threshold", () => {
+    const beast = makeBeast({ type: "Magic", power: 50, current_health: 100, luck: 0, specials: false });
+    const summit = makeSummit(
+      { type: "Magic", power: 30, health: 100, bonus_health: 0, current_health: 70, extra_lives: 0, luck: 0, specials: false },
+    );
+
+    const selected: [Beast, number, number] = [beast, 2, 0];
+    expect(calculateMaxAttackPotions(selected, summit, 5)).toBe(3);
+  });
+
+  it("returns maxAllowed when attacker is dead", () => {
+    const beast = makeBeast({ current_health: 0 });
+    const summit = makeSummit();
+
+    const selected: [Beast, number, number] = [beast, 1, 0];
+    expect(calculateMaxAttackPotions(selected, summit, 4)).toBe(4);
   });
 });
 
