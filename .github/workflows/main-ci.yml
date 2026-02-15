@@ -1,0 +1,353 @@
+name: Main CI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: main-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      contracts: ${{ steps.filter.outputs.contracts }}
+      client_ci: ${{ steps.filter.outputs.client_ci }}
+      indexer_ci: ${{ steps.filter.outputs.indexer_ci }}
+      api: ${{ steps.filter.outputs.api }}
+      indexer_api_ci: ${{ steps.filter.outputs.indexer_api_ci }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            contracts:
+              - "contracts/**"
+              - ".tool-versions"
+            client_ci:
+              - "client/**"
+              - "contracts/src/models/beast.cairo"
+              - ".tool-versions"
+            indexer_ci:
+              - "indexer/**"
+              - "contracts/src/models/beast.cairo"
+              - ".tool-versions"
+            api:
+              - "api/**"
+            indexer_api_ci:
+              - "indexer/**"
+              - "api/**"
+              - "contracts/src/models/beast.cairo"
+              - ".tool-versions"
+
+  contracts-lint:
+    needs: changes
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          tool-versions: .tool-versions
+          scarb-lock: contracts/Scarb.lock
+          cache: true
+          cache-targets: false
+
+      - name: Scarb fmt
+        run: scarb fmt --check
+
+  contracts-test:
+    needs: [changes, contracts-lint]
+    if: needs.changes.outputs.contracts == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Scarb
+        uses: software-mansion/setup-scarb@v1
+        with:
+          tool-versions: .tool-versions
+          scarb-lock: contracts/Scarb.lock
+          cache: true
+          cache-targets: true
+
+      - name: Install Starknet Foundry
+        uses: foundry-rs/setup-snfoundry@v3
+        with:
+          tool-versions: .tool-versions
+
+      - name: Cache Cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+            ~/.cargo/git/db
+            ~/.cargo/git/checkouts
+          key: cargo-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('contracts/Scarb.lock', '.tool-versions') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Cache cairo-coverage
+        id: cairo_coverage_cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.local/bin/cairo-coverage
+          key: cairo-coverage-${{ runner.os }}-${{ runner.arch }}-v0.6.0
+
+      - name: Install cairo-coverage
+        if: steps.cairo_coverage_cache.outputs.cache-hit != 'true'
+        run: curl -L https://raw.githubusercontent.com/software-mansion/cairo-coverage/v0.6.0/scripts/install.sh | sh
+
+      - name: Run contract tests with coverage
+        run: |
+          set -o pipefail
+          LOG_FILE="$RUNNER_TEMP/scarb-test.log"
+          RATE_LIMIT_REGEX="(429|too many requests|rate[ -]?limit)"
+
+          if scarb test --coverage 2>&1 | tee "$LOG_FILE"; then
+            exit 0
+          fi
+
+          if grep -Eiq "$RATE_LIMIT_REGEX" "$LOG_FILE"; then
+            echo "Detected RPC rate limiting; waiting 30 seconds before one retry."
+            sleep 30
+            scarb test --coverage
+            exit $?
+          fi
+
+          echo "Tests failed without rate-limit signature. Not retrying."
+          exit 1
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./contracts/coverage/coverage.lcov
+          flags: contracts
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  client-lint:
+    needs: changes
+    if: needs.changes.outputs.client_ci == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+  client-test:
+    needs: [changes, client-lint]
+    if: needs.changes.outputs.client_ci == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: client/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run parity test
+        run: pnpm test:parity
+
+      - name: Run tests with coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./client/coverage/lcov.info
+          flags: client
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  indexer-api-lint:
+    needs: changes
+    if: needs.changes.outputs.indexer_api_ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js (indexer cache)
+        if: needs.changes.outputs.indexer_ci == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: indexer/pnpm-lock.yaml
+
+      - name: Lint indexer
+        if: needs.changes.outputs.indexer_ci == 'true'
+        run: |
+          cd indexer
+          pnpm install --frozen-lockfile
+          pnpm exec tsc --noEmit
+
+      - name: Setup Node.js (api cache)
+        if: needs.changes.outputs.api == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: api/pnpm-lock.yaml
+
+      - name: Lint api
+        if: needs.changes.outputs.api == 'true'
+        run: |
+          cd api
+          pnpm install --frozen-lockfile
+          pnpm exec tsc --noEmit
+
+  indexer-test:
+    needs: [changes, indexer-api-lint]
+    if: needs.changes.outputs.indexer_ci == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: indexer
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: indexer/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run parity test
+        run: pnpm test:parity
+
+      - name: Run tests with coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./indexer/coverage/lcov.info
+          flags: indexer
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  api-test:
+    needs: [changes, indexer-api-lint]
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: api/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run tests with coverage
+        run: pnpm test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./api/coverage/lcov.info
+          flags: api
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  main-ci:
+    needs:
+      - changes
+      - contracts-lint
+      - contracts-test
+      - client-lint
+      - client-test
+      - indexer-api-lint
+      - indexer-test
+      - api-test
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate results
+        env:
+          NEEDS_JSON: ${{ toJson(needs) }}
+        run: |
+          FAILED=$(echo "$NEEDS_JSON" | jq -r '
+            to_entries[]
+            | select(.value.result == "failure" or .value.result == "cancelled")
+            | .key
+          ')
+
+          if [ -n "$FAILED" ]; then
+            echo "::error::Failing jobs:"
+            echo "$FAILED"
+            exit 1
+          fi
+
+          echo "All required jobs passed or were skipped"

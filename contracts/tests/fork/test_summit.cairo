@@ -1232,6 +1232,69 @@ fn test_summit_not_started_returns_zero_beast_id() {
     assert(beast_id == 0, 'Should be 0 before start');
 }
 
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Summit not playable',))]
+fn test_attack_reverts_after_terminal_timestamp() {
+    let summit = deploy_summit_and_start();
+    let terminal_timestamp = summit.get_terminal_timestamp();
+
+    start_cheat_block_timestamp_global(terminal_timestamp + 1);
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_diplomacy_rewards_are_clamped_to_total_reward() {
+    let contract = declare("summit_systems").unwrap().contract_class();
+    let owner = REAL_PLAYER();
+    let start_timestamp = 1000_u64;
+    let summit_duration_seconds = 1000000_u64;
+    let summit_reward_amount_per_second = 100_000_000_000_000_u128;
+    let diplomacy_reward_amount_per_second = 200_000_000_000_000_u128;
+    let quest_rewards_total_amount = 100_u128;
+
+    let mut calldata = array![];
+    calldata.append(owner.into());
+    calldata.append(start_timestamp.into());
+    calldata.append(summit_duration_seconds.into());
+    calldata.append(summit_reward_amount_per_second.into());
+    calldata.append(diplomacy_reward_amount_per_second.into());
+    calldata.append(quest_rewards_total_amount.into());
+    calldata.append(crate::fixtures::addresses::DUNGEON_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::BEAST_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::BEAST_DATA_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::REWARD_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::ATTACK_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::REVIVE_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::EXTRA_LIFE_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::POISON_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::SKULL_TOKEN_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::CORPSE_TOKEN_ADDRESS().into());
+
+    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let summit = ISummitSystemDispatcher { contract_address };
+    summit.start_summit();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 1, spirit: 0, luck: 0 };
+    summit.apply_stat_points(1, stats);
+
+    start_cheat_block_timestamp_global(get_block_timestamp() + 1);
+
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
+    assert(summit.get_summit_beast_token_id() == 60989, 'Attack should still succeed');
+
+    stop_cheat_block_timestamp_global();
+    stop_cheat_caller_address(summit.contract_address);
+}
+
 // ==========================
 // P1 TESTS: POISON MECHANICS
 // ==========================

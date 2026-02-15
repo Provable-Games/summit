@@ -32,20 +32,24 @@ jobs:
           filters: |
             contracts:
               - "contracts/**"
+              - ".tool-versions"
             client_ci:
               - "client/**"
               - "contracts/src/models/beast.cairo"
+              - ".tool-versions"
             client_review:
               - "client/**"
             indexer_ci:
               - "indexer/**"
               - "contracts/src/models/beast.cairo"
+              - ".tool-versions"
             api:
               - "api/**"
             indexer_api_ci:
               - "indexer/**"
               - "api/**"
               - "contracts/src/models/beast.cairo"
+              - ".tool-versions"
             indexer_api_review:
               - "indexer/**"
               - "api/**"
@@ -333,7 +337,7 @@ jobs:
 
   claude-review-contracts:
     needs: [changes, contracts-lint]
-    if: needs.changes.outputs.contracts == 'true'
+    if: needs.changes.outputs.contracts == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CLAUDE_CODE_OAUTH_TOKEN != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -350,6 +354,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          RUN_MARKER: "[run:${{ github.run_id }}:${{ github.run_attempt }}:${{ github.sha }}:claude-review-contracts]"
         run: |
           {
             cat .github/prompts/cairo-review.md
@@ -367,6 +372,9 @@ jobs:
             echo "${PR_BODY}"
             echo ""
             echo "---"
+            echo ""
+            echo "Include this exact run marker in your response:"
+            echo "${RUN_MARKER}"
             echo ""
             echo "Start your response with this exact heading:"
             echo "## Claude Review - Cairo/Starknet Contract Review"
@@ -405,6 +413,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - Cairo/Starknet Contract Review"
+          RUN_MARKER: "[run:${{ github.run_id }}:${{ github.run_attempt }}:${{ github.sha }}:claude-review-contracts]"
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -412,8 +421,8 @@ jobs:
 
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-              | jq -r --arg header "$HEADER" \
-                '[.[] | select(.user.login | test("claude")) | select((.body // "") | contains($header))] | last | .body // ""')
+              | jq -r --arg header "$HEADER" --arg marker "$RUN_MARKER" \
+                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header)) | select((.body // "") | contains($marker))] | last | .body // ""')
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -427,7 +436,7 @@ jobs:
           done
 
           if [ -z "$BODY" ]; then
-            echo "::error::Could not find Claude review output for contracts"
+            echo "::error::Could not find Claude review output for contracts with marker ${RUN_MARKER}"
             exit 1
           fi
 
@@ -440,7 +449,7 @@ jobs:
 
   codex-review-contracts:
     needs: [changes, contracts-lint]
-    if: needs.changes.outputs.contracts == 'true'
+    if: needs.changes.outputs.contracts == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CODEX_AUTH_DOT_JSON != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -552,7 +561,7 @@ jobs:
 
   claude-review-client:
     needs: [changes, client-lint]
-    if: needs.changes.outputs.client_review == 'true'
+    if: needs.changes.outputs.client_review == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CLAUDE_CODE_OAUTH_TOKEN != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -569,6 +578,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          RUN_MARKER: "[run:${{ github.run_id }}:${{ github.run_attempt }}:${{ github.sha }}:claude-review-client]"
         run: |
           {
             cat .github/prompts/client-review.md
@@ -586,6 +596,9 @@ jobs:
             echo "${PR_BODY}"
             echo ""
             echo "---"
+            echo ""
+            echo "Include this exact run marker in your response:"
+            echo "${RUN_MARKER}"
             echo ""
             echo "Start your response with this exact heading:"
             echo "## Claude Review - React/Frontend Review"
@@ -624,6 +637,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - React/Frontend Review"
+          RUN_MARKER: "[run:${{ github.run_id }}:${{ github.run_attempt }}:${{ github.sha }}:claude-review-client]"
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -631,8 +645,8 @@ jobs:
 
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-              | jq -r --arg header "$HEADER" \
-                '[.[] | select(.user.login | test("claude")) | select((.body // "") | contains($header))] | last | .body // ""')
+              | jq -r --arg header "$HEADER" --arg marker "$RUN_MARKER" \
+                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header)) | select((.body // "") | contains($marker))] | last | .body // ""')
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -646,7 +660,7 @@ jobs:
           done
 
           if [ -z "$BODY" ]; then
-            echo "::error::Could not find Claude review output for client"
+            echo "::error::Could not find Claude review output for client with marker ${RUN_MARKER}"
             exit 1
           fi
 
@@ -659,7 +673,7 @@ jobs:
 
   codex-review-client:
     needs: [changes, client-lint]
-    if: needs.changes.outputs.client_review == 'true'
+    if: needs.changes.outputs.client_review == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CODEX_AUTH_DOT_JSON != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -771,7 +785,7 @@ jobs:
 
   claude-review-indexer-api:
     needs: [changes, indexer-api-lint]
-    if: needs.changes.outputs.indexer_api_review == 'true'
+    if: needs.changes.outputs.indexer_api_review == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CLAUDE_CODE_OAUTH_TOKEN != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -788,6 +802,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          RUN_MARKER: "[run:${{ github.run_id }}:${{ github.run_attempt }}:${{ github.sha }}:claude-review-indexer-api]"
         run: |
           {
             cat .github/prompts/indexer-review.md
@@ -805,6 +820,9 @@ jobs:
             echo "${PR_BODY}"
             echo ""
             echo "---"
+            echo ""
+            echo "Include this exact run marker in your response:"
+            echo "${RUN_MARKER}"
             echo ""
             echo "Start your response with this exact heading:"
             echo "## Claude Review - Indexer/API Review"
@@ -843,6 +861,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - Indexer/API Review"
+          RUN_MARKER: "[run:${{ github.run_id }}:${{ github.run_attempt }}:${{ github.sha }}:claude-review-indexer-api]"
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -850,8 +869,8 @@ jobs:
 
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-              | jq -r --arg header "$HEADER" \
-                '[.[] | select(.user.login | test("claude")) | select((.body // "") | contains($header))] | last | .body // ""')
+              | jq -r --arg header "$HEADER" --arg marker "$RUN_MARKER" \
+                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header)) | select((.body // "") | contains($marker))] | last | .body // ""')
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -865,7 +884,7 @@ jobs:
           done
 
           if [ -z "$BODY" ]; then
-            echo "::error::Could not find Claude review output for indexer/api"
+            echo "::error::Could not find Claude review output for indexer/api with marker ${RUN_MARKER}"
             exit 1
           fi
 
@@ -878,7 +897,7 @@ jobs:
 
   codex-review-indexer-api:
     needs: [changes, indexer-api-lint]
-    if: needs.changes.outputs.indexer_api_review == 'true'
+    if: needs.changes.outputs.indexer_api_review == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CODEX_AUTH_DOT_JSON != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -989,8 +1008,8 @@ jobs:
           echo "No blocking findings detected"
 
   claude-review-general:
-    needs: [changes, contracts-lint, client-lint, indexer-api-lint]
-    if: needs.changes.outputs.general_review == 'true'
+    needs: [changes]
+    if: needs.changes.outputs.general_review == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CLAUDE_CODE_OAUTH_TOKEN != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1007,6 +1026,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          RUN_MARKER: "[run:${{ github.run_id }}:${{ github.run_attempt }}:${{ github.sha }}:claude-review-general]"
         run: |
           {
             cat .github/prompts/general-purpose.md
@@ -1025,6 +1045,9 @@ jobs:
             echo "${PR_BODY}"
             echo ""
             echo "---"
+            echo ""
+            echo "Include this exact run marker in your response:"
+            echo "${RUN_MARKER}"
             echo ""
             echo "Start your response with this exact heading:"
             echo "## Claude Review - General Engineering Review"
@@ -1063,6 +1086,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - General Engineering Review"
+          RUN_MARKER: "[run:${{ github.run_id }}:${{ github.run_attempt }}:${{ github.sha }}:claude-review-general]"
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -1070,8 +1094,8 @@ jobs:
 
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-              | jq -r --arg header "$HEADER" \
-                '[.[] | select(.user.login | test("claude")) | select((.body // "") | contains($header))] | last | .body // ""')
+              | jq -r --arg header "$HEADER" --arg marker "$RUN_MARKER" \
+                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header)) | select((.body // "") | contains($marker))] | last | .body // ""')
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -1085,7 +1109,7 @@ jobs:
           done
 
           if [ -z "$BODY" ]; then
-            echo "::error::Could not find Claude review output for general changes"
+            echo "::error::Could not find Claude review output for general changes with marker ${RUN_MARKER}"
             exit 1
           fi
 
@@ -1097,8 +1121,8 @@ jobs:
           echo "No blocking findings detected"
 
   codex-review-general:
-    needs: [changes, contracts-lint, client-lint, indexer-api-lint]
-    if: needs.changes.outputs.general_review == 'true'
+    needs: [changes]
+    if: needs.changes.outputs.general_review == 'true' && github.event.pull_request.head.repo.fork == false && secrets.CODEX_AUTH_DOT_JSON != ''
     runs-on: ubuntu-latest
     permissions:
       contents: read
