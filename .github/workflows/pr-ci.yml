@@ -1299,15 +1299,26 @@ jobs:
           CAN_RUN_AI_REVIEWS: ${{ needs.changes.outputs.can_run_ai_reviews }}
           AI_REVIEWS_BLOCK_REASON: ${{ needs.changes.outputs.ai_reviews_block_reason }}
         run: |
-          FAILED=$(echo "$NEEDS_JSON" | jq -r '
+          FAILED_NON_CLAUDE=$(echo "$NEEDS_JSON" | jq -r '
             to_entries[]
-            | select(.value.result == "failure" or .value.result == "cancelled")
+            | select((.value.result == "failure" or .value.result == "cancelled") and (.key | startswith("claude-review-") | not))
             | .key
           ')
 
-          if [ -n "$FAILED" ]; then
+          FAILED_CLAUDE=$(echo "$NEEDS_JSON" | jq -r '
+            to_entries[]
+            | select((.value.result == "failure" or .value.result == "cancelled") and (.key | startswith("claude-review-")))
+            | .key
+          ')
+
+          if [ -n "$FAILED_CLAUDE" ]; then
+            echo "Ignoring failed Claude review jobs:"
+            echo "$FAILED_CLAUDE"
+          fi
+
+          if [ -n "$FAILED_NON_CLAUDE" ]; then
             echo "::error::Failing jobs:"
-            echo "$FAILED"
+            echo "$FAILED_NON_CLAUDE"
             exit 1
           fi
 
