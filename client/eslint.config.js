@@ -69,7 +69,7 @@ export default tseslint.config(
       "react/prop-types": "off",
       "react/no-unescaped-entities": "off",
       "react/no-unknown-property": "off",
-      // Align with existing relaxed tsconfig (strict: false)
+      // Keep explicit-any permissive while strict TS is enforced by compiler.
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": [
         "warn",
