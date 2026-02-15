@@ -67,10 +67,8 @@ Parallel read path:
 - Do not introduce Tailwind.
 
 ## TypeScript and Config
-- `tsconfig.json` is intentionally non-strict:
-  - `strict: false`
-  - `noImplicitAny: false`
-  - `strictNullChecks: false`
+- `tsconfig.json` runs in strict mode:
+  - `strict: true`
 - Path alias: `@/* -> src/*`.
 
 ## Address Handling

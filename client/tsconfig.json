@@ -21,10 +21,7 @@
         },
 
         /* Linting */
-        "strict": false,
-        "noImplicitAny": false,
-        "noImplicitThis": false,
-        "strictNullChecks": false,
+        "strict": true,
         "allowSyntheticDefaultImports": true,
     },
     "include": ["src"],
