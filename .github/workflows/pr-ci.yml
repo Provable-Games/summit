@@ -42,13 +42,13 @@ jobs:
               - "contracts/**"
             client_ci:
               - "client/**"
-              - "contracts/src/models/beast.cairo"
+              - "contracts/src/models/**"
               - ".tool-versions"
             client_review:
               - "client/**"
             indexer_ci:
               - "indexer/**"
-              - "contracts/src/models/beast.cairo"
+              - "contracts/src/models/**"
               - ".tool-versions"
             api:
               - "api/**"
@@ -56,13 +56,15 @@ jobs:
             indexer_api_ci:
               - "indexer/**"
               - "api/**"
-              - "contracts/src/models/beast.cairo"
+              - "contracts/src/models/**"
               - ".tool-versions"
             indexer_api_review:
               - "indexer/**"
               - "api/**"
-            claude_workflow_changed:
+            review_automation_changed:
               - ".github/workflows/pr-ci.yml"
+              - ".github/prompts/**"
+              - ".github/actions/**"
             general_review:
               - "**"
               - "!contracts/**"
@@ -75,7 +77,7 @@ jobs:
         env:
           IS_FORK: ${{ github.event.pull_request.head.repo.fork }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
-          CLAUDE_WORKFLOW_CHANGED: ${{ steps.filter.outputs.claude_workflow_changed }}
+          REVIEW_AUTOMATION_CHANGED: ${{ steps.filter.outputs.review_automation_changed }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CODEX_AUTH_DOT_JSON: ${{ secrets.CODEX_AUTH_DOT_JSON }}
         run: |
@@ -107,10 +109,12 @@ jobs:
           if [ "$CAN_RUN_AI_REVIEWS" != "true" ]; then
             CAN_RUN_CLAUDE_REVIEWS="false"
             CLAUDE_REVIEWS_BLOCK_REASON="$AI_REVIEWS_BLOCK_REASON"
-          elif [ "$CLAUDE_WORKFLOW_CHANGED" = "true" ]; then
+          elif [ "$REVIEW_AUTOMATION_CHANGED" = "true" ]; then
+            CAN_RUN_AI_REVIEWS="false"
+            AI_REVIEWS_BLOCK_REASON="review_automation_modified"
             CAN_RUN_CLAUDE_REVIEWS="false"
-            CLAUDE_REVIEWS_BLOCK_REASON="workflow_modified"
-            echo "Claude reviews disabled because .github/workflows/pr-ci.yml is modified in this PR."
+            CLAUDE_REVIEWS_BLOCK_REASON="review_automation_modified"
+            echo "AI reviews disabled because .github/workflows/pr-ci.yml, .github/prompts/**, or .github/actions/** are modified in this PR."
           fi
 
           echo "can_run_ai_reviews=$CAN_RUN_AI_REVIEWS" >> "$GITHUB_OUTPUT"
@@ -479,7 +483,13 @@ jobs:
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
               | jq -r --arg header "$HEADER" --arg marker "$REVIEW_MARKER" \
-                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
+                '[.[] | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
+
+            if [ -z "$BODY" ]; then
+              BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+                | jq -r --arg header "$HEADER" --arg run_token "run=${{ github.run_id }}" --arg sha_token "sha=${{ github.event.pull_request.head.sha }}" \
+                  '[.[] | select((.body // "") | contains($header) and contains($run_token) and contains($sha_token))] | last | .body // ""')
+            fi
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -702,7 +712,13 @@ jobs:
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
               | jq -r --arg header "$HEADER" --arg marker "$REVIEW_MARKER" \
-                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
+                '[.[] | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
+
+            if [ -z "$BODY" ]; then
+              BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+                | jq -r --arg header "$HEADER" --arg run_token "run=${{ github.run_id }}" --arg sha_token "sha=${{ github.event.pull_request.head.sha }}" \
+                  '[.[] | select((.body // "") | contains($header) and contains($run_token) and contains($sha_token))] | last | .body // ""')
+            fi
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -925,7 +941,13 @@ jobs:
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
               | jq -r --arg header "$HEADER" --arg marker "$REVIEW_MARKER" \
-                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
+                '[.[] | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
+
+            if [ -z "$BODY" ]; then
+              BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+                | jq -r --arg header "$HEADER" --arg run_token "run=${{ github.run_id }}" --arg sha_token "sha=${{ github.event.pull_request.head.sha }}" \
+                  '[.[] | select((.body // "") | contains($header) and contains($run_token) and contains($sha_token))] | last | .body // ""')
+            fi
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -1149,7 +1171,13 @@ jobs:
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
               | jq -r --arg header "$HEADER" --arg marker "$REVIEW_MARKER" \
-                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
+                '[.[] | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
+
+            if [ -z "$BODY" ]; then
+              BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+                | jq -r --arg header "$HEADER" --arg run_token "run=${{ github.run_id }}" --arg sha_token "sha=${{ github.event.pull_request.head.sha }}" \
+                  '[.[] | select((.body // "") | contains($header) and contains($run_token) and contains($sha_token))] | last | .body // ""')
+            fi
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -1333,7 +1361,7 @@ jobs:
           fi
 
           if [ "$CAN_RUN_AI_REVIEWS" != "true" ]; then
-            if [ "$AI_REVIEWS_BLOCK_REASON" = "fork" ] || [ "$AI_REVIEWS_BLOCK_REASON" = "missing_secrets_trusted_bot" ]; then
+            if [ "$AI_REVIEWS_BLOCK_REASON" = "fork" ] || [ "$AI_REVIEWS_BLOCK_REASON" = "missing_secrets_trusted_bot" ] || [ "$AI_REVIEWS_BLOCK_REASON" = "review_automation_modified" ]; then
               echo "Skipping review-job skipped enforcement because AI reviews are unavailable ($AI_REVIEWS_BLOCK_REASON)."
             elif [ "$AI_REVIEWS_BLOCK_REASON" = "missing_secrets" ]; then
               if [ "$CHANGES_CONTRACTS_REVIEW" = "true" ] || [ "$CHANGES_CLIENT_REVIEW" = "true" ] || [ "$CHANGES_INDEXER_API_REVIEW" = "true" ] || [ "$CHANGES_GENERAL_REVIEW" = "true" ]; then

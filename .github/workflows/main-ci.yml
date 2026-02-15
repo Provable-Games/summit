@@ -39,11 +39,11 @@ jobs:
               - ".tool-versions"
             client_ci:
               - "client/**"
-              - "contracts/src/models/beast.cairo"
+              - "contracts/src/models/**"
               - ".tool-versions"
             indexer_ci:
               - "indexer/**"
-              - "contracts/src/models/beast.cairo"
+              - "contracts/src/models/**"
               - ".tool-versions"
             api:
               - "api/**"
@@ -51,7 +51,7 @@ jobs:
             indexer_api_ci:
               - "indexer/**"
               - "api/**"
-              - "contracts/src/models/beast.cairo"
+              - "contracts/src/models/**"
               - ".tool-versions"
             infra_ci:
               - ".github/workflows/**"
@@ -73,25 +73,28 @@ jobs:
 
       - name: Validate workflow and action YAML
         run: |
+          YAML_CLI="yaml@2.8.1"
+          JSON5_CLI="json5@2.2.3"
+
           for file in .github/workflows/*.yml .github/workflows/*.yaml; do
             [ -f "$file" ] || continue
-            npx -y yaml valid < "$file"
+            npx -y "$YAML_CLI" valid < "$file"
           done
 
           while IFS= read -r file; do
-            npx -y yaml valid < "$file"
+            npx -y "$YAML_CLI" valid < "$file"
           done < <(find .github/actions -type f \( -name "action.yml" -o -name "action.yaml" \) 2>/dev/null)
 
           if [ -f render.yaml ]; then
-            npx -y yaml valid < render.yaml
+            npx -y "$YAML_CLI" valid < render.yaml
           fi
 
           if [ -f codecov.yml ]; then
-            npx -y yaml valid < codecov.yml
+            npx -y "$YAML_CLI" valid < codecov.yml
           fi
 
           while IFS= read -r file; do
-            npx -y json5 "$file" >/dev/null
+            npx -y "$JSON5_CLI" "$file" >/dev/null
           done < <(find .devcontainer -type f -name "*.json" 2>/dev/null)
 
   contracts-lint:
