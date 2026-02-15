@@ -227,8 +227,8 @@ pub mod summit_systems {
             let mut total_claimable: u32 = 0;
             let mut beast_updates: Array<felt252> = array![];
 
-            for beast_token_id in beast_token_ids {
-                let beast_token_id = *beast_token_id;
+            for beast_token_id_ref in beast_token_ids {
+                let beast_token_id = *beast_token_id_ref;
 
                 // Verify caller owns the beast
                 let beast_owner = beast_dispatcher.owner_of(beast_token_id.into());
@@ -277,8 +277,8 @@ pub mod summit_systems {
             let mut total_claimable: u128 = 0;
             let mut quest_rewards_claimed: Array<felt252> = array![];
 
-            for beast_token_id in beast_token_ids {
-                let beast_token_id = *beast_token_id;
+            for beast_token_id_ref in beast_token_ids {
+                let beast_token_id = *beast_token_id_ref;
 
                 // Verify caller owns the beast
                 let beast_owner = beast_dispatcher.owner_of(beast_token_id.into());
@@ -566,8 +566,8 @@ pub mod summit_systems {
 
         fn get_live_stats(self: @ContractState, beast_token_ids: Span<u32>) -> Span<LiveBeastStats> {
             let mut live_stats = array![];
-            for token_id in beast_token_ids {
-                let token_id = *token_id;
+            for token_id_ref in beast_token_ids {
+                let token_id = *token_id_ref;
                 let packed = self.live_beast_stats.entry(token_id).read();
                 let live_stat: LiveBeastStats = PackableLiveStatsStorePacking::unpack(packed);
                 live_stats.append(live_stat);
@@ -813,8 +813,8 @@ pub mod summit_systems {
             let mut total_attack_potions: u32 = 0;
             let mut remaining_revival_potions = revival_potions;
             let mut beast_attacked = false;
-            for attacking_beast in attacking_beasts {
-                let (attacking_beast_token_id, attack_count, attack_potions) = *attacking_beast;
+            for attacking_beast_entry in attacking_beasts {
+                let (attacking_beast_token_id, attack_count, attack_potions) = *attacking_beast_entry;
 
                 assert!(attack_count > 0, "Attack count must be greater than 0");
                 // assert the caller owns the beast they attacking with
