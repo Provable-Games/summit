@@ -727,11 +727,10 @@ pub mod summit_systems {
                 // rate. When diplomacy payouts exceed the summit holder budget, the holder gets 0
                 // (not a negative/underflow). The owner sets rates to align with token economics.
                 let total_diplomacy_payout = diplomacy_reward_amount * diplomacy_count.into();
-                let summit_reward_amount = if total_diplomacy_payout >= total_reward_amount {
-                    0
-                } else {
-                    total_reward_amount - total_diplomacy_payout
-                };
+                let mut summit_reward_amount = 0_u128;
+                if total_diplomacy_payout < total_reward_amount {
+                    summit_reward_amount = total_reward_amount - total_diplomacy_payout;
+                }
 
                 // Store rewards earned with 13 decimals removed
                 let reward_amount_u32: u32 = (summit_reward_amount / 10_000_000_000_000).try_into().unwrap();
