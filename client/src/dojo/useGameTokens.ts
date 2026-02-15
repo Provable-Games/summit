@@ -1,5 +1,6 @@
 import { useDynamicConnector } from "@/contexts/starknet";
 import { addAddressPadding } from "starknet";
+import { useCallback, useMemo } from "react";
 
 export interface ValidAdventurer {
   token_id: number;
@@ -14,7 +15,7 @@ interface ValidAdventurerRow {
 export const useGameTokens = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
-  const getValidAdventurers = async (owner?: string): Promise<ValidAdventurer[]> => {
+  const getValidAdventurers = useCallback(async (owner?: string): Promise<ValidAdventurer[]> => {
     if (!owner) {
       return [];
     }
@@ -59,9 +60,9 @@ export const useGameTokens = () => {
       token_id: parseInt(row.token_id, 16),
       score: parseInt(row.score, 16),
     }))
-  }
+  }, [currentNetworkConfig.apiUrl, currentNetworkConfig.dungeon, currentNetworkConfig.toriiUrl])
 
-  return {
+  return useMemo(() => ({
     getValidAdventurers,
-  };
+  }), [getValidAdventurers]);
 };

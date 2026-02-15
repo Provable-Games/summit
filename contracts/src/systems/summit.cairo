@@ -110,7 +110,6 @@ pub mod summit_systems {
         terminal_timestamp: u64,
         summit_duration_seconds: u64,
         summit_reward_amount_per_second: u128,
-        diplomacy_reward_amount_per_second: u128,
         quest_rewards_claimed: Map<u32, u8>,
         quest_rewards_total_amount: u128,
         quest_rewards_total_claimed: u128,
@@ -126,6 +125,8 @@ pub mod summit_systems {
         poison_potion_dispatcher: SummitERC20Dispatcher,
         skull_token_dispatcher: SummitERC20Dispatcher,
         corpse_token_dispatcher: SummitERC20Dispatcher,
+        // IMPORTANT: append-only storage. New fields must be added at the end.
+        diplomacy_reward_amount_per_second: u128,
     }
 
     #[event]
@@ -221,6 +222,7 @@ pub mod summit_systems {
         fn claim_rewards(ref self: ContractState, beast_token_ids: Span<u32>) {
             let caller = get_caller_address();
             let beast_dispatcher = self.beast_dispatcher.read();
+            InternalSummitImpl::_finalize_terminal_summit_rewards_if_needed(ref self);
 
             let mut total_claimable: u32 = 0;
             let mut beast_updates: Array<felt252> = array![];
@@ -625,9 +627,7 @@ pub mod summit_systems {
     #[generate_trait]
     pub impl InternalSummitImpl of InternalSummitUtils {
         fn _summit_playable(self: @ContractState) -> bool {
-            let summit_beast_token_id = self.summit_beast_token_id.read();
-            let taken_at = self.summit_history.entry(summit_beast_token_id).read();
-            taken_at < self.terminal_timestamp.read()
+            get_block_timestamp() < self.terminal_timestamp.read()
         }
 
         /// @title get_beast
@@ -666,6 +666,34 @@ pub mod summit_systems {
             )
         }
 
+        fn _finalize_terminal_summit_rewards_if_needed(ref self: ContractState) {
+            let terminal_timestamp = self.terminal_timestamp.read();
+            if get_block_timestamp() < terminal_timestamp {
+                return;
+            }
+
+            let summit_beast_token_id = self.summit_beast_token_id.read();
+            if summit_beast_token_id == 0 {
+                return;
+            }
+
+            let taken_at = self.summit_history.entry(summit_beast_token_id).read();
+            if taken_at >= terminal_timestamp {
+                return;
+            }
+
+            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
+            let mut summit_beast = Self::_get_beast(@self, summit_beast_token_id, beast_nft_dispatcher);
+            let mut beast_updates: Array<felt252> = array![];
+
+            self._finalize_summit_history(ref summit_beast, ref beast_updates);
+            self.summit_history.entry(summit_beast_token_id).write(terminal_timestamp);
+
+            let packed_summit_beast = self._save_live_stats(summit_beast.live);
+            beast_updates.append(packed_summit_beast);
+            self.emit(BeastUpdatesEvent { beast_updates: beast_updates.span() });
+        }
+
         /// @title finalize_summit_history
         /// @notice this function is used to finalize the summit history for a beast
         /// @dev we use beast id and lost_at as the key which allows us to get the record of the
@@ -693,12 +721,19 @@ pub mod summit_systems {
             if time_on_summit > 0 {
                 beast.live.summit_held_seconds += time_on_summit.try_into().unwrap();
                 let total_reward_amount = time_on_summit.into() * self.summit_reward_amount_per_second.read();
-                let diplomacy_reward_amount = time_on_summit.into() * self.diplomacy_reward_amount_per_second.read();
+                let mut diplomacy_reward_amount_per_beast = time_on_summit.into()
+                    * self.diplomacy_reward_amount_per_second.read();
 
                 let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
                 let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
                 if diplomacy_count > 0 {
-                    let diplomacy_reward_amount_u32: u32 = (diplomacy_reward_amount / 10_000_000_000_000)
+                    // Clamp diplomacy payout so total diplomacy rewards never exceed total summit rewards.
+                    let max_diplomacy_reward_amount_per_beast = total_reward_amount / diplomacy_count.into();
+                    if diplomacy_reward_amount_per_beast > max_diplomacy_reward_amount_per_beast {
+                        diplomacy_reward_amount_per_beast = max_diplomacy_reward_amount_per_beast;
+                    }
+
+                    let diplomacy_reward_amount_u32: u32 = (diplomacy_reward_amount_per_beast / 10_000_000_000_000)
                         .try_into()
                         .unwrap();
                     let mut index = 0;
@@ -723,7 +758,8 @@ pub mod summit_systems {
                     }
                 }
 
-                let summit_reward_amount = total_reward_amount - (diplomacy_reward_amount * diplomacy_count.into());
+                let total_diplomacy_reward_amount = diplomacy_reward_amount_per_beast * diplomacy_count.into();
+                let summit_reward_amount = total_reward_amount - total_diplomacy_reward_amount;
 
                 // Store rewards earned with 13 decimals removed
                 let reward_amount_u32: u32 = (summit_reward_amount / 10_000_000_000_000).try_into().unwrap();

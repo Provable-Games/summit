@@ -24,10 +24,13 @@ For AI-oriented coding guidance and deeper architecture notes, read `AGENTS.md` 
 ## Environment
 
 - `DATABASE_URL` (required)
-- `DATABASE_SSL` (`"true"` to enable SSL)
+- `DATABASE_SSL` (`"true"` or `"false"`; required in production)
 - `DB_POOL_MAX` (default `15`)
 - `PORT` (default `3001`)
 - `NODE_ENV` (`production` hides debug entries from `/` discovery payload)
+
+Production note:
+- API startup fails fast when `NODE_ENV=production` and `DATABASE_SSL` is unset.
 
 ## Quick Start
 
@@ -41,7 +44,7 @@ Create `api/.env`:
 ```env
 DATABASE_URL="postgresql://user:password@localhost:5432/summit"
 # optional
-# DATABASE_SSL="true"
+# DATABASE_SSL="false"
 # DB_POOL_MAX="15"
 # PORT="3001"
 ```

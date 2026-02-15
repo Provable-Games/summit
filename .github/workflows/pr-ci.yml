@@ -16,6 +16,7 @@ jobs:
       pull-requests: read
     outputs:
       contracts: ${{ steps.filter.outputs.contracts }}
+      contracts_review: ${{ steps.filter.outputs.contracts_review }}
       client_ci: ${{ steps.filter.outputs.client_ci }}
       client_review: ${{ steps.filter.outputs.client_review }}
       indexer_ci: ${{ steps.filter.outputs.indexer_ci }}
@@ -23,6 +24,10 @@ jobs:
       indexer_api_ci: ${{ steps.filter.outputs.indexer_api_ci }}
       indexer_api_review: ${{ steps.filter.outputs.indexer_api_review }}
       general_review: ${{ steps.filter.outputs.general_review }}
+      can_run_ai_reviews: ${{ steps.ai-gate.outputs.can_run_ai_reviews }}
+      ai_reviews_block_reason: ${{ steps.ai-gate.outputs.ai_reviews_block_reason }}
+      can_run_claude_reviews: ${{ steps.ai-gate.outputs.can_run_claude_reviews }}
+      claude_reviews_block_reason: ${{ steps.ai-gate.outputs.claude_reviews_block_reason }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,29 +37,90 @@ jobs:
           filters: |
             contracts:
               - "contracts/**"
+              - ".tool-versions"
+            contracts_review:
+              - "contracts/**"
             client_ci:
               - "client/**"
-              - "contracts/src/models/beast.cairo"
+              - "contracts/src/models/**"
+              - ".tool-versions"
             client_review:
               - "client/**"
             indexer_ci:
               - "indexer/**"
-              - "contracts/src/models/beast.cairo"
+              - "contracts/src/models/**"
+              - ".tool-versions"
             api:
               - "api/**"
+              - ".tool-versions"
             indexer_api_ci:
               - "indexer/**"
               - "api/**"
-              - "contracts/src/models/beast.cairo"
+              - "contracts/src/models/**"
+              - ".tool-versions"
             indexer_api_review:
               - "indexer/**"
               - "api/**"
+            review_automation_changed:
+              - ".github/workflows/pr-ci.yml"
+              - ".github/prompts/**"
+              - ".github/actions/**"
             general_review:
               - "**"
               - "!contracts/**"
               - "!client/**"
               - "!indexer/**"
               - "!api/**"
+
+      - name: Determine AI review availability
+        id: ai-gate
+        env:
+          IS_FORK: ${{ github.event.pull_request.head.repo.fork }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          REVIEW_AUTOMATION_CHANGED: ${{ steps.filter.outputs.review_automation_changed }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          CODEX_AUTH_DOT_JSON: ${{ secrets.CODEX_AUTH_DOT_JSON }}
+        run: |
+          CAN_RUN_AI_REVIEWS="true"
+          AI_REVIEWS_BLOCK_REASON="available"
+          CAN_RUN_CLAUDE_REVIEWS="true"
+          CLAUDE_REVIEWS_BLOCK_REASON="available"
+          IS_TRUSTED_BOT_PR="false"
+
+          if printf '%s' "$PR_AUTHOR" | tr '[:upper:]' '[:lower:]' | grep -Eq '^(dependabot\[bot\]|dependabot-preview\[bot\]|renovate\[bot\])$'; then
+            IS_TRUSTED_BOT_PR="true"
+          fi
+
+          if [ "$IS_FORK" = "true" ]; then
+            CAN_RUN_AI_REVIEWS="false"
+            AI_REVIEWS_BLOCK_REASON="fork"
+            echo "AI reviews disabled for fork pull requests."
+          elif [ -z "$CLAUDE_CODE_OAUTH_TOKEN" ] || [ -z "$CODEX_AUTH_DOT_JSON" ]; then
+            CAN_RUN_AI_REVIEWS="false"
+            if [ "$IS_TRUSTED_BOT_PR" = "true" ]; then
+              AI_REVIEWS_BLOCK_REASON="missing_secrets_trusted_bot"
+              echo "AI reviews disabled because required secrets are unavailable for a trusted bot PR."
+            else
+              AI_REVIEWS_BLOCK_REASON="missing_secrets"
+              echo "AI reviews disabled because required secrets are unavailable."
+            fi
+          fi
+
+          if [ "$CAN_RUN_AI_REVIEWS" != "true" ]; then
+            CAN_RUN_CLAUDE_REVIEWS="false"
+            CLAUDE_REVIEWS_BLOCK_REASON="$AI_REVIEWS_BLOCK_REASON"
+          elif [ "$REVIEW_AUTOMATION_CHANGED" = "true" ]; then
+            CAN_RUN_AI_REVIEWS="false"
+            AI_REVIEWS_BLOCK_REASON="review_automation_modified"
+            CAN_RUN_CLAUDE_REVIEWS="false"
+            CLAUDE_REVIEWS_BLOCK_REASON="review_automation_modified"
+            echo "AI reviews disabled because .github/workflows/pr-ci.yml, .github/prompts/**, or .github/actions/** are modified in this PR."
+          fi
+
+          echo "can_run_ai_reviews=$CAN_RUN_AI_REVIEWS" >> "$GITHUB_OUTPUT"
+          echo "ai_reviews_block_reason=$AI_REVIEWS_BLOCK_REASON" >> "$GITHUB_OUTPUT"
+          echo "can_run_claude_reviews=$CAN_RUN_CLAUDE_REVIEWS" >> "$GITHUB_OUTPUT"
+          echo "claude_reviews_block_reason=$CLAUDE_REVIEWS_BLOCK_REASON" >> "$GITHUB_OUTPUT"
 
   contracts-lint:
     needs: changes
@@ -333,7 +399,7 @@ jobs:
 
   claude-review-contracts:
     needs: [changes, contracts-lint]
-    if: needs.changes.outputs.contracts == 'true'
+    if: needs.changes.outputs.contracts_review == 'true' && needs.changes.outputs.can_run_claude_reviews == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -350,6 +416,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          REVIEW_MARKER: run=${{ github.run_id }} attempt=${{ github.run_attempt }} sha=${{ github.event.pull_request.head.sha }} scope=contracts
         run: |
           {
             cat .github/prompts/cairo-review.md
@@ -370,6 +437,8 @@ jobs:
             echo ""
             echo "Start your response with this exact heading:"
             echo "## Claude Review - Cairo/Starknet Contract Review"
+            echo "Include this exact marker on its own line near the top of your response:"
+            echo "$REVIEW_MARKER"
             echo ""
 
             cat <<'PROMPT_EOF'
@@ -406,6 +475,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - Cairo/Starknet Contract Review"
+          REVIEW_MARKER: run=${{ github.run_id }} attempt=${{ github.run_attempt }} sha=${{ github.event.pull_request.head.sha }} scope=contracts
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -413,8 +483,14 @@ jobs:
 
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-              | jq -r --arg header "$HEADER" \
-                '[.[] | select(.user.login | test("claude")) | select((.body // "") | contains($header))] | last | .body // ""')
+              | jq -r --arg header "$HEADER" --arg marker "$REVIEW_MARKER" \
+                '[.[] | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
+
+            if [ -z "$BODY" ]; then
+              BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+                | jq -r --arg header "$HEADER" --arg run_token "run=${{ github.run_id }}" --arg sha_token "sha=${{ github.event.pull_request.head.sha }}" \
+                  '[.[] | select((.body // "") | contains($header) and contains($run_token) and contains($sha_token))] | last | .body // ""')
+            fi
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -441,7 +517,7 @@ jobs:
 
   codex-review-contracts:
     needs: [changes, contracts-lint]
-    if: needs.changes.outputs.contracts == 'true'
+    if: needs.changes.outputs.contracts_review == 'true' && needs.changes.outputs.can_run_ai_reviews == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -569,7 +645,7 @@ jobs:
 
   claude-review-client:
     needs: [changes, client-lint]
-    if: needs.changes.outputs.client_review == 'true'
+    if: needs.changes.outputs.client_review == 'true' && needs.changes.outputs.can_run_claude_reviews == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -586,6 +662,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          REVIEW_MARKER: run=${{ github.run_id }} attempt=${{ github.run_attempt }} sha=${{ github.event.pull_request.head.sha }} scope=client
         run: |
           {
             cat .github/prompts/client-review.md
@@ -606,6 +683,8 @@ jobs:
             echo ""
             echo "Start your response with this exact heading:"
             echo "## Claude Review - React/Frontend Review"
+            echo "Include this exact marker on its own line near the top of your response:"
+            echo "$REVIEW_MARKER"
             echo ""
 
             cat <<'PROMPT_EOF'
@@ -642,6 +721,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - React/Frontend Review"
+          REVIEW_MARKER: run=${{ github.run_id }} attempt=${{ github.run_attempt }} sha=${{ github.event.pull_request.head.sha }} scope=client
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -649,8 +729,14 @@ jobs:
 
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-              | jq -r --arg header "$HEADER" \
-                '[.[] | select(.user.login | test("claude")) | select((.body // "") | contains($header))] | last | .body // ""')
+              | jq -r --arg header "$HEADER" --arg marker "$REVIEW_MARKER" \
+                '[.[] | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
+
+            if [ -z "$BODY" ]; then
+              BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+                | jq -r --arg header "$HEADER" --arg run_token "run=${{ github.run_id }}" --arg sha_token "sha=${{ github.event.pull_request.head.sha }}" \
+                  '[.[] | select((.body // "") | contains($header) and contains($run_token) and contains($sha_token))] | last | .body // ""')
+            fi
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -677,7 +763,7 @@ jobs:
 
   codex-review-client:
     needs: [changes, client-lint]
-    if: needs.changes.outputs.client_review == 'true'
+    if: needs.changes.outputs.client_review == 'true' && needs.changes.outputs.can_run_ai_reviews == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -805,7 +891,7 @@ jobs:
 
   claude-review-indexer-api:
     needs: [changes, indexer-api-lint]
-    if: needs.changes.outputs.indexer_api_review == 'true'
+    if: needs.changes.outputs.indexer_api_review == 'true' && needs.changes.outputs.can_run_claude_reviews == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -822,6 +908,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          REVIEW_MARKER: run=${{ github.run_id }} attempt=${{ github.run_attempt }} sha=${{ github.event.pull_request.head.sha }} scope=indexer-api
         run: |
           {
             cat .github/prompts/indexer-review.md
@@ -842,6 +929,8 @@ jobs:
             echo ""
             echo "Start your response with this exact heading:"
             echo "## Claude Review - Indexer/API Review"
+            echo "Include this exact marker on its own line near the top of your response:"
+            echo "$REVIEW_MARKER"
             echo ""
 
             cat <<'PROMPT_EOF'
@@ -878,6 +967,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - Indexer/API Review"
+          REVIEW_MARKER: run=${{ github.run_id }} attempt=${{ github.run_attempt }} sha=${{ github.event.pull_request.head.sha }} scope=indexer-api
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -885,8 +975,14 @@ jobs:
 
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-              | jq -r --arg header "$HEADER" \
-                '[.[] | select(.user.login | test("claude")) | select((.body // "") | contains($header))] | last | .body // ""')
+              | jq -r --arg header "$HEADER" --arg marker "$REVIEW_MARKER" \
+                '[.[] | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
+
+            if [ -z "$BODY" ]; then
+              BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+                | jq -r --arg header "$HEADER" --arg run_token "run=${{ github.run_id }}" --arg sha_token "sha=${{ github.event.pull_request.head.sha }}" \
+                  '[.[] | select((.body // "") | contains($header) and contains($run_token) and contains($sha_token))] | last | .body // ""')
+            fi
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -913,7 +1009,7 @@ jobs:
 
   codex-review-indexer-api:
     needs: [changes, indexer-api-lint]
-    if: needs.changes.outputs.indexer_api_review == 'true'
+    if: needs.changes.outputs.indexer_api_review == 'true' && needs.changes.outputs.can_run_ai_reviews == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1040,8 +1136,8 @@ jobs:
           echo "No blocking findings detected"
 
   claude-review-general:
-    needs: [changes, contracts-lint, client-lint, indexer-api-lint]
-    if: needs.changes.outputs.general_review == 'true'
+    needs: [changes]
+    if: needs.changes.outputs.general_review == 'true' && needs.changes.outputs.can_run_claude_reviews == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1058,6 +1154,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          REVIEW_MARKER: run=${{ github.run_id }} attempt=${{ github.run_attempt }} sha=${{ github.event.pull_request.head.sha }} scope=general
         run: |
           {
             cat .github/prompts/general-purpose.md
@@ -1079,6 +1176,8 @@ jobs:
             echo ""
             echo "Start your response with this exact heading:"
             echo "## Claude Review - General Engineering Review"
+            echo "Include this exact marker on its own line near the top of your response:"
+            echo "$REVIEW_MARKER"
             echo ""
 
             cat <<'PROMPT_EOF'
@@ -1115,6 +1214,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - General Engineering Review"
+          REVIEW_MARKER: run=${{ github.run_id }} attempt=${{ github.run_attempt }} sha=${{ github.event.pull_request.head.sha }} scope=general
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -1122,8 +1222,14 @@ jobs:
 
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-              | jq -r --arg header "$HEADER" \
-                '[.[] | select(.user.login | test("claude")) | select((.body // "") | contains($header))] | last | .body // ""')
+              | jq -r --arg header "$HEADER" --arg marker "$REVIEW_MARKER" \
+                '[.[] | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
+
+            if [ -z "$BODY" ]; then
+              BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+                | jq -r --arg header "$HEADER" --arg run_token "run=${{ github.run_id }}" --arg sha_token "sha=${{ github.event.pull_request.head.sha }}" \
+                  '[.[] | select((.body // "") | contains($header) and contains($run_token) and contains($sha_token))] | last | .body // ""')
+            fi
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -1149,8 +1255,8 @@ jobs:
           echo "No blocking findings detected"
 
   codex-review-general:
-    needs: [changes, contracts-lint, client-lint, indexer-api-lint]
-    if: needs.changes.outputs.general_review == 'true'
+    needs: [changes]
+    if: needs.changes.outputs.general_review == 'true' && needs.changes.outputs.can_run_ai_reviews == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1301,6 +1407,14 @@ jobs:
       - name: Evaluate results
         env:
           NEEDS_JSON: ${{ toJson(needs) }}
+          CHANGES_CONTRACTS_REVIEW: ${{ needs.changes.outputs.contracts_review }}
+          CHANGES_CLIENT_REVIEW: ${{ needs.changes.outputs.client_review }}
+          CHANGES_INDEXER_API_REVIEW: ${{ needs.changes.outputs.indexer_api_review }}
+          CHANGES_GENERAL_REVIEW: ${{ needs.changes.outputs.general_review }}
+          CAN_RUN_AI_REVIEWS: ${{ needs.changes.outputs.can_run_ai_reviews }}
+          AI_REVIEWS_BLOCK_REASON: ${{ needs.changes.outputs.ai_reviews_block_reason }}
+          CAN_RUN_CLAUDE_REVIEWS: ${{ needs.changes.outputs.can_run_claude_reviews }}
+          CLAUDE_REVIEWS_BLOCK_REASON: ${{ needs.changes.outputs.claude_reviews_block_reason }}
         run: |
           FAILED=$(echo "$NEEDS_JSON" | jq -r '
             to_entries[]
@@ -1312,6 +1426,59 @@ jobs:
             echo "::error::Failing jobs:"
             echo "$FAILED"
             exit 1
+          fi
+
+          if [ "$CAN_RUN_AI_REVIEWS" != "true" ]; then
+            if [ "$AI_REVIEWS_BLOCK_REASON" = "fork" ] || [ "$AI_REVIEWS_BLOCK_REASON" = "missing_secrets_trusted_bot" ] || [ "$AI_REVIEWS_BLOCK_REASON" = "review_automation_modified" ]; then
+              echo "Skipping review-job skipped enforcement because AI reviews are unavailable ($AI_REVIEWS_BLOCK_REASON)."
+            elif [ "$AI_REVIEWS_BLOCK_REASON" = "missing_secrets" ]; then
+              if [ "$CHANGES_CONTRACTS_REVIEW" = "true" ] || [ "$CHANGES_CLIENT_REVIEW" = "true" ] || [ "$CHANGES_INDEXER_API_REVIEW" = "true" ] || [ "$CHANGES_GENERAL_REVIEW" = "true" ]; then
+                echo "::error::AI review secrets are unavailable for a first-party PR with reviewable changes."
+                echo "::error::Restore CLAUDE_CODE_OAUTH_TOKEN and CODEX_AUTH_DOT_JSON or resolve secret access before merge."
+                exit 1
+              fi
+              echo "AI review secrets are unavailable, but no reviewable changes were detected."
+            else
+              echo "::error::Unexpected AI review availability state: $AI_REVIEWS_BLOCK_REASON"
+              exit 1
+            fi
+          else
+            MISSING_REVIEWS=""
+
+            check_skipped_reviews() {
+              local changed="$1"
+              shift
+
+              if [ "$changed" != "true" ]; then
+                return
+              fi
+
+              for job in "$@"; do
+                RESULT=$(echo "$NEEDS_JSON" | jq -r --arg job "$job" '.[$job].result // "unknown"')
+                if [ "$RESULT" = "skipped" ]; then
+                  MISSING_REVIEWS="${MISSING_REVIEWS}${job}"$'\n'
+                fi
+              done
+            }
+
+            if [ "$CAN_RUN_CLAUDE_REVIEWS" = "true" ]; then
+              check_skipped_reviews "$CHANGES_CONTRACTS_REVIEW" "claude-review-contracts" "codex-review-contracts"
+              check_skipped_reviews "$CHANGES_CLIENT_REVIEW" "claude-review-client" "codex-review-client"
+              check_skipped_reviews "$CHANGES_INDEXER_API_REVIEW" "claude-review-indexer-api" "codex-review-indexer-api"
+              check_skipped_reviews "$CHANGES_GENERAL_REVIEW" "claude-review-general" "codex-review-general"
+            else
+              echo "Skipping Claude review skipped enforcement because Claude reviews are unavailable ($CLAUDE_REVIEWS_BLOCK_REASON)."
+              check_skipped_reviews "$CHANGES_CONTRACTS_REVIEW" "codex-review-contracts"
+              check_skipped_reviews "$CHANGES_CLIENT_REVIEW" "codex-review-client"
+              check_skipped_reviews "$CHANGES_INDEXER_API_REVIEW" "codex-review-indexer-api"
+              check_skipped_reviews "$CHANGES_GENERAL_REVIEW" "codex-review-general"
+            fi
+
+            if [ -n "$MISSING_REVIEWS" ]; then
+              echo "::error::Required review jobs were skipped:"
+              echo "$MISSING_REVIEWS"
+              exit 1
+            fi
           fi
 
           echo "All required jobs passed or were skipped"
