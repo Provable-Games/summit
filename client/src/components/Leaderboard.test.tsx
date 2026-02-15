@@ -48,7 +48,7 @@ vi.mock("./RewardsRemainingBar", () => ({
 }));
 
 vi.mock("@mui/material", async () => {
-  const actual = await vi.importActual<typeof import("@mui/material")>("@mui/material");
+  const actual = await vi.importActual("@mui/material");
 
   const IconButton = forwardRef<HTMLButtonElement, React.ComponentProps<"button">>(
     ({ children, ...props }, ref) => (

@@ -100,6 +100,13 @@ export function feltToHex(felt: string | undefined | null): string {
 }
 
 /**
+ * Check whether a felt-encoded address is the Starknet zero address.
+ */
+export function isZeroFeltAddress(address: string | undefined | null): boolean {
+  return hexToBigInt(address) === 0n;
+}
+
+/**
  * Decode a Span<u32> from data array
  * Format: [length, elem1, elem2, ...]
  * Returns: array of numbers and the number of elements consumed

@@ -14,6 +14,7 @@ flags:
   indexer:
     paths:
       - indexer/src/
+      - indexer/indexers/
     carryforward: true
   api:
     paths:

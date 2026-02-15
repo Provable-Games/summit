@@ -395,7 +395,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         );
 
         if (quote) {
-          const rawAmount = (quote.total * -1) / Math.pow(10, selectedTokenData.decimals || 18);
+          const rawAmount = Math.abs(quote.totalDisplay) / Math.pow(10, selectedTokenData.decimals || 18);
           if (rawAmount === 0) {
             setTokenQuotes(prev => ({
               ...prev,
@@ -462,7 +462,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         );
 
         if (quote) {
-          const rawAmount = quote.total / Math.pow(10, receiveTokenData.decimals || 18);
+          const rawAmount = Math.abs(quote.totalDisplay) / Math.pow(10, receiveTokenData.decimals || 18);
           if (rawAmount === 0) {
             setTokenQuotes(prev => ({
               ...prev,
