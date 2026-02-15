@@ -28,7 +28,9 @@ export const fetchBeastSound = (beastId: number): SoundName => {
   return "bludgeon";
 }
 
-export const fetchBeastImage = (beast: Beast) => {
+export const fetchBeastImage = (
+  beast: Pick<Beast, "name"> & { shiny: number | boolean; animated: number | boolean }
+) => {
   if (beast.shiny && beast.animated) {
     return `/images/nfts/animated/shiny/${beast.name.toLowerCase()}.gif`;
   } else if (beast.animated) {
@@ -44,7 +46,10 @@ export function normaliseHealth(value: number, max: number): number {
   return Math.min(100, (value * 100) / max)
 }
 
-function elementalDamage(attacker: any, defender: any): number {
+function elementalDamage(
+  attacker: Pick<Beast, "type" | "power">,
+  defender: Pick<Beast, "type" | "power">
+): number {
   let multiplier = 1
 
   if ((attacker.type === 'Hunter' && defender.type === 'Magic') || (attacker.type === 'Magic' && defender.type === 'Brute') || (attacker.type === 'Brute' && defender.type === 'Hunter')) {

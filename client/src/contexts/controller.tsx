@@ -41,28 +41,32 @@ const ControllerContext = createContext<ControllerContext>(
 );
 
 type ConnectorWithUsername = {
-  username: () => Promise<string | undefined>;
+  username?: () => Promise<unknown> | unknown;
 };
 
 type ConnectorWithProfile = {
-  controller: {
-    openProfile: () => void;
+  controller?: {
+    openProfile?: () => void;
   };
 };
 
-const hasUsername = (value: unknown): value is ConnectorWithUsername =>
-  typeof value === "object" &&
-  value !== null &&
-  "username" in value &&
-  typeof (value as { username?: unknown }).username === "function";
+const getConnectorUsername = async (activeConnector: unknown): Promise<string | undefined> => {
+  if (!activeConnector || typeof activeConnector !== "object") return undefined;
 
-const hasProfile = (value: unknown): value is ConnectorWithProfile => {
-  if (typeof value !== "object" || value === null || !("controller" in value)) {
-    return false;
+  const usernameFn = (activeConnector as ConnectorWithUsername).username;
+  if (typeof usernameFn !== "function") return undefined;
+
+  const username = await usernameFn.call(activeConnector);
+  return typeof username === "string" && username.length > 0 ? username : undefined;
+};
+
+const openConnectorProfile = (activeConnector: unknown): void => {
+  if (!activeConnector || typeof activeConnector !== "object") return;
+
+  const openProfile = (activeConnector as ConnectorWithProfile).controller?.openProfile;
+  if (typeof openProfile === "function") {
+    openProfile.call((activeConnector as ConnectorWithProfile).controller);
   }
-
-  const { controller } = value as { controller?: { openProfile?: unknown } };
-  return typeof controller?.openProfile === "function";
 };
 
 // Create a provider component
@@ -129,13 +133,8 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   // Get username when connector changes
   useEffect(() => {
     const getUsername = async () => {
-      if (!hasUsername(connector)) {
-        setUserName(undefined);
-        return;
-      }
-
       try {
-        const name = await connector.username();
+        const name = await getConnectorUsername(connector);
         if (name) setUserName(name);
       } catch (error) {
         console.error("Error getting username:", error);
@@ -146,9 +145,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   }, [connector]);
 
   const openProfile = useCallback(() => {
-    if (hasProfile(connector)) {
-      connector.controller.openProfile();
-    }
+    openConnectorProfile(connector);
   }, [connector]);
 
   async function fetchBeastCollection() {
