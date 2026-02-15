@@ -531,17 +531,20 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       const safeAttack = action.safeAttack ?? false;
       const vrf = action.vrf ?? false;
       const extraLifePotions = action.extraLifePotions ?? 0;
+      const attackCalls = attack(
+        beasts,
+        safeAttack,
+        vrf,
+        extraLifePotions
+      );
 
       setBattleEvents([]);
       setAttackInProgress(true);
-      txs.push(
-        ...attack(
-          beasts,
-          safeAttack,
-          vrf,
-          extraLifePotions
-        )
-      );
+      if (attackCalls.length === 0) {
+        setActionFailed();
+        return false;
+      }
+      txs.push(...attackCalls);
     }
 
     if (action.type === "attack_until_capture") {

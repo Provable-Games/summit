@@ -49,6 +49,13 @@ async function renderProvider() {
   });
 }
 
+async function flushEffects() {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+}
+
 describe("StatisticsProvider", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -56,6 +63,7 @@ describe("StatisticsProvider", () => {
 
   it("loads beast counts and token prices on mount", async () => {
     await renderProvider();
+    await flushEffects();
 
     expect(getBeastCountsMock).toHaveBeenCalledTimes(1);
     expect(getSwapQuoteMock).toHaveBeenCalledTimes(2);
@@ -65,6 +73,8 @@ describe("StatisticsProvider", () => {
     expect(firstCall[1]).toBe("0xattack");
     expect(secondCall[0]).toBe(-1n * 10n ** 18n);
     expect(secondCall[1]).toBe("0xskull");
+    expect(capturedStatistics.tokenPrices.ATTACK).toBe("2.0000");
+    expect(capturedStatistics.tokenPrices.SKULL).toBe("2.0000");
   });
 
   it("refreshTokenPrices scans supported token names safely", async () => {
