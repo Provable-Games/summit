@@ -16,6 +16,7 @@ jobs:
       pull-requests: read
     outputs:
       contracts: ${{ steps.filter.outputs.contracts }}
+      contracts_review: ${{ steps.filter.outputs.contracts_review }}
       client_ci: ${{ steps.filter.outputs.client_ci }}
       client_review: ${{ steps.filter.outputs.client_review }}
       indexer_ci: ${{ steps.filter.outputs.indexer_ci }}
@@ -33,6 +34,8 @@ jobs:
             contracts:
               - "contracts/**"
               - ".tool-versions"
+            contracts_review:
+              - "contracts/**"
             client_ci:
               - "client/**"
               - "contracts/src/models/beast.cairo"
@@ -337,7 +340,7 @@ jobs:
 
   claude-review-contracts:
     needs: [changes, contracts-lint]
-    if: needs.changes.outputs.contracts == 'true' && github.event.pull_request.head.repo.fork == false
+    if: needs.changes.outputs.contracts_review == 'true' && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -444,7 +447,7 @@ jobs:
 
   codex-review-contracts:
     needs: [changes, contracts-lint]
-    if: needs.changes.outputs.contracts == 'true' && github.event.pull_request.head.repo.fork == false
+    if: needs.changes.outputs.contracts_review == 'true' && github.event.pull_request.head.repo.fork == false
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1237,10 +1240,11 @@ jobs:
       - name: Evaluate results
         env:
           NEEDS_JSON: ${{ toJson(needs) }}
-          CHANGES_CONTRACTS: ${{ needs.changes.outputs.contracts }}
+          CHANGES_CONTRACTS_REVIEW: ${{ needs.changes.outputs.contracts_review }}
           CHANGES_CLIENT_REVIEW: ${{ needs.changes.outputs.client_review }}
           CHANGES_INDEXER_API_REVIEW: ${{ needs.changes.outputs.indexer_api_review }}
           CHANGES_GENERAL_REVIEW: ${{ needs.changes.outputs.general_review }}
+          IS_FORK: ${{ github.event.pull_request.head.repo.fork }}
         run: |
           FAILED=$(echo "$NEEDS_JSON" | jq -r '
             to_entries[]
@@ -1254,33 +1258,37 @@ jobs:
             exit 1
           fi
 
-          MISSING_REVIEWS=""
+          if [ "$IS_FORK" = "true" ]; then
+            echo "Skipping review-job skipped enforcement for fork pull requests"
+          else
+            MISSING_REVIEWS=""
 
-          check_skipped_reviews() {
-            local changed="$1"
-            shift
+            check_skipped_reviews() {
+              local changed="$1"
+              shift
 
-            if [ "$changed" != "true" ]; then
-              return
-            fi
-
-            for job in "$@"; do
-              RESULT=$(echo "$NEEDS_JSON" | jq -r --arg job "$job" '.[$job].result // "unknown"')
-              if [ "$RESULT" = "skipped" ]; then
-                MISSING_REVIEWS="${MISSING_REVIEWS}${job}"$'\n'
+              if [ "$changed" != "true" ]; then
+                return
               fi
-            done
-          }
 
-          check_skipped_reviews "$CHANGES_CONTRACTS" "claude-review-contracts" "codex-review-contracts"
-          check_skipped_reviews "$CHANGES_CLIENT_REVIEW" "claude-review-client" "codex-review-client"
-          check_skipped_reviews "$CHANGES_INDEXER_API_REVIEW" "claude-review-indexer-api" "codex-review-indexer-api"
-          check_skipped_reviews "$CHANGES_GENERAL_REVIEW" "claude-review-general" "codex-review-general"
+              for job in "$@"; do
+                RESULT=$(echo "$NEEDS_JSON" | jq -r --arg job "$job" '.[$job].result // "unknown"')
+                if [ "$RESULT" = "skipped" ]; then
+                  MISSING_REVIEWS="${MISSING_REVIEWS}${job}"$'\n'
+                fi
+              done
+            }
 
-          if [ -n "$MISSING_REVIEWS" ]; then
-            echo "::error::Required review jobs were skipped:"
-            echo "$MISSING_REVIEWS"
-            exit 1
+            check_skipped_reviews "$CHANGES_CONTRACTS_REVIEW" "claude-review-contracts" "codex-review-contracts"
+            check_skipped_reviews "$CHANGES_CLIENT_REVIEW" "claude-review-client" "codex-review-client"
+            check_skipped_reviews "$CHANGES_INDEXER_API_REVIEW" "claude-review-indexer-api" "codex-review-indexer-api"
+            check_skipped_reviews "$CHANGES_GENERAL_REVIEW" "claude-review-general" "codex-review-general"
+
+            if [ -n "$MISSING_REVIEWS" ]; then
+              echo "::error::Required review jobs were skipped:"
+              echo "$MISSING_REVIEWS"
+              exit 1
+            fi
           fi
 
           echo "All required jobs passed or were skipped"

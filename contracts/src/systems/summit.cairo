@@ -222,6 +222,7 @@ pub mod summit_systems {
         fn claim_rewards(ref self: ContractState, beast_token_ids: Span<u32>) {
             let caller = get_caller_address();
             let beast_dispatcher = self.beast_dispatcher.read();
+            InternalSummitImpl::_finalize_terminal_summit_rewards_if_needed(ref self);
 
             let mut total_claimable: u32 = 0;
             let mut beast_updates: Array<felt252> = array![];
@@ -663,6 +664,34 @@ pub mod summit_systems {
                 self.live.bonus_xp,
                 include_specials,
             )
+        }
+
+        fn _finalize_terminal_summit_rewards_if_needed(ref self: ContractState) {
+            let terminal_timestamp = self.terminal_timestamp.read();
+            if get_block_timestamp() < terminal_timestamp {
+                return;
+            }
+
+            let summit_beast_token_id = self.summit_beast_token_id.read();
+            if summit_beast_token_id == 0 {
+                return;
+            }
+
+            let taken_at = self.summit_history.entry(summit_beast_token_id).read();
+            if taken_at >= terminal_timestamp {
+                return;
+            }
+
+            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
+            let mut summit_beast = Self::_get_beast(@self, summit_beast_token_id, beast_nft_dispatcher);
+            let mut beast_updates: Array<felt252> = array![];
+
+            self._finalize_summit_history(ref summit_beast, ref beast_updates);
+            self.summit_history.entry(summit_beast_token_id).write(terminal_timestamp);
+
+            let packed_summit_beast = self._save_live_stats(summit_beast.live);
+            beast_updates.append(packed_summit_beast);
+            self.emit(BeastUpdatesEvent { beast_updates: beast_updates.span() });
         }
 
         /// @title finalize_summit_history
