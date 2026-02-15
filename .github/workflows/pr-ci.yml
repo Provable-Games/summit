@@ -26,6 +26,8 @@ jobs:
       general_review: ${{ steps.filter.outputs.general_review }}
       can_run_ai_reviews: ${{ steps.ai-gate.outputs.can_run_ai_reviews }}
       ai_reviews_block_reason: ${{ steps.ai-gate.outputs.ai_reviews_block_reason }}
+      can_run_claude_reviews: ${{ steps.ai-gate.outputs.can_run_claude_reviews }}
+      claude_reviews_block_reason: ${{ steps.ai-gate.outputs.claude_reviews_block_reason }}
     steps:
       - uses: actions/checkout@v4
 
@@ -58,6 +60,8 @@ jobs:
             indexer_api_review:
               - "indexer/**"
               - "api/**"
+            claude_workflow_changed:
+              - ".github/workflows/pr-ci.yml"
             general_review:
               - "**"
               - "!contracts/**"
@@ -70,11 +74,14 @@ jobs:
         env:
           IS_FORK: ${{ github.event.pull_request.head.repo.fork }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          CLAUDE_WORKFLOW_CHANGED: ${{ steps.filter.outputs.claude_workflow_changed }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           CODEX_AUTH_DOT_JSON: ${{ secrets.CODEX_AUTH_DOT_JSON }}
         run: |
           CAN_RUN_AI_REVIEWS="true"
           AI_REVIEWS_BLOCK_REASON="available"
+          CAN_RUN_CLAUDE_REVIEWS="true"
+          CLAUDE_REVIEWS_BLOCK_REASON="available"
           IS_TRUSTED_BOT_PR="false"
 
           if printf '%s' "$PR_AUTHOR" | tr '[:upper:]' '[:lower:]' | grep -Eq '^(dependabot\[bot\]|dependabot-preview\[bot\]|renovate\[bot\])$'; then
@@ -96,8 +103,19 @@ jobs:
             fi
           fi
 
+          if [ "$CAN_RUN_AI_REVIEWS" != "true" ]; then
+            CAN_RUN_CLAUDE_REVIEWS="false"
+            CLAUDE_REVIEWS_BLOCK_REASON="$AI_REVIEWS_BLOCK_REASON"
+          elif [ "$CLAUDE_WORKFLOW_CHANGED" = "true" ]; then
+            CAN_RUN_CLAUDE_REVIEWS="false"
+            CLAUDE_REVIEWS_BLOCK_REASON="workflow_modified"
+            echo "Claude reviews disabled because .github/workflows/pr-ci.yml is modified in this PR."
+          fi
+
           echo "can_run_ai_reviews=$CAN_RUN_AI_REVIEWS" >> "$GITHUB_OUTPUT"
           echo "ai_reviews_block_reason=$AI_REVIEWS_BLOCK_REASON" >> "$GITHUB_OUTPUT"
+          echo "can_run_claude_reviews=$CAN_RUN_CLAUDE_REVIEWS" >> "$GITHUB_OUTPUT"
+          echo "claude_reviews_block_reason=$CLAUDE_REVIEWS_BLOCK_REASON" >> "$GITHUB_OUTPUT"
 
   contracts-lint:
     needs: changes
@@ -376,7 +394,7 @@ jobs:
 
   claude-review-contracts:
     needs: [changes, contracts-lint]
-    if: needs.changes.outputs.contracts_review == 'true' && needs.changes.outputs.can_run_ai_reviews == 'true'
+    if: needs.changes.outputs.contracts_review == 'true' && needs.changes.outputs.can_run_claude_reviews == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -599,7 +617,7 @@ jobs:
 
   claude-review-client:
     needs: [changes, client-lint]
-    if: needs.changes.outputs.client_review == 'true' && needs.changes.outputs.can_run_ai_reviews == 'true'
+    if: needs.changes.outputs.client_review == 'true' && needs.changes.outputs.can_run_claude_reviews == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -822,7 +840,7 @@ jobs:
 
   claude-review-indexer-api:
     needs: [changes, indexer-api-lint]
-    if: needs.changes.outputs.indexer_api_review == 'true' && needs.changes.outputs.can_run_ai_reviews == 'true'
+    if: needs.changes.outputs.indexer_api_review == 'true' && needs.changes.outputs.can_run_claude_reviews == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1045,7 +1063,7 @@ jobs:
 
   claude-review-general:
     needs: [changes]
-    if: needs.changes.outputs.general_review == 'true' && needs.changes.outputs.can_run_ai_reviews == 'true'
+    if: needs.changes.outputs.general_review == 'true' && needs.changes.outputs.can_run_claude_reviews == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1298,27 +1316,18 @@ jobs:
           CHANGES_GENERAL_REVIEW: ${{ needs.changes.outputs.general_review }}
           CAN_RUN_AI_REVIEWS: ${{ needs.changes.outputs.can_run_ai_reviews }}
           AI_REVIEWS_BLOCK_REASON: ${{ needs.changes.outputs.ai_reviews_block_reason }}
+          CAN_RUN_CLAUDE_REVIEWS: ${{ needs.changes.outputs.can_run_claude_reviews }}
+          CLAUDE_REVIEWS_BLOCK_REASON: ${{ needs.changes.outputs.claude_reviews_block_reason }}
         run: |
-          FAILED_NON_CLAUDE=$(echo "$NEEDS_JSON" | jq -r '
+          FAILED=$(echo "$NEEDS_JSON" | jq -r '
             to_entries[]
-            | select((.value.result == "failure" or .value.result == "cancelled") and (.key | startswith("claude-review-") | not))
+            | select(.value.result == "failure" or .value.result == "cancelled")
             | .key
           ')
 
-          FAILED_CLAUDE=$(echo "$NEEDS_JSON" | jq -r '
-            to_entries[]
-            | select((.value.result == "failure" or .value.result == "cancelled") and (.key | startswith("claude-review-")))
-            | .key
-          ')
-
-          if [ -n "$FAILED_CLAUDE" ]; then
-            echo "Ignoring failed Claude review jobs:"
-            echo "$FAILED_CLAUDE"
-          fi
-
-          if [ -n "$FAILED_NON_CLAUDE" ]; then
+          if [ -n "$FAILED" ]; then
             echo "::error::Failing jobs:"
-            echo "$FAILED_NON_CLAUDE"
+            echo "$FAILED"
             exit 1
           fi
 
@@ -1355,10 +1364,18 @@ jobs:
               done
             }
 
-            check_skipped_reviews "$CHANGES_CONTRACTS_REVIEW" "claude-review-contracts" "codex-review-contracts"
-            check_skipped_reviews "$CHANGES_CLIENT_REVIEW" "claude-review-client" "codex-review-client"
-            check_skipped_reviews "$CHANGES_INDEXER_API_REVIEW" "claude-review-indexer-api" "codex-review-indexer-api"
-            check_skipped_reviews "$CHANGES_GENERAL_REVIEW" "claude-review-general" "codex-review-general"
+            if [ "$CAN_RUN_CLAUDE_REVIEWS" = "true" ]; then
+              check_skipped_reviews "$CHANGES_CONTRACTS_REVIEW" "claude-review-contracts" "codex-review-contracts"
+              check_skipped_reviews "$CHANGES_CLIENT_REVIEW" "claude-review-client" "codex-review-client"
+              check_skipped_reviews "$CHANGES_INDEXER_API_REVIEW" "claude-review-indexer-api" "codex-review-indexer-api"
+              check_skipped_reviews "$CHANGES_GENERAL_REVIEW" "claude-review-general" "codex-review-general"
+            else
+              echo "Skipping Claude review skipped enforcement because Claude reviews are unavailable ($CLAUDE_REVIEWS_BLOCK_REASON)."
+              check_skipped_reviews "$CHANGES_CONTRACTS_REVIEW" "codex-review-contracts"
+              check_skipped_reviews "$CHANGES_CLIENT_REVIEW" "codex-review-client"
+              check_skipped_reviews "$CHANGES_INDEXER_API_REVIEW" "codex-review-indexer-api"
+              check_skipped_reviews "$CHANGES_GENERAL_REVIEW" "codex-review-general"
+            fi
 
             if [ -n "$MISSING_REVIEWS" ]; then
               echo "::error::Required review jobs were skipped:"
