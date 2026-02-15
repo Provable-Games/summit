@@ -60,6 +60,8 @@ const ProfileCard = () => {
   }
 
   const handleProfileClick = async () => {
+    if (!address) return;
+
     if (address && isCartridge) {
       openProfile()
     } else {
@@ -192,7 +194,13 @@ const ProfileCard = () => {
             }
             placement="left"
           >
-            <Box sx={[styles.infoSection, styles.leftSection, gasSpent && styles.gasSpentContainer]}>
+            <Box
+              sx={{
+                ...styles.infoSection,
+                ...styles.leftSection,
+                ...(gasSpent ? styles.gasSpentContainer : {}),
+              }}
+            >
               <Typography sx={styles.infoLabel}>STRK (gas)</Typography>
 
               <Box display={'flex'} alignItems={'center'} gap={0.5} position={'relative'}>
@@ -200,14 +208,22 @@ const ProfileCard = () => {
                   component="img"
                   src={starkImg}
                   alt="STRK"
-                  sx={[
-                    { width: '14px', height: '14px', pb: '4px' },
-                    gasSpent && styles.gasIconPulse
-                  ]}
+                  sx={{
+                    width: '14px',
+                    height: '14px',
+                    pb: '4px',
+                    ...(gasSpent ? styles.gasIconPulse : {}),
+                  }}
                 />
                 {strkBalance !== undefined
                   ? <>
-                    <Typography sx={[styles.infoValue, isLowGas && { color: '#ff9800' }, gasSpent && styles.gasSpentValue]}>
+                    <Typography
+                      sx={{
+                        ...styles.infoValue,
+                        ...(isLowGas ? { color: '#ff9800' } : {}),
+                        ...(gasSpent ? styles.gasSpentValue : {}),
+                      }}
+                    >
                       {strkBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </Typography>
                     {/* <IconButton

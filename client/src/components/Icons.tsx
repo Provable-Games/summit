@@ -1,4 +1,8 @@
-export const HunterIcon = (props) => {
+interface IconProps {
+  color: string;
+}
+
+export const HunterIcon = (props: IconProps) => {
   return (
     <svg style={{ fill: props.color }} width="16" height="16" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 35" id="paw">
       <path d="M28.735 27.924c-.392 3.89-4.432 6.612-8.327 5.2a8.607 8.607 0 0 0-5.813 0c-3.92 1.422-7.939-1.329-8.328-5.2a6.229 6.229 0 0 1 2.176-5.428c1.065-.895 2.005-1.96 2.504-3.274a7.005 7.005 0 0 1 6.549-4.52 7.02 7.02 0 0 1 6.56 4.52c.499 1.314 1.439 2.38 2.504 3.274a6.259 6.259 0 0 1 2.175 5.428zM9.938 15.339c.738 2.38.069 4.7-1.479 5.179-1.558.483-3.41-1.055-4.148-3.435-.658-2.122-.201-4.208 1.026-4.956.024-1.11.23-2.243.605-3.33a16.29 16.29 0 0 0 .452 3.026c1.404.015 2.904 1.449 3.544 3.516zm6.163-6.574c.82 2.646.076 5.222-1.644 5.755-1.731.536-3.79-1.172-4.61-3.817-.73-2.357-.222-4.676 1.141-5.507a12.23 12.23 0 0 1 .672-3.7c.064 1.14.23 2.274.502 3.363 1.56.017 3.227 1.61 3.939 3.906zm8.96 6.574c-.737 2.38-.068 4.7 1.48 5.179 1.558.483 3.41-1.055 4.148-3.435.658-2.122.201-4.208-1.026-4.956a11.007 11.007 0 0 0-.605-3.33 16.29 16.29 0 0 1-.452 3.026c-1.404.015-2.904 1.449-3.544 3.516zM18.9 8.765c-.82 2.646-.076 5.222 1.644 5.755 1.731.536 3.79-1.172 4.61-3.817.73-2.357.222-4.676-1.141-5.507a12.23 12.23 0 0 0-.672-3.7 18.098 18.098 0 0 1-.502 3.363c-1.56.017-3.227 1.61-3.939 3.906z"></path>
@@ -6,7 +10,7 @@ export const HunterIcon = (props) => {
   )
 }
 
-export const MagicalIcon = (props) => {
+export const MagicalIcon = (props: IconProps) => {
   return (
     <svg style={{ fill: props.color }} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 20 20" id="wand">
       <g id="Page-1" fill="none" fill-rule="evenodd" stroke="none" stroke-width="1">
@@ -20,7 +24,7 @@ export const MagicalIcon = (props) => {
   )
 }
 
-export const BruteIcon = (props) => {
+export const BruteIcon = (props: IconProps) => {
   return (
     <svg style={{ fill: props.color }} version="1.0" xmlns="http://www.w3.org/2000/svg"
       width="17" height="13" viewBox="0 0 1000 1000"

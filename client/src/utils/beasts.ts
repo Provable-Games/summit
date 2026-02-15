@@ -24,6 +24,8 @@ export const fetchBeastSound = (beastId: number): SoundName => {
   } else if (beastId <= 75) {
     return "bludgeon";
   }
+
+  return "bludgeon";
 }
 
 export const fetchBeastImage = (beast: Beast) => {
@@ -177,13 +179,20 @@ export const formatBeastName = (beast: Beast): string => {
 }
 
 export const getBeastDetails = (id: number, prefix: number, suffix: number, level: number) => {
+  const beastNames = BEAST_NAMES as Record<number, string>;
+  const beastTiers = BEAST_TIERS as Record<number, number>;
+  const beastTypes = BEAST_TYPES as Record<number, string>;
+  const prefixes = ITEM_NAME_PREFIXES as Record<number, string>;
+  const suffixes = ITEM_NAME_SUFFIXES as Record<number, string>;
+  const tier = beastTiers[id] ?? 5;
+
   return {
-    name: BEAST_NAMES[id],
-    prefix: ITEM_NAME_PREFIXES[prefix],
-    suffix: ITEM_NAME_SUFFIXES[suffix],
-    tier: BEAST_TIERS[id],
-    type: BEAST_TYPES[id],
-    power: (6 - BEAST_TIERS[id]) * level,
+    name: beastNames[id] ?? "Unknown",
+    prefix: prefixes[prefix] ?? "",
+    suffix: suffixes[suffix] ?? "",
+    tier,
+    type: beastTypes[id] ?? "Magic",
+    power: (6 - tier) * level,
   }
 }
 

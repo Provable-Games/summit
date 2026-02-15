@@ -53,7 +53,7 @@ const transformAllBeast = (ab: AllBeast): Beast => {
     wisdom: ab.wisdom,
     diplomacy: ab.diplomacy,
     extra_lives: ab.extra_lives,
-    owner: ab.owner,
+    owner: ab.owner ?? undefined,
     shiny: ab.shiny,
     animated: ab.animated,
     // Defaults for fields not in API
@@ -1219,4 +1219,3 @@ const styles = {
     },
   },
 };
-

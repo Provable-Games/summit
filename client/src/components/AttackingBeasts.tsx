@@ -21,6 +21,14 @@ type AttackingBeastEntity = Beast & {
   entity_key: string;
 };
 
+type DamageQueueItem = {
+  id: string;
+  value: number;
+  type: 'attack' | 'counter';
+  beastKey: string;
+  critical: boolean;
+};
+
 const AttackingBeastCard = React.memo(function AttackingBeastCard({
   beast,
   index,
@@ -138,8 +146,8 @@ function AttackingBeasts() {
   const { setPauseUpdates } = useGameDirector();
   const [isAttacking, setIsAttacking] = useState(false);
   const [deadBeasts, setDeadBeasts] = useState<Set<string>>(new Set());
-  const [damageNumbers, setDamageNumbers] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastKey: string; critical: boolean }>>([]);
-  const [damageQueue, setDamageQueue] = useState<Array<{ id: string; value: number; type: 'attack' | 'counter'; beastKey: string; critical: boolean }>>([]);
+  const [damageNumbers, setDamageNumbers] = useState<DamageQueueItem[]>([]);
+  const [damageQueue, setDamageQueue] = useState<DamageQueueItem[]>([]);
   const [beasts, setBeasts] = useState<AttackingBeastEntity[]>([]);
   const [activeBeastKey, setActiveBeastKey] = useState<string | null>(null);
 
@@ -196,7 +204,7 @@ function AttackingBeasts() {
     if (!beast || !beast.battle) return;
 
     // Build attacks array
-    const attacks = [];
+    const attacks: DamageQueueItem[] = [];
 
     // Add normal attacks
     for (let i = 0; i < (beast.battle.attack_count || 0); i++) {
@@ -221,7 +229,7 @@ function AttackingBeasts() {
     }
 
     // Build counter-attacks array
-    const counterAttacks = [];
+    const counterAttacks: DamageQueueItem[] = [];
 
     // Add normal counter-attacks
     for (let i = 0; i < (beast.battle.counter_attack_count || 0); i++) {
@@ -250,7 +258,7 @@ function AttackingBeasts() {
     const shuffledCounterAttacks = shuffle(counterAttacks);
 
     // Interleave attacks and counter-attacks
-    const queue = [];
+    const queue: DamageQueueItem[] = [];
     const maxLength = Math.max(shuffledAttacks.length, shuffledCounterAttacks.length);
 
     for (let i = 0; i < maxLength; i++) {
@@ -271,7 +279,7 @@ function AttackingBeasts() {
     if (damageQueue.length === 0) return;
 
     let currentIndex = 0;
-    const timeouts = [];
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
 
     const processNext = () => {
       if (currentIndex >= damageQueue.length) {
@@ -292,6 +300,10 @@ function AttackingBeasts() {
       if (nextDamage.type === 'attack') {
         setIsAttacking(true);
         setSummit(prevSummit => {
+          if (!prevSummit) {
+            return prevSummit;
+          }
+
           if (prevSummit.beast.current_health <= nextDamage.value && prevSummit.beast.extra_lives > 0) {
             return {
               ...prevSummit,
