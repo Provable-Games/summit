@@ -949,6 +949,18 @@ jobs:
                   '[.[] | select((.body // "") | contains($header) and contains($run_token) and contains($sha_token))] | last | .body // ""')
             fi
 
+            if [ -z "$BODY" ]; then
+              BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+                | jq -r --arg marker "$REVIEW_MARKER" \
+                  '[.[] | select((.user.login // "") == "claude" and ((.body // "") | contains($marker)))] | last | .body // ""')
+            fi
+
+            if [ -z "$BODY" ]; then
+              BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+                | jq -r --arg run_token "run=${{ github.run_id }}" --arg sha_token "sha=${{ github.event.pull_request.head.sha }}" \
+                  '[.[] | select((.user.login // "") == "claude" and ((.body // "") | contains($run_token) and contains($sha_token) and contains("scope=indexer-api")))] | last | .body // ""')
+            fi
+
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
               break

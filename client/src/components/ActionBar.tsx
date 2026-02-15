@@ -36,10 +36,16 @@ function ActionBar() {
   const { executeGameAction } = useGameDirector();
   const { tokenBalances } = useController();
   const { notifyTargetClicked } = useQuestGuide();
-  const reviveBalance = Number(tokenBalances["REVIVE"] ?? 0) || 0;
-  const attackBalance = Number(tokenBalances["ATTACK"] ?? 0) || 0;
-  const extraLifeBalance = Number(tokenBalances["EXTRA LIFE"] ?? 0) || 0;
-  const poisonBalance = Number(tokenBalances["POISON"] ?? 0) || 0;
+
+  const getTokenBalance = (symbol: string): number => {
+    const balance = tokenBalances[symbol];
+    return typeof balance === "number" && Number.isFinite(balance) ? balance : 0;
+  };
+
+  const reviveBalance = getTokenBalance("REVIVE");
+  const attackBalance = getTokenBalance("ATTACK");
+  const extraLifeBalance = getTokenBalance("EXTRA LIFE");
+  const poisonBalance = getTokenBalance("POISON");
 
   const { selectedBeasts, summit,
     attackInProgress,

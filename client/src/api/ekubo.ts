@@ -4,7 +4,10 @@ import { num } from "starknet";
 export interface SwapQuote {
   impact: number;
   price_impact?: number;
-  total: number;
+  /** Raw total as a string to preserve BigInt precision for on-chain calls. */
+  total: string;
+  /** Lossy number conversion of total, safe for UI display only. */
+  totalDisplay: number;
   splits: SwapSplit[];
 }
 
@@ -42,7 +45,7 @@ export interface SwapCall {
 }
 
 interface SwapQuoteResponse {
-  total_calculated?: number | string;
+  total_calculated?: string | number;
   price_impact?: number;
   splits?: SwapSplit[];
 }
@@ -63,11 +66,28 @@ export interface Bounds {
 const inflightQuotes: Partial<Record<string, Promise<SwapQuote>>> = {};
 let rateLimitUntil = 0;
 const RATE_LIMIT_COOLDOWN_MS = 60_000;
+const MAX_SAFE_INTEGER_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 
 const applySlippage = (value: bigint, slippageBps: number) => {
   const basis = 10_000n;
   const bps = BigInt(slippageBps);
   return (value * (basis - bps)) / basis;
+};
+
+const toSafeDisplayNumber = (value: string): number => {
+  try {
+    const bigintValue = BigInt(value);
+    if (bigintValue > MAX_SAFE_INTEGER_BIGINT) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+    if (bigintValue < -MAX_SAFE_INTEGER_BIGINT) {
+      return -Number.MAX_SAFE_INTEGER;
+    }
+    return Number(bigintValue);
+  } catch {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : 0;
+  }
 };
 
 export const getSwapQuote = async (
@@ -140,14 +160,13 @@ export const getSwapQuote = async (
       }
 
       if (data.total_calculated !== undefined) {
-        const totalCalculated = typeof data.total_calculated === "number"
-          ? data.total_calculated
-          : Number(data.total_calculated);
+        const totalStr = String(data.total_calculated);
 
         return {
           impact: data.price_impact || 0,
           price_impact: data.price_impact || 0,
-          total: Number.isFinite(totalCalculated) ? totalCalculated : 0,
+          total: totalStr,
+          totalDisplay: toSafeDisplayNumber(totalStr),
           splits: data.splits || [],
         };
       }
@@ -160,7 +179,8 @@ export const getSwapQuote = async (
 
     return {
       impact: 0,
-      total: 0,
+      total: "0",
+      totalDisplay: 0,
       splits: [],
     };
   })();
