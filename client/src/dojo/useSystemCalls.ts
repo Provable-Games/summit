@@ -4,6 +4,7 @@ import { useGameStore } from "@/stores/gameStore";
 import type { selection, Stats } from "@/types/game";
 import { calculateRevivalRequired } from "@/utils/beasts";
 import { translateGameEvent } from "@/utils/translation";
+import type { TranslatedGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
 import { useSnackbar } from "notistack";
@@ -15,11 +16,7 @@ type TransactionReceiptLike = {
   actual_fee?: { amount?: string | number | bigint } | string | number | bigint;
   events?: unknown[];
 };
-
-export type TranslatedGameEvent = {
-  componentName: string;
-  [key: string]: unknown;
-};
+export type { TranslatedGameEvent } from "@/utils/translation";
 
 /**
  * Extracts a human-readable error message from a Starknet execution error.
@@ -133,7 +130,9 @@ export const useSystemCalls = () => {
       }
 
       const translatedEvents = (receipt.events || [])
-        .map((event) => translateGameEvent(event, account.address))
+        .map((event) =>
+          translateGameEvent(event as Parameters<typeof translateGameEvent>[0], account.address)
+        )
         .flat()
         .filter(Boolean) as TranslatedGameEvent[];
 

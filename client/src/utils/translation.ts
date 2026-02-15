@@ -8,7 +8,8 @@ const EVENT_NAMES = [
 ] as const;
 
 // Create reverse lookup map: selector -> event name
-const SELECTOR_TO_NAME = new Map<string, string>();
+type SupportedEventName = (typeof EVENT_NAMES)[number];
+const SELECTOR_TO_NAME = new Map<string, SupportedEventName>();
 for (const eventName of EVENT_NAMES) {
   const selector = hash.getSelectorFromName(eventName);
   const normalized = `0x${BigInt(selector).toString(16).padStart(64, '0')}`;
@@ -69,6 +70,46 @@ export interface LiveBeastStats {
   used_attack_potion: boolean;
   max_attack_streak: boolean;
 }
+
+export interface BattleEventTranslation {
+  componentName: "BattleEvent";
+  attacking_beast_token_id: number;
+  attack_index: number;
+  defending_beast_token_id: number;
+  attack_count: number;
+  attack_damage: number;
+  critical_attack_count: number;
+  critical_attack_damage: number;
+  counter_attack_count: number;
+  counter_attack_damage: number;
+  critical_counter_attack_count: number;
+  critical_counter_attack_damage: number;
+  attack_potions: number;
+  revive_potions: number;
+  xp_gained: number;
+}
+
+export interface LiveBeastStatsEventTranslation extends LiveBeastStats {
+  componentName: "LiveBeastStatsEvent";
+}
+
+export interface SummitEventTranslation {
+  componentName: "Summit";
+  attack_potions: number;
+  revival_potions: number;
+  extra_life_potions: number;
+}
+
+export type TranslatedGameEvent =
+  | BattleEventTranslation
+  | LiveBeastStatsEventTranslation
+  | SummitEventTranslation;
+
+type StarknetEventLike = {
+  keys?: Array<string | bigint>;
+  from_address?: string;
+  data?: string[];
+};
 
 /**
  * Unpack LiveBeastStats from a single felt252
@@ -150,11 +191,11 @@ export function unpackLiveBeastStats(packedFelt: string): LiveBeastStats {
 
 // ============ Event Decoders ============
 
-function hexToNumber(hex: string): number {
-  return Number(BigInt(hex));
+function hexToNumber(hex: string | undefined): number {
+  return Number(BigInt(hex || "0x0"));
 }
 
-function decodeBattleEvent(data: string[]): any {
+function decodeBattleEvent(data: string[]): BattleEventTranslation {
   return {
     componentName: 'BattleEvent',
     attacking_beast_token_id: hexToNumber(data[0]),
@@ -174,7 +215,7 @@ function decodeBattleEvent(data: string[]): any {
   };
 }
 
-function decodeLiveBeastStatsEvent(data: string[]): any {
+function decodeLiveBeastStatsEvent(data: string[]): LiveBeastStatsEventTranslation {
   const stats = unpackLiveBeastStats(data[0]);
   return {
     componentName: 'LiveBeastStatsEvent',
@@ -182,14 +223,17 @@ function decodeLiveBeastStatsEvent(data: string[]): any {
   };
 }
 
-function decodeBeastUpdatesEvent(data: string[]): any[] {
+function decodeBeastUpdatesEvent(data: string[]): LiveBeastStatsEventTranslation[] {
   // Data format: [length, packed1, packed2, ...]
   // Returns array of LiveBeastStatsEvent objects
   const length = hexToNumber(data[0]);
-  const events: any[] = [];
+  const events: LiveBeastStatsEventTranslation[] = [];
 
   for (let i = 0; i < length; i++) {
-    const stats = unpackLiveBeastStats(data[1 + i]);
+    const packed = data[1 + i];
+    if (!packed) break;
+
+    const stats = unpackLiveBeastStats(packed);
     events.push({
       componentName: 'LiveBeastStatsEvent',
       ...stats,
@@ -199,8 +243,8 @@ function decodeBeastUpdatesEvent(data: string[]): any[] {
   return events;
 }
 
-export const translateGameEvent = (event: any, address: string): any[] => {
-  let name: string | null = null;
+export const translateGameEvent = (event: StarknetEventLike, address: string): TranslatedGameEvent[] => {
+  let name: SupportedEventName | null = null;
 
   // Check keys[0] for standard Starknet events
   if (event.keys?.[0]) {
@@ -208,19 +252,19 @@ export const translateGameEvent = (event: any, address: string): any[] => {
     name = SELECTOR_TO_NAME.get(normalizedSelector) || null;
   }
 
+  const data = event.data ?? [];
+
   // Fallback: Summit contract event from user's address
   if (!name && event.from_address === address) {
     return [{
       componentName: 'Summit',
-      attack_potions: parseInt(event.data[event.data.length - 3], 16),
-      revival_potions: parseInt(event.data[event.data.length - 2], 16),
-      extra_life_potions: parseInt(event.data[event.data.length - 1], 16),
+      attack_potions: hexToNumber(data[data.length - 3]),
+      revival_potions: hexToNumber(data[data.length - 2]),
+      extra_life_potions: hexToNumber(data[data.length - 1]),
     }];
   }
 
   if (!name) return [];
-
-  const data = event.data;
 
   switch (name) {
     case 'BattleEvent':
