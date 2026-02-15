@@ -146,4 +146,19 @@ describe("ActionBar token balance coercion", () => {
 
     expect(initializeMaxCapsFromBalancesMock).toHaveBeenCalledWith(mockControllerState.tokenBalances);
   });
+
+  it("handles invalid balance values without crashing", async () => {
+    mockControllerState.tokenBalances = {
+      REVIVE: Number.NaN,
+      ATTACK: Number.POSITIVE_INFINITY,
+      "EXTRA LIFE": "11" as unknown as number,
+      POISON: undefined as unknown as number,
+    };
+
+    await act(async () => {
+      create(<ActionBar />);
+    });
+
+    expect(initializeMaxCapsFromBalancesMock).toHaveBeenCalledWith(mockControllerState.tokenBalances);
+  });
 });

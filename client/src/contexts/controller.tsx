@@ -40,20 +40,13 @@ const ControllerContext = createContext<ControllerContext>(
   {} as ControllerContext
 );
 
-type ConnectorWithUsername = {
-  username?: () => Promise<unknown> | unknown;
-};
-
-type ConnectorWithProfile = {
-  controller?: {
-    openProfile?: () => void;
-  };
-};
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
 
 const getConnectorUsername = async (activeConnector: unknown): Promise<string | undefined> => {
-  if (!activeConnector || typeof activeConnector !== "object") return undefined;
+  if (!isRecord(activeConnector)) return undefined;
 
-  const usernameFn = (activeConnector as ConnectorWithUsername).username;
+  const usernameFn = activeConnector.username;
   if (typeof usernameFn !== "function") return undefined;
 
   const username = await usernameFn.call(activeConnector);
@@ -61,11 +54,14 @@ const getConnectorUsername = async (activeConnector: unknown): Promise<string | 
 };
 
 const openConnectorProfile = (activeConnector: unknown): void => {
-  if (!activeConnector || typeof activeConnector !== "object") return;
+  if (!isRecord(activeConnector)) return;
 
-  const openProfile = (activeConnector as ConnectorWithProfile).controller?.openProfile;
+  const controller = activeConnector.controller;
+  if (!isRecord(controller)) return;
+
+  const openProfile = controller.openProfile;
   if (typeof openProfile === "function") {
-    openProfile.call((activeConnector as ConnectorWithProfile).controller);
+    openProfile.call(controller);
   }
 };
 

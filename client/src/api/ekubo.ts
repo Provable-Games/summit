@@ -45,7 +45,7 @@ export interface SwapCall {
 }
 
 interface SwapQuoteResponse {
-  total_calculated?: string;
+  total_calculated?: string | number;
   price_impact?: number;
   splits?: SwapSplit[];
 }
@@ -66,11 +66,28 @@ export interface Bounds {
 const inflightQuotes: Partial<Record<string, Promise<SwapQuote>>> = {};
 let rateLimitUntil = 0;
 const RATE_LIMIT_COOLDOWN_MS = 60_000;
+const MAX_SAFE_INTEGER_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 
 const applySlippage = (value: bigint, slippageBps: number) => {
   const basis = 10_000n;
   const bps = BigInt(slippageBps);
   return (value * (basis - bps)) / basis;
+};
+
+const toSafeDisplayNumber = (value: string): number => {
+  try {
+    const bigintValue = BigInt(value);
+    if (bigintValue > MAX_SAFE_INTEGER_BIGINT) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+    if (bigintValue < -MAX_SAFE_INTEGER_BIGINT) {
+      return -Number.MAX_SAFE_INTEGER;
+    }
+    return Number(bigintValue);
+  } catch {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : 0;
+  }
 };
 
 export const getSwapQuote = async (
@@ -144,13 +161,12 @@ export const getSwapQuote = async (
 
       if (data.total_calculated !== undefined) {
         const totalStr = String(data.total_calculated);
-        const totalNum = Number(totalStr);
 
         return {
           impact: data.price_impact || 0,
           price_impact: data.price_impact || 0,
           total: totalStr,
-          totalDisplay: Number.isFinite(totalNum) ? totalNum : 0,
+          totalDisplay: toSafeDisplayNumber(totalStr),
           splits: data.splits || [],
         };
       }

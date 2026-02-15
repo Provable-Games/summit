@@ -176,6 +176,15 @@ describe("ControllerProvider.filterValidAdventurers", () => {
     expect(capturedController.playerName).toBeUndefined();
   });
 
+  it("ignores non-function username fields", async () => {
+    mockState.connector = { username: "Savage" };
+
+    await renderProvider();
+    await flushEffects();
+
+    expect(capturedController.playerName).toBeUndefined();
+  });
+
   it("handles username fetch failures without throwing", async () => {
     const error = new Error("username failed");
     const usernameMock = vi.fn(async () => {
@@ -206,6 +215,17 @@ describe("ControllerProvider.filterValidAdventurers", () => {
 
   it("no-ops openProfile when connector has no controller profile API", async () => {
     mockState.connector = {};
+
+    await renderProvider();
+    await act(async () => {
+      capturedController.openProfile();
+    });
+
+    expect(connectMock).not.toHaveBeenCalled();
+  });
+
+  it("no-ops openProfile when controller.openProfile is not a function", async () => {
+    mockState.connector = { controller: { openProfile: "noop" } };
 
     await renderProvider();
     await act(async () => {

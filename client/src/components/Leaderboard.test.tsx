@@ -1,3 +1,4 @@
+import React, { forwardRef } from "react";
 import { act, create } from "react-test-renderer";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -45,6 +46,24 @@ vi.mock("./DiplomacyPopover", () => ({
 vi.mock("./RewardsRemainingBar", () => ({
   default: () => null,
 }));
+
+vi.mock("@mui/material", async () => {
+  const actual = await vi.importActual<typeof import("@mui/material")>("@mui/material");
+
+  const IconButton = forwardRef<HTMLButtonElement, React.ComponentProps<"button">>(
+    ({ children, ...props }, ref) => (
+      <button ref={ref} {...props}>
+        {children}
+      </button>
+    ),
+  );
+  IconButton.displayName = "MockIconButton";
+
+  return {
+    ...actual,
+    IconButton,
+  };
+});
 
 import Leaderboard from "./Leaderboard";
 
