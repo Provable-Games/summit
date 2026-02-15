@@ -81,7 +81,19 @@ BEGIN
       AND column_name = 'diplomacy'
       AND data_type <> 'boolean'
   ) THEN
+    IF EXISTS (
+      SELECT 1
+      FROM pg_indexes
+      WHERE schemaname = 'public'
+        AND tablename = 'beast_stats'
+        AND indexname = 'beast_stats_diplomacy_token_idx'
+    ) THEN
+      EXECUTE 'DROP INDEX IF EXISTS "beast_stats_diplomacy_token_idx"';
+    END IF;
+
     EXECUTE 'ALTER TABLE "beast_stats" ALTER COLUMN "diplomacy" TYPE boolean USING ("diplomacy" > 0)';
+
+    EXECUTE 'CREATE INDEX IF NOT EXISTS "beast_stats_diplomacy_token_idx" ON "beast_stats" USING btree ("token_id") WHERE "diplomacy"';
   END IF;
 END
 $$;

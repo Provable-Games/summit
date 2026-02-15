@@ -24,6 +24,7 @@ jobs:
       api: ${{ steps.filter.outputs.api }}
       indexer_api_ci: ${{ steps.filter.outputs.indexer_api_ci }}
       infra_ci: ${{ steps.filter.outputs.infra_ci }}
+      general_ci: ${{ steps.filter.outputs.general_ci }}
     steps:
       - uses: actions/checkout@v4
 
@@ -54,19 +55,28 @@ jobs:
               - ".github/actions/**"
               - ".github/prompts/**"
               - ".github/pull_request_template.md"
+            general_ci:
+              - "render.yaml"
+              - "codecov.yml"
+              - ".devcontainer/**"
+              - ".tool-versions"
 
   infra-validate:
     needs: changes
-    if: needs.changes.outputs.infra_ci == 'true'
+    if: needs.changes.outputs.infra_ci == 'true' || needs.changes.outputs.general_ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate workflow YAML
+      - name: Validate workflow and action YAML
         run: |
           for file in .github/workflows/*.yml; do
             npx -y yaml valid < "$file"
           done
+
+          while IFS= read -r file; do
+            npx -y yaml valid < "$file"
+          done < <(find .github/actions -type f \( -name "action.yml" -o -name "action.yaml" \) 2>/dev/null)
 
   contracts-lint:
     needs: changes

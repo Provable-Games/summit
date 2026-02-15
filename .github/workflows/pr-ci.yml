@@ -357,6 +357,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          REVIEW_MARKER: run=${{ github.run_id }} sha=${{ github.event.pull_request.head.sha }} scope=contracts
         run: |
           {
             cat .github/prompts/cairo-review.md
@@ -377,6 +378,8 @@ jobs:
             echo ""
             echo "Start your response with this exact heading:"
             echo "## Claude Review - Cairo/Starknet Contract Review"
+            echo "Include this exact marker on its own line near the top of your response:"
+            echo "$REVIEW_MARKER"
             echo ""
 
             cat <<'PROMPT_EOF'
@@ -412,6 +415,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - Cairo/Starknet Contract Review"
+          REVIEW_MARKER: run=${{ github.run_id }} sha=${{ github.event.pull_request.head.sha }} scope=contracts
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -419,8 +423,8 @@ jobs:
 
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-              | jq -r --arg header "$HEADER" \
-                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header))] | last | .body // ""')
+              | jq -r --arg header "$HEADER" --arg marker "$REVIEW_MARKER" \
+                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -576,6 +580,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          REVIEW_MARKER: run=${{ github.run_id }} sha=${{ github.event.pull_request.head.sha }} scope=client
         run: |
           {
             cat .github/prompts/client-review.md
@@ -596,6 +601,8 @@ jobs:
             echo ""
             echo "Start your response with this exact heading:"
             echo "## Claude Review - React/Frontend Review"
+            echo "Include this exact marker on its own line near the top of your response:"
+            echo "$REVIEW_MARKER"
             echo ""
 
             cat <<'PROMPT_EOF'
@@ -631,6 +638,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - React/Frontend Review"
+          REVIEW_MARKER: run=${{ github.run_id }} sha=${{ github.event.pull_request.head.sha }} scope=client
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -638,8 +646,8 @@ jobs:
 
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-              | jq -r --arg header "$HEADER" \
-                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header))] | last | .body // ""')
+              | jq -r --arg header "$HEADER" --arg marker "$REVIEW_MARKER" \
+                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -795,6 +803,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          REVIEW_MARKER: run=${{ github.run_id }} sha=${{ github.event.pull_request.head.sha }} scope=indexer-api
         run: |
           {
             cat .github/prompts/indexer-review.md
@@ -815,6 +824,8 @@ jobs:
             echo ""
             echo "Start your response with this exact heading:"
             echo "## Claude Review - Indexer/API Review"
+            echo "Include this exact marker on its own line near the top of your response:"
+            echo "$REVIEW_MARKER"
             echo ""
 
             cat <<'PROMPT_EOF'
@@ -850,6 +861,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - Indexer/API Review"
+          REVIEW_MARKER: run=${{ github.run_id }} sha=${{ github.event.pull_request.head.sha }} scope=indexer-api
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -857,8 +869,8 @@ jobs:
 
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-              | jq -r --arg header "$HEADER" \
-                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header))] | last | .body // ""')
+              | jq -r --arg header "$HEADER" --arg marker "$REVIEW_MARKER" \
+                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
@@ -1014,6 +1026,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
+          REVIEW_MARKER: run=${{ github.run_id }} sha=${{ github.event.pull_request.head.sha }} scope=general
         run: |
           {
             cat .github/prompts/general-purpose.md
@@ -1035,6 +1048,8 @@ jobs:
             echo ""
             echo "Start your response with this exact heading:"
             echo "## Claude Review - General Engineering Review"
+            echo "Include this exact marker on its own line near the top of your response:"
+            echo "$REVIEW_MARKER"
             echo ""
 
             cat <<'PROMPT_EOF'
@@ -1070,6 +1085,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HEADER: "## Claude Review - General Engineering Review"
+          REVIEW_MARKER: run=${{ github.run_id }} sha=${{ github.event.pull_request.head.sha }} scope=general
         run: |
           MAX_ATTEMPTS=6
           SLEEP_SECONDS=10
@@ -1077,8 +1093,8 @@ jobs:
 
           for i in $(seq 1 "$MAX_ATTEMPTS"); do
             BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
-              | jq -r --arg header "$HEADER" \
-                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header))] | last | .body // ""')
+              | jq -r --arg header "$HEADER" --arg marker "$REVIEW_MARKER" \
+                '[.[] | select(.user.login == "claude[bot]" or .user.login == "claude" or .user.login == "anthropic-ai[bot]") | select((.body // "") | contains($header) and contains($marker))] | last | .body // ""')
 
             if [ -n "$BODY" ]; then
               echo "Found Claude review comment on attempt $i"
