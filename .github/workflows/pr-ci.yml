@@ -322,6 +322,12 @@ jobs:
           cache: pnpm
           cache-dependency-path: api/pnpm-lock.yaml
 
+      - name: Validate api npm lockfile parity
+        if: needs.changes.outputs.api == 'true'
+        run: |
+          cd api
+          npm ci --dry-run --ignore-scripts --no-audit --no-fund
+
       - name: Lint api
         if: needs.changes.outputs.api == 'true'
         run: |
