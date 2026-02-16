@@ -1271,31 +1271,6 @@ fn test_one_attack_allowed_after_terminal_timestamp() {
 
 #[test]
 #[fork("mainnet_6704808")]
-fn test_claim_rewards_finalizes_terminal_holder() {
-    let summit = deploy_summit_with_rewards(100_000_000_000_000, 0);
-    summit.start_summit();
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    mock_erc20_transfer(summit.get_reward_address(), true);
-
-    let attacking_beasts = array![(60989, 1, 0)].span();
-    summit.attack(1, attacking_beasts, 0, 0, false);
-
-    let terminal_timestamp = summit.get_terminal_timestamp();
-    start_cheat_block_timestamp_global(terminal_timestamp + 1);
-
-    let claim_ids = array![60989].span();
-    summit.claim_rewards(claim_ids);
-
-    let beast = summit.get_beast(60989);
-    assert(beast.live.rewards_claimed > 0, 'Rewards were not finalized');
-
-    stop_cheat_block_timestamp_global();
-    stop_cheat_caller_address(summit.contract_address);
-}
-
-#[test]
-#[fork("mainnet_6704808")]
 fn test_diplomacy_rewards_are_clamped_to_total_reward() {
     let summit = deploy_summit_with_rewards(100_000_000_000_000, 200_000_000_000_000);
     summit.start_summit();
@@ -1730,4 +1705,484 @@ fn test_diplomacy_reward_subtracted_from_summit_holder() {
     assert(*diplomacy_beast_stats.at(0).rewards_earned == 10000, 'Diplomacy reward should be 10k');
 
     stop_cheat_block_timestamp_global();
+}
+
+// ===========================================
+// CLAIM QUEST REWARDS TESTS
+// ===========================================
+
+// Each quest reward point transfers 1e16 tokens (0.01 tokens per point)
+const QUEST_POINT_VALUE: u128 = 10_000_000_000_000_000;
+
+/// Helper: write live_beast_stats with quest flags into summit contract storage.
+fn setup_beast_quest_data(
+    summit: ISummitSystemDispatcher,
+    beast_token_id: u32,
+    bonus_xp: u16,
+    captured_summit: u8,
+    used_revival_potion: u8,
+    used_attack_potion: u8,
+    max_attack_streak: u8,
+    summit_held_seconds: u32,
+) {
+    let beast = summit.get_beast(beast_token_id);
+    let mut live = beast.live;
+    live.bonus_xp = bonus_xp;
+    live.quest.captured_summit = captured_summit;
+    live.quest.used_revival_potion = used_revival_potion;
+    live.quest.used_attack_potion = used_attack_potion;
+    live.quest.max_attack_streak = max_attack_streak;
+    live.summit_held_seconds = summit_held_seconds;
+    let packed = summit::models::beast::PackableLiveStatsStorePacking::pack(live);
+    let addr = map_entry_address(selector!("live_beast_stats"), array![beast_token_id.into()].span());
+    store(summit.contract_address, addr, array![packed].span());
+}
+
+/// Helper: set quest_rewards_total_amount in token units
+fn set_quest_pool_amount(summit: ISummitSystemDispatcher, token_amount: u128) {
+    store(summit.contract_address, selector!("quest_rewards_total_amount"), array![token_amount.into()].span());
+}
+
+/// Helper: set quest_rewards_total_claimed in token units
+fn set_quest_pool_claimed(summit: ISummitSystemDispatcher, token_amount: u128) {
+    store(summit.contract_address, selector!("quest_rewards_total_claimed"), array![token_amount.into()].span());
+}
+
+/// Helper: set per-beast quest_rewards_claimed (raw points, u8)
+fn set_beast_quest_claimed(summit: ISummitSystemDispatcher, beast_token_id: u32, value: u8) {
+    let addr = map_entry_address(selector!("quest_rewards_claimed"), array![beast_token_id.into()].span());
+    store(summit.contract_address, addr, array![value.into()].span());
+}
+
+// --- Basic claim ---
+
+#[test]
+#[fork("mainnet")]
+fn test_claim_quest_rewards_basic() {
+    let summit = deploy_summit();
+    set_quest_pool_amount(summit, 100 * QUEST_POINT_VALUE); // pool supports 100 reward points
+
+    // Beast 60989 (owned by REAL_PLAYER): bonus_xp=1 → 5 quest rewards
+    setup_beast_quest_data(summit, 60989, 1, 0, 0, 0, 0, 0);
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.claim_quest_rewards(array![60989].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// --- Revert cases ---
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: "Quest rewards pool is empty")]
+fn test_claim_quest_rewards_pool_empty_reverts() {
+    let summit = deploy_summit();
+    set_quest_pool_amount(summit, 100 * QUEST_POINT_VALUE);
+    set_quest_pool_claimed(summit, 100 * QUEST_POINT_VALUE); // fully claimed
+
+    setup_beast_quest_data(summit, 60989, 1, 0, 0, 0, 0, 0);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.claim_quest_rewards(array![60989].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: "No quest rewards to claim")]
+fn test_claim_quest_rewards_no_quest_progress_reverts() {
+    let summit = deploy_summit();
+    set_quest_pool_amount(summit, 100 * QUEST_POINT_VALUE);
+
+    // Beast with zero live stats → 0 quest rewards
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.claim_quest_rewards(array![60989].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: "No quest rewards to claim")]
+fn test_claim_quest_rewards_already_fully_claimed_reverts() {
+    let summit = deploy_summit();
+    set_quest_pool_amount(summit, 100 * QUEST_POINT_VALUE);
+
+    // Beast has 5 rewards (bonus_xp=1), but all 5 already claimed
+    setup_beast_quest_data(summit, 60989, 1, 0, 0, 0, 0, 0);
+    set_beast_quest_claimed(summit, 60989, 5);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.claim_quest_rewards(array![60989].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: ('Not token owner',))]
+fn test_claim_quest_rewards_not_owner_reverts() {
+    let summit = deploy_summit();
+    set_quest_pool_amount(summit, 100 * QUEST_POINT_VALUE);
+
+    // Beast 60989 is owned by REAL_PLAYER, not SUPER_BEAST_OWNER
+    setup_beast_quest_data(summit, 60989, 1, 0, 0, 0, 0, 0);
+
+    start_cheat_caller_address(summit.contract_address, SUPER_BEAST_OWNER());
+    summit.claim_quest_rewards(array![60989].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// --- Pool cap logic ---
+
+#[test]
+#[fork("mainnet")]
+fn test_claim_quest_rewards_capped_at_pool_remaining() {
+    let summit = deploy_summit();
+    set_quest_pool_amount(summit, 100 * QUEST_POINT_VALUE);
+
+    // Beast has all quests completed → 95 rewards
+    // bonus_xp=10000 gives 10+ bonus levels for any reasonable base level
+    setup_beast_quest_data(summit, 60989, 10000, 1, 1, 1, 1, 100);
+
+    // Pool has only 10 points remaining
+    set_quest_pool_claimed(summit, 90 * QUEST_POINT_VALUE);
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    // Claim succeeds — capped at 10 (pool remaining), not 95
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.claim_quest_rewards(array![60989].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_claim_quest_rewards_drains_pool_exactly() {
+    let summit = deploy_summit();
+    set_quest_pool_amount(summit, 100 * QUEST_POINT_VALUE);
+
+    // Beast has 5 quest rewards (bonus_xp=1)
+    setup_beast_quest_data(summit, 60989, 1, 0, 0, 0, 0, 0);
+
+    // Pool has exactly 5 remaining
+    set_quest_pool_claimed(summit, 95 * QUEST_POINT_VALUE);
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    // Claim succeeds, draining pool to exactly 100/100
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.claim_quest_rewards(array![60989].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: "Quest rewards pool is empty")]
+fn test_claim_quest_rewards_pool_drained_then_rejects() {
+    let summit = deploy_summit();
+    set_quest_pool_amount(summit, 100 * QUEST_POINT_VALUE);
+
+    // Beast A (60989): max quests → 95 rewards, pool has only 10 left
+    setup_beast_quest_data(summit, 60989, 10000, 1, 1, 1, 1, 100);
+    set_quest_pool_claimed(summit, 90 * QUEST_POINT_VALUE);
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    // First claim: capped at 10, drains pool
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.claim_quest_rewards(array![60989].span());
+    stop_cheat_caller_address(summit.contract_address);
+
+    // Beast B (78029): has quest rewards, but pool should be empty (100/100)
+    setup_beast_quest_data(summit, 78029, 1, 0, 0, 0, 0, 0);
+
+    start_cheat_caller_address(summit.contract_address, BEAST_WHALE());
+    summit.claim_quest_rewards(array![78029].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+/// Three sequential claims must all succeed when pool has sufficient capacity.
+/// This catches accounting bugs where total_claimed is corrupted by
+/// incorrect scaling on sequential writes.
+#[test]
+#[fork("mainnet")]
+fn test_claim_quest_rewards_sequential_claims_track_pool() {
+    let summit = deploy_summit();
+    set_quest_pool_amount(summit, 100 * QUEST_POINT_VALUE);
+
+    // Three beasts, each with 5 rewards (bonus_xp=1)
+    setup_beast_quest_data(summit, 60989, 1, 0, 0, 0, 0, 0); // REAL_PLAYER
+    setup_beast_quest_data(summit, 78029, 1, 0, 0, 0, 0, 0); // BEAST_WHALE
+    setup_beast_quest_data(summit, 77598, 1, 0, 0, 0, 0, 0); // BEAST_WHALE
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    // Claim 1: 5 points (5/100)
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.claim_quest_rewards(array![60989].span());
+    stop_cheat_caller_address(summit.contract_address);
+
+    // Claim 2: 5 more (10/100)
+    start_cheat_caller_address(summit.contract_address, BEAST_WHALE());
+    summit.claim_quest_rewards(array![78029].span());
+    stop_cheat_caller_address(summit.contract_address);
+
+    // Claim 3: 5 more (15/100) — must succeed
+    start_cheat_caller_address(summit.contract_address, BEAST_WHALE());
+    summit.claim_quest_rewards(array![77598].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// --- Multiple beasts in single call ---
+
+#[test]
+#[fork("mainnet")]
+fn test_claim_quest_rewards_multiple_beasts_single_call() {
+    let summit = deploy_summit();
+    set_quest_pool_amount(summit, 100 * QUEST_POINT_VALUE);
+
+    // Two beasts owned by BEAST_WHALE with different quest progress
+    // Beast 78029: bonus_xp=1 → 5 rewards
+    setup_beast_quest_data(summit, 78029, 1, 0, 0, 0, 0, 0);
+    // Beast 77598: captured_summit → 10 rewards
+    setup_beast_quest_data(summit, 77598, 0, 1, 0, 0, 0, 0);
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    // Claim for both in one call (total 15 rewards)
+    start_cheat_caller_address(summit.contract_address, BEAST_WHALE());
+    summit.claim_quest_rewards(array![78029, 77598].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// --- Incremental claims (beast earns more quests over time) ---
+
+#[test]
+#[fork("mainnet")]
+fn test_claim_quest_rewards_incremental() {
+    let summit = deploy_summit();
+    set_quest_pool_amount(summit, 100 * QUEST_POINT_VALUE);
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    // First: beast has bonus_xp=1 → 5 rewards
+    setup_beast_quest_data(summit, 60989, 1, 0, 0, 0, 0, 0);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.claim_quest_rewards(array![60989].span());
+
+    // Beast earns more quests: add captured_summit → now 15 total, already claimed 5
+    setup_beast_quest_data(summit, 60989, 1, 1, 0, 0, 0, 0);
+
+    // Second claim: should get 10 more (15 - 5 already claimed)
+    summit.claim_quest_rewards(array![60989].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// ===========================================
+// PRE-START TESTS
+// ===========================================
+
+/// Before start_summit, _summit_playable returns true (terminal_timestamp == 0).
+/// feed and apply_stat_points should be allowed so players can prepare beasts.
+
+#[test]
+#[fork("mainnet")]
+fn test_feed_allowed_before_start() {
+    let summit = deploy_summit();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_corpse_token_address(), true);
+
+    summit.feed(60989, 10);
+
+    let beast = summit.get_beast(60989);
+    assert(beast.live.bonus_health == 10, 'Feed should work before start');
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+fn test_apply_stat_points_allowed_before_start() {
+    let summit = deploy_summit();
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    mock_erc20_burn_from(summit.get_skull_token_address(), true);
+
+    let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit: 5, luck: 0 };
+    summit.apply_stat_points(60989, stats);
+
+    let beast = summit.get_beast(60989);
+    assert(beast.live.stats.spirit == 5, 'Stats should work before start');
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// ===========================================
+// END-OF-SUMMIT TESTS
+// ===========================================
+
+/// Helper: perform the one allowed attack after terminal to end the summit.
+/// Requires deploy_summit_and_start() — beast 1 is on summit.
+/// After this, beast 60989 is on summit with taken_at > terminal, so _summit_playable is false.
+fn end_summit(summit: ISummitSystemDispatcher) {
+    let terminal_timestamp = summit.get_terminal_timestamp();
+    start_cheat_block_timestamp_global(terminal_timestamp + 1);
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// --- Post-end: second attack rejected ---
+
+#[test]
+#[fork("mainnet_6704808")]
+#[should_panic(expected: ('Summit not playable',))]
+fn test_second_attack_rejected_after_terminal_timestamp() {
+    let summit = deploy_summit_and_start();
+    end_summit(summit);
+
+    start_cheat_caller_address(summit.contract_address, SUPER_BEAST_OWNER());
+    let attacking_beasts = array![(SUPER_BEAST_TOKEN_ID, 1, 0)].span();
+    summit.attack(60989, attacking_beasts, 0, 0, false);
+}
+
+// --- Post-end: feed rejected ---
+
+#[test]
+#[fork("mainnet_6704808")]
+#[should_panic(expected: ('Summit not playable',))]
+fn test_feed_rejected_after_summit_ends() {
+    let summit = deploy_summit_and_start();
+    end_summit(summit);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.feed(60989, 10);
+}
+
+// --- Post-end: apply_stat_points rejected ---
+
+#[test]
+#[fork("mainnet_6704808")]
+#[should_panic(expected: ('Summit not playable',))]
+fn test_apply_stat_points_rejected_after_summit_ends() {
+    let summit = deploy_summit_and_start();
+    end_summit(summit);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    let stats = summit::models::beast::Stats { specials: 0, wisdom: 0, diplomacy: 0, spirit: 5, luck: 0 };
+    summit.apply_stat_points(60989, stats);
+}
+
+// --- Post-end: apply_poison rejected ---
+
+#[test]
+#[fork("mainnet_6704808")]
+#[should_panic(expected: ('Summit not playable',))]
+fn test_apply_poison_rejected_after_summit_ends() {
+    let summit = deploy_summit_and_start();
+    end_summit(summit);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.apply_poison(60989, 5);
+}
+
+// --- Post-end: add_extra_life rejected ---
+
+#[test]
+#[fork("mainnet_6704808")]
+#[should_panic(expected: ('Summit not playable',))]
+fn test_add_extra_life_rejected_after_summit_ends() {
+    let summit = deploy_summit_and_start();
+    end_summit(summit);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.add_extra_life(60989, 1);
+}
+
+// --- Post-end: claim_rewards still allowed ---
+
+#[test]
+#[fork("mainnet_6704808")]
+fn test_claim_rewards_allowed_after_summit_ends() {
+    let summit_rate: u128 = 1_000_000_000_000_000;
+    let summit = deploy_summit_with_rewards(summit_rate, 0);
+    summit.start_summit();
+
+    // REAL_PLAYER takes summit with beast 60989
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
+    stop_cheat_caller_address(summit.contract_address);
+
+    // Warp past terminal
+    let terminal_timestamp = summit.get_terminal_timestamp();
+    start_cheat_block_timestamp_global(terminal_timestamp + 1);
+
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    // SUPER_BEAST_OWNER displaces beast 60989, triggering _finalize_summit_history
+    start_cheat_caller_address(summit.contract_address, SUPER_BEAST_OWNER());
+    let attack_beasts = array![(SUPER_BEAST_TOKEN_ID, 10, 0)].span();
+    summit.attack(60989, attack_beasts, 0, 0, false);
+    stop_cheat_caller_address(summit.contract_address);
+
+    // Summit is ended. Claim rewards should still work.
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.claim_rewards(array![60989].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// --- Post-end: claim_quest_rewards still allowed ---
+
+#[test]
+#[fork("mainnet_6704808")]
+fn test_claim_quest_rewards_allowed_after_summit_ends() {
+    let summit = deploy_summit_and_start();
+    set_quest_pool_amount(summit, 100 * QUEST_POINT_VALUE);
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    end_summit(summit);
+
+    // Setup quest data AFTER end_summit so it's not overwritten by the attack
+    setup_beast_quest_data(summit, 60989, 1, 0, 0, 0, 0, 0);
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.claim_quest_rewards(array![60989].span());
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+// --- Reward capping at terminal timestamp ---
+
+#[test]
+#[fork("mainnet_6704808")]
+fn test_finalize_caps_rewards_at_terminal_timestamp() {
+    let summit_rate: u128 = 1_000_000_000_000_000;
+    let summit = deploy_summit_with_rewards(summit_rate, 0);
+    summit.start_summit();
+
+    // REAL_PLAYER takes summit
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    let attacking_beasts = array![(60989, 1, 0)].span();
+    summit.attack(1, attacking_beasts, 0, 0, false);
+    stop_cheat_caller_address(summit.contract_address);
+
+    // Record taken_at (current block timestamp, before any cheating)
+    let taken_at: u64 = get_block_timestamp();
+    let terminal_timestamp = summit.get_terminal_timestamp();
+
+    // Warp WELL past terminal (terminal + 10000)
+    start_cheat_block_timestamp_global(terminal_timestamp + 10000);
+
+    mock_erc20_transfer(summit.get_reward_address(), true);
+
+    // SUPER_BEAST_OWNER displaces, triggering _finalize_summit_history
+    start_cheat_caller_address(summit.contract_address, SUPER_BEAST_OWNER());
+    let attack_beasts = array![(SUPER_BEAST_TOKEN_ID, 10, 0)].span();
+    summit.attack(60989, attack_beasts, 0, 0, false);
+    stop_cheat_caller_address(summit.contract_address);
+
+    // Rewards should be capped at (terminal - taken_at), NOT (current - taken_at)
+    let beast = summit.get_beast(60989);
+    let capped_time: u128 = (terminal_timestamp - taken_at).into();
+    let uncapped_time: u128 = (terminal_timestamp + 10000 - taken_at).into();
+    let expected_capped: u32 = (capped_time * summit_rate / 10_000_000_000_000).try_into().unwrap();
+    let expected_uncapped: u32 = (uncapped_time * summit_rate / 10_000_000_000_000).try_into().unwrap();
+
+    assert(beast.live.rewards_earned == expected_capped, 'Rewards capped at terminal');
+    assert(expected_capped < expected_uncapped, 'Capped should be less');
 }

@@ -43,6 +43,12 @@ pub trait ISummitSystem<T> {
     fn get_summit_reward_amount_per_second(self: @T) -> u128;
     fn get_diplomacy_reward_amount_per_second(self: @T) -> u128;
 
+    fn get_diplomacy_beast(self: @T, specials_hash: felt252, index: u8) -> u32;
+    fn get_diplomacy_count(self: @T, specials_hash: felt252) -> u8;
+    fn get_quest_rewards_claimed(self: @T, beast_token_id: u32) -> u8;
+    fn get_quest_rewards_total_amount(self: @T) -> u128;
+    fn get_quest_rewards_total_claimed(self: @T) -> u128;
+
     fn get_dungeon_address(self: @T) -> ContractAddress;
     fn get_beast_address(self: @T) -> ContractAddress;
     fn get_beast_data_address(self: @T) -> ContractAddress;
@@ -64,10 +70,8 @@ pub mod summit_systems {
     use openzeppelin_access::ownable::OwnableComponent;
     use openzeppelin_interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use openzeppelin_interfaces::erc721::{IERC721Dispatcher, IERC721DispatcherTrait};
-    use openzeppelin_interfaces::upgrades::IUpgradeable;
-    use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
-    use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
     use summit::constants::{
         BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_ATTRIBUTES, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS,
         BEAST_MAX_EXTRA_LIVES, DAY_SECONDS, DIPLOMACY_COST, MAX_REVIVAL_COUNT, MAX_U32, MINIMUM_DAMAGE, SPECIALS_COST,
@@ -84,22 +88,16 @@ pub mod summit_systems {
     use summit::vrf::VRFImpl;
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
-    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     // Ownable Mixin
     #[abi(embed_v0)]
     impl OwnableMixinImpl = OwnableComponent::OwnableMixinImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
 
-    // Upgradeable
-    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
-
     #[storage]
     struct Storage {
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
-        #[substorage(v0)]
-        upgradeable: UpgradeableComponent::Storage,
         summit_beast_token_id: u32,
         live_beast_stats: Map<u32, felt252>,
         poison_state: felt252, // Packed poison state: timestamp (64 bits) | count (16 bits)
@@ -134,8 +132,6 @@ pub mod summit_systems {
     enum Event {
         #[flat]
         OwnableEvent: OwnableComponent::Event,
-        #[flat]
-        UpgradeableEvent: UpgradeableComponent::Event,
         LiveBeastStatsEvent: LiveBeastStatsEvent,
         BattleEvent: BattleEvent,
         BeastUpdatesEvent: BeastUpdatesEvent,
@@ -222,7 +218,6 @@ pub mod summit_systems {
         fn claim_rewards(ref self: ContractState, beast_token_ids: Span<u32>) {
             let caller = get_caller_address();
             let beast_dispatcher = self.beast_dispatcher.read();
-            InternalSummitImpl::_finalize_terminal_summit_rewards_if_needed(ref self);
 
             let mut total_claimable: u32 = 0;
             let mut beast_updates: Array<felt252> = array![];
@@ -298,16 +293,19 @@ pub mod summit_systems {
 
             assert!(total_claimable > 0, "No quest rewards to claim");
 
-            let claimable_amount = if quest_rewards_total_claimed + total_claimable > quest_rewards_total_amount {
+            let total_claimable_tokens = total_claimable * 10_000_000_000_000_000;
+
+            let claimable_tokens = if quest_rewards_total_claimed
+                + total_claimable_tokens > quest_rewards_total_amount {
                 quest_rewards_total_amount - quest_rewards_total_claimed
             } else {
-                total_claimable
+                total_claimable_tokens
             };
 
-            self.quest_rewards_total_claimed.write(quest_rewards_total_claimed + claimable_amount);
+            self.quest_rewards_total_claimed.write(quest_rewards_total_claimed + claimable_tokens);
 
             // Transfer rewards to caller
-            let transfer_amount: u256 = claimable_amount.into() * 10_000_000_000_000_000;
+            let transfer_amount: u256 = claimable_tokens.into();
             self.reward_dispatcher.read().transfer(caller, transfer_amount);
 
             // Emit events - use slice() to avoid copying
@@ -575,6 +573,26 @@ pub mod summit_systems {
             live_stats.span()
         }
 
+        fn get_diplomacy_beast(self: @ContractState, specials_hash: felt252, index: u8) -> u32 {
+            self.diplomacy_beast.entry(specials_hash).entry(index).read()
+        }
+
+        fn get_diplomacy_count(self: @ContractState, specials_hash: felt252) -> u8 {
+            self.diplomacy_count.entry(specials_hash).read()
+        }
+
+        fn get_quest_rewards_claimed(self: @ContractState, beast_token_id: u32) -> u8 {
+            self.quest_rewards_claimed.entry(beast_token_id).read()
+        }
+
+        fn get_quest_rewards_total_amount(self: @ContractState) -> u128 {
+            self.quest_rewards_total_amount.read()
+        }
+
+        fn get_quest_rewards_total_claimed(self: @ContractState) -> u128 {
+            self.quest_rewards_total_claimed.read()
+        }
+
         fn get_dungeon_address(self: @ContractState) -> ContractAddress {
             self.dungeon_address.read()
         }
@@ -620,7 +638,6 @@ pub mod summit_systems {
     pub impl InternalSummitImpl of InternalSummitUtils {
         fn _summit_playable(self: @ContractState) -> bool {
             let terminal_timestamp = self.terminal_timestamp.read();
-
             let summit_beast_token_id = self.summit_beast_token_id.read();
             let taken_at = self.summit_history.entry(summit_beast_token_id).read();
             terminal_timestamp == 0 || taken_at < terminal_timestamp
@@ -660,34 +677,6 @@ pub mod summit_systems {
                 self.live.bonus_xp,
                 include_specials,
             )
-        }
-
-        fn _finalize_terminal_summit_rewards_if_needed(ref self: ContractState) {
-            let terminal_timestamp = self.terminal_timestamp.read();
-            if get_block_timestamp() < terminal_timestamp {
-                return;
-            }
-
-            let summit_beast_token_id = self.summit_beast_token_id.read();
-            if summit_beast_token_id == 0 {
-                return;
-            }
-
-            let taken_at = self.summit_history.entry(summit_beast_token_id).read();
-            if taken_at >= terminal_timestamp {
-                return;
-            }
-
-            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
-            let mut summit_beast = Self::_get_beast(@self, summit_beast_token_id, beast_nft_dispatcher);
-            let mut beast_updates: Array<felt252> = array![];
-
-            self._finalize_summit_history(ref summit_beast, ref beast_updates);
-            self.summit_history.entry(summit_beast_token_id).write(terminal_timestamp);
-
-            let packed_summit_beast = self._save_live_stats(summit_beast.live);
-            beast_updates.append(packed_summit_beast);
-            self.emit(BeastUpdatesEvent { beast_updates: beast_updates.span() });
         }
 
         /// @title finalize_summit_history
@@ -1208,14 +1197,6 @@ pub mod summit_systems {
             }
 
             (bonus / 250).try_into().unwrap()
-        }
-    }
-
-    #[abi(embed_v0)]
-    impl UpgradeableImpl of IUpgradeable<ContractState> {
-        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
-            self.ownable.assert_only_owner();
-            self.upgradeable.upgrade(new_class_hash);
         }
     }
 }
