@@ -227,9 +227,8 @@ pub mod summit_systems {
             let mut total_claimable: u32 = 0;
             let mut beast_updates: Array<felt252> = array![];
 
-            let mut i = 0;
-            while i < beast_token_ids.len() {
-                let beast_token_id = *beast_token_ids.at(i);
+            for beast_token_id_ref in beast_token_ids {
+                let beast_token_id = *beast_token_id_ref;
 
                 // Verify caller owns the beast
                 let beast_owner = beast_dispatcher.owner_of(beast_token_id.into());
@@ -250,8 +249,6 @@ pub mod summit_systems {
                     let packed = self._save_live_stats(beast_live_stats);
                     beast_updates.append(packed);
                 }
-
-                i += 1;
             }
 
             assert!(total_claimable > 0, "No rewards to claim");
@@ -280,9 +277,8 @@ pub mod summit_systems {
             let mut total_claimable: u128 = 0;
             let mut quest_rewards_claimed: Array<felt252> = array![];
 
-            let mut i = 0;
-            while i < beast_token_ids.len() {
-                let beast_token_id = *beast_token_ids.at(i);
+            for beast_token_id_ref in beast_token_ids {
+                let beast_token_id = *beast_token_id_ref;
 
                 // Verify caller owns the beast
                 let beast_owner = beast_dispatcher.owner_of(beast_token_id.into());
@@ -298,8 +294,6 @@ pub mod summit_systems {
                     self.quest_rewards_claimed.entry(beast_token_id).write(quest_rewards);
                     quest_rewards_claimed.append(quest::pack_quest_rewards_claimed(beast_token_id, quest_rewards));
                 }
-
-                i += 1;
             }
 
             assert!(total_claimable > 0, "No quest rewards to claim");
@@ -572,13 +566,11 @@ pub mod summit_systems {
 
         fn get_live_stats(self: @ContractState, beast_token_ids: Span<u32>) -> Span<LiveBeastStats> {
             let mut live_stats = array![];
-            let mut i = 0;
-            while i < beast_token_ids.len() {
-                let token_id = *beast_token_ids.at(i);
+            for token_id_ref in beast_token_ids {
+                let token_id = *token_id_ref;
                 let packed = self.live_beast_stats.entry(token_id).read();
                 let live_stat: LiveBeastStats = PackableLiveStatsStorePacking::unpack(packed);
                 live_stats.append(live_stat);
-                i += 1;
             }
             live_stats.span()
         }
@@ -738,11 +730,7 @@ pub mod summit_systems {
                         .try_into()
                         .unwrap();
                     let mut index = 0;
-                    loop {
-                        if index >= diplomacy_count {
-                            break;
-                        }
-
+                    while index < diplomacy_count {
                         let diplomacy_beast_token_id = self.diplomacy_beast.entry(specials_hash).entry(index).read();
                         let mut diplomacy_live_stats = Self::_get_live_stats(@self, diplomacy_beast_token_id);
                         diplomacy_live_stats.rewards_earned += diplomacy_reward_amount_u32;
@@ -825,9 +813,8 @@ pub mod summit_systems {
             let mut total_attack_potions: u32 = 0;
             let mut remaining_revival_potions = revival_potions;
             let mut beast_attacked = false;
-            let mut i = 0;
-            while (i < attacking_beasts.len()) {
-                let (attacking_beast_token_id, attack_count, attack_potions) = *attacking_beasts.at(i);
+            for attacking_beast_entry in attacking_beasts {
+                let (attacking_beast_token_id, attack_count, attack_potions) = *attacking_beast_entry;
 
                 assert!(attack_count > 0, "Attack count must be greater than 0");
                 // assert the caller owns the beast they attacking with
@@ -841,7 +828,6 @@ pub mod summit_systems {
                     if safe_attack {
                         assert!(false, "Beast {} has been killed in the last day", attacking_beast_token_id);
                     } else {
-                        i += 1;
                         continue;
                     }
                 }
@@ -875,8 +861,7 @@ pub mod summit_systems {
                     attacking_beast.live.quest.used_attack_potion = 1;
                 }
 
-                let mut attack_index = 0;
-                while (attack_index < attack_count) {
+                for attack_index in 0_u16..attack_count {
                     // check if it needs revival potions
                     let potions_required = Self::_revival_potions_required(@self, attacking_beast);
                     let potions_required_u32: u32 = potions_required.into();
@@ -918,12 +903,7 @@ pub mod summit_systems {
                     let mut critical_counter_attack_damage = 0;
 
                     // loop until the attacking beast is dead or the summit beast is dead
-                    loop {
-                        // if either beast is dead, break
-                        if attacking_beast.live.current_health == 0 || defending_beast.live.current_health == 0 {
-                            break;
-                        }
-
+                    while attacking_beast.live.current_health != 0 && defending_beast.live.current_health != 0 {
                         let (_, attacker_crit_hit_rnd, defender_crit_hit_rnd, _) = Self::_get_battle_randomness(
                             attacking_beast_token_id,
                             random_seed,
@@ -1071,12 +1051,10 @@ pub mod summit_systems {
 
                         break;
                     }
-                    attack_index += 1;
                 }
                 if (defending_beast.live.current_health == 0) {
                     break;
                 }
-                i += 1;
             }
 
             assert(beast_attacked, 'No beast attacked');
@@ -1213,12 +1191,7 @@ pub mod summit_systems {
 
             let mut index = 0;
             let mut bonus: u16 = 0;
-
-            loop {
-                if index >= diplomacy_count {
-                    break;
-                }
-
+            while index < diplomacy_count {
                 let diplomacy_beast_token_id = self.diplomacy_beast.entry(specials_hash).entry(index).read();
 
                 if diplomacy_beast_token_id != beast.live.token_id {
