@@ -55,7 +55,7 @@ contracts/
 │   ├── constants.cairo           # Game constants and error messages
 │   ├── interfaces.cairo          # External contract interfaces
 │   ├── utils.cairo               # Shared utility functions
-│   ├── vrf.cairo                 # Pragma VRF integration
+│   ├── vrf.cairo                 # VRF integration
 │   ├── erc20/
 │   │   └── interface.cairo       # Summit-specific ERC20 interface (burn_from)
 │   ├── models/
@@ -128,13 +128,13 @@ ISummitSystem (contract)
 
 The contract interacts with several external contracts:
 
-| Integration               | Purpose                                     |
-| ------------------------- | ------------------------------------------- |
-| Beast NFT (ERC721)        | Ownership verification and beast metadata   |
-| Loot Survivor beast data  | Historical beast stats via `IBeastSystems`   |
-| Death Mountain libraries  | Combat calculations and beast type lookups   |
-| 7 ERC20 token contracts   | Reward, attack potion, revive potion, extra life potion, poison potion, skull, corpse |
-| Pragma VRF                | Optional verifiable randomness for attacks   |
+| Integration              | Purpose                                                                               |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| Beast NFT (ERC721)       | Ownership verification and beast metadata                                             |
+| Loot Survivor beast data | Historical beast stats via `IBeastSystems`                                            |
+| Death Mountain libraries | Combat calculations and beast type lookups                                            |
+| 7 ERC20 token contracts  | Reward, attack potion, revive potion, extra life potion, poison potion, skull, corpse |
+| VRF                      | Verifiable randomness for critical hits                                               |
 
 ### Dependencies
 
@@ -160,37 +160,37 @@ All constants are defined in `src/constants.cairo`.
 
 ### Timing
 
-| Constant                       | Value           | Description                        |
-| ------------------------------ | --------------- | ---------------------------------- |
-| `BASE_REVIVAL_TIME_SECONDS`    | 86,400 (24h)    | Time before a dead beast revives naturally |
-| `REDUCED_REVIVAL_TIME_SECONDS` | 57,600 (16h)    | Reduced revival time constant      |
-| `DAY_SECONDS`                  | 86,400          | Seconds in one day                 |
+| Constant                       | Value        | Description                                |
+| ------------------------------ | ------------ | ------------------------------------------ |
+| `BASE_REVIVAL_TIME_SECONDS`    | 86,400 (24h) | Time before a dead beast revives naturally |
+| `REDUCED_REVIVAL_TIME_SECONDS` | 57,600 (16h) | Reduced revival time constant              |
+| `DAY_SECONDS`                  | 86,400       | Seconds in one day                         |
 
 ### Beast Limits
 
-| Constant                  | Value  | Description                                |
-| ------------------------- | ------ | ------------------------------------------ |
-| `BEAST_MAX_EXTRA_LIVES`   | 4,000  | Maximum extra lives a beast can hold       |
-| `BEAST_MAX_BONUS_HEALTH`  | 2,000  | Maximum bonus health from feeding          |
-| `BEAST_MAX_BONUS_LVLS`    | 40     | Maximum bonus levels from XP               |
-| `BEAST_MAX_ATTRIBUTES`    | 100    | Maximum value for spirit and luck stats    |
-| `MAX_REVIVAL_COUNT`       | 63     | Maximum number of times a beast can be revived |
-| `MINIMUM_DAMAGE`          | 4      | Floor on attack damage                     |
+| Constant                 | Value | Description                                    |
+| ------------------------ | ----- | ---------------------------------------------- |
+| `BEAST_MAX_EXTRA_LIVES`  | 4,000 | Maximum extra lives a beast can hold           |
+| `BEAST_MAX_BONUS_HEALTH` | 2,000 | Maximum bonus health from feeding              |
+| `BEAST_MAX_BONUS_LVLS`   | 40    | Maximum bonus levels from XP                   |
+| `BEAST_MAX_ATTRIBUTES`   | 100   | Maximum value for spirit and luck stats        |
+| `MAX_REVIVAL_COUNT`      | 63    | Maximum number of times a beast can be revived |
+| `MINIMUM_DAMAGE`         | 4     | Floor on attack damage                         |
 
 ### Upgrade Costs (in skull tokens)
 
-| Constant          | Value | Description            |
-| ----------------- | ----- | ---------------------- |
-| Spirit / Luck     | 1     | Per stat point         |
-| `SPECIALS_COST`   | 10    | Unlock special powers  |
-| `DIPLOMACY_COST`  | 15    | Unlock diplomacy       |
-| `WISDOM_COST`     | 20    | Unlock wisdom          |
+| Constant         | Value | Description           |
+| ---------------- | ----- | --------------------- |
+| Spirit / Luck    | 1     | Per stat point        |
+| `SPECIALS_COST`  | 10    | Unlock special powers |
+| `DIPLOMACY_COST` | 15    | Unlock diplomacy      |
+| `WISDOM_COST`    | 20    | Unlock wisdom         |
 
 ### Token Economics
 
-| Constant          | Value  | Description                             |
-| ----------------- | ------ | --------------------------------------- |
-| `TOKEN_DECIMALS`  | 1e18   | All ERC20 token amounts use 18 decimals |
+| Constant         | Value | Description                             |
+| ---------------- | ----- | --------------------------------------- |
+| `TOKEN_DECIMALS` | 1e18  | All ERC20 token amounts use 18 decimals |
 
 ---
 
@@ -202,15 +202,15 @@ The test suite has two layers that together cover both isolated logic and full c
 
 Unit tests live in `tests/unit/` and test pure functions directly without deploying contracts:
 
-| Test File                                      | What It Tests                              |
-| ---------------------------------------------- | ------------------------------------------ |
-| `tests/unit/models/test_beast_packing.cairo`   | StorePacking pack/unpack, parity vectors, zero and max values |
-| `tests/unit/models/test_beast_stats.cairo`     | Beast stat calculations                    |
-| `tests/unit/logic/test_combat.cairo`           | Combat spec construction, damage calculations |
-| `tests/unit/logic/test_poison.cairo`           | Poison damage over elapsed time            |
-| `tests/unit/logic/test_revival.cairo`          | Revival potion requirements and timing     |
-| `tests/unit/logic/test_quest.cairo`            | Quest reward calculation                   |
-| `tests/unit/logic/test_beast_utils.cairo`      | Level-from-XP, bonus levels, stat utilities |
+| Test File                                    | What It Tests                                                 |
+| -------------------------------------------- | ------------------------------------------------------------- |
+| `tests/unit/models/test_beast_packing.cairo` | StorePacking pack/unpack, parity vectors, zero and max values |
+| `tests/unit/models/test_beast_stats.cairo`   | Beast stat calculations                                       |
+| `tests/unit/logic/test_combat.cairo`         | Combat spec construction, damage calculations                 |
+| `tests/unit/logic/test_poison.cairo`         | Poison damage over elapsed time                               |
+| `tests/unit/logic/test_revival.cairo`        | Revival potion requirements and timing                        |
+| `tests/unit/logic/test_quest.cairo`          | Quest reward calculation                                      |
+| `tests/unit/logic/test_beast_utils.cairo`    | Level-from-XP, bonus levels, stat utilities                   |
 
 Run only unit tests by skipping the fork test module:
 
@@ -224,10 +224,10 @@ Integration tests live in `tests/fork/test_summit.cairo` and run against real ma
 
 Two fork configurations are defined in `Scarb.toml`:
 
-| Fork Name          | Block        | Use Case                          |
-| ------------------ | ------------ | --------------------------------- |
-| `mainnet`          | Latest       | Tests against current chain state |
-| `mainnet_6704808`  | Pinned       | Deterministic, reproducible tests |
+| Fork Name         | Block  | Use Case                          |
+| ----------------- | ------ | --------------------------------- |
+| `mainnet`         | Latest | Tests against current chain state |
+| `mainnet_6704808` | Pinned | Deterministic, reproducible tests |
 
 The integration tests include a 300-beast stress test to validate performance under load.
 
@@ -259,29 +259,31 @@ snforge test --coverage
 - Pure logic lives under `src/logic/*`; entrypoints orchestrate storage, transfers, and external calls.
 
 Token operation pattern:
+
 - consumables use `burn_from`
 - rewards use `transfer`
 
 Important interface detail:
+
 - The project uses `SummitERC20` in `src/erc20/interface.cairo` with only `transfer` and `burn_from`.
 - Keep token spend paths aligned to this interface.
 
 ## Key Constants (`src/constants.cairo`)
 
-| Constant | Value |
-| --- | --- |
-| `BASE_REVIVAL_TIME_SECONDS` | `86400` |
+| Constant                       | Value   |
+| ------------------------------ | ------- |
+| `BASE_REVIVAL_TIME_SECONDS`    | `86400` |
 | `REDUCED_REVIVAL_TIME_SECONDS` | `57600` |
-| `MINIMUM_DAMAGE` | `4` |
-| `BEAST_MAX_EXTRA_LIVES` | `4000` |
-| `BEAST_MAX_BONUS_HEALTH` | `2000` |
-| `BEAST_MAX_BONUS_LVLS` | `40` |
-| `BEAST_MAX_ATTRIBUTES` | `100` |
-| `MAX_REVIVAL_COUNT` | `63` |
-| `SPECIALS_COST` | `10` |
-| `DIPLOMACY_COST` | `15` |
-| `WISDOM_COST` | `20` |
-| `TOKEN_DECIMALS` | `1e18` |
+| `MINIMUM_DAMAGE`               | `4`     |
+| `BEAST_MAX_EXTRA_LIVES`        | `4000`  |
+| `BEAST_MAX_BONUS_HEALTH`       | `2000`  |
+| `BEAST_MAX_BONUS_LVLS`         | `40`    |
+| `BEAST_MAX_ATTRIBUTES`         | `100`   |
+| `MAX_REVIVAL_COUNT`            | `63`    |
+| `SPECIALS_COST`                | `10`    |
+| `DIPLOMACY_COST`               | `15`    |
+| `WISDOM_COST`                  | `20`    |
+| `TOKEN_DECIMALS`               | `1e18`  |
 
 ## Testing Model
 
