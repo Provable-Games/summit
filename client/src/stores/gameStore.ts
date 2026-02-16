@@ -7,6 +7,23 @@ export type BeastTypeFilter = 'all' | 'strong';
 
 const MAX_LIVE_EVENTS = 100;
 
+const getSavedSortMethod = (): SortMethod => {
+  if (typeof globalThis.localStorage === 'undefined') {
+    return 'recommended';
+  }
+
+  const saved = globalThis.localStorage.getItem('beastSortMethod');
+  return (saved as SortMethod) || 'recommended';
+};
+
+const persistSortMethod = (sortMethod: SortMethod): void => {
+  if (typeof globalThis.localStorage === 'undefined') {
+    return;
+  }
+
+  globalThis.localStorage.setItem('beastSortMethod', sortMethod);
+};
+
 export type NotificationType =
   // Battle events
   | 'battle' | 'poison' | 'summit_change' | 'extra_life'
@@ -128,10 +145,7 @@ export const useGameStore = create<GameState>((set, _get) => ({
   // Beast Collection Filters - Default Values
   hideDeadBeasts: false,
   hideTop5000: false,
-  sortMethod: (() => {
-    const saved = localStorage.getItem('beastSortMethod');
-    return (saved as SortMethod) || 'recommended';
-  })(),
+  sortMethod: getSavedSortMethod(),
   typeFilter: 'all',
   nameMatchFilter: false,
 
@@ -213,7 +227,7 @@ export const useGameStore = create<GameState>((set, _get) => ({
   setHideDeadBeasts: (hideDeadBeasts: boolean) => set({ hideDeadBeasts }),
   setHideTop5000: (hideTop5000: boolean) => set({ hideTop5000 }),
   setSortMethod: (sortMethod: SortMethod) => {
-    localStorage.setItem('beastSortMethod', sortMethod);
+    persistSortMethod(sortMethod);
     set({ sortMethod });
   },
   setTypeFilter: (typeFilter: BeastTypeFilter) => set({ typeFilter }),

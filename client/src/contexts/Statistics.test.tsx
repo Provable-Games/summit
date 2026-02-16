@@ -1,9 +1,10 @@
 import { act, create } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getSwapQuoteMock, getBeastCountsMock, mockNetworkConfig } = vi.hoisted(() => ({
+const { getSwapQuoteMock, getBeastCountsMock, getQuestRewardsTotalMock, mockNetworkConfig } = vi.hoisted(() => ({
   getSwapQuoteMock: vi.fn(async () => ({ total: "-2000000000000000000", totalDisplay: -2e18 })),
   getBeastCountsMock: vi.fn(async () => ({ total: 12, alive: 5, dead: 7 })),
+  getQuestRewardsTotalMock: vi.fn(async () => 25),
   mockNetworkConfig: {
     tokens: {
       erc20: [
@@ -21,6 +22,7 @@ vi.mock("@/api/ekubo", () => ({
 vi.mock("@/api/summitApi", () => ({
   useSummitApi: () => ({
     getBeastCounts: getBeastCountsMock,
+    getQuestRewardsTotal: getQuestRewardsTotalMock,
   }),
 }));
 
@@ -66,6 +68,7 @@ describe("StatisticsProvider", () => {
     await flushEffects();
 
     expect(getBeastCountsMock).toHaveBeenCalledTimes(1);
+    expect(getQuestRewardsTotalMock).toHaveBeenCalledTimes(1);
     expect(getSwapQuoteMock).toHaveBeenCalledTimes(2);
     const firstCall = getSwapQuoteMock.mock.calls[0] as unknown as [bigint, string, string];
     const secondCall = getSwapQuoteMock.mock.calls[1] as unknown as [bigint, string, string];
@@ -75,6 +78,7 @@ describe("StatisticsProvider", () => {
     expect(secondCall[1]).toBe("0xskull");
     expect(capturedStatistics.tokenPrices.ATTACK).toBe("2.0000");
     expect(capturedStatistics.tokenPrices.SKULL).toBe("2.0000");
+    expect(capturedStatistics.questRewardsRemaining).toBe(75);
   });
 
   it("refreshTokenPrices scans supported token names safely", async () => {
