@@ -17,7 +17,7 @@ dependencies = [
 [[package]]
 name = "death_mountain_beast"
 version = "1.0.0"
-source = "git+https://github.com/Provable-Games/death-mountain.git?branch=componentize#64c43d46d73b83ffbe8cd83ded4622692240b336"
+source = "git+https://github.com/Provable-Games/death-mountain.git?branch=componentize#3b16796ae0503824a5c59f20745e6a1a1bff901e"
 dependencies = [
  "death_mountain_combat",
 ]
@@ -25,7 +25,7 @@ dependencies = [
 [[package]]
 name = "death_mountain_combat"
 version = "1.0.0"
-source = "git+https://github.com/Provable-Games/death-mountain.git?branch=componentize#64c43d46d73b83ffbe8cd83ded4622692240b336"
+source = "git+https://github.com/Provable-Games/death-mountain.git?branch=componentize#3b16796ae0503824a5c59f20745e6a1a1bff901e"
 
 [[package]]
 name = "openzeppelin_access"

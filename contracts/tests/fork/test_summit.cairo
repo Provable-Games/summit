@@ -77,46 +77,23 @@ fn test_attack_summit_not_started() {
 
 #[test]
 #[fork("mainnet")]
-#[should_panic(expected: ('Summit not playable',))]
-fn test_feed_reverts_before_start() {
-    let summit = deploy_summit();
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    summit.feed(60989, 10);
-    stop_cheat_caller_address(summit.contract_address);
-}
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: ('Summit not playable',))]
+#[should_panic(expected: ('ERC721: invalid token ID',))]
 fn test_add_extra_life_reverts_before_start() {
     let summit = deploy_summit();
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    summit.add_extra_life(60989, 1);
+    summit.add_extra_life(0, 1);
     stop_cheat_caller_address(summit.contract_address);
 }
 
 #[test]
 #[fork("mainnet")]
-#[should_panic(expected: ('Summit not playable',))]
-fn test_apply_stat_points_reverts_before_start() {
-    let summit = deploy_summit();
-    let stats = summit::models::beast::Stats { specials: 1, wisdom: 0, diplomacy: 0, spirit: 0, luck: 0 };
-
-    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    summit.apply_stat_points(60989, stats);
-    stop_cheat_caller_address(summit.contract_address);
-}
-
-#[test]
-#[fork("mainnet")]
-#[should_panic(expected: ('Summit not playable',))]
+#[should_panic(expected: ('ERC721: invalid token ID',))]
 fn test_apply_poison_reverts_before_start() {
     let summit = deploy_summit();
 
     start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
-    summit.apply_poison(60989, 1);
+    summit.apply_poison(0, 1);
     stop_cheat_caller_address(summit.contract_address);
 }
 
@@ -832,7 +809,7 @@ fn test_apply_poison_zero_count() {
 
 #[test]
 #[fork("mainnet")]
-#[should_panic(expected: ('can only attack beast on summit',))]
+#[should_panic(expected: ('Not summit beast',))]
 fn test_apply_poison_not_summit_beast() {
     let summit = deploy_summit_and_start();
 

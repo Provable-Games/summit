@@ -429,7 +429,7 @@ pub mod summit_systems {
 
             let caller = get_caller_address();
             let summit_beast_token_id = self.summit_beast_token_id.read();
-            assert(beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
+            assert(beast_token_id == summit_beast_token_id, 'Not summit beast');
 
             let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
             let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id, beast_nft_dispatcher);
@@ -628,7 +628,7 @@ pub mod summit_systems {
     pub impl InternalSummitImpl of InternalSummitUtils {
         fn _summit_playable(self: @ContractState) -> bool {
             let terminal_timestamp = self.terminal_timestamp.read();
-            terminal_timestamp != 0 && get_block_timestamp() < terminal_timestamp
+            terminal_timestamp == 0 || get_block_timestamp() < terminal_timestamp
         }
 
         /// @title get_beast

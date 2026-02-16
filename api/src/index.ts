@@ -615,7 +615,7 @@ app.get("/quest-rewards/total", async (c) => {
     .select({ total: sql<number>`coalesce(sum(${quest_rewards_claimed.amount}), 0)` })
     .from(quest_rewards_claimed);
 
-  return c.json({ total: Number(result[0]?.total ?? 0) });
+  return c.json({ total: Number(result[0]?.total ?? 0) / 100 });
 });
 
 /**
