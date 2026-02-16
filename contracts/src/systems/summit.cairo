@@ -620,7 +620,10 @@ pub mod summit_systems {
     pub impl InternalSummitImpl of InternalSummitUtils {
         fn _summit_playable(self: @ContractState) -> bool {
             let terminal_timestamp = self.terminal_timestamp.read();
-            terminal_timestamp == 0 || get_block_timestamp() < terminal_timestamp
+
+            let summit_beast_token_id = self.summit_beast_token_id.read();
+            let taken_at = self.summit_history.entry(summit_beast_token_id).read();
+            terminal_timestamp == 0 || taken_at < terminal_timestamp
         }
 
         /// @title get_beast

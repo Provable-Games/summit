@@ -1258,8 +1258,7 @@ fn test_summit_not_started_returns_zero_beast_id() {
 
 #[test]
 #[fork("mainnet_6704808")]
-#[should_panic(expected: ('Summit not playable',))]
-fn test_attack_reverts_after_terminal_timestamp() {
+fn test_one_attack_allowed_after_terminal_timestamp() {
     let summit = deploy_summit_and_start();
     let terminal_timestamp = summit.get_terminal_timestamp();
 
