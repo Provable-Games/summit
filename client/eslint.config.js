@@ -85,6 +85,12 @@ export default tseslint.config(
     },
   },
   {
+    files: ["src/components/BeastModel3D.tsx"],
+    rules: {
+      "react/no-unknown-property": "off",
+    },
+  },
+  {
     files: ["src/**/*.js", "src/**/*.jsx"],
     rules: {
       "@typescript-eslint/no-unused-vars": "off",

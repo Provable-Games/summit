@@ -11,15 +11,17 @@ import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import { Box, IconButton, LinearProgress, Tooltip, Typography } from '@mui/material';
 import { AnimatePresence, motion, useAnimationControls } from 'framer-motion';
 import { useLottie } from 'lottie-react';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import strikeAnim from '../assets/animations/strike.json';
 import heart from '../assets/images/heart.png';
 import poisonPotionIcon from '../assets/images/poison-potion.png';
 import { lookupAddressName } from '../utils/addressNameCache';
 import { BEAST_NAMES } from '../utils/BeastData';
-import { calculateBattleResult, fetchBeastImage, fetchBeastSound, fetchBeastSummitImage, getLuckCritChancePercent, normaliseHealth } from '../utils/beasts';
+import { calculateBattleResult, fetchBeastImage, fetchBeastSound, fetchBeastSummitImage, getLuckCritChancePercent, hasBeast3DModel, normaliseHealth } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 import { isMobile } from 'react-device-detect';
+
+const BeastModel3D = lazy(() => import('./BeastModel3D'));
 
 function Summit() {
   const { collection, summit, attackInProgress, selectedBeasts, spectatorBattleEvents,
@@ -270,7 +272,7 @@ function Summit() {
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit.beast.token_id))
   const showAttack = !isSavage && !attackInProgress && selectedBeasts.length > 0
-  const name = summit.beast.prefix ? `"${summit.beast.prefix} ${summit.beast.suffix}" ${summit.beast.name}` : summit.beast.name
+  const name = summit.beast.prefix ? `"${summit.beast.prefix} ${summit.beast.suffix}" Golem` : summit.beast.name
 
   return (
     <Box sx={styles.summitContainer}>
@@ -469,13 +471,30 @@ function Summit() {
           </Box>
           : null}
 
-        <motion.img
-          key={summit.beast.token_id}
-          style={{ ...styles.beastImage, opacity: showAttack ? 0.9 : 1 }}
-          src={fetchBeastSummitImage(summit.beast)}
-          alt=''
-          animate={controls}
-        />
+        {hasBeast3DModel(summit.beast.name) ? (
+          <Suspense fallback={
+            <motion.img
+              key={summit.beast.token_id}
+              style={{ ...styles.beastImage, opacity: showAttack ? 0.9 : 1 }}
+              src={fetchBeastSummitImage(summit.beast)}
+              alt=''
+              animate={controls}
+            />
+          }>
+            <BeastModel3D
+              beastName={summit.beast.name}
+              opacity={showAttack ? 0.9 : 1}
+            />
+          </Suspense>
+        ) : (
+          <motion.img
+            key={summit.beast.token_id}
+            style={{ ...styles.beastImage, opacity: showAttack ? 0.9 : 1 }}
+            src={fetchBeastSummitImage(summit.beast)}
+            alt=''
+            animate={controls}
+          />
+        )}
         {/* Poison green overlay and count badge */}
         {summit.poison_count > 0 && (
           <>

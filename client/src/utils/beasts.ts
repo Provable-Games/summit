@@ -4,6 +4,12 @@ import type { SoundName } from '@/contexts/sound';
 import * as starknet from "@scure/starknet";
 import { addAddressPadding } from 'starknet';
 
+/** Beast names that have 3D GLB models in public/models/ */
+const BEASTS_WITH_3D_MODELS = new Set(['Anansi', 'Berserker', 'Golem', 'Pegasus']);
+
+export const hasBeast3DModel = (beastName: string): boolean =>
+  true //BEASTS_WITH_3D_MODELS.has(beastName);
+
 export const fetchBeastTypeImage = (type: string): string => {
   try {
     return new URL(`../assets/types/${type.toLowerCase()}.svg`, import.meta.url).href
