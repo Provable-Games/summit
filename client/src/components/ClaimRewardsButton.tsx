@@ -3,6 +3,7 @@ import killTokenIcon from '@/assets/images/skull-token.png';
 import rewardsIcon from '@/assets/images/rewards.png';
 import { useController } from '@/contexts/controller';
 import { useGameDirector } from '@/contexts/GameDirector';
+import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
 import type { Beast } from '@/types/game';
 import { gameColors } from '@/utils/themes';
@@ -80,6 +81,7 @@ const ClaimRewardsButton = () => {
   const { collection, setCollection, adventurerCollection, setAdventurerCollection } = useGameStore();
   const { executeGameAction, actionFailed } = useGameDirector();
   const { setTokenBalances } = useController();
+  const { questRewardsRemaining } = useStatistics();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [skullClaimState, setSkullClaimState] = useState<ClaimState | null>(null);
@@ -153,7 +155,7 @@ const ClaimRewardsButton = () => {
     [adventurerCollection],
   );
 
-  const totalRewards = (unclaimedSkullTokens > 0 ? 1 : 0) + (unclaimedCorpseTokens > 0 ? 1 : 0) + (unclaimedSurvivorTokens > 0 ? 1 : 0) + (unclaimedSummitTokens > 0 ? 1 : 0);
+  const totalRewards = (unclaimedSkullTokens > 0 ? 1 : 0) + (unclaimedCorpseTokens > 0 ? 1 : 0) + (unclaimedSurvivorTokens > 0 && questRewardsRemaining > 0 ? 1 : 0) + (unclaimedSummitTokens > 0 ? 1 : 0);
 
   // Badge bounce when reward count changes, glow pulse with auto-expire
   const prevTotalRewards = useRef(totalRewards);
@@ -430,7 +432,7 @@ const ClaimRewardsButton = () => {
 
   const showSkulls = unclaimedSkullTokens > 0 || skullClaimState;
   const showCorpse = unclaimedCorpseTokens > 0 || corpseClaimState;
-  const showSurvivor = unclaimedSurvivorTokens > 0 || survivorClaimState;
+  const showSurvivor = (unclaimedSurvivorTokens > 0 && questRewardsRemaining > 0) || survivorClaimState;
   const showSummit = unclaimedSummitTokens > 0 || summitClaimState;
 
   const isAnyClaiming = skullClaimState?.inProgress || corpseClaimState?.inProgress || survivorClaimState?.inProgress || summitClaimState?.inProgress;

@@ -1,5 +1,6 @@
 import { getSwapQuote } from "@/api/ekubo";
 import { useSummitApi } from "@/api/summitApi";
+import { QUEST_REWARDS_TOTAL_AMOUNT } from "@/contexts/GameDirector";
 import { NETWORKS } from "@/utils/networkConfig";
 import type {
   PropsWithChildren} from "react";
@@ -17,6 +18,7 @@ export interface StatisticsContext {
   fetchBeastCounts: () => void;
   refreshTokenPrices: (tokenNames?: string[]) => Promise<void>;
   tokenPrices: Record<string, string>;
+  questRewardsRemaining: number;
 }
 
 // Create a context
@@ -36,10 +38,11 @@ type PriceToken = {
 // Create a provider component
 export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   const { currentNetworkConfig } = useDynamicConnector();
-  const { getBeastCounts } = useSummitApi();
+  const { getBeastCounts, getQuestRewardsTotal } = useSummitApi();
   const [beastsRegistered, setBeastsRegistered] = useState(0);
   const [beastsAlive, setBeastsAlive] = useState(0);
   const [tokenPrices, setTokenPrices] = useState<Record<string, string>>({});
+  const [questRewardsRemaining, setQuestRewardsRemaining] = useState(QUEST_REWARDS_TOTAL_AMOUNT);
 
   const fetchBeastCounts = async () => {
     try {
@@ -75,6 +78,9 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     fetchBeastCounts();
     refreshTokenPrices();
+    getQuestRewardsTotal()
+      .then((claimed) => setQuestRewardsRemaining(Math.max(0, QUEST_REWARDS_TOTAL_AMOUNT - claimed)))
+      .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -86,6 +92,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
         fetchBeastCounts,
         refreshTokenPrices,
         tokenPrices,
+        questRewardsRemaining,
       }}
     >
       {children}

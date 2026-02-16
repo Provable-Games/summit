@@ -223,7 +223,10 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                             <Typography sx={styles.playerAddress}>{formatAddress(player.owner)}</Typography>
                           )}
                         </Box>
-                        <Typography sx={styles.rewardsCell}>{formatRewards(player.amount)}</Typography>
+                        <Box sx={styles.rewardsCellRow}>
+                          <Typography sx={styles.rewardsCell}>{formatRewards(player.amount)}</Typography>
+                          <img src="/images/survivor_token.png" alt="SURVIVOR" style={{ width: 20, height: 20 }} />
+                        </Box>
                       </Box>
                     );
                   })
@@ -486,9 +489,14 @@ const styles = {
       color: gameColors.brightGreen,
     },
   },
-  rewardsCell: {
+  rewardsCellRow: {
     flex: '0 0 140px',
-    textAlign: 'right' as const,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: '4px',
+  },
+  rewardsCell: {
     fontSize: '13px',
     fontWeight: 'bold',
     color: gameColors.yellow,
