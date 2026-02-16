@@ -525,10 +525,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   const executeGameAction = async (action: GameAction) => {
     const txs: Call[] = [];
-
-    if (action.pauseUpdates) {
-      setPauseUpdates(true);
-    }
+    const shouldPauseUpdates = action.pauseUpdates === true;
 
     if (action.type === "attack") {
       const beasts = action.beasts ?? [];
@@ -613,6 +610,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         return false;
       }
       txs.push(...applyPoison(action.beastId, action.count ?? 0));
+    }
+
+    if (shouldPauseUpdates) {
+      setPauseUpdates(true);
     }
 
     const events = await executeAction(txs, setActionFailed);
