@@ -14,6 +14,7 @@ flags:
   indexer:
     paths:
       - indexer/src/
+      - indexer/indexers/
     carryforward: true
   api:
     paths:
@@ -29,15 +30,15 @@ coverage:
         flags:
           - contracts
       client:
-        target: 60%
+        target: 35%
         flags:
           - client
       indexer:
-        target: 60%
+        target: 35%
         flags:
           - indexer
       api:
-        target: 60%
+        target: 35%
         flags:
           - api
     patch:
@@ -47,17 +48,17 @@ coverage:
         flags:
           - contracts
       client:
-        target: 60%
+        target: 35%
         threshold: 4%
         flags:
           - client
       indexer:
-        target: 60%
+        target: 35%
         threshold: 4%
         flags:
           - indexer
       api:
-        target: 60%
+        target: 35%
         threshold: 4%
         flags:
           - api

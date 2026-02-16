@@ -57,6 +57,7 @@ import {
   computeEntityHash,
   unpackLiveBeastStats,
   feltToHex,
+  isZeroFeltAddress,
 } from "../src/lib/decoder.js";
 
 interface SummitConfig {
@@ -73,9 +74,6 @@ interface SummitConfig {
 
 // In-memory cache to track tokens we've already fetched metadata for
 const fetchedTokens = new Set<number>();
-
-// Zero address for burn detection
-const ZERO_ADDRESS = "0x0";
 
 // Progress tracking
 let lastEventBlock = 0n;
@@ -992,7 +990,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         // Collect Transfer token IDs for batch metadata fetch
         if (addressToBigInt(event_address) === beastsAddressBigInt && selector === BEAST_EVENT_SELECTORS.Transfer) {
           const decoded = decodeTransferEvent([...keys], [...event.data]);
-          if (decoded.to !== ZERO_ADDRESS) {
+          if (!isZeroFeltAddress(decoded.to)) {
             const token_id = Number(decoded.token_id);
             if (!fetchedTokens.has(token_id)) {
               transferTokenIds.push(token_id);
@@ -1169,7 +1167,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             const token_id = Number(decoded.token_id);
 
             // Skip burn events (transfer to 0x0)
-            if (decoded.to === ZERO_ADDRESS) {
+            if (isZeroFeltAddress(decoded.to)) {
               logger.debug(`Skipping burn event for token ${token_id}`);
               continue;
             }

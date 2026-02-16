@@ -6,6 +6,7 @@ import {
   hexToBigInt,
   hexToNumber,
   feltToHex,
+  isZeroFeltAddress,
   decodeBeastUpdatesEvent,
   decodeLiveBeastStatsEvent,
   decodeBattleEvent,
@@ -332,6 +333,20 @@ describe("feltToHex", () => {
   it("normalizes to lowercase", () => {
     const result = feltToHex("0xABC");
     expect(result).toContain("abc");
+  });
+});
+
+describe("isZeroFeltAddress", () => {
+  it("returns true for canonical zero", () => {
+    expect(isZeroFeltAddress("0x0")).toBe(true);
+  });
+
+  it("returns true for padded zero", () => {
+    expect(isZeroFeltAddress(`0x${"0".repeat(64)}`)).toBe(true);
+  });
+
+  it("returns false for non-zero padded addresses", () => {
+    expect(isZeroFeltAddress(`0x${"0".repeat(63)}1`)).toBe(false);
   });
 });
 

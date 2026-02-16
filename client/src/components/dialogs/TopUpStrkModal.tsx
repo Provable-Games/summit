@@ -109,7 +109,7 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
     try {
       const amountInWei = BigInt(Math.floor(qty)) * 10n ** 18n;
       const result = await getSwapQuote(amountInWei, tokenData.address, STRK_ADDRESS);
-      if (result && result.totalDisplay !== 0) {
+      if (result && BigInt(result.total) !== 0n) {
         setQuote(result);
       } else {
         setQuote(null);
@@ -158,7 +158,7 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
       // Re-fetch quote for freshness
       const freshQuote = await getSwapQuote(amountInWei, selectedTokenData.address, STRK_ADDRESS);
 
-      if (!freshQuote || freshQuote.totalDisplay === 0) {
+      if (!freshQuote || BigInt(freshQuote.total) === 0n) {
         setQuoteError('No route found');
         return;
       }

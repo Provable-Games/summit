@@ -54,7 +54,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   const fetchTokenPrice = async (token: PriceToken) => {
     try {
       const swap = await getSwapQuote(-1n * 10n ** 18n, token.address, USDC_ADDRESS);
-      setTokenPrices((prev) => ({ ...prev, [token.name]: ((swap.totalDisplay * -1) / 1e18).toFixed(4) }));
+      setTokenPrices((prev) => ({ ...prev, [token.name]: (Math.abs(swap.totalDisplay) / 1e18).toFixed(4) }));
     } catch (err) {
       console.warn("refreshTokenPrices: failed to fetch price", token?.name, err);
     }
