@@ -218,6 +218,16 @@ export const useSystemCalls = () => {
     const txs: Call[] = [];
 
     const revivalPotions = calculateRevivalRequired(beasts);
+    const summitTokenId = summit?.beast.token_id;
+    let defendingBeastTokenId = 0;
+
+    if (safeAttack) {
+      if (summitTokenId === undefined) {
+        enqueueSnackbar("Safe attack unavailable: summit target not loaded", { variant: "error" });
+        return [];
+      }
+      defendingBeastTokenId = summitTokenId;
+    }
 
     // if (revivalPotions > 0) {
     //   let reviveAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === "REVIVE")?.address;
@@ -239,18 +249,17 @@ export const useSystemCalls = () => {
     }
 
     const beastsData = beasts.map(beast => [beast[0].token_id, beast[1], beast[2]]);
-    const summitTokenId = safeAttack ? (summit?.beast.token_id ?? 0) : 0;
     txs.push({
       contractAddress: SUMMIT_ADDRESS,
       entrypoint: "attack",
-      calldata: [
-        summitTokenId,
+      calldata: CallData.compile([
+        defendingBeastTokenId,
         beastsData.length,
         ...beastsData.flat(),
         revivalPotions,
         extraLifePotions,
         (vrf || !safeAttack) ? 1 : 0,
-      ],
+      ]),
     });
 
     return txs;

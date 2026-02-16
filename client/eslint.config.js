@@ -68,9 +68,8 @@ export default tseslint.config(
       // TS handles component props typing; keep these as non-blocking signals.
       "react/prop-types": "off",
       "react/no-unescaped-entities": "off",
-      "react/no-unknown-property": "off",
-      // Keep explicit-any permissive while strict TS is enforced by compiler.
-      "@typescript-eslint/no-explicit-any": "off",
+      "react/no-unknown-property": "error",
+      "@typescript-eslint/no-explicit-any": "error",
       "@typescript-eslint/no-unused-vars": [
         "warn",
         {

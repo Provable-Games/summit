@@ -525,27 +525,27 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
   const executeGameAction = async (action: GameAction) => {
     const txs: Call[] = [];
-
-    if (action.pauseUpdates) {
-      setPauseUpdates(true);
-    }
+    const shouldPauseUpdates = action.pauseUpdates === true;
 
     if (action.type === "attack") {
       const beasts = action.beasts ?? [];
       const safeAttack = action.safeAttack ?? false;
       const vrf = action.vrf ?? false;
       const extraLifePotions = action.extraLifePotions ?? 0;
+      const attackCalls = attack(
+        beasts,
+        safeAttack,
+        vrf,
+        extraLifePotions
+      );
 
       setBattleEvents([]);
       setAttackInProgress(true);
-      txs.push(
-        ...attack(
-          beasts,
-          safeAttack,
-          vrf,
-          extraLifePotions
-        )
-      );
+      if (attackCalls.length === 0) {
+        setActionFailed();
+        return false;
+      }
+      txs.push(...attackCalls);
     }
 
     if (action.type === "attack_until_capture") {
@@ -610,6 +610,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         return false;
       }
       txs.push(...applyPoison(action.beastId, action.count ?? 0));
+    }
+
+    if (shouldPauseUpdates) {
+      setPauseUpdates(true);
     }
 
     const events = await executeAction(txs, setActionFailed);

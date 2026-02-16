@@ -240,7 +240,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint:ci
+
+      - name: Enforce no-explicit-any suppressions
+        run: pnpm lint:suppress:any:check
+
+      - name: Typecheck (strict)
+        run: pnpm typecheck:strict
 
   client-test:
     needs: [changes, client-lint]
@@ -305,6 +311,7 @@ jobs:
         run: |
           cd indexer
           pnpm install --frozen-lockfile
+          pnpm lint:ci
           pnpm exec tsc --noEmit
 
       - name: Setup Node.js (api cache)
@@ -320,6 +327,7 @@ jobs:
         run: |
           cd api
           pnpm install --frozen-lockfile
+          pnpm lint:ci
           pnpm exec tsc --noEmit
 
   indexer-test:

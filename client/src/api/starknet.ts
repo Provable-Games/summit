@@ -67,7 +67,8 @@ export const useStarknetApi = () => {
       });
 
       const data = await response.json() as { result?: string[] };
-      const result = data?.result ?? [];
+      const result = data?.result;
+      if (!Array.isArray(result) || result.length < 31) return null;
 
       const beast = {
         id: parseHex(result[0]),
