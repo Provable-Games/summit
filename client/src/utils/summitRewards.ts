@@ -5,6 +5,11 @@ import {
 } from '@/contexts/GameDirector';
 
 export const SUMMIT_TOTAL_REWARDS = SUMMIT_DURATION_SECONDS * SUMMIT_REWARDS_PER_SECOND; // 43,200 $SURVIVOR
+export const SUMMIT_END_TIMESTAMP = START_TIMESTAMP + SUMMIT_DURATION_SECONDS;
+
+export function isSummitOver(currentTimestamp: number): boolean {
+  return currentTimestamp > SUMMIT_END_TIMESTAMP;
+}
 
 export type SummitRewardsStatus = {
   startTimestamp: number;

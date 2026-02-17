@@ -3,6 +3,7 @@ import { DIPLOMACY_REWARDS_PER_SECOND, SUMMIT_REWARDS_PER_SECOND } from '@/conte
 import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
 import { lookupAddressNames } from '@/utils/addressNameCache';
+import { SUMMIT_END_TIMESTAMP, isSummitOver } from '@/utils/summitRewards';
 import { gameColors } from '@/utils/themes';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -28,6 +29,10 @@ function Leaderboard() {
   const summitBlockTimestamp = summit?.block_timestamp ?? null
   const summitDiplomacyBeasts = summit?.diplomacy?.beasts
   const summitBeastHasDiplomacy = Boolean(summit?.beast?.diplomacy)
+
+  // Don't show summit owner row if they took summit after the end time
+  const summitTakenAfterEnd = summitBlockTimestamp && summitBlockTimestamp > SUMMIT_END_TIMESTAMP
+  const summitEnded = isSummitOver(currentTimestamp)
 
   // Update current timestamp every second
   useEffect(() => {
@@ -155,11 +160,20 @@ function Leaderboard() {
 
       <Box sx={styles.content}>
 
-        <Typography sx={styles.title}>
-          SUMMIT
-        </Typography>
-
-        <RewardsRemainingBar currentTimestamp={currentTimestamp} />
+        {summitEnded ? (
+          <Box sx={styles.endedTitleContainer}>
+            <Box sx={styles.trophyIcon}>🏆</Box>
+            <Typography sx={styles.endedTitle}>SUMMIT HAS ENDED</Typography>
+            <Box sx={styles.trophyIcon}>🏆</Box>
+          </Box>
+        ) : (
+          <>
+            <Typography sx={styles.title}>
+              SUMMIT
+            </Typography>
+            <RewardsRemainingBar currentTimestamp={currentTimestamp} />
+          </>
+        )}
 
         <Box sx={styles.sectionHeader}>
           <Typography sx={styles.sectionTitle}>
@@ -183,7 +197,7 @@ function Leaderboard() {
             ))}
 
 
-            {summitOwnerRank && summit?.owner && (
+            {summitOwnerRank && summit?.owner && !summitTakenAfterEnd && (
               <>
                 <Box sx={styles.summitOwnerRow}>
                   <Typography sx={[
@@ -291,6 +305,30 @@ const styles = {
       0 2px 4px rgba(0, 0, 0, 0.8),
       0 0 12px ${gameColors.yellow}40
     `,
+  },
+  endedTitleContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    py: '4px',
+  },
+  endedTitle: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: gameColors.yellow,
+    textAlign: 'center',
+    letterSpacing: '1.5px',
+    textTransform: 'uppercase',
+    textShadow: `
+      0 0 8px ${gameColors.yellow}60,
+      0 0 16px ${gameColors.yellow}30,
+      0 2px 4px rgba(0, 0, 0, 0.8)
+    `,
+    animation: 'summitEndedGlow 3s ease-in-out infinite',
+  },
+  trophyIcon: {
+    fontSize: '16px',
   },
   sectionHeader: {
     width: '100%',
@@ -579,4 +617,33 @@ const styles = {
       color: gameColors.yellow,
     },
   },
+}
+
+// Keyframe animations for ended state
+const leaderboardKeyframes = `
+  @keyframes summitEndedGlow {
+    0%, 100% { 
+      text-shadow: 0 0 8px ${gameColors.yellow}60, 0 0 16px ${gameColors.yellow}30, 0 2px 4px rgba(0, 0, 0, 0.8);
+      filter: brightness(1);
+    }
+    50% { 
+      text-shadow: 0 0 12px ${gameColors.yellow}90, 0 0 24px ${gameColors.yellow}50, 0 0 32px ${gameColors.yellow}20, 0 2px 4px rgba(0, 0, 0, 0.8);
+      filter: brightness(1.1);
+    }
+  }
+
+`;
+
+// Inject keyframes once
+if (typeof document !== 'undefined') {
+  const styleId = 'leaderboard-keyframes';
+  const existing = document.getElementById(styleId);
+  if (existing) {
+    if (existing.textContent !== leaderboardKeyframes) existing.textContent = leaderboardKeyframes;
+  } else {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = leaderboardKeyframes;
+    document.head.appendChild(style);
+  }
 }
