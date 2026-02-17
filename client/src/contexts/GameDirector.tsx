@@ -619,6 +619,30 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     const events = await executeAction(txs, setActionFailed);
 
     if (!events) {
+      // Revert optimistic upgrade if tx failed
+      if (action.type === "upgrade_beast") {
+        setCollection(prev =>
+          prev.map(b =>
+            b.token_id === action.beastId
+              ? {
+                  ...b,
+                  luck: b.luck - (action.stats?.luck ?? 0),
+                  spirit: b.spirit - (action.stats?.spirit ?? 0),
+                  specials: action.stats?.specials ? false : b.specials,
+                  wisdom: action.stats?.wisdom ? false : b.wisdom,
+                  diplomacy: action.stats?.diplomacy ? false : b.diplomacy,
+                  bonus_health: (b.bonus_health || 0) - (action.bonusHealth ?? 0),
+                }
+              : b
+          )
+        );
+        setTokenBalances((prev: Record<string, number>) => ({
+          ...prev,
+          SKULL: (prev["SKULL"] || 0) + (action.killTokens ?? 0),
+          CORPSE: (prev["CORPSE"] || 0) + (action.corpseTokens ?? 0),
+        }));
+      }
+
       setActionFailed();
       return false;
     }
@@ -705,14 +729,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         count: poisonCount,
         player: account?.address ?? null,
       })
-    } else if (action.type === "upgrade_beast") {
-      const killTokens = action.killTokens ?? 0;
-      const corpseTokens = action.corpseTokens ?? 0;
-      setTokenBalances((prev: Record<string, number>) => ({
-        ...prev,
-        SKULL: (prev["SKULL"] || 0) - killTokens,
-        CORPSE: (prev["CORPSE"] || 0) - corpseTokens,
-      }));
     }
 
     return true;
