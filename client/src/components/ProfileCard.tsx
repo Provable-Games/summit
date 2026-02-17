@@ -11,6 +11,7 @@ import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { ellipseAddress } from '@/utils/utils';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
@@ -45,7 +46,7 @@ const ProfileCard = () => {
   const killTokens = tokenBalances["SKULL"] || 0
   const corpseTokens = tokenBalances["CORPSE"] || 0
   const strkBalance = tokenBalances["STRK"]
-  const isLowGas = false // strkBalance !== undefined && strkBalance < 10
+  const isLowGas = strkBalance !== undefined && strkBalance < 10
 
   const renderPotionItem = (imgSrc: string, tokenName: string) => {
     const price = tokenPrices[tokenName]
@@ -211,7 +212,6 @@ const ProfileCard = () => {
                   sx={{
                     width: '14px',
                     height: '14px',
-                    pb: '4px',
                     ...(gasSpent ? styles.gasIconPulse : {}),
                   }}
                 />
@@ -226,13 +226,13 @@ const ProfileCard = () => {
                     >
                       {strkBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </Typography>
-                    {/* <IconButton
+                    {isLowGas && <IconButton
                       size="small"
                       onClick={(e) => { e.stopPropagation(); setTopUpStrkOpen(true); }}
                       sx={styles.topUpIcon}
                     >
-                      <AddCircleOutlineIcon sx={{ fontSize: '14px' }} />
-                    </IconButton> */}
+                      <AddCircleOutlineIcon sx={{ fontSize: '14px', fontWeight: 'bold', color: gameColors.gameYellow }} />
+                    </IconButton>}
                   </>
                   : <Skeleton variant="text" width={40} sx={{ bgcolor: 'grey.700' }} />
                 }
@@ -552,7 +552,6 @@ const styles = {
     fontSize: '16px',
     fontWeight: 'bold',
     color: '#FFD700',
-    mb: '2px',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
   },
   actionButton: {

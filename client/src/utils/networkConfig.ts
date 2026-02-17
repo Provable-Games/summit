@@ -44,7 +44,9 @@ export const TOKEN_ADDRESS = {
   POISON: "0x802c53c6007540e57390eec9b3dde3c370b54d90fff220bb3fd9e1e0d16c68",
   SKULL: "0x05dff27b8cdef20e537b5a33bf1feb4dbc5fb0ebfcb59e33cd95a075f5eb8916",
   CORPSE: "0x01f40a78e8d3e0687e30fc173a28cc62cdf976187f23f778b792a71f16e4482f",
-  SURVIVOR: "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
+  SURVIVOR: "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
+  STRK: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+  USDC: "0x033068F6539f8e6e6b131e6B2B814e6c34A5224bC66947c47DaB9dFeE93b35fb",
 }
 
 export const NETWORKS = {
@@ -57,17 +59,21 @@ export const NETWORKS = {
     wsUrl: "wss://summit-production-69ed.up.railway.app/ws",
     tokens: {
       erc20: [
-        // {
-        //   name: "SURVIVOR",
-        //   address:
-        //     "0x07c7fe4ef54a91f030b668d7de1a5eacaba2bc6f970fdab436d3a29228de830b",
-        //   displayDecimals: 0,
-        // },
+        {
+          name: "SURVIVOR",
+          address: TOKEN_ADDRESS.SURVIVOR,
+          displayDecimals: 0,
+        },
         {
           name: "STRK",
-          address:
-            "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+          address: TOKEN_ADDRESS.STRK,
           displayDecimals: 2,
+        },
+        {
+          name: "USDC",
+          address: TOKEN_ADDRESS.USDC,
+          displayDecimals: 2,
+          decimals: 6,
         },
         {
           name: "ATTACK",
@@ -113,10 +119,20 @@ export const NETWORKS = {
       "0x02e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
     paymentTokens: [
       {
-        name: "TEST USD",
-        address:
-          "0x0308c4d176d5525055EFE847D77113ad9005E693CeDAE8ae90C02dA8D2774d2e",
+        name: "SURVIVOR",
+        address: TOKEN_ADDRESS.SURVIVOR,
         displayDecimals: 0,
+      },
+      {
+        name: "STRK",
+        address: TOKEN_ADDRESS.STRK,
+        displayDecimals: 2,
+      },
+      {
+        name: "USDC",
+        address: TOKEN_ADDRESS.USDC,
+        displayDecimals: 2,
+        decimals: 6,
       },
       {
         name: "ATTACK",
@@ -147,32 +163,7 @@ export const NETWORKS = {
         name: "CORPSE",
         address: TOKEN_ADDRESS.CORPSE,
         displayDecimals: 0,
-      }
-      // {
-      //   name: "ETH",
-      //   address:
-      //     "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
-      //   displayDecimals: 4,
-      // },
-      // {
-      //   name: "STRK",
-      //   address:
-      //     "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
-      //   displayDecimals: 2,
-      // },
-      // {
-      //   name: "USDC",
-      //   address:
-      //     "0x033068F6539f8e6e6b131e6B2B814e6c34A5224bC66947c47DaB9dFeE93b35fb",
-      //   displayDecimals: 2,
-      //   decimals: 6,
-      // },
-      // {
-      //   name: "SURVIVOR",
-      //   address:
-      //     "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
-      //   displayDecimals: 0,
-      // },
+      },
     ],
   },
 };
@@ -182,7 +173,6 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
   if (!network) throw new Error(`Network ${networkKey} not found`);
 
   const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS
-  const POSITIONS_ADDRESS = network.ekuboPositions;
 
   const policies = {
     "contracts": {
@@ -243,11 +233,6 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "description": "Approve Attack Potion",
             "entrypoint": "approve"
           },
-          {
-            "name": "Transfer",
-            "description": "Transfer Attack Potion for liquidity",
-            "entrypoint": "transfer"
-          }
         ]
       },
       [TOKEN_ADDRESS.REVIVE]: {
@@ -261,11 +246,6 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "description": "Approve Revive Potion",
             "entrypoint": "approve"
           },
-          {
-            "name": "Transfer",
-            "description": "Transfer Revive Potion for liquidity",
-            "entrypoint": "transfer"
-          }
         ]
       },
       [TOKEN_ADDRESS.EXTRA_LIFE]: {
@@ -279,11 +259,6 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "description": "Approve Extra Life Potion",
             "entrypoint": "approve"
           },
-          {
-            "name": "Transfer",
-            "description": "Transfer Extra Life for liquidity",
-            "entrypoint": "transfer"
-          }
         ]
       },
       [TOKEN_ADDRESS.POISON]: {
@@ -297,11 +272,6 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "description": "Approve Poison Potion",
             "entrypoint": "approve"
           },
-          {
-            "name": "Transfer",
-            "description": "Transfer Poison Potion for liquidity",
-            "entrypoint": "transfer"
-          }
         ]
       },
       [TOKEN_ADDRESS.SKULL]: {
@@ -320,11 +290,6 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "description": "Approve Skull Token",
             "entrypoint": "approve"
           },
-          {
-            "name": "Transfer",
-            "description": "Transfer Skull Token for liquidity",
-            "entrypoint": "transfer"
-          }
         ]
       },
       [TOKEN_ADDRESS.CORPSE]: {
@@ -337,59 +302,12 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "entrypoint": "claim"
           },
           {
-            "name": "Claim Corpse Reward",
-            "description": "Claim corpse rewards",
-            "entrypoint": "claim"
-          },
-          {
             "name": "Approve",
             "amount": "50000000000000000000000",
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Corpse Token",
             "entrypoint": "approve"
           },
-          {
-            "name": "Transfer",
-            "description": "Transfer Corpse Token for liquidity",
-            "entrypoint": "transfer"
-          }
-        ]
-      },
-      "0x0308c4d176d5525055EFE847D77113ad9005E693CeDAE8ae90C02dA8D2774d2e": {
-        "name": "TEST USD",
-        "description": "Payment token for marketplace",
-        "methods": [
-          {
-            "name": "Transfer",
-            "description": "Transfer TEST USD for liquidity",
-            "entrypoint": "transfer"
-          }
-        ]
-      },
-      [POSITIONS_ADDRESS]: {
-        "name": "Ekubo Positions",
-        "description": "Ekubo LP positions contract for liquidity provision",
-        "methods": [
-          {
-            "name": "Mint and Deposit",
-            "description": "Mint a new LP position and deposit tokens",
-            "entrypoint": "mint_and_deposit"
-          },
-          {
-            "name": "Clear",
-            "description": "Clear remaining token balance after deposit",
-            "entrypoint": "clear"
-          },
-          {
-            "name": "Withdraw",
-            "description": "Withdraw liquidity from a position",
-            "entrypoint": "withdraw_v2"
-          },
-          {
-            "name": "Collect Fees",
-            "description": "Collect accumulated fees from a position",
-            "entrypoint": "collect_fees"
-          }
         ]
       },
       "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f": {

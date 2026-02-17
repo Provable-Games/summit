@@ -379,7 +379,7 @@ const EKUBO_API_BASE = "https://prod-api.ekubo.org";
 const EKUBO_CHAIN_ID = "23448594291968334";
 const EKUBO_MAX_TICK = 88722839;
 
-// Default pool parameters for game token / TEST USD pools.
+// Default pool parameters for game token / SURVIVOR pools.
 // These are hardcoded so liquidity provision works without any API dependency.
 // 0.05% fee tier: fee = 0.0005 * 2^128 = 170141183460469235273462165868118016
 export const DEFAULT_POOL_FEE = "170141183460469235273462165868118016";

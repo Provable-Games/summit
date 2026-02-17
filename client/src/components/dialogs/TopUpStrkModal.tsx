@@ -2,17 +2,16 @@ import ROUTER_ABI from '@/abi/router-abi.json';
 import type { SwapQuote } from '@/api/ekubo';
 import { generateSwapCalls, getSwapQuote } from '@/api/ekubo';
 import attackPotionImg from '@/assets/images/attack-potion.png';
-import corpseTokenImg from '@/assets/images/corpse-token.png';
-import killTokenImg from '@/assets/images/skull-token.png';
 import lifePotionImg from '@/assets/images/life-potion.png';
 import poisonPotionImg from '@/assets/images/poison-potion.png';
 import revivePotionImg from '@/assets/images/revive-potion.png';
 import starkImg from '@/assets/images/stark.svg';
+import usdcImg from '@/assets/images/usdc.svg';
 import { useController } from '@/contexts/controller';
 import { useDynamicConnector } from '@/contexts/starknet';
 import { useSystemCalls } from '@/dojo/useSystemCalls';
-import { TOKEN_ADDRESS } from '@/utils/networkConfig';
 import type { TokenConfig } from '@/utils/networkConfig';
+import { TOKEN_ADDRESS } from '@/utils/networkConfig';
 import { gameColors } from '@/utils/themes';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import CloseIcon from '@mui/icons-material/Close';
@@ -30,15 +29,15 @@ interface TopUpStrkModalProps {
 type SourceToken = Pick<TokenConfig, 'name' | 'address'> & { image: string | null };
 
 const STRK_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d';
-const SLIPPAGE_BPS = 100; // 1%
+const SLIPPAGE_BPS = 500; // 5%
 
 const SOURCE_TOKENS: SourceToken[] = [
+  { name: 'SURVIVOR', address: TOKEN_ADDRESS.SURVIVOR, image: '/images/survivor_token.png' },
+  { name: 'USDC', address: TOKEN_ADDRESS.USDC, image: usdcImg },
   { name: 'ATTACK', address: TOKEN_ADDRESS.ATTACK, image: attackPotionImg },
   { name: 'REVIVE', address: TOKEN_ADDRESS.REVIVE, image: revivePotionImg },
   { name: 'EXTRA LIFE', address: TOKEN_ADDRESS.EXTRA_LIFE, image: lifePotionImg },
   { name: 'POISON', address: TOKEN_ADDRESS.POISON, image: poisonPotionImg },
-  { name: 'SKULL', address: TOKEN_ADDRESS.SKULL, image: killTokenImg },
-  { name: 'CORPSE', address: TOKEN_ADDRESS.CORPSE, image: corpseTokenImg },
 ];
 
 export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
@@ -48,7 +47,7 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
   const { address: _accountAddress } = useAccount();
   const { executeAction } = useSystemCalls();
 
-  const [selectedToken, setSelectedToken] = useState<string>('ATTACK');
+  const [selectedToken, setSelectedToken] = useState<string>('SURVIVOR');
   const [amount, setAmount] = useState<string>('');
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [swapInProgress, setSwapInProgress] = useState(false);
@@ -57,18 +56,9 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
   const [quoteError, setQuoteError] = useState<string>('');
   const quoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Add TEST USD from paymentTokens
-  const testUsdToken = useMemo(() => {
-    const testUsd = currentNetworkConfig.paymentTokens.find((token) => token.name === 'TEST USD');
-    if (testUsd) {
-      return { name: testUsd.name, address: testUsd.address, image: null };
-    }
-    return null;
-  }, [currentNetworkConfig.paymentTokens]);
-
   const allSourceTokens = useMemo(() => {
-    return testUsdToken ? [...SOURCE_TOKENS, testUsdToken] : SOURCE_TOKENS;
-  }, [testUsdToken]);
+    return [...SOURCE_TOKENS];
+  }, []);
 
   const routerContract = useMemo(
     () =>
@@ -84,7 +74,7 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
   const balance = tokenBalances[selectedToken] || 0;
   const numericAmount = parseFloat(amount) || 0;
   const hasInsufficientBalance = numericAmount > balance;
-  const estimatedStrk = quote ? Math.abs(quote.totalDisplay) / 1e18 : 0;
+  const estimatedStrk = quote ? (Number(quote.total) / 1e18).toFixed(2) : 0;
 
   useEffect(() => {
     if (open) {
@@ -182,7 +172,7 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
           setTokenBalances((prev: Record<string, number>) => {
             const updated = { ...prev };
             updated[selectedToken] = Math.max(0, (updated[selectedToken] || 0) - numericAmount);
-            updated['STRK'] = (updated['STRK'] || 0) + estimatedStrk;
+            updated['STRK'] = (updated['STRK'] || 0) + Number(estimatedStrk);
             return updated;
           });
           close();
@@ -269,23 +259,25 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
           onClose={() => setAnchorEl(null)}
           PaperProps={{ sx: styles.menu }}
         >
-          {allSourceTokens.map((token) => (
-            <MenuItem
-              key={token.name}
-              onClick={() => {
-                setSelectedToken(token.name);
-                setAnchorEl(null);
-                setQuote(null);
-              }}
-              sx={styles.menuItem}
-            >
-              {getTokenIcon(token)}
-              <Typography sx={styles.menuTokenName}>{token.name}</Typography>
-              <Typography sx={styles.menuBalance}>
-                {Math.floor(tokenBalances[token.name] || 0).toLocaleString()}
-              </Typography>
-            </MenuItem>
-          ))}
+          {allSourceTokens
+            .filter((token) => (tokenBalances[token.name] || 0) > 0)
+            .map((token) => (
+              <MenuItem
+                key={token.name}
+                onClick={() => {
+                  setSelectedToken(token.name);
+                  setAnchorEl(null);
+                  setQuote(null);
+                }}
+                sx={styles.menuItem}
+              >
+                {getTokenIcon(token)}
+                <Typography sx={styles.menuTokenName}>{token.name}</Typography>
+                <Typography sx={styles.menuBalance}>
+                  {Math.floor(tokenBalances[token.name] || 0).toLocaleString()}
+                </Typography>
+              </MenuItem>
+            ))}
         </Menu>
 
         {/* Amount input */}
@@ -325,7 +317,7 @@ export default function TopUpStrkModal({ open, close }: TopUpStrkModalProps) {
               <CircularProgress size={16} sx={{ color: gameColors.brightGreen }} />
             ) : quote ? (
               <Typography sx={styles.quoteValue}>
-                ~{estimatedStrk.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                ~{estimatedStrk}
               </Typography>
             ) : quoteError ? (
               <Typography sx={styles.quoteError}>{quoteError}</Typography>

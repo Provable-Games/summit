@@ -27,7 +27,7 @@ const StatisticsContext = createContext<StatisticsContext>(
 );
 
 const USDC_ADDRESS = NETWORKS.SN_MAIN.paymentTokens.find(
-  (token) => token.name === "TEST USD"
+  (token) => token.name === "USDC"
 )?.address as string;
 
 type PriceToken = {
