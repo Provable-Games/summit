@@ -72,7 +72,7 @@ export function DiplomacyPopover({
                 </Box>
                 <Box sx={styles.beastReward}>
                   <Typography sx={styles.rewardValue}>
-                    +{rewardPerSecond.toFixed(6)}
+                    +{rewardPerSecond.toFixed(5)}
                   </Typography>
                   <Typography sx={styles.rewardLabel}>/sec</Typography>
                 </Box>

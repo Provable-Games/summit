@@ -49,7 +49,7 @@ export const REWARD_NAME = "Survivor";
 export const START_TIMESTAMP = 1771322400;
 export const SUMMIT_DURATION_SECONDS = 3600;
 export const SUMMIT_REWARDS_PER_SECOND = 0.007;
-export const DIPLOMACY_REWARDS_PER_SECOND = 0.0005;
+export const DIPLOMACY_REWARDS_PER_SECOND = 0.00005;
 export const MAX_BEASTS_PER_ATTACK = 295;
 export const QUEST_REWARDS_TOTAL_AMOUNT = 5;
 
@@ -444,7 +444,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     play("roar");
 
     // Fetch diplomacy if not already set
-    if (!summit.diplomacy && summit.beast.diplomacy) {
+    if (!summit.diplomacy) {
       const fetchDiplomacy = async () => {
         try {
           const beasts = await getDiplomacy(
