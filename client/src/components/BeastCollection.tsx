@@ -48,6 +48,8 @@ function BeastCollection() {
   const [attackSettingsBeastId, setAttackSettingsBeastId] = useState<number | null>(null)
   const [attackSettingsAnchorEl, setAttackSettingsAnchorEl] = useState<HTMLElement | null>(null)
   const [potionSettingsAnchorEl, setPotionSettingsAnchorEl] = useState<HTMLElement | null>(null)
+  const [bulkAttackAnchorEl, setBulkAttackAnchorEl] = useState<HTMLElement | null>(null)
+  const [bulkPotionAnchorEl, setBulkPotionAnchorEl] = useState<HTMLElement | null>(null)
 
   const MAX_ATTACKS_PER_BEAST = 65000;
   const clampAttacks = (value: number) => Math.max(1, Math.min(MAX_ATTACKS_PER_BEAST, value));
@@ -60,6 +62,33 @@ function BeastCollection() {
       )
     );
   }, [setSelectedBeasts]);
+
+  const setBulkAttacks = useCallback((count: number) => {
+    const next = clampAttacks(count);
+    setSelectedBeasts((prev) => prev.map((s) => [s[0], next, s[2]]));
+  }, [setSelectedBeasts]);
+
+  const setBulkPotions = useCallback((mode: 'none' | 'optimal' | 'max' | number) => {
+    const maxAvailable = Math.min(tokenBalances["ATTACK"] || 0, 255);
+    if (mode === 'none') {
+      setSelectedBeasts((prev) => prev.map((s) => [s[0], s[1], 0]));
+    } else if (mode === 'optimal') {
+      if (!summit) return;
+      setSelectedBeasts((prev) => prev.map((s) => {
+        const potions = calculateOptimalAttackPotions(s, summit, maxAvailable);
+        return [s[0], s[1], potions];
+      }));
+    } else if (mode === 'max') {
+      if (!summit) return;
+      setSelectedBeasts((prev) => prev.map((s) => {
+        const potions = calculateMaxAttackPotions(s, summit, maxAvailable);
+        return [s[0], s[1], potions];
+      }));
+    } else {
+      const value = Math.max(0, Math.min(maxAvailable, mode));
+      setSelectedBeasts((prev) => prev.map((s) => [s[0], s[1], value]));
+    }
+  }, [setSelectedBeasts, summit, tokenBalances]);
 
   const isStrongAgainst = (attackerType: string, defenderType: string): boolean => {
     return (
@@ -382,6 +411,21 @@ function BeastCollection() {
                   <LibraryAddCheckIcon sx={{ color: gameColors.brightGreen, fontSize: '20px' }} />
                 </Box>
               </Tooltip>}
+
+              {attackMode !== 'autopilot' && selectedBeasts.length > 1 && (
+                <>
+                  <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Set Attacks For All</Box>}>
+                    <Box sx={styles.utilityButton} onClick={(e) => { setBulkPotionAnchorEl(null); setBulkAttackAnchorEl(e.currentTarget); }}>
+                      <img src="/images/sword.png" alt="" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                    </Box>
+                  </Tooltip>
+                  <Tooltip placement='bottom' title={<Box sx={styles.tooltipContent}>Set Potions For All</Box>}>
+                    <Box sx={styles.utilityButton} onClick={(e) => { setBulkAttackAnchorEl(null); setBulkPotionAnchorEl(e.currentTarget); }}>
+                      <img src={attackPotionIcon} alt="" style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
+                    </Box>
+                  </Tooltip>
+                </>
+              )}
             </Box>
 
             {/* Filter Panel - Expands to the right */}
@@ -762,6 +806,102 @@ function BeastCollection() {
           </Box>
         </Popover>
       )}
+
+      {/* Bulk attack count popover */}
+      <Popover
+        open={Boolean(bulkAttackAnchorEl)}
+        anchorEl={bulkAttackAnchorEl}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        onClose={() => setBulkAttackAnchorEl(null)}
+        disableRestoreFocus
+        sx={[styles.popoverSx, { width: '230px' }]}
+      >
+        <Box sx={styles.settingsPopover}>
+          <Box sx={styles.settingsPopoverBody}>
+            {(() => {
+              const first = selectedBeasts[0];
+              const currentAttacks = first ? clampAttacks(first[1]) : 1;
+              return (
+                <Box sx={styles.popRow}>
+                  <Typography sx={styles.popLabel}>Attacks for all ({selectedBeasts.length})</Typography>
+                  <Box sx={styles.popStepperRow}>
+                    <IconButton
+                      size="small"
+                      disabled={currentAttacks <= 1}
+                      onClick={() => setBulkAttacks(currentAttacks - 1)}
+                      sx={styles.popStepperButton}
+                    >
+                      <RemoveIcon sx={styles.popStepperIcon} />
+                    </IconButton>
+                    <TextField
+                      size="small"
+                      type="number"
+                      value={currentAttacks}
+                      onChange={(e) => setBulkAttacks(parseInt(e.target.value, 10) || 1)}
+                      inputProps={{ min: 1, max: MAX_ATTACKS_PER_BEAST, step: 1 }}
+                      sx={[styles.popInput, styles.popStepperInput]}
+                    />
+                    <IconButton
+                      size="small"
+                      disabled={currentAttacks >= MAX_ATTACKS_PER_BEAST}
+                      onClick={() => setBulkAttacks(currentAttacks + 1)}
+                      sx={styles.popStepperButton}
+                    >
+                      <AddIcon sx={styles.popStepperIcon} />
+                    </IconButton>
+                  </Box>
+                </Box>
+              );
+            })()}
+          </Box>
+        </Box>
+      </Popover>
+
+      {/* Bulk potion popover */}
+      <Popover
+        open={Boolean(bulkPotionAnchorEl)}
+        anchorEl={bulkPotionAnchorEl}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        onClose={() => setBulkPotionAnchorEl(null)}
+        disableRestoreFocus
+        sx={[styles.popoverSx, { width: '250px' }]}
+      >
+        <Box sx={styles.settingsPopover}>
+          <Box sx={styles.settingsPopoverBody}>
+            <Box sx={styles.popRow}>
+              <Typography sx={styles.popLabel}>Potions for all ({selectedBeasts.length})</Typography>
+              <Box sx={styles.popToggleGroup}>
+                {([
+                  { key: 'none' as const, label: 'None' },
+                  { key: 'optimal' as const, label: 'Optimal' },
+                  { key: 'max' as const, label: 'Max' },
+                ] as const).map((opt) => (
+                  <Box
+                    key={opt.key}
+                    sx={[styles.popToggle, styles.popToggleActive]}
+                    onClick={() => setBulkPotions(opt.key)}
+                  >
+                    <Typography sx={styles.popToggleText}>{opt.label}</Typography>
+                  </Box>
+                ))}
+              </Box>
+              <Box sx={styles.popCustomRow}>
+                <Typography sx={styles.popCustomLabel}>Custom:</Typography>
+                <TextField
+                  size="small"
+                  type="number"
+                  defaultValue={0}
+                  onChange={(e) => setBulkPotions(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  inputProps={{ min: 0, max: 255, step: 1 }}
+                  sx={styles.popCustomInput}
+                />
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+      </Popover>
     </Box>
   );
 }
