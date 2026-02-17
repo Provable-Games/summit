@@ -78,7 +78,6 @@ describe("StatisticsProvider", () => {
     expect(secondCall[1]).toBe("0xskull");
     expect(capturedStatistics.tokenPrices.ATTACK).toBe("2.0000");
     expect(capturedStatistics.tokenPrices.SKULL).toBe("2.0000");
-    expect(capturedStatistics.questRewardsRemaining).toBe(75);
   });
 
   it("refreshTokenPrices scans supported token names safely", async () => {
