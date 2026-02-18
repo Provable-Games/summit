@@ -44,7 +44,7 @@ export default function Countdown({ onComplete }: CountdownProps) {
 
   return (
     <Box sx={styles.container}>
-      <Typography sx={styles.title}>SUMMIT BEGINS IN</Typography>
+      <Typography sx={styles.title}>THE BATTLE BEGINS IN</Typography>
       <Box sx={styles.timeContainer}>
         {timeRemaining.days > 0 && (
           <>
