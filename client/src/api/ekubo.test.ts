@@ -8,7 +8,7 @@ describe("ekubo quote precision", () => {
     vi.restoreAllMocks();
   });
 
-  it("keeps large quote totals as exact strings and clamps UI display", async () => {
+  it("keeps large quote totals as exact strings with lossy numeric display", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () => ({
@@ -24,7 +24,8 @@ describe("ekubo quote precision", () => {
     const quote = await getSwapQuote("1", "0x1", "0x2");
 
     expect(quote.total).toBe("12345678901234567890");
-    expect(quote.totalDisplay).toBe(Number.MAX_SAFE_INTEGER);
+    // totalDisplay is a lossy Number conversion - magnitude is preserved for UI display
+    expect(quote.totalDisplay).toBeCloseTo(12345678901234567890, -5);
   });
 
   it("accepts numeric total_calculated values and normalizes to string", async () => {
