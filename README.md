@@ -65,19 +65,6 @@ Toolchain versions come from `.tool-versions` and `.github/workflows/pr-ci.yml`.
    - `cd contracts && scarb fmt --check && scarb test`
    - Optional coverage: install `cairo-coverage` `v0.6.0` from the official releases page (`https://github.com/software-mansion/cairo-coverage/releases/tag/v0.6.0`), then run `scarb test --coverage`
 
-## Cross-Layer Parity Rule
-
-`LiveBeastStats` bit packing is shared across contracts, indexer, and client.
-
-- Canonical model: `contracts/src/models/beast.cairo`
-- Indexer decoder: `indexer/src/lib/decoder.ts`
-- Client decoder: `client/src/utils/translation.ts`
-- Parity tests:
-  - `cd indexer && pnpm test:parity`
-  - `cd client && pnpm test:parity`
-
-If you change packing layout or field order, update all three layers and both parity tests in one PR.
-
 ## CI Overview
 
 PR CI is path-filtered and runs component-specific checks:
