@@ -2,7 +2,7 @@ import AttackingBeasts from "@/components/AttackingBeasts"
 import Countdown from "@/components/Countdown"
 import { useGameDirector } from "@/contexts/GameDirector"
 import { useGameStore } from "@/stores/gameStore"
-import { Box, Typography } from '@mui/material'
+import { Box } from '@mui/material'
 import { useAccount } from "@starknet-react/core"
 import { useState } from 'react'
 import { isBrowser, isMobile } from 'react-device-detect'
@@ -21,6 +21,8 @@ import LeaderboardButton from '../components/LeaderboardButton'
 import ProfileCard from '../components/ProfileCard'
 import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
+import { useController } from "@/contexts/controller"
+import TermsOfServiceModal from "@/components/TermsOfServiceModal"
 
 function MainPage() {
   const { address } = useAccount()
@@ -29,6 +31,7 @@ function MainPage() {
   const [questsModalOpen, setQuestsModalOpen] = useState(false);
   const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false);
   const [eventHistoryModalOpen, setEventHistoryModalOpen] = useState(false);
+  const { showTermsOfService, acceptTermsOfService, logout } = useController();
 
   return <>
     <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
@@ -74,6 +77,10 @@ function MainPage() {
 
       <Countdown />
     </Box >
+
+    {showTermsOfService && (
+      <TermsOfServiceModal open={showTermsOfService} onAccept={acceptTermsOfService} onDecline={logout} />
+    )}
 
     {questsModalOpen && (
       <QuestsModal

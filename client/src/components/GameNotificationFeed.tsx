@@ -1,4 +1,5 @@
-import { GameNotification, useGameStore } from '@/stores/gameStore';
+import type { GameNotification} from '@/stores/gameStore';
+import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import CasinoIcon from '@mui/icons-material/Casino';
 import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
@@ -14,7 +15,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 import swordIcon from '@/assets/images/sword.png';
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
-import killTokenIcon from '@/assets/images/kill-token.png';
+import killTokenIcon from '@/assets/images/skull-token.png';
 import lifePotionIcon from '@/assets/images/life-potion.png';
 import poisonPotionIcon from '@/assets/images/poison-potion.png';
 

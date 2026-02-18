@@ -1,4 +1,5 @@
 import questIcon from '@/assets/images/quest.png';
+import { START_TIMESTAMP } from '@/contexts/GameDirector';
 import { gameColors } from '@/utils/themes';
 import { Box, IconButton, Tooltip, Typography, keyframes } from '@mui/material';
 import { useEffect, useState } from 'react';
@@ -22,6 +23,10 @@ const QuestBoard = ({ onClick }: QuestBoardProps) => {
   const [showTooltip, setShowTooltip] = useState(false);
 
   useEffect(() => {
+    const now = Math.floor(Date.now() / 1000);
+    // Don't show tooltip before quests are available
+    if (now < START_TIMESTAMP) return;
+
     const dismissed = localStorage.getItem(QUESTS_TOOLTIP_DISMISSED_KEY);
     if (!dismissed) {
       // Small delay so it feels more intentional

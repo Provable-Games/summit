@@ -26,6 +26,7 @@ import {
   text,
   bigint,
   integer,
+  boolean,
   smallint,
   timestamp,
   index,
@@ -52,17 +53,17 @@ export const beast_stats = pgTable(
     last_death_timestamp: bigint("last_death_timestamp", { mode: "bigint" }).notNull(),
     revival_count: smallint("revival_count").notNull(),
     extra_lives: smallint("extra_lives").notNull(),
-    captured_summit: smallint("captured_summit").notNull(),
-    used_revival_potion: smallint("used_revival_potion").notNull(),
-    used_attack_potion: smallint("used_attack_potion").notNull(),
-    max_attack_streak: smallint("max_attack_streak").notNull(),
+    captured_summit: boolean("captured_summit").notNull(),
+    used_revival_potion: boolean("used_revival_potion").notNull(),
+    used_attack_potion: boolean("used_attack_potion").notNull(),
+    max_attack_streak: boolean("max_attack_streak").notNull(),
     summit_held_seconds: integer("summit_held_seconds").notNull(),
     // Stats struct fields
     spirit: smallint("spirit").notNull(),
     luck: smallint("luck").notNull(),
-    specials: smallint("specials").notNull(),
-    wisdom: smallint("wisdom").notNull(),
-    diplomacy: smallint("diplomacy").notNull(),
+    specials: boolean("specials").notNull(),
+    wisdom: boolean("wisdom").notNull(),
+    diplomacy: boolean("diplomacy").notNull(),
     // Rewards tracking
     rewards_earned: integer("rewards_earned").notNull(),
     rewards_claimed: integer("rewards_claimed").notNull(),
@@ -79,7 +80,7 @@ export const beast_stats = pgTable(
     index("beast_stats_summit_held_seconds_idx").on(table.summit_held_seconds.desc()),
     index("beast_stats_updated_at_idx").on(table.updated_at.desc()),
     // Partial index for beasts with diplomacy upgrade
-    index("beast_stats_diplomacy_token_idx").on(table.token_id).where(sql`diplomacy > 0`),
+    index("beast_stats_diplomacy_token_idx").on(table.token_id).where(sql`diplomacy`),
   ]
 );
 

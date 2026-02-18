@@ -1,13 +1,14 @@
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
-import killTokenIcon from '@/assets/images/kill-token.png';
+import killTokenIcon from '@/assets/images/skull-token.png';
 import rewardsIcon from '@/assets/images/rewards.png';
 import { useController } from '@/contexts/controller';
-import { useGameDirector } from '@/contexts/GameDirector';
+import { START_TIMESTAMP, useGameDirector } from '@/contexts/GameDirector';
+import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
-import { Beast } from '@/types/game';
+import type { Beast } from '@/types/game';
 import { gameColors } from '@/utils/themes';
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline';
-import { Badge, Box, Button, Divider, IconButton, Menu, MenuItem, Tooltip, Typography } from '@mui/material';
+import { Badge, Box, Button, Divider, IconButton, Menu, MenuItem, Tooltip, Typography, keyframes } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 const survivorTokenIcon = '/images/survivor_token.png';
@@ -16,6 +17,17 @@ const SKULL_LIMIT = 250;
 const CORPSE_LIMIT = 250;
 const QUEST_REWARD_LIMIT = 900;
 const SUMMIT_REWARD_LIMIT = 295;
+
+const REWARDS_TOOLTIP_DISMISSED_KEY = 'summit_rewards_tooltip_dismissed';
+
+const pulseGlow = keyframes`
+  0%, 100% {
+    box-shadow: 0 0 8px ${gameColors.yellow}80, 0 0 16px ${gameColors.yellow}40;
+  }
+  50% {
+    box-shadow: 0 0 16px ${gameColors.yellow}, 0 0 32px ${gameColors.yellow}80;
+  }
+`;
 
 interface ClaimState {
   inProgress: boolean;
@@ -80,12 +92,26 @@ const ClaimRewardsButton = () => {
   const { collection, setCollection, adventurerCollection, setAdventurerCollection } = useGameStore();
   const { executeGameAction, actionFailed } = useGameDirector();
   const { setTokenBalances } = useController();
+  const { questRewardsRemaining } = useStatistics();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [skullClaimState, setSkullClaimState] = useState<ClaimState | null>(null);
   const [corpseClaimState, setCorpseClaimState] = useState<ClaimState | null>(null);
   const [survivorClaimState, setSurvivorClaimState] = useState<ClaimState | null>(null);
   const [summitClaimState, setSummitClaimState] = useState<ClaimState | null>(null);
+  const [showPreStartTooltip, setShowPreStartTooltip] = useState(false);
+
+  // Show tooltip before START_TIMESTAMP if not dismissed
+  useEffect(() => {
+    const now = Math.floor(Date.now() / 1000);
+    if (now >= START_TIMESTAMP) return;
+
+    const dismissed = localStorage.getItem(REWARDS_TOOLTIP_DISMISSED_KEY);
+    if (!dismissed) {
+      const timer = setTimeout(() => setShowPreStartTooltip(true), 800);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Calculate all unclaimed rewards in a single pass through collection
   const claimableRewards = useMemo(() => {
@@ -153,7 +179,7 @@ const ClaimRewardsButton = () => {
     [adventurerCollection],
   );
 
-  const totalRewards = (unclaimedSkullTokens > 0 ? 1 : 0) + (unclaimedCorpseTokens > 0 ? 1 : 0) + (unclaimedSurvivorTokens > 0 ? 1 : 0) + (unclaimedSummitTokens > 0 ? 1 : 0);
+  const totalRewards = (unclaimedSkullTokens > 0 ? 1 : 0) + (unclaimedCorpseTokens > 0 ? 1 : 0) + (unclaimedSurvivorTokens > 0 && questRewardsRemaining > 0 ? 1 : 0) + (unclaimedSummitTokens > 0 ? 1 : 0);
 
   // Badge bounce when reward count changes, glow pulse with auto-expire
   const prevTotalRewards = useRef(totalRewards);
@@ -182,6 +208,10 @@ const ClaimRewardsButton = () => {
   }, [actionFailed]);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+    if (showPreStartTooltip) {
+      localStorage.setItem(REWARDS_TOOLTIP_DISMISSED_KEY, 'true');
+      setShowPreStartTooltip(false);
+    }
     setGlowActive(false);
     setAnchorEl(event.currentTarget);
   };
@@ -430,40 +460,64 @@ const ClaimRewardsButton = () => {
 
   const showSkulls = unclaimedSkullTokens > 0 || skullClaimState;
   const showCorpse = unclaimedCorpseTokens > 0 || corpseClaimState;
-  const showSurvivor = unclaimedSurvivorTokens > 0 || survivorClaimState;
+  const showSurvivor = (unclaimedSurvivorTokens > 0 && questRewardsRemaining > 0) || survivorClaimState;
   const showSummit = unclaimedSummitTokens > 0 || summitClaimState;
 
   const isAnyClaiming = skullClaimState?.inProgress || corpseClaimState?.inProgress || survivorClaimState?.inProgress || summitClaimState?.inProgress;
 
   return (
     <>
-      <Badge
-        badgeContent={totalRewards}
-        sx={{
-          ...styles.badge,
-          ...(badgeBounce && {
-            '& .MuiBadge-badge': {
-              ...styles.badge['& .MuiBadge-badge'],
-              '@keyframes badgeBounce': {
-                '0%': { transform: 'scale(1) translate(50%, -50%)' },
-                '30%': { transform: 'scale(1.4) translate(50%, -50%)' },
-                '50%': { transform: 'scale(0.9) translate(50%, -50%)' },
-                '70%': { transform: 'scale(1.15) translate(50%, -50%)' },
-                '100%': { transform: 'scale(1) translate(50%, -50%)' },
-              },
-              animation: 'badgeBounce 1000ms ease-out',
-              transformOrigin: 'top right',
-            },
-          }),
+      <Tooltip
+        open={showPreStartTooltip}
+        title={
+          <Box sx={styles.preStartTooltipContent}>
+            <Typography sx={styles.preStartTooltipText}>
+              ✨ Claim Tokens & Upgrade Beasts
+            </Typography>
+          </Box>
+        }
+        arrow
+        placement="left"
+        slotProps={{
+          tooltip: {
+            sx: styles.preStartTooltip,
+          },
+          arrow: {
+            sx: styles.preStartTooltipArrow,
+          },
         }}
       >
-        <IconButton
-          onClick={handleClick}
-          sx={glowActive ? styles.glowIconButton : styles.iconButton}
+        <Badge
+          badgeContent={totalRewards}
+          sx={{
+            ...styles.badge,
+            ...(badgeBounce && {
+              '& .MuiBadge-badge': {
+                ...styles.badge['& .MuiBadge-badge'],
+                '@keyframes badgeBounce': {
+                  '0%': { transform: 'scale(1) translate(50%, -50%)' },
+                  '30%': { transform: 'scale(1.4) translate(50%, -50%)' },
+                  '50%': { transform: 'scale(0.9) translate(50%, -50%)' },
+                  '70%': { transform: 'scale(1.15) translate(50%, -50%)' },
+                  '100%': { transform: 'scale(1) translate(50%, -50%)' },
+                },
+                animation: 'badgeBounce 1000ms ease-out',
+                transformOrigin: 'top right',
+              },
+            }),
+          }}
         >
-          <img src={rewardsIcon} alt="rewards" style={styles.buttonIcon} />
-        </IconButton>
-      </Badge>
+          <IconButton
+            onClick={handleClick}
+            sx={{
+              ...(glowActive ? styles.glowIconButton : styles.iconButton),
+              ...(showPreStartTooltip && styles.preStartHighlight),
+            }}
+          >
+            <img src={rewardsIcon} alt="rewards" style={styles.buttonIcon} />
+          </IconButton>
+        </Badge>
+      </Tooltip>
 
       <Menu
         anchorEl={anchorEl}
@@ -951,5 +1005,37 @@ const styles = {
     fontSize: '12px',
     fontWeight: 'bold',
     color: '#888',
+  },
+  // Pre-start tooltip styles
+  preStartTooltip: {
+    background: `linear-gradient(135deg, ${gameColors.mediumGreen} 0%, ${gameColors.darkGreen} 100%)`,
+    border: `2px solid ${gameColors.yellow}`,
+    borderRadius: '8px',
+    padding: '8px 12px',
+    boxShadow: `0 4px 20px rgba(0, 0, 0, 0.5), 0 0 20px ${gameColors.yellow}30`,
+    maxWidth: '220px',
+  },
+  preStartTooltipArrow: {
+    color: gameColors.yellow,
+    '&::before': {
+      border: `1px solid ${gameColors.yellow}`,
+      background: gameColors.mediumGreen,
+    },
+  },
+  preStartTooltipContent: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    textAlign: 'center',
+  },
+  preStartTooltipText: {
+    fontSize: '13px',
+    fontWeight: 600,
+    color: gameColors.yellow,
+    lineHeight: 1.4,
+  },
+  preStartHighlight: {
+    border: `2px solid ${gameColors.yellow}`,
+    animation: `${pulseGlow} 2s ease-in-out infinite`,
   },
 };

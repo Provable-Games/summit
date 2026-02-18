@@ -1,9 +1,11 @@
 import corpseTokenImg from '@/assets/images/corpse-token.png';
-import killTokenImg from '@/assets/images/kill-token.png';
+import killTokenImg from '@/assets/images/skull-token.png';
 import { useGameDirector } from '@/contexts/GameDirector';
 import { useController } from '@/contexts/controller';
+import { useGameStore } from '@/stores/gameStore';
 import { fetchBeastImage, getLuckCritChancePercent, getSpiritRevivalReductionSeconds } from '@/utils/beasts';
 import { gameColors } from '@/utils/themes';
+import type { Beast } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import CasinoIcon from '@mui/icons-material/Casino';
 import CloseIcon from '@mui/icons-material/Close';
@@ -16,7 +18,6 @@ import RemoveIcon from '@mui/icons-material/Remove';
 import StarIcon from '@mui/icons-material/Star';
 import { Box, Button, Dialog, IconButton, InputBase, Slider, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { isMobile } from 'react-device-detect';
 
 const UPGRADE_COSTS = {
   luck_per_level: 1,
@@ -31,16 +32,16 @@ const MAX_ATTRIBUTES = 100;
 
 interface BeastUpgradeModalProps {
   open: boolean;
-  beast: any;
+  beast: Beast;
   close: () => void;
 }
 
 function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   const { open, close, beast } = props;
-  const { executeGameAction, actionFailed } = useGameDirector();
-  const { tokenBalances } = useController();
+  const { executeGameAction } = useGameDirector();
+  const { tokenBalances, setTokenBalances } = useController();
+  const { setCollection } = useGameStore();
 
-  const [upgradeInProgress, setUpgradeInProgress] = useState(false);
   const [luckUpgrade, setLuckUpgrade] = useState(0);
   const [spiritUpgrade, setSpiritUpgrade] = useState(0);
   const [diplomacySelected, setDiplomacySelected] = useState(false);
@@ -51,10 +52,6 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   const killTokens = tokenBalances["SKULL"] || 0;
   const corpseTokens = tokenBalances["CORPSE"] || 0;
   const currentBeast = beast;
-
-  useEffect(() => {
-    setUpgradeInProgress(false);
-  }, [actionFailed]);
 
   useEffect(() => {
     if (open) {
@@ -99,37 +96,51 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
   const insufficientKill = remainingKillTokens < 0;
   const insufficientCorpse = remainingCorpseTokens < 0;
 
-  const handleUpgrade = async () => {
+  const handleUpgrade = () => {
     if (!canAfford || !hasAnyUpgrade) return;
 
-    setUpgradeInProgress(true);
+    // Optimistically update beast in collection
+    setCollection(prev =>
+      prev.map(b =>
+        b.token_id === currentBeast.token_id
+          ? {
+              ...b,
+              luck: b.luck + luckUpgrade,
+              spirit: b.spirit + spiritUpgrade,
+              specials: b.specials || specialsSelected,
+              wisdom: b.wisdom || wisdomSelected,
+              diplomacy: b.diplomacy || diplomacySelected,
+              bonus_health: (b.bonus_health || 0) + bonusHealthUpgrade,
+            }
+          : b
+      )
+    );
 
-    try {
-      const newStats = {
+    // Optimistically deduct tokens
+    setTokenBalances(prev => ({
+      ...prev,
+      SKULL: (prev["SKULL"] || 0) - killTokenCost,
+      CORPSE: (prev["CORPSE"] || 0) - corpseTokenCost,
+    }));
+
+    // Close modal immediately
+    close();
+
+    // Fire tx in background (no await)
+    executeGameAction({
+      type: 'upgrade_beast',
+      beastId: currentBeast.token_id,
+      stats: {
         spirit: spiritUpgrade,
         luck: luckUpgrade,
         specials: specialsSelected,
         wisdom: wisdomSelected,
         diplomacy: diplomacySelected,
-      };
-
-      let result = await executeGameAction({
-        type: 'upgrade_beast',
-        beastId: currentBeast.token_id,
-        stats: newStats,
-        bonusHealth: bonusHealthUpgrade,
-        killTokens: killTokenCost,
-        corpseTokens: corpseTokenCost,
-      });
-
-      if (result) {
-        close();
-      }
-    } catch (ex) {
-      console.log(ex);
-    } finally {
-      setUpgradeInProgress(false);
-    }
+      },
+      bonusHealth: bonusHealthUpgrade,
+      killTokens: killTokenCost,
+      corpseTokens: corpseTokenCost,
+    });
   };
 
   const adjustStat = (stat: 'luck' | 'spirit', delta: number) => {
@@ -612,7 +623,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
           )}
 
           <Button
-            disabled={upgradeInProgress || !hasAnyUpgrade || !canAfford}
+            disabled={!hasAnyUpgrade || !canAfford}
             onClick={handleUpgrade}
             sx={[
               styles.applyButton,
@@ -620,12 +631,7 @@ function BeastUpgradeModal(props: BeastUpgradeModalProps) {
               { ml: 'auto' }
             ]}
           >
-            {upgradeInProgress ? (
-              <Box display={'flex'} alignItems={'baseline'} gap={1}>
-                <Typography sx={styles.applyButtonText}>APPLYING</Typography>
-                <div className='dotLoader white' />
-              </Box>
-            ) : !canAfford ? (
+            {!canAfford ? (
               <Typography sx={styles.applyButtonText}>INSUFFICIENT Tokens</Typography>
             ) : !hasAnyUpgrade ? (
               <Typography sx={styles.applyButtonText}>SELECT UPGRADES</Typography>

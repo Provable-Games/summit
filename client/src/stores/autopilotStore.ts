@@ -51,6 +51,14 @@ interface AutopilotConfig {
 
 type AutopilotPersistedConfig = AutopilotConfig;
 
+type AutopilotConfigStorageShape = Partial<AutopilotPersistedConfig> & {
+  poisonMax?: unknown;
+  revivePotionMaxPerBeast?: unknown;
+  extraLifeTotalMax?: unknown;
+  extraLifeReplenishTo?: unknown;
+  poisonTotalMax?: unknown;
+};
+
 interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCounters {
   setAttackStrategy: (attackStrategy: AttackStrategy) => void;
   setUseRevivePotions: (useRevivePotions: boolean) => void;
@@ -144,12 +152,16 @@ function isPoisonStrategy(value: unknown): value is PoisonStrategy {
   return value === 'disabled' || value === 'conservative' || value === 'aggressive';
 }
 
+function readTokenBalance(tokenBalances: Record<string, unknown>, token: string): number {
+  return sanitizeNonNegativeInt(tokenBalances[token], 0);
+}
+
 function loadConfigFromStorage(): AutopilotPersistedConfig | null {
   try {
     if (typeof localStorage === 'undefined') return null;
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<AutopilotPersistedConfig> & { poisonMax?: unknown };
+    const parsed = JSON.parse(raw) as AutopilotConfigStorageShape;
 
     // Back-compat: older configs stored a single poisonMax; treat it as both strategy amounts.
     const poisonMaxLegacy = sanitizeNonNegativeInt(parsed.poisonMax, 0);
@@ -162,7 +174,7 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
           : DEFAULT_CONFIG.useRevivePotions,
       revivePotionMax: sanitizeNonNegativeInt(parsed.revivePotionMax, DEFAULT_CONFIG.revivePotionMax),
       revivePotionMaxPerBeast: clampIntRange(
-        (parsed as any).revivePotionMaxPerBeast,
+        parsed.revivePotionMaxPerBeast,
         1,
         32,
         DEFAULT_CONFIG.revivePotionMaxPerBeast,
@@ -179,13 +191,13 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
         : DEFAULT_CONFIG.extraLifeStrategy,
       extraLifeMax: clampIntRange(parsed.extraLifeMax, 0, 4000, DEFAULT_CONFIG.extraLifeMax),
       extraLifeTotalMax: clampIntRange(
-        (parsed as any).extraLifeTotalMax,
+        parsed.extraLifeTotalMax,
         0,
         4000,
         DEFAULT_CONFIG.extraLifeTotalMax,
       ),
       extraLifeReplenishTo: clampIntRange(
-        (parsed as any).extraLifeReplenishTo,
+        parsed.extraLifeReplenishTo,
         1,
         4000,
         DEFAULT_CONFIG.extraLifeReplenishTo,
@@ -195,7 +207,7 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
         ? parsed.poisonStrategy
         : DEFAULT_CONFIG.poisonStrategy,
       poisonTotalMax: sanitizeNonNegativeInt(
-        (parsed as any).poisonTotalMax,
+        parsed.poisonTotalMax,
         DEFAULT_CONFIG.poisonTotalMax,
       ),
       poisonConservativeExtraLivesTrigger: sanitizeNonNegativeInt(
@@ -358,10 +370,10 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       // One-time migration: don't overwrite user-set caps. Only fill in "default-ish" caps (0/1).
       const current = get();
 
-      const reviveAvailable = Number((tokenBalances as any)?.['REVIVE'] ?? 0) || 0;
-      const attackAvailable = Number((tokenBalances as any)?.['ATTACK'] ?? 0) || 0;
-      const extraLifeAvailable = Number((tokenBalances as any)?.['EXTRA LIFE'] ?? 0) || 0;
-      const poisonAvailable = Number((tokenBalances as any)?.['POISON'] ?? 0) || 0;
+      const reviveAvailable = readTokenBalance(tokenBalances, 'REVIVE');
+      const attackAvailable = readTokenBalance(tokenBalances, 'ATTACK');
+      const extraLifeAvailable = readTokenBalance(tokenBalances, 'EXTRA LIFE');
+      const poisonAvailable = readTokenBalance(tokenBalances, 'POISON');
 
       const shouldInit =
         (() => {
@@ -409,4 +421,3 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       }),
   };
 });
-

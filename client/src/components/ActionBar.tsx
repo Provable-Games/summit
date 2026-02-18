@@ -3,7 +3,7 @@ import { useGameDirector } from '@/contexts/GameDirector';
 import { useQuestGuide } from '@/contexts/QuestGuide';
 import { useAutopilotStore } from '@/stores/autopilotStore';
 import { useGameStore } from '@/stores/gameStore';
-import { Beast } from '@/types/game';
+import type { Beast, selection } from '@/types/game';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp';
@@ -30,14 +30,22 @@ import BeastDexModal from './dialogs/BeastDexModal';
 import BeastUpgradeModal from './dialogs/BeastUpgradeModal';
 import { MAX_BEASTS_PER_ATTACK } from '@/contexts/GameDirector';
 
+type PotionSelection = 'extraLife' | 'poison';
+
 function ActionBar() {
   const { executeGameAction } = useGameDirector();
   const { tokenBalances } = useController();
   const { notifyTargetClicked } = useQuestGuide();
-  const reviveBalance = Number((tokenBalances as any)?.['REVIVE'] ?? 0) || 0;
-  const attackBalance = Number((tokenBalances as any)?.['ATTACK'] ?? 0) || 0;
-  const extraLifeBalance = Number((tokenBalances as any)?.['EXTRA LIFE'] ?? 0) || 0;
-  const poisonBalance = Number((tokenBalances as any)?.['POISON'] ?? 0) || 0;
+
+  const getTokenBalance = (symbol: string): number => {
+    const balance = tokenBalances[symbol];
+    return typeof balance === "number" && Number.isFinite(balance) ? balance : 0;
+  };
+
+  const reviveBalance = getTokenBalance("REVIVE");
+  const attackBalance = getTokenBalance("ATTACK");
+  const extraLifeBalance = getTokenBalance("EXTRA LIFE");
+  const poisonBalance = getTokenBalance("POISON");
 
   const { selectedBeasts, summit,
     attackInProgress,
@@ -71,15 +79,15 @@ function ActionBar() {
     initializeMaxCapsFromBalances,
   } = useAutopilotStore();
 
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [potion, setPotion] = useState(null)
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [potion, setPotion] = useState<PotionSelection | null>(null)
   const [attackDropdownAnchor, setAttackDropdownAnchor] = useState<null | HTMLElement>(null);
   const [autopilotConfigOpen, setAutopilotConfigOpen] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeBeast, setUpgradeBeast] = useState<Beast | null>(null);
   const [beastDexFilterIds, setBeastDexFilterIds] = useState<number[] | null>(null);
 
-  const handleClick = (event: React.MouseEvent<HTMLElement>, potion: any) => {
+  const handleClick = (event: React.MouseEvent<HTMLElement>, potion: PotionSelection) => {
     setAnchorEl(event.currentTarget);
     setPotion(potion);
   };
@@ -118,18 +126,21 @@ function ActionBar() {
 
   const collectionWithCombat = useMemo<Beast[]>(() => {
     if (summit && collection.length > 0) {
-      let revivePotionsEnabled = autopilotEnabled && useRevivePotions && revivePotionsUsed < revivePotionMax;
-      let attackPotionsEnabled = autopilotEnabled && useAttackPotions && attackPotionsUsed < attackPotionMax;
+      const revivePotionsEnabled = autopilotEnabled && useRevivePotions && revivePotionsUsed < revivePotionMax;
+      const attackPotionsEnabled = autopilotEnabled && useAttackPotions && attackPotionsUsed < attackPotionMax;
 
       let filtered = collection.map((beast: Beast) => {
-        let newBeast = { ...beast }
+        const newBeast = { ...beast }
         newBeast.revival_time = getBeastRevivalTime(newBeast);
         newBeast.current_health = getBeastCurrentHealth(beast);
         newBeast.combat = calculateBattleResult(newBeast, summit, 0);
         return newBeast
       }).filter((beast: Beast) => !isBeastLocked(beast));
 
-      filtered = filtered.sort((a: Beast, b: Beast) => b.combat?.score - a.combat?.score);
+      filtered = filtered.sort(
+        (a: Beast, b: Beast) =>
+          (b.combat?.score ?? Number.NEGATIVE_INFINITY) - (a.combat?.score ?? Number.NEGATIVE_INFINITY)
+      );
 
       if (revivePotionsEnabled) {
         let revivePotionsRemaining = revivePotionMax - revivePotionsUsed;
@@ -142,14 +153,19 @@ function ActionBar() {
             }
           }
           return beast;
-        }).filter(Boolean);
+        }).filter((beast): beast is Beast => beast !== null);
       } else {
         filtered = filtered.filter((beast: Beast) => beast.current_health > 0);
       }
 
-      if (attackPotionsEnabled) {
-        let attackPotions = calculateOptimalAttackPotions(filtered[0], summit, Math.min(attackPotionMax - attackPotionsUsed, 255));
-        let newCombat = calculateBattleResult(filtered[0], summit, attackPotions);
+      if (attackPotionsEnabled && filtered.length > 0) {
+        const attackSelection: selection[number] = [filtered[0], 1, 0];
+        const attackPotions = calculateOptimalAttackPotions(
+          attackSelection,
+          summit,
+          Math.min(attackPotionMax - attackPotionsUsed, 255)
+        );
+        const newCombat = calculateBattleResult(filtered[0], summit, attackPotions);
         filtered[0].combat = newCombat;
       }
 
@@ -157,6 +173,7 @@ function ActionBar() {
     }
 
     return [];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summit?.beast?.token_id, collection.length, revivePotionsUsed, attackPotionsUsed, useRevivePotions, useAttackPotions]);
 
   const handleAttackUntilCapture = async (extraLifePotions: number) => {
@@ -220,6 +237,7 @@ function ActionBar() {
 
   useEffect(() => {
     initializeMaxCapsFromBalances(tokenBalances);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reviveBalance, attackBalance, extraLifeBalance, poisonBalance]);
 
   useEffect(() => {
@@ -231,6 +249,7 @@ function ActionBar() {
     if (attackMode !== 'autopilot' && autopilotEnabled) {
       setAutopilotEnabled(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attackMode]);
 
   useEffect(() => {
@@ -239,26 +258,28 @@ function ActionBar() {
     } else if (attackInProgress) {
       setAutopilotLog('Attacking...')
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autopilotEnabled, attackInProgress, applyingPotions])
 
   useEffect(() => {
     if (!autopilotEnabled || poisonStrategy !== 'aggressive') return;
-    let myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
+    const myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
     if (myBeast) return;
 
     const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
     const poisonBalance = tokenBalances?.["POISON"] || 0;
     handleApplyPoison(Math.min(poisonAggressiveAmount, poisonBalance, remainingCap));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summit?.beast?.token_id]);
 
   useEffect(() => {
-    if (!autopilotEnabled || attackInProgress || !collectionWithCombat) return;
+    if (!autopilotEnabled || attackInProgress || !collectionWithCombat || !summit) return;
 
-    let myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
+    const myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
 
     if (myBeast) {
       if (extraLifeStrategy === 'aggressive' && myBeast.extra_lives >= 0 && myBeast.extra_lives < extraLifeReplenishTo) {
-        let extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeReplenishTo - myBeast.extra_lives);
+        const extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeReplenishTo - myBeast.extra_lives);
         if (extraLifePotions > 0) {
           handleApplyExtraLife(extraLifePotions);
         }
@@ -267,7 +288,8 @@ function ActionBar() {
       return;
     };
 
-    if (poisonStrategy === 'conservative' && summit?.beast?.extra_lives >= poisonConservativeExtraLivesTrigger
+    if (poisonStrategy === 'conservative'
+      && summit.beast.extra_lives >= poisonConservativeExtraLivesTrigger
       && summit.poison_count < poisonConservativeAmount) {
       const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
       const poisonBalance = tokenBalances?.["POISON"] || 0;
@@ -286,10 +308,10 @@ function ActionBar() {
     } else if (attackStrategy === 'all_out') {
       handleAttackUntilCapture(extraLifePotions);
     } else if (attackStrategy === 'guaranteed') {
-      let beasts = collectionWithCombat.slice(0, MAX_BEASTS_PER_ATTACK)
+      const beasts = collectionWithCombat.slice(0, MAX_BEASTS_PER_ATTACK)
 
-      let totalSummitHealth = ((summit?.beast.health + summit?.beast.bonus_health) * summit?.beast.extra_lives) + summit?.beast.current_health;
-      let totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
+      const totalSummitHealth = ((summit.beast.health + summit.beast.bonus_health) * summit.beast.extra_lives) + summit.beast.current_health;
+      const totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
       if (totalEstimatedDamage < (totalSummitHealth * 1.1)) {
         return;
       }
@@ -300,9 +322,10 @@ function ActionBar() {
         safeAttack: false,
         vrf: true,
         extraLifePotions: extraLifePotions,
-        attackPotions: beasts[0].combat?.attackPotions || 0
+        attackPotions: beasts[0]?.combat?.attackPotions || 0
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
 
   const startAutopilot = () => {
@@ -421,11 +444,11 @@ function ActionBar() {
                 <Box sx={styles.attackButtonGroup}>
                   <Box
                     id="attack-button"
-                    sx={[
-                      styles.attackButton,
-                      highlightAttackButton && styles.attackButtonEnabled,
-                      styles.attackButtonMain
-                    ]}
+                    sx={{
+                      ...styles.attackButton,
+                      ...(highlightAttackButton ? styles.attackButtonEnabled : {}),
+                      ...styles.attackButtonMain,
+                    }}
                     onClick={() => {
                       if (attackMode === 'autopilot') {
                         startAutopilot();
@@ -1044,14 +1067,11 @@ function ActionBar() {
           const minutes = Math.floor((secondsToKill % 3600) / 60);
           const seconds = secondsToKill % 60;
 
-          let timeString = '';
-          if (hours > 0) {
-            timeString = `${hours}h ${minutes}m ${seconds}s`;
-          } else if (minutes > 0) {
-            timeString = `${minutes}m ${seconds}s`;
-          } else {
-            timeString = `${seconds}s`;
-          }
+          const timeString = hours > 0
+            ? `${hours}h ${minutes}m ${seconds}s`
+            : minutes > 0
+              ? `${minutes}m ${seconds}s`
+              : `${seconds}s`;
 
           return (
             <Box sx={{

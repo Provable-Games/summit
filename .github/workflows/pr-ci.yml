@@ -240,7 +240,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm lint
+        run: pnpm lint:ci
+
+      - name: Enforce no-explicit-any suppressions
+        run: pnpm lint:suppress:any:check
+
+      - name: Typecheck (strict)
+        run: pnpm typecheck:strict
 
   client-test:
     needs: [changes, client-lint]
@@ -305,6 +311,7 @@ jobs:
         run: |
           cd indexer
           pnpm install --frozen-lockfile
+          pnpm lint:ci
           pnpm exec tsc --noEmit
 
       - name: Setup Node.js (api cache)
@@ -315,11 +322,18 @@ jobs:
           cache: pnpm
           cache-dependency-path: api/pnpm-lock.yaml
 
+      - name: Validate api npm lockfile parity
+        if: needs.changes.outputs.api == 'true'
+        run: |
+          cd api
+          npm ci --dry-run --ignore-scripts --no-audit --no-fund
+
       - name: Lint api
         if: needs.changes.outputs.api == 'true'
         run: |
           cd api
           pnpm install --frozen-lockfile
+          pnpm lint:ci
           pnpm exec tsc --noEmit
 
   indexer-test:
@@ -947,6 +961,18 @@ jobs:
               BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
                 | jq -r --arg header "$HEADER" --arg run_token "run=${{ github.run_id }}" --arg sha_token "sha=${{ github.event.pull_request.head.sha }}" \
                   '[.[] | select((.body // "") | contains($header) and contains($run_token) and contains($sha_token))] | last | .body // ""')
+            fi
+
+            if [ -z "$BODY" ]; then
+              BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+                | jq -r --arg marker "$REVIEW_MARKER" \
+                  '[.[] | select((.user.login // "") == "claude" and ((.body // "") | contains($marker)))] | last | .body // ""')
+            fi
+
+            if [ -z "$BODY" ]; then
+              BODY=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" --paginate \
+                | jq -r --arg run_token "run=${{ github.run_id }}" --arg sha_token "sha=${{ github.event.pull_request.head.sha }}" \
+                  '[.[] | select((.user.login // "") == "claude" and ((.body // "") | contains($run_token) and contains($sha_token) and contains("scope=indexer-api")))] | last | .body // ""')
             fi
 
             if [ -n "$BODY" ]; then

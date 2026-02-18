@@ -57,6 +57,7 @@ import {
   computeEntityHash,
   unpackLiveBeastStats,
   feltToHex,
+  isZeroFeltAddress,
 } from "../src/lib/decoder.js";
 
 interface SummitConfig {
@@ -74,25 +75,10 @@ interface SummitConfig {
 // In-memory cache to track tokens we've already fetched metadata for
 const fetchedTokens = new Set<number>();
 
-// Zero address for burn detection
-const ZERO_ADDRESS = "0x0";
-
 // Progress tracking
 let lastEventBlock = 0n;
 let blocksWithoutEvents = 0;
 let lastProgressLog = Date.now();
-
-/**
- * Helper to look up beast owner from beast_owners table
- */
-async function getBeastOwner(db: any, token_id: number): Promise<string | null> {
-  const result = await db
-    .select({ owner: schema.beast_owners.owner })
-    .from(schema.beast_owners)
-    .where(eq(schema.beast_owners.token_id, token_id))
-    .limit(1);
-  return result.length > 0 ? result[0].owner : null;
-}
 
 /**
  * Beast stats for comparison (used for derived events)
@@ -101,15 +87,15 @@ interface BeastStatsSnapshot {
   token_id: number;
   spirit: number;
   luck: number;
-  specials: number;
-  wisdom: number;
-  diplomacy: number;
+  specials: boolean;
+  wisdom: boolean;
+  diplomacy: boolean;
   bonus_health: number;
   extra_lives: number;
-  captured_summit: number;
-  used_revival_potion: number;
-  used_attack_potion: number;
-  max_attack_streak: number;
+  captured_summit: boolean;
+  used_revival_potion: boolean;
+  used_attack_potion: boolean;
+  max_attack_streak: boolean;
   current_health?: number;
 }
 
@@ -319,16 +305,16 @@ type BeastStatsRow = {
   last_death_timestamp: bigint;
   revival_count: number;
   extra_lives: number;
-  captured_summit: number;
-  used_revival_potion: number;
-  used_attack_potion: number;
-  max_attack_streak: number;
+  captured_summit: boolean;
+  used_revival_potion: boolean;
+  used_attack_potion: boolean;
+  max_attack_streak: boolean;
   summit_held_seconds: number;
   spirit: number;
   luck: number;
-  specials: number;
-  wisdom: number;
-  diplomacy: number;
+  specials: boolean;
+  wisdom: boolean;
+  diplomacy: boolean;
   rewards_earned: number;
   rewards_claimed: number;
   created_at: Date;
@@ -693,27 +679,30 @@ function collectBeastStatChangeLogs(
 ): number {
   let derived_offset = 0;
 
+  const toNumericUpgradeValue = (value: number | boolean): number =>
+    typeof value === "boolean" ? Number(value) : value;
+
   // If no previous stats, treat as default values (all zeros)
   // This allows detecting upgrades for beasts without existing beast_stats records
   const effective_prev_stats: BeastStatsSnapshot = prev_stats ?? {
     token_id: new_stats.token_id,
     spirit: 0,
     luck: 0,
-    specials: 0,
-    wisdom: 0,
-    diplomacy: 0,
+    specials: false,
+    wisdom: false,
+    diplomacy: false,
     bonus_health: 0,
     extra_lives: 0,
-    captured_summit: 0,
-    used_revival_potion: 0,
-    used_attack_potion: 0,
-    max_attack_streak: 0,
+    captured_summit: false,
+    used_revival_potion: false,
+    used_attack_potion: false,
+    max_attack_streak: false,
   };
 
   // Check each stat for increases
   for (const { field, sub_category } of STAT_UPGRADES) {
-    const old_value = effective_prev_stats[field];
-    const new_value = new_stats[field];
+    const old_value = toNumericUpgradeValue(effective_prev_stats[field]);
+    const new_value = toNumericUpgradeValue(new_stats[field]);
 
     if (new_value > old_value) {
       derived_offset++;
@@ -1001,7 +990,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         // Collect Transfer token IDs for batch metadata fetch
         if (addressToBigInt(event_address) === beastsAddressBigInt && selector === BEAST_EVENT_SELECTORS.Transfer) {
           const decoded = decodeTransferEvent([...keys], [...event.data]);
-          if (decoded.to !== ZERO_ADDRESS) {
+          if (!isZeroFeltAddress(decoded.to)) {
             const token_id = Number(decoded.token_id);
             if (!fetchedTokens.has(token_id)) {
               transferTokenIds.push(token_id);
@@ -1178,7 +1167,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             const token_id = Number(decoded.token_id);
 
             // Skip burn events (transfer to 0x0)
-            if (decoded.to === ZERO_ADDRESS) {
+            if (isZeroFeltAddress(decoded.to)) {
               logger.debug(`Skipping burn event for token ${token_id}`);
               continue;
             }

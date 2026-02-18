@@ -1,7 +1,8 @@
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { lookupAddressNames } from '@/utils/addressNameCache';
-import { useSummitApi, TopBeast } from '@/api/summitApi';
+import type { TopBeast } from '@/api/summitApi';
+import { useSummitApi } from '@/api/summitApi';
 import CloseIcon from '@mui/icons-material/Close';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { Box, Dialog, IconButton, Pagination, Tab, Tabs, Typography } from '@mui/material';
@@ -38,6 +39,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
         .then((data) => setLeaderboard(data))
         .catch((error) => console.error('Error fetching leaderboard:', error));
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const playersTotalPages = Math.max(1, Math.ceil(leaderboard.length / PAGE_SIZE));
@@ -112,6 +114,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
     if (activeTab === 'beasts') {
       fetchBeasts();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, beastsPage]);
 
   const formatRewards = (rewards: number) =>
@@ -220,7 +223,10 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                             <Typography sx={styles.playerAddress}>{formatAddress(player.owner)}</Typography>
                           )}
                         </Box>
-                        <Typography sx={styles.rewardsCell}>{formatRewards(player.amount)}</Typography>
+                        <Box sx={styles.rewardsCellRow}>
+                          <Typography sx={styles.rewardsCell}>{formatRewards(player.amount)}</Typography>
+                          <img src="/images/survivor_token.png" alt="SURVIVOR" style={{ width: 20, height: 20 }} />
+                        </Box>
                       </Box>
                     );
                   })
@@ -483,9 +489,14 @@ const styles = {
       color: gameColors.brightGreen,
     },
   },
-  rewardsCell: {
+  rewardsCellRow: {
     flex: '0 0 140px',
-    textAlign: 'right' as const,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: '4px',
+  },
+  rewardsCell: {
     fontSize: '13px',
     fontWeight: 'bold',
     color: gameColors.yellow,

@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, useCallback, ReactNode, useEffect, useRef } from 'react';
-import { Box, Typography, Popper, ClickAwayListener, Fade } from '@mui/material';
+import type { ReactNode} from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { Box, Typography, Popper, Fade } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { gameColors } from '@/utils/themes';
@@ -22,7 +23,6 @@ export interface QuestGuide {
   steps: GuideStep[];
 }
 
-// Guide definitions - easily add/remove guides here
 export const questGuides: QuestGuide[] = [
   {
     id: 'first_blood_guide',

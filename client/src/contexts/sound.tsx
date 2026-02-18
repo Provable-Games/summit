@@ -1,4 +1,5 @@
-import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { PropsWithChildren} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 export type SoundName = "roar" | "blade" | "bludgeon" | "wand" | "poison";
 
@@ -55,7 +56,7 @@ export function SoundProvider({ children }: PropsWithChildren) {
     setMutedState(m);
     try {
       localStorage.setItem(STORAGE_KEYS.muted, m ? "1" : "0");
-    } catch { }
+    } catch { /* intentionally empty */ }
   }, []);
 
   const setVolume = useCallback((v: number) => {
@@ -63,7 +64,7 @@ export function SoundProvider({ children }: PropsWithChildren) {
     setVolumeState(clamped);
     try {
       localStorage.setItem(STORAGE_KEYS.volume, String(clamped));
-    } catch { }
+    } catch { /* intentionally empty */ }
   }, []);
 
   const pendingRef = useRef<Array<{ name: SoundName; opts?: PlayOptions }>>([]);
@@ -73,7 +74,7 @@ export function SoundProvider({ children }: PropsWithChildren) {
     const a = new Audio(SOUNDS[name]);
     a.volume = opts?.volume ?? volume;
     if (opts?.rate && Number.isFinite(opts.rate)) {
-      try { a.playbackRate = opts.rate; } catch { }
+      try { a.playbackRate = opts.rate; } catch { /* intentionally empty */ }
     }
     void a.play().catch(() => { });
   }, [muted, volume]);
@@ -105,5 +106,4 @@ export const useSound = () => {
   if (!ctx) throw new Error("useSound must be used within SoundProvider");
   return ctx;
 };
-
 

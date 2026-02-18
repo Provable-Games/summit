@@ -1,6 +1,6 @@
 import attackPotionImg from '@/assets/images/attack-potion.png';
 import corpseTokenImg from '@/assets/images/corpse-token.png';
-import killTokenImg from '@/assets/images/kill-token.png';
+import killTokenImg from '@/assets/images/skull-token.png';
 import lifePotionImg from '@/assets/images/life-potion.png';
 import poisonPotionImg from '@/assets/images/poison-potion.png';
 import revivePotionImg from '@/assets/images/revive-potion.png';
@@ -11,6 +11,7 @@ import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { ellipseAddress } from '@/utils/utils';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
@@ -33,7 +34,7 @@ const ProfileCard = () => {
   const { tokenPrices } = useStatistics();
   const { connect, connectors } = useConnect();
 
-  let cartridgeConnector = connectors.find(conn => conn.id === "controller")
+  const cartridgeConnector = connectors.find(conn => conn.id === "controller")
 
   const { muted, setMuted, volume, setVolume } = useSound()
 
@@ -45,7 +46,7 @@ const ProfileCard = () => {
   const killTokens = tokenBalances["SKULL"] || 0
   const corpseTokens = tokenBalances["CORPSE"] || 0
   const strkBalance = tokenBalances["STRK"]
-  const isLowGas = false // strkBalance !== undefined && strkBalance < 10
+  const isLowGas = strkBalance !== undefined && strkBalance < 10
 
   const renderPotionItem = (imgSrc: string, tokenName: string) => {
     const price = tokenPrices[tokenName]
@@ -60,6 +61,8 @@ const ProfileCard = () => {
   }
 
   const handleProfileClick = async () => {
+    if (!address) return;
+
     if (address && isCartridge) {
       openProfile()
     } else {
@@ -192,7 +195,13 @@ const ProfileCard = () => {
             }
             placement="left"
           >
-            <Box sx={[styles.infoSection, styles.leftSection, gasSpent && styles.gasSpentContainer]}>
+            <Box
+              sx={{
+                ...styles.infoSection,
+                ...styles.leftSection,
+                ...(gasSpent ? styles.gasSpentContainer : {}),
+              }}
+            >
               <Typography sx={styles.infoLabel}>STRK (gas)</Typography>
 
               <Box display={'flex'} alignItems={'center'} gap={0.5} position={'relative'}>
@@ -200,23 +209,30 @@ const ProfileCard = () => {
                   component="img"
                   src={starkImg}
                   alt="STRK"
-                  sx={[
-                    { width: '14px', height: '14px', pb: '4px' },
-                    gasSpent && styles.gasIconPulse
-                  ]}
+                  sx={{
+                    width: '14px',
+                    height: '14px',
+                    ...(gasSpent ? styles.gasIconPulse : {}),
+                  }}
                 />
                 {strkBalance !== undefined
                   ? <>
-                    <Typography sx={[styles.infoValue, isLowGas && { color: '#ff9800' }, gasSpent && styles.gasSpentValue]}>
+                    <Typography
+                      sx={{
+                        ...styles.infoValue,
+                        ...(isLowGas ? { color: '#ff9800' } : {}),
+                        ...(gasSpent ? styles.gasSpentValue : {}),
+                      }}
+                    >
                       {strkBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                     </Typography>
-                    {/* <IconButton
+                    {isLowGas && <IconButton
                       size="small"
                       onClick={(e) => { e.stopPropagation(); setTopUpStrkOpen(true); }}
                       sx={styles.topUpIcon}
                     >
-                      <AddCircleOutlineIcon sx={{ fontSize: '14px' }} />
-                    </IconButton> */}
+                      <AddCircleOutlineIcon sx={{ fontSize: '14px', fontWeight: 'bold', color: gameColors.gameYellow }} />
+                    </IconButton>}
                   </>
                   : <Skeleton variant="text" width={40} sx={{ bgcolor: 'grey.700' }} />
                 }
@@ -536,7 +552,6 @@ const styles = {
     fontSize: '16px',
     fontWeight: 'bold',
     color: '#FFD700',
-    mb: '2px',
     textShadow: `0 1px 2px rgba(0, 0, 0, 0.8)`,
   },
   actionButton: {

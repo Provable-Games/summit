@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import { eq, sql, desc, and, inArray } from "drizzle-orm";
 import "dotenv/config";
 
-import { checkDatabaseHealth, db, pool } from "./db/client.js";
+import { checkDatabaseHealth, db } from "./db/client.js";
 import {
   beasts,
   beast_owners,
@@ -32,38 +32,9 @@ import {
   ITEM_NAME_PREFIXES,
   ITEM_NAME_SUFFIXES,
 } from "./lib/beastData.js";
+import { getBeastRevivalTime, getBeastCurrentLevel, normalizeAddress } from "./lib/helpers.js";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
-
-// Helper functions for beast calculations
-function getSpiritRevivalReductionSeconds(points: number): number {
-  const p = Math.max(0, Math.floor(points));
-  if (p <= 5) {
-    switch (p) {
-      case 0: return 0;
-      case 1: return 7200;
-      case 2: return 10080;
-      case 3: return 12240;
-      case 4: return 13680;
-      case 5: return 14400;
-    }
-  } else if (p <= 70) {
-    return 14400 + (p - 5) * 720;
-  }
-  return 61200 + (p - 70) * 360;
-}
-
-function getBeastRevivalTime(spirit: number): number {
-  const revivalTime = 86400000; // 24 hours in ms
-  if (spirit > 0) {
-    return revivalTime - getSpiritRevivalReductionSeconds(spirit) * 1000;
-  }
-  return revivalTime;
-}
-
-function getBeastCurrentLevel(level: number, bonusXp: number): number {
-  return Math.floor(Math.sqrt(bonusXp + Math.pow(level, 2)));
-}
 
 const app = new Hono();
 
@@ -92,17 +63,6 @@ app.get("/health", async (c) => {
     timestamp: new Date().toISOString(),
   });
 });
-
-/**
- * Normalize a Starknet address to match database format
- * - Lowercase
- * - Pad to 66 chars (0x + 64 hex chars)
- */
-function normalizeAddress(address: string): string {
-  const lower = address.toLowerCase();
-  const withoutPrefix = lower.startsWith("0x") ? lower.slice(2) : lower;
-  return "0x" + withoutPrefix.padStart(64, "0");
-}
 
 /**
  * GET /beasts/all - Get paginated list of all beasts with filtering
@@ -209,9 +169,9 @@ app.get("/beasts/all", async (c) => {
       summit_held_seconds: r.summit_held_seconds ?? 0,
       spirit: r.spirit ?? 0,
       luck: r.luck ?? 0,
-      specials: Boolean(r.specials),
-      wisdom: Boolean(r.wisdom),
-      diplomacy: Boolean(r.diplomacy),
+      specials: r.specials ?? false,
+      wisdom: r.wisdom ?? false,
+      diplomacy: r.diplomacy ?? false,
       extra_lives: r.extra_lives ?? 0,
       owner: r.owner,
       shiny: r.shiny,
@@ -336,18 +296,18 @@ app.get("/beasts/:owner", async (c) => {
         last_death_timestamp: lastDeathTimestamp,
         revival_count: r.revival_count ?? 0,
         extra_lives: r.extra_lives ?? 0,
-        captured_summit: Boolean(r.captured_summit),
-        used_revival_potion: Boolean(r.used_revival_potion),
-        used_attack_potion: Boolean(r.used_attack_potion),
-        max_attack_streak: Boolean(r.max_attack_streak),
+        captured_summit: r.captured_summit ?? false,
+        used_revival_potion: r.used_revival_potion ?? false,
+        used_attack_potion: r.used_attack_potion ?? false,
+        max_attack_streak: r.max_attack_streak ?? false,
         summit_held_seconds: r.summit_held_seconds ?? 0,
 
         // Upgrades
         spirit,
         luck: r.luck ?? 0,
-        specials: Boolean(r.specials),
-        wisdom: Boolean(r.wisdom),
-        diplomacy: Boolean(r.diplomacy),
+        specials: r.specials ?? false,
+        wisdom: r.wisdom ?? false,
+        diplomacy: r.diplomacy ?? false,
 
         // Rewards
         rewards_earned: r.rewards_earned ?? 0,
@@ -570,7 +530,7 @@ app.get("/diplomacy", async (c) => {
       and(
         eq(beasts.prefix, prefix),
         eq(beasts.suffix, suffix),
-        sql`${beast_stats.diplomacy} > 0`
+        eq(beast_stats.diplomacy, true)
       )
     );
 
@@ -621,7 +581,7 @@ app.get("/diplomacy/all", async (c) => {
     })
     .from(beasts)
     .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
-    .where(sql`${beast_stats.diplomacy} > 0`);
+    .where(eq(beast_stats.diplomacy, true));
 
   return c.json(results);
 });
@@ -655,7 +615,7 @@ app.get("/quest-rewards/total", async (c) => {
     .select({ total: sql<number>`coalesce(sum(${quest_rewards_claimed.amount}), 0)` })
     .from(quest_rewards_claimed);
 
-  return c.json({ total: Number(result[0]?.total ?? 0) });
+  return c.json({ total: Number(result[0]?.total ?? 0) / 100 });
 });
 
 /**
@@ -690,7 +650,6 @@ app.get("/", (c) => {
       all: "GET /beasts/all?limit=25&offset=0&prefix=&suffix=&beast_id=&name=&owner=&sort=summit_held_seconds",
       counts: "GET /beasts/stats/counts",
       top: "GET /beasts/stats/top?limit=25&offset=0",
-      top5000_cutoff: "GET /beasts/stats/top5000-cutoff",
     },
     adventurers: {
       by_player: "GET /adventurers/:player",

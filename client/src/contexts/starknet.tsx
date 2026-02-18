@@ -1,14 +1,16 @@
-import {
+import type {
   ChainId,
-  getNetworkConfig,
-  NetworkConfig,
+  NetworkConfig} from "@/utils/networkConfig";
+import {
+  getNetworkConfig
 } from "@/utils/networkConfig";
 import ControllerConnector from "@cartridge/connector/controller";
 import { mainnet, sepolia } from "@starknet-react/chains";
 import { argent, braavos, jsonRpcProvider, StarknetConfig, useInjectedConnectors, voyager } from "@starknet-react/core";
+import type {
+  PropsWithChildren} from "react";
 import {
   createContext,
-  PropsWithChildren,
   useCallback,
   useContext,
   useState
@@ -31,7 +33,6 @@ const cartridgeController =
       slot: controllerConfig.slot,
       preset: controllerConfig.preset,
       chains: controllerConfig.chains,
-      shouldOverridePresetPolicies: true,
       propagateSessionErrors: true,
     })
     : null;
@@ -58,6 +59,10 @@ export function DynamicConnectorProvider({ children }: PropsWithChildren) {
     return { nodeUrl: controllerConfig.chains[0].rpcUrl };
   }, []);
 
+  const allConnectors = cartridgeController
+    ? [...connectors, cartridgeController]
+    : connectors;
+
   return (
     <DynamicConnectorContext.Provider
       value={{
@@ -68,7 +73,7 @@ export function DynamicConnectorProvider({ children }: PropsWithChildren) {
       <StarknetConfig
         chains={[mainnet, sepolia]}
         provider={jsonRpcProvider({ rpc })}
-        connectors={[...connectors, cartridgeController]}
+        connectors={allConnectors}
         explorer={voyager}
         autoConnect
       >

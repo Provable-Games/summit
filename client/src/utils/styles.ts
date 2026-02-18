@@ -47,7 +47,7 @@ export const BeastsCollectedBar = styled(LinearProgress)(({ theme }) => ({
   },
 }));
 
-export const AttackButton = styled(Button)(({ theme }) => ({
+export const AttackButton = styled(Button)(({ theme: _theme }) => ({
   color: 'white',
   backgroundColor: '#fc5c1d',
   borderRadius: '20px',
@@ -63,7 +63,7 @@ export const AttackButton = styled(Button)(({ theme }) => ({
   },
 }));
 
-export const BuyConsumablesButton = styled(Button)(({ theme }) => ({
+export const BuyConsumablesButton = styled(Button)(({ theme: _theme }) => ({
   color: 'white',
   backgroundColor: '#1f8c9b',
   borderRadius: '20px',
@@ -79,7 +79,7 @@ export const BuyConsumablesButton = styled(Button)(({ theme }) => ({
   },
 }));
 
-export const RoundOrangeButton = styled(Button)(({ theme }) => ({
+export const RoundOrangeButton = styled(Button)(({ theme: _theme }) => ({
   color: 'white',
   backgroundColor: '#fc5c1d',
   borderRadius: '100%',
@@ -96,7 +96,7 @@ export const RoundOrangeButton = styled(Button)(({ theme }) => ({
   },
 }));
 
-export const RoundBlueButton = styled(Button)(({ theme }) => ({
+export const RoundBlueButton = styled(Button)(({ theme: _theme }) => ({
   color: 'white',
   backgroundColor: '#1f8c9b',
   borderRadius: '100%',
@@ -128,7 +128,7 @@ export const BonusHealthBar = styled(LinearProgress)(({ theme }) => ({
   },
 }));
 
-export const OriginalHealthBar = styled(LinearProgress)(({ theme }) => ({
+export const OriginalHealthBar = styled(LinearProgress)(({ theme: _theme }) => ({
   height: 12,
   borderRadius: 10,
   width: '100%',

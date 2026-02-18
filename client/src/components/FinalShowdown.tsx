@@ -1,6 +1,7 @@
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { lookupAddressNames } from '@/utils/addressNameCache';
+import type { Summit } from '@/types/game';
 import CrownIcon from '@mui/icons-material/EmojiEvents';
 import TimerIcon from '@mui/icons-material/Timer';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
@@ -12,7 +13,7 @@ import { REWARD_NAME } from '@/contexts/GameDirector';
 const WINNING_SECONDS = 300;
 
 interface FinalShowdownProps {
-  summit: any;
+  summit: Summit | null;
   currentTimestamp: number;
 }
 
@@ -48,6 +49,7 @@ function FinalShowdown({ summit, currentTimestamp }: FinalShowdownProps) {
     if (isComplete) {
       setSummitEnded(true);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isComplete]);
 
   // Fetch holder name

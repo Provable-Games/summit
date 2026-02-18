@@ -1,14 +1,24 @@
 import { useDynamicConnector } from "@/contexts/starknet";
-import { Summit } from "@/types/game";
+import type { Summit } from "@/types/game";
 import { getBeastCurrentLevel, getBeastDetails } from "@/utils/beasts";
 import { parseBalances } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
+
+const hexToFlag = (hex: string | undefined): boolean => parseInt(hex || "0x0", 16) === 1;
+const parseHex = (hex: string | undefined): number => parseInt(hex || "0x0", 16);
+
+type RpcToken = {
+  name: string;
+  address: string;
+  displayDecimals: number;
+  decimals?: number;
+};
 
 export const useStarknetApi = () => {
   const { currentNetworkConfig } = useDynamicConnector();
   const { address } = useAccount();
 
-  const getTokenBalances = async (tokens: any[]): Promise<Record<string, number>> => {
+  const getTokenBalances = async (tokens: RpcToken[]): Promise<Record<string, number>> => {
     const calls = tokens.map((token, i) => ({
       id: i + 1,
       jsonrpc: "2.0",
@@ -34,7 +44,7 @@ export const useStarknetApi = () => {
     return parseBalances(data || [], tokens);
   }
 
-  const getSummitData = async (): Promise<Summit> => {
+  const getSummitData = async (): Promise<Summit | null> => {
     try {
       const response = await fetch(currentNetworkConfig.rpcUrl, {
         method: "POST",
@@ -56,49 +66,53 @@ export const useStarknetApi = () => {
         }),
       });
 
-      const data = await response.json();
-      let beast: any = {
-        id: parseInt(data?.result[0], 16),
-        prefix: parseInt(data?.result[1], 16),
-        suffix: parseInt(data?.result[2], 16),
-        level: parseInt(data?.result[3], 16),
-        health: parseInt(data?.result[4], 16),
-        shiny: parseInt(data?.result[5], 16),
-        animated: parseInt(data?.result[6], 16),
-        token_id: parseInt(data?.result[7], 16),
-        current_health: parseInt(data?.result[8], 16),
-        bonus_health: parseInt(data?.result[9], 16),
-        bonus_xp: parseInt(data?.result[10], 16),
-        attack_streak: parseInt(data?.result[11], 16),
-        last_death_timestamp: parseInt(data?.result[12], 16),
-        revival_count: parseInt(data?.result[13], 16),
-        extra_lives: parseInt(data?.result[14], 16),
-        summit_held_seconds: parseInt(data?.result[15], 16),
-        spirit: parseInt(data?.result[16], 16),
-        luck: parseInt(data?.result[17], 16),
-        specials: Boolean(parseInt(data?.result[18], 16)),
-        wisdom: Boolean(parseInt(data?.result[19], 16)),
-        diplomacy: Boolean(parseInt(data?.result[20], 16)),
-        rewards_earned: parseInt(data?.result[21], 16),
-        rewards_claimed: parseInt(data?.result[22], 16),
-        captured_summit: Boolean(parseInt(data?.result[23], 16)),
-        used_revival_potion: Boolean(parseInt(data?.result[24], 16)),
-        used_attack_potion: Boolean(parseInt(data?.result[25], 16)),
-        max_attack_streak: Boolean(parseInt(data?.result[26], 16)),
+      const data = await response.json() as { result?: string[] };
+      const result = data?.result;
+      if (!Array.isArray(result) || result.length < 31) return null;
+
+      const beast = {
+        id: parseHex(result[0]),
+        prefix: parseHex(result[1]),
+        suffix: parseHex(result[2]),
+        level: parseHex(result[3]),
+        health: parseHex(result[4]),
+        shiny: parseHex(result[5]),
+        animated: parseHex(result[6]),
+        token_id: parseHex(result[7]),
+        current_health: parseHex(result[8]),
+        bonus_health: parseHex(result[9]),
+        bonus_xp: parseHex(result[10]),
+        attack_streak: parseHex(result[11]),
+        last_death_timestamp: parseHex(result[12]),
+        revival_count: parseHex(result[13]),
+        extra_lives: parseHex(result[14]),
+        summit_held_seconds: parseHex(result[15]),
+        spirit: parseHex(result[16]),
+        luck: parseHex(result[17]),
+        specials: hexToFlag(result[18]),
+        wisdom: hexToFlag(result[19]),
+        diplomacy: hexToFlag(result[20]),
+        rewards_earned: parseHex(result[21]),
+        rewards_claimed: parseHex(result[22]),
+        captured_summit: hexToFlag(result[23]),
+        used_revival_potion: hexToFlag(result[24]),
+        used_attack_potion: hexToFlag(result[25]),
+        max_attack_streak: hexToFlag(result[26]),
         kills_claimed: 0,
       }
-      beast.current_level = getBeastCurrentLevel(beast.level, beast.bonus_xp);
+      const current_level = getBeastCurrentLevel(beast.level, beast.bonus_xp);
       
       return {
         beast: {
           ...beast,
-          ...getBeastDetails(beast.id, beast.prefix, beast.suffix, beast.current_level),
+          ...getBeastDetails(beast.id, beast.prefix, beast.suffix, current_level),
+          current_level,
           revival_time: 0,
         },
-        block_timestamp: parseInt(data?.result[27], 16),
-        owner: data?.result[28],
-        poison_count: parseInt(data?.result[29], 16),
-        poison_timestamp: parseInt(data?.result[30], 16),
+        block_timestamp: parseHex(result[27]),
+        owner: result[28] || "",
+        poison_count: parseHex(result[29]),
+        poison_timestamp: parseHex(result[30]),
       }
     } catch (error) {
       console.log('error', error)

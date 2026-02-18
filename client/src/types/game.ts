@@ -96,30 +96,84 @@ export interface Adventurer {
   id: number;
   name: string;
   level: number;
-  metadata: any;
+  metadata: unknown;
   soulbound: boolean;
 }
 
 
 export type selection = [Beast, number, number][];
-export interface GameAction {
-  type: string;
+
+interface BaseGameAction {
   pauseUpdates?: boolean;
-  beasts?: selection;
-  beastId?: number;
-  beastIds?: number[];
-  adventurerIds?: number[];
-  safeAttack?: boolean;
-  vrf?: boolean;
-  stats?: Stats;
-  count?: number;
-  bonusHealth?: number;
-  killTokens?: number;
-  corpseTokens?: number;
-  extraLifePotions?: number;
+}
+
+export type AttackGameAction = BaseGameAction & {
+  type: "attack";
+  beasts: selection;
+  safeAttack: boolean;
+  vrf: boolean;
+  extraLifePotions: number;
   attackPotions?: number;
   revivePotions?: number;
-}
+};
+
+export type AttackUntilCaptureGameAction = BaseGameAction & {
+  type: "attack_until_capture";
+  beasts: selection;
+  extraLifePotions: number;
+};
+
+export type ClaimCorpseRewardGameAction = BaseGameAction & {
+  type: "claim_corpse_reward";
+  adventurerIds: number[];
+};
+
+export type ClaimSkullRewardGameAction = BaseGameAction & {
+  type: "claim_skull_reward";
+  beastIds: number[];
+};
+
+export type ClaimQuestRewardGameAction = BaseGameAction & {
+  type: "claim_quest_reward";
+  beastIds: number[];
+};
+
+export type ClaimSummitRewardGameAction = BaseGameAction & {
+  type: "claim_summit_reward";
+  beastIds: number[];
+};
+
+export type AddExtraLifeGameAction = BaseGameAction & {
+  type: "add_extra_life";
+  beastId: number;
+  extraLifePotions: number;
+};
+
+export type UpgradeBeastGameAction = BaseGameAction & {
+  type: "upgrade_beast";
+  beastId: number;
+  stats: Stats;
+  bonusHealth: number;
+  killTokens: number;
+  corpseTokens: number;
+};
+
+export type ApplyPoisonGameAction = BaseGameAction & {
+  type: "apply_poison";
+  beastId: number;
+  count: number;
+};
+
+export type GameAction =
+  | AttackGameAction
+  | AttackUntilCaptureGameAction
+  | ClaimCorpseRewardGameAction
+  | ClaimSkullRewardGameAction
+  | ClaimQuestRewardGameAction
+  | ClaimSummitRewardGameAction
+  | AddExtraLifeGameAction
+  | UpgradeBeastGameAction
+  | ApplyPoisonGameAction;
 
 // BattleEvent matches Cairo struct - used for transaction event parsing
 export interface BattleEvent {

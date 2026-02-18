@@ -1,7 +1,8 @@
-import {
+import type {
   AttackStrategy,
   ExtraLifeStrategy,
-  PoisonStrategy,
+  PoisonStrategy} from '@/stores/autopilotStore';
+import {
   useAutopilotStore,
 } from '@/stores/autopilotStore';
 import { gameColors } from '@/utils/themes';
@@ -138,6 +139,7 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
   React.useEffect(() => {
     if (!open) return;
     initializeMaxCapsFromBalances(tokenBalances);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, reviveAvailable, attackAvailable, extraLifeAvailable, poisonAvailable]);
 
   // If the user enables a poison strategy and has poison available, default "poison to apply" to 100
@@ -155,6 +157,7 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     } else {
       if (poisonConservativeAmount <= 0) setPoisonConservativeAmount(nextDefault);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, poisonStrategy, poisonAvailable, poisonAggressiveAmount, poisonConservativeAmount]);
 
   // Default other strategy values when the user enables them (but don't overwrite if they've already changed them).
@@ -181,6 +184,7 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
       const nextDefault = Math.min(100, poisonBalance);
       if (poisonConservativeAmount <= 0 && poisonBalance > 0) setPoisonConservativeAmount(nextDefault);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     open,
     extraLifeStrategy,
@@ -206,6 +210,7 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     if (poisonAggressiveAmount > poisonBalance) setPoisonAggressiveAmount(poisonBalance);
     if (poisonConservativeAmount > poisonBalance) setPoisonConservativeAmount(poisonBalance);
     if (poisonTotalMax > poisonBalance) setPoisonTotalMax(poisonBalance);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     open,
     extraLifeAvailable,
@@ -761,7 +766,7 @@ const styles = {
   },
   optionGrid: {
     display: 'grid',
-    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } as any,
+    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } as const,
     gap: 1,
   },
   optionCard: {
@@ -986,4 +991,3 @@ const styles = {
     letterSpacing: '0.5px',
   },
 };
-

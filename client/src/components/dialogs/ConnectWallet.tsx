@@ -4,17 +4,23 @@ import { useEffect } from "react";
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
 import { gameColors } from '@/utils/themes';
 
-function ConnectWallet(props) {
+interface ConnectWalletProps {
+  open: boolean;
+  close: (open: boolean) => void;
+}
+
+function ConnectWallet(props: ConnectWalletProps) {
   const { open, close } = props
   const { connect, connectors } = useConnect();
   const { address } = useAccount()
 
-  let cartridgeConnector = connectors.find(conn => conn.id === "controller")
+  const cartridgeConnector = connectors.find(conn => conn.id === "controller")
 
   useEffect(() => {
     if (address) {
       close(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [address])
 
   return (

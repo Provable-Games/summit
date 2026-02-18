@@ -1,7 +1,8 @@
-import { useSummitApi, LogEntry } from '@/api/summitApi';
+import type { LogEntry } from '@/api/summitApi';
+import { useSummitApi } from '@/api/summitApi';
 import attackPotionIcon from '@/assets/images/attack-potion.png';
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
-import killTokenIcon from '@/assets/images/kill-token.png';
+import killTokenIcon from '@/assets/images/skull-token.png';
 import lifePotionIcon from '@/assets/images/life-potion.png';
 import poisonPotionIcon from '@/assets/images/poison-potion.png';
 import revivePotionIcon from '@/assets/images/revive-potion.png';
@@ -203,7 +204,7 @@ const loadSavedFilters = (): string[] => {
 export default function EventHistoryModal({ open, onClose }: EventHistoryModalProps) {
   const { address } = useAccount();
   const { getLogs } = useSummitApi();
-  const { liveEvents, clearLiveEvents } = useGameStore();
+  const { liveEvents, clearLiveEvents: _clearLiveEvents } = useGameStore();
 
   const [activeTab, setActiveTab] = useState<'all' | 'mine'>('all');
   const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>(loadSavedFilters);
@@ -375,6 +376,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     } finally {
       setLoading(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, selectedSubCategories, activeTab, address, addressNames]);
 
   // Fetch events when filters change
@@ -382,6 +384,7 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
     if (open) {
       fetchEvents();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, page, selectedSubCategories, activeTab]);
 
   // Reset page when filters change

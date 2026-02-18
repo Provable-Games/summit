@@ -3,7 +3,7 @@
  */
 
 import { useDynamicConnector } from "@/contexts/starknet";
-import { Beast, DiplomacyBeast } from "@/types/game";
+import type { Beast, DiplomacyBeast } from "@/types/game";
 import { BEAST_NAMES, BEAST_TIERS, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 
 // Reverse lookup: name -> id
@@ -333,7 +333,7 @@ export const useSummitApi = () => {
       throw new Error(`Failed to fetch quest rewards total: ${response.status}`);
     }
     const data: { total: number } = await response.json();
-    return data.total / 1000;
+    return data.total;
   };
 
   return {

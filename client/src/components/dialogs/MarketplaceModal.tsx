@@ -1,30 +1,32 @@
 import ROUTER_ABI from '@/abi/router-abi.json';
-import { generateSwapCalls, getSwapQuote, SwapQuote, getPoolsForPair, getBestPool, getFullRangeBounds, estimateApy, decodeFee, calculatePairAmount, generateAddLiquidityCalls, getPositionsForOwner, generateWithdrawLiquidityCalls, generateCollectFeesCalls, positionBoundsToContractBounds, discoverPoolFromQuote, getDefaultPoolInfo, PoolInfo, PoolKey, Bounds, EkuboPosition } from '@/api/ekubo';
+import type { SwapCall, SwapQuote } from '@/api/ekubo';
+import { generateSwapCalls, getSwapQuote } from '@/api/ekubo';
 import attackPotionImg from '@/assets/images/attack-potion.png';
 import corpseTokenImg from '@/assets/images/corpse-token.png';
-import killTokenImg from '@/assets/images/kill-token.png';
 import lifePotionImg from '@/assets/images/life-potion.png';
 import poisonPotionImg from '@/assets/images/poison-potion.png';
 import revivePotionImg from '@/assets/images/revive-potion.png';
+import killTokenImg from '@/assets/images/skull-token.png';
+import starkImg from '@/assets/images/stark.svg';
+import usdcImg from '@/assets/images/usdc.svg';
 import { useController } from '@/contexts/controller';
 import { useDynamicConnector } from '@/contexts/starknet';
 import { useStatistics } from '@/contexts/Statistics';
 import { useSystemCalls } from '@/dojo/useSystemCalls';
-import { NETWORKS, TOKEN_ADDRESS } from '@/utils/networkConfig';
+import type { TokenConfig } from '@/utils/networkConfig';
 import { gameColors } from '@/utils/themes';
 import { formatAmount } from '@/utils/utils';
 import AddIcon from '@mui/icons-material/Add';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RemoveIcon from '@mui/icons-material/Remove';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import SavingsIcon from '@mui/icons-material/Savings';
 import SellIcon from '@mui/icons-material/Sell';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import { Box, Button, Dialog, IconButton, InputBase, Menu, MenuItem, Skeleton, Tab, Tabs, Typography } from '@mui/material';
-import { useAccount, useProvider } from '@starknet-react/core';
+import { useProvider } from '@starknet-react/core';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Contract, num } from 'starknet';
+import { Contract } from 'starknet';
 
 interface MarketplaceModalProps {
   open: boolean;
@@ -37,6 +39,15 @@ interface Potion {
   image: string;
   description: string;
   color: string;
+}
+
+interface UserToken {
+  symbol: string;
+  balance: string;
+  rawBalance: number;
+  address: string;
+  decimals: number;
+  displayDecimals: number;
 }
 
 const POTIONS: Potion[] = [
@@ -129,7 +140,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const { tokenBalances, setTokenBalances, fetchPaymentTokenBalances } = useController();
   const { tokenPrices, refreshTokenPrices } = useStatistics();
   const { provider } = useProvider();
-  const { address: accountAddress } = useAccount();
   const { executeAction } = useSystemCalls();
   const [activeTab, setActiveTab] = useState(0);
   const [quantities, setQuantities] = useState<Record<string, number>>(createEmptyQuantities());
@@ -144,53 +154,23 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const [optimisticPrices, setOptimisticPrices] = useState<Record<string, string>>({});
   const [optimisticPriceTimestamps, setOptimisticPriceTimestamps] = useState<Record<string, number>>({});
 
-  // Earn tab state
-  const [selectedEarnToken, setSelectedEarnToken] = useState<string>('ATTACK');
-  const [earnAmount, setEarnAmount] = useState<string>('');
-  const [earnTestUsdManual, setEarnTestUsdManual] = useState<string>('');
-  const [earnPoolData, setEarnPoolData] = useState<PoolInfo | null>(null);
-  const [earnPoolLoading, setEarnPoolLoading] = useState(false);
-  const [earnApy, setEarnApy] = useState<string>('');
-  const [earnInProgress, setEarnInProgress] = useState(false);
-  const [earnAnchorEl, setEarnAnchorEl] = useState<null | HTMLElement>(null);
-
-  // Positions state
-  const [positions, setPositions] = useState<EkuboPosition[]>([]);
-  const [positionsLoading, setPositionsLoading] = useState(false);
-  const [withdrawingPositionId, setWithdrawingPositionId] = useState<string | null>(null);
-  const [collectingFeesPositionId, setCollectingFeesPositionId] = useState<string | null>(null);
-
   const routerContract = useMemo(
     () =>
       new Contract({
         abi: ROUTER_ABI,
-        address:
-          NETWORKS[import.meta.env.VITE_PUBLIC_CHAIN as keyof typeof NETWORKS]
-            .ekuboRouter,
+        address: currentNetworkConfig.ekuboRouter,
         providerOrAccount: provider,
       }),
-    [provider]
+    [currentNetworkConfig.ekuboRouter, provider]
   );
 
-  const testUsdAddress = useMemo(() => {
-    const network = NETWORKS[import.meta.env.VITE_PUBLIC_CHAIN as keyof typeof NETWORKS];
-    return (network as any)?.paymentTokens?.find((t: any) => t.name === 'TEST USD')?.address || '';
-  }, []);
-
-  const positionsAddress = useMemo(() => {
-    const network = NETWORKS[import.meta.env.VITE_PUBLIC_CHAIN as keyof typeof NETWORKS];
-    return (network as any)?.ekuboPositions || '';
-  }, []);
-
   const paymentTokens = useMemo(() => {
-    const network =
-      NETWORKS[import.meta.env.VITE_PUBLIC_CHAIN as keyof typeof NETWORKS];
-    return (network as any)?.paymentTokens || [];
-  }, []);
+    return currentNetworkConfig.paymentTokens;
+  }, [currentNetworkConfig.paymentTokens]);
 
   const userTokens = useMemo(() => {
     return paymentTokens
-      .map((token: any) => ({
+      .map((token: TokenConfig): UserToken => ({
         symbol: token.name,
         balance: formatAmount(tokenBalances[token.name] || 0),
         rawBalance: tokenBalances[token.name] || 0,
@@ -201,12 +181,19 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   }, [paymentTokens, tokenBalances]);
 
   const selectedTokenData = userTokens.find(
-    (t: any) => t.symbol === selectedToken
+    (t) => t.symbol === selectedToken
   );
 
   const selectedReceiveTokenData = userTokens.find(
-    (t: any) => t.symbol === selectedReceiveToken
+    (t) => t.symbol === selectedReceiveToken
   );
+
+  // Token images for payment tokens
+  const tokenImages: Record<string, string> = useMemo(() => ({
+    SURVIVOR: '/images/survivor_token.png',
+    USDC: usdcImg,
+    STRK: starkImg,
+  }), []);
 
   // Get icon for a token symbol (uses POTIONS images when available)
   const getTokenIcon = useCallback((symbol: string) => {
@@ -214,9 +201,13 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     if (potion) {
       return <img src={potion.image} alt={symbol} style={{ width: '20px', height: '20px' }} />;
     }
-    // Fallback icon for tokens without images (like TEST USD)
+    // Check payment token images
+    if (tokenImages[symbol]) {
+      return <img src={tokenImages[symbol]} alt={symbol} style={{ width: '20px', height: '20px' }} />;
+    }
+    // Fallback icon for tokens without images
     return <AttachMoneyIcon sx={{ fontSize: '20px', color: gameColors.yellow }} />;
-  }, []);
+  }, [tokenImages]);
 
   useEffect(() => {
     if (open) {
@@ -233,6 +224,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         }
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
@@ -273,13 +265,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     }, 60000);
 
     return () => clearInterval(intervalId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const totalItems = activeTab === 0
     ? Object.values(quantities).reduce((sum, qty) => sum + qty, 0)
-    : activeTab === 1
-      ? Object.values(sellQuantities).reduce((sum, qty) => sum + qty, 0)
-      : parseFloat(earnAmount) > 0 ? 1 : 0;
+    : Object.values(sellQuantities).reduce((sum, qty) => sum + qty, 0);
   const hasItems = totalItems > 0;
 
   const totalTokenCost = useMemo(() => {
@@ -306,46 +297,15 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     return total;
   }, [sellQuantities, tokenQuotes, activeTab]);
 
-  const canAfford = selectedTokenData && totalTokenCost <= Number(selectedTokenData.rawBalance);
+  const canAfford = Boolean(selectedTokenData) && totalTokenCost <= Number(selectedTokenData?.rawBalance ?? 0);
   const toBaseUnits = (quantity: number) => BigInt(quantity) * 10n ** 18n;
-
-  // Earn tab computed values
-  const earnTokenAddress = useMemo(() => {
-    return currentNetworkConfig.tokens.erc20.find((t: any) => t.name === selectedEarnToken)?.address || '';
-  }, [selectedEarnToken, currentNetworkConfig.tokens.erc20]);
-
-  const earnTokenPrice = useMemo(() => {
-    const price = tokenPrices[selectedEarnToken];
-    return price ? parseFloat(price) : 0;
-  }, [tokenPrices, selectedEarnToken]);
-
-  const earnTestUsdAmount = useMemo(() => {
-    if (earnTestUsdManual) return earnTestUsdManual;
-    const amount = parseFloat(earnAmount);
-    if (!amount) return '';
-    if (!earnTokenPrice) return amount.toFixed(4); // default 1:1 if no price data
-    return calculatePairAmount(amount, earnTokenPrice).toFixed(4);
-  }, [earnAmount, earnTokenPrice, earnTestUsdManual]);
-
-  const earnTokenBalance = useMemo(() => {
-    return tokenBalances[selectedEarnToken] || 0;
-  }, [tokenBalances, selectedEarnToken]);
-
-  const earnTestUsdBalance = useMemo(() => {
-    return tokenBalances['TEST USD'] || 0;
-  }, [tokenBalances]);
-
-  const earnCanAfford = useMemo(() => {
-    const amount = parseFloat(earnAmount);
-    const testUsdNeeded = parseFloat(earnTestUsdAmount);
-    if (!amount || !testUsdNeeded) return true;
-    return amount <= earnTokenBalance && testUsdNeeded <= earnTestUsdBalance;
-  }, [earnAmount, earnTestUsdAmount, earnTokenBalance, earnTestUsdBalance]);
-
-  const earnHasValidInput = useMemo(() => {
-    const amount = parseFloat(earnAmount);
-    return amount > 0;
-  }, [earnAmount]);
+  const getPotionAddress = useCallback(
+    (potionId: string): string =>
+      currentNetworkConfig.tokens.erc20.find((token) => token.name === potionId)?.address ?? '',
+    [currentNetworkConfig.tokens.erc20]
+  );
+  const getErrorMessage = (error: unknown): string =>
+    error instanceof Error ? error.message : String(error ?? '');
 
   const fetchPotionQuote = useCallback(
     async (potionId: string, tokenSymbol: string, quantity: number) => {
@@ -358,7 +318,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       }
 
       const selectedTokenData = userTokens.find(
-        (t: any) => t.symbol === tokenSymbol
+        (token) => token.symbol === tokenSymbol
       );
 
       if (!selectedTokenData?.address) {
@@ -377,12 +337,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       try {
         const quote = await getSwapQuote(
           -toBaseUnits(quantity),
-          currentNetworkConfig.tokens.erc20.find(token => token.name === potionId)?.address!,
+          getPotionAddress(potionId),
           selectedTokenData.address
         );
 
         if (quote) {
-          const rawAmount = (quote.total * -1) / Math.pow(10, selectedTokenData.decimals || 18);
+          const rawAmount = Math.abs(quote.totalDisplay) / Math.pow(10, selectedTokenData.decimals || 18);
           if (rawAmount === 0) {
             setTokenQuotes(prev => ({
               ...prev,
@@ -397,9 +357,9 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             }));
           }
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error fetching quote:', error);
-        const emsg = (error?.message || '').toLowerCase();
+        const emsg = getErrorMessage(error).toLowerCase();
         const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
           ? 'Insufficient liquidity'
           : 'Failed to get quote';
@@ -409,7 +369,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         }));
       }
     },
-    [userTokens, currentNetworkConfig.tokens.erc20]
+    [getPotionAddress, userTokens]
   );
 
   const fetchSellQuote = useCallback(
@@ -423,7 +383,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       }
 
       const receiveTokenData = userTokens.find(
-        (t: any) => t.symbol === tokenSymbol
+        (token) => token.symbol === tokenSymbol
       );
 
       if (!receiveTokenData?.address) {
@@ -434,9 +394,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         return;
       }
 
-      const potionAddress = currentNetworkConfig.tokens.erc20.find(
-        (token: any) => token.name === potionId
-      )?.address!;
+      const potionAddress = getPotionAddress(potionId);
 
       setTokenQuotes(prev => ({
         ...prev,
@@ -451,7 +409,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         );
 
         if (quote) {
-          const rawAmount = quote.total / Math.pow(10, receiveTokenData.decimals || 18);
+          const rawAmount = Math.abs(quote.totalDisplay) / Math.pow(10, receiveTokenData.decimals || 18);
           if (rawAmount === 0) {
             setTokenQuotes(prev => ({
               ...prev,
@@ -471,9 +429,9 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
             [potionId]: { amount: '', loading: false, error: 'No quote available' }
           }));
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error fetching sell quote:', error);
-        const emsg = (error?.message || '').toLowerCase();
+        const emsg = getErrorMessage(error).toLowerCase();
         const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
           ? 'Insufficient liquidity'
           : 'Failed to get quote';
@@ -483,7 +441,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         }));
       }
     },
-    [userTokens, currentNetworkConfig.tokens.erc20]
+    [getPotionAddress, userTokens]
   );
 
   const adjustQuantity = (potionId: string, delta: number) => {
@@ -583,8 +541,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     setQuantities(createEmptyQuantities());
     setSellQuantities(createEmptyQuantities());
     setTokenQuotes(createEmptyTokenQuotesState());
-    setEarnAmount('');
-    setEarnTestUsdManual('');
   };
 
   const applyOptimisticPrice = (
@@ -619,11 +575,11 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     setPurchaseInProgress(true);
 
     try {
-      const calls: any[] = [];
-      const quotedPotions: { id: string; quote: any }[] = [];
+      const calls: SwapCall[] = [];
+      const quotedPotions: { id: string; quote: SwapQuote }[] = [];
 
       for (const potion of POTIONS) {
-        const potionAddress = currentNetworkConfig.tokens.erc20.find(token => token.name === potion.id)?.address!;
+        const potionAddress = getPotionAddress(potion.id);
         const quantity = quantities[potion.id];
         if (quantity > 0 && tokenQuotes[potion.id].amount) {
           let quote = tokenQuotes[potion.id].quote;
@@ -654,7 +610,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       }
 
       if (calls.length > 0) {
-        let result = await executeAction(calls, () => { });
+        const result = await executeAction(calls, () => { });
 
         if (result) {
           // Optimistically update token balances using functional update to avoid stale closure
@@ -690,14 +646,12 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     setSellInProgress(true);
 
     try {
-      const calls: any[] = [];
+      const calls: SwapCall[] = [];
       const tradedPotionIds: string[] = [];
-      const isPotionTokenName = (name: string) => POTIONS.some((p) => p.id === name);
+      const _isPotionTokenName = (name: string) => POTIONS.some((p) => p.id === name);
 
       for (const potion of POTIONS) {
-        const potionAddress = currentNetworkConfig.tokens.erc20.find(
-          (token: any) => token.name === potion.id
-        )?.address!;
+        const potionAddress = getPotionAddress(potion.id);
         const quantity = sellQuantities[potion.id];
 
         if (quantity > 0) {
@@ -775,6 +729,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       const quantity = quantities[potion.id] || 0;
       fetchPotionQuote(potion.id, selectedToken, quantity);
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedToken, activeTab]);
 
   useEffect(() => {
@@ -787,240 +742,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       }
     });
   }, [selectedReceiveToken, fetchSellQuote, activeTab, sellQuantities]);
-
-  // Fetch pool data when earn token changes or tab switches to Earn
-  useEffect(() => {
-    if (activeTab !== 2 || !earnTokenAddress || !testUsdAddress) return;
-
-    let cancelled = false;
-    setEarnPoolLoading(true);
-    setEarnPoolData(null);
-    setEarnApy('');
-
-    (async () => {
-      try {
-        // Try pair API first, fall back to swap quote discovery
-        const pools = await getPoolsForPair(earnTokenAddress, testUsdAddress);
-        if (cancelled) return;
-        let best = getBestPool(pools);
-
-        if (!best) {
-          // Pair API didn't return pools — discover from swap quoter
-          best = await discoverPoolFromQuote(earnTokenAddress, testUsdAddress);
-        }
-
-        if (cancelled) return;
-        if (best) {
-          setEarnPoolData(best);
-          const tvl = parseFloat(best.tvl0_total || '0') + parseFloat(best.tvl1_total || '0');
-          const fees = parseFloat(best.fees0_24h || '0') + parseFloat(best.fees1_24h || '0');
-          const apy = estimateApy(fees, tvl);
-          setEarnApy(apy > 0 ? apy.toFixed(1) : '');
-        }
-      } catch (err) {
-        console.error('Error fetching pool data:', err);
-      } finally {
-        if (!cancelled) setEarnPoolLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [activeTab, selectedEarnToken, earnTokenAddress, testUsdAddress]);
-
-  // Fetch user positions when Earn tab is active
-  const fetchPositions = useCallback(async () => {
-    if (!accountAddress || !positionsAddress) return;
-    setPositionsLoading(true);
-    try {
-      const allPositions = await getPositionsForOwner(accountAddress, positionsAddress);
-      // Filter to only positions involving our game tokens or TEST USD
-      const gameTokenAddresses = new Set(
-        Object.values(TOKEN_ADDRESS).map((a) => a.toLowerCase())
-      );
-      gameTokenAddresses.add(testUsdAddress.toLowerCase());
-      const relevantPositions = allPositions.filter((p) => {
-        const t0 = p.pool_key.token0.toLowerCase();
-        const t1 = p.pool_key.token1.toLowerCase();
-        return gameTokenAddresses.has(t0) || gameTokenAddresses.has(t1);
-      });
-      setPositions(relevantPositions);
-    } catch (err) {
-      console.error('Error fetching positions:', err);
-    } finally {
-      setPositionsLoading(false);
-    }
-  }, [accountAddress, positionsAddress, testUsdAddress]);
-
-  useEffect(() => {
-    if (activeTab === 2 && accountAddress) {
-      fetchPositions();
-    }
-  }, [activeTab, accountAddress, fetchPositions]);
-
-  // Resolve token address to name
-  const resolveTokenName = useCallback((address: string): string => {
-    const addr = address.toLowerCase();
-    const testUsd = testUsdAddress.toLowerCase();
-    if (addr === testUsd) return 'TEST USD';
-
-    const allTokens = [
-      ...currentNetworkConfig.tokens.erc20,
-      ...(paymentTokens || []),
-    ];
-    const found = allTokens.find(
-      (t: any) => t.address.toLowerCase() === addr
-    );
-    return found?.name || `${address.slice(0, 6)}...${address.slice(-4)}`;
-  }, [currentNetworkConfig.tokens.erc20, paymentTokens, testUsdAddress]);
-
-  const handleWithdraw = async (position: EkuboPosition) => {
-    if (!positionsAddress) return;
-    setWithdrawingPositionId(position.id);
-
-    try {
-      const poolKey: PoolKey = {
-        token0: position.pool_key.token0,
-        token1: position.pool_key.token1,
-        fee: position.pool_key.fee,
-        tick_spacing: position.pool_key.tick_spacing || '0x0',
-        extension: position.pool_key.extension || '0x0',
-      };
-
-      const bounds = positionBoundsToContractBounds(
-        position.bounds.lower,
-        position.bounds.upper
-      );
-
-      const liquidity = BigInt(position.liquidity);
-
-      const calls = generateWithdrawLiquidityCalls(
-        positionsAddress,
-        position.id,
-        poolKey,
-        bounds,
-        liquidity,
-        0n, // min_token0 (no slippage protection for simplicity)
-        0n  // min_token1
-      );
-
-      const result = await executeAction(calls, () => {});
-
-      if (result) {
-        // Re-fetch positions to get updated state
-        await fetchPositions();
-        fetchPaymentTokenBalances();
-      }
-    } catch (error) {
-      console.error('Error withdrawing liquidity:', error);
-    } finally {
-      setWithdrawingPositionId(null);
-    }
-  };
-
-  const handleCollectFees = async (position: EkuboPosition) => {
-    if (!positionsAddress) return;
-    setCollectingFeesPositionId(position.id);
-
-    try {
-      const poolKey: PoolKey = {
-        token0: position.pool_key.token0,
-        token1: position.pool_key.token1,
-        fee: position.pool_key.fee,
-        tick_spacing: position.pool_key.tick_spacing || '0x0',
-        extension: position.pool_key.extension || '0x0',
-      };
-
-      const bounds = positionBoundsToContractBounds(
-        position.bounds.lower,
-        position.bounds.upper
-      );
-
-      const calls = generateCollectFeesCalls(
-        positionsAddress,
-        position.id,
-        poolKey,
-        bounds
-      );
-
-      const result = await executeAction(calls, () => {});
-
-      if (result) {
-        await fetchPositions();
-        fetchPaymentTokenBalances();
-      }
-    } catch (error) {
-      console.error('Error collecting fees:', error);
-    } finally {
-      setCollectingFeesPositionId(null);
-    }
-  };
-
-  const handleAddLiquidity = async () => {
-    if (!earnHasValidInput || !earnCanAfford || !positionsAddress) return;
-    setEarnInProgress(true);
-
-    try {
-      const gameTokenAddr = earnTokenAddress;
-      const testUsdAddr = testUsdAddress;
-
-      // Use fetched pool data, or fall back to hardcoded default (0.05% fee tier)
-      const poolData = earnPoolData || getDefaultPoolInfo();
-
-      // Determine token ordering (token0 < token1 by address)
-      const gameTokenBig = BigInt(gameTokenAddr);
-      const testUsdBig = BigInt(testUsdAddr);
-      const isGameToken0 = gameTokenBig < testUsdBig;
-
-      const token0 = isGameToken0 ? gameTokenAddr : testUsdAddr;
-      const token1 = isGameToken0 ? testUsdAddr : gameTokenAddr;
-
-      const poolKey: PoolKey = {
-        token0,
-        token1,
-        fee: poolData.fee,
-        tick_spacing: num.toHex(poolData.tick_spacing),
-        extension: poolData.extension || '0x0',
-      };
-
-      const bounds = getFullRangeBounds(poolData.tick_spacing);
-
-      const gameTokenParsed = parseFloat(earnAmount) || 0;
-      const testUsdParsed = parseFloat(earnTestUsdAmount) || gameTokenParsed;
-      const gameTokenWei = BigInt(Math.floor(gameTokenParsed * 1e18));
-      const testUsdWei = BigInt(Math.floor(testUsdParsed * 1e18));
-
-      const amount0 = isGameToken0 ? gameTokenWei : testUsdWei;
-      const amount1 = isGameToken0 ? testUsdWei : gameTokenWei;
-
-      const calls = generateAddLiquidityCalls(
-        positionsAddress,
-        poolKey,
-        bounds,
-        amount0,
-        amount1,
-        0n
-      );
-
-      const result = await executeAction(calls, () => {});
-
-      if (result) {
-        // Optimistically update balances using functional update to avoid stale closure
-        setTokenBalances((prev: Record<string, number>) => {
-          const updated = { ...prev };
-          updated[selectedEarnToken] = Math.max(0, (updated[selectedEarnToken] || 0) - parseFloat(earnAmount));
-          updated['TEST USD'] = Math.max(0, (updated['TEST USD'] || 0) - parseFloat(earnTestUsdAmount));
-          return updated;
-        });
-        resetAfterAction();
-        // Re-fetch positions to show new position
-        fetchPositions();
-      }
-    } catch (error) {
-      console.error('Error adding liquidity:', error);
-    } finally {
-      setEarnInProgress(false);
-    }
-  };
 
   return (
     <Dialog
@@ -1081,14 +802,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               iconPosition="start"
               sx={styles.tab}
             />
-            {/* Earn tab hidden - not ready yet
-            <Tab
-              label="Earn"
-              icon={<SavingsIcon sx={{ fontSize: '18px' }} />}
-              iconPosition="start"
-              sx={styles.tab}
-            />
-            */}
           </Tabs>
         </Box>
 
@@ -1118,28 +831,33 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                         return 'No liquidity';
                       })()}
                     </Typography>
-                    {tokenQuotes[potion.id]?.quote?.price_impact !== undefined ||
-                      tokenQuotes[potion.id]?.quote?.impact !== undefined || tokenQuotes[potion.id]?.error ? (
-                      <Box
-                        component="span"
-                        sx={{
-                          ml: 1,
-                          px: 0.75,
-                          py: 0.25,
-                          borderRadius: '10px',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          bgcolor: tokenQuotes[potion.id]?.error
-                            ? '#f7b4b4'
-                            : getImpactColor(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact),
-                          color: '#0d1511',
-                        }}
-                      >
-                        {tokenQuotes[potion.id]?.error
-                          ? 'insufficient liquidity'
-                          : formatImpactLabel(tokenQuotes[potion.id].quote.price_impact ?? tokenQuotes[potion.id].quote.impact ?? 0)}
-                      </Box>
-                    ) : null}
+                    {(() => {
+                      const quote = tokenQuotes[potion.id]?.quote;
+                      const quoteError = tokenQuotes[potion.id]?.error;
+                      const impact = quote?.price_impact ?? quote?.impact;
+
+                      if (impact === undefined && !quoteError) return null;
+
+                      return (
+                        <Box
+                          component="span"
+                          sx={{
+                            ml: 1,
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: '10px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            bgcolor: quoteError ? '#f7b4b4' : getImpactColor(impact ?? 0),
+                            color: '#0d1511',
+                          }}
+                        >
+                          {quoteError
+                            ? 'insufficient liquidity'
+                            : formatImpactLabel(impact ?? 0)}
+                        </Box>
+                      );
+                    })()}
                   </Box>
                 </Box>
 
@@ -1176,7 +894,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                 </Box>
               </Box>
             ))
-          ) : activeTab === 1 ? (
+          ) : (
             // Sell Tab
             POTIONS.map((potion) => {
               const potionName = potion.name.toUpperCase().replace(' POTION', '').replace(' TOKEN', '');
@@ -1273,409 +991,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                 </Box>
               );
             })
-          ) : (
-            // Earn Tab
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {/* Token Selector */}
-              <Box sx={styles.potionCard}>
-                <Typography sx={{ ...styles.totalLabel, mb: 0 }}>Select Token</Typography>
-                <Button
-                  variant="outlined"
-                  onClick={(e) => setEarnAnchorEl(e.currentTarget)}
-                  sx={{ ...styles.mobileSelectButton, flex: 1 }}
-                >
-                  <Box sx={{ fontSize: '0.6rem', color: 'white', pt: '2px', display: 'flex', alignItems: 'center' }}>
-                    ▼
-                  </Box>
-                  <Box sx={styles.tokenRow}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <img
-                        src={POTIONS.find(p => p.id === selectedEarnToken)?.image}
-                        alt={selectedEarnToken}
-                        style={{ width: '24px', height: '24px' }}
-                      />
-                      <Typography sx={styles.tokenName}>
-                        {POTIONS.find(p => p.id === selectedEarnToken)?.name || selectedEarnToken}
-                      </Typography>
-                    </Box>
-                    <Typography sx={styles.tokenBalance}>
-                      {formatAmount(earnTokenBalance)}
-                    </Typography>
-                  </Box>
-                </Button>
-
-                <Menu
-                  anchorEl={earnAnchorEl}
-                  open={Boolean(earnAnchorEl)}
-                  onClose={() => setEarnAnchorEl(null)}
-                  slotProps={{
-                    paper: {
-                      sx: {
-                        mt: 0.5,
-                        width: '280px',
-                        maxHeight: '60vh',
-                        overflowY: 'auto',
-                        background: `${gameColors.darkGreen}`,
-                        border: `1px solid ${gameColors.accentGreen}40`,
-                        boxShadow: `0 8px 24px rgba(0,0,0,0.6)`,
-                        zIndex: 9999,
-                      },
-                    },
-                  }}
-                >
-                  {POTIONS.map((potion) => (
-                    <MenuItem
-                      key={potion.id}
-                      onClick={() => {
-                        setSelectedEarnToken(potion.id);
-                        setEarnAnchorEl(null);
-                        setEarnAmount('');
-                      }}
-                      sx={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1.5,
-                        backgroundColor:
-                          potion.id === selectedEarnToken
-                            ? `${gameColors.accentGreen}20`
-                            : 'transparent',
-                        '&:hover': {
-                          backgroundColor:
-                            potion.id === selectedEarnToken
-                              ? `${gameColors.accentGreen}30`
-                              : `${gameColors.accentGreen}10`,
-                        },
-                      }}
-                    >
-                      <img
-                        src={potion.image}
-                        alt={potion.name}
-                        style={{ width: '28px', height: '28px' }}
-                      />
-                      <Box sx={{ flex: 1 }}>
-                        <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>
-                          {potion.name}
-                        </Typography>
-                      </Box>
-                      <Typography sx={{ fontSize: '11px', color: gameColors.yellow, opacity: 0.7 }}>
-                        {formatAmount(tokenBalances[potion.id] || 0)}
-                      </Typography>
-                    </MenuItem>
-                  ))}
-                </Menu>
-              </Box>
-
-              {/* Pool Info */}
-              <Box sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.5,
-                px: 1.5,
-                py: 1,
-                background: `${gameColors.darkGreen}40`,
-                border: `1px solid ${gameColors.accentGreen}20`,
-                borderRadius: '8px',
-              }}>
-                {earnPoolLoading ? (
-                  <Skeleton variant="text" width={200} height={20} />
-                ) : (
-                  <>
-                    <Box component="span" sx={{
-                      px: 1, py: 0.25, borderRadius: '10px', fontSize: '11px',
-                      fontWeight: 700, bgcolor: `${gameColors.accentGreen}30`, color: '#bbb',
-                    }}>
-                      Fee: {earnPoolData ? (decodeFee(earnPoolData.fee) * 100).toFixed(2) : '0.05'}%
-                    </Box>
-                    <Box component="span" sx={{
-                      px: 1, py: 0.25, borderRadius: '10px', fontSize: '11px',
-                      fontWeight: 700,
-                      bgcolor: earnApy ? '#b7f7c830' : `${gameColors.darkGreen}60`,
-                      color: earnApy ? '#b7f7c8' : '#999',
-                    }}>
-                      {earnApy ? `${earnApy}% APY` : 'APY: N/A'}
-                    </Box>
-                    <Box component="span" sx={{
-                      px: 1, py: 0.25, borderRadius: '10px', fontSize: '11px',
-                      fontWeight: 700, bgcolor: `${gameColors.accentGreen}20`, color: '#bbb',
-                    }}>
-                      Full Range
-                    </Box>
-                  </>
-                )}
-              </Box>
-
-              {/* Amount Input */}
-              <Box sx={styles.potionCard}>
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ ...styles.totalLabel, mb: 0.5 }}>
-                    {POTIONS.find(p => p.id === selectedEarnToken)?.name || selectedEarnToken} Amount
-                  </Typography>
-                  <InputBase
-                    value={earnAmount}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^\d*\.?\d*$/.test(val)) {
-                        setEarnAmount(val);
-                      }
-                    }}
-                    placeholder="0"
-                    inputProps={{
-                      inputMode: 'decimal',
-                      style: { textAlign: 'left' }
-                    }}
-                    sx={{
-                      ...styles.quantityInputField,
-                      width: '100%',
-                      fontSize: '18px',
-                      '& input': { textAlign: 'left', padding: '4px 0' },
-                    }}
-                  />
-                  <Typography sx={{ fontSize: '11px', color: '#999', mt: 0.25 }}>
-                    Balance: {formatAmount(earnTokenBalance)}
-                  </Typography>
-                </Box>
-              </Box>
-
-              {/* TEST USD Amount */}
-              <Box sx={styles.potionCard}>
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ ...styles.totalLabel, mb: 0.5 }}>
-                    TEST USD (paired)
-                  </Typography>
-                  <InputBase
-                    value={earnTestUsdAmount}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (/^\d*\.?\d*$/.test(val)) {
-                        setEarnTestUsdManual(val);
-                      }
-                    }}
-                    placeholder="0"
-                    inputProps={{
-                      inputMode: 'decimal',
-                      style: { textAlign: 'left' }
-                    }}
-                    sx={{
-                      ...styles.quantityInputField,
-                      width: '100%',
-                      fontSize: '18px',
-                      '& input': { textAlign: 'left', padding: '4px 0' },
-                    }}
-                  />
-                  <Typography sx={{
-                    fontSize: '11px', mt: 0.25,
-                    color: earnTestUsdAmount && parseFloat(earnTestUsdAmount) > earnTestUsdBalance
-                      ? gameColors.red
-                      : '#999',
-                  }}>
-                    Balance: {formatAmount(earnTestUsdBalance)}
-                    {earnTestUsdAmount && parseFloat(earnTestUsdAmount) > earnTestUsdBalance
-                      ? ' (insufficient)'
-                      : ''}
-                  </Typography>
-                </Box>
-              </Box>
-
-              {/* Your Positions */}
-              {accountAddress && (
-                <Box sx={{ mt: 1 }}>
-                  <Box sx={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    mb: 1,
-                  }}>
-                    <Typography sx={{ fontSize: '13px', fontWeight: 'bold', color: gameColors.yellow, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                      Your Positions
-                    </Typography>
-                    <IconButton
-                      size="small"
-                      onClick={fetchPositions}
-                      disabled={positionsLoading}
-                      sx={{ color: gameColors.accentGreen, '&:hover': { color: gameColors.yellow } }}
-                    >
-                      <RefreshIcon sx={{ fontSize: '16px' }} />
-                    </IconButton>
-                  </Box>
-
-                  {positionsLoading ? (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      <Skeleton variant="rounded" height={80} sx={{ bgcolor: `${gameColors.darkGreen}60` }} />
-                      <Skeleton variant="rounded" height={80} sx={{ bgcolor: `${gameColors.darkGreen}60` }} />
-                    </Box>
-                  ) : positions.length === 0 ? (
-                    <Box sx={{
-                      p: 2, textAlign: 'center',
-                      background: `${gameColors.darkGreen}40`,
-                      border: `1px solid ${gameColors.accentGreen}20`,
-                      borderRadius: '8px',
-                    }}>
-                      <Typography sx={{ fontSize: '12px', color: '#999' }}>
-                        No open positions found
-                      </Typography>
-                    </Box>
-                  ) : (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                      {positions.map((position) => {
-                        const token0Name = resolveTokenName(position.pool_key.token0);
-                        const token1Name = resolveTokenName(position.pool_key.token1);
-                        const feeRate = decodeFee(position.pool_key.fee);
-                        const liquidity = position.liquidity;
-                        const hasLiquidity = BigInt(liquidity) > 0n;
-
-                        // Check if position has accumulated fees
-                        const rewardEntries = Object.entries(position.rewards || {});
-                        const hasFees = rewardEntries.some(
-                          ([, r]) => parseFloat(r.amount) > 0 || parseFloat(r.pending) > 0
-                        );
-
-                        const isWithdrawing = withdrawingPositionId === position.id;
-                        const isCollecting = collectingFeesPositionId === position.id;
-
-                        // Find potion image for display
-                        const potionForToken0 = POTIONS.find(p => {
-                          const tokenAddr = currentNetworkConfig.tokens.erc20.find((t: any) => t.name === p.id)?.address;
-                          return tokenAddr && tokenAddr.toLowerCase() === position.pool_key.token0.toLowerCase();
-                        });
-                        const potionForToken1 = POTIONS.find(p => {
-                          const tokenAddr = currentNetworkConfig.tokens.erc20.find((t: any) => t.name === p.id)?.address;
-                          return tokenAddr && tokenAddr.toLowerCase() === position.pool_key.token1.toLowerCase();
-                        });
-                        const displayPotion = potionForToken0 || potionForToken1;
-
-                        return (
-                          <Box key={position.id} sx={{
-                            ...styles.potionCard,
-                            flexDirection: 'column',
-                            alignItems: 'stretch',
-                            gap: 1,
-                          }}>
-                            {/* Position header */}
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                              {displayPotion && (
-                                <Box sx={{ ...styles.potionImage, width: '40px', height: '40px' }}>
-                                  <img
-                                    src={displayPotion.image}
-                                    alt={displayPotion.name}
-                                    style={{ width: '32px', height: '32px' }}
-                                  />
-                                </Box>
-                              )}
-                              <Box sx={{ flex: 1 }}>
-                                <Typography sx={{ fontSize: '13px', fontWeight: 'bold', color: '#fff' }}>
-                                  {token0Name} / {token1Name}
-                                </Typography>
-                                <Box sx={{ display: 'flex', gap: 0.75, mt: 0.25, flexWrap: 'wrap' }}>
-                                  <Box component="span" sx={{
-                                    px: 0.75, py: 0.15, borderRadius: '8px', fontSize: '10px',
-                                    fontWeight: 700, bgcolor: `${gameColors.accentGreen}30`, color: '#bbb',
-                                  }}>
-                                    Fee: {(feeRate * 100).toFixed(2)}%
-                                  </Box>
-                                  <Box component="span" sx={{
-                                    px: 0.75, py: 0.15, borderRadius: '8px', fontSize: '10px',
-                                    fontWeight: 700, bgcolor: `${gameColors.accentGreen}20`, color: '#bbb',
-                                  }}>
-                                    ID: {parseInt(position.id, 16)}
-                                  </Box>
-                                </Box>
-                              </Box>
-                            </Box>
-
-                            {/* Fees earned */}
-                            {hasFees && (
-                              <Box sx={{
-                                display: 'flex', flexDirection: 'column', gap: 0.25,
-                                px: 1, py: 0.5,
-                                background: `${gameColors.darkGreen}60`,
-                                borderRadius: '6px',
-                              }}>
-                                <Typography sx={{ fontSize: '10px', color: '#999', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                  Earned Fees
-                                </Typography>
-                                {rewardEntries.map(([tokenAddr, reward]) => {
-                                  const total = parseFloat(reward.amount) + parseFloat(reward.pending);
-                                  if (total <= 0) return null;
-                                  const tokenName = resolveTokenName(tokenAddr);
-                                  const displayAmount = total / 1e18;
-                                  return (
-                                    <Typography key={tokenAddr} sx={{ fontSize: '11px', color: '#b7f7c8', fontWeight: 600 }}>
-                                      {formatAmount(displayAmount)} {tokenName}
-                                    </Typography>
-                                  );
-                                })}
-                              </Box>
-                            )}
-
-                            {/* Action buttons */}
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              {hasFees && (
-                                <Button
-                                  size="small"
-                                  disabled={isCollecting || isWithdrawing}
-                                  onClick={() => handleCollectFees(position)}
-                                  sx={{
-                                    flex: 1,
-                                    fontSize: '11px',
-                                    fontWeight: 'bold',
-                                    textTransform: 'uppercase',
-                                    color: '#b7f7c8',
-                                    background: `${gameColors.mediumGreen}60`,
-                                    border: `1px solid ${gameColors.accentGreen}40`,
-                                    borderRadius: '6px',
-                                    py: 0.5,
-                                    '&:hover': {
-                                      background: gameColors.mediumGreen,
-                                      borderColor: gameColors.accentGreen,
-                                    },
-                                    '&:disabled': { opacity: 0.4 },
-                                  }}
-                                >
-                                  {isCollecting ? (
-                                    <Box display="flex" alignItems="baseline" gap={0.5}>
-                                      <span>Claiming</span>
-                                      <div className='dotLoader white' />
-                                    </Box>
-                                  ) : 'Claim Fees'}
-                                </Button>
-                              )}
-                              {hasLiquidity && (
-                                <Button
-                                  size="small"
-                                  disabled={isWithdrawing || isCollecting}
-                                  onClick={() => handleWithdraw(position)}
-                                  sx={{
-                                    flex: 1,
-                                    fontSize: '11px',
-                                    fontWeight: 'bold',
-                                    textTransform: 'uppercase',
-                                    color: '#ffedbb',
-                                    background: `${gameColors.mediumGreen}60`,
-                                    border: `1px solid ${gameColors.accentGreen}40`,
-                                    borderRadius: '6px',
-                                    py: 0.5,
-                                    '&:hover': {
-                                      background: gameColors.mediumGreen,
-                                      borderColor: gameColors.yellow,
-                                    },
-                                    '&:disabled': { opacity: 0.4 },
-                                  }}
-                                >
-                                  {isWithdrawing ? (
-                                    <Box display="flex" alignItems="baseline" gap={0.5}>
-                                      <span>Withdrawing</span>
-                                      <div className='dotLoader white' />
-                                    </Box>
-                                  ) : 'Withdraw All'}
-                                </Button>
-                              )}
-                            </Box>
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                  )}
-                </Box>
-              )}
-            </Box>
           )}
         </Box>
 
@@ -1742,40 +1057,42 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       },
                     }}
                   >
-                    {userTokens.map((token: any) => (
-                      <MenuItem
-                        key={token.symbol}
-                        onClick={() => handleTokenSelect(token.symbol)}
-                        sx={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          gap: 1,
-                          backgroundColor:
-                            token.symbol === selectedToken
-                              ? `${gameColors.accentGreen}20`
-                              : 'transparent',
-                          '&:hover': {
+                    {userTokens
+                      .filter((token) => token.rawBalance > 0)
+                      .map((token) => (
+                        <MenuItem
+                          key={token.symbol}
+                          onClick={() => handleTokenSelect(token.symbol)}
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            gap: 1,
                             backgroundColor:
                               token.symbol === selectedToken
-                                ? `${gameColors.accentGreen}30`
-                                : `${gameColors.accentGreen}10`,
-                          },
-                        }}
-                      >
-                        <Box sx={styles.tokenRow}>
-                          <Box sx={styles.tokenLeft}>
-                            {getTokenIcon(token.symbol)}
-                            <Typography sx={styles.tokenName}>
-                              {token.symbol}
+                                ? `${gameColors.accentGreen}20`
+                                : 'transparent',
+                            '&:hover': {
+                              backgroundColor:
+                                token.symbol === selectedToken
+                                  ? `${gameColors.accentGreen}30`
+                                  : `${gameColors.accentGreen}10`,
+                            },
+                          }}
+                        >
+                          <Box sx={styles.tokenRow}>
+                            <Box sx={styles.tokenLeft}>
+                              {getTokenIcon(token.symbol)}
+                              <Typography sx={styles.tokenName}>
+                                {token.symbol}
+                              </Typography>
+                            </Box>
+                            <Typography sx={styles.tokenBalance}>
+                              {token.balance}
                             </Typography>
                           </Box>
-                          <Typography sx={styles.tokenBalance}>
-                            {token.balance}
-                          </Typography>
-                        </Box>
-                      </MenuItem>
-                    ))}
+                        </MenuItem>
+                      ))}
                   </Menu>
                 </Box>
 
@@ -1817,7 +1134,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                 )}
               </Button>
             </>
-          ) : activeTab === 1 ? (
+          ) : (
             // Sell Tab Footer
             <>
               <Box sx={styles.summary}>
@@ -1874,7 +1191,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                       },
                     }}
                   >
-                    {userTokens.map((token: any) => (
+                    {userTokens.map((token) => (
                       <MenuItem
                         key={token.symbol}
                         onClick={() => handleReceiveTokenSelect(token.symbol)}
@@ -1943,41 +1260,6 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                   <Typography sx={styles.purchaseButtonText}>SELECT ITEMS TO SELL</Typography>
                 ) : (
                   <Typography sx={styles.purchaseButtonText}>SELL NOW</Typography>
-                )}
-              </Button>
-            </>
-          ) : (
-            // Earn Tab Footer
-            <>
-              <Box sx={styles.summary}>
-                <Box sx={styles.totalInfo}>
-                  {earnHasValidInput && earnTestUsdAmount && (
-                    <Typography sx={{ fontSize: '12px', color: '#bbb', textAlign: 'center' }}>
-                      Deposit {parseFloat(earnAmount).toFixed(2)} {POTIONS.find(p => p.id === selectedEarnToken)?.name} + {earnTestUsdAmount} TEST USD
-                    </Typography>
-                  )}
-                </Box>
-              </Box>
-
-              <Button
-                disabled={earnInProgress || !earnHasValidInput || !earnCanAfford}
-                onClick={handleAddLiquidity}
-                sx={[
-                  styles.purchaseButton,
-                  earnHasValidInput && earnCanAfford && styles.purchaseButtonActive
-                ]}
-              >
-                {earnInProgress ? (
-                  <Box display={'flex'} alignItems={'baseline'} gap={1}>
-                    <Typography sx={styles.purchaseButtonText}>ADDING LIQUIDITY</Typography>
-                    <div className='dotLoader white' />
-                  </Box>
-                ) : !earnCanAfford && earnHasValidInput ? (
-                  <Typography sx={styles.purchaseButtonText}>INSUFFICIENT BALANCE</Typography>
-                ) : !earnHasValidInput ? (
-                  <Typography sx={styles.purchaseButtonText}>ENTER AMOUNT</Typography>
-                ) : (
-                  <Typography sx={styles.purchaseButtonText}>ADD LIQUIDITY</Typography>
                 )}
               </Button>
             </>

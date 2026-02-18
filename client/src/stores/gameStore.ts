@@ -1,11 +1,28 @@
 import { create } from 'zustand';
-import { Summit, Beast, Adventurer, BattleEvent, SpectatorBattleEvent, Leaderboard, PoisonEvent, selection } from '@/types/game';
-import { LogEntry } from '@/api/summitApi';
+import type { Summit, Beast, Adventurer, BattleEvent, SpectatorBattleEvent, Leaderboard, PoisonEvent, selection } from '@/types/game';
+import type { LogEntry } from '@/api/summitApi';
 
 export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'seconds held';
 export type BeastTypeFilter = 'all' | 'strong';
 
 const MAX_LIVE_EVENTS = 100;
+
+const getSavedSortMethod = (): SortMethod => {
+  if (typeof globalThis.localStorage === 'undefined') {
+    return 'recommended';
+  }
+
+  const saved = globalThis.localStorage.getItem('beastSortMethod');
+  return (saved as SortMethod) || 'recommended';
+};
+
+const persistSortMethod = (sortMethod: SortMethod): void => {
+  if (typeof globalThis.localStorage === 'undefined') {
+    return;
+  }
+
+  globalThis.localStorage.setItem('beastSortMethod', sortMethod);
+};
 
 export type NotificationType =
   // Battle events
@@ -101,7 +118,7 @@ interface GameState {
   disconnect: () => void;
 }
 
-export const useGameStore = create<GameState>((set, get) => ({
+export const useGameStore = create<GameState>((set, _get) => ({
   summit: null,
   summitEnded: false,
   leaderboard: [],
@@ -128,10 +145,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   // Beast Collection Filters - Default Values
   hideDeadBeasts: false,
   hideTop5000: false,
-  sortMethod: (() => {
-    const saved = localStorage.getItem('beastSortMethod');
-    return (saved as SortMethod) || 'recommended';
-  })(),
+  sortMethod: getSavedSortMethod(),
   typeFilter: 'all',
   nameMatchFilter: false,
 
@@ -213,7 +227,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   setHideDeadBeasts: (hideDeadBeasts: boolean) => set({ hideDeadBeasts }),
   setHideTop5000: (hideTop5000: boolean) => set({ hideTop5000 }),
   setSortMethod: (sortMethod: SortMethod) => {
-    localStorage.setItem('beastSortMethod', sortMethod);
+    persistSortMethod(sortMethod);
     set({ sortMethod });
   },
   setTypeFilter: (typeFilter: BeastTypeFilter) => set({ typeFilter }),

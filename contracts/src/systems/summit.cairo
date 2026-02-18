@@ -30,7 +30,6 @@ pub trait ISummitSystem<T> {
     fn set_skull_token_address(ref self: T, skull_token_address: ContractAddress);
     fn set_corpse_token_address(ref self: T, corpse_token_address: ContractAddress);
     fn withdraw_funds(ref self: T, token_address: ContractAddress, amount: u256);
-    fn emit_corpse_event(ref self: T, adventurer_ids: Span<u64>, corpse_amount: u32, player: ContractAddress);
 
     fn get_summit_data(ref self: T) -> (Beast, u64, ContractAddress, u16, u64, felt252);
     fn get_summit_beast_token_id(self: @T) -> u32;
@@ -42,6 +41,13 @@ pub trait ISummitSystem<T> {
     fn get_terminal_timestamp(self: @T) -> u64;
     fn get_summit_duration_seconds(self: @T) -> u64;
     fn get_summit_reward_amount_per_second(self: @T) -> u128;
+    fn get_diplomacy_reward_amount_per_second(self: @T) -> u128;
+
+    fn get_diplomacy_beast(self: @T, specials_hash: felt252, index: u8) -> u32;
+    fn get_diplomacy_count(self: @T, specials_hash: felt252) -> u8;
+    fn get_quest_rewards_claimed(self: @T, beast_token_id: u32) -> u8;
+    fn get_quest_rewards_total_amount(self: @T) -> u128;
+    fn get_quest_rewards_total_claimed(self: @T) -> u128;
 
     fn get_dungeon_address(self: @T) -> ContractAddress;
     fn get_beast_address(self: @T) -> ContractAddress;
@@ -64,10 +70,8 @@ pub mod summit_systems {
     use openzeppelin_access::ownable::OwnableComponent;
     use openzeppelin_interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use openzeppelin_interfaces::erc721::{IERC721Dispatcher, IERC721DispatcherTrait};
-    use openzeppelin_interfaces::upgrades::IUpgradeable;
-    use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
-    use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
+    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
     use summit::constants::{
         BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_ATTRIBUTES, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS,
         BEAST_MAX_EXTRA_LIVES, DAY_SECONDS, DIPLOMACY_COST, MAX_REVIVAL_COUNT, MAX_U32, MINIMUM_DAMAGE, SPECIALS_COST,
@@ -78,28 +82,22 @@ pub mod summit_systems {
     use summit::logic::{beast_utils, combat, poison, quest, revival};
     use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, PackableLiveStatsStorePacking, Stats};
     use summit::models::events::{
-        BattleEvent, BeastUpdatesEvent, CorpseEvent, LiveBeastStatsEvent, PoisonEvent, QuestRewardsClaimedEvent,
-        RewardsClaimedEvent, RewardsEarnedEvent,
+        BattleEvent, BeastUpdatesEvent, LiveBeastStatsEvent, PoisonEvent, QuestRewardsClaimedEvent, RewardsClaimedEvent,
+        RewardsEarnedEvent,
     };
     use summit::vrf::VRFImpl;
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
-    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     // Ownable Mixin
     #[abi(embed_v0)]
     impl OwnableMixinImpl = OwnableComponent::OwnableMixinImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
 
-    // Upgradeable
-    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
-
     #[storage]
     struct Storage {
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
-        #[substorage(v0)]
-        upgradeable: UpgradeableComponent::Storage,
         summit_beast_token_id: u32,
         live_beast_stats: Map<u32, felt252>,
         poison_state: felt252, // Packed poison state: timestamp (64 bits) | count (16 bits)
@@ -125,6 +123,8 @@ pub mod summit_systems {
         poison_potion_dispatcher: SummitERC20Dispatcher,
         skull_token_dispatcher: SummitERC20Dispatcher,
         corpse_token_dispatcher: SummitERC20Dispatcher,
+        // IMPORTANT: append-only storage. New fields must be added at the end.
+        diplomacy_reward_amount_per_second: u128,
     }
 
     #[event]
@@ -132,15 +132,12 @@ pub mod summit_systems {
     enum Event {
         #[flat]
         OwnableEvent: OwnableComponent::Event,
-        #[flat]
-        UpgradeableEvent: UpgradeableComponent::Event,
         LiveBeastStatsEvent: LiveBeastStatsEvent,
         BattleEvent: BattleEvent,
         BeastUpdatesEvent: BeastUpdatesEvent,
         RewardsEarnedEvent: RewardsEarnedEvent,
         RewardsClaimedEvent: RewardsClaimedEvent,
         PoisonEvent: PoisonEvent,
-        CorpseEvent: CorpseEvent,
         QuestRewardsClaimedEvent: QuestRewardsClaimedEvent,
     }
 
@@ -151,6 +148,7 @@ pub mod summit_systems {
         start_timestamp: u64,
         summit_duration_seconds: u64,
         summit_reward_amount_per_second: u128,
+        diplomacy_reward_amount_per_second: u128,
         quest_rewards_total_amount: u128,
         dungeon_address: ContractAddress,
         beast_address: ContractAddress,
@@ -167,6 +165,7 @@ pub mod summit_systems {
         self.start_timestamp.write(start_timestamp);
         self.summit_duration_seconds.write(summit_duration_seconds);
         self.summit_reward_amount_per_second.write(summit_reward_amount_per_second);
+        self.diplomacy_reward_amount_per_second.write(diplomacy_reward_amount_per_second);
         self.quest_rewards_total_amount.write(quest_rewards_total_amount);
         self.dungeon_address.write(dungeon_address);
         self.beast_dispatcher.write(IERC721Dispatcher { contract_address: beast_address });
@@ -223,9 +222,8 @@ pub mod summit_systems {
             let mut total_claimable: u32 = 0;
             let mut beast_updates: Array<felt252> = array![];
 
-            let mut i = 0;
-            while i < beast_token_ids.len() {
-                let beast_token_id = *beast_token_ids.at(i);
+            for beast_token_id_ref in beast_token_ids {
+                let beast_token_id = *beast_token_id_ref;
 
                 // Verify caller owns the beast
                 let beast_owner = beast_dispatcher.owner_of(beast_token_id.into());
@@ -246,8 +244,6 @@ pub mod summit_systems {
                     let packed = self._save_live_stats(beast_live_stats);
                     beast_updates.append(packed);
                 }
-
-                i += 1;
             }
 
             assert!(total_claimable > 0, "No rewards to claim");
@@ -276,9 +272,8 @@ pub mod summit_systems {
             let mut total_claimable: u128 = 0;
             let mut quest_rewards_claimed: Array<felt252> = array![];
 
-            let mut i = 0;
-            while i < beast_token_ids.len() {
-                let beast_token_id = *beast_token_ids.at(i);
+            for beast_token_id_ref in beast_token_ids {
+                let beast_token_id = *beast_token_id_ref;
 
                 // Verify caller owns the beast
                 let beast_owner = beast_dispatcher.owner_of(beast_token_id.into());
@@ -294,22 +289,23 @@ pub mod summit_systems {
                     self.quest_rewards_claimed.entry(beast_token_id).write(quest_rewards);
                     quest_rewards_claimed.append(quest::pack_quest_rewards_claimed(beast_token_id, quest_rewards));
                 }
-
-                i += 1;
             }
 
             assert!(total_claimable > 0, "No quest rewards to claim");
 
-            let claimable_amount = if quest_rewards_total_claimed + total_claimable > quest_rewards_total_amount {
+            let total_claimable_tokens = total_claimable * 10_000_000_000_000_000;
+
+            let claimable_tokens = if quest_rewards_total_claimed
+                + total_claimable_tokens > quest_rewards_total_amount {
                 quest_rewards_total_amount - quest_rewards_total_claimed
             } else {
-                total_claimable
+                total_claimable_tokens
             };
 
-            self.quest_rewards_total_claimed.write(quest_rewards_total_claimed + claimable_amount);
+            self.quest_rewards_total_claimed.write(quest_rewards_total_claimed + claimable_tokens);
 
             // Transfer rewards to caller
-            let transfer_amount: u256 = claimable_amount.into() * 10_000_000_000_000_000;
+            let transfer_amount: u256 = claimable_tokens.into();
             self.reward_dispatcher.read().transfer(caller, transfer_amount);
 
             // Emit events - use slice() to avoid copying
@@ -425,7 +421,7 @@ pub mod summit_systems {
 
             let caller = get_caller_address();
             let summit_beast_token_id = self.summit_beast_token_id.read();
-            assert(beast_token_id == summit_beast_token_id, errors::SUMMIT_BEAST_CHANGED);
+            assert(beast_token_id == summit_beast_token_id, 'Not summit beast');
 
             let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
             let mut beast = InternalSummitImpl::_get_beast(@self, beast_token_id, beast_nft_dispatcher);
@@ -518,14 +514,6 @@ pub mod summit_systems {
             token.transfer(self.ownable.Ownable_owner.read(), amount);
         }
 
-        fn emit_corpse_event(
-            ref self: ContractState, adventurer_ids: Span<u64>, corpse_amount: u32, player: ContractAddress,
-        ) {
-            let corpse_address = self.corpse_token_dispatcher.read().contract_address;
-            assert(corpse_address == starknet::get_caller_address(), 'Invalid caller');
-            self.emit(CorpseEvent { adventurer_ids, corpse_amount, player });
-        }
-
         fn get_start_timestamp(self: @ContractState) -> u64 {
             self.start_timestamp.read()
         }
@@ -540,6 +528,10 @@ pub mod summit_systems {
 
         fn get_summit_reward_amount_per_second(self: @ContractState) -> u128 {
             self.summit_reward_amount_per_second.read()
+        }
+
+        fn get_diplomacy_reward_amount_per_second(self: @ContractState) -> u128 {
+            self.diplomacy_reward_amount_per_second.read()
         }
 
         fn get_summit_data(ref self: ContractState) -> (Beast, u64, ContractAddress, u16, u64, felt252) {
@@ -572,15 +564,33 @@ pub mod summit_systems {
 
         fn get_live_stats(self: @ContractState, beast_token_ids: Span<u32>) -> Span<LiveBeastStats> {
             let mut live_stats = array![];
-            let mut i = 0;
-            while i < beast_token_ids.len() {
-                let token_id = *beast_token_ids.at(i);
+            for token_id_ref in beast_token_ids {
+                let token_id = *token_id_ref;
                 let packed = self.live_beast_stats.entry(token_id).read();
                 let live_stat: LiveBeastStats = PackableLiveStatsStorePacking::unpack(packed);
                 live_stats.append(live_stat);
-                i += 1;
             }
             live_stats.span()
+        }
+
+        fn get_diplomacy_beast(self: @ContractState, specials_hash: felt252, index: u8) -> u32 {
+            self.diplomacy_beast.entry(specials_hash).entry(index).read()
+        }
+
+        fn get_diplomacy_count(self: @ContractState, specials_hash: felt252) -> u8 {
+            self.diplomacy_count.entry(specials_hash).read()
+        }
+
+        fn get_quest_rewards_claimed(self: @ContractState, beast_token_id: u32) -> u8 {
+            self.quest_rewards_claimed.entry(beast_token_id).read()
+        }
+
+        fn get_quest_rewards_total_amount(self: @ContractState) -> u128 {
+            self.quest_rewards_total_amount.read()
+        }
+
+        fn get_quest_rewards_total_claimed(self: @ContractState) -> u128 {
+            self.quest_rewards_total_claimed.read()
         }
 
         fn get_dungeon_address(self: @ContractState) -> ContractAddress {
@@ -627,8 +637,10 @@ pub mod summit_systems {
     #[generate_trait]
     pub impl InternalSummitImpl of InternalSummitUtils {
         fn _summit_playable(self: @ContractState) -> bool {
-            let current_timestamp = get_block_timestamp();
-            current_timestamp < self.terminal_timestamp.read()
+            let terminal_timestamp = self.terminal_timestamp.read();
+            let summit_beast_token_id = self.summit_beast_token_id.read();
+            let taken_at = self.summit_history.entry(summit_beast_token_id).read();
+            terminal_timestamp == 0 || taken_at < terminal_timestamp
         }
 
         /// @title get_beast
@@ -694,20 +706,23 @@ pub mod summit_systems {
             if time_on_summit > 0 {
                 beast.live.summit_held_seconds += time_on_summit.try_into().unwrap();
                 let total_reward_amount = time_on_summit.into() * self.summit_reward_amount_per_second.read();
-                let diplomacy_reward_amount = total_reward_amount / 100;
+                let mut diplomacy_reward_amount_per_beast = time_on_summit.into()
+                    * self.diplomacy_reward_amount_per_second.read();
 
                 let specials_hash = Self::_get_specials_hash(beast.fixed.prefix, beast.fixed.suffix);
                 let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
                 if diplomacy_count > 0 {
-                    let diplomacy_reward_amount_u32: u32 = (diplomacy_reward_amount / 10_000_000_000_000)
+                    // Clamp diplomacy payout so total diplomacy rewards never exceed total summit rewards.
+                    let max_diplomacy_reward_amount_per_beast = total_reward_amount / diplomacy_count.into();
+                    if diplomacy_reward_amount_per_beast > max_diplomacy_reward_amount_per_beast {
+                        diplomacy_reward_amount_per_beast = max_diplomacy_reward_amount_per_beast;
+                    }
+
+                    let diplomacy_reward_amount_u32: u32 = (diplomacy_reward_amount_per_beast / 10_000_000_000_000)
                         .try_into()
                         .unwrap();
                     let mut index = 0;
-                    loop {
-                        if index >= diplomacy_count {
-                            break;
-                        }
-
+                    while index < diplomacy_count {
                         let diplomacy_beast_token_id = self.diplomacy_beast.entry(specials_hash).entry(index).read();
                         let mut diplomacy_live_stats = Self::_get_live_stats(@self, diplomacy_beast_token_id);
                         diplomacy_live_stats.rewards_earned += diplomacy_reward_amount_u32;
@@ -724,7 +739,8 @@ pub mod summit_systems {
                     }
                 }
 
-                let summit_reward_amount = total_reward_amount - (diplomacy_reward_amount * diplomacy_count.into());
+                let total_diplomacy_reward_amount = diplomacy_reward_amount_per_beast * diplomacy_count.into();
+                let summit_reward_amount = total_reward_amount - total_diplomacy_reward_amount;
 
                 // Store rewards earned with 13 decimals removed
                 let reward_amount_u32: u32 = (summit_reward_amount / 10_000_000_000_000).try_into().unwrap();
@@ -789,9 +805,8 @@ pub mod summit_systems {
             let mut total_attack_potions: u32 = 0;
             let mut remaining_revival_potions = revival_potions;
             let mut beast_attacked = false;
-            let mut i = 0;
-            while (i < attacking_beasts.len()) {
-                let (attacking_beast_token_id, attack_count, attack_potions) = *attacking_beasts.at(i);
+            for attacking_beast_entry in attacking_beasts {
+                let (attacking_beast_token_id, attack_count, attack_potions) = *attacking_beast_entry;
 
                 assert!(attack_count > 0, "Attack count must be greater than 0");
                 // assert the caller owns the beast they attacking with
@@ -805,7 +820,6 @@ pub mod summit_systems {
                     if safe_attack {
                         assert!(false, "Beast {} has been killed in the last day", attacking_beast_token_id);
                     } else {
-                        i += 1;
                         continue;
                     }
                 }
@@ -839,8 +853,7 @@ pub mod summit_systems {
                     attacking_beast.live.quest.used_attack_potion = 1;
                 }
 
-                let mut attack_index = 0;
-                while (attack_index < attack_count) {
+                for attack_index in 0_u16..attack_count {
                     // check if it needs revival potions
                     let potions_required = Self::_revival_potions_required(@self, attacking_beast);
                     let potions_required_u32: u32 = potions_required.into();
@@ -882,12 +895,7 @@ pub mod summit_systems {
                     let mut critical_counter_attack_damage = 0;
 
                     // loop until the attacking beast is dead or the summit beast is dead
-                    loop {
-                        // if either beast is dead, break
-                        if attacking_beast.live.current_health == 0 || defending_beast.live.current_health == 0 {
-                            break;
-                        }
-
+                    while attacking_beast.live.current_health != 0 && defending_beast.live.current_health != 0 {
                         let (_, attacker_crit_hit_rnd, defender_crit_hit_rnd, _) = Self::_get_battle_randomness(
                             attacking_beast_token_id,
                             random_seed,
@@ -1035,12 +1043,10 @@ pub mod summit_systems {
 
                         break;
                     }
-                    attack_index += 1;
                 }
                 if (defending_beast.live.current_health == 0) {
                     break;
                 }
-                i += 1;
             }
 
             assert(beast_attacked, 'No beast attacked');
@@ -1177,12 +1183,7 @@ pub mod summit_systems {
 
             let mut index = 0;
             let mut bonus: u16 = 0;
-
-            loop {
-                if index >= diplomacy_count {
-                    break;
-                }
-
+            while index < diplomacy_count {
                 let diplomacy_beast_token_id = self.diplomacy_beast.entry(specials_hash).entry(index).read();
 
                 if diplomacy_beast_token_id != beast.live.token_id {
@@ -1196,14 +1197,6 @@ pub mod summit_systems {
             }
 
             (bonus / 250).try_into().unwrap()
-        }
-    }
-
-    #[abi(embed_v0)]
-    impl UpgradeableImpl of IUpgradeable<ContractState> {
-        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
-            self.ownable.assert_only_owner();
-            self.upgradeable.upgrade(new_class_hash);
         }
     }
 }

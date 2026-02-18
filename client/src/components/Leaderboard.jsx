@@ -1,13 +1,14 @@
 import { useSummitApi } from '@/api/summitApi';
-import { START_TIMESTAMP, SUMMIT_DURATION_SECONDS, SUMMIT_REWARDS_PER_SECOND } from '@/contexts/GameDirector';
+import { DIPLOMACY_REWARDS_PER_SECOND, SUMMIT_REWARDS_PER_SECOND } from '@/contexts/GameDirector';
 import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
 import { lookupAddressNames } from '@/utils/addressNameCache';
+import { SUMMIT_END_TIMESTAMP, isSummitOver } from '@/utils/summitRewards';
 import { gameColors } from '@/utils/themes';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { Box, IconButton, Typography } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { addAddressPadding } from 'starknet';
 import { DiplomacyPopover } from './DiplomacyPopover';
 import RewardsRemainingBar from './RewardsRemainingBar';
@@ -21,6 +22,17 @@ function Leaderboard() {
   const [currentTimestamp, setCurrentTimestamp] = useState(() => Math.floor(Date.now() / 1000))
   const [summitOwnerRank, setSummitOwnerRank] = useState(null)
   const [diplomacyAnchor, setDiplomacyAnchor] = useState(null)
+  const getLeaderboardRef = useRef(getLeaderboard)
+
+  const summitTokenId = summit?.beast?.token_id
+  const summitOwner = summit?.owner ?? null
+  const summitBlockTimestamp = summit?.block_timestamp ?? null
+  const summitDiplomacyBeasts = summit?.diplomacy?.beasts
+  const summitBeastHasDiplomacy = Boolean(summit?.beast?.diplomacy)
+
+  // Don't show summit owner row if they took summit after the end time
+  const summitTakenAfterEnd = summitBlockTimestamp && summitBlockTimestamp > SUMMIT_END_TIMESTAMP
+  const summitEnded = isSummitOver(currentTimestamp)
 
   // Update current timestamp every second
   useEffect(() => {
@@ -32,9 +44,15 @@ function Leaderboard() {
   }, [])
 
   useEffect(() => {
+    getLeaderboardRef.current = getLeaderboard
+  }, [getLeaderboard])
+
+  useEffect(() => {
     const fetchLeaderboard = async () => {
+      setLoadingLeaderboard(true)
+
       try {
-        const data = await getLeaderboard()
+        const data = await getLeaderboardRef.current()
         setLeaderboard(data)
 
         // Fetch names only for top 5 and summit owner (with caching)
@@ -46,15 +64,15 @@ function Leaderboard() {
         });
 
         // Add summit owner if exists
-        if (summit?.owner) {
-          addressesToLookup.push(summit.owner);
+        if (summitOwner) {
+          addressesToLookup.push(summitOwner);
         }
 
         // Add diplomacy beast owners
-        if (summit?.diplomacy?.beasts) {
-          summit.diplomacy.beasts.forEach(beast => {
-            if (beast.owner) addressesToLookup.push(beast.owner);
-          });
+        if (summitDiplomacyBeasts) {
+          summitDiplomacyBeasts.forEach(beast => {
+            if (beast.owner) addressesToLookup.push(beast.owner)
+          })
         }
 
         if (addressesToLookup.length > 0) {
@@ -78,23 +96,23 @@ function Leaderboard() {
     }
 
     fetchLeaderboard()
-  }, [summit?.beast?.token_id, summit?.owner, summit?.diplomacy?.beasts?.length])
+  }, [setLeaderboard, summitTokenId, summitOwner, summitDiplomacyBeasts])
 
   // Calculate summit owner's live score and rank
   useEffect(() => {
-    if (!summit?.owner || !summit?.block_timestamp || !currentTimestamp || leaderboard.length === 0) {
+    if (!summitOwner || !summitBlockTimestamp || !currentTimestamp || leaderboard.length === 0) {
       setSummitOwnerRank(null)
       return
     }
 
     // Calculate rewards from seconds held
-    const secondsHeld = Math.max(0, currentTimestamp - summit.block_timestamp)
-    const diplomacyCount = (summit?.diplomacy?.beasts.length || 0) - (summit.beast.diplomacy ? 1 : 0);
-    const diplomacyRewardPerSecond = SUMMIT_REWARDS_PER_SECOND / 100;
+    const secondsHeld = Math.max(0, currentTimestamp - summitBlockTimestamp)
+    const diplomacyCount = (summitDiplomacyBeasts?.length || 0) - (summitBeastHasDiplomacy ? 1 : 0);
+    const diplomacyRewardPerSecond = DIPLOMACY_REWARDS_PER_SECOND;
     const diplomacyRewards = diplomacyRewardPerSecond * secondsHeld * diplomacyCount;
 
     // Find summit owner in leaderboard
-    const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summit.owner))
+    const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summitOwner))
     const gainedSince = (secondsHeld * SUMMIT_REWARDS_PER_SECOND) - diplomacyRewards;
     const score = (player?.amount || 0) + gainedSince;
 
@@ -108,7 +126,7 @@ function Leaderboard() {
       gainedSince: gainedSince,
       diplomacyCount: diplomacyCount,
     })
-  }, [summit?.owner, summit?.beast?.token_id, summit?.block_timestamp, summit?.diplomacy, currentTimestamp, leaderboard])
+  }, [summitOwner, summitBlockTimestamp, summitDiplomacyBeasts, summitBeastHasDiplomacy, currentTimestamp, leaderboard])
 
   const formatRewards = (rewards) => {
     const n = Number(rewards ?? 0);
@@ -142,11 +160,20 @@ function Leaderboard() {
 
       <Box sx={styles.content}>
 
-        <Typography sx={styles.title}>
-          SUMMIT ALPHA
-        </Typography>
-
-        <RewardsRemainingBar currentTimestamp={currentTimestamp} />
+        {summitEnded ? (
+          <Box sx={styles.endedTitleContainer}>
+            <Box sx={styles.trophyIcon}>🏆</Box>
+            <Typography sx={styles.endedTitle}>SUMMIT HAS ENDED</Typography>
+            <Box sx={styles.trophyIcon}>🏆</Box>
+          </Box>
+        ) : (
+          <>
+            <Typography sx={styles.title}>
+              SUMMIT
+            </Typography>
+            <RewardsRemainingBar currentTimestamp={currentTimestamp} />
+          </>
+        )}
 
         <Box sx={styles.sectionHeader}>
           <Typography sx={styles.sectionTitle}>
@@ -170,7 +197,7 @@ function Leaderboard() {
             ))}
 
 
-            {summitOwnerRank && summit?.owner && (
+            {summitOwnerRank && summit?.owner && !summitTakenAfterEnd && (
               <>
                 <Box sx={styles.summitOwnerRow}>
                   <Typography sx={[
@@ -278,6 +305,30 @@ const styles = {
       0 2px 4px rgba(0, 0, 0, 0.8),
       0 0 12px ${gameColors.yellow}40
     `,
+  },
+  endedTitleContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    py: '4px',
+  },
+  endedTitle: {
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: gameColors.yellow,
+    textAlign: 'center',
+    letterSpacing: '1.5px',
+    textTransform: 'uppercase',
+    textShadow: `
+      0 0 8px ${gameColors.yellow}60,
+      0 0 16px ${gameColors.yellow}30,
+      0 2px 4px rgba(0, 0, 0, 0.8)
+    `,
+    animation: 'summitEndedGlow 3s ease-in-out infinite',
+  },
+  trophyIcon: {
+    fontSize: '16px',
   },
   sectionHeader: {
     width: '100%',
@@ -566,4 +617,33 @@ const styles = {
       color: gameColors.yellow,
     },
   },
+}
+
+// Keyframe animations for ended state
+const leaderboardKeyframes = `
+  @keyframes summitEndedGlow {
+    0%, 100% { 
+      text-shadow: 0 0 8px ${gameColors.yellow}60, 0 0 16px ${gameColors.yellow}30, 0 2px 4px rgba(0, 0, 0, 0.8);
+      filter: brightness(1);
+    }
+    50% { 
+      text-shadow: 0 0 12px ${gameColors.yellow}90, 0 0 24px ${gameColors.yellow}50, 0 0 32px ${gameColors.yellow}20, 0 2px 4px rgba(0, 0, 0, 0.8);
+      filter: brightness(1.1);
+    }
+  }
+
+`;
+
+// Inject keyframes once
+if (typeof document !== 'undefined') {
+  const styleId = 'leaderboard-keyframes';
+  const existing = document.getElementById(styleId);
+  if (existing) {
+    if (existing.textContent !== leaderboardKeyframes) existing.textContent = leaderboardKeyframes;
+  } else {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = leaderboardKeyframes;
+    document.head.appendChild(style);
+  }
 }

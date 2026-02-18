@@ -1,13 +1,13 @@
-import { Beast, Combat, Summit, selection } from '@/types/game';
+import type { Beast, Combat, Summit, selection } from '@/types/game';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
-import { SoundName } from '@/contexts/sound';
+import type { SoundName } from '@/contexts/sound';
 import * as starknet from "@scure/starknet";
 import { addAddressPadding } from 'starknet';
 
 export const fetchBeastTypeImage = (type: string): string => {
   try {
     return new URL(`../assets/types/${type.toLowerCase()}.svg`, import.meta.url).href
-  } catch (ex) {
+  } catch {
     return ""
   }
 }
@@ -24,9 +24,13 @@ export const fetchBeastSound = (beastId: number): SoundName => {
   } else if (beastId <= 75) {
     return "bludgeon";
   }
+
+  return "bludgeon";
 }
 
-export const fetchBeastImage = (beast: Beast) => {
+export const fetchBeastImage = (
+  beast: Pick<Beast, "name"> & { shiny: number | boolean; animated: number | boolean }
+) => {
   if (beast.shiny && beast.animated) {
     return `/images/nfts/animated/shiny/${beast.name.toLowerCase()}.gif`;
   } else if (beast.animated) {
@@ -42,7 +46,10 @@ export function normaliseHealth(value: number, max: number): number {
   return Math.min(100, (value * 100) / max)
 }
 
-function elementalDamage(attacker: any, defender: any): number {
+function elementalDamage(
+  attacker: Pick<Beast, "type" | "power">,
+  defender: Pick<Beast, "type" | "power">
+): number {
   let multiplier = 1
 
   if ((attacker.type === 'Hunter' && defender.type === 'Magic') || (attacker.type === 'Magic' && defender.type === 'Brute') || (attacker.type === 'Brute' && defender.type === 'Hunter')) {
@@ -76,28 +83,28 @@ export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: nu
   const summit = _summit.beast;
   const MINIMUM_DAMAGE = 4
 
-  let elemental = elementalDamage(beast, summit);
-  let summitElemental = elementalDamage(summit, beast);
-  let beastNameMatch = nameMatchBonus(beast, summit, elemental);
-  let summitNameMatch = nameMatchBonus(summit, beast, elemental);
-  let diplomacyBonus = _summit.diplomacy?.bonus || 0;
+  const elemental = elementalDamage(beast, summit);
+  const summitElemental = elementalDamage(summit, beast);
+  const beastNameMatch = nameMatchBonus(beast, summit, elemental);
+  const summitNameMatch = nameMatchBonus(summit, beast, elemental);
+  const diplomacyBonus = _summit.diplomacy?.bonus || 0;
 
-  let beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((elemental * (1 + 0.1 * potions) + beastNameMatch) - summit.power))
-  let summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental * (1 + 0.1 * diplomacyBonus) + summitNameMatch) - beast.power)
+  const beastDamage = Math.max(MINIMUM_DAMAGE, Math.floor((elemental * (1 + 0.1 * potions) + beastNameMatch) - summit.power))
+  const summitDamage = Math.max(MINIMUM_DAMAGE, Math.floor(summitElemental * (1 + 0.1 * diplomacyBonus) + summitNameMatch) - beast.power)
 
-  let beastCritChance = getLuckCritChancePercent(beast.luck);
-  let summitCritChance = getLuckCritChancePercent(summit.luck);
+  const beastCritChance = getLuckCritChancePercent(beast.luck);
+  const summitCritChance = getLuckCritChancePercent(summit.luck);
 
-  let beastCritDamage = beastCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor(((elemental * 2) * (1 + 0.1 * potions) + beastNameMatch) - summit.power)) : 0;
-  let summitCritDamage = summitCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) * (1 + 0.1 * diplomacyBonus) + summitNameMatch) - beast.power) : 0;
+  const beastCritDamage = beastCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor(((elemental * 2) * (1 + 0.1 * potions) + beastNameMatch) - summit.power)) : 0;
+  const summitCritDamage = summitCritChance > 0 ? Math.max(MINIMUM_DAMAGE, Math.floor((summitElemental * 2) * (1 + 0.1 * diplomacyBonus) + summitNameMatch) - beast.power) : 0;
 
   let beastAverageDamage = beastCritChance > 0 ? (beastDamage * (100 - beastCritChance) + beastCritDamage * beastCritChance) / 100 : beastDamage;
-  let summitAverageDamage = summitCritChance > 0 ? (summitDamage * (100 - summitCritChance) + summitCritDamage * summitCritChance) / 100 : summitDamage;
+  const summitAverageDamage = summitCritChance > 0 ? (summitDamage * (100 - summitCritChance) + summitCritDamage * summitCritChance) / 100 : summitDamage;
 
-  let beastAttackCount = Math.ceil((beast.health + beast.bonus_health) / summitAverageDamage);
+  const beastAttackCount = Math.ceil((beast.health + beast.bonus_health) / summitAverageDamage);
   beastAverageDamage = Math.min(beastAverageDamage, summit.health + summit.bonus_health);
 
-  let estimatedDamage = Math.max(MINIMUM_DAMAGE, beastAverageDamage) * beastAttackCount;
+  const estimatedDamage = Math.max(MINIMUM_DAMAGE, beastAverageDamage) * beastAttackCount;
 
   return {
     attack: beastDamage,
@@ -177,13 +184,20 @@ export const formatBeastName = (beast: Beast): string => {
 }
 
 export const getBeastDetails = (id: number, prefix: number, suffix: number, level: number) => {
+  const beastNames = BEAST_NAMES as Record<number, string>;
+  const beastTiers = BEAST_TIERS as Record<number, number>;
+  const beastTypes = BEAST_TYPES as Record<number, string>;
+  const prefixes = ITEM_NAME_PREFIXES as Record<number, string>;
+  const suffixes = ITEM_NAME_SUFFIXES as Record<number, string>;
+  const tier = beastTiers[id] ?? 5;
+
   return {
-    name: BEAST_NAMES[id],
-    prefix: ITEM_NAME_PREFIXES[prefix],
-    suffix: ITEM_NAME_SUFFIXES[suffix],
-    tier: BEAST_TIERS[id],
-    type: BEAST_TYPES[id],
-    power: (6 - BEAST_TIERS[id]) * level,
+    name: beastNames[id] ?? "Unknown",
+    prefix: prefixes[prefix] ?? "",
+    suffix: suffixes[suffix] ?? "",
+    tier,
+    type: beastTypes[id] ?? "Magic",
+    power: (6 - tier) * level,
   }
 }
 
@@ -283,13 +297,14 @@ export function applyPoisonDamage(
 
 export const getEntityHash = (id: number, prefix: number, suffix: number): string => {
   const params = [BigInt(id), BigInt(prefix), BigInt(suffix)];
-  let hash = starknet.poseidonHashMany(params);
+  const hash = starknet.poseidonHashMany(params);
   return addAddressPadding(hash.toString(16));
 }
 
-export const calculateOptimalAttackPotions = (selection: any, summit: Summit, maxAllowed: number) => {
-  const beast = selection[0];
-  const attacks = selection[1];
+type AttackSelection = selection[number];
+
+export const calculateOptimalAttackPotions = (selection: AttackSelection, summit: Summit, maxAllowed: number) => {
+  const [beast, attacks] = selection;
 
   const targetDamage = ((summit.beast.health + summit.beast.bonus_health) * summit.beast.extra_lives)
     + Math.max(1, summit.beast.current_health || 0);
@@ -299,13 +314,11 @@ export const calculateOptimalAttackPotions = (selection: any, summit: Summit, ma
 
 
   let bestRequired = Number.POSITIVE_INFINITY;
-  if (beast) {
-    for (let n = 0; n <= maxAllowed; n++) {
-      const combat = calculateBattleResult(beast, summit, n);
-      if ((combat.estimatedDamage * attacks) > targetDamage || combat.attack >= target) {
-        bestRequired = n;
-        break;
-      }
+  for (let n = 0; n <= maxAllowed; n++) {
+    const combat = calculateBattleResult(beast, summit, n);
+    if ((combat.estimatedDamage * attacks) > targetDamage || combat.attack >= target) {
+      bestRequired = n;
+      break;
     }
   }
 
@@ -313,9 +326,8 @@ export const calculateOptimalAttackPotions = (selection: any, summit: Summit, ma
   return value;
 }
 
-export const calculateMaxAttackPotions = (selection: any, summit: Summit, maxAllowed: number) => {
-  const beast = selection[0];
-  const attacks = selection[1];
+export const calculateMaxAttackPotions = (selection: AttackSelection, summit: Summit, maxAllowed: number) => {
+  const [beast, attacks] = selection;
 
   const target = (summit.beast.extra_lives > 0)
     ? (summit.beast.health + summit.beast.bonus_health)
@@ -340,7 +352,7 @@ export const calculateRevivalRequired = (selectedBeasts: selection) => {
     if (beast.current_health === 0) {
       return sum + (attacks * beast.revival_count) + (attacks * (attacks + 1) / 2);
     } else {
-      let revivals = attacks - 1;
+      const revivals = attacks - 1;
       return sum + (revivals * beast.revival_count) + (revivals * (revivals + 1) / 2);
     }
   }, 0);

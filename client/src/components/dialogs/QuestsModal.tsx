@@ -5,10 +5,10 @@ import revivePotionIcon from '@/assets/images/revive-potion.png';
 import swordIcon from '@/assets/images/sword.png';
 import bruteIcon from '@/assets/types/brute.svg';
 import QuestRewardsRemainingBar from '@/components/QuestRewardsRemainingBar';
-import { REWARD_NAME } from '@/contexts/GameDirector';
+import { QUEST_REWARDS_TOTAL_AMOUNT, REWARD_NAME } from '@/contexts/GameDirector';
 import { questGuides, useQuestGuide } from '@/contexts/QuestGuide';
 import { useGameStore } from '@/stores/gameStore';
-import { Beast } from '@/types/game';
+import type { Beast } from '@/types/game';
 import { gameColors } from '@/utils/themes';
 import BoltIcon from '@mui/icons-material/Bolt';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -25,8 +25,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 
 const survivorTokenIcon = '/images/survivor_token.png';
-
-const QUEST_REWARD_POOL_TOTAL = 40000;
 
 interface QuestsModalProps {
   open: boolean;
@@ -141,19 +139,20 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
   const { collection } = useGameStore();
   const { startGuide } = useQuestGuide();
   const { getQuestRewardsTotal } = useSummitApi();
-  const [remainingRewards, setRemainingRewards] = useState(QUEST_REWARD_POOL_TOTAL);
+  const [remainingRewards, setRemainingRewards] = useState(QUEST_REWARDS_TOTAL_AMOUNT);
   const [isLoadingRewards, setIsLoadingRewards] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setIsLoadingRewards(true);
     getQuestRewardsTotal().then((claimed) => {
-      setRemainingRewards(Math.max(0, QUEST_REWARD_POOL_TOTAL - claimed));
+      setRemainingRewards(Math.max(0, QUEST_REWARDS_TOTAL_AMOUNT - claimed));
     }).catch(() => {
       // Fall back to total pool on error
     }).finally(() => {
       setIsLoadingRewards(false);
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const hasGuide = (questId: string) => {
@@ -244,7 +243,7 @@ export default function QuestsModal({ open, onClose }: QuestsModalProps) {
               {/* Quest Rewards Remaining Bar */}
               <QuestRewardsRemainingBar
                 remainingRewards={remainingRewards}
-                totalPool={QUEST_REWARD_POOL_TOTAL}
+                totalPool={QUEST_REWARDS_TOTAL_AMOUNT}
                 isLoading={isLoadingRewards}
               />
 

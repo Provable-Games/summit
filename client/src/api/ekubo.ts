@@ -4,7 +4,10 @@ import { num } from "starknet";
 export interface SwapQuote {
   impact: number;
   price_impact?: number;
-  total: number;
+  /** Raw total as a string to preserve BigInt precision for on-chain calls. */
+  total: string;
+  /** Lossy number conversion of total, safe for UI display only. */
+  totalDisplay: number;
   splits: SwapSplit[];
 }
 
@@ -33,13 +36,18 @@ interface TokenQuote {
 
 interface RouterContract {
   address: string;
-  populate: (method: string, params: any[]) => any;
 }
 
-interface SwapCall {
+export interface SwapCall {
   contractAddress: string;
   entrypoint: string;
-  calldata: any[];
+  calldata: string[];
+}
+
+interface SwapQuoteResponse {
+  total_calculated?: string | number;
+  price_impact?: number;
+  splits?: SwapSplit[];
 }
 
 export interface PoolKey {
@@ -55,14 +63,31 @@ export interface Bounds {
   upper: { mag: string; sign: boolean };
 }
 
-const inflightQuotes: Record<string, Promise<SwapQuote>> = {};
+const inflightQuotes: Partial<Record<string, Promise<SwapQuote>>> = {};
 let rateLimitUntil = 0;
 const RATE_LIMIT_COOLDOWN_MS = 60_000;
+const MAX_SAFE_INTEGER_BIGINT = BigInt(Number.MAX_SAFE_INTEGER);
 
 const applySlippage = (value: bigint, slippageBps: number) => {
   const basis = 10_000n;
   const bps = BigInt(slippageBps);
   return (value * (basis - bps)) / basis;
+};
+
+const toSafeDisplayNumber = (value: string): number => {
+  try {
+    const bigintValue = BigInt(value);
+    if (bigintValue > MAX_SAFE_INTEGER_BIGINT) {
+      return Number.MAX_SAFE_INTEGER;
+    }
+    if (bigintValue < -MAX_SAFE_INTEGER_BIGINT) {
+      return -Number.MAX_SAFE_INTEGER;
+    }
+    return Number(bigintValue);
+  } catch {
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : 0;
+  }
 };
 
 export const getSwapQuote = async (
@@ -122,9 +147,9 @@ export const getSwapQuote = async (
         }
       }
 
-      let data: any;
+      let data: SwapQuoteResponse;
       try {
-        data = await response.json();
+        data = await response.json() as SwapQuoteResponse;
       } catch (err) {
         console.error("getSwapQuote: failed to parse response", err);
         if (attempt < maxRetries - 1) {
@@ -134,12 +159,15 @@ export const getSwapQuote = async (
         throw err;
       }
 
-      if (data.total_calculated) {
+      if (data.total_calculated !== undefined) {
+        const totalStr = String(data.total_calculated);
+
         return {
-          impact: data?.price_impact || 0,
-          price_impact: data?.price_impact || 0,
-          total: data?.total_calculated || 0,
-          splits: data?.splits || [],
+          impact: data.price_impact || 0,
+          price_impact: data.price_impact || 0,
+          total: totalStr,
+          totalDisplay: toSafeDisplayNumber(totalStr),
+          splits: data.splits || [],
         };
       }
 
@@ -151,7 +179,8 @@ export const getSwapQuote = async (
 
     return {
       impact: 0,
-      total: 0,
+      total: "0",
+      totalDisplay: 0,
       splits: [],
     };
   })();
@@ -173,18 +202,18 @@ export const generateSwapCalls = (
     return [];
   }
 
-  let { tokenAddress, minimumAmount, quote } = tokenQuote;
+  const { tokenAddress, minimumAmount, quote } = tokenQuote;
 
-  let totalQuoteSum = 0n;
   const total = BigInt(tokenQuote.quote.total);
+  let totalQuoteSum: bigint;
 
   if (total < 0n) {
-    totalQuoteSum = -total;
-    const doubledTotal = totalQuoteSum * 2n;
+    const absTotal = -total;
+    const doubledTotal = absTotal * 2n;
     totalQuoteSum =
-      doubledTotal < totalQuoteSum + BigInt(1e19)
+      doubledTotal < absTotal + BigInt(1e19)
         ? doubledTotal
-        : totalQuoteSum + BigInt(1e19);
+        : absTotal + BigInt(1e19);
   } else {
     totalQuoteSum = BigInt(minimumAmount * 1e18);
   }
@@ -205,7 +234,7 @@ export const generateSwapCalls = (
     return [transferCall, clearCall];
   }
 
-  let { splits } = quote;
+  const { splits } = quote;
 
   let minimumClear: string;
   if (total < 0n) {
@@ -350,7 +379,7 @@ const EKUBO_API_BASE = "https://prod-api.ekubo.org";
 const EKUBO_CHAIN_ID = "23448594291968334";
 const EKUBO_MAX_TICK = 88722839;
 
-// Default pool parameters for game token / TEST USD pools.
+// Default pool parameters for game token / SURVIVOR pools.
 // These are hardcoded so liquidity provision works without any API dependency.
 // 0.05% fee tier: fee = 0.0005 * 2^128 = 170141183460469235273462165868118016
 export const DEFAULT_POOL_FEE = "170141183460469235273462165868118016";

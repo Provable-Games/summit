@@ -1,4 +1,4 @@
-import { getSummitRewardsStatus } from '@/utils/summitRewards';
+import { getSummitRewardsStatus, isSummitOver } from '@/utils/summitRewards';
 import { gameColors } from '@/utils/themes';
 import { Box, Typography } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -26,6 +26,18 @@ const pulseKeyframes = `
     35% { filter: brightness(1.6) saturate(1.25); opacity: 1; }
     100% { filter: brightness(1) saturate(1); opacity: 1; }
   }
+
+  @keyframes summitEndedGlow {
+    0%, 100% { 
+      text-shadow: 0 0 8px ${gameColors.yellow}60, 0 0 16px ${gameColors.yellow}30;
+      filter: brightness(1);
+    }
+    50% { 
+      text-shadow: 0 0 12px ${gameColors.yellow}90, 0 0 24px ${gameColors.yellow}50, 0 0 32px ${gameColors.yellow}20;
+      filter: brightness(1.1);
+    }
+  }
+
 `;
 
 export default function RewardsRemainingBar({
@@ -72,6 +84,31 @@ export default function RewardsRemainingBar({
   }, []);
 
   const status = useMemo(() => getSummitRewardsStatus(effectiveTimestamp), [effectiveTimestamp]);
+  const summitEnded = useMemo(() => isSummitOver(effectiveTimestamp), [effectiveTimestamp]);
+
+  // Show "Summit has ended" when the summit is over
+  if (summitEnded) {
+    if (variant === 'compact') {
+      return (
+        <Box sx={compactStyles.container}>
+          <Box sx={compactStyles.endedContainer}>
+            <Box sx={compactStyles.trophyIcon}>🏆</Box>
+            <Typography sx={compactStyles.endedText}>SUMMIT HAS ENDED</Typography>
+            <Box sx={compactStyles.trophyIcon}>🏆</Box>
+          </Box>
+        </Box>
+      );
+    }
+    return (
+      <Box sx={panelStyles.container}>
+        <Box sx={panelStyles.endedContainer}>
+          <Box sx={panelStyles.trophyIcon}>🏆</Box>
+          <Typography sx={panelStyles.endedText}>SUMMIT HAS ENDED</Typography>
+          <Box sx={panelStyles.trophyIcon}>🏆</Box>
+        </Box>
+      </Box>
+    );
+  }
 
   const fillColor =
     status.percentRemaining <= 10
@@ -147,6 +184,35 @@ const panelStyles = {
     width: '100%',
     mt: '6px',
   },
+  endedContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+    py: '6px',
+    px: '12px',
+    background: `linear-gradient(135deg, ${gameColors.darkGreen}90 0%, rgba(0,0,0,0.4) 100%)`,
+    borderRadius: '8px',
+    border: `1px solid ${gameColors.yellow}50`,
+    boxShadow: `
+      inset 0 1px 0 rgba(255,255,255,0.05),
+      0 2px 8px rgba(0,0,0,0.3),
+      0 0 20px ${gameColors.yellow}15
+    `,
+  },
+  endedText: {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: gameColors.yellow,
+    textAlign: 'center',
+    letterSpacing: '2px',
+    textTransform: 'uppercase',
+    textShadow: `0 0 8px ${gameColors.yellow}60, 0 0 16px ${gameColors.yellow}30`,
+    animation: 'summitEndedGlow 3s ease-in-out infinite',
+  },
+  trophyIcon: {
+    fontSize: '14px',
+  },
   title: {
     fontSize: '12px',
     fontWeight: 'bold',
@@ -219,6 +285,25 @@ const compactStyles = {
     `,
     px: 1,
     py: 1.25,
+  },
+  endedContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '6px',
+  },
+  endedText: {
+    fontSize: '11px',
+    fontWeight: 'bold',
+    color: gameColors.yellow,
+    textAlign: 'center',
+    letterSpacing: '1.5px',
+    textTransform: 'uppercase',
+    textShadow: `0 0 8px ${gameColors.yellow}60, 0 0 16px ${gameColors.yellow}30`,
+    animation: 'summitEndedGlow 3s ease-in-out infinite',
+  },
+  trophyIcon: {
+    fontSize: '12px',
   },
   headerRow: {
     display: 'flex',
