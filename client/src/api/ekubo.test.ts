@@ -25,7 +25,7 @@ describe("ekubo quote precision", () => {
 
     expect(quote.total).toBe("12345678901234567890");
     // totalDisplay is a lossy Number conversion - magnitude is preserved for UI display
-    expect(quote.totalDisplay).toBeCloseTo(12345678901234567890, -5);
+    expect(quote.totalDisplay).toBeCloseTo(Number("12345678901234567890"), -5);
   });
 
   it("accepts numeric total_calculated values and normalizes to string", async () => {
