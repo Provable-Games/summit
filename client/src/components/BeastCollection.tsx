@@ -345,7 +345,7 @@ function BeastCollection() {
                     BUY BEASTS ON {' '}
                     <Link
                       sx={[styles.emptyStateSubtitle, { textDecoration: 'underline !important' }]}
-                      href="https://empire.realms.world/trade/beasts"
+                      href="https://beast-dex.vercel.app/marketplace"
                       target="_blank"
                     >
                       MARKETPLACE
