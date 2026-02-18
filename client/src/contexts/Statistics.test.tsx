@@ -2,7 +2,7 @@ import { act, create } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { getSwapQuoteMock, getBeastCountsMock, getQuestRewardsTotalMock, mockNetworkConfig } = vi.hoisted(() => ({
-  getSwapQuoteMock: vi.fn(async () => ({ total: "-2000000000000000000", totalDisplay: -2e18 })),
+  getSwapQuoteMock: vi.fn(async () => ({ total: "-2000000", totalDisplay: -2e6 })),
   getBeastCountsMock: vi.fn(async () => ({ total: 12, alive: 5, dead: 7 })),
   getQuestRewardsTotalMock: vi.fn(async () => 25),
   mockNetworkConfig: {
