@@ -3,7 +3,8 @@ import { useSummitApi } from "@/api/summitApi";
 import { QUEST_REWARDS_TOTAL_AMOUNT } from "@/contexts/GameDirector";
 import { NETWORKS } from "@/utils/networkConfig";
 import type {
-  PropsWithChildren} from "react";
+  PropsWithChildren
+} from "react";
 import {
   createContext,
   useContext,
@@ -57,7 +58,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   const fetchTokenPrice = async (token: PriceToken) => {
     try {
       const swap = await getSwapQuote(-1n * 10n ** 18n, token.address, USDC_ADDRESS);
-      setTokenPrices((prev) => ({ ...prev, [token.name]: (Math.abs(swap.totalDisplay) / 1e18).toFixed(4) }));
+      setTokenPrices((prev) => ({ ...prev, [token.name]: (Math.abs(swap.totalDisplay) / 1e6).toFixed(4) }));
     } catch (err) {
       console.warn("refreshTokenPrices: failed to fetch price", token?.name, err);
     }
@@ -80,8 +81,8 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     refreshTokenPrices();
     getQuestRewardsTotal()
       .then((claimed) => setQuestRewardsRemaining(Math.max(0, QUEST_REWARDS_TOTAL_AMOUNT - claimed)))
-      .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch(() => { });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
