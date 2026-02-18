@@ -118,6 +118,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         : null;
 
       if (!termsAccepted) {
+        console.log('Showing terms of service');
         setShowTermsOfService(true);
       }
     } else {
