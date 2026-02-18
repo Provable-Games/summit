@@ -103,5 +103,6 @@ PR CI is path-filtered and runs component-specific checks:
 
 ## Useful Links
 
-- Loot Survivor: `https://lootsurvivor.io`
-- Summit docs: `https://docs.provable.games/summit`
+- [Collect Beasts in Loot Survivor](https://lootsurvivor.io)
+- [Summit docs](https://docs.provable.games/summit)
+- [View & Trade Beasts](https://beast-dex.vercel.app/marketplace)
