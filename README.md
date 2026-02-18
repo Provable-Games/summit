@@ -2,8 +2,6 @@
 
 Savage Summit is a Starknet king-of-the-hill game. Players send Beast NFTs to contest the summit, use consumables, and earn tokenized rewards.
 
-For AI-oriented contributor instructions, see `AGENTS.md`. For human onboarding, use this README first.
-
 ## At a Glance
 
 - Summit control rotates through onchain combat.
@@ -23,21 +21,21 @@ Client (React SPA) -> Summit Contract (Cairo on Starknet)
 
 ## Tech Stack
 
-| Layer | Stack |
-| --- | --- |
-| Client | React 18, TypeScript, Vite, MUI, Zustand |
+| Layer     | Stack                                               |
+| --------- | --------------------------------------------------- |
+| Client    | React 18, TypeScript, Vite, MUI, Zustand            |
 | Contracts | Cairo 2.15.0, Scarb 2.15.1, Starknet Foundry 0.56.0 |
-| Indexer | Apibara DNA, TypeScript, Drizzle ORM, PostgreSQL |
-| API | Hono, TypeScript, PostgreSQL, WebSocket |
+| Indexer   | Apibara DNA, TypeScript, Drizzle ORM, PostgreSQL    |
+| API       | Hono, TypeScript, PostgreSQL, WebSocket             |
 
 ## Monorepo Layout
 
-| Path | Purpose | Human Docs | AI Docs |
-| --- | --- | --- | --- |
-| `client/` | React game UI, wallet/session, realtime UX | [`client/README.md`](client/README.md) | [`client/AGENTS.md`](client/AGENTS.md) |
-| `contracts/` | Cairo game logic and storage packing | [`contracts/README.md`](contracts/README.md) | [`contracts/AGENTS.md`](contracts/AGENTS.md) |
-| `indexer/` | Starknet event indexing into PostgreSQL | [`indexer/README.md`](indexer/README.md) | [`indexer/AGENTS.md`](indexer/AGENTS.md) |
-| `api/` | Read API and WebSocket relay | [`api/README.md`](api/README.md) | [`api/AGENTS.md`](api/AGENTS.md) |
+| Path         | Purpose                                    | Human Docs                                   | AI Docs                                      |
+| ------------ | ------------------------------------------ | -------------------------------------------- | -------------------------------------------- |
+| `client/`    | React game UI, wallet/session, realtime UX | [`client/README.md`](client/README.md)       | [`client/AGENTS.md`](client/AGENTS.md)       |
+| `contracts/` | Cairo game logic and storage packing       | [`contracts/README.md`](contracts/README.md) | [`contracts/AGENTS.md`](contracts/AGENTS.md) |
+| `indexer/`   | Starknet event indexing into PostgreSQL    | [`indexer/README.md`](indexer/README.md)     | [`indexer/AGENTS.md`](indexer/AGENTS.md)     |
+| `api/`       | Read API and WebSocket relay               | [`api/README.md`](api/README.md)             | [`api/AGENTS.md`](api/AGENTS.md)             |
 
 ## Prerequisites
 
@@ -84,46 +82,26 @@ If you change packing layout or field order, update all three layers and both pa
 
 PR CI is path-filtered and runs component-specific checks:
 
-| Component | Trigger Paths | CI Steps |
-| --- | --- | --- |
-| Contracts | `contracts/**` | `scarb fmt --check` -> `scarb test --coverage` -> Codecov |
-| Client | `client/**`, `contracts/src/models/beast.cairo` | `pnpm lint` -> `pnpm build` -> `pnpm test:parity` -> `pnpm test:coverage` -> Codecov |
-| Indexer | `indexer/**`, `contracts/src/models/beast.cairo` | `pnpm exec tsc --noEmit` -> `pnpm build` -> `pnpm test:parity` -> `pnpm test:coverage` -> Codecov |
-| API | `api/**` | `pnpm exec tsc --noEmit` -> `pnpm build` |
+| Component | Trigger Paths                                    | CI Steps                                                                                          |
+| --------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| Contracts | `contracts/**`                                   | `scarb fmt --check` -> `scarb test --coverage` -> Codecov                                         |
+| Client    | `client/**`, `contracts/src/models/beast.cairo`  | `pnpm lint` -> `pnpm build` -> `pnpm test:parity` -> `pnpm test:coverage` -> Codecov              |
+| Indexer   | `indexer/**`, `contracts/src/models/beast.cairo` | `pnpm exec tsc --noEmit` -> `pnpm build` -> `pnpm test:parity` -> `pnpm test:coverage` -> Codecov |
+| API       | `api/**`                                         | `pnpm exec tsc --noEmit` -> `pnpm build`                                                          |
 
-Automated AI review jobs run for scoped changes, and any `CRITICAL` or `HIGH` finding fails CI.
+## Mainnet Contracts
 
-## Mainnet Reference
-
-Primary contracts:
-
-- Summit: `0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064`
-- Beast NFT: `0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4`
-
-| Token | Symbol | Address |
-| --- | --- | --- |
-| Attack | `ATTACK` | [`0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443`](https://voyager.online/contract/0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443) |
-| Poison | `POISON` | [`0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE`](https://voyager.online/contract/0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE) |
-| Revive | `REVIVE` | [`0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe`](https://voyager.online/contract/0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe) |
-| Extra Life | `XLIFE` | [`0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796`](https://voyager.online/contract/0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796) |
-| Corpse | `CORPSE` | [`0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a`](https://voyager.online/contract/0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a) |
-| Skull | `SKULL` | [`0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814`](https://voyager.online/contract/0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814) |
-
-Network endpoints:
-
-- Starknet RPC (client): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9`
-- Starknet RPC (indexer + contract fork tests): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_10`
-- `sncast` deployment profile RPC: Alchemy Starknet mainnet `v0_10` (`contracts/snfoundry.toml`)
-- Torii: `https://api.cartridge.gg/x/pg-mainnet-10/torii`
-
-## Contributing Workflow
-
-1. Keep changes scoped to the component you modify.
-2. Run that component's local checks before opening a PR.
-3. If you touch `contracts/src/models/beast.cairo`, run both parity scripts (`client` and `indexer`) in the same PR.
+| Contract      | Address                                                                                                                                                                    |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Summit        | [`0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064`](https://voyager.online/contract/0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064) |
+| Attack Potion | [`0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443`](https://voyager.online/contract/0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443) |
+| Poison        | [`0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE`](https://voyager.online/contract/0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE) |
+| Revive        | [`0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe`](https://voyager.online/contract/0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe) |
+| Extra Life    | [`0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796`](https://voyager.online/contract/0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796) |
+| Corpse        | [`0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a`](https://voyager.online/contract/0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a) |
+| Skull         | [`0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814`](https://voyager.online/contract/0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814) |
 
 ## Useful Links
 
 - Loot Survivor: `https://lootsurvivor.io`
-- Realms Marketplace (Beasts): `https://empire.realms.world/trade/beasts`
 - Summit docs: `https://docs.provable.games/summit`
