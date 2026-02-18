@@ -91,18 +91,18 @@ PR CI is path-filtered and runs component-specific checks:
 
 ## Mainnet Contracts
 
-| Contract      | Address                                                                                                                                                                    |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Summit Game   | [`0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064`](https://voyager.online/contract/0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064) |
-| Attack Potion | [`0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443`](https://voyager.online/contract/0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443) |
-| Poison Potion | [`0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE`](https://voyager.online/contract/0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE) |
-| Revive Potion | [`0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe`](https://voyager.online/contract/0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe) |
+| Contract          | Address                                                                                                                                                                    |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Summit Game       | [`0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064`](https://voyager.online/contract/0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064) |
+| Attack Potion     | [`0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443`](https://voyager.online/contract/0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443) |
+| Poison Potion     | [`0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE`](https://voyager.online/contract/0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE) |
+| Revive Potion     | [`0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe`](https://voyager.online/contract/0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe) |
 | Extra Life Potion | [`0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796`](https://voyager.online/contract/0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796) |
-| Corpse Token  | [`0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a`](https://voyager.online/contract/0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a) |
-| Skull Token   | [`0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814`](https://voyager.online/contract/0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814) |
+| Corpse Token      | [`0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a`](https://voyager.online/contract/0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a) |
+| Skull Token       | [`0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814`](https://voyager.online/contract/0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814) |
 
 ## Useful Links
 
-- [Collect Beasts in Loot Survivor](https://lootsurvivor.io)
-- [Summit docs](https://docs.provable.games/summit)
+- [Game Docs](https://docs.provable.games/summit)
 - [View & Trade Beasts](https://beast-dex.vercel.app/marketplace)
+- [Collect Beasts in Loot Survivor](https://lootsurvivor.io)
