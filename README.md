@@ -99,7 +99,15 @@ Primary contracts:
 
 - Summit: `0x0455c73741519a2d661cad966913ee5ccb24596c518ad67dd1d189b49c15d4fa`
 - Beast NFT: `0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4`
-- Dojo World: `0x02ef591697f0fd9adc0ba9dbe0ca04dabad80cf95f08ba02e435d9cb6698a28a`
+
+| Token | Symbol | Address |
+| --- | --- | --- |
+| Attack | `ATTACK` | [`0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443`](https://voyager.online/contract/0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443) |
+| Poison | `POISON` | [`0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE`](https://voyager.online/contract/0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE) |
+| Revive | `REVIVE` | [`0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe`](https://voyager.online/contract/0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe) |
+| Extra Life | `XLIFE` | [`0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796`](https://voyager.online/contract/0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796) |
+| Corpse | `CORPSE` | [`0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a`](https://voyager.online/contract/0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a) |
+| Skull | `SKULL` | [`0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814`](https://voyager.online/contract/0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814) |
 
 Network endpoints:
 
