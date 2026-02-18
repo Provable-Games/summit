@@ -101,6 +101,17 @@ Primary contracts:
 - Beast NFT: `0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4`
 - Dojo World: `0x02ef591697f0fd9adc0ba9dbe0ca04dabad80cf95f08ba02e435d9cb6698a28a`
 
+Production tokens (`chain_id = 0x534e5f4d41494e`):
+
+| Token | Symbol | Address | Decimals | Logo | Visibility Priority | Sort Order |
+| --- | --- | --- | --- | --- | --- | --- |
+| Attack | `ATTACK` | [`0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443`](https://voyager.online/contract/0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443) | `18` | `https://lootsurvivor.io/images/attack-potion.png` | `1` | `2` |
+| Poison | `POISON` | [`0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE`](https://voyager.online/contract/0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE) | `18` | `https://lootsurvivor.io/images/poison-potion.png` | `1` | `2` |
+| Revive | `REVIVE` | [`0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe`](https://voyager.online/contract/0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe) | `18` | `https://lootsurvivor.io/images/revive-potion.png` | `1` | `2` |
+| Extra Life | `XLIFE` | [`0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796`](https://voyager.online/contract/0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796) | `18` | `https://lootsurvivor.io/images/life-potion.png` | `1` | `2` |
+| Corpse | `CORPSE` | [`0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a`](https://voyager.online/contract/0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a) | `18` | `https://lootsurvivor.io/images/corpse-token.png` | `1` | `2` |
+| Skull | `SKULL` | [`0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814`](https://voyager.online/contract/0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814) | `18` | `https://lootsurvivor.io/images/skull-token.png` | `1` | `2` |
+
 Network endpoints:
 
 - Starknet RPC (client): `https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9`
