@@ -97,7 +97,7 @@ Automated AI review jobs run for scoped changes, and any `CRITICAL` or `HIGH` fi
 
 Primary contracts:
 
-- Summit: `0x0455c73741519a2d661cad966913ee5ccb24596c518ad67dd1d189b49c15d4fa`
+- Summit: `0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064`
 - Beast NFT: `0x046da8955829adf2bda310099a0063451923f02e648cf25a1203aac6335cf0e4`
 
 | Token | Symbol | Address |
