@@ -405,7 +405,7 @@ app.get("/beasts/stats/counts", async (c) => {
   const result = await db
     .select({
       total: sql<number>`count(*)`,
-      alive: sql<number>`count(*) filter (where ${beast_stats.last_death_timestamp} < ${twentyFourHoursAgo})`,
+      alive: sql<number>`count(*) filter (where ${beast_stats.last_death_timestamp} = 0 or ${beast_stats.last_death_timestamp} < ${twentyFourHoursAgo})`,
     })
     .from(beast_stats);
 
