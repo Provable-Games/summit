@@ -52,7 +52,7 @@ export const TOKEN_ADDRESS = {
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    slot: "pg-mainnet-10",
+    slot: "pg-summit-1",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
     apiUrl: "https://summit-production-69ed.up.railway.app",
