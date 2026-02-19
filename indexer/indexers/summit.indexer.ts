@@ -654,10 +654,10 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
       db.insert(schema.consumables).values([...deduped.values()]).onConflictDoUpdate({
         target: schema.consumables.owner,
         set: {
-          xlife_count: sql`${schema.consumables.xlife_count} + excluded.xlife_count`,
-          attack_count: sql`${schema.consumables.attack_count} + excluded.attack_count`,
-          revive_count: sql`${schema.consumables.revive_count} + excluded.revive_count`,
-          poison_count: sql`${schema.consumables.poison_count} + excluded.poison_count`,
+          xlife_count: sql`GREATEST(${schema.consumables.xlife_count} + excluded.xlife_count, 0)`,
+          attack_count: sql`GREATEST(${schema.consumables.attack_count} + excluded.attack_count, 0)`,
+          revive_count: sql`GREATEST(${schema.consumables.revive_count} + excluded.revive_count, 0)`,
+          poison_count: sql`GREATEST(${schema.consumables.poison_count} + excluded.poison_count, 0)`,
           updated_at: sql`excluded.updated_at`,
         },
       })
@@ -809,6 +809,9 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   const dojoWorldAddressBigInt = addressToBigInt(dojoWorldAddress);
   const corpseAddressBigInt = addressToBigInt(corpseContractAddress);
   const skullAddressBigInt = addressToBigInt(skullContractAddress);
+
+  // Ekubo Core contract — excluded from consumable balance tracking
+  const ekuboCoreAddressBigInt = addressToBigInt("0x00000005dd3d2f4429af886cd1a3b08289dbcea99a294197e9eb43b0e0325b4b");
 
   // Consumable token addresses as BigInt for O(1) lookup
   const xlifeAddressBigInt = addressToBigInt(xlifeTokenAddress);
@@ -1303,17 +1306,20 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           }
 
           // Consumable ERC20 token Transfer events
+          // Only track player wallets — skip zero address, Summit contract, and Ekubo/AMM contracts.
+          // GREATEST(0) in the upsert prevents negatives for any missed historical mints.
           const consumableColumn = consumableAddressMap.get(addressToBigInt(event_address));
           if (consumableColumn && selector === BEAST_EVENT_SELECTORS.Transfer) {
             const decoded = decodeERC20TransferEvent([...keys], [...data]);
             const wholeUnits = Number(decoded.amount / 1_000_000_000_000_000_000n);
             if (wholeUnits === 0) continue;
 
-            const fromIsZero = isZeroFeltAddress(decoded.from);
-            const toIsZero = isZeroFeltAddress(decoded.to);
+            const fromAddr = addressToBigInt(decoded.from);
+            const toAddr = addressToBigInt(decoded.to);
+            const isExcluded = (addr: bigint) => addr === 0n || addr === ekuboCoreAddressBigInt;
 
-            // Debit sender (if not mint from zero address)
-            if (!fromIsZero) {
+            // Debit sender (skip zero address and Ekubo Core)
+            if (!isExcluded(fromAddr)) {
               const row: ConsumablesRow = {
                 owner: decoded.from,
                 xlife_count: 0,
@@ -1326,8 +1332,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               batches.consumables.push(row);
             }
 
-            // Credit receiver (if not burn to zero address)
-            if (!toIsZero) {
+            // Credit receiver (skip zero address and Ekubo Core)
+            if (!isExcluded(toAddr)) {
               const row: ConsumablesRow = {
                 owner: decoded.to,
                 xlife_count: 0,
