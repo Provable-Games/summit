@@ -259,7 +259,7 @@ function Leaderboard() {
             Beasts Alive
           </Typography>
           <Typography sx={styles.statValue}>
-            {beastsRegistered - beastsAlive} / {beastsRegistered}
+            {beastsAlive} / {beastsRegistered}
           </Typography>
         </Box>
       </Box>
