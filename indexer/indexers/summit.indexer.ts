@@ -1056,6 +1056,19 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
       // Initialize bulk insert batches for this block
       const batches = createEmptyBatches();
 
+      // Track ALL consumable transfers for deferred Market log resolution.
+      // Ekubo swaps route through intermediary contracts (Core → Router → User),
+      // so we collect every transfer leg per (tx, token) and compute net flow to find
+      // the actual buyer/seller. Transactions without any Ekubo Core involvement are ignored.
+      const allConsumableTransfers: Array<{
+        transaction_hash: string;
+        token: string;
+        address: string;
+        amount: number; // positive = received, negative = sent
+        event_index: number;
+        involvesEkubo: boolean;
+      }> = [];
+
       // Track skull events that need beast_data lookup for adventurers_killed (must be done before processing)
       const skullEventTokenIds: number[] = [];
       const skullEventData: Array<{ decoded: { beast_token_ids: number[]; skulls_claimed: bigint }; event_index: number; transaction_hash: string }> = [];
@@ -1354,43 +1367,20 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               batches.consumables.push(row);
             }
 
-            // Log potion purchase when tokens come from Ekubo Core
-            if (fromAddr === ekuboCoreAddressBigInt && !isExcluded(toAddr)) {
-              collectSummitLog(batches, {
-                block_number,
-                event_index,
-                category: "Market",
-                sub_category: "Bought Potions",
-                data: {
-                  player: decoded.to,
-                  token: consumableTokenNames[consumableColumn],
-                  amount: wholeUnits,
-                },
-                player: decoded.to,
-                token_id: null,
-                transaction_hash,
-                created_at: block_timestamp,
-                indexed_at,
+            // Collect all consumable transfer legs for deferred Market log resolution.
+            // We track every non-excluded address and flag whether Ekubo Core is involved.
+            const involvesEkubo = fromAddr === ekuboCoreAddressBigInt || toAddr === ekuboCoreAddressBigInt;
+            const tokenName = consumableTokenNames[consumableColumn];
+            if (!isExcluded(toAddr)) {
+              allConsumableTransfers.push({
+                transaction_hash, token: tokenName,
+                address: decoded.to, amount: wholeUnits, event_index, involvesEkubo,
               });
             }
-
-            // Log potion sale when tokens go to Ekubo Core
-            if (toAddr === ekuboCoreAddressBigInt && !isExcluded(fromAddr)) {
-              collectSummitLog(batches, {
-                block_number,
-                event_index,
-                category: "Market",
-                sub_category: "Sold Potions",
-                data: {
-                  player: decoded.from,
-                  token: consumableTokenNames[consumableColumn],
-                  amount: wholeUnits,
-                },
-                player: decoded.from,
-                token_id: null,
-                transaction_hash,
-                created_at: block_timestamp,
-                indexed_at,
+            if (!isExcluded(fromAddr)) {
+              allConsumableTransfers.push({
+                transaction_hash, token: tokenName,
+                address: decoded.from, amount: -wholeUnits, event_index, involvesEkubo,
               });
             }
             continue;
@@ -2023,6 +2013,54 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           logger.error(`Event selector: ${selector}`);
           logger.error(`Keys: ${JSON.stringify(keys)}`);
           logger.error(`Data: ${JSON.stringify(data)}`);
+        }
+      }
+
+      // Resolve deferred Market events: compute net flow per (tx, token, address)
+      // to identify the actual buyer/seller (skipping intermediary routers whose net is zero).
+      if (allConsumableTransfers.length > 0) {
+        // Group by (transaction_hash, token)
+        const txTokenMap = new Map<string, typeof allConsumableTransfers>();
+        for (const t of allConsumableTransfers) {
+          const key = `${t.transaction_hash}:${t.token}`;
+          const arr = txTokenMap.get(key) || [];
+          arr.push(t);
+          txTokenMap.set(key, arr);
+        }
+
+        for (const [, transfers] of txTokenMap) {
+          // Only process transactions that involve Ekubo Core (actual market trades)
+          if (!transfers.some(t => t.involvesEkubo)) continue;
+
+          // Compute net flow per address
+          const netFlow = new Map<string, number>();
+          for (const t of transfers) {
+            netFlow.set(t.address, (netFlow.get(t.address) || 0) + t.amount);
+          }
+
+          // Find the address with non-zero net flow (the actual user)
+          for (const [address, net] of netFlow) {
+            if (net === 0) continue; // Router (received then forwarded) — skip
+
+            const first = transfers[0];
+            const isBuy = net > 0;
+            collectSummitLog(batches, {
+              block_number,
+              event_index: first.event_index,
+              category: "Market",
+              sub_category: isBuy ? "Bought Potions" : "Sold Potions",
+              data: {
+                player: address,
+                token: first.token,
+                amount: Math.abs(net),
+              },
+              player: address,
+              token_id: null,
+              transaction_hash: first.transaction_hash,
+              created_at: block_timestamp,
+              indexed_at,
+            });
+          }
         }
       }
 
