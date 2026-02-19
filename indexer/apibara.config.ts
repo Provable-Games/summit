@@ -17,6 +17,11 @@ export default defineConfig({
       corpseContractAddress: "0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a",
       // Skull contract address (mainnet)
       skullContractAddress: "0x01c3c8284d7eed443b42f47e764032a56eaf50a9079d67993b633930e3689814",
+      // Consumable ERC20 token addresses (mainnet)
+      xlifeTokenAddress: "0x06db32714906b760273f33a1f9cfd1a7a3c9a03d9405014f0a9de8dda1f279cb",
+      attackTokenAddress: "0x03e2d0ba6993e2662ba7d14f2faf5f60678fd99651db4f93b3994c71e089ee9f",
+      reviveTokenAddress: "0x0581959744ccce11c168ce02186e4d9a8221b28a8e8336a5f28b44302aedf2c7",
+      poisonTokenAddress: "0x0802c53c6007540e57390eec9b3dde3c370b54d90fff220bb3fd9e1e0d16c68",
       // Mainnet DNA stream URL
       streamUrl: process.env.STREAM_URL,
       // Starting block - use earliest block needed for Dojo events

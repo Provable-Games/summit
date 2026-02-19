@@ -340,6 +340,22 @@ export const summit_log = pgTable(
   ]
 );
 
+/**
+ * Consumables table - ERC20 token balances per owner
+ */
+export const consumables = pgTable(
+  "consumables",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    owner: text("owner").notNull().unique(),
+    xlife_count: integer("xlife_count").notNull().default(0),
+    attack_count: integer("attack_count").notNull().default(0),
+    revive_count: integer("revive_count").notNull().default(0),
+    poison_count: integer("poison_count").notNull().default(0),
+    updated_at: timestamp("updated_at").defaultNow(),
+  }
+);
+
 // Export all schema tables
 export const schema = {
   beasts,
@@ -354,4 +370,5 @@ export const schema = {
   corpse_events,
   skulls_claimed,
   quest_rewards_claimed,
+  consumables,
 };

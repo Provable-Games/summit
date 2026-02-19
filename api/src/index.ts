@@ -23,6 +23,7 @@ import {
   quest_rewards_claimed,
   rewards_earned,
   corpse_events,
+  consumables,
 } from "./db/schema.js";
 import { getSubscriptionHub } from "./ws/subscriptions.js";
 import {
@@ -641,6 +642,27 @@ app.get("/adventurers/:player", async (c) => {
   });
 });
 
+/**
+ * GET /consumables/supply - Get total circulating supply of consumable tokens
+ */
+app.get("/consumables/supply", async (c) => {
+  const result = await db
+    .select({
+      xlife: sql<number>`coalesce(sum(${consumables.xlife_count}), 0)`,
+      attack: sql<number>`coalesce(sum(${consumables.attack_count}), 0)`,
+      revive: sql<number>`coalesce(sum(${consumables.revive_count}), 0)`,
+      poison: sql<number>`coalesce(sum(${consumables.poison_count}), 0)`,
+    })
+    .from(consumables);
+  const row = result[0] ?? { xlife: 0, attack: 0, revive: 0, poison: 0 };
+  return c.json({
+    xlife: Number(row.xlife),
+    attack: Number(row.attack),
+    revive: Number(row.revive),
+    poison: Number(row.poison),
+  });
+});
+
 // Root endpoint
 app.get("/", (c) => {
   const endpoints: Record<string, unknown> = {
@@ -657,6 +679,9 @@ app.get("/", (c) => {
     leaderboard: "GET /leaderboard",
     quest_rewards: {
       total: "GET /quest-rewards/total",
+    },
+    consumables: {
+      supply: "GET /consumables/supply",
     },
     websocket: {
       endpoint: "WS /ws",

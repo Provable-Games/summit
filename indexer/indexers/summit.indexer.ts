@@ -52,6 +52,7 @@ import {
   decodeQuestRewardsClaimedEvent,
   unpackQuestRewardsClaimed,
   decodeTransferEvent,
+  decodeERC20TransferEvent,
   decodeEntityStatsEvent,
   decodeCollectableEntityEvent,
   computeEntityHash,
@@ -66,6 +67,10 @@ interface SummitConfig {
   dojoWorldAddress: string;
   corpseContractAddress: string;
   skullContractAddress: string;
+  xlifeTokenAddress: string;
+  attackTokenAddress: string;
+  reviveTokenAddress: string;
+  poisonTokenAddress: string;
   streamUrl: string;
   startingBlock: string;
   databaseUrl: string;
@@ -335,6 +340,15 @@ type BeastOwnerRow = typeof schema.beast_owners.$inferInsert;
 type BeastRow = typeof schema.beasts.$inferInsert;
 type BeastDataRow = typeof schema.beast_data.$inferInsert;
 
+type ConsumablesRow = {
+  owner: string;
+  xlife_count: number;
+  attack_count: number;
+  revive_count: number;
+  poison_count: number;
+  updated_at: Date;
+};
+
 /**
  * Bulk insert batches collected during block processing
  */
@@ -351,6 +365,7 @@ interface BulkInsertBatches {
   beast_owners: BeastOwnerRow[];
   beasts: BeastRow[];
   beast_data: BeastDataRow[];
+  consumables: ConsumablesRow[];
 }
 
 /**
@@ -620,6 +635,35 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
     );
   }
 
+  // consumables - additive batch upsert (accumulate deltas per owner, then upsert)
+  if (batches.consumables.length > 0) {
+    const deduped = new Map<string, ConsumablesRow>();
+    for (const row of batches.consumables) {
+      const existing = deduped.get(row.owner);
+      if (existing) {
+        existing.xlife_count += row.xlife_count;
+        existing.attack_count += row.attack_count;
+        existing.revive_count += row.revive_count;
+        existing.poison_count += row.poison_count;
+        existing.updated_at = row.updated_at;
+      } else {
+        deduped.set(row.owner, { ...row });
+      }
+    }
+    insertPromises.push(
+      db.insert(schema.consumables).values([...deduped.values()]).onConflictDoUpdate({
+        target: schema.consumables.owner,
+        set: {
+          xlife_count: sql`${schema.consumables.xlife_count} + excluded.xlife_count`,
+          attack_count: sql`${schema.consumables.attack_count} + excluded.attack_count`,
+          revive_count: sql`${schema.consumables.revive_count} + excluded.revive_count`,
+          poison_count: sql`${schema.consumables.poison_count} + excluded.poison_count`,
+          updated_at: sql`excluded.updated_at`,
+        },
+      })
+    );
+  }
+
   await Promise.all(insertPromises);
 }
 
@@ -640,6 +684,7 @@ function createEmptyBatches(): BulkInsertBatches {
     beast_owners: [],
     beasts: [],
     beast_data: [],
+    consumables: [],
   };
 }
 
@@ -747,6 +792,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     dojoWorldAddress,
     corpseContractAddress,
     skullContractAddress,
+    xlifeTokenAddress,
+    attackTokenAddress,
+    reviveTokenAddress,
+    poisonTokenAddress,
     streamUrl,
     startingBlock: startBlockStr,
     databaseUrl,
@@ -761,12 +810,30 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   const corpseAddressBigInt = addressToBigInt(corpseContractAddress);
   const skullAddressBigInt = addressToBigInt(skullContractAddress);
 
+  // Consumable token addresses as BigInt for O(1) lookup
+  const xlifeAddressBigInt = addressToBigInt(xlifeTokenAddress);
+  const attackAddressBigInt = addressToBigInt(attackTokenAddress);
+  const reviveAddressBigInt = addressToBigInt(reviveTokenAddress);
+  const poisonAddressBigInt = addressToBigInt(poisonTokenAddress);
+
+  // Map from contract address BigInt to consumable column name
+  const consumableAddressMap = new Map<bigint, "xlife_count" | "attack_count" | "revive_count" | "poison_count">([
+    [xlifeAddressBigInt, "xlife_count"],
+    [attackAddressBigInt, "attack_count"],
+    [reviveAddressBigInt, "revive_count"],
+    [poisonAddressBigInt, "poison_count"],
+  ]);
+
   // Log configuration on startup
   console.log("[Summit Indexer] Summit Contract:", summitContractAddress);
   console.log("[Summit Indexer] Beasts Contract:", beastsContractAddress);
   console.log("[Summit Indexer] Dojo World:", dojoWorldAddress);
   console.log("[Summit Indexer] Corpse Contract:", corpseContractAddress);
   console.log("[Summit Indexer] Skull Contract:", skullContractAddress);
+  console.log("[Summit Indexer] XLIFE Token:", xlifeTokenAddress);
+  console.log("[Summit Indexer] ATTACK Token:", attackTokenAddress);
+  console.log("[Summit Indexer] REVIVE Token:", reviveTokenAddress);
+  console.log("[Summit Indexer] POISON Token:", poisonTokenAddress);
   console.log("[Summit Indexer] Stream:", streamUrl);
   console.log("[Summit Indexer] Starting Block:", startingBlock.toString());
   console.log("[Summit Indexer] RPC URL:", rpcUrl);
@@ -887,6 +954,23 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         {
           address: skullContractAddress.toLowerCase() as `0x${string}`,
           keys: [EVENT_SELECTORS.SkullEvent as `0x${string}`],
+        },
+        // Consumable ERC20 tokens - Transfer events
+        {
+          address: xlifeTokenAddress.toLowerCase() as `0x${string}`,
+          keys: [BEAST_EVENT_SELECTORS.Transfer as `0x${string}`],
+        },
+        {
+          address: attackTokenAddress.toLowerCase() as `0x${string}`,
+          keys: [BEAST_EVENT_SELECTORS.Transfer as `0x${string}`],
+        },
+        {
+          address: reviveTokenAddress.toLowerCase() as `0x${string}`,
+          keys: [BEAST_EVENT_SELECTORS.Transfer as `0x${string}`],
+        },
+        {
+          address: poisonTokenAddress.toLowerCase() as `0x${string}`,
+          keys: [BEAST_EVENT_SELECTORS.Transfer as `0x${string}`],
         },
       ],
     },
@@ -1214,6 +1298,46 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 // Mark as fetched in cache
                 fetchedTokens.add(token_id);
               }
+            }
+            continue;
+          }
+
+          // Consumable ERC20 token Transfer events
+          const consumableColumn = consumableAddressMap.get(addressToBigInt(event_address));
+          if (consumableColumn && selector === BEAST_EVENT_SELECTORS.Transfer) {
+            const decoded = decodeERC20TransferEvent([...keys], [...data]);
+            const wholeUnits = Number(decoded.amount / 1_000_000_000_000_000_000n);
+            if (wholeUnits === 0) continue;
+
+            const fromIsZero = isZeroFeltAddress(decoded.from);
+            const toIsZero = isZeroFeltAddress(decoded.to);
+
+            // Debit sender (if not mint from zero address)
+            if (!fromIsZero) {
+              const row: ConsumablesRow = {
+                owner: decoded.from,
+                xlife_count: 0,
+                attack_count: 0,
+                revive_count: 0,
+                poison_count: 0,
+                updated_at: block_timestamp,
+              };
+              row[consumableColumn] = -wholeUnits;
+              batches.consumables.push(row);
+            }
+
+            // Credit receiver (if not burn to zero address)
+            if (!toIsZero) {
+              const row: ConsumablesRow = {
+                owner: decoded.to,
+                xlife_count: 0,
+                attack_count: 0,
+                revive_count: 0,
+                poison_count: 0,
+                updated_at: block_timestamp,
+              };
+              row[consumableColumn] = wholeUnits;
+              batches.consumables.push(row);
             }
             continue;
           }
@@ -1866,7 +1990,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         // proc = event processing loop
         // ins = database inserts
         const timingStr = `scan:${preScanTime} rpc:${rpcTime} ctx:${contextLookupTime}(j:${joinQueryTime} f:${fallbackQueryTime} bd:${beastDataQueryTime} ls:${lsMetadataQueryTime}) proc:${eventProcessingTime} ins:${insertTime}`;
-        const countsStr = `bs:${batches.beast_stats.length} bt:${batches.battles.length} log:${batches.summit_log.length} own:${batches.beast_owners.length}`;
+        const countsStr = `bs:${batches.beast_stats.length} bt:${batches.battles.length} log:${batches.summit_log.length} own:${batches.beast_owners.length} con:${batches.consumables.length}`;
 
         logger.info(`Block ${block_number}: ${totalTime}ms [${timingStr}] {${countsStr}}`);
       }

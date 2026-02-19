@@ -500,6 +500,29 @@ export function decodeTransferEvent(keys: string[], _data: string[]): TransferEv
   };
 }
 
+// ============ ERC20 Transfer Decoder ============
+
+export interface ERC20TransferEventData {
+  from: string;
+  to: string;
+  amount: bigint;
+}
+
+/**
+ * Decode ERC20 Transfer event
+ * Keys: [selector, from, to]
+ * Data: [amount_low, amount_high]
+ * Note: differs from ERC721 where tokenId is in keys
+ */
+export function decodeERC20TransferEvent(keys: string[], data: string[]): ERC20TransferEventData {
+  const from = feltToHex(keys[1]);
+  const to = feltToHex(keys[2]);
+  const amount_low = hexToBigInt(data[0]);
+  const amount_high = hexToBigInt(data[1] ?? "0x0");
+  const amount = amount_low + (amount_high * (2n ** 128n));
+  return { from, to, amount };
+}
+
 // ============ Dojo Event Data Interfaces ============
 
 export interface EntityStatsEventData {

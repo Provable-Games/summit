@@ -398,6 +398,26 @@ export const summit_log = pgTable(
   ]
 );
 
+/**
+ * Consumables table - ERC20 token balances per owner
+ *
+ * Tracks circulating supply of 4 consumable tokens (XLIFE, ATTACK, REVIVE, POISON).
+ * Updated additively on each ERC20 Transfer event.
+ * Values stored as whole units (raw amount / 1e18).
+ */
+export const consumables = pgTable(
+  "consumables",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    owner: text("owner").notNull().unique(),
+    xlife_count: integer("xlife_count").notNull().default(0),
+    attack_count: integer("attack_count").notNull().default(0),
+    revive_count: integer("revive_count").notNull().default(0),
+    poison_count: integer("poison_count").notNull().default(0),
+    updated_at: timestamp("updated_at").defaultNow(),
+  }
+);
+
 // Export all schema tables for Drizzle
 export const schema = {
   beast_stats,
@@ -412,4 +432,5 @@ export const schema = {
   beasts,
   beast_data,
   summit_log,
+  consumables,
 };

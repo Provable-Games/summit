@@ -22,6 +22,13 @@
       "when": 1770990939402,
       "tag": "0002_beast_stats_flags_and_trigger_refresh",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1771501193624,
+      "tag": "0003_mighty_blackheart",
+      "breakpoints": true
     }
   ]
 }
