@@ -392,6 +392,27 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         });
       }
     }
+
+    // Handle Market events (potion buys/sells via Ekubo)
+    if (category === "Market") {
+      if (sub_category === "Bought Potions") {
+        const amount = (eventData.amount as number) || 1;
+        const token = (eventData.token as string) || "Potion";
+        addNotificationWithPlayer({
+          type: 'bought_potions',
+          value: amount,
+          tokenName: token,
+        });
+      } else if (sub_category === "Sold Potions") {
+        const amount = (eventData.amount as number) || 1;
+        const token = (eventData.token as string) || "Potion";
+        addNotificationWithPlayer({
+          type: 'sold_potions',
+          value: amount,
+          tokenName: token,
+        });
+      }
+    }
   };
 
   // WebSocket subscription

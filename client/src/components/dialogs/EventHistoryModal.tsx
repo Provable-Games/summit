@@ -20,6 +20,7 @@ import HeartBrokenIcon from '@mui/icons-material/HeartBroken';
 import HistoryIcon from '@mui/icons-material/History';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import PsychologyIcon from '@mui/icons-material/Psychology';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import StarIcon from '@mui/icons-material/Star';
 
 // Public images
@@ -62,6 +63,7 @@ const CATEGORIES: Record<string, string[]> = {
   'Beast Upgrade': ['Spirit', 'Luck', 'Specials', 'Wisdom', 'Diplomacy', 'Bonus Health'],
   'Rewards': ['$SURVIVOR Earned', 'Claimed $SURVIVOR', 'Claimed Corpses', 'Claimed Skulls'],
   'LS Events': ['EntityStats', 'CollectableEntity'],
+  'Market': ['Bought Potions', 'Sold Potions'],
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -69,6 +71,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Beast Upgrade': '#81b29a',
   'Rewards': '#f2cc8f',
   'LS Events': '#a8a4ce',
+  'Market': '#81b29a',
 };
 
 // Display names for sub-categories (API value -> Display name)
@@ -115,6 +118,12 @@ const getEventIcon = (category: string, subCategory: string): React.ReactNode =>
   if (category === 'LS Events') {
     if (subCategory === 'EntityStats') return <EmojiEventsIcon sx={{ fontSize: 18, color: '#ffd700' }} />;
     if (subCategory === 'CollectableEntity') return <HeartBrokenIcon sx={{ fontSize: 18, color: '#e05050' }} />;
+  }
+
+  // Market events
+  if (category === 'Market') {
+    if (subCategory === 'Bought Potions') return <ShoppingCartIcon sx={{ fontSize: 18, color: '#81b29a' }} />;
+    if (subCategory === 'Sold Potions') return <ShoppingCartIcon sx={{ fontSize: 18, color: '#e07a5f' }} />;
   }
 
   return null;
@@ -722,6 +731,46 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
             <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{skullsClaimed}</Box>
             {skullsClaimed === 1 ? ' skull token' : ' skull tokens'}
           </Typography>
+        );
+      }
+    }
+
+    // Market events
+    if (event.category === 'Market') {
+      const displayName = player || 'Unknown';
+      const amount = (data.amount as number) || 1;
+      const token = (data.token as string) || 'Potion';
+      const tokenIcons: Record<string, string> = {
+        'ATTACK': attackPotionIcon,
+        'EXTRA LIFE': lifePotionIcon,
+        'REVIVE': revivePotionIcon,
+        'POISON': poisonPotionIcon,
+      };
+      const icon = tokenIcons[token];
+      if (event.sub_category === 'Bought Potions') {
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+              <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+              {' bought '}
+              <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{amount}</Box>
+            </Typography>
+            {icon && <img src={icon} alt={token} style={{ width: 14, height: 14, objectFit: 'contain' }} />}
+            <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>{token.toLowerCase()} potions</Typography>
+          </Box>
+        );
+      }
+      if (event.sub_category === 'Sold Potions') {
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
+              <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}</Box>
+              {' sold '}
+              <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{amount}</Box>
+            </Typography>
+            {icon && <img src={icon} alt={token} style={{ width: 14, height: 14, objectFit: 'contain' }} />}
+            <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>{token.toLowerCase()} potions</Typography>
+          </Box>
         );
       }
     }

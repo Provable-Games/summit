@@ -32,7 +32,9 @@ export type NotificationType =
   // Rewards
   | 'survivor_earned' | 'claimed_survivor' | 'claimed_corpses' | 'claimed_skulls'
   // LS Events
-  | 'kill' | 'locked';
+  | 'kill' | 'locked'
+  // Market
+  | 'bought_potions' | 'sold_potions';
 
 export interface GameNotification {
   id: string;
@@ -41,6 +43,7 @@ export interface GameNotification {
   playerName?: string;
   beastName?: string;
   beastImageSrc?: string;
+  tokenName?: string;
   // Extended data for richer notifications
   extraLives?: number;
   xpGained?: number;

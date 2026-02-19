@@ -827,6 +827,14 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     [poisonAddressBigInt, "poison_count"],
   ]);
 
+  // Friendly names for summit_log entries
+  const consumableTokenNames: Record<string, string> = {
+    xlife_count: "EXTRA LIFE",
+    attack_count: "ATTACK",
+    revive_count: "REVIVE",
+    poison_count: "POISON",
+  };
+
   // Log configuration on startup
   console.log("[Summit Indexer] Summit Contract:", summitContractAddress);
   console.log("[Summit Indexer] Beasts Contract:", beastsContractAddress);
@@ -1344,6 +1352,46 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
               };
               row[consumableColumn] = wholeUnits;
               batches.consumables.push(row);
+            }
+
+            // Log potion purchase when tokens come from Ekubo Core
+            if (fromAddr === ekuboCoreAddressBigInt && !isExcluded(toAddr)) {
+              collectSummitLog(batches, {
+                block_number,
+                event_index,
+                category: "Market",
+                sub_category: "Bought Potions",
+                data: {
+                  player: decoded.to,
+                  token: consumableTokenNames[consumableColumn],
+                  amount: wholeUnits,
+                },
+                player: decoded.to,
+                token_id: null,
+                transaction_hash,
+                created_at: block_timestamp,
+                indexed_at,
+              });
+            }
+
+            // Log potion sale when tokens go to Ekubo Core
+            if (toAddr === ekuboCoreAddressBigInt && !isExcluded(fromAddr)) {
+              collectSummitLog(batches, {
+                block_number,
+                event_index,
+                category: "Market",
+                sub_category: "Sold Potions",
+                data: {
+                  player: decoded.from,
+                  token: consumableTokenNames[consumableColumn],
+                  amount: wholeUnits,
+                },
+                player: decoded.from,
+                token_id: null,
+                transaction_hash,
+                created_at: block_timestamp,
+                indexed_at,
+              });
             }
             continue;
           }

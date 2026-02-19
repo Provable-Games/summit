@@ -13,13 +13,22 @@ import StarIcon from '@mui/icons-material/Star';
 import { Box, Typography } from '@mui/material';
 import { AnimatePresence, motion } from 'framer-motion';
 
+import attackPotionIcon from '@/assets/images/attack-potion.png';
 import swordIcon from '@/assets/images/sword.png';
 import corpseTokenIcon from '@/assets/images/corpse-token.png';
 import killTokenIcon from '@/assets/images/skull-token.png';
 import lifePotionIcon from '@/assets/images/life-potion.png';
 import poisonPotionIcon from '@/assets/images/poison-potion.png';
+import revivePotionIcon from '@/assets/images/revive-potion.png';
 
 const survivorTokenIcon = '/images/survivor_token.png';
+
+const TOKEN_ICON_MAP: Record<string, string> = {
+  'ATTACK': attackPotionIcon,
+  'EXTRA LIFE': lifePotionIcon,
+  'REVIVE': revivePotionIcon,
+  'POISON': poisonPotionIcon,
+};
 
 const getNotificationDisplay = (notification: GameNotification): { icon: React.ReactNode; text: string; color: string } => {
   const iconStyle = { width: 14, height: 14, objectFit: 'contain' as const };
@@ -122,6 +131,22 @@ const getNotificationDisplay = (notification: GameNotification): { icon: React.R
         text: 'Killed in LS2',
         color: '#ff4444',
       };
+    case 'bought_potions': {
+      const tokenIcon = TOKEN_ICON_MAP[notification.tokenName ?? ''] || attackPotionIcon;
+      return {
+        icon: <img src={tokenIcon} alt="" style={iconStyle} />,
+        text: `bought ${value} ${(notification.tokenName || 'potion').toLowerCase()} potions`,
+        color: '#81b29a',
+      };
+    }
+    case 'sold_potions': {
+      const tokenIcon = TOKEN_ICON_MAP[notification.tokenName ?? ''] || attackPotionIcon;
+      return {
+        icon: <img src={tokenIcon} alt="" style={iconStyle} />,
+        text: `sold ${value} ${(notification.tokenName || 'potion').toLowerCase()} potions`,
+        color: '#e07a5f',
+      };
+    }
     default:
       return {
         icon: null,
