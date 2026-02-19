@@ -496,13 +496,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         setSummit(prevSummit => prevSummit ? ({
           ...prevSummit,
           poison_count: (prevSummit.poison_count || 0) + poisonEvent.count,
-          poison_timestamp: poisonEvent.block_timestamp,
+          poison_timestamp: Math.max(prevSummit.poison_timestamp, poisonEvent.block_timestamp),
         }) : prevSummit);
       } else if (poisonEvent.beast_token_id === nextSummit?.beast.token_id) {
         setNextSummit(prevSummit => prevSummit ? ({
           ...prevSummit,
           poison_count: (prevSummit.poison_count || 0) + poisonEvent.count,
-          poison_timestamp: poisonEvent.block_timestamp,
+          poison_timestamp: Math.max(prevSummit.poison_timestamp, poisonEvent.block_timestamp),
         }) : prevSummit);
       }
     }
@@ -646,14 +646,14 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           prev.map(b =>
             b.token_id === action.beastId
               ? {
-                  ...b,
-                  luck: b.luck - (action.stats?.luck ?? 0),
-                  spirit: b.spirit - (action.stats?.spirit ?? 0),
-                  specials: action.stats?.specials ? false : b.specials,
-                  wisdom: action.stats?.wisdom ? false : b.wisdom,
-                  diplomacy: action.stats?.diplomacy ? false : b.diplomacy,
-                  bonus_health: (b.bonus_health || 0) - (action.bonusHealth ?? 0),
-                }
+                ...b,
+                luck: b.luck - (action.stats?.luck ?? 0),
+                spirit: b.spirit - (action.stats?.spirit ?? 0),
+                specials: action.stats?.specials ? false : b.specials,
+                wisdom: action.stats?.wisdom ? false : b.wisdom,
+                diplomacy: action.stats?.diplomacy ? false : b.diplomacy,
+                bonus_health: (b.bonus_health || 0) - (action.bonusHealth ?? 0),
+              }
               : b
           )
         );
