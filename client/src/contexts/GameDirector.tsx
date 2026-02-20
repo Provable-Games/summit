@@ -84,6 +84,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     setApplyingPotions,
     setAppliedExtraLifePotions,
     setSelectedBeasts,
+    sortMethod,
     poisonEvent,
     setPoisonEvent,
     addLiveEvent,
@@ -149,7 +150,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       owner: data.owner ?? "",
       block_timestamp: previousSummit?.block_timestamp ?? Date.now() / 1000,
       poison_count: previousSummit?.poison_count ?? 0,
-      poison_timestamp: previousSummit?.poison_timestamp ?? 0,
+      poison_timestamp: sameBeast ? Date.now() / 1000 : 0,
     });
   };
 
@@ -447,7 +448,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       newSummit.beast.current_health = currentHealth;
       newSummit.beast.extra_lives = extraLives;
 
-      setSelectedBeasts([]);
       setSummit(newSummit);
       setNextSummit(null);
     }
@@ -463,6 +463,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (!summit?.beast.token_id) return;
 
     play("roar");
+
+    if (sortMethod === 'recommended') {
+      setSelectedBeasts([]);
+    }
 
     // Fetch diplomacy if not already set
     if (!summit.diplomacy) {
@@ -496,13 +500,13 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
         setSummit(prevSummit => prevSummit ? ({
           ...prevSummit,
           poison_count: (prevSummit.poison_count || 0) + poisonEvent.count,
-          poison_timestamp: Math.max(prevSummit.poison_timestamp, poisonEvent.block_timestamp),
+          poison_timestamp: poisonEvent.block_timestamp,
         }) : prevSummit);
       } else if (poisonEvent.beast_token_id === nextSummit?.beast.token_id) {
         setNextSummit(prevSummit => prevSummit ? ({
           ...prevSummit,
           poison_count: (prevSummit.poison_count || 0) + poisonEvent.count,
-          poison_timestamp: Math.max(prevSummit.poison_timestamp, poisonEvent.block_timestamp),
+          poison_timestamp: poisonEvent.block_timestamp,
         }) : prevSummit);
       }
     }

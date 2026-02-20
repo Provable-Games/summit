@@ -4,6 +4,8 @@ import type { LogEntry } from '@/api/summitApi';
 
 export type SortMethod = 'recommended' | 'power' | 'attack' | 'health' | 'seconds held';
 export type BeastTypeFilter = 'all' | 'strong';
+export type QuestFilterKey = 'firstBlood' | 'consistencyIsKey' | 'levelUp1' | 'levelUp3' | 'levelUp5' | 'levelUp10' | 'summitConqueror' | 'ironGrip' | 'secondWind' | 'vitalBoost';
+export type QuestFilter = Record<QuestFilterKey, boolean>;
 
 const MAX_LIVE_EVENTS = 100;
 
@@ -85,6 +87,7 @@ interface GameState {
   sortMethod: SortMethod;
   typeFilter: BeastTypeFilter;
   nameMatchFilter: boolean;
+  questFilter: QuestFilter;
 
   setSummit: (summit: Summit | null | ((prev: Summit | null) => Summit | null)) => void;
   setSummitEnded: (summitEnded: boolean) => void;
@@ -117,6 +120,7 @@ interface GameState {
   setSortMethod: (sortMethod: SortMethod) => void;
   setTypeFilter: (typeFilter: BeastTypeFilter) => void;
   setNameMatchFilter: (nameMatchFilter: boolean) => void;
+  toggleQuestFilter: (key: QuestFilterKey) => void;
 
   disconnect: () => void;
 }
@@ -151,6 +155,18 @@ export const useGameStore = create<GameState>((set, _get) => ({
   sortMethod: getSavedSortMethod(),
   typeFilter: 'all',
   nameMatchFilter: false,
+  questFilter: {
+    firstBlood: false,
+    consistencyIsKey: false,
+    levelUp1: false,
+    levelUp3: false,
+    levelUp5: false,
+    levelUp10: false,
+    summitConqueror: false,
+    ironGrip: false,
+    secondWind: false,
+    vitalBoost: false,
+  },
 
   disconnect: () => {
     set({
@@ -176,6 +192,18 @@ export const useGameStore = create<GameState>((set, _get) => ({
       hideDeadBeasts: false,
       typeFilter: 'all',
       nameMatchFilter: false,
+      questFilter: {
+        firstBlood: false,
+        consistencyIsKey: false,
+        levelUp1: false,
+        levelUp3: false,
+        levelUp5: false,
+        levelUp10: false,
+        summitConqueror: false,
+        ironGrip: false,
+        secondWind: false,
+        vitalBoost: false,
+      },
       autopilotLog: ''
     });
   },
@@ -235,4 +263,11 @@ export const useGameStore = create<GameState>((set, _get) => ({
   },
   setTypeFilter: (typeFilter: BeastTypeFilter) => set({ typeFilter }),
   setNameMatchFilter: (nameMatchFilter: boolean) => set({ nameMatchFilter }),
+  toggleQuestFilter: (key: QuestFilterKey) =>
+    set(state => ({
+      questFilter: {
+        ...state.questFilter,
+        [key]: !state.questFilter[key],
+      },
+    })),
 }));

@@ -452,7 +452,7 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
                         setRevivePotionMaxPerBeast,
                         !useRevivePotions,
                         1,
-                        32,
+                        64,
                       )}
                     </Box>
                   </Box>

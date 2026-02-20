@@ -1,7 +1,7 @@
 import { useController } from '@/contexts/controller';
 import { MAX_BEASTS_PER_ATTACK } from '@/contexts/GameDirector';
 import { useQuestGuide } from '@/contexts/QuestGuide';
-import type { BeastTypeFilter, SortMethod} from '@/stores/gameStore';
+import type { BeastTypeFilter, QuestFilterKey, SortMethod } from '@/stores/gameStore';
 import { useGameStore } from '@/stores/gameStore';
 import type { Beast, selection } from '@/types/game';
 import {
@@ -10,12 +10,19 @@ import {
   isBeastLocked
 } from '@/utils/beasts';
 import AddIcon from '@mui/icons-material/Add';
+import BoltIcon from '@mui/icons-material/Bolt';
+import CloseIcon from '@mui/icons-material/Close';
+import DiamondIcon from '@mui/icons-material/Diamond';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FlashOnIcon from '@mui/icons-material/FlashOn';
+import KeyboardDoubleArrowUpIcon from '@mui/icons-material/KeyboardDoubleArrowUp';
 import LibraryAddCheckIcon from '@mui/icons-material/LibraryAddCheck';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import RemoveIcon from '@mui/icons-material/Remove';
 import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import { Box, IconButton, Link, Popover, TextField, Tooltip, Typography } from "@mui/material";
 import { useAccount } from "@starknet-react/core";
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -23,6 +30,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import attackPotionIcon from '../assets/images/attack-potion.png';
+import revivePotionIcon from '../assets/images/revive-potion.png';
+import swordIcon from '../assets/images/sword.png';
+import bruteIcon from '../assets/types/brute.svg';
 import { calculateBattleResult } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 import BeastCard from './BeastCard';
@@ -36,6 +46,7 @@ function BeastCollection() {
     sortMethod, setSortMethod,
     typeFilter, setTypeFilter,
     nameMatchFilter, setNameMatchFilter,
+    questFilter, toggleQuestFilter,
   } = useGameStore()
   const { tokenBalances } = useController()
   const { address } = useAccount()
@@ -61,12 +72,12 @@ function BeastCollection() {
         selection[0].token_id === beastId ? [selection[0], next, selection[2]] : selection
       )
     );
-  }, [setSelectedBeasts]);
+  }, []);
 
   const setBulkAttacks = useCallback((count: number) => {
     const next = clampAttacks(count);
     setSelectedBeasts((prev) => prev.map((s) => [s[0], next, s[2]]));
-  }, [setSelectedBeasts]);
+  }, []);
 
   const setBulkPotions = useCallback((mode: 'none' | 'optimal' | 'max' | number) => {
     const maxAvailable = Math.min(tokenBalances["ATTACK"] || 0, 255);
@@ -88,7 +99,7 @@ function BeastCollection() {
       const value = Math.max(0, Math.min(maxAvailable, mode));
       setSelectedBeasts((prev) => prev.map((s) => [s[0], s[1], value]));
     }
-  }, [setSelectedBeasts, summit, tokenBalances]);
+  }, [summit, tokenBalances]);
 
   const isStrongAgainst = (attackerType: string, defenderType: string): boolean => {
     return (
@@ -127,6 +138,38 @@ function BeastCollection() {
         filtered = filtered.filter(beast => beast.current_health > 0 && !isBeastLocked(beast));
       }
 
+      // Apply quest filters (show beasts that have NOT completed selected quests)
+      if (questFilter.firstBlood) {
+        filtered = filtered.filter(beast => beast.bonus_xp === 0);
+      }
+      if (questFilter.consistencyIsKey) {
+        filtered = filtered.filter(beast => !beast.max_attack_streak);
+      }
+      if (questFilter.levelUp1) {
+        filtered = filtered.filter(beast => beast.current_level - beast.level < 1);
+      }
+      if (questFilter.levelUp3) {
+        filtered = filtered.filter(beast => beast.current_level - beast.level < 3);
+      }
+      if (questFilter.levelUp5) {
+        filtered = filtered.filter(beast => beast.current_level - beast.level < 5);
+      }
+      if (questFilter.levelUp10) {
+        filtered = filtered.filter(beast => beast.current_level - beast.level < 10);
+      }
+      if (questFilter.summitConqueror) {
+        filtered = filtered.filter(beast => !beast.captured_summit);
+      }
+      if (questFilter.ironGrip) {
+        filtered = filtered.filter(beast => beast.summit_held_seconds < 10);
+      }
+      if (questFilter.secondWind) {
+        filtered = filtered.filter(beast => !beast.used_revival_potion);
+      }
+      if (questFilter.vitalBoost) {
+        filtered = filtered.filter(beast => !beast.used_attack_potion);
+      }
+
       // Sort the filtered collection
       return filtered.sort((a: Beast, b: Beast) => {
         // Always keep summit beast at the top
@@ -142,7 +185,7 @@ function BeastCollection() {
           if (nameMatchFilter) {
             const aMatchesBoth = a.prefix === summit.beast.prefix && a.suffix === summit.beast.suffix;
             const bMatchesBoth = b.prefix === summit.beast.prefix && b.suffix === summit.beast.suffix;
-            
+
             if (aMatchesBoth && !bMatchesBoth) {
               return -1; // a comes first
             } else if (!aMatchesBoth && bMatchesBoth) {
@@ -150,7 +193,7 @@ function BeastCollection() {
             }
             // If both match both or neither matches both, continue with normal sorting
           }
-          
+
           if (a.combat?.score !== b.combat?.score) {
             return (b.combat?.score ?? Number.NEGATIVE_INFINITY) - (a.combat?.score ?? Number.NEGATIVE_INFINITY)
           } else if (b.combat?.attack !== a.combat?.attack) {
@@ -182,7 +225,7 @@ function BeastCollection() {
     }
 
     return collection.sort((a, b) => b.power - a.power)
-  }, [collection, summit, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts]);
+  }, [collection, summit?.beast.token_id, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, questFilter]);
 
   const selectBeast = useCallback((beast: Beast, isFirstBeast: boolean = false) => {
     if (attackInProgress || attackMode === 'autopilot') return;
@@ -198,7 +241,7 @@ function BeastCollection() {
     } else {
       setSelectedBeasts((prev: selection) => [...prev, [beast, 1, 0]]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attackInProgress, attackMode, selectedBeasts, notifyTargetClicked]);
 
   const selectAllBeasts = () => {
@@ -497,7 +540,7 @@ function BeastCollection() {
                     </Box>
 
                     {/* Type Section */}
-                    <Box mb={0.5}>
+                    {/* <Box mb={0.5}>
                       <Typography sx={styles.filterHeadline}>BEAST TYPE</Typography>
                       <Box sx={styles.filterButtons}>
                         {(['all', 'strong'] as BeastTypeFilter[]).map((type) => (
@@ -512,7 +555,7 @@ function BeastCollection() {
                           </Box>
                         ))}
                       </Box>
-                    </Box>
+                    </Box> */}
 
                     {/* Filters Section */}
                     <Box>
@@ -530,6 +573,51 @@ function BeastCollection() {
                         >
                           <Typography sx={styles.compactToggleText}>Name Match</Typography>
                         </Box>
+                      </Box>
+                    </Box>
+
+                    {/* Quest Filter Section */}
+                    <Box>
+                      <Typography sx={styles.filterHeadline}>QUESTS</Typography>
+                      <Box sx={styles.questFilterIcons}>
+                        {([
+                          { key: 'firstBlood' as QuestFilterKey, icon: <Box component="img" src={swordIcon} sx={{ width: 16, height: 16 }} /> },
+                          { key: 'consistencyIsKey' as QuestFilterKey, icon: <LocalFireDepartmentIcon sx={{ fontSize: '18px', color: '#ff5722' }} /> },
+                          { key: 'summitConqueror' as QuestFilterKey, icon: <MilitaryTechIcon sx={{ fontSize: '18px', color: '#ffd54f' }} /> },
+                          { key: 'ironGrip' as QuestFilterKey, icon: <Box component="img" src={bruteIcon} sx={{ width: 16, height: 16, filter: 'invert(60%) sepia(80%) saturate(500%) hue-rotate(5deg) brightness(1.1)' }} /> },
+                          { key: 'secondWind' as QuestFilterKey, icon: <Box component="img" src={revivePotionIcon} sx={{ width: 16, height: 16 }} /> },
+                        ]).map(({ key, icon }) => (
+                          <Box
+                            key={key}
+                            sx={[styles.questFilterIcon, questFilter[key] && styles.questFilterIconActive]}
+                            onClick={() => toggleQuestFilter(key)}
+                          >
+                            {icon}
+                            {questFilter[key] && (
+                              <CloseIcon sx={styles.questFilterX} />
+                            )}
+                          </Box>
+                        ))}
+                      </Box>
+                      <Box sx={{ ...styles.questFilterIcons, mt: '3px' }}>
+                        {([
+                          { key: 'vitalBoost' as QuestFilterKey, icon: <Box component="img" src={attackPotionIcon} sx={{ width: 16, height: 16 }} /> },
+                          { key: 'levelUp1' as QuestFilterKey, icon: <TrendingUpIcon sx={{ fontSize: '18px', color: '#4fc3f7' }} /> },
+                          { key: 'levelUp3' as QuestFilterKey, icon: <KeyboardDoubleArrowUpIcon sx={{ fontSize: '18px', color: '#7c4dff' }} /> },
+                          { key: 'levelUp5' as QuestFilterKey, icon: <BoltIcon sx={{ fontSize: '18px', color: '#ffab00' }} /> },
+                          { key: 'levelUp10' as QuestFilterKey, icon: <DiamondIcon sx={{ fontSize: '18px', color: '#e040fb' }} /> },
+                        ]).map(({ key, icon }) => (
+                          <Box
+                            key={key}
+                            sx={[styles.questFilterIcon, questFilter[key] && styles.questFilterIconActive]}
+                            onClick={() => toggleQuestFilter(key)}
+                          >
+                            {icon}
+                            {questFilter[key] && (
+                              <CloseIcon sx={styles.questFilterX} />
+                            )}
+                          </Box>
+                        ))}
                       </Box>
                     </Box>
                   </Box>
@@ -1362,6 +1450,45 @@ const styles = {
     color: '#FFF',
     textTransform: 'uppercase',
     letterSpacing: '0.4px',
+  },
+  questFilterIcons: {
+    display: 'flex',
+    gap: '4px',
+    justifyContent: 'center',
+  },
+  questFilterIcon: {
+    width: '26px',
+    height: '26px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '3px',
+    background: `${gameColors.darkGreen}80`,
+    border: `1px solid ${gameColors.accentGreen}40`,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    position: 'relative',
+    color: '#888',
+    '&:hover': {
+      border: `1px solid ${gameColors.accentGreen}60`,
+      color: '#FFF',
+    },
+  },
+  questFilterIconActive: {
+    background: `linear-gradient(135deg, ${gameColors.lightGreen} 0%, ${gameColors.mediumGreen} 100%)`,
+    border: `1px solid ${gameColors.brightGreen}80`,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.brightGreen}40,
+      0 2px 4px rgba(127, 255, 0, 0.3)
+    `,
+    color: '#FFF',
+  },
+  questFilterX: {
+    position: 'absolute',
+    fontSize: '14px',
+    color: '#FF4444',
+    filter: 'drop-shadow(0 0 2px #000)',
+    pointerEvents: 'none',
   },
   filterDivider: {
     height: '1px',

@@ -102,7 +102,7 @@ const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   attackStrategy: 'guaranteed',
   useRevivePotions: false,
   revivePotionMax: 0,
-  revivePotionMaxPerBeast: 32,
+  revivePotionMaxPerBeast: 64,
   useAttackPotions: false,
   attackPotionMax: 0,
   extraLifeStrategy: 'disabled',
@@ -251,7 +251,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       revivePotionMaxPerBeast: clampIntRange(
         partial.revivePotionMaxPerBeast ?? get().revivePotionMaxPerBeast,
         1,
-        32,
+        64,
         DEFAULT_CONFIG.revivePotionMaxPerBeast,
       ),
 
