@@ -151,6 +151,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       block_timestamp: previousSummit?.block_timestamp ?? Date.now() / 1000,
       poison_count: previousSummit?.poison_count ?? 0,
       poison_timestamp: sameBeast ? Date.now() / 1000 : 0,
+      diplomacy: previousSummit?.diplomacy ?? undefined,
     });
   };
 

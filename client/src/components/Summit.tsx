@@ -135,7 +135,7 @@ function Summit() {
           ...prevSummit,
           beast: {
             ...prevSummit.beast,
-            current_health: newHealth,
+            current_health: Math.floor(newHealth),
             extra_lives: extraLives,
           },
         }
