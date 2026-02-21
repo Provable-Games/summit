@@ -71,11 +71,11 @@ const POISON_OPTIONS: {
       label: 'Never',
       description: `Never use Poison.`,
     },
-    {
-      value: 'conservative',
-      label: 'Conservative',
-      description: `Only use Poison when Summit has more than X extra lives.`,
-    },
+    // {
+    //   value: 'conservative',
+    //   label: 'Conservative',
+    //   description: `Only use Poison when Summit has more than X extra lives.`,
+    // },
     {
       value: 'aggressive',
       label: 'Aggressive',
@@ -364,11 +364,23 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
             borderRadius: '12px',
             maxWidth: '640px',
             width: '100%',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
             boxShadow: `
               0 8px 24px rgba(0, 0, 0, 0.6),
               0 0 16px ${gameColors.accentGreen}30
             `,
             position: 'relative',
+            overflow: 'auto',
+            WebkitOverflowScrolling: 'touch',
+            '&::-webkit-scrollbar': {
+              width: { xs: 0, sm: '6px' },
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(255,255,255,0.3)',
+              borderRadius: 3,
+            },
           },
         },
         backdrop: {
@@ -666,6 +678,8 @@ const styles = {
     pt: 1.5,
     color: '#fff',
     boxSizing: 'border-box' as const,
+    display: 'flex',
+    flexDirection: 'column',
   },
   closeButton: {
     minWidth: { xs: '44px', sm: '32px' },
@@ -728,16 +742,6 @@ const styles = {
     display: 'flex',
     flexDirection: 'column' as const,
     gap: 1,
-    maxHeight: { xs: 'calc(100vh - 200px)', sm: 'calc(100vh - 180px)' },
-    overflowY: 'auto' as const,
-    WebkitOverflowScrolling: 'touch',
-    '&::-webkit-scrollbar': {
-      width: { xs: 0, sm: '6px' },
-    },
-    '&::-webkit-scrollbar-thumb': {
-      backgroundColor: 'rgba(255,255,255,0.3)',
-      borderRadius: 3,
-    },
   },
   row: {
     background: `${gameColors.darkGreen}80`,
