@@ -288,13 +288,13 @@ function ActionBar() {
       return;
     };
 
-    // if (poisonStrategy === 'conservative'
-    //   && summit.beast.extra_lives >= poisonConservativeExtraLivesTrigger
-    //   && summit.poison_count < poisonConservativeAmount) {
-    //   const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
-    //   const poisonBalance = tokenBalances?.["POISON"] || 0;
-    //   handleApplyPoison(Math.min(poisonConservativeAmount - summit.poison_count, poisonBalance, remainingCap));
-    // }
+    if (poisonStrategy === 'conservative'
+      && summit.beast.extra_lives >= poisonConservativeExtraLivesTrigger
+      && summit.poison_count < poisonConservativeAmount) {
+      const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
+      const poisonBalance = tokenBalances?.["POISON"] || 0;
+      handleApplyPoison(Math.min(poisonConservativeAmount - summit.poison_count, poisonBalance, remainingCap));
+    }
 
     let extraLifePotions = 0;
     if (extraLifeStrategy === 'after_capture') {
