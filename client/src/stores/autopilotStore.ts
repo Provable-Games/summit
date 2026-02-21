@@ -95,22 +95,22 @@ interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCount
   resetToDefaults: () => void;
 }
 
-const STORAGE_KEY = 'summit_autopilot_config_v1';
-const MAX_CAPS_INIT_KEY = 'summit_autopilot_max_caps_init_v1';
+const STORAGE_KEY = 'summit_autopilot_config_v2';
+const MAX_CAPS_INIT_KEY = 'summit_autopilot_max_caps_init_v2';
 
 const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   attackStrategy: 'guaranteed',
   useRevivePotions: false,
-  revivePotionMax: 0,
-  revivePotionMaxPerBeast: 64,
+  revivePotionMax: 10,
+  revivePotionMaxPerBeast: 1,
   useAttackPotions: false,
-  attackPotionMax: 0,
+  attackPotionMax: 10,
   extraLifeStrategy: 'disabled',
-  extraLifeMax: 500,
-  extraLifeTotalMax: 0,
-  extraLifeReplenishTo: 500,
+  extraLifeMax: 1,
+  extraLifeTotalMax: 10,
+  extraLifeReplenishTo: 1,
   poisonStrategy: 'disabled',
-  poisonTotalMax: 0,
+  poisonTotalMax: 100,
   poisonConservativeExtraLivesTrigger: 100,
   poisonConservativeAmount: 100,
   poisonAggressiveAmount: 100,
