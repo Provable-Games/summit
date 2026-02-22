@@ -143,6 +143,41 @@ fn test_poison_extra_life_off_by_one_bug() {
     assert!(result3.new_extra_lives == 0, "S3: Should have 0 extra lives");
 }
 
+#[test]
+#[available_gas(l2_gas: 120000)]
+fn test_boundary_damage_equals_current_health_consumes_one_life() {
+    // Boundary: damage == current_health with lives available.
+    // Crossing exactly 0 HP should consume one life and restore to full health.
+    let result = calculate_poison_damage(50, 2, 50, 50, 1, 50);
+    assert!(result.damage == 50, "Damage should be 50");
+    assert!(result.new_health == 100, "Should be restored to full health");
+    assert!(result.new_extra_lives == 1, "Should consume exactly one extra life");
+}
+
+#[test]
+#[available_gas(l2_gas: 120000)]
+fn test_boundary_damage_equals_total_pool_minus_one_ends_at_one_hp_zero_lives() {
+    // Boundary: damage == total_pool - 1.
+    // total_pool = 50 + 2*50 = 150, damage = 149 => remaining = 1.
+    // Expected: 1 HP and 0 extra lives.
+    let result = calculate_poison_damage(50, 2, 50, 0, 1, 149);
+    assert!(result.damage == 149, "Damage should be 149");
+    assert!(result.new_health == 1, "Should be left at 1 HP");
+    assert!(result.new_extra_lives == 0, "Should have 0 extra lives");
+}
+
+#[test]
+#[available_gas(l2_gas: 120000)]
+fn test_boundary_damage_equals_total_pool_clamps_to_one_hp_zero_lives() {
+    // Boundary: damage == total_pool.
+    // total_pool = 75 + 3*75 = 300, damage = 300.
+    // Expected clamp path: never fully kill, leave 1 HP and 0 lives.
+    let result = calculate_poison_damage(75, 3, 50, 25, 1, 300);
+    assert!(result.damage == 300, "Damage should be 300");
+    assert!(result.new_health == 1, "Should clamp to 1 HP");
+    assert!(result.new_extra_lives == 0, "Should have 0 extra lives");
+}
+
 // Pack/unpack tests
 #[test]
 fn test_pack_unpack_zero_values() {
