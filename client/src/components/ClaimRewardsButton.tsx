@@ -3,6 +3,7 @@ import killTokenIcon from '@/assets/images/skull-token.png';
 import rewardsIcon from '@/assets/images/rewards.png';
 import { useController } from '@/contexts/controller';
 import { START_TIMESTAMP, useGameDirector } from '@/contexts/GameDirector';
+import { isSummitOver } from '@/utils/summitRewards';
 import { useStatistics } from '@/contexts/Statistics';
 import { useGameStore } from '@/stores/gameStore';
 import type { Beast } from '@/types/game';
@@ -18,6 +19,7 @@ const CORPSE_LIMIT = 250;
 const QUEST_REWARD_LIMIT = 900;
 const SUMMIT_REWARD_LIMIT = 295;
 
+const MINIMUM_REWARD_CLAIM = 0.5;
 const REWARDS_TOOLTIP_DISMISSED_KEY = 'summit_rewards_tooltip_dismissed';
 
 const pulseGlow = keyframes`
@@ -179,7 +181,9 @@ const ClaimRewardsButton = () => {
     [adventurerCollection],
   );
 
-  const totalRewards = (unclaimedSkullTokens > 0 ? 1 : 0) + (unclaimedCorpseTokens > 0 ? 1 : 0) + (unclaimedSurvivorTokens > 0 && questRewardsRemaining > 0 ? 1 : 0) + (unclaimedSummitTokens > 0 ? 1 : 0);
+  const summitOver = isSummitOver(Math.floor(Date.now() / 1000));
+  const minReward = summitOver ? 0 : MINIMUM_REWARD_CLAIM;
+  const totalRewards = (unclaimedSkullTokens > 0 ? 1 : 0) + (unclaimedCorpseTokens > 0 ? 1 : 0) + (unclaimedSurvivorTokens > minReward && questRewardsRemaining > 0 ? 1 : 0) + (unclaimedSummitTokens > minReward ? 1 : 0);
 
   // Badge bounce when reward count changes, glow pulse with auto-expire
   const prevTotalRewards = useRef(totalRewards);
@@ -460,8 +464,8 @@ const ClaimRewardsButton = () => {
 
   const showSkulls = unclaimedSkullTokens > 0 || skullClaimState;
   const showCorpse = unclaimedCorpseTokens > 0 || corpseClaimState;
-  const showSurvivor = (unclaimedSurvivorTokens > 0 && questRewardsRemaining > 0) || survivorClaimState;
-  const showSummit = unclaimedSummitTokens > 0 || summitClaimState;
+  const showSurvivor = (unclaimedSurvivorTokens > minReward && questRewardsRemaining > 0) || survivorClaimState;
+  const showSummit = unclaimedSummitTokens > minReward || summitClaimState;
 
   const isAnyClaiming = skullClaimState?.inProgress || corpseClaimState?.inProgress || survivorClaimState?.inProgress || summitClaimState?.inProgress;
 
