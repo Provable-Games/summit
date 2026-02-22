@@ -74,7 +74,7 @@ pub fn calculate_poison_damage(
         return PoisonResult { damage, new_health, new_extra_lives: extra_lives };
     }
 
-    // Case 2: Damage exceeds current health, need to use extra lives
+    // Case 2: Damage exceeds current health, calculate against total HP pool
     let extra_lives_u64: u64 = extra_lives.into();
     let total_pool: u64 = current_health_u64 + extra_lives_u64 * full_health;
 
@@ -85,6 +85,9 @@ pub fn calculate_poison_damage(
 
     // Case 2b: Have enough HP pool
     let remaining: u64 = total_pool - damage;
+    // Subtract 1 before dividing to avoid an off-by-one when remaining is an exact
+    // multiple of full_health: we are already "inside" one life bar, so this counts
+    // only the additional full life bars that fit into the leftover HP.
     let new_extra_lives: u16 = ((remaining - 1) / full_health).try_into().unwrap();
     let new_health: u16 = (remaining - new_extra_lives.into() * full_health).try_into().unwrap();
 
