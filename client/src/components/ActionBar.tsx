@@ -64,6 +64,7 @@ function ActionBar() {
     revivePotionMaxPerBeast,
     useAttackPotions,
     attackPotionMax,
+    attackPotionMaxPerBeast,
     revivePotionsUsed,
     attackPotionsUsed,
     setRevivePotionsUsed,
@@ -76,7 +77,6 @@ function ActionBar() {
     poisonConservativeExtraLivesTrigger,
     poisonConservativeAmount,
     poisonAggressiveAmount,
-    initializeMaxCapsFromBalances,
   } = useAutopilotStore();
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -163,7 +163,7 @@ function ActionBar() {
         const attackPotions = calculateOptimalAttackPotions(
           attackSelection,
           summit,
-          Math.min(attackPotionMax - attackPotionsUsed, 255)
+          Math.min(attackPotionMax - attackPotionsUsed, attackPotionMaxPerBeast, 255)
         );
         const newCombat = calculateBattleResult(filtered[0], summit, attackPotions);
         filtered[0].combat = newCombat;
@@ -234,11 +234,6 @@ function ActionBar() {
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit?.beast?.token_id))
   const revivalPotionsRequired = calculateRevivalRequired(selectedBeasts);
-
-  useEffect(() => {
-    initializeMaxCapsFromBalances(tokenBalances);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reviveBalance, attackBalance, extraLifeBalance, poisonBalance]);
 
   useEffect(() => {
     if (attackMode === 'autopilot') {

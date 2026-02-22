@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const executeGameActionMock = vi.fn();
 const notifyTargetClickedMock = vi.fn();
-const initializeMaxCapsFromBalancesMock = vi.fn();
 
 const mockControllerState = {
   tokenBalances: {} as Record<string, number>,
@@ -44,6 +43,7 @@ const mockAutopilotState = {
   revivePotionMaxPerBeast: 0,
   useAttackPotions: false,
   attackPotionMax: 0,
+  attackPotionMaxPerBeast: 10,
   revivePotionsUsed: 0,
   attackPotionsUsed: 0,
   setRevivePotionsUsed: vi.fn(),
@@ -56,7 +56,6 @@ const mockAutopilotState = {
   poisonConservativeExtraLivesTrigger: 0,
   poisonConservativeAmount: 0,
   poisonAggressiveAmount: 0,
-  initializeMaxCapsFromBalances: initializeMaxCapsFromBalancesMock,
 };
 
 vi.mock("@/contexts/controller", () => ({
@@ -124,15 +123,13 @@ describe("ActionBar token balance coercion", () => {
     mockGameStoreState.collection = [];
   });
 
-  it("renders with missing balance keys and initializes max caps", async () => {
+  it("renders with missing balance keys without crashing", async () => {
     await act(async () => {
       create(<ActionBar />);
     });
-
-    expect(initializeMaxCapsFromBalancesMock).toHaveBeenCalledWith({});
   });
 
-  it("renders with populated balances and initializes max caps", async () => {
+  it("renders with populated balances without crashing", async () => {
     mockControllerState.tokenBalances = {
       REVIVE: 5,
       ATTACK: 7,
@@ -143,8 +140,6 @@ describe("ActionBar token balance coercion", () => {
     await act(async () => {
       create(<ActionBar />);
     });
-
-    expect(initializeMaxCapsFromBalancesMock).toHaveBeenCalledWith(mockControllerState.tokenBalances);
   });
 
   it("handles invalid balance values without crashing", async () => {
@@ -158,7 +153,5 @@ describe("ActionBar token balance coercion", () => {
     await act(async () => {
       create(<ActionBar />);
     });
-
-    expect(initializeMaxCapsFromBalancesMock).toHaveBeenCalledWith(mockControllerState.tokenBalances);
   });
 });

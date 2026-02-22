@@ -102,6 +102,8 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     setUseAttackPotions,
     attackPotionMax,
     setAttackPotionMax,
+    attackPotionMaxPerBeast,
+    setAttackPotionMaxPerBeast,
 
     extraLifeStrategy,
     setExtraLifeStrategy,
@@ -122,80 +124,17 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     setPoisonConservativeAmount,
     poisonAggressiveAmount,
     setPoisonAggressiveAmount,
-    initializeMaxCapsFromBalances,
     resetToDefaults,
   } = useAutopilotStore();
 
   const handleResetToDefaults = () => {
     resetToDefaults();
-    initializeMaxCapsFromBalances(tokenBalances);
   };
 
   const reviveAvailable = tokenBalances?.['REVIVE'] ?? 0;
   const attackAvailable = tokenBalances?.['ATTACK'] ?? 0;
   const extraLifeAvailable = tokenBalances?.['EXTRA LIFE'] ?? 0;
   const poisonAvailable = tokenBalances?.['POISON'] ?? 0;
-
-  React.useEffect(() => {
-    if (!open) return;
-    initializeMaxCapsFromBalances(tokenBalances);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, reviveAvailable, attackAvailable, extraLifeAvailable, poisonAvailable]);
-
-  // If the user enables a poison strategy and has poison available, default "poison to apply" to 100
-  // (unless they already set a non-zero value).
-  React.useEffect(() => {
-    if (!open) return;
-    if (poisonStrategy === 'disabled') return;
-
-    const balance = Number(poisonAvailable) || 0;
-    if (balance <= 0) return;
-
-    const nextDefault = Math.min(100, balance);
-    if (poisonStrategy === 'aggressive') {
-      if (poisonAggressiveAmount <= 0) setPoisonAggressiveAmount(nextDefault);
-    } else {
-      if (poisonConservativeAmount <= 0) setPoisonConservativeAmount(nextDefault);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, poisonStrategy, poisonAvailable, poisonAggressiveAmount, poisonConservativeAmount]);
-
-  // Default other strategy values when the user enables them (but don't overwrite if they've already changed them).
-  React.useEffect(() => {
-    if (!open) return;
-
-    const extraLifeBalance = Number(extraLifeAvailable) || 0;
-    const poisonBalance = Number(poisonAvailable) || 0;
-
-    if (extraLifeStrategy === 'aggressive') {
-      const maxAllowed = Math.min(4000, extraLifeBalance);
-      const nextDefault = Math.min(500, maxAllowed);
-      if (extraLifeReplenishTo <= 0 && maxAllowed > 0) setExtraLifeReplenishTo(Math.max(1, nextDefault));
-    }
-
-    if (extraLifeStrategy === 'after_capture') {
-      const maxAllowed = Math.min(4000, extraLifeBalance);
-      const nextDefault = Math.min(500, maxAllowed);
-      if (extraLifeMax <= 0 && maxAllowed > 0) setExtraLifeMax(nextDefault);
-    }
-
-    if (poisonStrategy === 'conservative') {
-      if (poisonConservativeExtraLivesTrigger <= 0) setPoisonConservativeExtraLivesTrigger(100);
-      const nextDefault = Math.min(100, poisonBalance);
-      if (poisonConservativeAmount <= 0 && poisonBalance > 0) setPoisonConservativeAmount(nextDefault);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    open,
-    extraLifeStrategy,
-    poisonStrategy,
-    extraLifeAvailable,
-    poisonAvailable,
-    extraLifeReplenishTo,
-    extraLifeMax,
-    poisonConservativeExtraLivesTrigger,
-    poisonConservativeAmount,
-  ]);
 
   // Always clamp values that are limited by token balances so the UI never shows a number above what you own.
   React.useEffect(() => {
@@ -497,13 +436,23 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
                       () => setAttackPotionMax(Number(attackAvailable) || 0),
                     )}
                     <Box sx={styles.maxRow}>
-                      <Typography sx={styles.maxLabel}>Max</Typography>
+                      <Typography sx={styles.maxLabel}>Max Usage</Typography>
                       {numberField(
                         attackPotionMax,
                         setAttackPotionMax,
                         !useAttackPotions,
                         (Number(attackAvailable) || 0) > 0 ? 1 : 0,
                         Number(attackAvailable) || 0,
+                      )}
+                    </Box>
+                    <Box sx={styles.maxRow}>
+                      <Typography sx={styles.maxLabel}>Max per beast</Typography>
+                      {numberField(
+                        attackPotionMaxPerBeast,
+                        setAttackPotionMaxPerBeast,
+                        !useAttackPotions,
+                        1,
+                        255,
                       )}
                     </Box>
                   </Box>

@@ -27,6 +27,8 @@ interface AutopilotConfig {
   useAttackPotions: boolean;
   // Cap total attack potions Autopilot may spend per autopilot session (0..N)
   attackPotionMax: number;
+  // Maximum attack potions Autopilot may spend on a single beast (1..255)
+  attackPotionMaxPerBeast: number;
 
   // Whether / when Autopilot is allowed to spend extra life potions
   extraLifeStrategy: ExtraLifeStrategy;
@@ -54,6 +56,7 @@ type AutopilotPersistedConfig = AutopilotConfig;
 type AutopilotConfigStorageShape = Partial<AutopilotPersistedConfig> & {
   poisonMax?: unknown;
   revivePotionMaxPerBeast?: unknown;
+  attackPotionMaxPerBeast?: unknown;
   extraLifeTotalMax?: unknown;
   extraLifeReplenishTo?: unknown;
   poisonTotalMax?: unknown;
@@ -67,6 +70,7 @@ interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCount
 
   setUseAttackPotions: (useAttackPotions: boolean) => void;
   setAttackPotionMax: (attackPotionMax: number) => void;
+  setAttackPotionMaxPerBeast: (attackPotionMaxPerBeast: number) => void;
 
   setExtraLifeStrategy: (extraLifeStrategy: ExtraLifeStrategy) => void;
   setExtraLifeMax: (extraLifeMax: number) => void;
@@ -87,16 +91,10 @@ interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCount
   setAttackPotionsUsed: (attackPotionsUsed: number | ((prev: number) => number)) => void;
   setExtraLifePotionsUsed: (extraLifePotionsUsed: number | ((prev: number) => number)) => void;
   setPoisonPotionsUsed: (poisonPotionsUsed: number | ((prev: number) => number)) => void;
-  /**
-   * Initializes "max usage" caps from the user's token balances, but ONLY when no persisted config exists.
-   * This lets first-time users get sensible defaults without overwriting previously saved preferences.
-   */
-  initializeMaxCapsFromBalances: (tokenBalances: Record<string, unknown> | null | undefined) => void;
   resetToDefaults: () => void;
 }
 
 const STORAGE_KEY = 'summit_autopilot_config_v2';
-const MAX_CAPS_INIT_KEY = 'summit_autopilot_max_caps_init_v2';
 
 const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   attackStrategy: 'guaranteed',
@@ -105,6 +103,7 @@ const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   revivePotionMaxPerBeast: 1,
   useAttackPotions: false,
   attackPotionMax: 10,
+  attackPotionMaxPerBeast: 10,
   extraLifeStrategy: 'disabled',
   extraLifeMax: 1,
   extraLifeTotalMax: 10,
@@ -152,9 +151,6 @@ function isPoisonStrategy(value: unknown): value is PoisonStrategy {
   return value === 'disabled' || value === 'conservative' || value === 'aggressive';
 }
 
-function readTokenBalance(tokenBalances: Record<string, unknown>, token: string): number {
-  return sanitizeNonNegativeInt(tokenBalances[token], 0);
-}
 
 function loadConfigFromStorage(): AutopilotPersistedConfig | null {
   try {
@@ -185,6 +181,12 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
           ? parsed.useAttackPotions
           : DEFAULT_CONFIG.useAttackPotions,
       attackPotionMax: sanitizeNonNegativeInt(parsed.attackPotionMax, DEFAULT_CONFIG.attackPotionMax),
+      attackPotionMaxPerBeast: clampIntRange(
+        parsed.attackPotionMaxPerBeast,
+        1,
+        255,
+        DEFAULT_CONFIG.attackPotionMaxPerBeast,
+      ),
 
       extraLifeStrategy: isExtraLifeStrategy(parsed.extraLifeStrategy)
         ? parsed.extraLifeStrategy
@@ -231,14 +233,6 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
 export const useAutopilotStore = create<AutopilotState>((set, get) => {
   const persisted = loadConfigFromStorage();
   const initial: AutopilotPersistedConfig = persisted ?? DEFAULT_CONFIG;
-  const hasPersistedConfig = Boolean(persisted);
-  const needsBalanceInit =
-    !hasPersistedConfig ||
-    initial.revivePotionMax <= 1 ||
-    initial.attackPotionMax <= 1 ||
-    initial.extraLifeTotalMax <= 1 ||
-    initial.poisonTotalMax <= 1;
-  let didInitializeFromBalances = !needsBalanceInit;
 
   const persist = (partial: Partial<AutopilotPersistedConfig>): AutopilotPersistedConfig => {
     const next: AutopilotPersistedConfig = {
@@ -259,6 +253,12 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       attackPotionMax: sanitizeNonNegativeInt(
         partial.attackPotionMax ?? get().attackPotionMax,
         DEFAULT_CONFIG.attackPotionMax,
+      ),
+      attackPotionMaxPerBeast: clampIntRange(
+        partial.attackPotionMaxPerBeast ?? get().attackPotionMaxPerBeast,
+        1,
+        255,
+        DEFAULT_CONFIG.attackPotionMaxPerBeast,
       ),
 
       extraLifeStrategy: partial.extraLifeStrategy ?? get().extraLifeStrategy,
@@ -339,6 +339,8 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       set(() => persist({ useAttackPotions })),
     setAttackPotionMax: (attackPotionMax: number) =>
       set(() => persist({ attackPotionMax })),
+    setAttackPotionMaxPerBeast: (attackPotionMaxPerBeast: number) =>
+      set(() => persist({ attackPotionMaxPerBeast })),
 
     setExtraLifeStrategy: (extraLifeStrategy: ExtraLifeStrategy) =>
       set(() => persist({ extraLifeStrategy })),
@@ -363,60 +365,8 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
     setAttackPotionsUsed: (update) => updateCounter('attackPotionsUsed', update),
     setExtraLifePotionsUsed: (update) => updateCounter('extraLifePotionsUsed', update),
     setPoisonPotionsUsed: (update) => updateCounter('poisonPotionsUsed', update),
-    initializeMaxCapsFromBalances: (tokenBalances) => {
-      if (didInitializeFromBalances) return;
-      if (!tokenBalances) return;
-
-      // One-time migration: don't overwrite user-set caps. Only fill in "default-ish" caps (0/1).
-      const current = get();
-
-      const reviveAvailable = readTokenBalance(tokenBalances, 'REVIVE');
-      const attackAvailable = readTokenBalance(tokenBalances, 'ATTACK');
-      const extraLifeAvailable = readTokenBalance(tokenBalances, 'EXTRA LIFE');
-      const poisonAvailable = readTokenBalance(tokenBalances, 'POISON');
-
-      const shouldInit =
-        (() => {
-          try {
-            if (typeof localStorage === 'undefined') return true;
-            return !localStorage.getItem(MAX_CAPS_INIT_KEY);
-          } catch {
-            return true;
-          }
-        })();
-
-      if (!shouldInit) {
-        didInitializeFromBalances = true;
-        return;
-      }
-
-      const nextPartial: Partial<AutopilotPersistedConfig> = {};
-      if (current.revivePotionMax <= 1) nextPartial.revivePotionMax = reviveAvailable;
-      if (current.attackPotionMax <= 1) nextPartial.attackPotionMax = attackAvailable;
-      if (current.extraLifeTotalMax <= 1) nextPartial.extraLifeTotalMax = Math.min(4000, extraLifeAvailable);
-      if (current.poisonTotalMax <= 1) nextPartial.poisonTotalMax = poisonAvailable;
-
-      set(() => persist(nextPartial));
-
-      try {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(MAX_CAPS_INIT_KEY, '1');
-        }
-      } catch {
-        // ignore
-      }
-
-      didInitializeFromBalances = true;
-    },
     resetToDefaults: () =>
       set(() => {
-        // Allow defaults to be re-initialized from balances after a reset.
-        didInitializeFromBalances = false;
-        try {
-          if (typeof localStorage !== 'undefined') localStorage.removeItem(MAX_CAPS_INIT_KEY);
-        } catch {
-          // ignore
-        }
         return { ...persist({ ...DEFAULT_CONFIG }), ...DEFAULT_SESSION_COUNTERS };
       }),
   };
