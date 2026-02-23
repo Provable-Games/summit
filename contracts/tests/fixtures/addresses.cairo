@@ -52,6 +52,10 @@ pub fn CORPSE_TOKEN_ADDRESS() -> ContractAddress {
     0x666.try_into().unwrap()
 }
 
+pub fn OLD_SUMMIT_ADDRESS() -> ContractAddress {
+    0x777.try_into().unwrap()
+}
+
 pub fn whale_beast_token_ids() -> Array<u32> {
     array![
         78029, 77598, 68607, 68600, 67720, 67711, 67447, 67439, 67429, 65353, 65119, 64916, 64805, 64803, 64786, 64754,
