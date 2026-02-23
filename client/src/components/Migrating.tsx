@@ -6,7 +6,7 @@ export default function Migrating() {
   return (
     <Box sx={styles.container}>
       <Typography sx={styles.title}>MIGRATING TO NEW SUMMIT</Typography>
-      <Typography sx={styles.description}>Please wait while we migrate your data to the new summit.</Typography>
+      <Typography sx={styles.description}>Please wait while we migrate Beasts to the new summit.</Typography>
     </Box>
   );
 }
