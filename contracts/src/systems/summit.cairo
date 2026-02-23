@@ -74,8 +74,10 @@ pub mod summit_systems {
     use openzeppelin_access::ownable::OwnableComponent;
     use openzeppelin_interfaces::erc20::{IERC20Dispatcher, IERC20DispatcherTrait};
     use openzeppelin_interfaces::erc721::{IERC721Dispatcher, IERC721DispatcherTrait};
+    use openzeppelin_interfaces::upgrades::IUpgradeable;
+    use openzeppelin_upgrades::UpgradeableComponent;
     use starknet::storage::{Map, StoragePathEntry, StoragePointerReadAccess, StoragePointerWriteAccess};
-    use starknet::{ContractAddress, get_block_timestamp, get_caller_address};
+    use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
     use summit::constants::{
         BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_ATTRIBUTES, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS,
         BEAST_MAX_EXTRA_LIVES, DAY_SECONDS, DIPLOMACY_COST, MAX_REVIVAL_COUNT, MAX_U32, MINIMUM_DAMAGE, SPECIALS_COST,
@@ -93,16 +95,22 @@ pub mod summit_systems {
     use super::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
+    component!(path: UpgradeableComponent, storage: upgradeable, event: UpgradeableEvent);
 
     // Ownable Mixin
     #[abi(embed_v0)]
     impl OwnableMixinImpl = OwnableComponent::OwnableMixinImpl<ContractState>;
     impl OwnableInternalImpl = OwnableComponent::InternalImpl<ContractState>;
 
+    // Upgradeable
+    impl UpgradeableInternalImpl = UpgradeableComponent::InternalImpl<ContractState>;
+
     #[storage]
     struct Storage {
         #[substorage(v0)]
         ownable: OwnableComponent::Storage,
+        #[substorage(v0)]
+        upgradeable: UpgradeableComponent::Storage,
         summit_beast_token_id: u32,
         live_beast_stats: Map<u32, felt252>,
         poison_state: felt252, // Packed poison state: timestamp (64 bits) | count (16 bits)
@@ -139,6 +147,8 @@ pub mod summit_systems {
     enum Event {
         #[flat]
         OwnableEvent: OwnableComponent::Event,
+        #[flat]
+        UpgradeableEvent: UpgradeableComponent::Event,
         LiveBeastStatsEvent: LiveBeastStatsEvent,
         BattleEvent: BattleEvent,
         BeastUpdatesEvent: BeastUpdatesEvent,
@@ -1266,6 +1276,14 @@ pub mod summit_systems {
             }
 
             (bonus / 250).try_into().unwrap()
+        }
+    }
+
+    #[abi(embed_v0)]
+    impl UpgradeableImpl of IUpgradeable<ContractState> {
+        fn upgrade(ref self: ContractState, new_class_hash: ClassHash) {
+            self.ownable.assert_only_owner();
+            self.upgradeable.upgrade(new_class_hash);
         }
     }
 }
