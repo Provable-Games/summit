@@ -47,6 +47,7 @@ export const useGameTokens = () => {
       WHERE o.owner = "${addAddressPadding(owner.toLowerCase())}"
       AND mr.minter_address = "${addAddressPadding(currentNetworkConfig.dungeon)}"
       AND tm.game_over = 1
+      ${greaterThanClause}
     `
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
     const sql = await fetch(url, {
