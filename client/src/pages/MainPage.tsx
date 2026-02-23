@@ -23,6 +23,9 @@ import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
 import { useController } from "@/contexts/controller"
 import TermsOfServiceModal from "@/components/TermsOfServiceModal"
+import Migrating from "@/components/Migrating"
+
+const MIGRATING = true;
 
 function MainPage() {
   const { address } = useAccount()
@@ -50,7 +53,7 @@ function MainPage() {
           </Box>
         </Box>}
 
-        {summit && <Summit />}
+        {!MIGRATING && summit && <Summit />}
 
         {isBrowser && <Box sx={styles.sideContainer} alignItems={'flex-end'}>
           <Box sx={styles.profileSection}>
@@ -66,7 +69,7 @@ function MainPage() {
           {(attackInProgress && pauseUpdates && selectedBeasts.length > 0 && attackMode !== 'autopilot')
             ? <AttackingBeasts />
             : <Box sx={styles.bottomContainer}>
-              <ActionBar />
+              {!MIGRATING && <ActionBar />}
               <BeastCollection />
             </Box>
           }
@@ -76,6 +79,7 @@ function MainPage() {
       {isMobile && <BurgerMenu />}
 
       <Countdown />
+      {MIGRATING && <Migrating />}
     </Box >
 
     {showTermsOfService && (
