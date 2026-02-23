@@ -49,6 +49,10 @@ pub trait ISummitSystem<T> {
     fn get_quest_rewards_total_amount(self: @T) -> u128;
     fn get_quest_rewards_total_claimed(self: @T) -> u128;
 
+    fn migrate_live_stats(ref self: T, limit: u32);
+    fn migrate_quest_rewards_total_claimed(ref self: T);
+    fn get_migration_progress(self: @T) -> u32;
+
     fn get_dungeon_address(self: @T) -> ContractAddress;
     fn get_beast_address(self: @T) -> ContractAddress;
     fn get_beast_data_address(self: @T) -> ContractAddress;
@@ -86,6 +90,7 @@ pub mod summit_systems {
         RewardsEarnedEvent,
     };
     use summit::vrf::VRFImpl;
+    use super::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
 
     component!(path: OwnableComponent, storage: ownable, event: OwnableEvent);
 
@@ -125,6 +130,8 @@ pub mod summit_systems {
         corpse_token_dispatcher: SummitERC20Dispatcher,
         // IMPORTANT: append-only storage. New fields must be added at the end.
         diplomacy_reward_amount_per_second: u128,
+        old_summit_dispatcher: ISummitSystemDispatcher,
+        migration_progress: u32,
     }
 
     #[event]
@@ -160,6 +167,7 @@ pub mod summit_systems {
         poison_potion_address: ContractAddress,
         skull_token_address: ContractAddress,
         corpse_token_address: ContractAddress,
+        old_summit_address: ContractAddress,
     ) {
         self.ownable.initializer(owner);
         self.start_timestamp.write(start_timestamp);
@@ -178,6 +186,7 @@ pub mod summit_systems {
         self.poison_potion_dispatcher.write(SummitERC20Dispatcher { contract_address: poison_potion_address });
         self.skull_token_dispatcher.write(SummitERC20Dispatcher { contract_address: skull_token_address });
         self.corpse_token_dispatcher.write(SummitERC20Dispatcher { contract_address: corpse_token_address });
+        self.old_summit_dispatcher.write(ISummitSystemDispatcher { contract_address: old_summit_address });
     }
 
     #[abi(embed_v0)]
@@ -591,6 +600,66 @@ pub mod summit_systems {
 
         fn get_quest_rewards_total_claimed(self: @ContractState) -> u128 {
             self.quest_rewards_total_claimed.read()
+        }
+
+        fn migrate_live_stats(ref self: ContractState, limit: u32) {
+            assert(self.terminal_timestamp.read() == 0, 'Summit already started');
+
+            let old_summit = self.old_summit_dispatcher.read();
+            let beast_nft_dispatcher = self.beast_nft_dispatcher.read();
+            let progress = self.migration_progress.read();
+            let start_token_id = 76 + progress;
+
+            // Build array of token IDs for the batch
+            let mut token_ids: Array<u32> = array![];
+            for i in 0..limit {
+                token_ids.append(start_token_id + i);
+            }
+
+            // Batch-fetch live stats from old summit
+            let old_stats = old_summit.get_live_stats(token_ids.span());
+
+            // Process each beast (skip beasts that were never stored — token_id is 0)
+            for old_stat in old_stats {
+                let live_stats = *old_stat;
+                let token_id = live_stats.token_id;
+
+                if token_id == 0 {
+                    continue;
+                }
+
+                // Write live stats to new contract storage
+                self._save_live_stats(live_stats);
+
+                // Migrate quest rewards claimed
+                let quest_rewards = old_summit.get_quest_rewards_claimed(token_id);
+                if quest_rewards > 0 {
+                    self.quest_rewards_claimed.entry(token_id).write(quest_rewards);
+                }
+
+                // Migrate diplomacy tracking
+                if live_stats.stats.diplomacy == 1 {
+                    let fixed = beast_nft_dispatcher.get_beast(token_id.into());
+                    let specials_hash = beast_utils::get_specials_hash(fixed.prefix, fixed.suffix);
+                    let diplomacy_count = self.diplomacy_count.entry(specials_hash).read();
+                    self.diplomacy_beast.entry(specials_hash).entry(diplomacy_count).write(token_id);
+                    self.diplomacy_count.entry(specials_hash).write(diplomacy_count + 1);
+                }
+            }
+
+            self.migration_progress.write(progress + limit);
+        }
+
+        fn migrate_quest_rewards_total_claimed(ref self: ContractState) {
+            assert!(self.quest_rewards_total_claimed.read() == 0, "Quest rewards total claimed already migrated");
+
+            let old_summit = self.old_summit_dispatcher.read();
+            let total_claimed = old_summit.get_quest_rewards_total_claimed();
+            self.quest_rewards_total_claimed.write(total_claimed);
+        }
+
+        fn get_migration_progress(self: @ContractState) -> u32 {
+            self.migration_progress.read()
         }
 
         fn get_dungeon_address(self: @ContractState) -> ContractAddress {
