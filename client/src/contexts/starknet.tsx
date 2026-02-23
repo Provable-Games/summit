@@ -33,6 +33,7 @@ const cartridgeController =
       slot: controllerConfig.slot,
       preset: controllerConfig.preset,
       chains: controllerConfig.chains,
+      shouldOverridePresetPolicies: true,
       propagateSessionErrors: true,
     })
     : null;

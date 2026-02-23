@@ -80,7 +80,7 @@ PR CI is path-filtered and runs component-specific checks:
 
 | Contract          | Address                                                                                                                                                                    |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Summit Game       | [`0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064`](https://voyager.online/contract/0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064) |
+| Summit Game       | [`0x01aa95ea66e7e01acf7dc3fda8be0d8661230c4c36b0169e2bab8ab4d6700dfc`](https://voyager.online/contract/0x01aa95ea66e7e01acf7dc3fda8be0d8661230c4c36b0169e2bab8ab4d6700dfc) |
 | Attack Potion     | [`0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443`](https://voyager.online/contract/0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443) |
 | Poison Potion     | [`0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE`](https://voyager.online/contract/0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE) |
 | Revive Potion     | [`0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe`](https://voyager.online/contract/0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe) |
