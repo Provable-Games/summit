@@ -36,6 +36,7 @@ pub trait ISummitSystem<T> {
     fn get_summit_beast(self: @T) -> Beast;
     fn get_beast(self: @T, beast_token_id: u32) -> Beast;
     fn get_live_stats(self: @T, beast_token_ids: Span<u32>) -> Span<LiveBeastStats>;
+    fn get_live_stats_packed(self: @T, beast_token_ids: Span<u32>) -> Span<felt252>;
 
     fn get_start_timestamp(self: @T) -> u64;
     fn get_terminal_timestamp(self: @T) -> u64;
@@ -590,6 +591,16 @@ pub mod summit_systems {
                 live_stats.append(live_stat);
             }
             live_stats.span()
+        }
+
+        fn get_live_stats_packed(self: @ContractState, beast_token_ids: Span<u32>) -> Span<felt252> {
+            let mut packed_stats = array![];
+            for token_id_ref in beast_token_ids {
+                let token_id = *token_id_ref;
+                let packed = self.live_beast_stats.entry(token_id).read();
+                packed_stats.append(packed);
+            }
+            packed_stats.span()
         }
 
         fn get_diplomacy_beast(self: @ContractState, specials_hash: felt252, index: u8) -> u32 {
