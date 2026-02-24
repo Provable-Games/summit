@@ -1,4 +1,5 @@
 import { delay } from "@/utils/utils";
+import { TWAMM_EXTENSION_ADDRESS } from "@/utils/networkConfig";
 import { num } from "starknet";
 
 export interface SwapQuote {
@@ -704,4 +705,305 @@ export const positionBoundsToContractBounds = (
       sign: upper < 0,
     },
   };
+};
+
+// ---------------------------------------------------------------------------
+// TWAMM (DCA) Order Support
+// ---------------------------------------------------------------------------
+
+export interface TwammOrderKey {
+  sell_token: string;
+  buy_token: string;
+  fee: string;
+  start_time: number;
+  end_time: number;
+}
+
+export interface TwammOrderInfo {
+  sale_rate: bigint;
+  remaining_sell_amount: bigint;
+  purchased_amount: bigint;
+}
+
+export interface StoredDcaOrder {
+  id: string; // NFT token ID (hex)
+  orderKey: TwammOrderKey;
+  createdAt: number; // unix seconds
+  sellAmount: string; // raw amount string
+  potionId: string; // e.g. "ATTACK"
+}
+
+// 5% fee tier: 0.05 * 2^128 = 17014118346046924117642026945517453312
+export const TWAMM_POOL_FEE_RAW =
+  "17014118346046924117642026945517453312";
+export const TWAMM_TICK_SPACING = 354892;
+
+export const DURATION_PRESETS = [
+  { label: "1h", seconds: 3600 },
+  { label: "4h", seconds: 14400 },
+  { label: "12h", seconds: 43200 },
+  { label: "1d", seconds: 86400 },
+  { label: "3d", seconds: 259200 },
+  { label: "7d", seconds: 604800 },
+];
+
+/**
+ * Compute the TWAMM time step for a given distance.
+ * Ekubo uses 16 as the base: step = 16 for distance <= 16,
+ * otherwise step = 16^floor(log16(distance)).
+ */
+export const getTwammTimeStep = (distance: number): number => {
+  if (distance <= 16) return 16;
+  const exp = Math.floor(Math.log(distance) / Math.log(16));
+  return Math.pow(16, exp);
+};
+
+/**
+ * Round a timestamp UP to the nearest TWAMM boundary.
+ */
+export const alignTwammTime = (target: number, step: number): number => {
+  return Math.ceil(target / step) * step;
+};
+
+/**
+ * Given current time and a desired duration, compute aligned start and end times.
+ */
+export const computeTwammTimes = (
+  nowSeconds: number,
+  durationSeconds: number
+): { startTime: number; endTime: number } => {
+  const step = getTwammTimeStep(durationSeconds);
+  const startTime = alignTwammTime(nowSeconds, step);
+  const endTime = alignTwammTime(startTime + durationSeconds, step);
+  return { startTime, endTime };
+};
+
+/**
+ * Build the calldata for creating a DCA order:
+ * 1) Transfer SURVIVOR tokens to the positions contract
+ * 2) Call mint_and_increase_sell_amount on positions contract
+ */
+export const generateCreateDcaOrderCalls = (
+  positionsContract: string,
+  orderKey: TwammOrderKey,
+  amount: bigint
+): SwapCall[] => {
+  const transferSurvivor: SwapCall = {
+    contractAddress: orderKey.sell_token,
+    entrypoint: "transfer",
+    calldata: [positionsContract, num.toHex(amount), "0x0"],
+  };
+
+  const mintAndSell: SwapCall = {
+    contractAddress: positionsContract,
+    entrypoint: "mint_and_increase_sell_amount",
+    calldata: [
+      // pool_key: token0, token1, fee, tick_spacing, extension
+      orderKey.sell_token < orderKey.buy_token
+        ? orderKey.sell_token
+        : orderKey.buy_token,
+      orderKey.sell_token < orderKey.buy_token
+        ? orderKey.buy_token
+        : orderKey.sell_token,
+      TWAMM_POOL_FEE_RAW,
+      num.toHex(TWAMM_TICK_SPACING),
+      TWAMM_EXTENSION_ADDRESS,
+      // order_key: sell_token, buy_token, fee, start_time, end_time
+      orderKey.sell_token,
+      orderKey.buy_token,
+      TWAMM_POOL_FEE_RAW,
+      num.toHex(orderKey.start_time),
+      num.toHex(orderKey.end_time),
+      // amount (u256: low, high)
+      num.toHex(amount),
+      "0x0",
+    ],
+  };
+
+  return [transferSurvivor, mintAndSell];
+};
+
+/**
+ * Build the calldata for withdrawing purchased proceeds from a DCA order.
+ */
+export const generateWithdrawProceedsCalls = (
+  positionsContract: string,
+  nftId: string,
+  orderKey: TwammOrderKey
+): SwapCall[] => {
+  const withdraw: SwapCall = {
+    contractAddress: positionsContract,
+    entrypoint: "withdraw_proceeds_from_sale_to_self",
+    calldata: [
+      // id (u64)
+      nftId,
+      // pool_key
+      orderKey.sell_token < orderKey.buy_token
+        ? orderKey.sell_token
+        : orderKey.buy_token,
+      orderKey.sell_token < orderKey.buy_token
+        ? orderKey.buy_token
+        : orderKey.sell_token,
+      TWAMM_POOL_FEE_RAW,
+      num.toHex(TWAMM_TICK_SPACING),
+      TWAMM_EXTENSION_ADDRESS,
+      // order_key
+      orderKey.sell_token,
+      orderKey.buy_token,
+      TWAMM_POOL_FEE_RAW,
+      num.toHex(orderKey.start_time),
+      num.toHex(orderKey.end_time),
+    ],
+  };
+
+  return [withdraw];
+};
+
+/**
+ * Build the calldata for cancelling a DCA order:
+ * First withdraw proceeds, then decrease_sale_rate to 0.
+ */
+export const generateCancelDcaOrderCalls = (
+  positionsContract: string,
+  nftId: string,
+  orderKey: TwammOrderKey,
+  saleRate: bigint
+): SwapCall[] => {
+  const withdrawCalls = generateWithdrawProceedsCalls(
+    positionsContract,
+    nftId,
+    orderKey
+  );
+
+  const decreaseRate: SwapCall = {
+    contractAddress: positionsContract,
+    entrypoint: "decrease_sale_rate_to_self",
+    calldata: [
+      // id (u64)
+      nftId,
+      // pool_key
+      orderKey.sell_token < orderKey.buy_token
+        ? orderKey.sell_token
+        : orderKey.buy_token,
+      orderKey.sell_token < orderKey.buy_token
+        ? orderKey.buy_token
+        : orderKey.sell_token,
+      TWAMM_POOL_FEE_RAW,
+      num.toHex(TWAMM_TICK_SPACING),
+      TWAMM_EXTENSION_ADDRESS,
+      // order_key
+      orderKey.sell_token,
+      orderKey.buy_token,
+      TWAMM_POOL_FEE_RAW,
+      num.toHex(orderKey.start_time),
+      num.toHex(orderKey.end_time),
+      // sale_rate_delta (u128)
+      num.toHex(saleRate),
+    ],
+  };
+
+  return [...withdrawCalls, decreaseRate];
+};
+
+// get_order_info selector: sn_keccak("get_order_info")
+const GET_ORDER_INFO_SELECTOR =
+  "0x00a3ac40083b8a15a17ebbab48f2e72c6932aac2f27a65fdcec0f0ab08e340e0";
+
+/**
+ * Read on-chain DCA order info via starknet_call.
+ */
+export const getDcaOrderInfo = async (
+  rpcUrl: string,
+  positionsContract: string,
+  nftId: string,
+  orderKey: TwammOrderKey
+): Promise<TwammOrderInfo> => {
+  const token0 =
+    orderKey.sell_token < orderKey.buy_token
+      ? orderKey.sell_token
+      : orderKey.buy_token;
+  const token1 =
+    orderKey.sell_token < orderKey.buy_token
+      ? orderKey.buy_token
+      : orderKey.sell_token;
+
+  const calldata = [
+    nftId,
+    // pool_key
+    token0,
+    token1,
+    TWAMM_POOL_FEE_RAW,
+    num.toHex(TWAMM_TICK_SPACING),
+    TWAMM_EXTENSION_ADDRESS,
+    // order_key
+    orderKey.sell_token,
+    orderKey.buy_token,
+    TWAMM_POOL_FEE_RAW,
+    num.toHex(orderKey.start_time),
+    num.toHex(orderKey.end_time),
+  ];
+
+  const response = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "starknet_call",
+      params: [
+        {
+          contract_address: positionsContract,
+          entry_point_selector: GET_ORDER_INFO_SELECTOR,
+          calldata,
+        },
+        "pending",
+      ],
+      id: 1,
+    }),
+  });
+
+  const json = await response.json();
+  if (json.error) {
+    throw new Error(json.error.message || "RPC call failed");
+  }
+
+  const result: string[] = json.result;
+  // get_order_info returns: sale_rate (u128), remaining_sell_amount (u256 low, high), purchased_amount (u256 low, high)
+  return {
+    sale_rate: BigInt(result[0] || "0"),
+    remaining_sell_amount: BigInt(result[1] || "0"),
+    purchased_amount: BigInt(result[3] || "0"),
+  };
+};
+
+// ---------------------------------------------------------------------------
+// DCA Order localStorage persistence
+// ---------------------------------------------------------------------------
+
+const DCA_STORAGE_KEY = "summit_dca_orders";
+
+export const loadDcaOrders = (owner: string): StoredDcaOrder[] => {
+  try {
+    const raw = localStorage.getItem(`${DCA_STORAGE_KEY}_${owner.toLowerCase()}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const saveDcaOrders = (owner: string, orders: StoredDcaOrder[]): void => {
+  localStorage.setItem(
+    `${DCA_STORAGE_KEY}_${owner.toLowerCase()}`,
+    JSON.stringify(orders)
+  );
+};
+
+export const addDcaOrder = (owner: string, order: StoredDcaOrder): void => {
+  const orders = loadDcaOrders(owner);
+  orders.push(order);
+  saveDcaOrders(owner, orders);
+};
+
+export const removeDcaOrder = (owner: string, nftId: string): void => {
+  const orders = loadDcaOrders(owner).filter((o) => o.id !== nftId);
+  saveDcaOrders(owner, orders);
 };
