@@ -5,6 +5,10 @@ import { useGameStore } from '@/stores/gameStore';
 import { lookupAddressNames } from '@/utils/addressNameCache';
 import { SUMMIT_END_TIMESTAMP, isSummitOver } from '@/utils/summitRewards';
 import { gameColors } from '@/utils/themes';
+import attackPotionImg from '@/assets/images/attack-potion.png';
+import lifePotionImg from '@/assets/images/life-potion.png';
+import poisonPotionImg from '@/assets/images/poison-potion.png';
+import revivePotionImg from '@/assets/images/revive-potion.png';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { Box, IconButton, Typography } from '@mui/material';
@@ -14,10 +18,10 @@ import { DiplomacyPopover } from './DiplomacyPopover';
 import RewardsRemainingBar from './RewardsRemainingBar';
 
 function Leaderboard() {
-  const { beastsRegistered, beastsAlive, fetchBeastCounts } = useStatistics()
+  const { beastsRegistered, beastsAlive, consumablesSupply, fetchStats } = useStatistics()
   const { summit, leaderboard, setLeaderboard } = useGameStore()
   const { getLeaderboard } = useSummitApi()
-  const [loadingLeaderboard, setLoadingLeaderboard] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [addressNames, setAddressNames] = useState({})
   const [currentTimestamp, setCurrentTimestamp] = useState(() => Math.floor(Date.now() / 1000))
   const [summitOwnerRank, setSummitOwnerRank] = useState(null)
@@ -49,8 +53,6 @@ function Leaderboard() {
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      setLoadingLeaderboard(true)
-
       try {
         const data = await getLeaderboardRef.current()
         setLeaderboard(data)
@@ -91,7 +93,7 @@ function Leaderboard() {
       } catch (error) {
         console.error('Error fetching big five:', error)
       } finally {
-        setLoadingLeaderboard(false)
+        setInitialLoading(false)
       }
     }
 
@@ -181,7 +183,7 @@ function Leaderboard() {
           </Typography>
         </Box>
 
-        {loadingLeaderboard ? (
+        {initialLoading ? (
           <Box sx={styles.loadingContainer}>
             <Typography sx={styles.loadingText}>Loading...</Typography>
           </Box>
@@ -245,9 +247,9 @@ function Leaderboard() {
             STATS
           </Typography>
           <IconButton
-            aria-label="Refresh beasts alive"
+            aria-label="Refresh stats"
             size="small"
-            onClick={fetchBeastCounts}
+            onClick={fetchStats}
             sx={styles.refreshButton}
           >
             <RefreshIcon sx={{ color: gameColors.accentGreen, fontSize: '16px' }} />
@@ -262,6 +264,26 @@ function Leaderboard() {
             {beastsAlive} / {beastsRegistered}
           </Typography>
         </Box>
+
+        <Box sx={styles.potionsGrid}>
+          <Box sx={styles.potionBox}>
+            <Box component="img" src={attackPotionImg} sx={styles.potionIcon} alt="Attack" />
+            <Typography sx={styles.potionAmount}>{consumablesSupply.attack.toLocaleString()}</Typography>
+          </Box>
+          <Box sx={styles.potionBox}>
+            <Box component="img" src={revivePotionImg} sx={styles.potionIcon} alt="Revive" />
+            <Typography sx={styles.potionAmount}>{consumablesSupply.revive.toLocaleString()}</Typography>
+          </Box>
+          <Box sx={styles.potionBox}>
+            <Box component="img" src={lifePotionImg} sx={styles.potionIcon} alt="Extra Life" />
+            <Typography sx={styles.potionAmount}>{consumablesSupply.xlife.toLocaleString()}</Typography>
+          </Box>
+          <Box sx={styles.potionBox}>
+            <Box component="img" src={poisonPotionImg} sx={styles.potionIcon} alt="Poison" />
+            <Typography sx={styles.potionAmount}>{consumablesSupply.poison.toLocaleString()}</Typography>
+          </Box>
+        </Box>
+        <Typography sx={styles.potionsExplainer}>Potions held by players</Typography>
       </Box>
 
     </Box>
@@ -349,6 +371,8 @@ const styles = {
     alignItems: 'center',
     width: '100%',
     gap: '6px',
+    pr: 1,
+    boxSizing: 'border-box',
   },
   refreshButton: {
     position: 'absolute',
@@ -616,6 +640,39 @@ const styles = {
     '&:hover': {
       color: gameColors.yellow,
     },
+  },
+  // Potions supply grid
+  potionsGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '4px',
+    width: '100%',
+  },
+  potionsExplainer: {
+    fontSize: '10px',
+    color: '#ffedbb',
+    opacity: 0.8,
+    textAlign: 'center',
+  },
+  potionBox: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '4px 8px',
+    borderRadius: '6px',
+    border: `1px solid ${gameColors.accentGreen}25`,
+    background: `${gameColors.darkGreen}30`,
+  },
+  potionIcon: {
+    width: '18px',
+    height: '18px',
+    objectFit: 'contain',
+    flexShrink: 0,
+  },
+  potionAmount: {
+    fontSize: '11px',
+    color: '#ffedbb',
+    fontWeight: 600,
   },
 }
 
