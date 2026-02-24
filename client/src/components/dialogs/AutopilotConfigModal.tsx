@@ -8,8 +8,9 @@ import {
 import { gameColors } from '@/utils/themes';
 import CloseIcon from '@mui/icons-material/Close';
 import TuneIcon from '@mui/icons-material/Tune';
-import { Box, Button, Dialog, Switch, TextField, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Dialog, IconButton, Switch, TextField, Typography } from '@mui/material';
 import { useController } from '@/contexts/controller';
+import { lookupUsernames } from '@cartridge/controller';
 import React from 'react';
 import revivePotionIcon from '@/assets/images/revive-potion.png';
 import attackPotionIcon from '@/assets/images/attack-potion.png';
@@ -71,11 +72,11 @@ const POISON_OPTIONS: {
       label: 'Never',
       description: `Never use Poison.`,
     },
-    // {
-    //   value: 'conservative',
-    //   label: 'Conservative',
-    //   description: `Only use Poison when Summit has more than X extra lives.`,
-    // },
+    {
+      value: 'conservative',
+      label: 'Conservative',
+      description: `Only use Poison when Summit has more than X extra lives.`,
+    },
     {
       value: 'aggressive',
       label: 'Aggressive',
@@ -91,6 +92,8 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
   const {
     attackStrategy,
     setAttackStrategy,
+    skipSharedDiplomacy,
+    setSkipSharedDiplomacy,
     useRevivePotions,
     setUseRevivePotions,
     revivePotionMax,
@@ -104,6 +107,9 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     setAttackPotionMax,
     attackPotionMaxPerBeast,
     setAttackPotionMaxPerBeast,
+
+    maxBeastsPerAttack,
+    setMaxBeastsPerAttack,
 
     extraLifeStrategy,
     setExtraLifeStrategy,
@@ -124,11 +130,69 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     setPoisonConservativeAmount,
     poisonAggressiveAmount,
     setPoisonAggressiveAmount,
+    ignoredPlayers,
+    addIgnoredPlayer,
+    removeIgnoredPlayer,
     resetToDefaults,
   } = useAutopilotStore();
 
+  const [ignoredInput, setIgnoredInput] = React.useState('');
+  const [ignoredLookupLoading, setIgnoredLookupLoading] = React.useState(false);
+  const [ignoredLookupError, setIgnoredLookupError] = React.useState<string | null>(null);
+  const [resolvedAddress, setResolvedAddress] = React.useState<string | null>(null);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Debounced live lookup as user types
+  React.useEffect(() => {
+    setResolvedAddress(null);
+    setIgnoredLookupError(null);
+
+    const username = ignoredInput.trim();
+    if (!username) {
+      setIgnoredLookupLoading(false);
+      return;
+    }
+
+    setIgnoredLookupLoading(true);
+
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const result = await lookupUsernames([username]);
+        const address = result.get(username);
+        // Only update if input hasn't changed while we were fetching
+        if (ignoredInput.trim() !== username) return;
+        if (address) {
+          setResolvedAddress(address);
+          setIgnoredLookupError(null);
+        } else {
+          setResolvedAddress(null);
+          setIgnoredLookupError('Player not found');
+        }
+      } catch {
+        setResolvedAddress(null);
+        setIgnoredLookupError('Lookup failed');
+      } finally {
+        setIgnoredLookupLoading(false);
+      }
+    }, 400);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ignoredInput]);
+
   const handleResetToDefaults = () => {
     resetToDefaults();
+  };
+
+  const handleAddIgnoredPlayer = () => {
+    const username = ignoredInput.trim();
+    if (!username || !resolvedAddress) return;
+    addIgnoredPlayer({ name: username, address: resolvedAddress });
+    setIgnoredInput('');
+    setResolvedAddress(null);
   };
 
   const reviveAvailable = tokenBalances?.['REVIVE'] ?? 0;
@@ -311,15 +375,7 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
               0 0 16px ${gameColors.accentGreen}30
             `,
             position: 'relative',
-            overflow: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            '&::-webkit-scrollbar': {
-              width: { xs: 0, sm: '6px' },
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(255,255,255,0.3)',
-              borderRadius: 3,
-            },
+            overflow: 'hidden',
           },
         },
         backdrop: {
@@ -361,6 +417,15 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
 
           {attackStrategy !== 'never' && (
             <>
+              {attackStrategy === 'guaranteed' && (
+                <Box sx={styles.maxOnlyRow}>
+                  <Typography sx={styles.maxLabel}>Max beasts per attack</Typography>
+                  <Box sx={styles.maxCol}>
+                    {numberField(maxBeastsPerAttack, setMaxBeastsPerAttack, false, 1, 295)}
+                  </Box>
+                </Box>
+              )}
+
               <Box sx={styles.row}>
                 <Box sx={styles.inlineControls}>
                   <Box sx={styles.toggleRow} onClick={() => setUseRevivePotions(!useRevivePotions)}>
@@ -596,6 +661,82 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
               </Box>
             </>
           )}
+
+          <Box sx={styles.sectionDivider} />
+
+          <Box sx={styles.row}>
+            <Box sx={styles.toggleRow} onClick={() => setSkipSharedDiplomacy(!skipSharedDiplomacy)}>
+              <Switch
+                checked={skipSharedDiplomacy}
+                onChange={(e) => setSkipSharedDiplomacy(e.target.checked)}
+                onClick={(e) => e.stopPropagation()}
+                sx={styles.switch}
+              />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={styles.inlineTitle}>Skip diplomacy beasts</Typography>
+                <Typography sx={styles.inlineSub}>
+                  Don't attack or poison the Summit if any of your beasts share diplomacy with it.
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+
+          <Box sx={styles.row}>
+            <Box sx={styles.rowHeader}>
+              <Typography sx={styles.rowTitle}>Ignored Players</Typography>
+              <Typography sx={styles.rowSubtitle}>
+                Autopilot will not attack or poison the Summit while any of these players hold it.
+              </Typography>
+            </Box>
+
+            <Box sx={{ position: 'relative' }}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <TextField
+                  size="small"
+                  placeholder="Search username..."
+                  value={ignoredInput}
+                  onChange={(e) => setIgnoredInput(e.target.value)}
+                  sx={styles.ignoredInput}
+                />
+                {ignoredLookupLoading && (
+                  <CircularProgress size={16} sx={{ color: gameColors.accentGreen, flexShrink: 0 }} />
+                )}
+              </Box>
+
+              {ignoredLookupError && !ignoredLookupLoading && ignoredInput.trim() && (
+                <Typography sx={styles.ignoredDropdownError}>
+                  {ignoredLookupError}
+                </Typography>
+              )}
+
+              {resolvedAddress && !ignoredLookupLoading && (
+                <Box
+                  sx={styles.ignoredSearchResult}
+                  onClick={handleAddIgnoredPlayer}
+                >
+                  <Typography sx={styles.ignoredSearchResultName}>{ignoredInput.trim()}</Typography>
+                  <Typography sx={styles.ignoredSearchResultHint}>Click to add</Typography>
+                </Box>
+              )}
+            </Box>
+
+            {ignoredPlayers.length > 0 && (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                {ignoredPlayers.map((player) => (
+                  <Box key={player.address} sx={styles.ignoredPlayerChip}>
+                    <Typography sx={styles.ignoredPlayerName}>{player.name}</Typography>
+                    <IconButton
+                      size="small"
+                      onClick={() => removeIgnoredPlayer(player.address)}
+                      sx={styles.ignoredPlayerRemove}
+                    >
+                      <CloseIcon sx={{ fontSize: 12 }} />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Box>
         </Box>
 
         {/* Footer */}
@@ -629,6 +770,9 @@ const styles = {
     boxSizing: 'border-box' as const,
     display: 'flex',
     flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
   },
   closeButton: {
     minWidth: { xs: '44px', sm: '32px' },
@@ -691,6 +835,17 @@ const styles = {
     display: 'flex',
     flexDirection: 'column' as const,
     gap: 1,
+    flex: 1,
+    overflowY: 'auto' as const,
+    overflowX: 'hidden' as const,
+    WebkitOverflowScrolling: 'touch',
+    '&::-webkit-scrollbar': {
+      width: { xs: 0, sm: '6px' },
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: 'rgba(255,255,255,0.3)',
+      borderRadius: 3,
+    },
   },
   row: {
     background: `${gameColors.darkGreen}80`,
@@ -908,6 +1063,7 @@ const styles = {
     alignItems: 'center',
     mt: 2,
     pt: 1,
+    flexShrink: 0,
     borderTop: `1px solid ${gameColors.accentGreen}40`,
   },
   resetButton: {
@@ -942,5 +1098,101 @@ const styles = {
     fontWeight: 'bold',
     color: '#ffedbb',
     letterSpacing: '0.5px',
+  },
+  ignoredInput: {
+    flex: 1,
+    '& .MuiInputBase-input': {
+      color: '#ffedbb',
+      padding: '6px 8px',
+      fontSize: '12px',
+      fontWeight: 600,
+    },
+    '& .MuiInputBase-input::placeholder': {
+      color: '#9aa',
+      opacity: 1,
+    },
+    '& .MuiOutlinedInput-root': {
+      background: `${gameColors.darkGreen}55`,
+      borderRadius: '8px',
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      borderColor: `${gameColors.accentGreen}40`,
+    },
+    '&:hover .MuiOutlinedInput-notchedOutline': {
+      borderColor: `${gameColors.brightGreen}80`,
+    },
+  },
+  ignoredSearchResult: {
+    position: 'absolute' as const,
+    left: 0,
+    right: 0,
+    bottom: '100%',
+    mb: 0.5,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '6px 10px',
+    borderRadius: '8px',
+    border: `1px solid ${gameColors.brightGreen}60`,
+    background: `${gameColors.darkGreen}F0`,
+    backdropFilter: 'blur(8px)',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    zIndex: 1,
+    boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.4)',
+    '&:hover': {
+      background: `${gameColors.mediumGreen}F0`,
+      borderColor: gameColors.brightGreen,
+    },
+  },
+  ignoredDropdownError: {
+    position: 'absolute' as const,
+    left: 0,
+    right: 0,
+    bottom: '100%',
+    mb: 0.5,
+    fontSize: '11px',
+    color: gameColors.red,
+    padding: '4px 10px',
+    borderRadius: '8px',
+    background: `${gameColors.darkGreen}F0`,
+    border: `1px solid ${gameColors.red}40`,
+    backdropFilter: 'blur(8px)',
+    zIndex: 1,
+    boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.4)',
+  },
+  ignoredSearchResultName: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: '#ffedbb',
+  },
+  ignoredSearchResultHint: {
+    fontSize: '10px',
+    color: gameColors.accentGreen,
+    fontWeight: 600,
+    letterSpacing: '0.3px',
+  },
+  ignoredPlayerChip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    borderRadius: '999px',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    background: `${gameColors.darkGreen}70`,
+    padding: '2px 4px 2px 10px',
+  },
+  ignoredPlayerName: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#ffedbb',
+    letterSpacing: '0.2px',
+  },
+  ignoredPlayerRemove: {
+    width: '18px',
+    height: '18px',
+    color: '#9aa',
+    '&:hover': {
+      color: gameColors.red,
+    },
   },
 };

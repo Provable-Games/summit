@@ -2,6 +2,11 @@ import { create } from 'zustand';
 
 export type AttackStrategy = 'never' | 'guaranteed' | 'all_out';
 
+export interface IgnoredPlayer {
+  name: string;
+  address: string;
+}
+
 export type ExtraLifeStrategy = 'disabled' | 'after_capture' | 'aggressive';
 export type PoisonStrategy = 'disabled' | 'conservative' | 'aggressive';
 
@@ -15,6 +20,12 @@ type AutopilotSessionCounters = {
 interface AutopilotConfig {
   // When to initiate attacks
   attackStrategy: AttackStrategy;
+  // Maximum number of beasts to include in a single attack (1..295)
+  maxBeastsPerAttack: number;
+  // Skip attacking/poisoning if summit beast shares diplomacy prefix+suffix with any of your beasts
+  skipSharedDiplomacy: boolean;
+  // List of players whose summit beasts should be ignored by autopilot
+  ignoredPlayers: IgnoredPlayer[];
 
   // Whether Autopilot is allowed to spend revive potions on attacks
   useRevivePotions: boolean;
@@ -55,6 +66,7 @@ type AutopilotPersistedConfig = AutopilotConfig;
 
 type AutopilotConfigStorageShape = Partial<AutopilotPersistedConfig> & {
   poisonMax?: unknown;
+  maxBeastsPerAttack?: unknown;
   revivePotionMaxPerBeast?: unknown;
   attackPotionMaxPerBeast?: unknown;
   extraLifeTotalMax?: unknown;
@@ -64,6 +76,10 @@ type AutopilotConfigStorageShape = Partial<AutopilotPersistedConfig> & {
 
 interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCounters {
   setAttackStrategy: (attackStrategy: AttackStrategy) => void;
+  setMaxBeastsPerAttack: (maxBeastsPerAttack: number) => void;
+  setSkipSharedDiplomacy: (skipSharedDiplomacy: boolean) => void;
+  addIgnoredPlayer: (player: IgnoredPlayer) => void;
+  removeIgnoredPlayer: (address: string) => void;
   setUseRevivePotions: (useRevivePotions: boolean) => void;
   setRevivePotionMax: (revivePotionMax: number) => void;
   setRevivePotionMaxPerBeast: (revivePotionMaxPerBeast: number) => void;
@@ -98,6 +114,9 @@ const STORAGE_KEY = 'summit_autopilot_config_v2';
 
 const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   attackStrategy: 'guaranteed',
+  maxBeastsPerAttack: 295,
+  skipSharedDiplomacy: false,
+  ignoredPlayers: [],
   useRevivePotions: false,
   revivePotionMax: 10,
   revivePotionMaxPerBeast: 1,
@@ -163,6 +182,17 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
     const poisonMaxLegacy = sanitizeNonNegativeInt(parsed.poisonMax, 0);
     return {
       attackStrategy: isAttackStrategy(parsed.attackStrategy) ? parsed.attackStrategy : DEFAULT_CONFIG.attackStrategy,
+      maxBeastsPerAttack: clampIntRange(parsed.maxBeastsPerAttack, 1, 295, DEFAULT_CONFIG.maxBeastsPerAttack),
+      skipSharedDiplomacy:
+        typeof parsed.skipSharedDiplomacy === 'boolean'
+          ? parsed.skipSharedDiplomacy
+          : DEFAULT_CONFIG.skipSharedDiplomacy,
+      ignoredPlayers: Array.isArray(parsed.ignoredPlayers)
+        ? parsed.ignoredPlayers.filter(
+            (p): p is IgnoredPlayer =>
+              typeof p === 'object' && p !== null && typeof p.name === 'string' && typeof p.address === 'string',
+          )
+        : DEFAULT_CONFIG.ignoredPlayers,
 
       useRevivePotions:
         typeof parsed.useRevivePotions === 'boolean'
@@ -237,6 +267,14 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
   const persist = (partial: Partial<AutopilotPersistedConfig>): AutopilotPersistedConfig => {
     const next: AutopilotPersistedConfig = {
       attackStrategy: partial.attackStrategy ?? get().attackStrategy,
+      maxBeastsPerAttack: clampIntRange(
+        partial.maxBeastsPerAttack ?? get().maxBeastsPerAttack,
+        1,
+        295,
+        DEFAULT_CONFIG.maxBeastsPerAttack,
+      ),
+      skipSharedDiplomacy: partial.skipSharedDiplomacy ?? get().skipSharedDiplomacy,
+      ignoredPlayers: partial.ignoredPlayers ?? get().ignoredPlayers,
       useRevivePotions: partial.useRevivePotions ?? get().useRevivePotions,
       revivePotionMax: sanitizeNonNegativeInt(
         partial.revivePotionMax ?? get().revivePotionMax,
@@ -328,6 +366,22 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
     ...DEFAULT_SESSION_COUNTERS,
     setAttackStrategy: (attackStrategy: AttackStrategy) =>
       set(() => persist({ attackStrategy })),
+    setMaxBeastsPerAttack: (maxBeastsPerAttack: number) =>
+      set(() => persist({ maxBeastsPerAttack })),
+    setSkipSharedDiplomacy: (skipSharedDiplomacy: boolean) =>
+      set(() => persist({ skipSharedDiplomacy })),
+    addIgnoredPlayer: (player: IgnoredPlayer) =>
+      set(() => {
+        const current = get().ignoredPlayers;
+        const normalized = player.address.replace(/^0x0+/, '0x').toLowerCase();
+        if (current.some((p) => p.address === normalized)) return {};
+        return persist({ ignoredPlayers: [...current, { name: player.name, address: normalized }] });
+      }),
+    removeIgnoredPlayer: (address: string) =>
+      set(() => {
+        const normalized = address.replace(/^0x0+/, '0x').toLowerCase();
+        return persist({ ignoredPlayers: get().ignoredPlayers.filter((p) => p.address !== normalized) });
+      }),
     setUseRevivePotions: (useRevivePotions: boolean) =>
       set(() => persist({ useRevivePotions })),
     setRevivePotionMax: (revivePotionMax: number) =>

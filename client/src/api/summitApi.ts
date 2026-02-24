@@ -325,6 +325,17 @@ export const useSummitApi = () => {
   };
 
   /**
+   * Get circulating supply of consumable tokens
+   */
+  const getConsumablesSupply = async (): Promise<{ xlife: number; attack: number; revive: number; poison: number }> => {
+    const response = await fetch(`${currentNetworkConfig.apiUrl}/consumables/supply`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch consumables supply: ${response.status}`);
+    }
+    return response.json();
+  };
+
+  /**
    * Get total quest rewards claimed
    */
   const getQuestRewardsTotal = async (): Promise<number> => {
@@ -346,6 +357,7 @@ export const useSummitApi = () => {
     getDiplomacy,
     getDiplomacyLeaderboard,
     getLogs,
+    getConsumablesSupply,
     getQuestRewardsTotal,
   };
 };
