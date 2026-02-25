@@ -1,5 +1,5 @@
 import { delay } from "@/utils/utils";
-import { num } from "starknet";
+import { hash, num } from "starknet";
 
 export interface SwapQuote {
   impact: number;
@@ -863,6 +863,63 @@ export const generateCancelDcaOrderCalls = (
   };
 
   return [...withdrawCalls, decreaseRate];
+};
+
+/**
+ * Read on-chain DCA order proceeds via starknet_call on the TWAMM positions contract.
+ * The contract address is the nft_address returned by the Ekubo API (NOT ekuboPositions).
+ *
+ * Returns the purchased amount (potions earned but not yet withdrawn).
+ */
+export const getDcaOrderProceeds = async (
+  rpcUrl: string,
+  twammPositionsContract: string,
+  tokenId: string,
+  orderKey: TwammOrderKey
+): Promise<bigint> => {
+  const selector = hash.getSelectorFromName("get_order_info");
+
+  const calldata = [
+    tokenId,
+    orderKey.sell_token,
+    orderKey.buy_token,
+    num.toHex(BigInt(orderKey.fee)),
+    num.toHex(orderKey.start_time),
+    num.toHex(orderKey.end_time),
+  ];
+
+  const response = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "starknet_call",
+      params: [
+        {
+          contract_address: twammPositionsContract,
+          entry_point_selector: selector,
+          calldata,
+        },
+        "pending",
+      ],
+      id: 1,
+    }),
+  });
+
+  const json = await response.json();
+  if (json.error) {
+    console.warn("getDcaOrderProceeds RPC error:", json.error);
+    return 0n;
+  }
+
+  const result: string[] = json.result;
+  if (!result || result.length < 4) {
+    return 0n;
+  }
+
+  // get_order_info returns: sale_rate (u128), remaining_sell_amount (u256: low, high), purchased_amount (u256: low, high)
+  // purchased_amount is at index 3 (low part of u256)
+  return BigInt(result[3] || "0");
 };
 
 // ---------------------------------------------------------------------------

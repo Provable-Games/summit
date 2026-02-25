@@ -11,6 +11,7 @@ import {
   generateWithdrawProceedsCalls,
   generateCancelDcaOrderCalls,
   fetchTwammOrders,
+  getDcaOrderProceeds,
 } from '@/api/ekubo';
 import { TOKEN_ADDRESS } from '@/utils/networkConfig';
 import type { NetworkConfig } from '@/utils/networkConfig';
@@ -30,7 +31,7 @@ import {
   Typography,
 } from '@mui/material';
 import { useAccount } from '@starknet-react/core';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 const DCA_POTIONS = [
   { id: 'ATTACK', name: 'Attack', image: attackPotionImg, color: '#ff6b6b' },
@@ -65,6 +66,7 @@ interface DCATabProps {
 /** Active order derived from Ekubo API */
 interface ActiveOrder {
   tokenId: string;
+  nftAddress: string;
   potionId: string;
   orderKey: TwammOrderKey;
   saleRate: bigint;
@@ -108,8 +110,8 @@ export default function DCATab({
   const [createInProgress, setCreateInProgress] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
+  const [proceedsMap, setProceedsMap] = useState<Record<string, bigint>>({});
   const [error, setError] = useState('');
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const survivorBalance = tokenBalances['SURVIVOR'] || 0;
   const positionsContract = currentNetworkConfig.ekuboPositions;
@@ -135,6 +137,7 @@ export default function DCATab({
 
         orders.push({
           tokenId: pos.token_id,
+          nftAddress: pos.nft_address,
           potionId,
           orderKey: {
             sell_token: order.key.sell_token,
@@ -153,15 +156,30 @@ export default function DCATab({
     }
 
     setActiveOrders(orders);
-  }, [address]);
 
-  // Load and refresh on mount + poll every 30s
+    // Fetch exact proceeds for each order via RPC
+    const proceeds: Record<string, bigint> = {};
+    await Promise.all(
+      orders.map(async (order) => {
+        try {
+          const purchased = await getDcaOrderProceeds(
+            rpcUrl,
+            order.nftAddress,
+            order.tokenId,
+            order.orderKey
+          );
+          proceeds[order.tokenId] = purchased;
+        } catch {
+          // Silently skip failed RPC calls
+        }
+      })
+    );
+    setProceedsMap(proceeds);
+  }, [address, rpcUrl]);
+
+  // Load on mount
   useEffect(() => {
     refreshOrders();
-    pollRef.current = setInterval(refreshOrders, 30_000);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
   }, []);
 
   // Estimated rate from token prices
@@ -484,14 +502,13 @@ export default function DCATab({
             const timeRemaining = Math.max(0, order.endTime - nowSeconds);
             const isCompleted = timeRemaining <= 0;
 
-            // remaining = sale_rate * remaining_time
-            const remainingTime = BigInt(Math.max(0, order.endTime - nowSeconds));
-            const remainingSell = order.saleRate > 0n
-              ? order.saleRate * remainingTime
-              : 0n;
-            const remainingSellDisplay = Number(remainingSell) / 1e18;
-
             const soldDisplay = Number(order.totalAmountSold) / 1e18;
+
+            // Exact proceeds from RPC (uncollected potions)
+            const exactProceeds = proceedsMap[order.tokenId];
+            const proceedsDisplay = exactProceeds !== undefined
+              ? Number(exactProceeds) / 1e18
+              : null;
 
             return (
               <Box key={order.tokenId} sx={dcaStyles.orderCard}>
@@ -556,16 +573,18 @@ export default function DCATab({
                 />
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
+                  {proceedsDisplay !== null && (
+                    <Typography sx={dcaStyles.orderStatLabel}>
+                      Earned:{' '}
+                      <Box component="span" sx={{ color: potion?.color || gameColors.yellow, fontWeight: 700 }}>
+                        {formatAmount(proceedsDisplay)} {order.potionId}
+                      </Box>
+                    </Typography>
+                  )}
                   <Typography sx={dcaStyles.orderStatLabel}>
-                    Sold:{' '}
+                    Spent:{' '}
                     <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 700 }}>
                       {formatAmount(soldDisplay)} SURVIVOR
-                    </Box>
-                  </Typography>
-                  <Typography sx={dcaStyles.orderStatLabel}>
-                    Remaining:{' '}
-                    <Box component="span" sx={{ color: '#bbb', fontWeight: 700 }}>
-                      {formatAmount(remainingSellDisplay)} SURVIVOR
                     </Box>
                   </Typography>
                 </Box>
