@@ -321,6 +321,17 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           },
         ]
       },
+      [network.ekuboPositions]: {
+        "name": "Ekubo Positions",
+        "description": "Ekubo positions NFT contract for DCA orders and liquidity",
+        "methods": [
+          {
+            "name": "Withdraw Proceeds",
+            "description": "Withdraw purchased tokens from a DCA order",
+            "entrypoint": "withdraw_proceeds_from_sale_to_self"
+          },
+        ]
+      },
       "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f": {
         "name": "Cartridge VRF Provider",
         "description": "Verifiable Random Function contract, allows randomness in the game",
