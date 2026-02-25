@@ -536,18 +536,6 @@ export default function DCATab({
                         <DownloadIcon sx={{ fontSize: 16 }} />
                       )}
                     </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleCancel(order)}
-                      disabled={actionInProgress === order.tokenId}
-                      title="Cancel order"
-                      sx={{
-                        ...dcaStyles.orderActionButton,
-                        '&:hover': { color: gameColors.red },
-                      }}
-                    >
-                      <CancelIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
                   </Box>
                 </Box>
 
@@ -604,7 +592,6 @@ const dcaStyles = {
     color: gameColors.yellow,
     letterSpacing: '0.5px',
     textTransform: 'uppercase',
-    mb: 1.5,
   },
   fieldLabel: {
     fontSize: '11px',
