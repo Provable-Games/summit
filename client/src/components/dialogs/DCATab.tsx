@@ -334,7 +334,7 @@ export default function DCATab({
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {/* Create DCA Order Section */}
       <Box sx={dcaStyles.section}>
-        <Typography sx={dcaStyles.sectionTitle}>Create DCA Order</Typography>
+        <Typography sx={dcaStyles.sectionTitle} mb={1}>Create DCA Order</Typography>
 
         {/* Potion Selector */}
         <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', mb: 1.5 }}>
