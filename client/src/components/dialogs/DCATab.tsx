@@ -39,12 +39,17 @@ const DCA_POTIONS = [
   { id: 'POISON', name: 'Poison', image: poisonPotionImg, color: '#a29bfe' },
 ];
 
-// Map potion address -> potion name (for reverse lookup from API data)
-const POTION_ADDRESS_TO_NAME: Record<string, string> = {
-  [TOKEN_ADDRESS.ATTACK.toLowerCase()]: 'ATTACK',
-  [TOKEN_ADDRESS.REVIVE.toLowerCase()]: 'REVIVE',
-  [TOKEN_ADDRESS.EXTRA_LIFE.toLowerCase()]: 'EXTRA LIFE',
-  [TOKEN_ADDRESS.POISON.toLowerCase()]: 'POISON',
+// Resolve potion name from buy_token address (handles hex padding differences)
+const POTION_ADDRESSES: Array<{ name: string; address: bigint }> = [
+  { name: 'ATTACK', address: BigInt(TOKEN_ADDRESS.ATTACK) },
+  { name: 'REVIVE', address: BigInt(TOKEN_ADDRESS.REVIVE) },
+  { name: 'EXTRA LIFE', address: BigInt(TOKEN_ADDRESS.EXTRA_LIFE) },
+  { name: 'POISON', address: BigInt(TOKEN_ADDRESS.POISON) },
+];
+
+const getPotionName = (buyToken: string): string | null => {
+  const addr = BigInt(buyToken);
+  return POTION_ADDRESSES.find((p) => p.address === addr)?.name ?? null;
 };
 
 interface DCATabProps {
@@ -125,7 +130,7 @@ export default function DCATab({
     const orders: ActiveOrder[] = [];
     for (const pos of apiPositions) {
       for (const order of pos.orders) {
-        const potionId = POTION_ADDRESS_TO_NAME[order.key.buy_token.toLowerCase()];
+        const potionId = getPotionName(order.key.buy_token);
         if (!potionId) continue; // Skip non-potion orders
 
         orders.push({
