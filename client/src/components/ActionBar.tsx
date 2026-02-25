@@ -64,6 +64,7 @@ function ActionBar() {
     revivePotionMaxPerBeast,
     useAttackPotions,
     attackPotionMax,
+    attackPotionMaxPerBeast,
     revivePotionsUsed,
     attackPotionsUsed,
     setRevivePotionsUsed,
@@ -76,7 +77,9 @@ function ActionBar() {
     poisonConservativeExtraLivesTrigger,
     poisonConservativeAmount,
     poisonAggressiveAmount,
-    initializeMaxCapsFromBalances,
+    maxBeastsPerAttack,
+    skipSharedDiplomacy,
+    ignoredPlayers,
   } = useAutopilotStore();
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -163,7 +166,7 @@ function ActionBar() {
         const attackPotions = calculateOptimalAttackPotions(
           attackSelection,
           summit,
-          Math.min(attackPotionMax - attackPotionsUsed, 255)
+          Math.min(attackPotionMax - attackPotionsUsed, attackPotionMaxPerBeast, 255)
         );
         const newCombat = calculateBattleResult(filtered[0], summit, attackPotions);
         filtered[0].combat = newCombat;
@@ -236,11 +239,6 @@ function ActionBar() {
   const revivalPotionsRequired = calculateRevivalRequired(selectedBeasts);
 
   useEffect(() => {
-    initializeMaxCapsFromBalances(tokenBalances);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reviveBalance, attackBalance, extraLifeBalance, poisonBalance]);
-
-  useEffect(() => {
     if (attackMode === 'autopilot') {
       setSelectedBeasts([]);
       setAppliedExtraLifePotions(0);
@@ -252,17 +250,44 @@ function ActionBar() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attackMode]);
 
+  const summitSharesDiplomacy = useMemo(() => {
+    if (!skipSharedDiplomacy || !summit?.beast) return false;
+    return collection.some(
+      (beast: Beast) =>
+        beast.diplomacy &&
+        beast.prefix === summit.beast.prefix &&
+        beast.suffix === summit.beast.suffix,
+    );
+  }, [skipSharedDiplomacy, summit?.beast?.token_id, collection.length]);
+
+  const summitOwnerIgnored = useMemo(() => {
+    if (ignoredPlayers.length === 0 || !summit?.owner) return false;
+    const ownerNormalized = summit.owner.replace(/^0x0+/, '0x').toLowerCase();
+    return ignoredPlayers.some((p) => p.address === ownerNormalized);
+  }, [ignoredPlayers, summit?.owner]);
+
+  const shouldSkipSummit = summitSharesDiplomacy || summitOwnerIgnored;
+
   useEffect(() => {
     if (autopilotEnabled && !attackInProgress && !applyingPotions) {
-      setAutopilotLog('Waiting for trigger...')
+      if (summitSharesDiplomacy) {
+        setAutopilotLog('Ignoring shared diplomacy');
+      } else if (summitOwnerIgnored) {
+        const owner = summit?.owner?.replace(/^0x0+/, '0x').toLowerCase();
+        const player = ignoredPlayers.find((p) => p.address === owner);
+        setAutopilotLog(`Ignoring ${player?.name ?? 'player'}`);
+      } else {
+        setAutopilotLog('Waiting for trigger...');
+      }
     } else if (attackInProgress) {
       setAutopilotLog('Attacking...')
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autopilotEnabled, attackInProgress, applyingPotions])
+  }, [autopilotEnabled, attackInProgress, applyingPotions, summitSharesDiplomacy, summitOwnerIgnored])
 
   useEffect(() => {
     if (!autopilotEnabled || poisonStrategy !== 'aggressive') return;
+    if (shouldSkipSummit) return;
     const myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
     if (myBeast) return;
 
@@ -288,6 +313,8 @@ function ActionBar() {
       return;
     };
 
+    if (shouldSkipSummit) return;
+
     if (poisonStrategy === 'conservative'
       && summit.beast.extra_lives >= poisonConservativeExtraLivesTrigger
       && summit.poison_count < poisonConservativeAmount) {
@@ -308,7 +335,7 @@ function ActionBar() {
     } else if (attackStrategy === 'all_out') {
       handleAttackUntilCapture(extraLifePotions);
     } else if (attackStrategy === 'guaranteed') {
-      const beasts = collectionWithCombat.slice(0, MAX_BEASTS_PER_ATTACK)
+      const beasts = collectionWithCombat.slice(0, maxBeastsPerAttack)
 
       const totalSummitHealth = ((summit.beast.health + summit.beast.bonus_health) * summit.beast.extra_lives) + summit.beast.current_health;
       const totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
@@ -355,7 +382,9 @@ function ActionBar() {
       <Box key={label} sx={styles.autopilotOverlayBudgetPill}>
         <img src={icon} alt="" height={'18px'} />
         <Typography sx={styles.autopilotOverlayBudgetPillLabel}>{label}</Typography>
-        <Typography sx={styles.autopilotOverlayBudgetPillValue}>{used} / {max}</Typography>
+        <Typography sx={styles.autopilotOverlayBudgetPillValue}>
+          {max > 0 ? `${used} / ${max}` : used}
+        </Typography>
       </Box>
     )
   }
@@ -379,6 +408,7 @@ function ActionBar() {
     {/* Attack Button + Potions */}
     <Box sx={[styles.buttonGroup, (attackMode === 'autopilot' && autopilotEnabled) && styles.autopilotButtonGroup]}>
       {attackMode === 'autopilot' && autopilotEnabled ? (
+        <>
         <Box sx={styles.autopilotOverlay}>
           <Box sx={styles.autopilotOverlayInner}>
             <Box sx={styles.autopilotOverlayHeader}>
@@ -425,6 +455,64 @@ function ActionBar() {
             </Box>
           </Box>
         </Box>
+
+        <Box sx={styles.potionSubGroup}>
+          <Box sx={[
+            styles.potionButton,
+            enableExtraLifePotion && styles.potionButtonActive,
+            appliedExtraLifePotions > 0 && styles.potionButtonApplied
+          ]}
+            onClick={(event) => {
+              if (!enableExtraLifePotion) return;
+              handleClick(event, 'extraLife');
+            }}>
+            <img src={lifePotionIcon} alt='' height={'32px'} />
+            {appliedExtraLifePotions > 0 && (
+              <Box sx={styles.appliedIndicator}>
+                <Typography sx={styles.appliedText}>
+                  {appliedExtraLifePotions}
+                </Typography>
+              </Box>
+            )}
+            <Box sx={styles.count}>
+              <Typography sx={styles.countText}>{extraLifeBalance}</Typography>
+            </Box>
+          </Box>
+          <Box sx={[
+            styles.potionButton,
+            enablePoisonPotion && styles.potionButtonActive,
+            appliedPoisonCount > 0 && styles.potionButtonApplied
+          ]}
+            onClick={(event) => {
+              if (!enablePoisonPotion) return;
+              handleClick(event, 'poison');
+            }}>
+            <img src={poisonPotionIcon} alt='' height={'32px'} />
+            {appliedPoisonCount > 0 && (
+              <Box sx={styles.appliedIndicator}>
+                <Typography sx={styles.appliedText}>
+                  {appliedPoisonCount}
+                </Typography>
+              </Box>
+            )}
+            <Box sx={styles.count}>
+              <Typography sx={styles.countText}>{poisonBalance}</Typography>
+            </Box>
+          </Box>
+          <Box sx={styles.potionDisplay}>
+            <img src={revivePotionIcon} alt='' height={'32px'} />
+            <Box sx={styles.count}>
+              <Typography sx={styles.countText}>{reviveBalance}</Typography>
+            </Box>
+          </Box>
+          <Box sx={styles.potionDisplay}>
+            <img src={attackPotionIcon} alt='' height={'32px'} />
+            <Box sx={styles.count}>
+              <Typography sx={styles.countText}>{attackBalance}</Typography>
+            </Box>
+          </Box>
+        </Box>
+        </>
       ) : (
         <>
           <Box sx={{ minWidth: isBrowser ? '265px' : '140px' }}>
@@ -511,7 +599,7 @@ function ActionBar() {
 
           {attackMode === 'autopilot' ? (
             <>
-              {/* Divider 1 */}
+              {/* Divider */}
               <Box sx={styles.divider} />
 
               {/* Autopilot Configuration Button */}
@@ -535,6 +623,65 @@ function ActionBar() {
                     <SettingsIcon sx={{ fontSize: 22, color: gameColors.brightGreen }} />
                   </Box>
                 </Tooltip>
+              </Box>
+
+              <Box sx={styles.divider} />
+
+              <Box sx={styles.potionSubGroup}>
+                <Box sx={[
+                  styles.potionButton,
+                  enableExtraLifePotion && styles.potionButtonActive,
+                  appliedExtraLifePotions > 0 && styles.potionButtonApplied
+                ]}
+                  onClick={(event) => {
+                    if (!enableExtraLifePotion) return;
+                    handleClick(event, 'extraLife');
+                  }}>
+                  <img src={lifePotionIcon} alt='' height={'32px'} />
+                  {appliedExtraLifePotions > 0 && (
+                    <Box sx={styles.appliedIndicator}>
+                      <Typography sx={styles.appliedText}>
+                        {appliedExtraLifePotions}
+                      </Typography>
+                    </Box>
+                  )}
+                  <Box sx={styles.count}>
+                    <Typography sx={styles.countText}>{extraLifeBalance}</Typography>
+                  </Box>
+                </Box>
+                <Box sx={[
+                  styles.potionButton,
+                  enablePoisonPotion && styles.potionButtonActive,
+                  appliedPoisonCount > 0 && styles.potionButtonApplied
+                ]}
+                  onClick={(event) => {
+                    if (!enablePoisonPotion) return;
+                    handleClick(event, 'poison');
+                  }}>
+                  <img src={poisonPotionIcon} alt='' height={'32px'} />
+                  {appliedPoisonCount > 0 && (
+                    <Box sx={styles.appliedIndicator}>
+                      <Typography sx={styles.appliedText}>
+                        {appliedPoisonCount}
+                      </Typography>
+                    </Box>
+                  )}
+                  <Box sx={styles.count}>
+                    <Typography sx={styles.countText}>{poisonBalance}</Typography>
+                  </Box>
+                </Box>
+                <Box sx={styles.potionDisplay}>
+                  <img src={revivePotionIcon} alt='' height={'32px'} />
+                  <Box sx={styles.count}>
+                    <Typography sx={styles.countText}>{reviveBalance}</Typography>
+                  </Box>
+                </Box>
+                <Box sx={styles.potionDisplay}>
+                  <img src={attackPotionIcon} alt='' height={'32px'} />
+                  <Box sx={styles.count}>
+                    <Typography sx={styles.countText}>{attackBalance}</Typography>
+                  </Box>
+                </Box>
               </Box>
             </>
           ) : (
@@ -1408,6 +1555,7 @@ const styles = {
     background: 'transparent',
     padding: '0px',
     px: 1,
+    alignItems: 'flex-end',
   },
   potionSubGroup: {
     display: 'flex',
@@ -1505,7 +1653,8 @@ const styles = {
     width: '40px',
     height: '40px',
     borderRadius: '8px',
-    background: 'transparent',
+    background: `${gameColors.darkGreen}40`,
+    border: `1px solid ${gameColors.accentGreen}30`,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

@@ -84,6 +84,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     setApplyingPotions,
     setAppliedExtraLifePotions,
     setSelectedBeasts,
+    sortMethod,
     poisonEvent,
     setPoisonEvent,
     addLiveEvent,
@@ -149,7 +150,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       owner: data.owner ?? "",
       block_timestamp: previousSummit?.block_timestamp ?? Date.now() / 1000,
       poison_count: previousSummit?.poison_count ?? 0,
-      poison_timestamp: previousSummit?.poison_timestamp ?? 0,
+      poison_timestamp: sameBeast ? Date.now() / 1000 : 0,
+      diplomacy: previousSummit?.diplomacy ?? undefined,
     });
   };
 
@@ -447,7 +449,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       newSummit.beast.current_health = currentHealth;
       newSummit.beast.extra_lives = extraLives;
 
-      setSelectedBeasts([]);
       setSummit(newSummit);
       setNextSummit(null);
     }
@@ -463,6 +464,10 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (!summit?.beast.token_id) return;
 
     play("roar");
+
+    if (sortMethod === 'recommended') {
+      setSelectedBeasts([]);
+    }
 
     // Fetch diplomacy if not already set
     if (!summit.diplomacy) {
@@ -646,14 +651,14 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           prev.map(b =>
             b.token_id === action.beastId
               ? {
-                  ...b,
-                  luck: b.luck - (action.stats?.luck ?? 0),
-                  spirit: b.spirit - (action.stats?.spirit ?? 0),
-                  specials: action.stats?.specials ? false : b.specials,
-                  wisdom: action.stats?.wisdom ? false : b.wisdom,
-                  diplomacy: action.stats?.diplomacy ? false : b.diplomacy,
-                  bonus_health: (b.bonus_health || 0) - (action.bonusHealth ?? 0),
-                }
+                ...b,
+                luck: b.luck - (action.stats?.luck ?? 0),
+                spirit: b.spirit - (action.stats?.spirit ?? 0),
+                specials: action.stats?.specials ? false : b.specials,
+                wisdom: action.stats?.wisdom ? false : b.wisdom,
+                diplomacy: action.stats?.diplomacy ? false : b.diplomacy,
+                bonus_health: (b.bonus_health || 0) - (action.bonusHealth ?? 0),
+              }
               : b
           )
         );

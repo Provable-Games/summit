@@ -3,6 +3,7 @@ use snforge_std::{
     start_cheat_caller_address, stop_cheat_block_timestamp_global, stop_cheat_caller_address, store,
 };
 use starknet::{ContractAddress, get_block_timestamp};
+use summit::models::beast::PackableLiveStatsStorePacking;
 use summit::systems::summit::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
 use crate::fixtures::addresses::{BEAST_WHALE, REAL_PLAYER, REWARD_ADDRESS, SUPER_BEAST_OWNER, whale_beast_token_ids};
 use crate::fixtures::constants::SUPER_BEAST_TOKEN_ID;
@@ -359,6 +360,7 @@ fn test_set_start_timestamp() {
     calldata.append(crate::fixtures::addresses::POISON_POTION_ADDRESS().into());
     calldata.append(crate::fixtures::addresses::SKULL_TOKEN_ADDRESS().into());
     calldata.append(crate::fixtures::addresses::CORPSE_TOKEN_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::OLD_SUMMIT_ADDRESS().into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap();
     let summit = ISummitSystemDispatcher { contract_address };
@@ -1161,6 +1163,7 @@ fn test_set_start_timestamp_non_owner() {
     calldata.append(crate::fixtures::addresses::POISON_POTION_ADDRESS().into());
     calldata.append(crate::fixtures::addresses::SKULL_TOKEN_ADDRESS().into());
     calldata.append(crate::fixtures::addresses::CORPSE_TOKEN_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::OLD_SUMMIT_ADDRESS().into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap();
     let summit = ISummitSystemDispatcher { contract_address };
@@ -2185,4 +2188,165 @@ fn test_finalize_caps_rewards_at_terminal_timestamp() {
 
     assert(beast.live.rewards_earned == expected_capped, 'Rewards capped at terminal');
     assert(expected_capped < expected_uncapped, 'Capped should be less');
+}
+
+// ===========================================
+// MIGRATION TESTS
+// ===========================================
+
+#[test]
+#[fork("mainnet")]
+fn test_migrate_live_stats() {
+    let old_summit_address: ContractAddress = 0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064
+        .try_into()
+        .unwrap();
+    let old_summit = ISummitSystemDispatcher { contract_address: old_summit_address };
+
+    // Deploy new summit pointing to old one
+    let contract = declare("summit_systems").unwrap().contract_class();
+    let mut calldata = array![];
+    calldata.append(REAL_PLAYER().into());
+    calldata.append(9999999999_u64.into());
+    calldata.append(1000000_u64.into());
+    calldata.append(0_u128.into());
+    calldata.append(0_u128.into());
+    calldata.append(100_u128.into());
+    calldata.append(crate::fixtures::addresses::DUNGEON_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::BEAST_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::BEAST_DATA_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::REWARD_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::ATTACK_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::REVIVE_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::EXTRA_LIFE_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::POISON_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::SKULL_TOKEN_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::CORPSE_TOKEN_ADDRESS().into());
+    calldata.append(old_summit_address.into());
+    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let summit = ISummitSystemDispatcher { contract_address };
+
+    // Build token IDs for first batch
+    let limit: u32 = 100;
+    let mut token_ids: Array<u32> = array![];
+    for i in 0..limit {
+        token_ids.append(76 + i);
+    }
+    let token_ids_span = token_ids.span();
+
+    // Snapshot old state
+    let old_stats = old_summit.get_live_stats(token_ids_span);
+
+    // Migrate first batch as owner
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.migrate_live_stats(limit);
+
+    // Verify progress
+    assert(summit.get_migration_progress() == 100, 'Wrong progress after batch 1');
+
+    // Verify live stats match by comparing packed representations
+    let new_stats = summit.get_live_stats(token_ids_span);
+    for i in 0..old_stats.len() {
+        let old_packed = PackableLiveStatsStorePacking::pack(*old_stats.at(i));
+        let new_packed = PackableLiveStatsStorePacking::pack(*new_stats.at(i));
+        assert(old_packed == new_packed, 'Stats mismatch');
+    }
+
+    // Verify quest rewards per beast
+    for token_id_ref in token_ids_span {
+        let token_id = *token_id_ref;
+        assert(
+            old_summit.get_quest_rewards_claimed(token_id) == summit.get_quest_rewards_claimed(token_id),
+            'Quest rewards mismatch',
+        );
+    }
+
+    // Migrate second batch and verify progress accumulates
+    summit.migrate_live_stats(50);
+    assert(summit.get_migration_progress() == 150, 'Wrong progress after batch 2');
+
+    // Migrate quest rewards total claimed
+    summit.migrate_quest_rewards_total_claimed();
+    assert(
+        summit.get_quest_rewards_total_claimed() == old_summit.get_quest_rewards_total_claimed(),
+        'Quest total mismatch',
+    );
+
+    stop_cheat_caller_address(summit.contract_address);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: 'Summit already started')]
+fn test_migrate_live_stats_after_start_summit() {
+    let old_summit_address: ContractAddress = 0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064
+        .try_into()
+        .unwrap();
+
+    let contract = declare("summit_systems").unwrap().contract_class();
+    let mut calldata = array![];
+    calldata.append(REAL_PLAYER().into());
+    calldata.append(1000_u64.into());
+    calldata.append(1000000_u64.into());
+    calldata.append(0_u128.into());
+    calldata.append(0_u128.into());
+    calldata.append(100_u128.into());
+    calldata.append(crate::fixtures::addresses::DUNGEON_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::BEAST_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::BEAST_DATA_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::REWARD_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::ATTACK_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::REVIVE_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::EXTRA_LIFE_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::POISON_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::SKULL_TOKEN_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::CORPSE_TOKEN_ADDRESS().into());
+    calldata.append(old_summit_address.into());
+    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let summit = ISummitSystemDispatcher { contract_address };
+
+    // Start summit (sets terminal_timestamp)
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+    summit.start_summit();
+
+    // Should panic: migration not allowed after summit started
+    summit.migrate_live_stats(10);
+}
+
+#[test]
+#[fork("mainnet")]
+#[should_panic(expected: "Quest rewards total claimed already migrated")]
+fn test_migrate_quest_rewards_total_claimed_twice() {
+    let old_summit_address: ContractAddress = 0x0214d382e80781f8c1059a751563d6b46e717c652bb670bf230e8a64a68e6064
+        .try_into()
+        .unwrap();
+
+    let contract = declare("summit_systems").unwrap().contract_class();
+    let mut calldata = array![];
+    calldata.append(REAL_PLAYER().into());
+    calldata.append(9999999999_u64.into());
+    calldata.append(1000000_u64.into());
+    calldata.append(0_u128.into());
+    calldata.append(0_u128.into());
+    calldata.append(100_u128.into());
+    calldata.append(crate::fixtures::addresses::DUNGEON_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::BEAST_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::BEAST_DATA_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::REWARD_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::ATTACK_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::REVIVE_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::EXTRA_LIFE_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::POISON_POTION_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::SKULL_TOKEN_ADDRESS().into());
+    calldata.append(crate::fixtures::addresses::CORPSE_TOKEN_ADDRESS().into());
+    calldata.append(old_summit_address.into());
+    let (contract_address, _) = contract.deploy(@calldata).unwrap();
+    let summit = ISummitSystemDispatcher { contract_address };
+
+    start_cheat_caller_address(summit.contract_address, REAL_PLAYER());
+
+    // First call succeeds
+    summit.migrate_quest_rewards_total_claimed();
+
+    // Second call should panic
+    summit.migrate_quest_rewards_total_claimed();
 }

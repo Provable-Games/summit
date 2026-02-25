@@ -9,6 +9,7 @@ import revivePotionImg from '@/assets/images/revive-potion.png';
 import killTokenImg from '@/assets/images/skull-token.png';
 import starkImg from '@/assets/images/stark.svg';
 import usdcImg from '@/assets/images/usdc.svg';
+import lordsImg from '@/assets/images/lords.png';
 import { useController } from '@/contexts/controller';
 import { useDynamicConnector } from '@/contexts/starknet';
 import { useStatistics } from '@/contexts/Statistics';
@@ -27,7 +28,7 @@ import SellIcon from '@mui/icons-material/Sell';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import { Box, Button, Dialog, IconButton, InputBase, Menu, MenuItem, Skeleton, Tab, Tabs, Typography } from '@mui/material';
 import { useProvider } from '@starknet-react/core';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Contract } from 'starknet';
 
 interface MarketplaceModalProps {
@@ -50,6 +51,7 @@ interface UserToken {
   address: string;
   decimals: number;
   displayDecimals: number;
+  price: number;
 }
 
 const POTIONS: Potion[] = [
@@ -155,6 +157,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   const [tokenQuotes, setTokenQuotes] = useState<Record<string, { amount: string; loading: boolean; error?: string; quote?: SwapQuote }>>(createEmptyTokenQuotesState());
   const [optimisticPrices, setOptimisticPrices] = useState<Record<string, string>>({});
   const [optimisticPriceTimestamps, setOptimisticPriceTimestamps] = useState<Record<string, number>>({});
+  const [totalCostUsdcValue, setTotalCostUsdcValue] = useState<{ amount: number; loading: boolean }>({ amount: 0, loading: false });
+  const quoteRequestIds = useRef<Record<string, number>>({});
 
   const routerContract = useMemo(
     () =>
@@ -172,14 +176,20 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   const userTokens = useMemo(() => {
     return paymentTokens
-      .map((token: TokenConfig): UserToken => ({
+      .map((token: TokenConfig) => ({
         symbol: token.name,
         balance: formatAmount(tokenBalances[token.name] || 0),
         rawBalance: tokenBalances[token.name] || 0,
         address: token.address,
         decimals: token.decimals || 18,
         displayDecimals: token.displayDecimals || 4,
+        price: token.price ?? 0,
       }))
+      .sort((a, b) => {
+        const aValue = a.rawBalance * a.price;
+        const bValue = b.rawBalance * b.price;
+        return bValue - aValue;
+      });
   }, [paymentTokens, tokenBalances]);
 
   const selectedTokenData = userTokens.find(
@@ -195,6 +205,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
     SURVIVOR: '/images/survivor_token.png',
     USDC: usdcImg,
     STRK: starkImg,
+    LORDS: lordsImg,
   }), []);
 
   // Get icon for a token symbol (uses POTIONS images when available)
@@ -216,6 +227,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
       fetchPaymentTokenBalances();
       setQuantities(createEmptyQuantities());
       setSellQuantities(createEmptyQuantities());
+      quoteRequestIds.current = {};
 
       if (userTokens.length > 0) {
         if (!selectedToken) {
@@ -232,6 +244,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
   useEffect(() => {
     // Reset quotes/optimistic prices when switching tabs to avoid showing stale data
     setTokenQuotes(createEmptyTokenQuotesState());
+    quoteRequestIds.current = {};
   }, [activeTab]);
 
   useEffect(() => {
@@ -303,6 +316,60 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   const canAfford = Boolean(selectedTokenData) && totalTokenCost <= Number(selectedTokenData?.rawBalance ?? 0);
   const toBaseUnits = (quantity: number) => BigInt(quantity) * 10n ** 18n;
+  const toTokenBaseUnits = (amount: number, decimals: number) => BigInt(Math.floor(amount * Math.pow(10, decimals)));
+
+  const usdcToken = useMemo(() => {
+    return paymentTokens.find((t: TokenConfig) => t.name === 'USDC');
+  }, [paymentTokens]);
+
+  // Fetch USDC equivalent value when total cost changes
+  useEffect(() => {
+    if (activeTab !== 0 || !selectedTokenData || totalTokenCost <= 0) {
+      setTotalCostUsdcValue({ amount: 0, loading: false });
+      return;
+    }
+
+    // If already paying with USDC, no need for conversion
+    if (selectedToken === 'USDC') {
+      setTotalCostUsdcValue({ amount: totalTokenCost, loading: false });
+      return;
+    }
+
+    if (!usdcToken) {
+      setTotalCostUsdcValue({ amount: 0, loading: false });
+      return;
+    }
+
+    const fetchUsdcQuote = async () => {
+      setTotalCostUsdcValue(prev => ({ ...prev, loading: true }));
+
+      try {
+        const decimals = selectedTokenData.decimals || 18;
+        const amountInBaseUnits = toTokenBaseUnits(totalTokenCost, decimals);
+
+        const quote = await getSwapQuote(
+          amountInBaseUnits,
+          selectedTokenData.address,
+          usdcToken.address
+        );
+
+        if (quote) {
+          const usdcDecimals = usdcToken.decimals || 6;
+          const rawAmount = Math.abs(quote.totalDisplay) / Math.pow(10, usdcDecimals);
+          setTotalCostUsdcValue({ amount: rawAmount, loading: false });
+        } else {
+          setTotalCostUsdcValue({ amount: 0, loading: false });
+        }
+      } catch (error) {
+        console.error('Error fetching USDC quote:', error);
+        setTotalCostUsdcValue({ amount: 0, loading: false });
+      }
+    };
+
+    // Debounce the fetch
+    const timeoutId = setTimeout(fetchUsdcQuote, 300);
+    return () => clearTimeout(timeoutId);
+  }, [activeTab, selectedToken, selectedTokenData, totalTokenCost, usdcToken]);
   const getPotionAddress = useCallback(
     (potionId: string): string =>
       currentNetworkConfig.tokens.erc20.find((token) => token.name === potionId)?.address ?? '',
@@ -320,6 +387,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         }));
         return;
       }
+
+      const requestId = (quoteRequestIds.current[potionId] = (quoteRequestIds.current[potionId] || 0) + 1);
 
       const selectedTokenData = userTokens.find(
         (token) => token.symbol === tokenSymbol
@@ -345,6 +414,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           selectedTokenData.address
         );
 
+        if (quoteRequestIds.current[potionId] !== requestId) return;
+
         if (quote) {
           const rawAmount = Math.abs(quote.totalDisplay) / Math.pow(10, selectedTokenData.decimals || 18);
           if (rawAmount === 0) {
@@ -362,6 +433,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           }
         }
       } catch (error: unknown) {
+        if (quoteRequestIds.current[potionId] !== requestId) return;
         console.error('Error fetching quote:', error);
         const emsg = getErrorMessage(error).toLowerCase();
         const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
@@ -385,6 +457,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
         }));
         return;
       }
+
+      const requestId = (quoteRequestIds.current[potionId] = (quoteRequestIds.current[potionId] || 0) + 1);
 
       const receiveTokenData = userTokens.find(
         (token) => token.symbol === tokenSymbol
@@ -412,6 +486,8 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           receiveTokenData.address,
         );
 
+        if (quoteRequestIds.current[potionId] !== requestId) return;
+
         if (quote) {
           const rawAmount = Math.abs(quote.totalDisplay) / Math.pow(10, receiveTokenData.decimals || 18);
           if (rawAmount === 0) {
@@ -434,6 +510,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           }));
         }
       } catch (error: unknown) {
+        if (quoteRequestIds.current[potionId] !== requestId) return;
         console.error('Error fetching sell quote:', error);
         const emsg = getErrorMessage(error).toLowerCase();
         const msg = emsg.includes('insufficient') || emsg.includes('not enough') || emsg.includes('route') || emsg.includes('not found')
@@ -1122,9 +1199,18 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
                   {hasItems && selectedToken && (
                     <Box sx={[styles.totalValue, !canAfford && styles.totalInsufficient]}>
                       {totalTokenCost > 0
-                        ? <Typography sx={styles.totalAmount}>
-                          {totalTokenCost.toFixed(4)} {selectedToken}
-                        </Typography>
+                        ? <>
+                          <Typography sx={styles.totalAmount}>
+                            {totalTokenCost.toFixed(4)} {selectedToken}
+                          </Typography>
+                          {totalCostUsdcValue.loading
+                            ? <Skeleton variant="text" width={50} height={18} sx={{ bgcolor: 'rgba(255,255,255,0.1)' }} />
+                            : totalCostUsdcValue.amount > 0 && (
+                              <Typography sx={styles.usdcValue}>
+                                ≈ ${totalCostUsdcValue.amount.toFixed(2)}
+                              </Typography>
+                            )}
+                        </>
                         : <Skeleton variant="text" width={100} height={18} />}
                     </Box>
                   )}
@@ -1612,6 +1698,11 @@ const styles = {
     fontSize: '14px',
     fontWeight: 'bold',
     color: '#fff',
+  },
+  usdcValue: {
+    fontSize: '12px',
+    color: gameColors.yellow,
+    opacity: 0.8,
   },
   totalUSD: {
     height: '26px',

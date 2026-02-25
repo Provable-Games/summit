@@ -1,5 +1,7 @@
 import AttackingBeasts from "@/components/AttackingBeasts"
 import Countdown from "@/components/Countdown"
+import TermsOfServiceModal from "@/components/TermsOfServiceModal"
+import { useController } from "@/contexts/controller"
 import { useGameDirector } from "@/contexts/GameDirector"
 import { useGameStore } from "@/stores/gameStore"
 import { Box } from '@mui/material'
@@ -7,7 +9,6 @@ import { useAccount } from "@starknet-react/core"
 import { useState } from 'react'
 import { isBrowser, isMobile } from 'react-device-detect'
 import ActionBar from '../components/ActionBar'
-import QuestBoard from '../components/QuestBoard'
 import BeastCollection from '../components/BeastCollection'
 import BurgerMenu from '../components/BurgerMenu'
 import ClaimRewardsButton from '../components/ClaimRewardsButton'
@@ -19,10 +20,9 @@ import GameNotificationFeed from '../components/GameNotificationFeed'
 import Leaderboard from '../components/Leaderboard'
 import LeaderboardButton from '../components/LeaderboardButton'
 import ProfileCard from '../components/ProfileCard'
+import QuestBoard from '../components/QuestBoard'
 import Summit from '../components/Summit'
 import { gameColors } from '../utils/themes'
-import { useController } from "@/contexts/controller"
-import TermsOfServiceModal from "@/components/TermsOfServiceModal"
 
 function MainPage() {
   const { address } = useAccount()

@@ -13,9 +13,18 @@ import {
 } from "react";
 import { useDynamicConnector } from "./starknet";
 
+export interface ConsumablesSupply {
+  xlife: number;
+  attack: number;
+  revive: number;
+  poison: number;
+}
+
 export interface StatisticsContext {
   beastsRegistered: number;
   beastsAlive: number;
+  consumablesSupply: ConsumablesSupply;
+  fetchStats: () => void;
   fetchBeastCounts: () => void;
   refreshTokenPrices: (tokenNames?: string[]) => Promise<void>;
   tokenPrices: Record<string, string>;
@@ -39,9 +48,10 @@ type PriceToken = {
 // Create a provider component
 export const StatisticsProvider = ({ children }: PropsWithChildren) => {
   const { currentNetworkConfig } = useDynamicConnector();
-  const { getBeastCounts, getQuestRewardsTotal } = useSummitApi();
+  const { getBeastCounts, getConsumablesSupply, getQuestRewardsTotal } = useSummitApi();
   const [beastsRegistered, setBeastsRegistered] = useState(0);
   const [beastsAlive, setBeastsAlive] = useState(0);
+  const [consumablesSupply, setConsumablesSupply] = useState<ConsumablesSupply>({ xlife: 0, attack: 0, revive: 0, poison: 0 });
   const [tokenPrices, setTokenPrices] = useState<Record<string, string>>({});
   const [questRewardsRemaining, setQuestRewardsRemaining] = useState(QUEST_REWARDS_TOTAL_AMOUNT);
 
@@ -53,6 +63,20 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
     } catch (error) {
       console.error("Error fetching beast counts:", error);
     }
+  };
+
+  const fetchConsumablesSupply = async () => {
+    try {
+      const supply = await getConsumablesSupply();
+      setConsumablesSupply(supply);
+    } catch (error) {
+      console.error("Error fetching consumables supply:", error);
+    }
+  };
+
+  const fetchStats = () => {
+    fetchBeastCounts();
+    fetchConsumablesSupply();
   };
 
   const fetchTokenPrice = async (token: PriceToken) => {
@@ -78,6 +102,7 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     fetchBeastCounts();
+    fetchConsumablesSupply();
     refreshTokenPrices();
     getQuestRewardsTotal()
       .then((claimed) => setQuestRewardsRemaining(Math.max(0, QUEST_REWARDS_TOTAL_AMOUNT - claimed)))
@@ -90,6 +115,8 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
       value={{
         beastsRegistered,
         beastsAlive,
+        consumablesSupply,
+        fetchStats,
         fetchBeastCounts,
         refreshTokenPrices,
         tokenPrices,

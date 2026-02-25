@@ -3,8 +3,8 @@ use starknet::ContractAddress;
 use summit::systems::summit::{ISummitSystemDispatcher, ISummitSystemDispatcherTrait};
 use crate::fixtures::addresses::{
     ATTACK_POTION_ADDRESS, BEAST_ADDRESS, BEAST_DATA_ADDRESS, CORPSE_TOKEN_ADDRESS, DUNGEON_ADDRESS,
-    EXTRA_LIFE_POTION_ADDRESS, POISON_POTION_ADDRESS, REAL_PLAYER, REVIVE_POTION_ADDRESS, REWARD_ADDRESS,
-    SKULL_TOKEN_ADDRESS,
+    EXTRA_LIFE_POTION_ADDRESS, OLD_SUMMIT_ADDRESS, POISON_POTION_ADDRESS, REAL_PLAYER, REVIVE_POTION_ADDRESS,
+    REWARD_ADDRESS, SKULL_TOKEN_ADDRESS,
 };
 
 /// Deploy summit contract without starting it (zero reward rates)
@@ -39,6 +39,7 @@ pub fn deploy_summit_with_rewards(
     calldata.append(POISON_POTION_ADDRESS().into());
     calldata.append(SKULL_TOKEN_ADDRESS().into());
     calldata.append(CORPSE_TOKEN_ADDRESS().into());
+    calldata.append(OLD_SUMMIT_ADDRESS().into());
 
     let (contract_address, _) = contract.deploy(@calldata).unwrap();
     ISummitSystemDispatcher { contract_address }

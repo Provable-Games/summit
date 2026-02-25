@@ -74,34 +74,22 @@ pub fn calculate_poison_damage(
         return PoisonResult { damage, new_health, new_extra_lives: extra_lives };
     }
 
-    // Case 2: Damage exceeds current health, need to use extra lives
-    let damage_after_current = damage - current_health_u64;
-
-    // Calculate how many full lives worth of damage
-    let lives_needed: u64 = if full_health > 0 {
-        damage_after_current / full_health
-    } else {
-        0
-    };
-
+    // Case 2: Damage exceeds current health, calculate against total HP pool
     let extra_lives_u64: u64 = extra_lives.into();
+    let total_pool: u64 = current_health_u64 + extra_lives_u64 * full_health;
 
-    // Case 2a: Not enough extra lives to absorb all damage
-    if lives_needed >= extra_lives_u64 {
-        return PoisonResult { damage, new_health: 1, // Never fully kill - leave at 1 HP
-        new_extra_lives: 0 };
+    // Case 2a: Not enough total HP to absorb all damage
+    if damage >= total_pool {
+        return PoisonResult { damage, new_health: 1, new_extra_lives: 0 };
     }
 
-    // Case 2b: Have enough extra lives
-    let remaining_lives: u16 = (extra_lives_u64 - lives_needed).try_into().unwrap();
-    let remaining_damage = damage_after_current - (lives_needed * full_health);
-    let final_health = full_health - remaining_damage;
+    // Case 2b: Have enough HP pool
+    let remaining: u64 = total_pool - damage;
+    // Subtract 1 before dividing to avoid an off-by-one when remaining is an exact
+    // multiple of full_health: we are already "inside" one life bar, so this counts
+    // only the additional full life bars that fit into the leftover HP.
+    let new_extra_lives: u16 = ((remaining - 1) / full_health).try_into().unwrap();
+    let new_health: u16 = (remaining - new_extra_lives.into() * full_health).try_into().unwrap();
 
-    let new_health: u16 = if final_health < 1 {
-        1 // Never fully kill
-    } else {
-        final_health.try_into().unwrap()
-    };
-
-    PoisonResult { damage, new_health, new_extra_lives: remaining_lives }
+    PoisonResult { damage, new_health, new_extra_lives }
 }

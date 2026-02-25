@@ -2,6 +2,11 @@ import { create } from 'zustand';
 
 export type AttackStrategy = 'never' | 'guaranteed' | 'all_out';
 
+export interface IgnoredPlayer {
+  name: string;
+  address: string;
+}
+
 export type ExtraLifeStrategy = 'disabled' | 'after_capture' | 'aggressive';
 export type PoisonStrategy = 'disabled' | 'conservative' | 'aggressive';
 
@@ -15,6 +20,12 @@ type AutopilotSessionCounters = {
 interface AutopilotConfig {
   // When to initiate attacks
   attackStrategy: AttackStrategy;
+  // Maximum number of beasts to include in a single attack (1..295)
+  maxBeastsPerAttack: number;
+  // Skip attacking/poisoning if summit beast shares diplomacy prefix+suffix with any of your beasts
+  skipSharedDiplomacy: boolean;
+  // List of players whose summit beasts should be ignored by autopilot
+  ignoredPlayers: IgnoredPlayer[];
 
   // Whether Autopilot is allowed to spend revive potions on attacks
   useRevivePotions: boolean;
@@ -27,6 +38,8 @@ interface AutopilotConfig {
   useAttackPotions: boolean;
   // Cap total attack potions Autopilot may spend per autopilot session (0..N)
   attackPotionMax: number;
+  // Maximum attack potions Autopilot may spend on a single beast (1..255)
+  attackPotionMaxPerBeast: number;
 
   // Whether / when Autopilot is allowed to spend extra life potions
   extraLifeStrategy: ExtraLifeStrategy;
@@ -53,7 +66,9 @@ type AutopilotPersistedConfig = AutopilotConfig;
 
 type AutopilotConfigStorageShape = Partial<AutopilotPersistedConfig> & {
   poisonMax?: unknown;
+  maxBeastsPerAttack?: unknown;
   revivePotionMaxPerBeast?: unknown;
+  attackPotionMaxPerBeast?: unknown;
   extraLifeTotalMax?: unknown;
   extraLifeReplenishTo?: unknown;
   poisonTotalMax?: unknown;
@@ -61,12 +76,17 @@ type AutopilotConfigStorageShape = Partial<AutopilotPersistedConfig> & {
 
 interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCounters {
   setAttackStrategy: (attackStrategy: AttackStrategy) => void;
+  setMaxBeastsPerAttack: (maxBeastsPerAttack: number) => void;
+  setSkipSharedDiplomacy: (skipSharedDiplomacy: boolean) => void;
+  addIgnoredPlayer: (player: IgnoredPlayer) => void;
+  removeIgnoredPlayer: (address: string) => void;
   setUseRevivePotions: (useRevivePotions: boolean) => void;
   setRevivePotionMax: (revivePotionMax: number) => void;
   setRevivePotionMaxPerBeast: (revivePotionMaxPerBeast: number) => void;
 
   setUseAttackPotions: (useAttackPotions: boolean) => void;
   setAttackPotionMax: (attackPotionMax: number) => void;
+  setAttackPotionMaxPerBeast: (attackPotionMaxPerBeast: number) => void;
 
   setExtraLifeStrategy: (extraLifeStrategy: ExtraLifeStrategy) => void;
   setExtraLifeMax: (extraLifeMax: number) => void;
@@ -87,30 +107,28 @@ interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCount
   setAttackPotionsUsed: (attackPotionsUsed: number | ((prev: number) => number)) => void;
   setExtraLifePotionsUsed: (extraLifePotionsUsed: number | ((prev: number) => number)) => void;
   setPoisonPotionsUsed: (poisonPotionsUsed: number | ((prev: number) => number)) => void;
-  /**
-   * Initializes "max usage" caps from the user's token balances, but ONLY when no persisted config exists.
-   * This lets first-time users get sensible defaults without overwriting previously saved preferences.
-   */
-  initializeMaxCapsFromBalances: (tokenBalances: Record<string, unknown> | null | undefined) => void;
   resetToDefaults: () => void;
 }
 
-const STORAGE_KEY = 'summit_autopilot_config_v1';
-const MAX_CAPS_INIT_KEY = 'summit_autopilot_max_caps_init_v1';
+const STORAGE_KEY = 'summit_autopilot_config_v2';
 
 const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   attackStrategy: 'guaranteed',
+  maxBeastsPerAttack: 295,
+  skipSharedDiplomacy: false,
+  ignoredPlayers: [],
   useRevivePotions: false,
-  revivePotionMax: 0,
-  revivePotionMaxPerBeast: 32,
+  revivePotionMax: 10,
+  revivePotionMaxPerBeast: 1,
   useAttackPotions: false,
-  attackPotionMax: 0,
+  attackPotionMax: 10,
+  attackPotionMaxPerBeast: 10,
   extraLifeStrategy: 'disabled',
-  extraLifeMax: 500,
-  extraLifeTotalMax: 0,
-  extraLifeReplenishTo: 500,
+  extraLifeMax: 1,
+  extraLifeTotalMax: 10,
+  extraLifeReplenishTo: 1,
   poisonStrategy: 'disabled',
-  poisonTotalMax: 0,
+  poisonTotalMax: 100,
   poisonConservativeExtraLivesTrigger: 100,
   poisonConservativeAmount: 100,
   poisonAggressiveAmount: 100,
@@ -152,9 +170,6 @@ function isPoisonStrategy(value: unknown): value is PoisonStrategy {
   return value === 'disabled' || value === 'conservative' || value === 'aggressive';
 }
 
-function readTokenBalance(tokenBalances: Record<string, unknown>, token: string): number {
-  return sanitizeNonNegativeInt(tokenBalances[token], 0);
-}
 
 function loadConfigFromStorage(): AutopilotPersistedConfig | null {
   try {
@@ -167,6 +182,17 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
     const poisonMaxLegacy = sanitizeNonNegativeInt(parsed.poisonMax, 0);
     return {
       attackStrategy: isAttackStrategy(parsed.attackStrategy) ? parsed.attackStrategy : DEFAULT_CONFIG.attackStrategy,
+      maxBeastsPerAttack: clampIntRange(parsed.maxBeastsPerAttack, 1, 295, DEFAULT_CONFIG.maxBeastsPerAttack),
+      skipSharedDiplomacy:
+        typeof parsed.skipSharedDiplomacy === 'boolean'
+          ? parsed.skipSharedDiplomacy
+          : DEFAULT_CONFIG.skipSharedDiplomacy,
+      ignoredPlayers: Array.isArray(parsed.ignoredPlayers)
+        ? parsed.ignoredPlayers.filter(
+            (p): p is IgnoredPlayer =>
+              typeof p === 'object' && p !== null && typeof p.name === 'string' && typeof p.address === 'string',
+          )
+        : DEFAULT_CONFIG.ignoredPlayers,
 
       useRevivePotions:
         typeof parsed.useRevivePotions === 'boolean'
@@ -185,6 +211,12 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
           ? parsed.useAttackPotions
           : DEFAULT_CONFIG.useAttackPotions,
       attackPotionMax: sanitizeNonNegativeInt(parsed.attackPotionMax, DEFAULT_CONFIG.attackPotionMax),
+      attackPotionMaxPerBeast: clampIntRange(
+        parsed.attackPotionMaxPerBeast,
+        1,
+        255,
+        DEFAULT_CONFIG.attackPotionMaxPerBeast,
+      ),
 
       extraLifeStrategy: isExtraLifeStrategy(parsed.extraLifeStrategy)
         ? parsed.extraLifeStrategy
@@ -231,18 +263,18 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
 export const useAutopilotStore = create<AutopilotState>((set, get) => {
   const persisted = loadConfigFromStorage();
   const initial: AutopilotPersistedConfig = persisted ?? DEFAULT_CONFIG;
-  const hasPersistedConfig = Boolean(persisted);
-  const needsBalanceInit =
-    !hasPersistedConfig ||
-    initial.revivePotionMax <= 1 ||
-    initial.attackPotionMax <= 1 ||
-    initial.extraLifeTotalMax <= 1 ||
-    initial.poisonTotalMax <= 1;
-  let didInitializeFromBalances = !needsBalanceInit;
 
   const persist = (partial: Partial<AutopilotPersistedConfig>): AutopilotPersistedConfig => {
     const next: AutopilotPersistedConfig = {
       attackStrategy: partial.attackStrategy ?? get().attackStrategy,
+      maxBeastsPerAttack: clampIntRange(
+        partial.maxBeastsPerAttack ?? get().maxBeastsPerAttack,
+        1,
+        295,
+        DEFAULT_CONFIG.maxBeastsPerAttack,
+      ),
+      skipSharedDiplomacy: partial.skipSharedDiplomacy ?? get().skipSharedDiplomacy,
+      ignoredPlayers: partial.ignoredPlayers ?? get().ignoredPlayers,
       useRevivePotions: partial.useRevivePotions ?? get().useRevivePotions,
       revivePotionMax: sanitizeNonNegativeInt(
         partial.revivePotionMax ?? get().revivePotionMax,
@@ -251,7 +283,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       revivePotionMaxPerBeast: clampIntRange(
         partial.revivePotionMaxPerBeast ?? get().revivePotionMaxPerBeast,
         1,
-        32,
+        64,
         DEFAULT_CONFIG.revivePotionMaxPerBeast,
       ),
 
@@ -259,6 +291,12 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       attackPotionMax: sanitizeNonNegativeInt(
         partial.attackPotionMax ?? get().attackPotionMax,
         DEFAULT_CONFIG.attackPotionMax,
+      ),
+      attackPotionMaxPerBeast: clampIntRange(
+        partial.attackPotionMaxPerBeast ?? get().attackPotionMaxPerBeast,
+        1,
+        255,
+        DEFAULT_CONFIG.attackPotionMaxPerBeast,
       ),
 
       extraLifeStrategy: partial.extraLifeStrategy ?? get().extraLifeStrategy,
@@ -328,6 +366,22 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
     ...DEFAULT_SESSION_COUNTERS,
     setAttackStrategy: (attackStrategy: AttackStrategy) =>
       set(() => persist({ attackStrategy })),
+    setMaxBeastsPerAttack: (maxBeastsPerAttack: number) =>
+      set(() => persist({ maxBeastsPerAttack })),
+    setSkipSharedDiplomacy: (skipSharedDiplomacy: boolean) =>
+      set(() => persist({ skipSharedDiplomacy })),
+    addIgnoredPlayer: (player: IgnoredPlayer) =>
+      set(() => {
+        const current = get().ignoredPlayers;
+        const normalized = player.address.replace(/^0x0+/, '0x').toLowerCase();
+        if (current.some((p) => p.address === normalized)) return {};
+        return persist({ ignoredPlayers: [...current, { name: player.name, address: normalized }] });
+      }),
+    removeIgnoredPlayer: (address: string) =>
+      set(() => {
+        const normalized = address.replace(/^0x0+/, '0x').toLowerCase();
+        return persist({ ignoredPlayers: get().ignoredPlayers.filter((p) => p.address !== normalized) });
+      }),
     setUseRevivePotions: (useRevivePotions: boolean) =>
       set(() => persist({ useRevivePotions })),
     setRevivePotionMax: (revivePotionMax: number) =>
@@ -339,6 +393,8 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       set(() => persist({ useAttackPotions })),
     setAttackPotionMax: (attackPotionMax: number) =>
       set(() => persist({ attackPotionMax })),
+    setAttackPotionMaxPerBeast: (attackPotionMaxPerBeast: number) =>
+      set(() => persist({ attackPotionMaxPerBeast })),
 
     setExtraLifeStrategy: (extraLifeStrategy: ExtraLifeStrategy) =>
       set(() => persist({ extraLifeStrategy })),
@@ -363,60 +419,8 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
     setAttackPotionsUsed: (update) => updateCounter('attackPotionsUsed', update),
     setExtraLifePotionsUsed: (update) => updateCounter('extraLifePotionsUsed', update),
     setPoisonPotionsUsed: (update) => updateCounter('poisonPotionsUsed', update),
-    initializeMaxCapsFromBalances: (tokenBalances) => {
-      if (didInitializeFromBalances) return;
-      if (!tokenBalances) return;
-
-      // One-time migration: don't overwrite user-set caps. Only fill in "default-ish" caps (0/1).
-      const current = get();
-
-      const reviveAvailable = readTokenBalance(tokenBalances, 'REVIVE');
-      const attackAvailable = readTokenBalance(tokenBalances, 'ATTACK');
-      const extraLifeAvailable = readTokenBalance(tokenBalances, 'EXTRA LIFE');
-      const poisonAvailable = readTokenBalance(tokenBalances, 'POISON');
-
-      const shouldInit =
-        (() => {
-          try {
-            if (typeof localStorage === 'undefined') return true;
-            return !localStorage.getItem(MAX_CAPS_INIT_KEY);
-          } catch {
-            return true;
-          }
-        })();
-
-      if (!shouldInit) {
-        didInitializeFromBalances = true;
-        return;
-      }
-
-      const nextPartial: Partial<AutopilotPersistedConfig> = {};
-      if (current.revivePotionMax <= 1) nextPartial.revivePotionMax = reviveAvailable;
-      if (current.attackPotionMax <= 1) nextPartial.attackPotionMax = attackAvailable;
-      if (current.extraLifeTotalMax <= 1) nextPartial.extraLifeTotalMax = Math.min(4000, extraLifeAvailable);
-      if (current.poisonTotalMax <= 1) nextPartial.poisonTotalMax = poisonAvailable;
-
-      set(() => persist(nextPartial));
-
-      try {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.setItem(MAX_CAPS_INIT_KEY, '1');
-        }
-      } catch {
-        // ignore
-      }
-
-      didInitializeFromBalances = true;
-    },
     resetToDefaults: () =>
       set(() => {
-        // Allow defaults to be re-initialized from balances after a reset.
-        didInitializeFromBalances = false;
-        try {
-          if (typeof localStorage !== 'undefined') localStorage.removeItem(MAX_CAPS_INIT_KEY);
-        } catch {
-          // ignore
-        }
         return { ...persist({ ...DEFAULT_CONFIG }), ...DEFAULT_SESSION_COUNTERS };
       }),
   };

@@ -4,6 +4,7 @@ export interface TokenConfig {
   displayDecimals: number;
   decimals?: number;
   symbol?: string;
+  price?: number;
 }
 
 export interface NetworkTokenConfig {
@@ -50,12 +51,13 @@ export const TOKEN_ADDRESS = {
   SURVIVOR: "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
   STRK: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
   USDC: "0x033068F6539f8e6e6b131e6B2B814e6c34A5224bC66947c47DaB9dFeE93b35fb",
+  LORDS: "0x0124aeb495b947201f5faC96fD1138E326AD86195B98df6DEc9009158A533B49"
 }
 
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
-    slot: "pg-summit-1",
+    slot: "pg-summit-2",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
     apiUrl: "https://summit-production-69ed.up.railway.app",
@@ -122,20 +124,29 @@ export const NETWORKS = {
       "0x02e0af29598b407c8716b17f6d2795eca1b471413fa03fb145a5e33722184067",
     paymentTokens: [
       {
+        name: "LORDS",
+        address: TOKEN_ADDRESS.LORDS,
+        displayDecimals: 0,
+        price: 0.008
+      },
+      {
         name: "SURVIVOR",
         address: TOKEN_ADDRESS.SURVIVOR,
         displayDecimals: 0,
+        price: 0.25
       },
       {
         name: "STRK",
         address: TOKEN_ADDRESS.STRK,
         displayDecimals: 2,
+        price: 0.045
       },
       {
         name: "USDC",
         address: TOKEN_ADDRESS.USDC,
         displayDecimals: 2,
         decimals: 6,
+        price: 1
       },
       {
         name: "ATTACK",
