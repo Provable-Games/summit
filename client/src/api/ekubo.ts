@@ -911,8 +911,9 @@ export const fetchTwammOrders = async (
   ownerAddress: string,
   state: "opened" | "closed" = "opened"
 ): Promise<TwammApiPosition[]> => {
-  // Ekubo API expects padded lowercase hex addresses (0x + 64 hex chars)
-  const addr = num.toHex(BigInt(ownerAddress)).toLowerCase();
+  // Ekubo API expects lowercase hex addresses
+  const hex = BigInt(ownerAddress).toString(16);
+  const addr = "0x" + hex.toLowerCase();
   const url = `${EKUBO_API_BASE}/twap/orders/${addr}?page=1&pageSize=50&state=${state}`;
 
   const response = await fetch(url);

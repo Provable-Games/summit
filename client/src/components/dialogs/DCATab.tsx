@@ -2,7 +2,7 @@ import attackPotionImg from '@/assets/images/attack-potion.png';
 import lifePotionImg from '@/assets/images/life-potion.png';
 import poisonPotionImg from '@/assets/images/poison-potion.png';
 import revivePotionImg from '@/assets/images/revive-potion.png';
-import type { SwapCall, TwammOrderKey, TwammApiPosition, TwammApiOrder } from '@/api/ekubo';
+import type { SwapCall, TwammOrderKey, TwammApiPosition } from '@/api/ekubo';
 import {
   DURATION_PRESETS,
   TWAMM_POOL_FEE_RAW,
@@ -32,18 +32,12 @@ import {
 import { useAccount } from '@starknet-react/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { num } from 'starknet';
-
 const DCA_POTIONS = [
   { id: 'ATTACK', name: 'Attack', image: attackPotionImg, color: '#ff6b6b' },
   { id: 'REVIVE', name: 'Revive', image: revivePotionImg, color: '#00d2d3' },
   { id: 'EXTRA LIFE', name: 'Extra Life', image: lifePotionImg, color: '#ff4757' },
   { id: 'POISON', name: 'Poison', image: poisonPotionImg, color: '#a29bfe' },
 ];
-
-// ERC721 Transfer event selector
-const TRANSFER_EVENT_SELECTOR =
-  '0x0099cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9';
 
 // Map potion address -> potion name (for reverse lookup from API data)
 const POTION_ADDRESS_TO_NAME: Record<string, string> = {
@@ -130,9 +124,6 @@ export default function DCATab({
 
     const orders: ActiveOrder[] = [];
     for (const pos of apiPositions) {
-      // Only show orders from our positions contract
-      if (pos.nft_address.toLowerCase() !== positionsContract.toLowerCase()) continue;
-
       for (const order of pos.orders) {
         const potionId = POTION_ADDRESS_TO_NAME[order.key.buy_token.toLowerCase()];
         if (!potionId) continue; // Skip non-potion orders
@@ -157,7 +148,7 @@ export default function DCATab({
     }
 
     setActiveOrders(orders);
-  }, [address, positionsContract]);
+  }, [address]);
 
   // Load and refresh on mount + poll every 30s
   useEffect(() => {
