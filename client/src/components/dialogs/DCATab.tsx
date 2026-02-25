@@ -166,7 +166,7 @@ export default function DCATab({
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [refreshOrders]);
+  }, []);
 
   // Estimated rate from token prices
   const estimatedRate = useMemo(() => {
