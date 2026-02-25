@@ -254,9 +254,26 @@ export default function DCATab({
         SURVIVOR: Math.max(0, (prev.SURVIVOR || 0) - amount),
       }));
 
+      // Optimistically add the new order
+      const duration = BigInt(endTime - startTime);
+      const saleRate = duration > 0n ? (amountRaw << 32n) / duration : 0n;
+      const tempTokenId = `pending-${Date.now()}`;
+      setActiveOrders((prev) => [
+        ...prev,
+        {
+          tokenId: tempTokenId,
+          potionId: selectedPotion,
+          orderKey,
+          saleRate,
+          totalAmountSold: 0n,
+          totalProceedsWithdrawn: 0n,
+          startTime,
+          endTime,
+        },
+      ]);
+      setProceedsMap((prev) => ({ ...prev, [tempTokenId]: 0n }));
+
       setSurvivorAmount('');
-      // Refresh orders from API after a delay to let the indexer catch up
-      setTimeout(refreshOrders, 5000);
     } catch (err) {
       console.error('Failed to create DCA order:', err);
       setError(err instanceof Error ? err.message : 'Transaction failed');
@@ -284,38 +301,24 @@ export default function DCATab({
         }))
       );
 
-      setTimeout(refreshOrders, 5000);
+      // Optimistic update: add proceeds to potion balance
+      const exactProceeds = proceedsMap[order.tokenId];
+      if (exactProceeds !== undefined) {
+        const proceedsAmount = Math.floor(Number(exactProceeds) / 1e18);
+        setTokenBalances((prev: Record<string, number>) => ({
+          ...prev,
+          [order.potionId]: (prev[order.potionId] || 0) + proceedsAmount,
+        }));
+      }
+
+      // Remove order from the list
+      setActiveOrders((prev) => prev.filter((o) => o.tokenId !== order.tokenId));
+      setProceedsMap((prev) => {
+        const { [order.tokenId]: _, ...rest } = prev;
+        return rest;
+      });
     } catch (err) {
       console.error('Failed to withdraw proceeds:', err);
-    } finally {
-      setActionInProgress(null);
-    }
-  };
-
-  const handleCancel = async (order: ActiveOrder) => {
-    if (!account || !address) return;
-    setActionInProgress(order.tokenId);
-
-    try {
-      const calls = generateCancelDcaOrderCalls(
-        positionsContract,
-        order.tokenId,
-        order.orderKey,
-        order.saleRate
-      );
-
-      await account.execute(
-        calls.map((c: SwapCall) => ({
-          contractAddress: c.contractAddress,
-          entrypoint: c.entrypoint,
-          calldata: c.calldata,
-        }))
-      );
-
-      setActiveOrders((prev) => prev.filter((o) => o.tokenId !== order.tokenId));
-      setTimeout(refreshOrders, 5000);
-    } catch (err) {
-      console.error('Failed to cancel DCA order:', err);
     } finally {
       setActionInProgress(null);
     }
@@ -519,7 +522,7 @@ export default function DCATab({
                       {formatAmount(totalSellAmount)} SURVIVOR → {potion?.name || order.potionId}
                     </Typography>
                     <Typography sx={dcaStyles.orderSubtext}>
-                      {isCompleted ? 'Completed' : `${formatDuration(timeRemaining)} left`} · {formatDuration(totalDuration)}
+                      {isCompleted ? 'Completed' : `${formatDuration(timeRemaining)} left`}
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', gap: 0.5 }}>
