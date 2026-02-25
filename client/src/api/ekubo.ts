@@ -1,5 +1,4 @@
 import { delay } from "@/utils/utils";
-import { TWAMM_EXTENSION_ADDRESS } from "@/utils/networkConfig";
 import { num } from "starknet";
 
 export interface SwapQuote {
@@ -780,15 +779,19 @@ export const computeTwammTimes = (
 
 /**
  * Build the calldata for creating a DCA order:
- * 1) Transfer SURVIVOR tokens to the positions contract
+ * 1) Transfer sell tokens to the positions contract
  * 2) Call mint_and_increase_sell_amount on positions contract
+ *
+ * mint_and_increase_sell_amount expects flat order_key fields + u128 amount:
+ *   order_key.sell_token, order_key.buy_token, order_key.fee (u128),
+ *   order_key.start_time (u64), order_key.end_time (u64), amount (u128)
  */
 export const generateCreateDcaOrderCalls = (
   positionsContract: string,
   orderKey: TwammOrderKey,
   amount: bigint
 ): SwapCall[] => {
-  const transferSurvivor: SwapCall = {
+  const transferSellToken: SwapCall = {
     contractAddress: orderKey.sell_token,
     entrypoint: "transfer",
     calldata: [positionsContract, num.toHex(amount), "0x0"],
@@ -798,33 +801,24 @@ export const generateCreateDcaOrderCalls = (
     contractAddress: positionsContract,
     entrypoint: "mint_and_increase_sell_amount",
     calldata: [
-      // pool_key: token0, token1, fee, tick_spacing, extension
-      orderKey.sell_token < orderKey.buy_token
-        ? orderKey.sell_token
-        : orderKey.buy_token,
-      orderKey.sell_token < orderKey.buy_token
-        ? orderKey.buy_token
-        : orderKey.sell_token,
-      TWAMM_POOL_FEE_RAW,
-      num.toHex(TWAMM_TICK_SPACING),
-      TWAMM_EXTENSION_ADDRESS,
-      // order_key: sell_token, buy_token, fee, start_time, end_time
       orderKey.sell_token,
       orderKey.buy_token,
-      TWAMM_POOL_FEE_RAW,
+      orderKey.fee,
       num.toHex(orderKey.start_time),
       num.toHex(orderKey.end_time),
-      // amount (u256: low, high)
       num.toHex(amount),
-      "0x0",
     ],
   };
 
-  return [transferSurvivor, mintAndSell];
+  return [transferSellToken, mintAndSell];
 };
 
 /**
  * Build the calldata for withdrawing purchased proceeds from a DCA order.
+ *
+ * withdraw_proceeds_from_sale_to_self expects:
+ *   id (u64), order_key.sell_token, order_key.buy_token,
+ *   order_key.fee (u128), order_key.start_time (u64), order_key.end_time (u64)
  */
 export const generateWithdrawProceedsCalls = (
   positionsContract: string,
@@ -835,22 +829,10 @@ export const generateWithdrawProceedsCalls = (
     contractAddress: positionsContract,
     entrypoint: "withdraw_proceeds_from_sale_to_self",
     calldata: [
-      // id (u64)
       nftId,
-      // pool_key
-      orderKey.sell_token < orderKey.buy_token
-        ? orderKey.sell_token
-        : orderKey.buy_token,
-      orderKey.sell_token < orderKey.buy_token
-        ? orderKey.buy_token
-        : orderKey.sell_token,
-      TWAMM_POOL_FEE_RAW,
-      num.toHex(TWAMM_TICK_SPACING),
-      TWAMM_EXTENSION_ADDRESS,
-      // order_key
       orderKey.sell_token,
       orderKey.buy_token,
-      TWAMM_POOL_FEE_RAW,
+      orderKey.fee,
       num.toHex(orderKey.start_time),
       num.toHex(orderKey.end_time),
     ],
@@ -862,6 +844,11 @@ export const generateWithdrawProceedsCalls = (
 /**
  * Build the calldata for cancelling a DCA order:
  * First withdraw proceeds, then decrease_sale_rate to 0.
+ *
+ * decrease_sale_rate_to_self expects:
+ *   id (u64), order_key.sell_token, order_key.buy_token,
+ *   order_key.fee (u128), order_key.start_time (u64), order_key.end_time (u64),
+ *   sale_rate_delta (u128)
  */
 export const generateCancelDcaOrderCalls = (
   positionsContract: string,
@@ -879,25 +866,12 @@ export const generateCancelDcaOrderCalls = (
     contractAddress: positionsContract,
     entrypoint: "decrease_sale_rate_to_self",
     calldata: [
-      // id (u64)
       nftId,
-      // pool_key
-      orderKey.sell_token < orderKey.buy_token
-        ? orderKey.sell_token
-        : orderKey.buy_token,
-      orderKey.sell_token < orderKey.buy_token
-        ? orderKey.buy_token
-        : orderKey.sell_token,
-      TWAMM_POOL_FEE_RAW,
-      num.toHex(TWAMM_TICK_SPACING),
-      TWAMM_EXTENSION_ADDRESS,
-      // order_key
       orderKey.sell_token,
       orderKey.buy_token,
-      TWAMM_POOL_FEE_RAW,
+      orderKey.fee,
       num.toHex(orderKey.start_time),
       num.toHex(orderKey.end_time),
-      // sale_rate_delta (u128)
       num.toHex(saleRate),
     ],
   };
@@ -911,6 +885,10 @@ const GET_ORDER_INFO_SELECTOR =
 
 /**
  * Read on-chain DCA order info via starknet_call.
+ *
+ * get_order_info expects:
+ *   id (u64), order_key.sell_token, order_key.buy_token,
+ *   order_key.fee (u128), order_key.start_time (u64), order_key.end_time (u64)
  */
 export const getDcaOrderInfo = async (
   rpcUrl: string,
@@ -918,27 +896,11 @@ export const getDcaOrderInfo = async (
   nftId: string,
   orderKey: TwammOrderKey
 ): Promise<TwammOrderInfo> => {
-  const token0 =
-    orderKey.sell_token < orderKey.buy_token
-      ? orderKey.sell_token
-      : orderKey.buy_token;
-  const token1 =
-    orderKey.sell_token < orderKey.buy_token
-      ? orderKey.buy_token
-      : orderKey.sell_token;
-
   const calldata = [
     nftId,
-    // pool_key
-    token0,
-    token1,
-    TWAMM_POOL_FEE_RAW,
-    num.toHex(TWAMM_TICK_SPACING),
-    TWAMM_EXTENSION_ADDRESS,
-    // order_key
     orderKey.sell_token,
     orderKey.buy_token,
-    TWAMM_POOL_FEE_RAW,
+    orderKey.fee,
     num.toHex(orderKey.start_time),
     num.toHex(orderKey.end_time),
   ];

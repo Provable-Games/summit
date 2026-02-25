@@ -5,6 +5,7 @@ import revivePotionImg from '@/assets/images/revive-potion.png';
 import type { SwapCall, StoredDcaOrder, TwammOrderInfo, TwammOrderKey } from '@/api/ekubo';
 import {
   DURATION_PRESETS,
+  TWAMM_POOL_FEE_RAW,
   computeTwammTimes,
   generateCreateDcaOrderCalls,
   generateWithdrawProceedsCalls,
@@ -14,7 +15,7 @@ import {
   addDcaOrder,
   removeDcaOrder,
 } from '@/api/ekubo';
-import { TOKEN_ADDRESS, TWAMM_EXTENSION_ADDRESS } from '@/utils/networkConfig';
+import { TOKEN_ADDRESS } from '@/utils/networkConfig';
 import type { NetworkConfig } from '@/utils/networkConfig';
 import { gameColors } from '@/utils/themes';
 import { formatAmount } from '@/utils/utils';
@@ -196,7 +197,7 @@ export default function DCATab({
       const orderKey: TwammOrderKey = {
         sell_token: TOKEN_ADDRESS.SURVIVOR,
         buy_token: potionAddress,
-        fee: TWAMM_EXTENSION_ADDRESS,
+        fee: TWAMM_POOL_FEE_RAW,
         start_time: startTime,
         end_time: endTime,
       };
