@@ -38,9 +38,6 @@ export enum ChainId {
   WP_PG_SLOT = "WP_PG_SLOT",
 }
 
-export const TWAMM_EXTENSION_ADDRESS =
-  "0x043e4f09c32d13d43a880e85f69f7de93ceda62d6cf2581a582c6db635548fdc";
-
 export const TOKEN_ADDRESS = {
   ATTACK: "0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443",
   REVIVE: "0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe",
@@ -329,20 +326,10 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
         "description": "Ekubo positions NFT contract for DCA orders and liquidity",
         "methods": [
           {
-            "name": "Create DCA Order",
-            "description": "Create a TWAMM DCA order",
-            "entrypoint": "mint_and_increase_sell_amount"
-          },
-          {
             "name": "Withdraw Proceeds",
             "description": "Withdraw purchased tokens from a DCA order",
             "entrypoint": "withdraw_proceeds_from_sale_to_self"
           },
-          {
-            "name": "Cancel DCA Order",
-            "description": "Cancel a DCA order and return remaining tokens",
-            "entrypoint": "decrease_sale_rate_to_self"
-          }
         ]
       },
       [TOKEN_ADDRESS.SURVIVOR]: {
