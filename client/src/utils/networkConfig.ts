@@ -332,17 +332,6 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           },
         ]
       },
-      [TOKEN_ADDRESS.SURVIVOR]: {
-        "name": "Survivor Token",
-        "description": "ERC 20 token for Survivor rewards",
-        "methods": [
-          {
-            "name": "Transfer",
-            "description": "Transfer Survivor tokens",
-            "entrypoint": "transfer"
-          }
-        ]
-      },
       "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f": {
         "name": "Cartridge VRF Provider",
         "description": "Verifiable Random Function contract, allows randomness in the game",
