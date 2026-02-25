@@ -1,5 +1,5 @@
 import { delay } from "@/utils/utils";
-import { num } from "starknet";
+import { hash, num } from "starknet";
 
 export interface SwapQuote {
   impact: number;
@@ -879,10 +879,6 @@ export const generateCancelDcaOrderCalls = (
   return [...withdrawCalls, decreaseRate];
 };
 
-// get_order_info selector: sn_keccak("get_order_info")
-const GET_ORDER_INFO_SELECTOR =
-  "0x00a3ac40083b8a15a17ebbab48f2e72c6932aac2f27a65fdcec0f0ab08e340e0";
-
 /**
  * Read on-chain DCA order info via starknet_call.
  *
@@ -896,11 +892,14 @@ export const getDcaOrderInfo = async (
   nftId: string,
   orderKey: TwammOrderKey
 ): Promise<TwammOrderInfo> => {
+  const selector = hash.getSelectorFromName("get_order_info");
+
+  // starknet_call requires all calldata as hex-encoded felts
   const calldata = [
     nftId,
     orderKey.sell_token,
     orderKey.buy_token,
-    orderKey.fee,
+    num.toHex(BigInt(orderKey.fee)),
     num.toHex(orderKey.start_time),
     num.toHex(orderKey.end_time),
   ];
@@ -914,7 +913,7 @@ export const getDcaOrderInfo = async (
       params: [
         {
           contract_address: positionsContract,
-          entry_point_selector: GET_ORDER_INFO_SELECTOR,
+          entry_point_selector: selector,
           calldata,
         },
         "pending",
@@ -925,10 +924,16 @@ export const getDcaOrderInfo = async (
 
   const json = await response.json();
   if (json.error) {
+    console.error("getDcaOrderInfo RPC error:", json.error);
     throw new Error(json.error.message || "RPC call failed");
   }
 
   const result: string[] = json.result;
+  if (!result || result.length === 0) {
+    console.warn("getDcaOrderInfo: empty result for nftId", nftId);
+    return { sale_rate: 0n, remaining_sell_amount: 0n, purchased_amount: 0n };
+  }
+
   // get_order_info returns: sale_rate (u128), remaining_sell_amount (u256 low, high), purchased_amount (u256 low, high)
   return {
     sale_rate: BigInt(result[0] || "0"),
