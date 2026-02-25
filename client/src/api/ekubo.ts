@@ -1,5 +1,5 @@
 import { delay } from "@/utils/utils";
-import { hash, num } from "starknet";
+import { num } from "starknet";
 
 export interface SwapQuote {
   impact: number;
@@ -865,28 +865,42 @@ export const generateCancelDcaOrderCalls = (
   return [...withdrawCalls, decreaseRate];
 };
 
+/** TWAMM view contract used by Ekubo for batched order info reads. */
+const TWAMM_VIEW_CONTRACT =
+  "0x0422e9fbbf291e4c23795ae5bb4d5ddf641f31dbb755ba591e184c1a4223fc5e";
+/** Pre-computed selector for the batched get_order_info entrypoint. */
+const TWAMM_VIEW_SELECTOR =
+  "0x3fbdf259e237928c228b71a3f4866809cff7a352719c97efda782581b882344";
+
+interface DcaOrderInput {
+  tokenId: string;
+  orderKey: TwammOrderKey;
+}
+
 /**
- * Read on-chain DCA order proceeds via starknet_call on the TWAMM positions contract.
- * The contract address is the nft_address returned by the Ekubo API (NOT ekuboPositions).
+ * Batch-read on-chain DCA order proceeds via the Ekubo TWAMM view contract.
+ * Uses the same batched RPC call that the Ekubo app makes.
  *
- * Returns the purchased amount (potions earned but not yet withdrawn).
+ * Returns a map of tokenId -> purchased_amount (potions earned, including uncollected).
  */
 export const getDcaOrderProceeds = async (
   rpcUrl: string,
-  twammPositionsContract: string,
-  tokenId: string,
-  orderKey: TwammOrderKey
-): Promise<bigint> => {
-  const selector = hash.getSelectorFromName("get_order_info");
+  orders: DcaOrderInput[]
+): Promise<Record<string, bigint>> => {
+  if (orders.length === 0) return {};
 
-  const calldata = [
-    tokenId,
-    orderKey.sell_token,
-    orderKey.buy_token,
-    num.toHex(BigInt(orderKey.fee)),
-    num.toHex(orderKey.start_time),
-    num.toHex(orderKey.end_time),
-  ];
+  // Batched calldata: [count, ...orders.flatMap(o => [token_id, sell, buy, fee, start, end])]
+  const calldata: string[] = [num.toHex(orders.length)];
+  for (const o of orders) {
+    calldata.push(
+      o.tokenId,
+      o.orderKey.sell_token,
+      o.orderKey.buy_token,
+      num.toHex(BigInt(o.orderKey.fee)),
+      num.toHex(o.orderKey.start_time),
+      num.toHex(o.orderKey.end_time)
+    );
+  }
 
   const response = await fetch(rpcUrl, {
     method: "POST",
@@ -894,14 +908,14 @@ export const getDcaOrderProceeds = async (
     body: JSON.stringify({
       jsonrpc: "2.0",
       method: "starknet_call",
-      params: [
-        {
-          contract_address: twammPositionsContract,
-          entry_point_selector: selector,
+      params: {
+        request: {
+          contract_address: TWAMM_VIEW_CONTRACT,
+          entry_point_selector: TWAMM_VIEW_SELECTOR,
           calldata,
         },
-        "pending",
-      ],
+        block_id: "latest",
+      },
       id: 1,
     }),
   });
@@ -909,17 +923,25 @@ export const getDcaOrderProceeds = async (
   const json = await response.json();
   if (json.error) {
     console.warn("getDcaOrderProceeds RPC error:", json.error);
-    return 0n;
+    return {};
   }
 
   const result: string[] = json.result;
-  if (!result || result.length < 4) {
-    return 0n;
+  if (!result || result.length < 2) return {};
+
+  // Response format: [block_timestamp, order_count, ...per_order_data]
+  // Per order: [sale_rate, ???, purchased_amount] — 3 felts each
+  const HEADER_SIZE = 2;
+  const FIELDS_PER_ORDER = 3;
+  const proceeds: Record<string, bigint> = {};
+  for (let i = 0; i < orders.length; i++) {
+    const offset = HEADER_SIZE + i * FIELDS_PER_ORDER;
+    if (offset + 2 >= result.length) break;
+    // purchased_amount is at index 2 within each order's results
+    proceeds[orders[i].tokenId] = BigInt(result[offset + 2] || "0");
   }
 
-  // get_order_info returns: sale_rate (u128), remaining_sell_amount (u256: low, high), purchased_amount (u256: low, high)
-  // purchased_amount is at index 3 (low part of u256)
-  return BigInt(result[3] || "0");
+  return proceeds;
 };
 
 // ---------------------------------------------------------------------------

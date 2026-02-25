@@ -66,7 +66,6 @@ interface DCATabProps {
 /** Active order derived from Ekubo API */
 interface ActiveOrder {
   tokenId: string;
-  nftAddress: string;
   potionId: string;
   orderKey: TwammOrderKey;
   saleRate: bigint;
@@ -137,7 +136,6 @@ export default function DCATab({
 
         orders.push({
           tokenId: pos.token_id,
-          nftAddress: pos.nft_address,
           potionId,
           orderKey: {
             sell_token: order.key.sell_token,
@@ -157,24 +155,18 @@ export default function DCATab({
 
     setActiveOrders(orders);
 
-    // Fetch exact proceeds for each order via RPC
-    const proceeds: Record<string, bigint> = {};
-    await Promise.all(
-      orders.map(async (order) => {
-        try {
-          const purchased = await getDcaOrderProceeds(
-            rpcUrl,
-            order.nftAddress,
-            order.tokenId,
-            order.orderKey
-          );
-          proceeds[order.tokenId] = purchased;
-        } catch {
-          // Silently skip failed RPC calls
-        }
-      })
-    );
-    setProceedsMap(proceeds);
+    // Batch-fetch exact proceeds for all orders via single RPC call
+    if (orders.length > 0) {
+      try {
+        const proceeds = await getDcaOrderProceeds(
+          rpcUrl,
+          orders.map((o) => ({ tokenId: o.tokenId, orderKey: o.orderKey }))
+        );
+        setProceedsMap(proceeds);
+      } catch {
+        // Silently skip failed RPC call
+      }
+    }
   }, [address, rpcUrl]);
 
   // Load on mount
@@ -502,6 +494,7 @@ export default function DCATab({
             const timeRemaining = Math.max(0, order.endTime - nowSeconds);
             const isCompleted = timeRemaining <= 0;
 
+            const totalSellAmount = Number(order.saleRate * BigInt(totalDuration)) / 1e18;
             const soldDisplay = Number(order.totalAmountSold) / 1e18;
 
             // Exact proceeds from RPC (uncollected potions)
@@ -522,10 +515,10 @@ export default function DCATab({
                   )}
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography sx={dcaStyles.orderTitle}>
-                      {potion?.name || order.potionId} DCA
+                      {formatAmount(totalSellAmount)} SURVIVOR → {potion?.name || order.potionId}
                     </Typography>
                     <Typography sx={dcaStyles.orderSubtext}>
-                      {isCompleted ? 'Completed' : `${formatDuration(timeRemaining)} left`}
+                      {isCompleted ? 'Completed' : `${formatDuration(timeRemaining)} left`} · {formatDuration(totalDuration)}
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', gap: 0.5 }}>
