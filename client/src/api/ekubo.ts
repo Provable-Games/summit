@@ -1,5 +1,5 @@
 import { delay } from "@/utils/utils";
-import { hash, num } from "starknet";
+import { num } from "starknet";
 
 export interface SwapQuote {
   impact: number;
@@ -718,20 +718,6 @@ export interface TwammOrderKey {
   end_time: number;
 }
 
-export interface TwammOrderInfo {
-  sale_rate: bigint;
-  remaining_sell_amount: bigint;
-  purchased_amount: bigint;
-}
-
-export interface StoredDcaOrder {
-  id: string; // NFT token ID (hex)
-  orderKey: TwammOrderKey;
-  createdAt: number; // unix seconds
-  sellAmount: string; // raw amount string
-  potionId: string; // e.g. "ATTACK"
-}
-
 // 5% fee tier: 0.05 * 2^128 = 17014118346046924117642026945517453312
 export const TWAMM_POOL_FEE_RAW =
   "17014118346046924117642026945517453312";
@@ -879,69 +865,6 @@ export const generateCancelDcaOrderCalls = (
   return [...withdrawCalls, decreaseRate];
 };
 
-/**
- * Read on-chain DCA order info via starknet_call.
- *
- * get_order_info expects:
- *   id (u64), order_key.sell_token, order_key.buy_token,
- *   order_key.fee (u128), order_key.start_time (u64), order_key.end_time (u64)
- */
-export const getDcaOrderInfo = async (
-  rpcUrl: string,
-  positionsContract: string,
-  nftId: string,
-  orderKey: TwammOrderKey
-): Promise<TwammOrderInfo> => {
-  const selector = hash.getSelectorFromName("get_order_info");
-
-  // starknet_call requires all calldata as hex-encoded felts
-  const calldata = [
-    nftId,
-    orderKey.sell_token,
-    orderKey.buy_token,
-    num.toHex(BigInt(orderKey.fee)),
-    num.toHex(orderKey.start_time),
-    num.toHex(orderKey.end_time),
-  ];
-
-  const response = await fetch(rpcUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      method: "starknet_call",
-      params: [
-        {
-          contract_address: positionsContract,
-          entry_point_selector: selector,
-          calldata,
-        },
-        "pending",
-      ],
-      id: 1,
-    }),
-  });
-
-  const json = await response.json();
-  if (json.error) {
-    console.error("getDcaOrderInfo RPC error:", json.error);
-    throw new Error(json.error.message || "RPC call failed");
-  }
-
-  const result: string[] = json.result;
-  if (!result || result.length === 0) {
-    console.warn("getDcaOrderInfo: empty result for nftId", nftId);
-    return { sale_rate: 0n, remaining_sell_amount: 0n, purchased_amount: 0n };
-  }
-
-  // get_order_info returns: sale_rate (u128), remaining_sell_amount (u256 low, high), purchased_amount (u256 low, high)
-  return {
-    sale_rate: BigInt(result[0] || "0"),
-    remaining_sell_amount: BigInt(result[1] || "0"),
-    purchased_amount: BigInt(result[3] || "0"),
-  };
-};
-
 // ---------------------------------------------------------------------------
 // TWAMM Order Fetching via Ekubo REST API
 // ---------------------------------------------------------------------------
@@ -988,7 +911,8 @@ export const fetchTwammOrders = async (
   ownerAddress: string,
   state: "opened" | "closed" = "opened"
 ): Promise<TwammApiPosition[]> => {
-  const addr = ownerAddress.toLowerCase();
+  // Ekubo API expects padded lowercase hex addresses (0x + 64 hex chars)
+  const addr = num.toHex(BigInt(ownerAddress)).toLowerCase();
   const url = `${EKUBO_API_BASE}/twap/orders/${addr}?page=1&pageSize=50&state=${state}`;
 
   const response = await fetch(url);
@@ -1001,35 +925,3 @@ export const fetchTwammOrders = async (
   return data.orders || [];
 };
 
-// ---------------------------------------------------------------------------
-// DCA Order localStorage persistence
-// ---------------------------------------------------------------------------
-
-const DCA_STORAGE_KEY = "summit_dca_orders";
-
-export const loadDcaOrders = (owner: string): StoredDcaOrder[] => {
-  try {
-    const raw = localStorage.getItem(`${DCA_STORAGE_KEY}_${owner.toLowerCase()}`);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-};
-
-export const saveDcaOrders = (owner: string, orders: StoredDcaOrder[]): void => {
-  localStorage.setItem(
-    `${DCA_STORAGE_KEY}_${owner.toLowerCase()}`,
-    JSON.stringify(orders)
-  );
-};
-
-export const addDcaOrder = (owner: string, order: StoredDcaOrder): void => {
-  const orders = loadDcaOrders(owner);
-  orders.push(order);
-  saveDcaOrders(owner, orders);
-};
-
-export const removeDcaOrder = (owner: string, nftId: string): void => {
-  const orders = loadDcaOrders(owner).filter((o) => o.id !== nftId);
-  saveDcaOrders(owner, orders);
-};

@@ -2,7 +2,7 @@ import attackPotionImg from '@/assets/images/attack-potion.png';
 import lifePotionImg from '@/assets/images/life-potion.png';
 import poisonPotionImg from '@/assets/images/poison-potion.png';
 import revivePotionImg from '@/assets/images/revive-potion.png';
-import type { SwapCall, StoredDcaOrder, TwammOrderKey, TwammApiPosition, TwammApiOrder } from '@/api/ekubo';
+import type { SwapCall, TwammOrderKey, TwammApiPosition, TwammApiOrder } from '@/api/ekubo';
 import {
   DURATION_PRESETS,
   TWAMM_POOL_FEE_RAW,
@@ -11,9 +11,6 @@ import {
   generateWithdrawProceedsCalls,
   generateCancelDcaOrderCalls,
   fetchTwammOrders,
-  loadDcaOrders,
-  addDcaOrder,
-  removeDcaOrder,
 } from '@/api/ekubo';
 import { TOKEN_ADDRESS } from '@/utils/networkConfig';
 import type { NetworkConfig } from '@/utils/networkConfig';
@@ -66,17 +63,16 @@ interface DCATabProps {
   getTokenIcon: (symbol: string) => ReactNode;
 }
 
-/** Combined view: local order metadata + live API data */
+/** Active order derived from Ekubo API */
 interface ActiveOrder {
-  id: string;
+  tokenId: string;
   potionId: string;
   orderKey: TwammOrderKey;
-  createdAt: number;
-  sellAmount: string;
-  // Live data from Ekubo API (when available)
   saleRate: bigint;
   totalAmountSold: bigint;
   totalProceedsWithdrawn: bigint;
+  startTime: number;
+  endTime: number;
 }
 
 const getPotionAddress = (potionId: string): string => {
@@ -120,57 +116,29 @@ export default function DCATab({
   const positionsContract = currentNetworkConfig.ekuboPositions;
   const rpcUrl = currentNetworkConfig.rpcUrl;
 
-  // Merge localStorage orders with Ekubo API data
+  // Fetch active orders from Ekubo API
   const refreshOrders = useCallback(async () => {
     if (!address) return;
 
-    const localOrders = loadDcaOrders(address);
     let apiPositions: TwammApiPosition[] = [];
-
     try {
       apiPositions = await fetchTwammOrders(address);
     } catch (err) {
       console.warn('Failed to fetch TWAMM orders from API:', err);
+      return;
     }
 
-    // Build a lookup from API data: tokenId -> TwammApiOrder[]
-    const apiOrderMap = new Map<string, { orders: TwammApiOrder[]; nftAddress: string }>();
+    const orders: ActiveOrder[] = [];
     for (const pos of apiPositions) {
-      apiOrderMap.set(pos.token_id, { orders: pos.orders, nftAddress: pos.nft_address });
-    }
-
-    // Build active orders from both local + API
-    const merged: ActiveOrder[] = [];
-
-    // First, include all local orders with API enrichment
-    for (const local of localOrders) {
-      const apiData = apiOrderMap.get(local.id);
-      const matchingApiOrder = apiData?.orders?.[0];
-
-      merged.push({
-        id: local.id,
-        potionId: local.potionId,
-        orderKey: local.orderKey,
-        createdAt: local.createdAt,
-        sellAmount: local.sellAmount,
-        saleRate: matchingApiOrder ? BigInt(matchingApiOrder.sale_rate) : 0n,
-        totalAmountSold: matchingApiOrder ? BigInt(matchingApiOrder.total_amount_sold) : 0n,
-        totalProceedsWithdrawn: matchingApiOrder ? BigInt(matchingApiOrder.total_proceeds_withdrawn) : 0n,
-      });
-    }
-
-    // Also include API orders not in localStorage (e.g. created outside the app)
-    const localIds = new Set(localOrders.map((o) => o.id));
-    for (const pos of apiPositions) {
-      if (localIds.has(pos.token_id)) continue;
+      // Only show orders from our positions contract
       if (pos.nft_address.toLowerCase() !== positionsContract.toLowerCase()) continue;
 
       for (const order of pos.orders) {
-        const potionId = POTION_ADDRESS_TO_NAME[order.key.buy_token.toLowerCase()] || 'UNKNOWN';
-        if (potionId === 'UNKNOWN') continue;
+        const potionId = POTION_ADDRESS_TO_NAME[order.key.buy_token.toLowerCase()];
+        if (!potionId) continue; // Skip non-potion orders
 
-        merged.push({
-          id: pos.token_id,
+        orders.push({
+          tokenId: pos.token_id,
           potionId,
           orderKey: {
             sell_token: order.key.sell_token,
@@ -179,16 +147,16 @@ export default function DCATab({
             start_time: order.key.start_time,
             end_time: order.key.end_time,
           },
-          createdAt: order.key.start_time,
-          sellAmount: '0',
           saleRate: BigInt(order.sale_rate),
           totalAmountSold: BigInt(order.total_amount_sold),
           totalProceedsWithdrawn: BigInt(order.total_proceeds_withdrawn),
+          startTime: order.key.start_time,
+          endTime: order.key.end_time,
         });
       }
     }
 
-    setActiveOrders(merged);
+    setActiveOrders(orders);
   }, [address, positionsContract]);
 
   // Load and refresh on mount + poll every 30s
@@ -266,74 +234,13 @@ export default function DCATab({
 
       const calls = generateCreateDcaOrderCalls(positionsContract, orderKey, amountRaw);
 
-      // Execute the multicall
-      const result = await account.execute(
+      await account.execute(
         calls.map((c: SwapCall) => ({
           contractAddress: c.contractAddress,
           entrypoint: c.entrypoint,
           calldata: c.calldata,
         }))
       );
-
-      // Wait for receipt
-      let receipt: { events?: Array<{ from_address: string; keys: string[]; data: string[] }> } | undefined;
-      if (result.transaction_hash) {
-        const receiptRes = await fetch(rpcUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'starknet_getTransactionReceipt',
-            params: [result.transaction_hash],
-            id: 1,
-          }),
-        });
-        const receiptJson = await receiptRes.json();
-        receipt = receiptJson.result;
-
-        // Retry with delay if pending
-        if (!receipt?.events) {
-          await new Promise((r) => setTimeout(r, 5000));
-          const retryRes = await fetch(rpcUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              method: 'starknet_getTransactionReceipt',
-              params: [result.transaction_hash],
-              id: 1,
-            }),
-          });
-          const retryJson = await retryRes.json();
-          receipt = retryJson.result;
-        }
-      }
-
-      // Extract NFT ID from Transfer event
-      let nftId = '0x1'; // fallback
-      if (receipt?.events) {
-        const transferEvent = receipt.events.find(
-          (e) =>
-            e.from_address &&
-            num.toHex(BigInt(e.from_address)) ===
-              num.toHex(BigInt(positionsContract)) &&
-            e.keys?.[0] === TRANSFER_EVENT_SELECTOR
-        );
-        if (transferEvent?.keys?.[3]) {
-          nftId = transferEvent.keys[3];
-        }
-      }
-
-      // Save to localStorage
-      const storedOrder: StoredDcaOrder = {
-        id: nftId,
-        orderKey,
-        createdAt: nowSeconds,
-        sellAmount: amountRaw.toString(),
-        potionId: selectedPotion,
-      };
-
-      addDcaOrder(address, storedOrder);
 
       // Optimistic balance update
       setTokenBalances((prev: Record<string, number>) => ({
@@ -342,7 +249,8 @@ export default function DCATab({
       }));
 
       setSurvivorAmount('');
-      setTimeout(refreshOrders, 3000);
+      // Refresh orders from API after a delay to let the indexer catch up
+      setTimeout(refreshOrders, 5000);
     } catch (err) {
       console.error('Failed to create DCA order:', err);
       setError(err instanceof Error ? err.message : 'Transaction failed');
@@ -353,12 +261,12 @@ export default function DCATab({
 
   const handleWithdraw = async (order: ActiveOrder) => {
     if (!account || !address) return;
-    setActionInProgress(order.id);
+    setActionInProgress(order.tokenId);
 
     try {
       const calls = generateWithdrawProceedsCalls(
         positionsContract,
-        order.id,
+        order.tokenId,
         order.orderKey
       );
 
@@ -380,12 +288,12 @@ export default function DCATab({
 
   const handleCancel = async (order: ActiveOrder) => {
     if (!account || !address) return;
-    setActionInProgress(order.id);
+    setActionInProgress(order.tokenId);
 
     try {
       const calls = generateCancelDcaOrderCalls(
         positionsContract,
-        order.id,
+        order.tokenId,
         order.orderKey,
         order.saleRate
       );
@@ -398,8 +306,8 @@ export default function DCATab({
         }))
       );
 
-      removeDcaOrder(address, order.id);
-      setActiveOrders((prev) => prev.filter((o) => o.id !== order.id));
+      setActiveOrders((prev) => prev.filter((o) => o.tokenId !== order.tokenId));
+      setTimeout(refreshOrders, 5000);
     } catch (err) {
       console.error('Failed to cancel DCA order:', err);
     } finally {
@@ -574,14 +482,14 @@ export default function DCATab({
         ) : (
           activeOrders.map((order) => {
             const potion = DCA_POTIONS.find((p) => p.id === order.potionId);
-            const totalDuration = order.orderKey.end_time - order.orderKey.start_time;
-            const elapsed = Math.max(0, Math.min(totalDuration, nowSeconds - order.orderKey.start_time));
+            const totalDuration = order.endTime - order.startTime;
+            const elapsed = Math.max(0, Math.min(totalDuration, nowSeconds - order.startTime));
             const progress = totalDuration > 0 ? (elapsed / totalDuration) * 100 : 100;
-            const timeRemaining = Math.max(0, order.orderKey.end_time - nowSeconds);
+            const timeRemaining = Math.max(0, order.endTime - nowSeconds);
             const isCompleted = timeRemaining <= 0;
 
-            // Compute remaining sell amount: sale_rate * remaining_time
-            const remainingTime = BigInt(Math.max(0, order.orderKey.end_time - nowSeconds));
+            // remaining = sale_rate * remaining_time
+            const remainingTime = BigInt(Math.max(0, order.endTime - nowSeconds));
             const remainingSell = order.saleRate > 0n
               ? order.saleRate * remainingTime
               : 0n;
@@ -590,7 +498,7 @@ export default function DCATab({
             const soldDisplay = Number(order.totalAmountSold) / 1e18;
 
             return (
-              <Box key={order.id} sx={dcaStyles.orderCard}>
+              <Box key={order.tokenId} sx={dcaStyles.orderCard}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
                   {potion && (
                     <img
@@ -611,11 +519,11 @@ export default function DCATab({
                     <IconButton
                       size="small"
                       onClick={() => handleWithdraw(order)}
-                      disabled={actionInProgress === order.id}
+                      disabled={actionInProgress === order.tokenId}
                       title="Withdraw proceeds"
                       sx={dcaStyles.orderActionButton}
                     >
-                      {actionInProgress === order.id ? (
+                      {actionInProgress === order.tokenId ? (
                         <CircularProgress size={14} sx={{ color: '#fff' }} />
                       ) : (
                         <DownloadIcon sx={{ fontSize: 16 }} />
@@ -624,7 +532,7 @@ export default function DCATab({
                     <IconButton
                       size="small"
                       onClick={() => handleCancel(order)}
-                      disabled={actionInProgress === order.id}
+                      disabled={actionInProgress === order.tokenId}
                       title="Cancel order"
                       sx={{
                         ...dcaStyles.orderActionButton,
