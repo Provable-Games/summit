@@ -99,7 +99,8 @@
       "@dojoengine/utils": "1.7.2",
       "@dojoengine/torii-client": "1.7.2",
       "@cartridge/controller": "0.12.1",
-      "@cartridge/connector": "0.12.1"
+      "@cartridge/connector": "0.12.1",
+      "h3": "^1.15.5"
     }
   }
 }
