@@ -172,7 +172,7 @@ export default function DCATab({
   // Load on mount
   useEffect(() => {
     refreshOrders();
-  }, []);
+  }, [refreshOrders]);
 
   // Estimated rate from token prices
   const estimatedRate = useMemo(() => {
@@ -228,7 +228,9 @@ export default function DCATab({
 
       const { startTime, endTime } = computeTwammTimes(nowSeconds, selectedDuration);
       const potionAddress = getPotionAddress(selectedPotion);
-      const amountRaw = BigInt(Math.floor(amount)) * 10n ** 18n;
+      const [whole = '0', frac = ''] = survivorAmount.split('.');
+      const paddedFrac = (frac + '000000000000000000').slice(0, 18);
+      const amountRaw = BigInt(whole) * 10n ** 18n + BigInt(paddedFrac);
 
       const orderKey: TwammOrderKey = {
         sell_token: TOKEN_ADDRESS.SURVIVOR,
