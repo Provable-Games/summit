@@ -494,13 +494,14 @@ export default function DCATab({
             const timeRemaining = Math.max(0, order.endTime - nowSeconds);
             const isCompleted = timeRemaining <= 0;
 
-            const totalSellAmount = Number(order.saleRate * BigInt(totalDuration)) / 1e18;
+            // sale_rate is fixed-point scaled by 2^32
+            const totalSellAmount = Number((order.saleRate * BigInt(totalDuration)) >> 32n) / 1e18;
             const soldDisplay = Number(order.totalAmountSold) / 1e18;
 
             // Exact proceeds from RPC (uncollected potions)
             const exactProceeds = proceedsMap[order.tokenId];
             const proceedsDisplay = exactProceeds !== undefined
-              ? Number(exactProceeds) / 1e18
+              ? Math.floor(Number(exactProceeds) / 1e18)
               : null;
 
             return (
@@ -568,7 +569,7 @@ export default function DCATab({
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
                   {proceedsDisplay !== null && (
                     <Typography sx={dcaStyles.orderStatLabel}>
-                      Earned:{' '}
+                      Bought:{' '}
                       <Box component="span" sx={{ color: potion?.color || gameColors.yellow, fontWeight: 700 }}>
                         {formatAmount(proceedsDisplay)} {order.potionId}
                       </Box>
