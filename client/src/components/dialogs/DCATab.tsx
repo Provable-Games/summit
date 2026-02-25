@@ -2,7 +2,7 @@ import attackPotionImg from '@/assets/images/attack-potion.png';
 import lifePotionImg from '@/assets/images/life-potion.png';
 import poisonPotionImg from '@/assets/images/poison-potion.png';
 import revivePotionImg from '@/assets/images/revive-potion.png';
-import type { SwapCall, StoredDcaOrder, TwammOrderInfo, TwammOrderKey } from '@/api/ekubo';
+import type { SwapCall, StoredDcaOrder, TwammOrderKey, TwammApiPosition, TwammApiOrder } from '@/api/ekubo';
 import {
   DURATION_PRESETS,
   TWAMM_POOL_FEE_RAW,
@@ -10,7 +10,7 @@ import {
   generateCreateDcaOrderCalls,
   generateWithdrawProceedsCalls,
   generateCancelDcaOrderCalls,
-  getDcaOrderInfo,
+  fetchTwammOrders,
   loadDcaOrders,
   addDcaOrder,
   removeDcaOrder,
@@ -48,6 +48,14 @@ const DCA_POTIONS = [
 const TRANSFER_EVENT_SELECTOR =
   '0x0099cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9';
 
+// Map potion address -> potion name (for reverse lookup from API data)
+const POTION_ADDRESS_TO_NAME: Record<string, string> = {
+  [TOKEN_ADDRESS.ATTACK.toLowerCase()]: 'ATTACK',
+  [TOKEN_ADDRESS.REVIVE.toLowerCase()]: 'REVIVE',
+  [TOKEN_ADDRESS.EXTRA_LIFE.toLowerCase()]: 'EXTRA LIFE',
+  [TOKEN_ADDRESS.POISON.toLowerCase()]: 'POISON',
+};
+
 interface DCATabProps {
   currentNetworkConfig: NetworkConfig;
   tokenBalances: Record<string, number>;
@@ -56,6 +64,19 @@ interface DCATabProps {
   ) => void;
   tokenPrices: Record<string, string>;
   getTokenIcon: (symbol: string) => ReactNode;
+}
+
+/** Combined view: local order metadata + live API data */
+interface ActiveOrder {
+  id: string;
+  potionId: string;
+  orderKey: TwammOrderKey;
+  createdAt: number;
+  sellAmount: string;
+  // Live data from Ekubo API (when available)
+  saleRate: bigint;
+  totalAmountSold: bigint;
+  totalProceedsWithdrawn: bigint;
 }
 
 const getPotionAddress = (potionId: string): string => {
@@ -91,8 +112,7 @@ export default function DCATab({
   const [selectedDuration, setSelectedDuration] = useState(86400);
   const [createInProgress, setCreateInProgress] = useState(false);
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
-  const [activeOrders, setActiveOrders] = useState<StoredDcaOrder[]>([]);
-  const [orderInfoMap, setOrderInfoMap] = useState<Record<string, TwammOrderInfo>>({});
+  const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([]);
   const [error, setError] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -100,41 +120,85 @@ export default function DCATab({
   const positionsContract = currentNetworkConfig.ekuboPositions;
   const rpcUrl = currentNetworkConfig.rpcUrl;
 
-  // Load orders from localStorage on mount
-  useEffect(() => {
+  // Merge localStorage orders with Ekubo API data
+  const refreshOrders = useCallback(async () => {
     if (!address) return;
-    const orders = loadDcaOrders(address);
-    setActiveOrders(orders);
-  }, [address]);
 
-  // Poll order info every 30s
-  const refreshOrderInfo = useCallback(async () => {
-    if (!address || activeOrders.length === 0) return;
+    const localOrders = loadDcaOrders(address);
+    let apiPositions: TwammApiPosition[] = [];
 
-    const infos: Record<string, TwammOrderInfo> = {};
-    for (const order of activeOrders) {
-      try {
-        const info = await getDcaOrderInfo(
-          rpcUrl,
-          positionsContract,
-          order.id,
-          order.orderKey
-        );
-        infos[order.id] = info;
-      } catch (err) {
-        console.warn('Failed to fetch DCA order info:', order.id, err);
+    try {
+      apiPositions = await fetchTwammOrders(address);
+    } catch (err) {
+      console.warn('Failed to fetch TWAMM orders from API:', err);
+    }
+
+    // Build a lookup from API data: tokenId -> TwammApiOrder[]
+    const apiOrderMap = new Map<string, { orders: TwammApiOrder[]; nftAddress: string }>();
+    for (const pos of apiPositions) {
+      apiOrderMap.set(pos.token_id, { orders: pos.orders, nftAddress: pos.nft_address });
+    }
+
+    // Build active orders from both local + API
+    const merged: ActiveOrder[] = [];
+
+    // First, include all local orders with API enrichment
+    for (const local of localOrders) {
+      const apiData = apiOrderMap.get(local.id);
+      const matchingApiOrder = apiData?.orders?.[0];
+
+      merged.push({
+        id: local.id,
+        potionId: local.potionId,
+        orderKey: local.orderKey,
+        createdAt: local.createdAt,
+        sellAmount: local.sellAmount,
+        saleRate: matchingApiOrder ? BigInt(matchingApiOrder.sale_rate) : 0n,
+        totalAmountSold: matchingApiOrder ? BigInt(matchingApiOrder.total_amount_sold) : 0n,
+        totalProceedsWithdrawn: matchingApiOrder ? BigInt(matchingApiOrder.total_proceeds_withdrawn) : 0n,
+      });
+    }
+
+    // Also include API orders not in localStorage (e.g. created outside the app)
+    const localIds = new Set(localOrders.map((o) => o.id));
+    for (const pos of apiPositions) {
+      if (localIds.has(pos.token_id)) continue;
+      if (pos.nft_address.toLowerCase() !== positionsContract.toLowerCase()) continue;
+
+      for (const order of pos.orders) {
+        const potionId = POTION_ADDRESS_TO_NAME[order.key.buy_token.toLowerCase()] || 'UNKNOWN';
+        if (potionId === 'UNKNOWN') continue;
+
+        merged.push({
+          id: pos.token_id,
+          potionId,
+          orderKey: {
+            sell_token: order.key.sell_token,
+            buy_token: order.key.buy_token,
+            fee: order.key.fee,
+            start_time: order.key.start_time,
+            end_time: order.key.end_time,
+          },
+          createdAt: order.key.start_time,
+          sellAmount: '0',
+          saleRate: BigInt(order.sale_rate),
+          totalAmountSold: BigInt(order.total_amount_sold),
+          totalProceedsWithdrawn: BigInt(order.total_proceeds_withdrawn),
+        });
       }
     }
-    setOrderInfoMap(infos);
-  }, [address, activeOrders, rpcUrl, positionsContract]);
 
+    setActiveOrders(merged);
+  }, [address, positionsContract]);
+
+  // Load and refresh on mount + poll every 30s
   useEffect(() => {
-    refreshOrderInfo();
-    pollRef.current = setInterval(refreshOrderInfo, 30_000);
+    refreshOrders();
+    pollRef.current = setInterval(refreshOrders, 30_000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [refreshOrderInfo]);
+  }, [refreshOrders]);
 
   // Estimated rate from token prices
   const estimatedRate = useMemo(() => {
@@ -192,8 +256,6 @@ export default function DCATab({
       const potionAddress = getPotionAddress(selectedPotion);
       const amountRaw = BigInt(Math.floor(amount)) * 10n ** 18n;
 
-      // Determine sell/buy token ordering for the order key
-      // User sells SURVIVOR, buys potion
       const orderKey: TwammOrderKey = {
         sell_token: TOKEN_ADDRESS.SURVIVOR,
         buy_token: potionAddress,
@@ -202,11 +264,7 @@ export default function DCATab({
         end_time: endTime,
       };
 
-      const calls = generateCreateDcaOrderCalls(
-        positionsContract,
-        orderKey,
-        amountRaw
-      );
+      const calls = generateCreateDcaOrderCalls(positionsContract, orderKey, amountRaw);
 
       // Execute the multicall
       const result = await account.execute(
@@ -276,7 +334,6 @@ export default function DCATab({
       };
 
       addDcaOrder(address, storedOrder);
-      setActiveOrders((prev) => [...prev, storedOrder]);
 
       // Optimistic balance update
       setTokenBalances((prev: Record<string, number>) => ({
@@ -285,6 +342,7 @@ export default function DCATab({
       }));
 
       setSurvivorAmount('');
+      setTimeout(refreshOrders, 3000);
     } catch (err) {
       console.error('Failed to create DCA order:', err);
       setError(err instanceof Error ? err.message : 'Transaction failed');
@@ -293,7 +351,7 @@ export default function DCATab({
     }
   };
 
-  const handleWithdraw = async (order: StoredDcaOrder) => {
+  const handleWithdraw = async (order: ActiveOrder) => {
     if (!account || !address) return;
     setActionInProgress(order.id);
 
@@ -312,8 +370,7 @@ export default function DCATab({
         }))
       );
 
-      // Refresh after a short delay
-      setTimeout(refreshOrderInfo, 5000);
+      setTimeout(refreshOrders, 5000);
     } catch (err) {
       console.error('Failed to withdraw proceeds:', err);
     } finally {
@@ -321,19 +378,16 @@ export default function DCATab({
     }
   };
 
-  const handleCancel = async (order: StoredDcaOrder) => {
+  const handleCancel = async (order: ActiveOrder) => {
     if (!account || !address) return;
     setActionInProgress(order.id);
 
     try {
-      const info = orderInfoMap[order.id];
-      const saleRate = info?.sale_rate || 0n;
-
       const calls = generateCancelDcaOrderCalls(
         positionsContract,
         order.id,
         order.orderKey,
-        saleRate
+        order.saleRate
       );
 
       await account.execute(
@@ -344,14 +398,8 @@ export default function DCATab({
         }))
       );
 
-      // Remove from localStorage and state
       removeDcaOrder(address, order.id);
       setActiveOrders((prev) => prev.filter((o) => o.id !== order.id));
-      setOrderInfoMap((prev) => {
-        const next = { ...prev };
-        delete next[order.id];
-        return next;
-      });
     } catch (err) {
       console.error('Failed to cancel DCA order:', err);
     } finally {
@@ -512,7 +560,7 @@ export default function DCATab({
           </Typography>
           <IconButton
             size="small"
-            onClick={refreshOrderInfo}
+            onClick={refreshOrders}
             sx={{ color: gameColors.accentGreen }}
           >
             <RefreshIcon sx={{ fontSize: 18 }} />
@@ -525,7 +573,6 @@ export default function DCATab({
           </Typography>
         ) : (
           activeOrders.map((order) => {
-            const info = orderInfoMap[order.id];
             const potion = DCA_POTIONS.find((p) => p.id === order.potionId);
             const totalDuration = order.orderKey.end_time - order.orderKey.start_time;
             const elapsed = Math.max(0, Math.min(totalDuration, nowSeconds - order.orderKey.start_time));
@@ -533,12 +580,14 @@ export default function DCATab({
             const timeRemaining = Math.max(0, order.orderKey.end_time - nowSeconds);
             const isCompleted = timeRemaining <= 0;
 
-            const remainingSurvivor = info
-              ? Number(info.remaining_sell_amount) / 1e18
-              : 0;
-            const purchasedAmount = info
-              ? Number(info.purchased_amount) / 1e18
-              : 0;
+            // Compute remaining sell amount: sale_rate * remaining_time
+            const remainingTime = BigInt(Math.max(0, order.orderKey.end_time - nowSeconds));
+            const remainingSell = order.saleRate > 0n
+              ? order.saleRate * remainingTime
+              : 0n;
+            const remainingSellDisplay = Number(remainingSell) / 1e18;
+
+            const soldDisplay = Number(order.totalAmountSold) / 1e18;
 
             return (
               <Box key={order.id} sx={dcaStyles.orderCard}>
@@ -604,15 +653,15 @@ export default function DCATab({
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
                   <Typography sx={dcaStyles.orderStatLabel}>
-                    Earned:{' '}
+                    Sold:{' '}
                     <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 700 }}>
-                      {formatAmount(purchasedAmount)} {order.potionId}
+                      {formatAmount(soldDisplay)} SURVIVOR
                     </Box>
                   </Typography>
                   <Typography sx={dcaStyles.orderStatLabel}>
                     Remaining:{' '}
                     <Box component="span" sx={{ color: '#bbb', fontWeight: 700 }}>
-                      {formatAmount(remainingSurvivor)} SURVIVOR
+                      {formatAmount(remainingSellDisplay)} SURVIVOR
                     </Box>
                   </Typography>
                 </Box>

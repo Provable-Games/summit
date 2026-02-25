@@ -943,6 +943,65 @@ export const getDcaOrderInfo = async (
 };
 
 // ---------------------------------------------------------------------------
+// TWAMM Order Fetching via Ekubo REST API
+// ---------------------------------------------------------------------------
+
+export interface TwammApiOrderKey {
+  sell_token: string;
+  buy_token: string;
+  fee: string;
+  start_time: number;
+  end_time: number;
+}
+
+export interface TwammApiOrder {
+  key: TwammApiOrderKey;
+  total_amount_sold: string;
+  last_collect_proceeds: number | null;
+  total_proceeds_withdrawn: string;
+  sale_rate: string;
+}
+
+export interface TwammApiPosition {
+  chain_id: string;
+  nft_address: string;
+  token_id: string;
+  orders: TwammApiOrder[];
+}
+
+export interface TwammApiResponse {
+  orders: TwammApiPosition[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    totalItems: number;
+  };
+}
+
+/**
+ * Fetch TWAMM DCA orders for an address from the Ekubo REST API.
+ * This is the same endpoint the Ekubo app uses.
+ * @param state - "opened" for active orders, "closed" for completed
+ */
+export const fetchTwammOrders = async (
+  ownerAddress: string,
+  state: "opened" | "closed" = "opened"
+): Promise<TwammApiPosition[]> => {
+  const addr = ownerAddress.toLowerCase();
+  const url = `${EKUBO_API_BASE}/twap/orders/${addr}?page=1&pageSize=50&state=${state}`;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    console.warn("fetchTwammOrders: API returned", response.status);
+    return [];
+  }
+
+  const data: TwammApiResponse = await response.json();
+  return data.orders || [];
+};
+
+// ---------------------------------------------------------------------------
 // DCA Order localStorage persistence
 // ---------------------------------------------------------------------------
 
