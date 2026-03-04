@@ -9,20 +9,20 @@ importers:
   .:
     dependencies:
       '@apibara/indexer':
-        specifier: next
-        version: 2.1.0-beta.54(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
+        specifier: 2.1.0-beta.56
+        version: 2.1.0-beta.56(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
       '@apibara/plugin-drizzle':
-        specifier: next
-        version: 2.1.0-beta.53(drizzle-orm@0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.18.0))(pg@8.18.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
+        specifier: 2.1.0-beta.55
+        version: 2.1.0-beta.55(drizzle-orm@0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.18.0))(pg@8.18.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
       '@apibara/protocol':
-        specifier: next
-        version: 2.1.0-beta.54(typescript@5.9.3)
+        specifier: 2.1.0-beta.56
+        version: 2.1.0-beta.56(typescript@5.9.3)
       '@apibara/starknet':
-        specifier: next
-        version: 2.1.0-beta.54(typescript@5.9.3)
+        specifier: 2.1.0-beta.56
+        version: 2.1.0-beta.56(typescript@5.9.3)
       apibara:
-        specifier: next
-        version: 2.1.0-beta.53(magicast@0.3.5)(rollup@4.57.1)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
+        specifier: 2.1.0-beta.55
+        version: 2.1.0-beta.55(magicast@0.3.5)(rollup@4.57.1)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
       drizzle-orm:
         specifier: ^0.38.0
         version: 0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.18.0)
@@ -79,13 +79,13 @@ packages:
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
 
-  '@apibara/indexer@2.1.0-beta.54':
-    resolution: {integrity: sha512-UBrQP1/4IF8gHACbRWKwNYoIWaC7nNNdc3XcH8ucKaeGZe8ufxeyj4kYvEEq1el8viEaf/CD0JL4LhnnK5L1Hg==}
+  '@apibara/indexer@2.1.0-beta.56':
+    resolution: {integrity: sha512-i8o6RC0rCNCxComFtZowpcnThLblFn8Z+6Wf2aqZShJd/AG+CrkNwmvtdOnyrK2sZ/+y7fICKopZjnbtmhB1HA==}
     peerDependencies:
       vitest: ^1.6.0
 
-  '@apibara/plugin-drizzle@2.1.0-beta.53':
-    resolution: {integrity: sha512-LxaPjhRonHjYNB/ifm84KXmdaZUnpgEdJpRUBfx2XlYafKegINpz+azGY3EuwVmmZP64ej6xyZG9bKzBEm9NbA==}
+  '@apibara/plugin-drizzle@2.1.0-beta.55':
+    resolution: {integrity: sha512-DDgg6qpOQGRgt48KGCG8bUkSdhm4hmjhpZP1iApC4YAOHeCRezWNUVKQ8hQphXd5jdWudy1oLnSxYvFkYdoxiA==}
     peerDependencies:
       '@electric-sql/pglite': '>=0.2.0'
       drizzle-orm: <1
@@ -96,11 +96,11 @@ packages:
       pg:
         optional: true
 
-  '@apibara/protocol@2.1.0-beta.54':
-    resolution: {integrity: sha512-rOCLV44Mz/mKCP6DtSRxdqOrBgC90Ev+5apMzO/0S/cQoqfd1ZhKU3Sc3qsR4+Id+MFkH9mzgIlcg2czyXW2BA==}
+  '@apibara/protocol@2.1.0-beta.56':
+    resolution: {integrity: sha512-TerNSio5rIy/3Cx3nj3OJNa/Ndzj4tcxVfsaDAoS+oU6cpPRxl1dIaiLwXQPrlMY4+pQQ8JlTQPjQhmiw4XRhg==}
 
-  '@apibara/starknet@2.1.0-beta.54':
-    resolution: {integrity: sha512-SW725WqTrgAASrx+XsPS3VKG3XJOIoIdERyBWZBnrBCZEXzeL2pOfgA3TvRboP0WyCxlgy93t5pWA9Kvf86VkA==}
+  '@apibara/starknet@2.1.0-beta.56':
+    resolution: {integrity: sha512-CtwI+iqFrDYBRzH/AoOCggZhgp4tpIug9sfDz+pHhoXySgbH+pN0mt4px03ICmPtb6rrSsYozVBtGoNT+zRlzA==}
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
@@ -1225,8 +1225,8 @@ packages:
     resolution: {integrity: sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw==}
     engines: {node: '>= 8'}
 
-  apibara@2.1.0-beta.53:
-    resolution: {integrity: sha512-rcgGRA2glUe2p0bIkQv2vNK2pExMR2Rh4d6mDgVbNRDU7aiDAtucbtLe9L/cSjGlUOnT/BCv3P4Z2U/cStNhng==}
+  apibara@2.1.0-beta.55:
+    resolution: {integrity: sha512-N2ck7DmJZPYm+Rol3m/iXMqmmcJQi8c5spcpLlI8uZ60TTVmZU4q7ccc4pPdatCIzr7pWXlxn86KRnixeJJhgw==}
     hasBin: true
 
   argparse@2.0.1:
@@ -2485,9 +2485,9 @@ snapshots:
       '@jridgewell/gen-mapping': 0.3.13
       '@jridgewell/trace-mapping': 0.3.31
 
-  '@apibara/indexer@2.1.0-beta.54(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))':
+  '@apibara/indexer@2.1.0-beta.56(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))':
     dependencies:
-      '@apibara/protocol': 2.1.0-beta.54(typescript@5.9.3)
+      '@apibara/protocol': 2.1.0-beta.56(typescript@5.9.3)
       '@opentelemetry/api': 1.9.0
       ci-info: 4.4.0
       consola: 3.4.2
@@ -2502,10 +2502,10 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@apibara/plugin-drizzle@2.1.0-beta.53(drizzle-orm@0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.18.0))(pg@8.18.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))':
+  '@apibara/plugin-drizzle@2.1.0-beta.55(drizzle-orm@0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.18.0))(pg@8.18.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))':
     dependencies:
-      '@apibara/indexer': 2.1.0-beta.54(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
-      '@apibara/protocol': 2.1.0-beta.54(typescript@5.9.3)
+      '@apibara/indexer': 2.1.0-beta.56(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
+      '@apibara/protocol': 2.1.0-beta.56(typescript@5.9.3)
       drizzle-orm: 0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.18.0)
       postgres-range: 1.1.4
     optionalDependencies:
@@ -2517,7 +2517,7 @@ snapshots:
       - vitest
       - zod
 
-  '@apibara/protocol@2.1.0-beta.54(typescript@5.9.3)':
+  '@apibara/protocol@2.1.0-beta.56(typescript@5.9.3)':
     dependencies:
       consola: 3.4.2
       long: 5.3.2
@@ -2531,9 +2531,9 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@apibara/starknet@2.1.0-beta.54(typescript@5.9.3)':
+  '@apibara/starknet@2.1.0-beta.56(typescript@5.9.3)':
     dependencies:
-      '@apibara/protocol': 2.1.0-beta.54(typescript@5.9.3)
+      '@apibara/protocol': 2.1.0-beta.56(typescript@5.9.3)
       '@scure/starknet': 1.1.2
       abi-wan-kanabi: 2.2.4
       long: 5.3.2
@@ -3198,7 +3198,7 @@ snapshots:
 
   '@scure/bip32@1.7.0':
     dependencies:
-      '@noble/curves': 1.9.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
@@ -3463,10 +3463,10 @@ snapshots:
       normalize-path: 3.0.0
       picomatch: 2.3.1
 
-  apibara@2.1.0-beta.53(magicast@0.3.5)(rollup@4.57.1)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0)):
+  apibara@2.1.0-beta.55(magicast@0.3.5)(rollup@4.57.1)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0)):
     dependencies:
-      '@apibara/indexer': 2.1.0-beta.54(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
-      '@apibara/protocol': 2.1.0-beta.54(typescript@5.9.3)
+      '@apibara/indexer': 2.1.0-beta.56(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
+      '@apibara/protocol': 2.1.0-beta.56(typescript@5.9.3)
       '@rollup/plugin-replace': 6.0.3(rollup@4.57.1)
       '@rollup/plugin-virtual': 3.0.2(rollup@4.57.1)
       c12: 1.11.2(magicast@0.3.5)
