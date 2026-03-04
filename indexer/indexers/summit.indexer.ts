@@ -85,6 +85,11 @@ let lastEventBlock = 0n;
 let blocksWithoutEvents = 0;
 let lastProgressLog = Date.now();
 
+// Memory diagnostics — log every 60s
+let lastMemoryLog = Date.now();
+const MEMORY_LOG_INTERVAL_MS = 60_000;
+let transformCallCount = 0;
+
 /**
  * Beast stats for comparison (used for derived events)
  */
@@ -2085,6 +2090,18 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
         const countsStr = `bs:${batches.beast_stats.length} bt:${batches.battles.length} log:${batches.summit_log.length} own:${batches.beast_owners.length} con:${batches.consumables.length}`;
 
         logger.info(`Block ${block_number}: ${totalTime}ms [${timingStr}] {${countsStr}}`);
+      }
+
+      // Periodic memory diagnostics
+      transformCallCount++;
+      const memNow = Date.now();
+      if (memNow - lastMemoryLog >= MEMORY_LOG_INTERVAL_MS) {
+        const mem = process.memoryUsage();
+        const fmt = (b: number) => (b / 1024 / 1024).toFixed(1);
+        logger.info(
+          `[MEMORY] rss:${fmt(mem.rss)}MB heap_used:${fmt(mem.heapUsed)}MB heap_total:${fmt(mem.heapTotal)}MB external:${fmt(mem.external)}MB array_buffers:${fmt(mem.arrayBuffers)}MB | fetchedTokens:${fetchedTokens.size} transforms:${transformCallCount} block:${block_number}`
+        );
+        lastMemoryLog = memNow;
       }
     },
   });
