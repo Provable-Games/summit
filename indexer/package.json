@@ -14,7 +14,8 @@
     "check-dna": "tsx scripts/check-dna-status.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "cleanup": "tsx scripts/cleanup-history.ts"
   },
   "keywords": [
     "starknet",
