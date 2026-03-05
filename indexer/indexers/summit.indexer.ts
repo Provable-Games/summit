@@ -60,6 +60,7 @@ import {
   feltToHex,
   isZeroFeltAddress,
 } from "../src/lib/decoder.js";
+import { isMetricsEnabled, startResourceMetrics } from "../src/lib/metrics.js";
 
 interface SummitConfig {
   summitContractAddress: string;
@@ -866,6 +867,69 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   database.$client.on("error", (err) => {
     console.error("[Summit Indexer] Pool background connection error:", err.message);
   });
+
+  const perfState = {
+    last_block_number: startingBlock.toString(),
+    last_block_events: 0,
+    last_block_total_ms: 0,
+    last_insert_ms: 0,
+    last_context_lookup_ms: 0,
+    blocks_without_events: 0,
+    blocks_with_events_total: 0,
+    events_processed_total: 0,
+  };
+
+  const metricEmitters: Array<{ stop: () => void }> = [];
+  if (isMetricsEnabled()) {
+    const pool = database.$client as {
+      totalCount?: number;
+      idleCount?: number;
+      waitingCount?: number;
+    };
+    const hasPoolCounters =
+      typeof pool.totalCount === "number" &&
+      typeof pool.idleCount === "number" &&
+      typeof pool.waitingCount === "number";
+
+    if (!hasPoolCounters) {
+      console.warn(
+        "[Summit Indexer] Pool counters unavailable on Drizzle client; db_pool_* metrics will be null."
+      );
+    }
+
+    metricEmitters.push(
+      startResourceMetrics({
+        service: "summit-indexer",
+        dbPoolStats: () =>
+          hasPoolCounters
+            ? {
+                total: pool.totalCount as number,
+                idle: pool.idleCount as number,
+                waiting: pool.waitingCount as number,
+              }
+            : null,
+        getExtraMetrics: () => ({
+          last_block_number: perfState.last_block_number,
+          last_block_events: perfState.last_block_events,
+          last_block_total_ms: perfState.last_block_total_ms,
+          last_insert_ms: perfState.last_insert_ms,
+          last_context_lookup_ms: perfState.last_context_lookup_ms,
+          blocks_without_events: perfState.blocks_without_events,
+          blocks_with_events_total: perfState.blocks_with_events_total,
+          events_processed_total: perfState.events_processed_total,
+        }),
+      })
+    );
+  }
+
+  const stopMetricEmitters = () => {
+    for (const emitter of metricEmitters) {
+      emitter.stop();
+    }
+  };
+  process.once("beforeExit", stopMetricEmitters);
+  process.once("SIGINT", stopMetricEmitters);
+  process.once("SIGTERM", stopMetricEmitters);
 
   // getBeast selector: starknet_keccak("getBeast")
   const GET_BEAST_SELECTOR = "0x0385b69551f247794fe651459651cdabc76b6cdf4abacafb5b28ceb3b1ac2e98";
@@ -2070,10 +2134,18 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
       const insertStartTime = Date.now();
       await executeBulkInserts(db, batches);
       const insertTime = Date.now() - insertStartTime;
+      perfState.last_block_number = block_number.toString();
+      perfState.blocks_without_events = blocksWithoutEvents;
 
       // Log performance metrics for blocks with events
       if (events.length > 0) {
         const totalTime = Date.now() - blockStartTime;
+        perfState.last_block_events = events.length;
+        perfState.last_block_total_ms = totalTime;
+        perfState.last_insert_ms = insertTime;
+        perfState.last_context_lookup_ms = contextLookupTime;
+        perfState.blocks_with_events_total += 1;
+        perfState.events_processed_total += events.length;
 
         // Detailed timing breakdown
         // scan = pre-scan to collect token IDs

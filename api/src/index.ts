@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import { eq, sql, desc, and, inArray } from "drizzle-orm";
 import "dotenv/config";
 
-import { checkDatabaseHealth, db } from "./db/client.js";
+import { checkDatabaseHealth, db, pool } from "./db/client.js";
 import {
   beasts,
   beast_owners,
@@ -33,9 +33,58 @@ import {
   ITEM_NAME_PREFIXES,
   ITEM_NAME_SUFFIXES,
 } from "./lib/beastData.js";
+import { isMetricsEnabled, startResourceMetrics } from "./lib/metrics.js";
 import { getBeastRevivalTime, getBeastCurrentLevel, normalizeAddress } from "./lib/helpers.js";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
+
+async function collectDbProxyMetrics() {
+  const [connections, databaseStats, databaseSize] = await Promise.all([
+    pool.query(
+      `
+        SELECT
+          count(*) FILTER (WHERE state = 'active')::bigint AS active_connections,
+          count(*) FILTER (WHERE state = 'idle')::bigint AS idle_connections
+        FROM pg_stat_activity
+        WHERE datname = current_database();
+      `
+    ),
+    pool.query(
+      `
+        SELECT
+          xact_commit::bigint AS xact_commit,
+          xact_rollback::bigint AS xact_rollback,
+          blks_read::bigint AS blks_read,
+          blks_hit::bigint AS blks_hit,
+          temp_files::bigint AS temp_files,
+          temp_bytes::bigint AS temp_bytes
+        FROM pg_stat_database
+        WHERE datname = current_database();
+      `
+    ),
+    pool.query(
+      `
+        SELECT pg_database_size(current_database())::bigint AS db_size_bytes;
+      `
+    ),
+  ]);
+
+  const connectionRow = connections.rows[0] ?? {};
+  const statRow = databaseStats.rows[0] ?? {};
+  const sizeRow = databaseSize.rows[0] ?? {};
+
+  return {
+    db_active_connections: Number(connectionRow.active_connections ?? 0),
+    db_idle_connections: Number(connectionRow.idle_connections ?? 0),
+    db_xact_commit: Number(statRow.xact_commit ?? 0),
+    db_xact_rollback: Number(statRow.xact_rollback ?? 0),
+    db_blks_read: Number(statRow.blks_read ?? 0),
+    db_blks_hit: Number(statRow.blks_hit ?? 0),
+    db_temp_files: Number(statRow.temp_files ?? 0),
+    db_temp_bytes: Number(statRow.temp_bytes ?? 0),
+    db_size_bytes: Number(sizeRow.db_size_bytes ?? 0),
+  };
+}
 
 const app = new Hono();
 
@@ -755,17 +804,34 @@ const server = serve(
 
 injectWebSocket(server);
 
-// Graceful shutdown
-process.on("SIGINT", async () => {
-  console.log("\nShutting down...");
-  await getSubscriptionHub().shutdown();
-  process.exit(0);
-});
+const metricEmitters: Array<{ stop: () => void }> = [];
 
-process.on("SIGTERM", async () => {
+if (isMetricsEnabled()) {
+  metricEmitters.push(
+    startResourceMetrics({
+      service: "summit-api",
+      dbPoolStats: () => ({
+        total: pool.totalCount,
+        idle: pool.idleCount,
+        waiting: pool.waitingCount,
+      }),
+      dbProbe: collectDbProxyMetrics,
+    })
+  );
+}
+
+// Graceful shutdown
+async function shutdown() {
   console.log("\nShutting down...");
+  for (const emitter of metricEmitters) {
+    emitter.stop();
+  }
   await getSubscriptionHub().shutdown();
+  await pool.end();
   process.exit(0);
-});
+}
+
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);
 
 export default app;

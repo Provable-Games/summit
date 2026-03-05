@@ -8,6 +8,8 @@
     "lint": "eslint . --cache --cache-strategy content --cache-location .cache/eslint --concurrency auto",
     "lint:ci": "eslint . --max-warnings=0 --report-unused-inline-configs error",
     "start": "apibara start",
+    "metrics:check-sync": "node ../scripts/check-metrics-sync.mjs",
+    "metrics:snapshot": "node scripts/railway-metrics-summary.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:parity": "tsx scripts/test-live-beast-stats-parity.ts",

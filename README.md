@@ -93,3 +93,35 @@ PR CI is path-filtered and runs component-specific checks:
 - [Game Docs](https://docs.provable.games/summit)
 - [View & Trade Beasts](https://beast-dex.vercel.app/marketplace)
 - [Collect Beasts in Loot Survivor](https://lootsurvivor.io)
+
+## Resource Metrics from Railway Logs
+
+API and indexer now emit structured metric lines in logs with the prefix:
+
+`METRIC resource_metric_v1 {...}`
+
+Defaults:
+
+- `METRICS_ENABLED=true` in production by default
+- `METRICS_INTERVAL_MS=30000`
+- `DB_METRICS_INTERVAL_MS=60000`
+
+To summarize current RAM/CPU/DB pressure from Railway logs:
+
+```bash
+cd indexer
+pnpm metrics:snapshot -- --minutes 10
+```
+
+JSON output (for agent/tool consumption):
+
+```bash
+pnpm metrics:snapshot -- --minutes 10 --json
+```
+
+Verify duplicated metrics modules are in sync:
+
+```bash
+cd indexer
+pnpm metrics:check-sync
+```
