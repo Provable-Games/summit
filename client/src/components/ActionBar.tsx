@@ -22,7 +22,8 @@ import poisonPotionIcon from '../assets/images/poison-potion.png';
 import revivePotionIcon from '../assets/images/revive-potion.png';
 import {
   calculateBattleResult, calculateOptimalAttackPotions, calculateRevivalRequired,
-  getBeastCurrentHealth, getBeastRevivalTime, isBeastLocked
+  getBeastCurrentHealth, getBeastRevivalTime, isBeastLocked,
+  isOwnerIgnored, isOwnerTargetedForPoison, getTargetedPoisonAmount, hasDiplomacyMatch, selectOptimalBeasts,
 } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 import AutopilotConfigModal from './dialogs/AutopilotConfigModal';
@@ -77,6 +78,12 @@ function ActionBar() {
     poisonConservativeExtraLivesTrigger,
     poisonConservativeAmount,
     poisonAggressiveAmount,
+    maxBeastsPerAttack,
+    ignoredPlayers,
+    skipSharedDiplomacy,
+    targetedPoisonPlayers,
+    questMode,
+    questFilters,
   } = useAutopilotStore();
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
@@ -126,55 +133,25 @@ function ActionBar() {
 
   const collectionWithCombat = useMemo<Beast[]>(() => {
     if (summit && collection.length > 0) {
-      const revivePotionsEnabled = autopilotEnabled && useRevivePotions && revivePotionsUsed < revivePotionMax;
-      const attackPotionsEnabled = autopilotEnabled && useAttackPotions && attackPotionsUsed < attackPotionMax;
-
-      let filtered = collection.map((beast: Beast) => {
-        const newBeast = { ...beast }
-        newBeast.revival_time = getBeastRevivalTime(newBeast);
-        newBeast.current_health = getBeastCurrentHealth(beast);
-        newBeast.combat = calculateBattleResult(newBeast, summit, 0);
-        return newBeast
-      }).filter((beast: Beast) => !isBeastLocked(beast));
-
-      filtered = filtered.sort(
-        (a: Beast, b: Beast) =>
-          (b.combat?.score ?? Number.NEGATIVE_INFINITY) - (a.combat?.score ?? Number.NEGATIVE_INFINITY)
-      );
-
-      if (revivePotionsEnabled) {
-        let revivePotionsRemaining = revivePotionMax - revivePotionsUsed;
-        filtered = filtered.map((beast: Beast) => {
-          if (beast.current_health === 0) {
-            if (beast.revival_count >= revivePotionsRemaining || beast.revival_count >= revivePotionMaxPerBeast) {
-              return null;
-            } else {
-              revivePotionsRemaining -= beast.revival_count + 1;
-            }
-          }
-          return beast;
-        }).filter((beast): beast is Beast => beast !== null);
-      } else {
-        filtered = filtered.filter((beast: Beast) => beast.current_health > 0);
-      }
-
-      if (attackPotionsEnabled && filtered.length > 0) {
-        const attackSelection: selection[number] = [filtered[0], 1, 0];
-        const attackPotions = calculateOptimalAttackPotions(
-          attackSelection,
-          summit,
-          Math.min(attackPotionMax - attackPotionsUsed, attackPotionMaxPerBeast, 255)
-        );
-        const newCombat = calculateBattleResult(filtered[0], summit, attackPotions);
-        filtered[0].combat = newCombat;
-      }
-
-      return filtered
+      return selectOptimalBeasts(collection, summit, {
+        useRevivePotions,
+        revivePotionMax,
+        revivePotionMaxPerBeast,
+        revivePotionsUsed,
+        useAttackPotions,
+        attackPotionMax,
+        attackPotionMaxPerBeast,
+        attackPotionsUsed,
+        autopilotEnabled,
+        questMode,
+        questFilters,
+        // Don't limit selection — let the damage threshold and tx slicing handle limits
+      });
     }
 
     return [];
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summit?.beast?.token_id, collection.length, revivePotionsUsed, attackPotionsUsed, useRevivePotions, useAttackPotions]);
+  }, [summit?.beast?.token_id, summit?.beast?.extra_lives, summit?.beast?.current_health, collection.length, revivePotionsUsed, attackPotionsUsed, useRevivePotions, useAttackPotions, questMode, questFilters, maxBeastsPerAttack, attackStrategy, autopilotEnabled]);
 
   const handleAttackUntilCapture = async (extraLifePotions: number) => {
     if (!enableAttack) return;
@@ -192,6 +169,37 @@ function ActionBar() {
 
     // Process one batch at a time, stopping if executeGameAction returns false
     for (const batch of batches) {
+      // Between batches: check if summit changed to an ignored or diplomacy-matched player
+      const currentSummit = useGameStore.getState().summit;
+      if (currentSummit) {
+        const { ignoredPlayers: ig, skipSharedDiplomacy: skipDip, targetedPoisonPlayers: tpp } = useAutopilotStore.getState();
+        const currentCollection = useGameStore.getState().collection;
+        const isMyBeast = currentCollection.some((b: Beast) => b.token_id === currentSummit.beast.token_id);
+
+        if (isMyBeast) {
+          setAutopilotLog('Summit captured — halting attack');
+          break;
+        }
+        if (isOwnerIgnored(currentSummit.owner, ig)) {
+          setAutopilotLog('Halted: ignored player took summit');
+          break;
+        }
+        if (skipDip && hasDiplomacyMatch(currentCollection, currentSummit.beast)) {
+          setAutopilotLog('Halted: shared diplomacy');
+          break;
+        }
+
+        // Fire targeted poison between batches if applicable
+        if (tpp.length > 0 && isOwnerTargetedForPoison(currentSummit.owner, tpp)) {
+          const playerAmount = getTargetedPoisonAmount(currentSummit.owner, tpp);
+          const { poisonTotalMax: ptm, poisonPotionsUsed: ppu } = useAutopilotStore.getState();
+          const remainingCap = Math.max(0, ptm - ppu);
+          const pb = tokenBalances?.["POISON"] || 0;
+          const amount = Math.min(playerAmount, pb, remainingCap);
+          if (amount > 0) handleApplyPoison(amount);
+        }
+      }
+
       const result = await executeGameAction({
         type: 'attack_until_capture',
         beasts: batch,
@@ -257,9 +265,25 @@ function ActionBar() {
   }, [autopilotEnabled, attackInProgress, applyingPotions])
 
   useEffect(() => {
-    if (!autopilotEnabled || poisonStrategy !== 'aggressive') return;
-    const myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
+    if (!autopilotEnabled || !summit?.beast) return;
+
+    const myBeast = collection.find((beast: Beast) => beast.token_id === summit.beast.token_id);
     if (myBeast) return;
+
+    // Targeted poison: always poison when a targeted player holds summit (custom amount per player)
+    const isTargeted = targetedPoisonPlayers.length > 0 && isOwnerTargetedForPoison(summit.owner, targetedPoisonPlayers);
+    if (isTargeted) {
+      const playerAmount = getTargetedPoisonAmount(summit.owner, targetedPoisonPlayers);
+      const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
+      const pb = tokenBalances?.["POISON"] || 0;
+      const amount = Math.min(playerAmount, pb, remainingCap);
+      if (amount > 0) handleApplyPoison(amount);
+      return; // targeted poison takes priority — don't double up with aggressive
+    }
+
+    if (poisonStrategy !== 'aggressive') return;
+    if (isOwnerIgnored(summit.owner, ignoredPlayers)) return;
+    if (skipSharedDiplomacy && hasDiplomacyMatch(collection, summit.beast)) return;
 
     const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
     const poisonBalance = tokenBalances?.["POISON"] || 0;
@@ -269,6 +293,15 @@ function ActionBar() {
 
   useEffect(() => {
     if (!autopilotEnabled || attackInProgress || !collectionWithCombat || !summit) return;
+
+    if (isOwnerIgnored(summit.owner, ignoredPlayers)) {
+      setAutopilotLog('Skipping: ignored player');
+      return;
+    }
+    if (skipSharedDiplomacy && hasDiplomacyMatch(collection, summit.beast)) {
+      setAutopilotLog('Skipping: shared diplomacy');
+      return;
+    }
 
     const myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
 
@@ -303,7 +336,7 @@ function ActionBar() {
     } else if (attackStrategy === 'all_out') {
       handleAttackUntilCapture(extraLifePotions);
     } else if (attackStrategy === 'guaranteed') {
-      const beasts = collectionWithCombat.slice(0, MAX_BEASTS_PER_ATTACK)
+      const beasts = collectionWithCombat.slice(0, maxBeastsPerAttack)
 
       const totalSummitHealth = ((summit.beast.health + summit.beast.bonus_health) * summit.beast.extra_lives) + summit.beast.current_health;
       const totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
@@ -321,7 +354,7 @@ function ActionBar() {
       });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
+  }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives, summit?.beast.current_health]);
 
   const startAutopilot = () => {
     setRevivePotionsUsed(() => 0);

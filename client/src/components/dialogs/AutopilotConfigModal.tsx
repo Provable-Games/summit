@@ -8,8 +8,9 @@ import {
 import { gameColors } from '@/utils/themes';
 import CloseIcon from '@mui/icons-material/Close';
 import TuneIcon from '@mui/icons-material/Tune';
-import { Box, Button, Dialog, Switch, TextField, Typography } from '@mui/material';
+import { Box, Button, Checkbox, CircularProgress, Dialog, FormControlLabel, IconButton, Switch, TextField, Typography } from '@mui/material';
 import { useController } from '@/contexts/controller';
+import { lookupUsernames } from '@cartridge/controller';
 import React from 'react';
 import revivePotionIcon from '@/assets/images/revive-potion.png';
 import attackPotionIcon from '@/assets/images/attack-potion.png';
@@ -71,17 +72,230 @@ const POISON_OPTIONS: {
       label: 'Never',
       description: `Never use Poison.`,
     },
-    // {
-    //   value: 'conservative',
-    //   label: 'Conservative',
-    //   description: `Only use Poison when Summit has more than X extra lives.`,
-    // },
+    {
+      value: 'conservative',
+      label: 'Conservative',
+      description: `Only use Poison when Summit has more than X extra lives.`,
+    },
     {
       value: 'aggressive',
       label: 'Aggressive',
       description: `Use poison every time Summit Changes.`,
     },
   ];
+
+const QUEST_OPTIONS: { id: string; label: string; description: string }[] = [
+  { id: 'attack_summit', label: 'First Blood', description: 'Prioritize beasts that have never attacked the Summit.' },
+  { id: 'max_attack_streak', label: 'Consistency is Key', description: 'Prioritize beasts that haven\'t reached max attack streak of 10.' },
+  { id: 'take_summit', label: 'Summit Conqueror', description: 'Prioritize beasts that haven\'t captured the Summit.' },
+  { id: 'hold_summit_10s', label: 'Iron Grip', description: 'Prioritize beasts that haven\'t held the Summit for 10 seconds.' },
+  { id: 'revival_potion', label: 'Second Wind', description: 'Prioritize beasts that haven\'t used a revival potion.' },
+  { id: 'attack_potion', label: 'A Vital Boost', description: 'Prioritize beasts that haven\'t used an attack potion.' },
+];
+
+interface PlayerListInputProps {
+  title: string;
+  subtitle: string;
+  players: { name: string; address: string }[];
+  onAdd: (player: { name: string; address: string }) => void;
+  onRemove: (address: string) => void;
+}
+
+function PlayerListInput({ title, subtitle, players, onAdd, onRemove }: PlayerListInputProps) {
+  const [input, setInput] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [resolved, setResolved] = React.useState<string | null>(null);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    setResolved(null);
+    setError(null);
+    const username = input.trim();
+    if (!username) { setLoading(false); return; }
+    setLoading(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const result = await lookupUsernames([username]);
+        const address = result.get(username);
+        if (input.trim() !== username) return;
+        if (address) { setResolved(address); setError(null); }
+        else { setResolved(null); setError('Player not found'); }
+      } catch { setResolved(null); setError('Lookup failed'); }
+      finally { setLoading(false); }
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input]);
+
+  const handleAdd = () => {
+    const username = input.trim();
+    if (!username || !resolved) return;
+    onAdd({ name: username, address: resolved });
+    setInput('');
+    setResolved(null);
+  };
+
+  return (
+    <Box sx={styles.row}>
+      <Box sx={styles.rowHeader}>
+        <Typography sx={styles.rowTitle}>{title}</Typography>
+        <Typography sx={styles.rowSubtitle}>{subtitle}</Typography>
+      </Box>
+      <Box sx={{ position: 'relative' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <TextField
+            size="small"
+            placeholder="Search username..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            sx={styles.ignoredInput}
+          />
+          {loading && <CircularProgress size={16} sx={{ color: gameColors.accentGreen, flexShrink: 0 }} />}
+        </Box>
+        {error && !loading && input.trim() && (
+          <Typography sx={styles.ignoredDropdownError}>{error}</Typography>
+        )}
+        {resolved && !loading && (
+          <Box sx={styles.ignoredSearchResult} onClick={handleAdd}>
+            <Typography sx={styles.ignoredSearchResultName}>{input.trim()}</Typography>
+            <Typography sx={styles.ignoredSearchResultHint}>Click to add</Typography>
+          </Box>
+        )}
+      </Box>
+      {players.length > 0 && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+          {players.map((player) => (
+            <Box key={player.address} sx={styles.ignoredPlayerChip}>
+              <Typography sx={styles.ignoredPlayerName}>{player.name}</Typography>
+              <IconButton size="small" onClick={() => onRemove(player.address)} sx={styles.ignoredPlayerRemove}>
+                <CloseIcon sx={{ fontSize: 12 }} />
+              </IconButton>
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+interface TargetedPoisonSectionProps {
+  players: { name: string; address: string; amount: number }[];
+  onAdd: (player: { name: string; address: string; amount: number }) => void;
+  onRemove: (address: string) => void;
+  onAmountChange: (address: string, amount: number) => void;
+  poisonAvailable: number;
+}
+
+function TargetedPoisonSection({ players, onAdd, onRemove, onAmountChange, poisonAvailable }: TargetedPoisonSectionProps) {
+  const [input, setInput] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [resolved, setResolved] = React.useState<string | null>(null);
+  const [defaultAmount, setDefaultAmount] = React.useState(100);
+  const debounceRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  React.useEffect(() => {
+    setResolved(null);
+    setError(null);
+    const username = input.trim();
+    if (!username) { setLoading(false); return; }
+    setLoading(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const result = await lookupUsernames([username]);
+        const address = result.get(username);
+        if (input.trim() !== username) return;
+        if (address) { setResolved(address); setError(null); }
+        else { setResolved(null); setError('Player not found'); }
+      } catch { setResolved(null); setError('Lookup failed'); }
+      finally { setLoading(false); }
+    }, 400);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [input]);
+
+  const handleAdd = () => {
+    const username = input.trim();
+    if (!username || !resolved) return;
+    onAdd({ name: username, address: resolved, amount: defaultAmount });
+    setInput('');
+    setResolved(null);
+  };
+
+  return (
+    <Box sx={styles.row}>
+      <Box sx={styles.rowHeader}>
+        <Typography sx={styles.rowTitle}>Targeted Poison Players</Typography>
+        <Typography sx={styles.rowSubtitle}>
+          Autopilot will poison the Summit whenever any of these players hold it.
+        </Typography>
+      </Box>
+      <Box sx={{ position: 'relative' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <TextField
+            size="small"
+            placeholder="Search username..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            sx={styles.ignoredInput}
+          />
+          <TextField
+            type="number"
+            size="small"
+            value={defaultAmount}
+            onChange={(e) => {
+              let v = Number.parseInt(e.target.value, 10);
+              if (Number.isNaN(v)) v = 1;
+              setDefaultAmount(Math.max(1, Math.min(v, poisonAvailable || 9999)));
+            }}
+            inputProps={{ min: 1, max: poisonAvailable || 9999, step: 1 }}
+            sx={{ ...styles.numberField, width: 80 }}
+          />
+          {loading && <CircularProgress size={16} sx={{ color: gameColors.accentGreen, flexShrink: 0 }} />}
+        </Box>
+        {error && !loading && input.trim() && (
+          <Typography sx={styles.ignoredDropdownError}>{error}</Typography>
+        )}
+        {resolved && !loading && (
+          <Box sx={styles.ignoredSearchResult} onClick={handleAdd}>
+            <Typography sx={styles.ignoredSearchResultName}>{input.trim()}</Typography>
+            <Typography sx={styles.ignoredSearchResultHint}>Click to add ({defaultAmount} poison)</Typography>
+          </Box>
+        )}
+      </Box>
+      {players.length > 0 && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, mt: 1 }}>
+          {players.map((player) => (
+            <Box key={player.address} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={styles.ignoredPlayerChip}>
+                <Typography sx={styles.ignoredPlayerName}>{player.name}</Typography>
+                <IconButton size="small" onClick={() => onRemove(player.address)} sx={styles.ignoredPlayerRemove}>
+                  <CloseIcon sx={{ fontSize: 12 }} />
+                </IconButton>
+              </Box>
+              <img src={poisonPotionIcon} alt="Poison" style={{ width: 16, height: 16, objectFit: 'contain' as const, opacity: 0.85 }} />
+              <TextField
+                type="number"
+                size="small"
+                value={player.amount}
+                onChange={(e) => {
+                  let v = Number.parseInt(e.target.value, 10);
+                  if (Number.isNaN(v)) v = 1;
+                  onAmountChange(player.address, Math.max(1, Math.min(v, poisonAvailable || 9999)));
+                }}
+                inputProps={{ min: 1, max: poisonAvailable || 9999, step: 1 }}
+                sx={{ ...styles.numberField, width: 80 }}
+              />
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+}
 
 function AutopilotConfigModal(props: AutopilotConfigModalProps) {
   const { open, close } = props;
@@ -91,6 +305,8 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
   const {
     attackStrategy,
     setAttackStrategy,
+    skipSharedDiplomacy,
+    setSkipSharedDiplomacy,
     useRevivePotions,
     setUseRevivePotions,
     revivePotionMax,
@@ -104,6 +320,9 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     setAttackPotionMax,
     attackPotionMaxPerBeast,
     setAttackPotionMaxPerBeast,
+
+    maxBeastsPerAttack,
+    setMaxBeastsPerAttack,
 
     extraLifeStrategy,
     setExtraLifeStrategy,
@@ -124,11 +343,30 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     setPoisonConservativeAmount,
     poisonAggressiveAmount,
     setPoisonAggressiveAmount,
+    ignoredPlayers,
+    addIgnoredPlayer,
+    removeIgnoredPlayer,
+    questMode,
+    setQuestMode,
+    questFilters,
+    setQuestFilters,
+    targetedPoisonPlayers,
+    addTargetedPoisonPlayer,
+    removeTargetedPoisonPlayer,
+    setTargetedPoisonAmount,
     resetToDefaults,
   } = useAutopilotStore();
 
   const handleResetToDefaults = () => {
     resetToDefaults();
+  };
+
+  const handleToggleQuestFilter = (questId: string) => {
+    if (questFilters.includes(questId)) {
+      setQuestFilters(questFilters.filter((f) => f !== questId));
+    } else {
+      setQuestFilters([...questFilters, questId]);
+    }
   };
 
   const reviveAvailable = tokenBalances?.['REVIVE'] ?? 0;
@@ -311,15 +549,7 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
               0 0 16px ${gameColors.accentGreen}30
             `,
             position: 'relative',
-            overflow: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            '&::-webkit-scrollbar': {
-              width: { xs: 0, sm: '6px' },
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(255,255,255,0.3)',
-              borderRadius: 3,
-            },
+            overflow: 'hidden',
           },
         },
         backdrop: {
@@ -361,6 +591,15 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
 
           {attackStrategy !== 'never' && (
             <>
+              {attackStrategy === 'guaranteed' && (
+                <Box sx={styles.maxOnlyRow}>
+                  <Typography sx={styles.maxLabel}>Max beasts per attack</Typography>
+                  <Box sx={styles.maxCol}>
+                    {numberField(maxBeastsPerAttack, setMaxBeastsPerAttack, false, 1, 295)}
+                  </Box>
+                </Box>
+              )}
+
               <Box sx={styles.row}>
                 <Box sx={styles.inlineControls}>
                   <Box sx={styles.toggleRow} onClick={() => setUseRevivePotions(!useRevivePotions)}>
@@ -596,6 +835,87 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
               </Box>
             </>
           )}
+
+          <Box sx={styles.sectionDivider} />
+
+          <Box sx={styles.row}>
+            <Box sx={styles.toggleRow} onClick={() => setSkipSharedDiplomacy(!skipSharedDiplomacy)}>
+              <Switch
+                checked={skipSharedDiplomacy}
+                onChange={(e) => setSkipSharedDiplomacy(e.target.checked)}
+                onClick={(e) => e.stopPropagation()}
+                sx={styles.switch}
+              />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={styles.inlineTitle}>Skip diplomacy beasts</Typography>
+                <Typography sx={styles.inlineSub}>
+                  Don't attack or poison the Summit if any of your beasts share diplomacy with it.
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+
+          <PlayerListInput
+            title="Ignored Players"
+            subtitle="Autopilot will not attack or poison the Summit while any of these players hold it."
+            players={ignoredPlayers}
+            onAdd={addIgnoredPlayer}
+            onRemove={removeIgnoredPlayer}
+          />
+
+          <TargetedPoisonSection
+            players={targetedPoisonPlayers}
+            onAdd={addTargetedPoisonPlayer}
+            onRemove={removeTargetedPoisonPlayer}
+            onAmountChange={setTargetedPoisonAmount}
+            poisonAvailable={Number(poisonAvailable) || 0}
+          />
+
+          <Box sx={styles.sectionDivider} />
+
+          <Box sx={styles.row}>
+            <Box sx={styles.toggleRow} onClick={() => setQuestMode(!questMode)}>
+              <Switch
+                checked={questMode}
+                onChange={(e) => setQuestMode(e.target.checked)}
+                onClick={(e) => e.stopPropagation()}
+                sx={styles.switch}
+              />
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={styles.inlineTitle}>Quest Mode</Typography>
+                <Typography sx={styles.inlineSub}>
+                  Prioritize beasts that haven't completed specific quests.
+                </Typography>
+              </Box>
+            </Box>
+            {questMode && (
+              <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                {QUEST_OPTIONS.map((quest) => (
+                  <FormControlLabel
+                    key={quest.id}
+                    control={
+                      <Checkbox
+                        checked={questFilters.includes(quest.id)}
+                        onChange={() => handleToggleQuestFilter(quest.id)}
+                        sx={{
+                          color: `${gameColors.accentGreen}60`,
+                          '&.Mui-checked': { color: gameColors.brightGreen },
+                          padding: '4px 8px',
+                        }}
+                        size="small"
+                      />
+                    }
+                    label={
+                      <Box>
+                        <Typography sx={{ fontSize: '12px', fontWeight: 'bold', color: '#ffedbb' }}>{quest.label}</Typography>
+                        <Typography sx={{ fontSize: '11px', color: '#9aa', lineHeight: 1.2 }}>{quest.description}</Typography>
+                      </Box>
+                    }
+                  />
+                ))}
+              </Box>
+            )}
+          </Box>
         </Box>
 
         {/* Footer */}
@@ -629,6 +949,9 @@ const styles = {
     boxSizing: 'border-box' as const,
     display: 'flex',
     flexDirection: 'column',
+    flex: 1,
+    minHeight: 0,
+    overflow: 'hidden',
   },
   closeButton: {
     minWidth: { xs: '44px', sm: '32px' },
@@ -691,6 +1014,17 @@ const styles = {
     display: 'flex',
     flexDirection: 'column' as const,
     gap: 1,
+    flex: 1,
+    overflowY: 'auto' as const,
+    overflowX: 'hidden' as const,
+    WebkitOverflowScrolling: 'touch',
+    '&::-webkit-scrollbar': {
+      width: { xs: 0, sm: '6px' },
+    },
+    '&::-webkit-scrollbar-thumb': {
+      backgroundColor: 'rgba(255,255,255,0.3)',
+      borderRadius: 3,
+    },
   },
   row: {
     background: `${gameColors.darkGreen}80`,
@@ -908,6 +1242,7 @@ const styles = {
     alignItems: 'center',
     mt: 2,
     pt: 1,
+    flexShrink: 0,
     borderTop: `1px solid ${gameColors.accentGreen}40`,
   },
   resetButton: {
@@ -942,5 +1277,101 @@ const styles = {
     fontWeight: 'bold',
     color: '#ffedbb',
     letterSpacing: '0.5px',
+  },
+  ignoredInput: {
+    flex: 1,
+    '& .MuiInputBase-input': {
+      color: '#ffedbb',
+      padding: '6px 8px',
+      fontSize: '12px',
+      fontWeight: 600,
+    },
+    '& .MuiInputBase-input::placeholder': {
+      color: '#9aa',
+      opacity: 1,
+    },
+    '& .MuiOutlinedInput-root': {
+      background: `${gameColors.darkGreen}55`,
+      borderRadius: '8px',
+    },
+    '& .MuiOutlinedInput-notchedOutline': {
+      borderColor: `${gameColors.accentGreen}40`,
+    },
+    '&:hover .MuiOutlinedInput-notchedOutline': {
+      borderColor: `${gameColors.brightGreen}80`,
+    },
+  },
+  ignoredSearchResult: {
+    position: 'absolute' as const,
+    left: 0,
+    right: 0,
+    bottom: '100%',
+    mb: 0.5,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '6px 10px',
+    borderRadius: '8px',
+    border: `1px solid ${gameColors.brightGreen}60`,
+    background: `${gameColors.darkGreen}F0`,
+    backdropFilter: 'blur(8px)',
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    zIndex: 1,
+    boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.4)',
+    '&:hover': {
+      background: `${gameColors.mediumGreen}F0`,
+      borderColor: gameColors.brightGreen,
+    },
+  },
+  ignoredDropdownError: {
+    position: 'absolute' as const,
+    left: 0,
+    right: 0,
+    bottom: '100%',
+    mb: 0.5,
+    fontSize: '11px',
+    color: gameColors.red,
+    padding: '4px 10px',
+    borderRadius: '8px',
+    background: `${gameColors.darkGreen}F0`,
+    border: `1px solid ${gameColors.red}40`,
+    backdropFilter: 'blur(8px)',
+    zIndex: 1,
+    boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.4)',
+  },
+  ignoredSearchResultName: {
+    fontSize: '12px',
+    fontWeight: 700,
+    color: '#ffedbb',
+  },
+  ignoredSearchResultHint: {
+    fontSize: '10px',
+    color: gameColors.accentGreen,
+    fontWeight: 600,
+    letterSpacing: '0.3px',
+  },
+  ignoredPlayerChip: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 0.5,
+    borderRadius: '999px',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    background: `${gameColors.darkGreen}70`,
+    padding: '2px 4px 2px 10px',
+  },
+  ignoredPlayerName: {
+    fontSize: '11px',
+    fontWeight: 700,
+    color: '#ffedbb',
+    letterSpacing: '0.2px',
+  },
+  ignoredPlayerRemove: {
+    width: '18px',
+    height: '18px',
+    color: '#9aa',
+    '&:hover': {
+      color: gameColors.red,
+    },
   },
 };

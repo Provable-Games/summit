@@ -2,6 +2,17 @@ import { create } from 'zustand';
 
 export type AttackStrategy = 'never' | 'guaranteed' | 'all_out';
 
+export interface IgnoredPlayer {
+  name: string;
+  address: string;
+}
+
+export interface TargetedPoisonPlayer {
+  name: string;
+  address: string;
+  amount: number; // poison potions to apply when this player holds summit
+}
+
 export type ExtraLifeStrategy = 'disabled' | 'after_capture' | 'aggressive';
 export type PoisonStrategy = 'disabled' | 'conservative' | 'aggressive';
 
@@ -15,6 +26,12 @@ type AutopilotSessionCounters = {
 interface AutopilotConfig {
   // When to initiate attacks
   attackStrategy: AttackStrategy;
+  // Maximum number of beasts to include in a single attack (1..295)
+  maxBeastsPerAttack: number;
+  // Skip attacking/poisoning if summit beast shares diplomacy prefix+suffix with any of your beasts
+  skipSharedDiplomacy: boolean;
+  // List of players whose summit beasts should be ignored by autopilot
+  ignoredPlayers: IgnoredPlayer[];
 
   // Whether Autopilot is allowed to spend revive potions on attacks
   useRevivePotions: boolean;
@@ -49,21 +66,36 @@ interface AutopilotConfig {
   poisonConservativeAmount: number;
   // Poison amount to apply for aggressive strategy
   poisonAggressiveAmount: number;
+
+  // Quest mode: prioritize beasts that haven't completed specific quests
+  questMode: boolean;
+  // Quest IDs to prioritize, e.g. ['take_summit', 'revival_potion', 'attack_potion']
+  questFilters: string[];
+  // Players whose summit beasts should always be poisoned (with custom amounts)
+  targetedPoisonPlayers: TargetedPoisonPlayer[];
 }
 
 type AutopilotPersistedConfig = AutopilotConfig;
 
 type AutopilotConfigStorageShape = Partial<AutopilotPersistedConfig> & {
   poisonMax?: unknown;
+  maxBeastsPerAttack?: unknown;
   revivePotionMaxPerBeast?: unknown;
   attackPotionMaxPerBeast?: unknown;
   extraLifeTotalMax?: unknown;
   extraLifeReplenishTo?: unknown;
   poisonTotalMax?: unknown;
+  questMode?: unknown;
+  questFilters?: unknown;
+  targetedPoisonPlayers?: unknown;
 };
 
 interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCounters {
   setAttackStrategy: (attackStrategy: AttackStrategy) => void;
+  setMaxBeastsPerAttack: (maxBeastsPerAttack: number) => void;
+  setSkipSharedDiplomacy: (skipSharedDiplomacy: boolean) => void;
+  addIgnoredPlayer: (player: IgnoredPlayer) => void;
+  removeIgnoredPlayer: (address: string) => void;
   setUseRevivePotions: (useRevivePotions: boolean) => void;
   setRevivePotionMax: (revivePotionMax: number) => void;
   setRevivePotionMaxPerBeast: (revivePotionMaxPerBeast: number) => void;
@@ -82,6 +114,11 @@ interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCount
   setPoisonConservativeExtraLivesTrigger: (poisonConservativeExtraLivesTrigger: number) => void;
   setPoisonConservativeAmount: (poisonConservativeAmount: number) => void;
   setPoisonAggressiveAmount: (poisonAggressiveAmount: number) => void;
+  setQuestMode: (questMode: boolean) => void;
+  setQuestFilters: (questFilters: string[]) => void;
+  addTargetedPoisonPlayer: (player: TargetedPoisonPlayer) => void;
+  removeTargetedPoisonPlayer: (address: string) => void;
+  setTargetedPoisonAmount: (address: string, amount: number) => void;
   /**
    * "Used" fields are counters.
    * - If passed a number, it is treated as an amount to ADD.
@@ -98,6 +135,9 @@ const STORAGE_KEY = 'summit_autopilot_config_v2';
 
 const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   attackStrategy: 'guaranteed',
+  maxBeastsPerAttack: 295,
+  skipSharedDiplomacy: false,
+  ignoredPlayers: [],
   useRevivePotions: false,
   revivePotionMax: 10,
   revivePotionMaxPerBeast: 1,
@@ -113,6 +153,9 @@ const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   poisonConservativeExtraLivesTrigger: 100,
   poisonConservativeAmount: 100,
   poisonAggressiveAmount: 100,
+  questMode: false,
+  questFilters: [],
+  targetedPoisonPlayers: [],
 };
 
 const DEFAULT_SESSION_COUNTERS: AutopilotSessionCounters = {
@@ -163,6 +206,17 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
     const poisonMaxLegacy = sanitizeNonNegativeInt(parsed.poisonMax, 0);
     return {
       attackStrategy: isAttackStrategy(parsed.attackStrategy) ? parsed.attackStrategy : DEFAULT_CONFIG.attackStrategy,
+      maxBeastsPerAttack: clampIntRange(parsed.maxBeastsPerAttack, 1, 295, DEFAULT_CONFIG.maxBeastsPerAttack),
+      skipSharedDiplomacy:
+        typeof parsed.skipSharedDiplomacy === 'boolean'
+          ? parsed.skipSharedDiplomacy
+          : DEFAULT_CONFIG.skipSharedDiplomacy,
+      ignoredPlayers: Array.isArray(parsed.ignoredPlayers)
+        ? parsed.ignoredPlayers.filter(
+            (p): p is IgnoredPlayer =>
+              typeof p === 'object' && p !== null && typeof p.name === 'string' && typeof p.address === 'string',
+          )
+        : DEFAULT_CONFIG.ignoredPlayers,
 
       useRevivePotions:
         typeof parsed.useRevivePotions === 'boolean'
@@ -224,6 +278,22 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
         parsed.poisonAggressiveAmount,
         poisonMaxLegacy || DEFAULT_CONFIG.poisonAggressiveAmount,
       ),
+
+      questMode:
+        typeof parsed.questMode === 'boolean'
+          ? parsed.questMode
+          : DEFAULT_CONFIG.questMode,
+      questFilters: Array.isArray(parsed.questFilters)
+        ? parsed.questFilters.filter((f): f is string => typeof f === 'string')
+        : DEFAULT_CONFIG.questFilters,
+      targetedPoisonPlayers: Array.isArray(parsed.targetedPoisonPlayers)
+        ? parsed.targetedPoisonPlayers
+            .filter(
+              (p): p is TargetedPoisonPlayer =>
+                typeof p === 'object' && p !== null && typeof p.name === 'string' && typeof p.address === 'string',
+            )
+            .map((p) => ({ ...p, amount: sanitizeNonNegativeInt(p.amount, 100) }))
+        : DEFAULT_CONFIG.targetedPoisonPlayers,
     };
   } catch {
     return null;
@@ -237,6 +307,14 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
   const persist = (partial: Partial<AutopilotPersistedConfig>): AutopilotPersistedConfig => {
     const next: AutopilotPersistedConfig = {
       attackStrategy: partial.attackStrategy ?? get().attackStrategy,
+      maxBeastsPerAttack: clampIntRange(
+        partial.maxBeastsPerAttack ?? get().maxBeastsPerAttack,
+        1,
+        295,
+        DEFAULT_CONFIG.maxBeastsPerAttack,
+      ),
+      skipSharedDiplomacy: partial.skipSharedDiplomacy ?? get().skipSharedDiplomacy,
+      ignoredPlayers: partial.ignoredPlayers ?? get().ignoredPlayers,
       useRevivePotions: partial.useRevivePotions ?? get().useRevivePotions,
       revivePotionMax: sanitizeNonNegativeInt(
         partial.revivePotionMax ?? get().revivePotionMax,
@@ -298,6 +376,10 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
         partial.poisonAggressiveAmount ?? get().poisonAggressiveAmount,
         DEFAULT_CONFIG.poisonAggressiveAmount,
       ),
+
+      questMode: partial.questMode ?? get().questMode,
+      questFilters: partial.questFilters ?? get().questFilters,
+      targetedPoisonPlayers: partial.targetedPoisonPlayers ?? get().targetedPoisonPlayers,
     };
 
     try {
@@ -328,6 +410,22 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
     ...DEFAULT_SESSION_COUNTERS,
     setAttackStrategy: (attackStrategy: AttackStrategy) =>
       set(() => persist({ attackStrategy })),
+    setMaxBeastsPerAttack: (maxBeastsPerAttack: number) =>
+      set(() => persist({ maxBeastsPerAttack })),
+    setSkipSharedDiplomacy: (skipSharedDiplomacy: boolean) =>
+      set(() => persist({ skipSharedDiplomacy })),
+    addIgnoredPlayer: (player: IgnoredPlayer) =>
+      set(() => {
+        const current = get().ignoredPlayers;
+        const normalized = player.address.replace(/^0x0+/, '0x').toLowerCase();
+        if (current.some((p) => p.address === normalized)) return {};
+        return persist({ ignoredPlayers: [...current, { name: player.name, address: normalized }] });
+      }),
+    removeIgnoredPlayer: (address: string) =>
+      set(() => {
+        const normalized = address.replace(/^0x0+/, '0x').toLowerCase();
+        return persist({ ignoredPlayers: get().ignoredPlayers.filter((p) => p.address !== normalized) });
+      }),
     setUseRevivePotions: (useRevivePotions: boolean) =>
       set(() => persist({ useRevivePotions })),
     setRevivePotionMax: (revivePotionMax: number) =>
@@ -361,6 +459,31 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       set(() => persist({ poisonConservativeAmount })),
     setPoisonAggressiveAmount: (poisonAggressiveAmount: number) =>
       set(() => persist({ poisonAggressiveAmount })),
+    setQuestMode: (questMode: boolean) =>
+      set(() => persist({ questMode })),
+    setQuestFilters: (questFilters: string[]) =>
+      set(() => persist({ questFilters: questFilters.filter((f) => typeof f === 'string') })),
+    addTargetedPoisonPlayer: (player: TargetedPoisonPlayer) =>
+      set(() => {
+        const current = get().targetedPoisonPlayers;
+        const normalized = player.address.replace(/^0x0+/, '0x').toLowerCase();
+        if (current.some((p) => p.address === normalized)) return {};
+        return persist({ targetedPoisonPlayers: [...current, { name: player.name, address: normalized, amount: Math.max(1, Math.floor(player.amount)) }] });
+      }),
+    removeTargetedPoisonPlayer: (address: string) =>
+      set(() => {
+        const normalized = address.replace(/^0x0+/, '0x').toLowerCase();
+        return persist({ targetedPoisonPlayers: get().targetedPoisonPlayers.filter((p) => p.address !== normalized) });
+      }),
+    setTargetedPoisonAmount: (address: string, amount: number) =>
+      set(() => {
+        const normalized = address.replace(/^0x0+/, '0x').toLowerCase();
+        return persist({
+          targetedPoisonPlayers: get().targetedPoisonPlayers.map((p) =>
+            p.address === normalized ? { ...p, amount: Math.max(1, Math.floor(amount)) } : p,
+          ),
+        });
+      }),
     setRevivePotionsUsed: (update) => updateCounter('revivePotionsUsed', update),
     setAttackPotionsUsed: (update) => updateCounter('attackPotionsUsed', update),
     setExtraLifePotionsUsed: (update) => updateCounter('extraLifePotionsUsed', update),

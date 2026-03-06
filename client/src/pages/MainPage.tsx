@@ -1,5 +1,6 @@
 import AttackingBeasts from "@/components/AttackingBeasts"
 import Countdown from "@/components/Countdown"
+import AccessDeniedModal from "@/components/AccessDeniedModal"
 import TermsOfServiceModal from "@/components/TermsOfServiceModal"
 import { useController } from "@/contexts/controller"
 import { useGameDirector } from "@/contexts/GameDirector"
@@ -31,7 +32,7 @@ function MainPage() {
   const [questsModalOpen, setQuestsModalOpen] = useState(false);
   const [leaderboardModalOpen, setLeaderboardModalOpen] = useState(false);
   const [eventHistoryModalOpen, setEventHistoryModalOpen] = useState(false);
-  const { showTermsOfService, acceptTermsOfService, logout } = useController();
+  const { showTermsOfService, acceptTermsOfService, logout, isWhitelistBlocked } = useController();
 
   return <>
     <Box sx={styles.container} justifyContent={isBrowser ? 'space-between' : 'center'}>
@@ -77,6 +78,10 @@ function MainPage() {
 
       <Countdown />
     </Box >
+
+    {isWhitelistBlocked && (
+      <AccessDeniedModal open={isWhitelistBlocked} onDisconnect={logout} />
+    )}
 
     {showTermsOfService && (
       <TermsOfServiceModal open={showTermsOfService} onAccept={acceptTermsOfService} onDecline={logout} />

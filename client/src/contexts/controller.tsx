@@ -31,6 +31,7 @@ export interface ControllerContext {
   logout: () => void;
   showTermsOfService: boolean;
   acceptTermsOfService: () => void;
+  isWhitelistBlocked: boolean;
   gasSpent: number | null;
   triggerGasSpent: (amount: number) => void;
 }
@@ -80,6 +81,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
   const [gasSpent, setGasSpent] = useState<number | null>(null);
 
   const [showTermsOfService, setShowTermsOfService] = useState(false);
+  const [isWhitelistBlocked, setIsWhitelistBlocked] = useState(false);
   const { identifyAddress } = useAnalytics();
 
   const filterValidAdventurers = useCallback(async () => {
@@ -108,6 +110,18 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
   useEffect(() => {
     if (account) {
+      const whitelistEnabled = import.meta.env.VITE_PUBLIC_WHITELIST_ENABLED === 'true';
+      if (whitelistEnabled && account.address) {
+        const raw = import.meta.env.VITE_PUBLIC_WHITELISTED_ADDRESSES || '';
+        const allowed = raw.split(',').map((a: string) => a.trim().replace(/^0x0+/, '0x').toLowerCase()).filter(Boolean);
+        const normalized = account.address.replace(/^0x0+/, '0x').toLowerCase();
+        if (!allowed.includes(normalized)) {
+          setIsWhitelistBlocked(true);
+          return;
+        }
+      }
+      setIsWhitelistBlocked(false);
+
       fetchBeastCollection();
       fetchTokenBalances();
       identifyAddress({ address: account.address });
@@ -198,6 +212,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
         filterValidAdventurers,
         showTermsOfService,
         acceptTermsOfService,
+        isWhitelistBlocked,
         gasSpent,
         triggerGasSpent,
 
