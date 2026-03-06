@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameAction, selection } from "@/types/game";
 
 const hoisted = vi.hoisted(() => ({
+  useWebSocketMock: vi.fn(),
   getSummitDataMock: vi.fn(async () => null),
   getDiplomacyMock: vi.fn(async () => []),
   executeActionMock: vi.fn(async () => []),
@@ -49,7 +50,7 @@ vi.mock("./starknet", () => ({
 }));
 
 vi.mock("@/hooks/useWebSocket", () => ({
-  useWebSocket: vi.fn(),
+  useWebSocket: hoisted.useWebSocketMock,
 }));
 
 vi.mock("@/api/starknet", () => ({
@@ -142,6 +143,7 @@ async function renderProvider() {
 describe("GameDirector executeGameAction", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    hoisted.useWebSocketMock.mockImplementation(() => undefined);
     hoisted.getSummitDataMock.mockResolvedValue(null);
     hoisted.attackMock.mockReturnValue([]);
   });
@@ -168,5 +170,27 @@ describe("GameDirector executeGameAction", () => {
     expect(hoisted.attackMock).toHaveBeenCalledWith(beasts, true, false, 0);
     expect(hoisted.executeActionMock).not.toHaveBeenCalled();
     expect(capturedDirector.pauseUpdates).toBe(false);
+  });
+
+  it("handles websocket events when player is null and account is disconnected", async () => {
+    await renderProvider();
+
+    const wsOptions = hoisted.useWebSocketMock.mock.calls[0]?.[0];
+    expect(wsOptions).toBeDefined();
+
+    expect(() =>
+      wsOptions.onEvent({
+        id: "evt-1",
+        block_number: "1",
+        event_index: 0,
+        category: "Unknown",
+        sub_category: "Unknown",
+        data: {},
+        player: null,
+        token_id: null,
+        transaction_hash: "0x1",
+        created_at: new Date().toISOString(),
+      })
+    ).not.toThrow();
   });
 });

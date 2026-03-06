@@ -24,7 +24,7 @@ import {
   getBeastRevivalTime,
 } from "@/utils/beasts";
 import { useAccount } from "@starknet-react/core";
-import { addAddressPadding, type Call } from "starknet";
+import { type Call } from "starknet";
 import type {
   PropsWithChildren
 } from "react";
@@ -69,6 +69,25 @@ const isBattleEvent = (
 const isSummitEvent = (
   event: TranslatedGameEvent
 ): event is SummitEventTranslation => event.componentName === "Summit";
+
+function normalizeAddress(address: string | null | undefined): string | null {
+  if (typeof address !== "string") {
+    return null;
+  }
+
+  const trimmed = address.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.replace(/^0x0+/, "0x").toLowerCase();
+}
+
+function addressesEqual(left: string | null | undefined, right: string | null | undefined): boolean {
+  const normalizedLeft = normalizeAddress(left);
+  const normalizedRight = normalizeAddress(right);
+  return normalizedLeft !== null && normalizedRight !== null && normalizedLeft === normalizedRight;
+}
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { account } = useAccount();
@@ -160,7 +179,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     addLiveEvent(data);
 
     const { category, sub_category, data: eventData } = data;
-    const isOwnEvent = data.player === addAddressPadding(account?.address ?? "");
+    const isOwnEvent = addressesEqual(data.player, account?.address);
 
     // Helper to get beast info from event data
     const getBeastInfo = () => {
@@ -470,7 +489,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     // Fetch diplomacy if not already set
-    if (!summit.diplomacy) {
+    if (!summit.diplomacy && summit.beast.prefix && summit.beast.suffix) {
       const fetchDiplomacy = async () => {
         try {
           const beasts = await getDiplomacy(
