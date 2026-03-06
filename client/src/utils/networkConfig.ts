@@ -57,8 +57,8 @@ export const NETWORKS = {
     slot: "pg-summit-2",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
-    apiUrl: "https://summit-production-69ed.up.railway.app",
-    wsUrl: "wss://summit-production-69ed.up.railway.app/ws",
+    apiUrl: "https://summit-api-production-ca43.up.railway.app",
+    wsUrl: "wss://summit-api-production-ca43.up.railway.app/ws",
     tokens: {
       erc20: [
         {
