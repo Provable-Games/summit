@@ -64,7 +64,7 @@ Behavior details that affect integration:
   - lowercase
   - 66-char `0x` padded form.
 - No auth layer (public read API).
-- No cache layer (responses are DB-backed).
+- Thin in-memory SWR cache is enabled for high-traffic read endpoints.
 
 ## TypeScript and DB Settings
 - `tsconfig.json`: `strict: true`.
@@ -94,3 +94,5 @@ Behavior details that affect integration:
 - `DB_POOL_MAX` (default `15`)
 - `PORT` (default `3001`)
 - `NODE_ENV` (`production` hides debug entries from `/` response)
+- `API_CACHE_ENABLED` (optional; defaults to enabled in production)
+- `API_CACHE_MAX_ENTRIES` (default `500`)

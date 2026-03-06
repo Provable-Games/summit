@@ -2,7 +2,7 @@
  * Summit API Server
  */
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { compress } from "hono/compress";
 import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
@@ -35,8 +35,57 @@ import {
 import { isMetricsEnabled, startResourceMetrics } from "./lib/metrics.js";
 import { getBeastRevivalTime, getBeastCurrentLevel, normalizeAddress } from "./lib/helpers.js";
 import { createRequestLogMiddleware, log } from "./lib/logging.js";
+import {
+  ApiResponseCache,
+  type CachePolicy,
+  createCacheKey,
+  parseCacheEnabled,
+  parseMaxEntries,
+  shouldBypassCache,
+} from "./lib/cache.js";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
+const apiCache = new ApiResponseCache({
+  enabled: parseCacheEnabled(),
+  maxEntries: parseMaxEntries(process.env.API_CACHE_MAX_ENTRIES),
+});
+
+const CACHE_POLICIES: Record<
+  | "logs"
+  | "beastsStatsCounts"
+  | "beastsStatsTop"
+  | "diplomacy"
+  | "diplomacyAll"
+  | "leaderboard"
+  | "questRewardsTotal"
+  | "consumablesSupply",
+  CachePolicy
+> = {
+  logs: { freshTtlMs: 2_000, staleTtlMs: 8_000 },
+  beastsStatsCounts: { freshTtlMs: 5_000, staleTtlMs: 20_000 },
+  beastsStatsTop: { freshTtlMs: 3_000, staleTtlMs: 12_000 },
+  diplomacy: { freshTtlMs: 15_000, staleTtlMs: 60_000 },
+  diplomacyAll: { freshTtlMs: 30_000, staleTtlMs: 120_000 },
+  leaderboard: { freshTtlMs: 3_000, staleTtlMs: 12_000 },
+  questRewardsTotal: { freshTtlMs: 10_000, staleTtlMs: 40_000 },
+  consumablesSupply: { freshTtlMs: 10_000, staleTtlMs: 40_000 },
+};
+
+async function respondWithCachedJson<T>(
+  c: Context,
+  policy: CachePolicy,
+  loader: () => Promise<T>
+): Promise<Response> {
+  if (!apiCache.enabledInRuntime || shouldBypassCache(c)) {
+    apiCache.noteBypass();
+    c.header("X-Cache", "BYPASS");
+    return c.json(await loader());
+  }
+
+  const { status, value } = await apiCache.getOrLoad(createCacheKey(c), policy, loader);
+  c.header("X-Cache", status);
+  return c.json(value);
+}
 
 async function collectDbProxyMetrics() {
   const [connections, databaseStats, databaseSize] = await Promise.all([
@@ -406,41 +455,41 @@ app.get("/logs", async (c) => {
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  // Get results
-  const results = await db
-    .select()
-    .from(summit_log)
-    .where(whereClause)
-    .orderBy(desc(summit_log.block_number), desc(summit_log.event_index))
-    .limit(limit)
-    .offset(offset);
+  return respondWithCachedJson(c, CACHE_POLICIES.logs, async () => {
+    const results = await db
+      .select()
+      .from(summit_log)
+      .where(whereClause)
+      .orderBy(desc(summit_log.block_number), desc(summit_log.event_index))
+      .limit(limit)
+      .offset(offset);
 
-  // Get total count
-  const countResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(summit_log)
-    .where(whereClause);
-  const total = Number(countResult[0]?.count ?? 0);
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(summit_log)
+      .where(whereClause);
+    const total = Number(countResult[0]?.count ?? 0);
 
-  return c.json({
-    data: results.map((r) => ({
-      id: r.id,
-      block_number: r.block_number.toString(),
-      event_index: r.event_index,
-      category: r.category,
-      sub_category: r.sub_category,
-      data: r.data,
-      player: r.player,
-      token_id: r.token_id,
-      transaction_hash: r.transaction_hash,
-      created_at: r.created_at.toISOString(),
-    })),
-    pagination: {
-      limit,
-      offset,
-      total,
-      has_more: offset + results.length < total,
-    },
+    return {
+      data: results.map((r) => ({
+        id: r.id,
+        block_number: r.block_number.toString(),
+        event_index: r.event_index,
+        category: r.category,
+        sub_category: r.sub_category,
+        data: r.data,
+        player: r.player,
+        token_id: r.token_id,
+        transaction_hash: r.transaction_hash,
+        created_at: r.created_at.toISOString(),
+      })),
+      pagination: {
+        limit,
+        offset,
+        total,
+        has_more: offset + results.length < total,
+      },
+    };
   });
 });
 
@@ -452,19 +501,20 @@ app.get("/logs", async (c) => {
 app.get("/beasts/stats/counts", async (c) => {
   const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - 86400;
 
-  const result = await db
-    .select({
-      total: sql<number>`count(*)`,
-      alive: sql<number>`count(*) filter (where ${beast_stats.last_death_timestamp} < ${twentyFourHoursAgo})`,
-    })
-    .from(beast_stats);
+  return respondWithCachedJson(c, CACHE_POLICIES.beastsStatsCounts, async () => {
+    const result = await db
+      .select({
+        total: sql<number>`count(*)`,
+        alive: sql<number>`count(*) filter (where ${beast_stats.last_death_timestamp} < ${twentyFourHoursAgo})`,
+      })
+      .from(beast_stats);
 
-  const { total, alive } = result[0] ?? { total: 0, alive: 0 };
-
-  return c.json({
-    total: Number(total),
-    alive: Number(alive),
-    dead: Number(total) - Number(alive),
+    const { total, alive } = result[0] ?? { total: 0, alive: 0 };
+    return {
+      total: Number(total),
+      alive: Number(alive),
+      dead: Number(total) - Number(alive),
+    };
   });
 });
 
@@ -481,62 +531,62 @@ app.get("/beasts/stats/top", async (c) => {
   const limit = Math.min(parseInt(c.req.query("limit") || "25", 10), 100);
   const offset = parseInt(c.req.query("offset") || "0", 10);
 
-  // Get paginated results with beast metadata
-  const results = await db
-    .select({
-      token_id: beast_stats.token_id,
-      summit_held_seconds: beast_stats.summit_held_seconds,
-      bonus_xp: beast_stats.bonus_xp,
-      last_death_timestamp: beast_stats.last_death_timestamp,
-      beast_id: beasts.beast_id,
-      prefix: beasts.prefix,
-      suffix: beasts.suffix,
-      owner: beast_owners.owner,
-    })
-    .from(beast_stats)
-    .innerJoin(beasts, eq(beasts.token_id, beast_stats.token_id))
-    .leftJoin(beast_owners, eq(beast_owners.token_id, beast_stats.token_id))
-    .where(sql`${beast_stats.summit_held_seconds} > 0`)
-    .orderBy(
-      desc(beast_stats.summit_held_seconds),
-      desc(beast_stats.bonus_xp),
-      desc(beast_stats.last_death_timestamp)
-    )
-    .limit(limit)
-    .offset(offset);
+  return respondWithCachedJson(c, CACHE_POLICIES.beastsStatsTop, async () => {
+    const results = await db
+      .select({
+        token_id: beast_stats.token_id,
+        summit_held_seconds: beast_stats.summit_held_seconds,
+        bonus_xp: beast_stats.bonus_xp,
+        last_death_timestamp: beast_stats.last_death_timestamp,
+        beast_id: beasts.beast_id,
+        prefix: beasts.prefix,
+        suffix: beasts.suffix,
+        owner: beast_owners.owner,
+      })
+      .from(beast_stats)
+      .innerJoin(beasts, eq(beasts.token_id, beast_stats.token_id))
+      .leftJoin(beast_owners, eq(beast_owners.token_id, beast_stats.token_id))
+      .where(sql`${beast_stats.summit_held_seconds} > 0`)
+      .orderBy(
+        desc(beast_stats.summit_held_seconds),
+        desc(beast_stats.bonus_xp),
+        desc(beast_stats.last_death_timestamp)
+      )
+      .limit(limit)
+      .offset(offset);
 
-  // Get total count
-  const countResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(beast_stats)
-    .where(sql`${beast_stats.summit_held_seconds} > 0`);
-  const total = Number(countResult[0]?.count ?? 0);
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(beast_stats)
+      .where(sql`${beast_stats.summit_held_seconds} > 0`);
+    const total = Number(countResult[0]?.count ?? 0);
 
-  return c.json({
-    data: results.map((r) => {
-      const beastName = BEAST_NAMES[r.beast_id] ?? "Unknown";
-      const prefix = ITEM_NAME_PREFIXES[r.prefix] ?? "";
-      const suffix = ITEM_NAME_SUFFIXES[r.suffix] ?? "";
-      const fullName = prefix && suffix ? `"${prefix} ${suffix}" ${beastName}` : beastName;
+    return {
+      data: results.map((r) => {
+        const beastName = BEAST_NAMES[r.beast_id] ?? "Unknown";
+        const prefix = ITEM_NAME_PREFIXES[r.prefix] ?? "";
+        const suffix = ITEM_NAME_SUFFIXES[r.suffix] ?? "";
+        const fullName = prefix && suffix ? `"${prefix} ${suffix}" ${beastName}` : beastName;
 
-      return {
-        token_id: r.token_id,
-        summit_held_seconds: r.summit_held_seconds,
-        bonus_xp: r.bonus_xp,
-        last_death_timestamp: Number(r.last_death_timestamp),
-        owner: r.owner,
-        beast_name: beastName,
-        prefix,
-        suffix,
-        full_name: fullName,
-      };
-    }),
-    pagination: {
-      limit,
-      offset,
-      total,
-      has_more: offset + results.length < total,
-    },
+        return {
+          token_id: r.token_id,
+          summit_held_seconds: r.summit_held_seconds,
+          bonus_xp: r.bonus_xp,
+          last_death_timestamp: Number(r.last_death_timestamp),
+          owner: r.owner,
+          beast_name: beastName,
+          prefix,
+          suffix,
+          full_name: fullName,
+        };
+      }),
+      pagination: {
+        limit,
+        offset,
+        total,
+        has_more: offset + results.length < total,
+      },
+    };
   });
 });
 
@@ -557,35 +607,35 @@ app.get("/diplomacy", async (c) => {
     return c.json({ error: "prefix and suffix are required" }, 400);
   }
 
-  const results = await db
-    .select({
-      token_id: beasts.token_id,
-      beast_id: beasts.beast_id,
-      prefix: beasts.prefix,
-      suffix: beasts.suffix,
-      level: beasts.level,
-      health: beasts.health,
-      owner: beast_owners.owner,
-      current_health: beast_stats.current_health,
-      bonus_health: beast_stats.bonus_health,
-      bonus_xp: beast_stats.bonus_xp,
-      summit_held_seconds: beast_stats.summit_held_seconds,
-      spirit: beast_stats.spirit,
-      luck: beast_stats.luck,
-    })
-    .from(beasts)
-    .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
-    .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
-    .where(
-      and(
-        eq(beasts.prefix, prefix),
-        eq(beasts.suffix, suffix),
-        eq(beast_stats.diplomacy, true)
-      )
-    );
+  return respondWithCachedJson(c, CACHE_POLICIES.diplomacy, async () => {
+    const results = await db
+      .select({
+        token_id: beasts.token_id,
+        beast_id: beasts.beast_id,
+        prefix: beasts.prefix,
+        suffix: beasts.suffix,
+        level: beasts.level,
+        health: beasts.health,
+        owner: beast_owners.owner,
+        current_health: beast_stats.current_health,
+        bonus_health: beast_stats.bonus_health,
+        bonus_xp: beast_stats.bonus_xp,
+        summit_held_seconds: beast_stats.summit_held_seconds,
+        spirit: beast_stats.spirit,
+        luck: beast_stats.luck,
+      })
+      .from(beasts)
+      .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+      .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
+      .where(
+        and(
+          eq(beasts.prefix, prefix),
+          eq(beasts.suffix, suffix),
+          eq(beast_stats.diplomacy, true)
+        )
+      );
 
-  return c.json(
-    results.map((r) => {
+    return results.map((r) => {
       const beastName = BEAST_NAMES[r.beast_id] ?? "Unknown";
       const prefixName = ITEM_NAME_PREFIXES[r.prefix] ?? "";
       const suffixName = ITEM_NAME_SUFFIXES[r.suffix] ?? "";
@@ -611,8 +661,8 @@ app.get("/diplomacy", async (c) => {
         luck: r.luck,
         owner: r.owner,
       };
-    })
-  );
+    });
+  });
 });
 
 /**
@@ -620,52 +670,54 @@ app.get("/diplomacy", async (c) => {
  * Used for building diplomacy leaderboard (grouped by prefix/suffix with power calculation)
  */
 app.get("/diplomacy/all", async (c) => {
-  const results = await db
-    .select({
-      token_id: beasts.token_id,
-      beast_id: beasts.beast_id,
-      prefix: beasts.prefix,
-      suffix: beasts.suffix,
-      level: beasts.level,
-      bonus_xp: beast_stats.bonus_xp,
-    })
-    .from(beasts)
-    .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
-    .where(eq(beast_stats.diplomacy, true));
-
-  return c.json(results);
+  return respondWithCachedJson(c, CACHE_POLICIES.diplomacyAll, async () => {
+    return db
+      .select({
+        token_id: beasts.token_id,
+        beast_id: beasts.beast_id,
+        prefix: beasts.prefix,
+        suffix: beasts.suffix,
+        level: beasts.level,
+        bonus_xp: beast_stats.bonus_xp,
+      })
+      .from(beasts)
+      .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+      .where(eq(beast_stats.diplomacy, true));
+  });
 });
 
 /**
  * GET /leaderboard - Get rewards leaderboard grouped by owner
  */
 app.get("/leaderboard", async (c) => {
-  const results = await db
-    .select({
-      owner: rewards_earned.owner,
-      amount: sql<number>`sum(${rewards_earned.amount})`,
-    })
-    .from(rewards_earned)
-    .groupBy(rewards_earned.owner)
-    .orderBy(sql`sum(${rewards_earned.amount}) desc`);
+  return respondWithCachedJson(c, CACHE_POLICIES.leaderboard, async () => {
+    const results = await db
+      .select({
+        owner: rewards_earned.owner,
+        amount: sql<number>`sum(${rewards_earned.amount})`,
+      })
+      .from(rewards_earned)
+      .groupBy(rewards_earned.owner)
+      .orderBy(sql`sum(${rewards_earned.amount}) desc`);
 
-  return c.json(
-    results.map((r) => ({
+    return results.map((r) => ({
       owner: r.owner,
       amount: Number(r.amount) / 100000,
-    }))
-  );
+    }));
+  });
 });
 
 /**
  * GET /quest-rewards/total - Get total quest rewards claimed
  */
 app.get("/quest-rewards/total", async (c) => {
-  const result = await db
-    .select({ total: sql<number>`coalesce(sum(${quest_rewards_claimed.amount}), 0)` })
-    .from(quest_rewards_claimed);
+  return respondWithCachedJson(c, CACHE_POLICIES.questRewardsTotal, async () => {
+    const result = await db
+      .select({ total: sql<number>`coalesce(sum(${quest_rewards_claimed.amount}), 0)` })
+      .from(quest_rewards_claimed);
 
-  return c.json({ total: Number(result[0]?.total ?? 0) / 100 });
+    return { total: Number(result[0]?.total ?? 0) / 100 };
+  });
 });
 
 /**
@@ -695,20 +747,23 @@ app.get("/adventurers/:player", async (c) => {
  * GET /consumables/supply - Get total circulating supply of consumable tokens
  */
 app.get("/consumables/supply", async (c) => {
-  const result = await db
-    .select({
-      xlife: sql<number>`coalesce(sum(${consumables.xlife_count}), 0)`,
-      attack: sql<number>`coalesce(sum(${consumables.attack_count}), 0)`,
-      revive: sql<number>`coalesce(sum(${consumables.revive_count}), 0)`,
-      poison: sql<number>`coalesce(sum(${consumables.poison_count}), 0)`,
-    })
-    .from(consumables);
-  const row = result[0] ?? { xlife: 0, attack: 0, revive: 0, poison: 0 };
-  return c.json({
-    xlife: Number(row.xlife),
-    attack: Number(row.attack),
-    revive: Number(row.revive),
-    poison: Number(row.poison),
+  return respondWithCachedJson(c, CACHE_POLICIES.consumablesSupply, async () => {
+    const result = await db
+      .select({
+        xlife: sql<number>`coalesce(sum(${consumables.xlife_count}), 0)`,
+        attack: sql<number>`coalesce(sum(${consumables.attack_count}), 0)`,
+        revive: sql<number>`coalesce(sum(${consumables.revive_count}), 0)`,
+        poison: sql<number>`coalesce(sum(${consumables.poison_count}), 0)`,
+      })
+      .from(consumables);
+    const row = result[0] ?? { xlife: 0, attack: 0, revive: 0, poison: 0 };
+
+    return {
+      xlife: Number(row.xlife),
+      attack: Number(row.attack),
+      revive: Number(row.revive),
+      poison: Number(row.poison),
+    };
   });
 });
 
@@ -818,6 +873,7 @@ if (isMetricsEnabled()) {
         waiting: pool.waitingCount,
       }),
       dbProbe: collectDbProxyMetrics,
+      getExtraMetrics: () => apiCache.snapshot(),
     })
   );
 }

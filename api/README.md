@@ -28,6 +28,8 @@ For AI-oriented coding guidance and deeper architecture notes, read `AGENTS.md` 
 - `DB_POOL_MAX` (default `15`)
 - `PORT` (default `3001`)
 - `NODE_ENV` (`production` hides debug entries from `/` discovery payload)
+- `API_CACHE_ENABLED` (optional; defaults to enabled in production)
+- `API_CACHE_MAX_ENTRIES` (optional; default `500`)
 
 Production note:
 - API startup fails fast when `NODE_ENV=production` and `DATABASE_SSL` is unset.
@@ -155,7 +157,16 @@ Realtime pipeline:
 
 - Address inputs are normalized to lowercase 66-char `0x`-padded form.
 - API is public read-only (no auth layer).
-- No dedicated caching layer is used.
+- A thin in-memory SWR cache is applied to high-traffic read endpoints:
+  - `/logs`
+  - `/beasts/stats/counts`
+  - `/beasts/stats/top`
+  - `/diplomacy`
+  - `/diplomacy/all`
+  - `/leaderboard`
+  - `/quest-rewards/total`
+  - `/consumables/supply`
+- Cached responses include `X-Cache` with `HIT`, `MISS`, `STALE`, or `BYPASS`.
 - Graceful shutdown closes WS subscriptions/listeners on `SIGINT`/`SIGTERM`.
 
 ## Deployment Notes
