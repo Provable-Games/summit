@@ -382,6 +382,15 @@ export function getTargetedPoisonAmount(summitOwner: string, targetedPlayers: { 
   return match?.amount ?? 0;
 }
 
+export function isBeastTargetedForPoison(beastTokenId: number, targetedBeasts: { tokenId: number }[]): boolean {
+  return targetedBeasts.length > 0 && targetedBeasts.some((b) => b.tokenId === beastTokenId);
+}
+
+export function getTargetedBeastPoisonAmount(beastTokenId: number, targetedBeasts: { tokenId: number; amount: number }[]): number {
+  if (targetedBeasts.length === 0) return 0;
+  return targetedBeasts.find((b) => b.tokenId === beastTokenId)?.amount ?? 0;
+}
+
 export function hasDiplomacyMatch(playerBeasts: Beast[], summitBeast: Beast): boolean {
   return playerBeasts.some(
     (beast) => beast.prefix === summitBeast.prefix && beast.suffix === summitBeast.suffix

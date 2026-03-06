@@ -23,7 +23,9 @@ import revivePotionIcon from '../assets/images/revive-potion.png';
 import {
   calculateBattleResult, calculateOptimalAttackPotions, calculateRevivalRequired,
   getBeastCurrentHealth, getBeastRevivalTime, isBeastLocked,
-  isOwnerIgnored, isOwnerTargetedForPoison, getTargetedPoisonAmount, hasDiplomacyMatch, selectOptimalBeasts,
+  isOwnerIgnored, isOwnerTargetedForPoison, getTargetedPoisonAmount,
+  isBeastTargetedForPoison, getTargetedBeastPoisonAmount,
+  hasDiplomacyMatch, selectOptimalBeasts,
 } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 import AutopilotConfigModal from './dialogs/AutopilotConfigModal';
@@ -82,6 +84,7 @@ function ActionBar() {
     ignoredPlayers,
     skipSharedDiplomacy,
     targetedPoisonPlayers,
+    targetedPoisonBeasts,
     questMode,
     questFilters,
   } = useAutopilotStore();
@@ -190,9 +193,17 @@ function ActionBar() {
         }
 
         // Fire targeted poison between batches if applicable
-        if (tpp.length > 0 && isOwnerTargetedForPoison(currentSummit.owner, tpp)) {
+        // Beast-level targeted poison (highest priority)
+        const { poisonTotalMax: ptm, poisonPotionsUsed: ppu, targetedPoisonBeasts: tpb } = useAutopilotStore.getState();
+        const isBeastTarget = tpb.length > 0 && isBeastTargetedForPoison(currentSummit.beast.token_id, tpb);
+        if (isBeastTarget) {
+          const beastAmount = getTargetedBeastPoisonAmount(currentSummit.beast.token_id, tpb);
+          const remainingCap = Math.max(0, ptm - ppu);
+          const pb = tokenBalances?.["POISON"] || 0;
+          const amount = Math.min(beastAmount, pb, remainingCap);
+          if (amount > 0) handleApplyPoison(amount);
+        } else if (tpp.length > 0 && isOwnerTargetedForPoison(currentSummit.owner, tpp)) {
           const playerAmount = getTargetedPoisonAmount(currentSummit.owner, tpp);
-          const { poisonTotalMax: ptm, poisonPotionsUsed: ppu } = useAutopilotStore.getState();
           const remainingCap = Math.max(0, ptm - ppu);
           const pb = tokenBalances?.["POISON"] || 0;
           const amount = Math.min(playerAmount, pb, remainingCap);
@@ -269,6 +280,17 @@ function ActionBar() {
 
     const myBeast = collection.find((beast: Beast) => beast.token_id === summit.beast.token_id);
     if (myBeast) return;
+
+    // Beast-level targeted poison (highest priority)
+    const isBeastTarget = targetedPoisonBeasts.length > 0 && isBeastTargetedForPoison(summit.beast.token_id, targetedPoisonBeasts);
+    if (isBeastTarget) {
+      const beastAmount = getTargetedBeastPoisonAmount(summit.beast.token_id, targetedPoisonBeasts);
+      const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
+      const pb = tokenBalances?.["POISON"] || 0;
+      const amount = Math.min(beastAmount, pb, remainingCap);
+      if (amount > 0) handleApplyPoison(amount);
+      return;
+    }
 
     // Targeted poison: always poison when a targeted player holds summit (custom amount per player)
     const isTargeted = targetedPoisonPlayers.length > 0 && isOwnerTargetedForPoison(summit.owner, targetedPoisonPlayers);

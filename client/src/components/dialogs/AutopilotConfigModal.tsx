@@ -1,7 +1,8 @@
 import type {
   AttackStrategy,
   ExtraLifeStrategy,
-  PoisonStrategy} from '@/stores/autopilotStore';
+  PoisonStrategy,
+  TargetedPoisonBeast} from '@/stores/autopilotStore';
 import {
   useAutopilotStore,
 } from '@/stores/autopilotStore';
@@ -297,6 +298,106 @@ function TargetedPoisonSection({ players, onAdd, onRemove, onAmountChange, poiso
   );
 }
 
+interface TargetedPoisonBeastSectionProps {
+  beasts: TargetedPoisonBeast[];
+  onAdd: (beast: TargetedPoisonBeast) => void;
+  onRemove: (tokenId: number) => void;
+  onAmountChange: (tokenId: number, amount: number) => void;
+  poisonAvailable: number;
+}
+
+function TargetedPoisonBeastSection({ beasts, onAdd, onRemove, onAmountChange, poisonAvailable }: TargetedPoisonBeastSectionProps) {
+  const [tokenIdInput, setTokenIdInput] = React.useState('');
+  const [nameInput, setNameInput] = React.useState('');
+  const [defaultAmount, setDefaultAmount] = React.useState(100);
+
+  const handleAdd = () => {
+    const tokenId = Number.parseInt(tokenIdInput.trim(), 10);
+    if (!Number.isFinite(tokenId) || tokenId <= 0) return;
+    const name = nameInput.trim() || `Beast #${tokenId}`;
+    onAdd({ tokenId, name, amount: defaultAmount });
+    setTokenIdInput('');
+    setNameInput('');
+  };
+
+  return (
+    <Box sx={styles.row}>
+      <Box sx={styles.rowHeader}>
+        <Typography sx={styles.rowTitle}>Targeted Poison Beasts</Typography>
+        <Typography sx={styles.rowSubtitle}>
+          Autopilot will poison the Summit whenever any of these beasts hold it (overrides player targeting).
+        </Typography>
+      </Box>
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+        <TextField
+          type="number"
+          size="small"
+          placeholder="Token ID"
+          value={tokenIdInput}
+          onChange={(e) => setTokenIdInput(e.target.value)}
+          inputProps={{ min: 1, step: 1 }}
+          sx={{ ...styles.numberField, width: 100 }}
+        />
+        <TextField
+          size="small"
+          placeholder="Name (optional)"
+          value={nameInput}
+          onChange={(e) => setNameInput(e.target.value)}
+          sx={{ ...styles.ignoredInput, flex: 1 }}
+        />
+        <TextField
+          type="number"
+          size="small"
+          value={defaultAmount}
+          onChange={(e) => {
+            let v = Number.parseInt(e.target.value, 10);
+            if (Number.isNaN(v)) v = 1;
+            setDefaultAmount(Math.max(1, Math.min(v, poisonAvailable || 9999)));
+          }}
+          inputProps={{ min: 1, max: poisonAvailable || 9999, step: 1 }}
+          sx={{ ...styles.numberField, width: 80 }}
+        />
+        <Button
+          size="small"
+          variant="outlined"
+          disabled={!tokenIdInput.trim() || Number.parseInt(tokenIdInput.trim(), 10) <= 0}
+          onClick={handleAdd}
+          sx={{ color: gameColors.accentGreen, borderColor: gameColors.accentGreen, minWidth: 'auto', px: 1.5 }}
+        >
+          Add
+        </Button>
+      </Box>
+      {beasts.length > 0 && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, mt: 1 }}>
+          {beasts.map((beast) => (
+            <Box key={beast.tokenId} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={styles.ignoredPlayerChip}>
+                <Typography sx={styles.ignoredPlayerName}>{beast.name} (#{beast.tokenId})</Typography>
+                <IconButton size="small" onClick={() => onRemove(beast.tokenId)} sx={styles.ignoredPlayerRemove}>
+                  <CloseIcon sx={{ fontSize: 12 }} />
+                </IconButton>
+              </Box>
+              <img src={poisonPotionIcon} alt="Poison" style={{ width: 16, height: 16, objectFit: 'contain' as const, opacity: 0.85 }} />
+              <TextField
+                type="number"
+                size="small"
+                value={beast.amount}
+                onChange={(e) => {
+                  let v = Number.parseInt(e.target.value, 10);
+                  if (Number.isNaN(v)) v = 1;
+                  onAmountChange(beast.tokenId, Math.max(1, Math.min(v, poisonAvailable || 9999)));
+                }}
+                inputProps={{ min: 1, max: poisonAvailable || 9999, step: 1 }}
+                sx={{ ...styles.numberField, width: 80 }}
+              />
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
 function AutopilotConfigModal(props: AutopilotConfigModalProps) {
   const { open, close } = props;
 
@@ -354,6 +455,10 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     addTargetedPoisonPlayer,
     removeTargetedPoisonPlayer,
     setTargetedPoisonAmount,
+    targetedPoisonBeasts,
+    addTargetedPoisonBeast,
+    removeTargetedPoisonBeast,
+    setTargetedPoisonBeastAmount,
     resetToDefaults,
   } = useAutopilotStore();
 
@@ -868,6 +973,14 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
             onAdd={addTargetedPoisonPlayer}
             onRemove={removeTargetedPoisonPlayer}
             onAmountChange={setTargetedPoisonAmount}
+            poisonAvailable={Number(poisonAvailable) || 0}
+          />
+
+          <TargetedPoisonBeastSection
+            beasts={targetedPoisonBeasts}
+            onAdd={addTargetedPoisonBeast}
+            onRemove={removeTargetedPoisonBeast}
+            onAmountChange={setTargetedPoisonBeastAmount}
             poisonAvailable={Number(poisonAvailable) || 0}
           />
 
