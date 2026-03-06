@@ -150,4 +150,29 @@ describe("Leaderboard", () => {
     expect(renderedText).toContain("SUMMIT");
     expect(renderedText).toContain("Diplomacy");
   });
+
+  it("ignores null owners in leaderboard data without crashing", async () => {
+    hoisted.getLeaderboardMock.mockResolvedValue([
+      { owner: null, amount: 999 } as unknown as { owner: string; amount: number },
+      ...apiLeaderboard,
+    ]);
+
+    let renderer: ReturnType<typeof create>;
+
+    await act(async () => {
+      renderer = create(<Leaderboard />);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(hoisted.getLeaderboardMock).toHaveBeenCalledTimes(1);
+
+    const lookupArgs = hoisted.lookupAddressNamesMock.mock.calls[0]?.[0] ?? [];
+    expect(lookupArgs).not.toContain(null);
+
+    const renderedText = JSON.stringify(renderer!.toJSON());
+    expect(renderedText).toContain("THE BIG FIVE");
+  });
 });

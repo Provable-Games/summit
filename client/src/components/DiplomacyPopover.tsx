@@ -10,9 +10,21 @@ interface DiplomacyPopoverProps {
   onClose: () => void;
   diplomacy: Diplomacy;
   summitBeast: Beast;
-  leaderboard: { owner: string; amount: number }[];
+  leaderboard: { owner: string | null; amount: number }[];
   addressNames: Record<string, string | null>;
 }
+
+const sameAddress = (left: string | null | undefined, right: string | null | undefined): boolean => {
+  if (!left || !right) {
+    return false;
+  }
+
+  try {
+    return addAddressPadding(left) === addAddressPadding(right);
+  } catch {
+    return false;
+  }
+};
 
 export function DiplomacyPopover({
   anchorEl,
@@ -53,7 +65,7 @@ export function DiplomacyPopover({
           .map((beast) => {
             const ownerRank = beast.owner
               ? leaderboard.findIndex(p =>
-                addAddressPadding(p.owner) === addAddressPadding(beast.owner!)
+                sameAddress(p.owner, beast.owner)
               ) + 1
               : 0;
             return (

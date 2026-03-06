@@ -9,11 +9,22 @@ interface AddressNameCache {
   [normalizedAddress: string]: string | null;
 }
 
+type MaybeAddress = string | null | undefined;
+
 /**
  * Normalizes an address to ensure consistent cache keys
  */
-function normalizeAddress(address: string): string {
-  return address.replace(/^0x0+/, "0x").toLowerCase();
+function normalizeAddress(address: MaybeAddress): string | null {
+  if (typeof address !== "string") {
+    return null;
+  }
+
+  const trimmed = address.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.replace(/^0x0+/, "0x").toLowerCase();
 }
 
 /**
@@ -53,8 +64,12 @@ function saveCache(cache: AddressNameCache): void {
 /**
  * Looks up a single address name, checking cache first
  */
-export async function lookupAddressName(address: string): Promise<string | null> {
+export async function lookupAddressName(address: MaybeAddress): Promise<string | null> {
   const normalized = normalizeAddress(address);
+  if (!normalized) {
+    return null;
+  }
+
   const cache = getCache();
 
   // Check cache first
@@ -83,9 +98,15 @@ export async function lookupAddressName(address: string): Promise<string | null>
  * Returns a Map of normalized address to name
  */
 export async function lookupAddressNames(
-  addresses: string[]
+  addresses: MaybeAddress[]
 ): Promise<Map<string, string | null>> {
-  const normalized = addresses.map(normalizeAddress);
+  const normalized = Array.from(
+    new Set(
+      addresses
+        .map(normalizeAddress)
+        .filter((address): address is string => address !== null)
+    )
+  );
   const cache = getCache();
   const result = new Map<string, string | null>();
   const uncachedAddresses: string[] = [];
@@ -129,8 +150,12 @@ export async function lookupAddressNames(
 /**
  * Manually adds or updates a name in the cache
  */
-export function cacheAddressName(address: string, name: string | null): void {
+export function cacheAddressName(address: MaybeAddress, name: string | null): void {
   const normalized = normalizeAddress(address);
+  if (!normalized) {
+    return;
+  }
+
   const cache = getCache();
 
   cache[normalized] = name;
@@ -161,4 +186,3 @@ export function getCacheStats(): {
     size: Object.keys(cache).length,
   };
 }
-

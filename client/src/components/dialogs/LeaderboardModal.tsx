@@ -56,7 +56,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
 
     const addressesToLookup = playerPagedItems
       .map((p) => p.owner)
-      .filter((addr) => addressNames[addr] === undefined);
+      .filter((addr): addr is string => typeof addr === 'string' && addr.length > 0 && addressNames[addr] === undefined);
 
     if (addressesToLookup.length === 0) return;
 
