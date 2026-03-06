@@ -157,7 +157,9 @@ function ActionBar() {
   }, [summit?.beast?.token_id, summit?.beast?.extra_lives, summit?.beast?.current_health, collection.length, revivePotionsUsed, attackPotionsUsed, useRevivePotions, useAttackPotions, questMode, questFilters, maxBeastsPerAttack, attackStrategy, autopilotEnabled]);
 
   const handleAttackUntilCapture = async (extraLifePotions: number) => {
-    if (!enableAttack) return;
+    // Read fresh from store — closure value of enableAttack may be stale
+    const { attackInProgress: alreadyAttacking, applyingPotions: alreadyApplying } = useGameStore.getState();
+    if (!enableAttack || alreadyAttacking || alreadyApplying) return;
 
     setBattleEvents([]);
     setAttackInProgress(true);
@@ -279,6 +281,10 @@ function ActionBar() {
   useEffect(() => {
     if (!autopilotEnabled || !summit?.beast) return;
 
+    // Read fresh from store to avoid stale closure races with attack effect
+    const { attackInProgress: attacking, applyingPotions: applying } = useGameStore.getState();
+    if (attacking || applying) return;
+
     const myBeast = collection.find((beast: Beast) => beast.token_id === summit.beast.token_id);
     if (myBeast) return;
 
@@ -315,7 +321,9 @@ function ActionBar() {
   }, [summit?.beast?.token_id]);
 
   useEffect(() => {
-    if (!autopilotEnabled || attackInProgress || !collectionWithCombat || !summit) return;
+    // Read fresh from store to avoid stale closure values
+    const { attackInProgress: attacking, applyingPotions: applying } = useGameStore.getState();
+    if (!autopilotEnabled || attacking || applying || !collectionWithCombat || !summit) return;
 
     if (isOwnerIgnored(summit.owner, ignoredPlayers)) {
       setAutopilotLog('Skipping: ignored player');
