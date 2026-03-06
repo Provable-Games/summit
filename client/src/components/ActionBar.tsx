@@ -218,6 +218,7 @@ function ActionBar() {
       });
 
       if (!result) {
+        setAttackInProgress(false);
         return;
       }
     }
