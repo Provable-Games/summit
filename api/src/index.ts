@@ -5,7 +5,6 @@
 import { Hono } from "hono";
 import { compress } from "hono/compress";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { v4 as uuidv4 } from "uuid";
@@ -35,6 +34,7 @@ import {
 } from "./lib/beastData.js";
 import { isMetricsEnabled, startResourceMetrics } from "./lib/metrics.js";
 import { getBeastRevivalTime, getBeastCurrentLevel, normalizeAddress } from "./lib/helpers.js";
+import { createRequestLogMiddleware, log } from "./lib/logging.js";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
@@ -89,7 +89,7 @@ async function collectDbProxyMetrics() {
 const app = new Hono();
 
 // Middleware
-app.use("*", logger());
+app.use("*", createRequestLogMiddleware());
 app.use("*", compress());
 app.use(
   "*",
@@ -765,7 +765,6 @@ app.get(
     return {
       onOpen(_event, ws) {
         hub.addClient(clientId, ws.raw as unknown as Parameters<typeof hub.addClient>[1]);
-        console.log(`[WebSocket] Client connected: ${clientId}`);
       },
 
       onMessage(event, _ws) {
@@ -775,11 +774,13 @@ app.get(
 
       onClose() {
         hub.removeClient(clientId);
-        console.log(`[WebSocket] Client disconnected: ${clientId}`);
       },
 
       onError(error) {
-        console.error(`[WebSocket] Error for client ${clientId}:`, error);
+        log.warn("ws_client_error", {
+          client_id: clientId,
+          error,
+        });
         hub.removeClient(clientId);
       },
     };
@@ -788,8 +789,7 @@ app.get(
 
 // Start server
 const port = parseInt(process.env.PORT || "3001", 10);
-
-console.log(`Starting Summit API server on port ${port}...`);
+log.info("api_starting", { port });
 
 const server = serve(
   {
@@ -797,8 +797,10 @@ const server = serve(
     port,
   },
   (info) => {
-    console.log(`[API] Server running at http://localhost:${info.port}`);
-    console.log(`[API] WebSocket available at ws://localhost:${info.port}/ws`);
+    log.info("api_server_ready", {
+      http: `http://localhost:${info.port}`,
+      websocket: `ws://localhost:${info.port}/ws`,
+    });
   }
 );
 
@@ -822,7 +824,7 @@ if (isMetricsEnabled()) {
 
 // Graceful shutdown
 async function shutdown() {
-  console.log("\nShutting down...");
+  log.info("api_shutdown_started");
   for (const emitter of metricEmitters) {
     emitter.stop();
   }
