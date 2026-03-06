@@ -43,9 +43,9 @@ Read [`../AGENTS.md`](../AGENTS.md) first for shared addresses/mechanics and ind
   - subscribe payload: `{"type":"subscribe","channels":["summit","event"]}`
 
 Query/pagination rules agents usually need:
-- `/beasts/all`: `limit` default `25`, max `100`; `offset`; filters `prefix`, `suffix`, `beast_id`, `name`, `owner`; `sort` in `summit_held_seconds|level`.
-- `/logs`: `limit` default `50`, max `100`; `offset`; `category`, `sub_category` (comma-separated), `player`.
-- `/beasts/stats/top`: `limit` default `25`, max `100`; `offset`.
+- `/beasts/all`: `limit` default `25`, max `100`; `offset`; filters `prefix`, `suffix`, `beast_id`, `name`, `owner`; `sort` in `summit_held_seconds|level`; `include_total` optional (`false` skips `count(*)`).
+- `/logs`: `limit` default `50`, max `100`; `offset`; `category`, `sub_category` (comma-separated), `player`; `include_total` optional (`false` skips `count(*)`).
+- `/beasts/stats/top`: `limit` default `25`, max `100`; `offset`; `include_total` optional (`false` skips `count(*)`).
 - `/diplomacy`: `prefix` and `suffix` required; returns HTTP `400` if missing.
 - Paginated routes return `{ data, pagination: { limit, offset, total, has_more } }`.
 

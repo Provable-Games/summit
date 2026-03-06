@@ -4,6 +4,7 @@ node_modules/
 # Build outputs
 dist/
 .apibara/
+.cache/
 
 # Environment files
 .env

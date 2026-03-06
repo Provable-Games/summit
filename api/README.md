@@ -90,17 +90,22 @@ curl http://localhost:3001/health
 ### Query Parameters and Response Shapes
 
 `GET /beasts/all`
-- params: `limit` (default `25`, max `100`), `offset`, `prefix`, `suffix`, `beast_id`, `name`, `owner`, `sort` (`summit_held_seconds|level`)
+- params: `limit` (default `25`, max `100`), `offset`, `prefix`, `suffix`, `beast_id`, `name`, `owner`, `sort` (`summit_held_seconds|level`), `include_total` (`true|false`, default `true`)
 - returns: `{ data: Beast[], pagination: { limit, offset, total, has_more } }`
 
 `GET /logs`
-- params: `limit` (default `50`, max `100`), `offset`, `category`, `sub_category`, `player`
+- params: `limit` (default `50`, max `100`), `offset`, `category`, `sub_category`, `player`, `include_total` (`true|false`, default `true`)
 - `category`/`sub_category` accept comma-separated values
 - returns: `{ data: LogEntry[], pagination: { limit, offset, total, has_more } }`
 
 `GET /beasts/stats/top`
-- params: `limit` (default `25`, max `100`), `offset`
+- params: `limit` (default `25`, max `100`), `offset`, `include_total` (`true|false`, default `true`)
 - returns: paginated top beasts sorted by summit hold time, bonus XP, death timestamp
+
+`include_total=false` behavior:
+- skips `count(*)` query for lower latency
+- returns `pagination.total = null`
+- computes `has_more` via `limit + 1` fetch strategy
 
 `GET /diplomacy`
 - params: `prefix` (required), `suffix` (required)
@@ -158,6 +163,8 @@ Realtime pipeline:
 - Address inputs are normalized to lowercase 66-char `0x`-padded form.
 - API is public read-only (no auth layer).
 - A thin in-memory SWR cache is applied to high-traffic read endpoints:
+  - `/beasts/all` (common public list patterns)
+  - `/beasts/:owner`
   - `/logs`
   - `/beasts/stats/counts`
   - `/beasts/stats/top`

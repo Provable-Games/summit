@@ -40,6 +40,7 @@ export const beasts = pgTable(
     index("beasts_beast_id_idx").on(table.beast_id),
     index("beasts_prefix_idx").on(table.prefix),
     index("beasts_suffix_idx").on(table.suffix),
+    index("beasts_prefix_suffix_token_idx").on(table.prefix, table.suffix, table.token_id),
     index("beasts_level_idx").on(table.level.desc()),
   ]
 );
@@ -57,6 +58,7 @@ export const beast_owners = pgTable(
   },
   (table) => [
     index("beast_owners_owner_idx").on(table.owner),
+    index("beast_owners_owner_token_idx").on(table.owner, table.token_id),
     index("beast_owners_token_id_idx").on(table.token_id),
   ]
 );
@@ -118,6 +120,12 @@ export const beast_stats = pgTable(
   (table) => [
     index("beast_stats_current_health_idx").on(table.current_health),
     index("beast_stats_summit_held_seconds_idx").on(table.summit_held_seconds.desc()),
+    index("beast_stats_top_order_idx").on(
+      table.summit_held_seconds.desc(),
+      table.bonus_xp.desc(),
+      table.last_death_timestamp.desc(),
+      table.token_id
+    ),
     index("beast_stats_updated_at_idx").on(table.updated_at.desc()),
   ]
 );
