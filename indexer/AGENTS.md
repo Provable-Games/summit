@@ -98,6 +98,17 @@ Critical semantic note:
 - Parity: `pnpm test:parity`
 - DB tooling: `pnpm db:generate`, `pnpm db:migrate`, `pnpm db:studio`
 
+## Performance Benchmarking
+- Use the API stress harness at `../api/scripts/stress-test.ts` for repeatable load testing.
+- Preferred entrypoint from repo root:
+  - `cd api && npm run stress:test -- --base-url=https://<api-host> --duration-sec=300 --http-concurrency=500 --ws-connections=0 --report-every-sec=10`
+- For app-like traffic, prefer weighted endpoints via `--endpoint-weights` instead of uniform random endpoints.
+- During benchmarks, monitor both Railway services (`summit-api`, `summit-indexer`) and capture:
+  - HTTP throughput/latency/timeout rate from stress output
+  - API resource metrics (CPU, memory, DB pool waiting, cache hit/bypass)
+  - indexer warnings/errors and restart/crash signals
+- Treat mixed HTTP+WS and HTTP-only runs as separate profiles and compare like-for-like.
+
 ## CI for Indexer
 - Triggered by `indexer/**` and `contracts/src/models/beast.cairo`.
 - Job sequence: `pnpm exec tsc --noEmit` -> build -> parity -> coverage -> Codecov.
