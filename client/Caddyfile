@@ -1,0 +1,14 @@
+:{$PORT:3000} {
+    encode zstd gzip
+
+    @health path /health
+    handle @health {
+        respond "ok" 200
+    }
+
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+}

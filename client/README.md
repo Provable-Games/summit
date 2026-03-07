@@ -50,6 +50,10 @@ VITE_PUBLIC_POSTHOG_KEY=<your-key>
 VITE_PUBLIC_POSTHOG_HOST=<your-host>
 ```
 
+Shared deployment note:
+- Both Vercel and Railway builds consume the same Vite env contract above.
+- `VITE_PUBLIC_CHAIN` and `VITE_PUBLIC_SUMMIT_ADDRESS` must be set at build time.
+
 ## Scripts
 
 - Dev server: `pnpm dev`
@@ -58,6 +62,7 @@ VITE_PUBLIC_POSTHOG_HOST=<your-host>
 - Tests: `pnpm test`
 - Coverage: `pnpm test:coverage`
 - Packing parity check: `pnpm test:parity`
+- Docker image build (Railway parity): `pnpm build:docker`
 
 ## Project Structure
 
@@ -114,3 +119,22 @@ Tailwind is not used in this project.
 Client CI runs on `client/**` and `contracts/src/models/beast.cairo` changes:
 
 `lint -> build -> test:parity -> test:coverage -> Codecov`.
+
+## Deployments
+
+Dual-host support is enabled:
+
+- Vercel:
+  - SPA rewrite config: `vercel.json`
+  - Build command: `pnpm build`
+  - Output directory: `dist`
+
+- Railway:
+  - Container build config: `Dockerfile`
+  - Static serving + SPA fallback + health endpoint: `Caddyfile`
+  - Service should deploy from `client/` with Dockerfile detection enabled
+
+Recommended validation for either host:
+1. Open `/` and a deep link route (e.g. `/marketplace`).
+2. Confirm images under `/images/**` load.
+3. Confirm API reads and WS connection to configured backend.

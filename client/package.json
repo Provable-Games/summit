@@ -17,7 +17,8 @@
     "lint:suppress:prune": "eslint . --rule '{\"@typescript-eslint/no-explicit-any\":\"error\"}' --suppressions-location .eslint-suppressions.json --prune-suppressions",
     "preview": "vite preview",
     "serve": "vite preview",
-    "typecheck:strict": "tsc -p tsconfig.strict.json --noEmit"
+    "typecheck:strict": "tsc -p tsconfig.strict.json --noEmit",
+    "build:docker": "docker build -t summit-client:local --build-arg VITE_PUBLIC_CHAIN=${VITE_PUBLIC_CHAIN:-SN_MAIN} --build-arg VITE_PUBLIC_SUMMIT_ADDRESS=${VITE_PUBLIC_SUMMIT_ADDRESS:-0x01aa95ea66e7e01acf7dc3fda8be0d8661230c4c36b0169e2bab8ab4d6700dfc} ."
   },
   "dependencies": {
     "@cartridge/connector": "^0.12.1",

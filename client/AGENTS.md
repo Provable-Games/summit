@@ -38,6 +38,8 @@ Blockchain/client SDK stack:
 | `src/utils/networkConfig.ts` | Network endpoints and contract addresses. |
 | `src/utils/themes.ts` | MUI theme definition. |
 | `src/api/ekubo.ts` | Ekubo quoting/swaps/liquidity helpers used by market flows. |
+| `vercel.json` | Vercel SPA rewrite configuration. |
+| `Dockerfile` + `Caddyfile` | Railway containerized static hosting with SPA fallback and `/health`. |
 
 ## Core Architecture Patterns
 - `GameDirector` is the central coordinator for reads, WS events, optimistic updates, and notifications.
