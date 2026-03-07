@@ -9,6 +9,7 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN corepack enable && \
     corepack prepare pnpm@10.0.0 --activate && \
     pnpm install --frozen-lockfile
@@ -30,6 +31,7 @@ RUN addgroup -g 1001 -S nodejs && \
 
 # Install production dependencies + tsx for status check script
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN corepack enable && \
     corepack prepare pnpm@10.0.0 --activate && \
     pnpm install --prod --frozen-lockfile && \
