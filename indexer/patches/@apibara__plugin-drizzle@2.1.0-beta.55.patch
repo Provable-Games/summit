@@ -1,20 +1,18 @@
 diff --git a/dist/index.cjs b/dist/index.cjs
-index 4926b17a6418da810dff724625b8c4a846944b47..8dec3d40c96ee9f2da8d25f04284648b3b23937d 100644
+index 4926b17a6418da810dff724625b8c4a846944b47..739a4a2974712d6737f16b6d1db4ce97e96c300b 100644
 --- a/dist/index.cjs
 +++ b/dist/index.cjs
-@@ -410,18 +410,29 @@ async function initializeReorgRollbackTable(tx, indexerId) {
+@@ -410,11 +410,18 @@ async function initializeReorgRollbackTable(tx, indexerId) {
        DECLARE
          table_name TEXT := TG_ARGV[0]::TEXT;
          id_col TEXT := TG_ARGV[1]::TEXT;
 -        order_key INTEGER := TG_ARGV[2]::INTEGER;
 -        indexer_id TEXT := TG_ARGV[3]::TEXT;
--        new_id_value TEXT := row_to_json(NEW.*)->>id_col;
--        old_id_value TEXT := row_to_json(OLD.*)->>id_col;
 +        order_key_text TEXT := current_setting('${constants.SCHEMA_NAME}.reorg_order_key', true);
 +        order_key INTEGER;
 +        indexer_id TEXT := TG_ARGV[2]::TEXT;
-+        new_id_value TEXT;
-+        old_id_value TEXT;
+         new_id_value TEXT := row_to_json(NEW.*)->>id_col;
+         old_id_value TEXT := row_to_json(OLD.*)->>id_col;
        BEGIN
 +        IF order_key_text IS NULL THEN
 +          RETURN NULL;
@@ -23,20 +21,9 @@ index 4926b17a6418da810dff724625b8c4a846944b47..8dec3d40c96ee9f2da8d25f04284648b
 +        order_key := order_key_text::INTEGER;
 +
          IF (TG_OP = 'DELETE') THEN
-+          old_id_value := row_to_json(OLD.*)->>id_col;
            INSERT INTO ${constants.SCHEMA_NAME}.${ROLLBACK_TABLE_NAME}(op, table_name, cursor, row_id, row_value, indexer_id)
              SELECT 'D', table_name, order_key, old_id_value, row_to_json(OLD.*), indexer_id;
-         ELSIF (TG_OP = 'UPDATE') THEN
-+          new_id_value := row_to_json(NEW.*)->>id_col;
-+          old_id_value := row_to_json(OLD.*)->>id_col;
-           INSERT INTO ${constants.SCHEMA_NAME}.${ROLLBACK_TABLE_NAME}(op, table_name, cursor, row_id, row_value, indexer_id)
-             SELECT 'U', table_name, order_key, new_id_value, row_to_json(OLD.*), indexer_id;
-         ELSIF (TG_OP = 'INSERT') THEN
-+          new_id_value := row_to_json(NEW.*)->>id_col;
-           INSERT INTO ${constants.SCHEMA_NAME}.${ROLLBACK_TABLE_NAME}(op, table_name, cursor, row_id, row_value, indexer_id)
-             SELECT 'I', table_name, order_key, new_id_value, null, indexer_id;
-         END IF;
-@@ -439,7 +450,7 @@ async function initializeReorgRollbackTable(tx, indexerId) {
+@@ -439,7 +446,7 @@ async function initializeReorgRollbackTable(tx, indexerId) {
      );
    }
  }
@@ -45,7 +32,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..8dec3d40c96ee9f2da8d25f04284648b
    try {
      for (const table of tables) {
        const tableIdColumn = getIdColumnForTable(table, idColumnMap);
-@@ -453,7 +464,7 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
+@@ -453,7 +460,7 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
            CREATE CONSTRAINT TRIGGER ${getReorgTriggerName(table, indexerId)}
            AFTER INSERT OR UPDATE OR DELETE ON ${table}
            DEFERRABLE INITIALLY DEFERRED
@@ -54,7 +41,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..8dec3d40c96ee9f2da8d25f04284648b
          `)
        );
      }
-@@ -463,6 +474,19 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
+@@ -463,6 +470,19 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
      });
    }
  }
@@ -74,7 +61,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..8dec3d40c96ee9f2da8d25f04284648b
  async function removeTriggers(db, tables, indexerId) {
    try {
      for (const table of tables) {
-@@ -653,6 +677,7 @@ function drizzleStorage({
+@@ -653,6 +673,7 @@ function drizzleStorage({
      let indexerId = "";
      const alwaysReindex = process.env["APIBARA_ALWAYS_REINDEX"] === "true";
      let prevFinality;
@@ -82,7 +69,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..8dec3d40c96ee9f2da8d25f04284648b
      const schema = _schema ?? db._.schema ?? {};
      const idColumnMap = {
        "*": typeof idColumn === "string" ? idColumn : "id",
-@@ -813,6 +838,7 @@ function drizzleStorage({
+@@ -813,6 +834,7 @@ function drizzleStorage({
      indexer$1.hooks.hook("handler:middleware", async ({ use }) => {
        use(async (context, next) => {
          try {
@@ -90,7 +77,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..8dec3d40c96ee9f2da8d25f04284648b
            const { endCursor, finality, cursor } = context;
            if (!endCursor) {
              throw new DrizzleStorageError("End Cursor is undefined");
-@@ -823,13 +849,16 @@ function drizzleStorage({
+@@ -823,13 +845,16 @@ function drizzleStorage({
                await invalidate(tx, cursor, idColumnMap, indexerId);
              }
              if (finality !== "finalized") {
@@ -114,7 +101,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..8dec3d40c96ee9f2da8d25f04284648b
              }
              await next();
              delete context[constants.DRIZZLE_PROPERTY];
-@@ -842,11 +871,10 @@ function drizzleStorage({
+@@ -842,11 +867,10 @@ function drizzleStorage({
              }
              prevFinality = finality;
            });
@@ -129,22 +116,20 @@ index 4926b17a6418da810dff724625b8c4a846944b47..8dec3d40c96ee9f2da8d25f04284648b
          }
        });
 diff --git a/dist/index.mjs b/dist/index.mjs
-index 1bdf312081394c65988b248952fef093ec89e812..969fd87818e4d6e44e2308d3ee5a2a00feb1d081 100644
+index 1bdf312081394c65988b248952fef093ec89e812..230cdc077e5be2dcd155b52d972070ebdb18c4ab 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
-@@ -408,18 +408,29 @@ async function initializeReorgRollbackTable(tx, indexerId) {
+@@ -408,11 +408,18 @@ async function initializeReorgRollbackTable(tx, indexerId) {
        DECLARE
          table_name TEXT := TG_ARGV[0]::TEXT;
          id_col TEXT := TG_ARGV[1]::TEXT;
 -        order_key INTEGER := TG_ARGV[2]::INTEGER;
 -        indexer_id TEXT := TG_ARGV[3]::TEXT;
--        new_id_value TEXT := row_to_json(NEW.*)->>id_col;
--        old_id_value TEXT := row_to_json(OLD.*)->>id_col;
 +        order_key_text TEXT := current_setting('${SCHEMA_NAME}.reorg_order_key', true);
 +        order_key INTEGER;
 +        indexer_id TEXT := TG_ARGV[2]::TEXT;
-+        new_id_value TEXT;
-+        old_id_value TEXT;
+         new_id_value TEXT := row_to_json(NEW.*)->>id_col;
+         old_id_value TEXT := row_to_json(OLD.*)->>id_col;
        BEGIN
 +        IF order_key_text IS NULL THEN
 +          RETURN NULL;
@@ -153,20 +138,9 @@ index 1bdf312081394c65988b248952fef093ec89e812..969fd87818e4d6e44e2308d3ee5a2a00
 +        order_key := order_key_text::INTEGER;
 +
          IF (TG_OP = 'DELETE') THEN
-+          old_id_value := row_to_json(OLD.*)->>id_col;
            INSERT INTO ${SCHEMA_NAME}.${ROLLBACK_TABLE_NAME}(op, table_name, cursor, row_id, row_value, indexer_id)
              SELECT 'D', table_name, order_key, old_id_value, row_to_json(OLD.*), indexer_id;
-         ELSIF (TG_OP = 'UPDATE') THEN
-+          new_id_value := row_to_json(NEW.*)->>id_col;
-+          old_id_value := row_to_json(OLD.*)->>id_col;
-           INSERT INTO ${SCHEMA_NAME}.${ROLLBACK_TABLE_NAME}(op, table_name, cursor, row_id, row_value, indexer_id)
-             SELECT 'U', table_name, order_key, new_id_value, row_to_json(OLD.*), indexer_id;
-         ELSIF (TG_OP = 'INSERT') THEN
-+          new_id_value := row_to_json(NEW.*)->>id_col;
-           INSERT INTO ${SCHEMA_NAME}.${ROLLBACK_TABLE_NAME}(op, table_name, cursor, row_id, row_value, indexer_id)
-             SELECT 'I', table_name, order_key, new_id_value, null, indexer_id;
-         END IF;
-@@ -437,7 +448,7 @@ async function initializeReorgRollbackTable(tx, indexerId) {
+@@ -437,7 +444,7 @@ async function initializeReorgRollbackTable(tx, indexerId) {
      );
    }
  }
@@ -175,7 +149,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..969fd87818e4d6e44e2308d3ee5a2a00
    try {
      for (const table of tables) {
        const tableIdColumn = getIdColumnForTable(table, idColumnMap);
-@@ -451,7 +462,7 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
+@@ -451,7 +458,7 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
            CREATE CONSTRAINT TRIGGER ${getReorgTriggerName(table, indexerId)}
            AFTER INSERT OR UPDATE OR DELETE ON ${table}
            DEFERRABLE INITIALLY DEFERRED
@@ -184,7 +158,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..969fd87818e4d6e44e2308d3ee5a2a00
          `)
        );
      }
-@@ -461,6 +472,19 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
+@@ -461,6 +468,19 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
      });
    }
  }
@@ -204,7 +178,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..969fd87818e4d6e44e2308d3ee5a2a00
  async function removeTriggers(db, tables, indexerId) {
    try {
      for (const table of tables) {
-@@ -651,6 +675,7 @@ function drizzleStorage({
+@@ -651,6 +671,7 @@ function drizzleStorage({
      let indexerId = "";
      const alwaysReindex = process.env["APIBARA_ALWAYS_REINDEX"] === "true";
      let prevFinality;
@@ -212,7 +186,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..969fd87818e4d6e44e2308d3ee5a2a00
      const schema = _schema ?? db._.schema ?? {};
      const idColumnMap = {
        "*": typeof idColumn === "string" ? idColumn : "id",
-@@ -811,6 +836,7 @@ function drizzleStorage({
+@@ -811,6 +832,7 @@ function drizzleStorage({
      indexer.hooks.hook("handler:middleware", async ({ use }) => {
        use(async (context, next) => {
          try {
@@ -220,7 +194,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..969fd87818e4d6e44e2308d3ee5a2a00
            const { endCursor, finality, cursor } = context;
            if (!endCursor) {
              throw new DrizzleStorageError("End Cursor is undefined");
-@@ -821,13 +847,16 @@ function drizzleStorage({
+@@ -821,13 +843,16 @@ function drizzleStorage({
                await invalidate(tx, cursor, idColumnMap, indexerId);
              }
              if (finality !== "finalized") {
@@ -244,7 +218,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..969fd87818e4d6e44e2308d3ee5a2a00
              }
              await next();
              delete context[DRIZZLE_PROPERTY];
-@@ -840,11 +869,10 @@ function drizzleStorage({
+@@ -840,11 +865,10 @@ function drizzleStorage({
              }
              prevFinality = finality;
            });
@@ -329,22 +303,20 @@ index 3761cf45d3ce34a37ebfb2a012804e161d4589d6..6762c2cdb9ad114f74b0a37e7e2d317a
          }
        });
 diff --git a/src/storage.ts b/src/storage.ts
-index 1d6e951c860ee24afcd0511fa032cb5d9c99a0e3..cfb5636f39a6d085190af2bad8784e7d76ea847a 100644
+index 1d6e951c860ee24afcd0511fa032cb5d9c99a0e3..e8ed33a6c75e110878b40c9002aa32ebcf9d3afe 100644
 --- a/src/storage.ts
 +++ b/src/storage.ts
-@@ -91,18 +91,29 @@ export async function initializeReorgRollbackTable<
+@@ -91,11 +91,18 @@ export async function initializeReorgRollbackTable<
        DECLARE
          table_name TEXT := TG_ARGV[0]::TEXT;
          id_col TEXT := TG_ARGV[1]::TEXT;
 -        order_key INTEGER := TG_ARGV[2]::INTEGER;
 -        indexer_id TEXT := TG_ARGV[3]::TEXT;
--        new_id_value TEXT := row_to_json(NEW.*)->>id_col;
--        old_id_value TEXT := row_to_json(OLD.*)->>id_col;
 +        order_key_text TEXT := current_setting('${SCHEMA_NAME}.reorg_order_key', true);
 +        order_key INTEGER;
 +        indexer_id TEXT := TG_ARGV[2]::TEXT;
-+        new_id_value TEXT;
-+        old_id_value TEXT;
+         new_id_value TEXT := row_to_json(NEW.*)->>id_col;
+         old_id_value TEXT := row_to_json(OLD.*)->>id_col;
        BEGIN
 +        IF order_key_text IS NULL THEN
 +          RETURN NULL;
@@ -353,20 +325,9 @@ index 1d6e951c860ee24afcd0511fa032cb5d9c99a0e3..cfb5636f39a6d085190af2bad8784e7d
 +        order_key := order_key_text::INTEGER;
 +
          IF (TG_OP = 'DELETE') THEN
-+          old_id_value := row_to_json(OLD.*)->>id_col;
            INSERT INTO ${SCHEMA_NAME}.${ROLLBACK_TABLE_NAME}(op, table_name, cursor, row_id, row_value, indexer_id)
              SELECT 'D', table_name, order_key, old_id_value, row_to_json(OLD.*), indexer_id;
-         ELSIF (TG_OP = 'UPDATE') THEN
-+          new_id_value := row_to_json(NEW.*)->>id_col;
-+          old_id_value := row_to_json(OLD.*)->>id_col;
-           INSERT INTO ${SCHEMA_NAME}.${ROLLBACK_TABLE_NAME}(op, table_name, cursor, row_id, row_value, indexer_id)
-             SELECT 'U', table_name, order_key, new_id_value, row_to_json(OLD.*), indexer_id;
-         ELSIF (TG_OP = 'INSERT') THEN
-+          new_id_value := row_to_json(NEW.*)->>id_col;
-           INSERT INTO ${SCHEMA_NAME}.${ROLLBACK_TABLE_NAME}(op, table_name, cursor, row_id, row_value, indexer_id)
-             SELECT 'I', table_name, order_key, new_id_value, null, indexer_id;
-         END IF;
-@@ -129,7 +140,6 @@ export async function registerTriggers<
+@@ -129,7 +136,6 @@ export async function registerTriggers<
  >(
    tx: PgTransaction<TQueryResult, TFullSchema, TSchema>,
    tables: string[],
@@ -374,7 +335,7 @@ index 1d6e951c860ee24afcd0511fa032cb5d9c99a0e3..cfb5636f39a6d085190af2bad8784e7d
    idColumnMap: IdColumnMap,
    indexerId: string,
  ) {
-@@ -148,7 +158,7 @@ export async function registerTriggers<
+@@ -148,7 +154,7 @@ export async function registerTriggers<
            CREATE CONSTRAINT TRIGGER ${getReorgTriggerName(table, indexerId)}
            AFTER INSERT OR UPDATE OR DELETE ON ${table}
            DEFERRABLE INITIALLY DEFERRED
@@ -383,7 +344,7 @@ index 1d6e951c860ee24afcd0511fa032cb5d9c99a0e3..cfb5636f39a6d085190af2bad8784e7d
          `),
        );
      }
-@@ -159,6 +169,28 @@ export async function registerTriggers<
+@@ -159,6 +165,28 @@ export async function registerTriggers<
    }
  }
  
