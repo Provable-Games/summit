@@ -1,5 +1,5 @@
 diff --git a/dist/index.cjs b/dist/index.cjs
-index 4926b17a6418da810dff724625b8c4a846944b47..739a4a2974712d6737f16b6d1db4ce97e96c300b 100644
+index 4926b17a6418da810dff724625b8c4a846944b47..81bf8e7c2c80d2ba56318ce0c7b3f4a934360361 100644
 --- a/dist/index.cjs
 +++ b/dist/index.cjs
 @@ -410,11 +410,18 @@ async function initializeReorgRollbackTable(tx, indexerId) {
@@ -69,7 +69,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..739a4a2974712d6737f16b6d1db4ce97
      const schema = _schema ?? db._.schema ?? {};
      const idColumnMap = {
        "*": typeof idColumn === "string" ? idColumn : "id",
-@@ -813,6 +834,7 @@ function drizzleStorage({
+@@ -813,23 +834,29 @@ function drizzleStorage({
      indexer$1.hooks.hook("handler:middleware", async ({ use }) => {
        use(async (context, next) => {
          try {
@@ -77,9 +77,17 @@ index 4926b17a6418da810dff724625b8c4a846944b47..739a4a2974712d6737f16b6d1db4ce97
            const { endCursor, finality, cursor } = context;
            if (!endCursor) {
              throw new DrizzleStorageError("End Cursor is undefined");
-@@ -823,13 +845,16 @@ function drizzleStorage({
-               await invalidate(tx, cursor, idColumnMap, indexerId);
-             }
+           }
++          if (prevFinality === "pending") {
++            await withTransaction(db, async (tx) => {
++              await invalidate(tx, cursor, idColumnMap, indexerId);
++            });
++          }
+           await withTransaction(db, async (tx) => {
+             context[constants.DRIZZLE_PROPERTY] = { db: tx };
+-            if (prevFinality === "pending") {
+-              await invalidate(tx, cursor, idColumnMap, indexerId);
+-            }
              if (finality !== "finalized") {
 -              await registerTriggers(
 -                tx,
@@ -101,7 +109,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..739a4a2974712d6737f16b6d1db4ce97
              }
              await next();
              delete context[constants.DRIZZLE_PROPERTY];
-@@ -842,11 +867,10 @@ function drizzleStorage({
+@@ -842,11 +869,10 @@ function drizzleStorage({
              }
              prevFinality = finality;
            });
@@ -116,7 +124,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..739a4a2974712d6737f16b6d1db4ce97
          }
        });
 diff --git a/dist/index.mjs b/dist/index.mjs
-index 1bdf312081394c65988b248952fef093ec89e812..230cdc077e5be2dcd155b52d972070ebdb18c4ab 100644
+index 1bdf312081394c65988b248952fef093ec89e812..641f18ef7df9a4d1055d7a74bcb99288c32c4989 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
 @@ -408,11 +408,18 @@ async function initializeReorgRollbackTable(tx, indexerId) {
@@ -186,7 +194,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..230cdc077e5be2dcd155b52d972070eb
      const schema = _schema ?? db._.schema ?? {};
      const idColumnMap = {
        "*": typeof idColumn === "string" ? idColumn : "id",
-@@ -811,6 +832,7 @@ function drizzleStorage({
+@@ -811,23 +832,29 @@ function drizzleStorage({
      indexer.hooks.hook("handler:middleware", async ({ use }) => {
        use(async (context, next) => {
          try {
@@ -194,9 +202,17 @@ index 1bdf312081394c65988b248952fef093ec89e812..230cdc077e5be2dcd155b52d972070eb
            const { endCursor, finality, cursor } = context;
            if (!endCursor) {
              throw new DrizzleStorageError("End Cursor is undefined");
-@@ -821,13 +843,16 @@ function drizzleStorage({
-               await invalidate(tx, cursor, idColumnMap, indexerId);
-             }
+           }
++          if (prevFinality === "pending") {
++            await withTransaction(db, async (tx) => {
++              await invalidate(tx, cursor, idColumnMap, indexerId);
++            });
++          }
+           await withTransaction(db, async (tx) => {
+             context[DRIZZLE_PROPERTY] = { db: tx };
+-            if (prevFinality === "pending") {
+-              await invalidate(tx, cursor, idColumnMap, indexerId);
+-            }
              if (finality !== "finalized") {
 -              await registerTriggers(
 -                tx,
@@ -218,7 +234,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..230cdc077e5be2dcd155b52d972070eb
              }
              await next();
              delete context[DRIZZLE_PROPERTY];
-@@ -840,11 +865,10 @@ function drizzleStorage({
+@@ -840,11 +867,10 @@ function drizzleStorage({
              }
              prevFinality = finality;
            });
@@ -233,7 +249,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..230cdc077e5be2dcd155b52d972070eb
          }
        });
 diff --git a/src/index.ts b/src/index.ts
-index 3761cf45d3ce34a37ebfb2a012804e161d4589d6..6762c2cdb9ad114f74b0a37e7e2d317ae9d3b5cc 100644
+index 3761cf45d3ce34a37ebfb2a012804e161d4589d6..9c3276659d86986db1fb20daa65bdd5e968bf8ca 100644
 --- a/src/index.ts
 +++ b/src/index.ts
 @@ -31,7 +31,7 @@ import {
@@ -261,9 +277,30 @@ index 3761cf45d3ce34a37ebfb2a012804e161d4589d6..6762c2cdb9ad114f74b0a37e7e2d317a
            const { endCursor, finality, cursor } = context as {
              cursor: Cursor;
              endCursor: Cursor;
-@@ -425,13 +427,16 @@ export function drizzleStorage<
-             }
- 
+@@ -412,6 +414,14 @@ export function drizzleStorage<
+             throw new DrizzleStorageError("End Cursor is undefined");
+           }
+
++          if (prevFinality === "pending") {
++            await withTransaction(db, async (tx) => {
++              // Invalidate in a dedicated transaction so rollback writes are
++              // never captured with the current block's reorg_order_key.
++              await invalidate(tx, cursor, idColumnMap, indexerId);
++            });
++          }
++
+           await withTransaction(db, async (tx) => {
+             context[DRIZZLE_PROPERTY] = { db: tx } as DrizzleStorage<
+               TQueryResult,
+@@ -419,19 +429,17 @@ export function drizzleStorage<
+               TSchema
+             >;
+
+-            if (prevFinality === "pending") {
+-              // invalidate if previous block's finality was "pending"
+-              await invalidate(tx, cursor, idColumnMap, indexerId);
+-            }
+-
              if (finality !== "finalized") {
 -              await registerTriggers(
 -                tx,
@@ -283,12 +320,12 @@ index 3761cf45d3ce34a37ebfb2a012804e161d4589d6..6762c2cdb9ad114f74b0a37e7e2d317a
 +              }
 +              await setReorgOrderKey(tx, endCursor);
              }
- 
+
              await next();
-@@ -448,13 +453,11 @@ export function drizzleStorage<
+@@ -448,13 +456,11 @@ export function drizzleStorage<
              prevFinality = finality;
            });
- 
+
 -          if (finality !== "finalized") {
 -            // remove trigger outside of the transaction or it won't be triggered.
 -            await removeTriggers(db, tableNames, indexerId);
@@ -347,7 +384,7 @@ index 1d6e951c860ee24afcd0511fa032cb5d9c99a0e3..e8ed33a6c75e110878b40c9002aa32eb
 @@ -159,6 +165,28 @@ export async function registerTriggers<
    }
  }
- 
+
 +export async function setReorgOrderKey<
 +  TQueryResult extends PgQueryResultHKT,
 +  TFullSchema extends Record<string, unknown> = Record<string, never>,
