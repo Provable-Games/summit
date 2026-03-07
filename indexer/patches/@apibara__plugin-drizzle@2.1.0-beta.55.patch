@@ -1,5 +1,5 @@
 diff --git a/dist/index.cjs b/dist/index.cjs
-index 4926b17a6418da810dff724625b8c4a846944b47..d3aea075fa68339c78c9b221c570e5fd523ad3c0 100644
+index 4926b17a6418da810dff724625b8c4a846944b47..739a4a2974712d6737f16b6d1db4ce97e96c300b 100644
 --- a/dist/index.cjs
 +++ b/dist/index.cjs
 @@ -410,11 +410,18 @@ async function initializeReorgRollbackTable(tx, indexerId) {
@@ -69,7 +69,15 @@ index 4926b17a6418da810dff724625b8c4a846944b47..d3aea075fa68339c78c9b221c570e5fd
      const schema = _schema ?? db._.schema ?? {};
      const idColumnMap = {
        "*": typeof idColumn === "string" ? idColumn : "id",
-@@ -823,13 +844,16 @@ function drizzleStorage({
+@@ -813,6 +834,7 @@ function drizzleStorage({
+     indexer$1.hooks.hook("handler:middleware", async ({ use }) => {
+       use(async (context, next) => {
+         try {
++          let registeredTriggersInTxn = false;
+           const { endCursor, finality, cursor } = context;
+           if (!endCursor) {
+             throw new DrizzleStorageError("End Cursor is undefined");
+@@ -823,13 +845,16 @@ function drizzleStorage({
                await invalidate(tx, cursor, idColumnMap, indexerId);
              }
              if (finality !== "finalized") {
@@ -87,26 +95,28 @@ index 4926b17a6418da810dff724625b8c4a846944b47..d3aea075fa68339c78c9b221c570e5fd
 +                  idColumnMap,
 +                  indexerId
 +                );
-+                reorgTriggersRegistered = true;
++                registeredTriggersInTxn = true;
 +              }
 +              await setReorgOrderKey(tx, endCursor);
              }
              await next();
              delete context[constants.DRIZZLE_PROPERTY];
-@@ -842,11 +866,7 @@ function drizzleStorage({
+@@ -842,11 +867,10 @@ function drizzleStorage({
              }
              prevFinality = finality;
            });
 -          if (finality !== "finalized") {
 -            await removeTriggers(db, tableNames, indexerId);
--          }
++          if (registeredTriggersInTxn) {
++            reorgTriggersRegistered = true;
+           }
          } catch (error) {
 -          await removeTriggers(db, tableNames, indexerId);
            throw error;
          }
        });
 diff --git a/dist/index.mjs b/dist/index.mjs
-index 1bdf312081394c65988b248952fef093ec89e812..e6c089008903f68058f175ccf6a8a8167f7022b7 100644
+index 1bdf312081394c65988b248952fef093ec89e812..230cdc077e5be2dcd155b52d972070ebdb18c4ab 100644
 --- a/dist/index.mjs
 +++ b/dist/index.mjs
 @@ -408,11 +408,18 @@ async function initializeReorgRollbackTable(tx, indexerId) {
@@ -176,7 +186,15 @@ index 1bdf312081394c65988b248952fef093ec89e812..e6c089008903f68058f175ccf6a8a816
      const schema = _schema ?? db._.schema ?? {};
      const idColumnMap = {
        "*": typeof idColumn === "string" ? idColumn : "id",
-@@ -821,13 +842,16 @@ function drizzleStorage({
+@@ -811,6 +832,7 @@ function drizzleStorage({
+     indexer.hooks.hook("handler:middleware", async ({ use }) => {
+       use(async (context, next) => {
+         try {
++          let registeredTriggersInTxn = false;
+           const { endCursor, finality, cursor } = context;
+           if (!endCursor) {
+             throw new DrizzleStorageError("End Cursor is undefined");
+@@ -821,13 +843,16 @@ function drizzleStorage({
                await invalidate(tx, cursor, idColumnMap, indexerId);
              }
              if (finality !== "finalized") {
@@ -194,26 +212,28 @@ index 1bdf312081394c65988b248952fef093ec89e812..e6c089008903f68058f175ccf6a8a816
 +                  idColumnMap,
 +                  indexerId
 +                );
-+                reorgTriggersRegistered = true;
++                registeredTriggersInTxn = true;
 +              }
 +              await setReorgOrderKey(tx, endCursor);
              }
              await next();
              delete context[DRIZZLE_PROPERTY];
-@@ -840,11 +864,7 @@ function drizzleStorage({
+@@ -840,11 +865,10 @@ function drizzleStorage({
              }
              prevFinality = finality;
            });
 -          if (finality !== "finalized") {
 -            await removeTriggers(db, tableNames, indexerId);
--          }
++          if (registeredTriggersInTxn) {
++            reorgTriggersRegistered = true;
+           }
          } catch (error) {
 -          await removeTriggers(db, tableNames, indexerId);
            throw error;
          }
        });
 diff --git a/src/index.ts b/src/index.ts
-index 3761cf45d3ce34a37ebfb2a012804e161d4589d6..d389b9d25d635be500551ca5cebb81c1e636a53c 100644
+index 3761cf45d3ce34a37ebfb2a012804e161d4589d6..6762c2cdb9ad114f74b0a37e7e2d317ae9d3b5cc 100644
 --- a/src/index.ts
 +++ b/src/index.ts
 @@ -31,7 +31,7 @@ import {
@@ -233,7 +253,15 @@ index 3761cf45d3ce34a37ebfb2a012804e161d4589d6..d389b9d25d635be500551ca5cebb81c1
      const schema: TSchema = (_schema as TSchema) ?? db._.schema ?? {};
      const idColumnMap: IdColumnMap = {
        "*": typeof idColumn === "string" ? idColumn : "id",
-@@ -425,13 +426,16 @@ export function drizzleStorage<
+@@ -402,6 +403,7 @@ export function drizzleStorage<
+     indexer.hooks.hook("handler:middleware", async ({ use }) => {
+       use(async (context, next) => {
+         try {
++          let registeredTriggersInTxn = false;
+           const { endCursor, finality, cursor } = context as {
+             cursor: Cursor;
+             endCursor: Cursor;
+@@ -425,13 +427,16 @@ export function drizzleStorage<
              }
  
              if (finality !== "finalized") {
@@ -251,21 +279,23 @@ index 3761cf45d3ce34a37ebfb2a012804e161d4589d6..d389b9d25d635be500551ca5cebb81c1
 +                  idColumnMap,
 +                  indexerId,
 +                );
-+                reorgTriggersRegistered = true;
++                registeredTriggersInTxn = true;
 +              }
 +              await setReorgOrderKey(tx, endCursor);
              }
  
              await next();
-@@ -447,14 +451,7 @@ export function drizzleStorage<
- 
+@@ -448,13 +453,11 @@ export function drizzleStorage<
              prevFinality = finality;
            });
--
+ 
 -          if (finality !== "finalized") {
 -            // remove trigger outside of the transaction or it won't be triggered.
 -            await removeTriggers(db, tableNames, indexerId);
--          }
++          if (registeredTriggersInTxn) {
++            // Mark registration only after the transaction commits successfully.
++            reorgTriggersRegistered = true;
+           }
          } catch (error) {
 -          await removeTriggers(db, tableNames, indexerId);
 -
