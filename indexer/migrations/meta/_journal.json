@@ -36,6 +36,13 @@
       "when": 1771012800000,
       "tag": "0004_api_perf_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1772913600000,
+      "tag": "0005_rewards_earned_leaderboard_index",
+      "breakpoints": true
     }
   ]
 }

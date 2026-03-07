@@ -197,6 +197,7 @@ export const rewards_earned = pgTable(
       table.event_index
     ),
     index("rewards_earned_owner_idx").on(table.owner),
+    index("rewards_earned_owner_amount_idx").on(table.owner, table.amount),
     index("rewards_earned_beast_token_id_idx").on(table.beast_token_id),
     index("rewards_earned_created_at_idx").on(table.created_at.desc()),
   ]

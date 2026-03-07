@@ -1,0 +1,1 @@
+CREATE INDEX "rewards_earned_owner_amount_idx" ON "rewards_earned" USING btree ("owner","amount");
