@@ -81,6 +81,22 @@ interface AutopilotConfig {
   targetedPoisonPlayers: TargetedPoisonPlayer[];
   // Specific beasts (by token ID) that should always be poisoned when on summit
   targetedPoisonBeasts: TargetedPoisonBeast[];
+
+  // Feature: 1HP Snipe — auto-attack when summit drops to 1HP
+  snipeAt1Hp: boolean;
+
+  // Feature: Poison Schedule — time-window-based poison
+  poisonScheduleEnabled: boolean;
+  poisonScheduleStartHour: number;   // 0-23
+  poisonScheduleStartMinute: number; // 0-59
+  poisonScheduleEndHour: number;     // 0-23
+  poisonScheduleEndMinute: number;   // 0-59
+  poisonScheduleAmount: number;
+  poisonScheduleTargetedOnly: boolean;
+
+  // Feature: Rotate Top Beasts — lock in 6 beasts, auto counter-pick
+  rotateTopBeasts: boolean;
+  rotateTopBeastIds: number[];       // max 6 token IDs
 }
 
 type AutopilotPersistedConfig = AutopilotConfig;
@@ -97,6 +113,16 @@ type AutopilotConfigStorageShape = Partial<AutopilotPersistedConfig> & {
   questFilters?: unknown;
   targetedPoisonPlayers?: unknown;
   targetedPoisonBeasts?: unknown;
+  snipeAt1Hp?: unknown;
+  poisonScheduleEnabled?: unknown;
+  poisonScheduleStartHour?: unknown;
+  poisonScheduleStartMinute?: unknown;
+  poisonScheduleEndHour?: unknown;
+  poisonScheduleEndMinute?: unknown;
+  poisonScheduleAmount?: unknown;
+  poisonScheduleTargetedOnly?: unknown;
+  rotateTopBeasts?: unknown;
+  rotateTopBeastIds?: unknown;
 };
 
 interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCounters {
@@ -131,6 +157,20 @@ interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCount
   addTargetedPoisonBeast: (beast: TargetedPoisonBeast) => void;
   removeTargetedPoisonBeast: (tokenId: number) => void;
   setTargetedPoisonBeastAmount: (tokenId: number, amount: number) => void;
+
+  setSnipeAt1Hp: (enabled: boolean) => void;
+
+  setPoisonScheduleEnabled: (enabled: boolean) => void;
+  setPoisonScheduleStartHour: (hour: number) => void;
+  setPoisonScheduleStartMinute: (minute: number) => void;
+  setPoisonScheduleEndHour: (hour: number) => void;
+  setPoisonScheduleEndMinute: (minute: number) => void;
+  setPoisonScheduleAmount: (amount: number) => void;
+  setPoisonScheduleTargetedOnly: (targetedOnly: boolean) => void;
+
+  setRotateTopBeasts: (enabled: boolean) => void;
+  addRotateTopBeastId: (tokenId: number) => void;
+  removeRotateTopBeastId: (tokenId: number) => void;
   /**
    * "Used" fields are counters.
    * - If passed a number, it is treated as an amount to ADD.
@@ -169,6 +209,16 @@ const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   questFilters: [],
   targetedPoisonPlayers: [],
   targetedPoisonBeasts: [],
+  snipeAt1Hp: false,
+  poisonScheduleEnabled: false,
+  poisonScheduleStartHour: 14,
+  poisonScheduleStartMinute: 0,
+  poisonScheduleEndHour: 16,
+  poisonScheduleEndMinute: 0,
+  poisonScheduleAmount: 100,
+  poisonScheduleTargetedOnly: false,
+  rotateTopBeasts: false,
+  rotateTopBeastIds: [],
 };
 
 const DEFAULT_SESSION_COUNTERS: AutopilotSessionCounters = {
@@ -315,6 +365,19 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
             )
             .map((b) => ({ ...b, amount: sanitizeNonNegativeInt(b.amount, 100) }))
         : DEFAULT_CONFIG.targetedPoisonBeasts,
+
+      snipeAt1Hp: typeof parsed.snipeAt1Hp === 'boolean' ? parsed.snipeAt1Hp : DEFAULT_CONFIG.snipeAt1Hp,
+      poisonScheduleEnabled: typeof parsed.poisonScheduleEnabled === 'boolean' ? parsed.poisonScheduleEnabled : DEFAULT_CONFIG.poisonScheduleEnabled,
+      poisonScheduleStartHour: clampIntRange(parsed.poisonScheduleStartHour, 0, 23, DEFAULT_CONFIG.poisonScheduleStartHour),
+      poisonScheduleStartMinute: clampIntRange(parsed.poisonScheduleStartMinute, 0, 59, DEFAULT_CONFIG.poisonScheduleStartMinute),
+      poisonScheduleEndHour: clampIntRange(parsed.poisonScheduleEndHour, 0, 23, DEFAULT_CONFIG.poisonScheduleEndHour),
+      poisonScheduleEndMinute: clampIntRange(parsed.poisonScheduleEndMinute, 0, 59, DEFAULT_CONFIG.poisonScheduleEndMinute),
+      poisonScheduleAmount: sanitizeNonNegativeInt(parsed.poisonScheduleAmount, DEFAULT_CONFIG.poisonScheduleAmount),
+      poisonScheduleTargetedOnly: typeof parsed.poisonScheduleTargetedOnly === 'boolean' ? parsed.poisonScheduleTargetedOnly : DEFAULT_CONFIG.poisonScheduleTargetedOnly,
+      rotateTopBeasts: typeof parsed.rotateTopBeasts === 'boolean' ? parsed.rotateTopBeasts : DEFAULT_CONFIG.rotateTopBeasts,
+      rotateTopBeastIds: Array.isArray(parsed.rotateTopBeastIds)
+        ? (parsed.rotateTopBeastIds as number[]).filter((id): id is number => typeof id === 'number' && id > 0).slice(0, 6)
+        : DEFAULT_CONFIG.rotateTopBeastIds,
     };
   } catch {
     return null;
@@ -402,6 +465,27 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       questFilters: partial.questFilters ?? get().questFilters,
       targetedPoisonPlayers: partial.targetedPoisonPlayers ?? get().targetedPoisonPlayers,
       targetedPoisonBeasts: partial.targetedPoisonBeasts ?? get().targetedPoisonBeasts,
+
+      snipeAt1Hp: partial.snipeAt1Hp ?? get().snipeAt1Hp,
+      poisonScheduleEnabled: partial.poisonScheduleEnabled ?? get().poisonScheduleEnabled,
+      poisonScheduleStartHour: clampIntRange(
+        partial.poisonScheduleStartHour ?? get().poisonScheduleStartHour, 0, 23, DEFAULT_CONFIG.poisonScheduleStartHour,
+      ),
+      poisonScheduleStartMinute: clampIntRange(
+        partial.poisonScheduleStartMinute ?? get().poisonScheduleStartMinute, 0, 59, DEFAULT_CONFIG.poisonScheduleStartMinute,
+      ),
+      poisonScheduleEndHour: clampIntRange(
+        partial.poisonScheduleEndHour ?? get().poisonScheduleEndHour, 0, 23, DEFAULT_CONFIG.poisonScheduleEndHour,
+      ),
+      poisonScheduleEndMinute: clampIntRange(
+        partial.poisonScheduleEndMinute ?? get().poisonScheduleEndMinute, 0, 59, DEFAULT_CONFIG.poisonScheduleEndMinute,
+      ),
+      poisonScheduleAmount: sanitizeNonNegativeInt(
+        partial.poisonScheduleAmount ?? get().poisonScheduleAmount, DEFAULT_CONFIG.poisonScheduleAmount,
+      ),
+      poisonScheduleTargetedOnly: partial.poisonScheduleTargetedOnly ?? get().poisonScheduleTargetedOnly,
+      rotateTopBeasts: partial.rotateTopBeasts ?? get().rotateTopBeasts,
+      rotateTopBeastIds: partial.rotateTopBeastIds ?? get().rotateTopBeastIds,
     };
 
     try {
@@ -524,6 +608,33 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
           ),
         });
       }),
+    setSnipeAt1Hp: (snipeAt1Hp: boolean) =>
+      set(() => persist({ snipeAt1Hp })),
+    setPoisonScheduleEnabled: (poisonScheduleEnabled: boolean) =>
+      set(() => persist({ poisonScheduleEnabled })),
+    setPoisonScheduleStartHour: (poisonScheduleStartHour: number) =>
+      set(() => persist({ poisonScheduleStartHour })),
+    setPoisonScheduleStartMinute: (poisonScheduleStartMinute: number) =>
+      set(() => persist({ poisonScheduleStartMinute })),
+    setPoisonScheduleEndHour: (poisonScheduleEndHour: number) =>
+      set(() => persist({ poisonScheduleEndHour })),
+    setPoisonScheduleEndMinute: (poisonScheduleEndMinute: number) =>
+      set(() => persist({ poisonScheduleEndMinute })),
+    setPoisonScheduleAmount: (poisonScheduleAmount: number) =>
+      set(() => persist({ poisonScheduleAmount })),
+    setPoisonScheduleTargetedOnly: (poisonScheduleTargetedOnly: boolean) =>
+      set(() => persist({ poisonScheduleTargetedOnly })),
+    setRotateTopBeasts: (rotateTopBeasts: boolean) =>
+      set(() => persist({ rotateTopBeasts })),
+    addRotateTopBeastId: (tokenId: number) =>
+      set(() => {
+        const current = get().rotateTopBeastIds;
+        if (current.length >= 6 || current.includes(tokenId)) return {};
+        return persist({ rotateTopBeastIds: [...current, tokenId] });
+      }),
+    removeRotateTopBeastId: (tokenId: number) =>
+      set(() => persist({ rotateTopBeastIds: get().rotateTopBeastIds.filter((id) => id !== tokenId) })),
+
     setRevivePotionsUsed: (update) => updateCounter('revivePotionsUsed', update),
     setAttackPotionsUsed: (update) => updateCounter('attackPotionsUsed', update),
     setExtraLifePotionsUsed: (update) => updateCounter('extraLifePotionsUsed', update),
