@@ -6,7 +6,7 @@ settings:
 
 patchedDependencies:
   '@apibara/plugin-drizzle@2.1.0-beta.55':
-    hash: b2aaf410780d4d72d35c46bbecbc23e794647d6e1c00b03d5831d9ef0f0528f7
+    hash: 937897f0f5f45faa6c66c29eb7ac04ad3bffafd32c1bd5d0ab452f6809d05146
     path: patches/@apibara__plugin-drizzle@2.1.0-beta.55.patch
 
 importers:
@@ -18,7 +18,7 @@ importers:
         version: 2.1.0-beta.56(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
       '@apibara/plugin-drizzle':
         specifier: 2.1.0-beta.55
-        version: 2.1.0-beta.55(patch_hash=b2aaf410780d4d72d35c46bbecbc23e794647d6e1c00b03d5831d9ef0f0528f7)(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0))(pg@8.20.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
+        version: 2.1.0-beta.55(patch_hash=937897f0f5f45faa6c66c29eb7ac04ad3bffafd32c1bd5d0ab452f6809d05146)(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0))(pg@8.20.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
       '@apibara/protocol':
         specifier: 2.1.0-beta.56
         version: 2.1.0-beta.56(typescript@5.9.3)
@@ -2524,7 +2524,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@apibara/plugin-drizzle@2.1.0-beta.55(patch_hash=b2aaf410780d4d72d35c46bbecbc23e794647d6e1c00b03d5831d9ef0f0528f7)(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0))(pg@8.20.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))':
+  '@apibara/plugin-drizzle@2.1.0-beta.55(patch_hash=937897f0f5f45faa6c66c29eb7ac04ad3bffafd32c1bd5d0ab452f6809d05146)(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0))(pg@8.20.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))':
     dependencies:
       '@apibara/indexer': 2.1.0-beta.56(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
       '@apibara/protocol': 2.1.0-beta.56(typescript@5.9.3)
