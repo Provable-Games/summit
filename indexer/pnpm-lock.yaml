@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@apibara/plugin-drizzle@2.1.0-beta.55':
+    hash: 0c8314eafcc5681c417ea10956f55967774a0c7ab45febfba9a223fdcfa1182c
+    path: patches/@apibara__plugin-drizzle@2.1.0-beta.55.patch
+
 importers:
 
   .:
@@ -13,7 +18,7 @@ importers:
         version: 2.1.0-beta.56(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
       '@apibara/plugin-drizzle':
         specifier: 2.1.0-beta.55
-        version: 2.1.0-beta.55(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0))(pg@8.20.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
+        version: 2.1.0-beta.55(patch_hash=0c8314eafcc5681c417ea10956f55967774a0c7ab45febfba9a223fdcfa1182c)(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0))(pg@8.20.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
       '@apibara/protocol':
         specifier: 2.1.0-beta.56
         version: 2.1.0-beta.56(typescript@5.9.3)
@@ -2502,7 +2507,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@apibara/plugin-drizzle@2.1.0-beta.55(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0))(pg@8.20.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))':
+  '@apibara/plugin-drizzle@2.1.0-beta.55(patch_hash=0c8314eafcc5681c417ea10956f55967774a0c7ab45febfba9a223fdcfa1182c)(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0))(pg@8.20.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))':
     dependencies:
       '@apibara/indexer': 2.1.0-beta.56(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
       '@apibara/protocol': 2.1.0-beta.56(typescript@5.9.3)

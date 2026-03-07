@@ -1,0 +1,345 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 4926b17a6418da810dff724625b8c4a846944b47..d3aea075fa68339c78c9b221c570e5fd523ad3c0 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -410,11 +410,18 @@ async function initializeReorgRollbackTable(tx, indexerId) {
+       DECLARE
+         table_name TEXT := TG_ARGV[0]::TEXT;
+         id_col TEXT := TG_ARGV[1]::TEXT;
+-        order_key INTEGER := TG_ARGV[2]::INTEGER;
+-        indexer_id TEXT := TG_ARGV[3]::TEXT;
++        order_key_text TEXT := current_setting('${constants.SCHEMA_NAME}.reorg_order_key', true);
++        order_key INTEGER;
++        indexer_id TEXT := TG_ARGV[2]::TEXT;
+         new_id_value TEXT := row_to_json(NEW.*)->>id_col;
+         old_id_value TEXT := row_to_json(OLD.*)->>id_col;
+       BEGIN
++        IF order_key_text IS NULL THEN
++          RETURN NULL;
++        END IF;
++
++        order_key := order_key_text::INTEGER;
++
+         IF (TG_OP = 'DELETE') THEN
+           INSERT INTO ${constants.SCHEMA_NAME}.${ROLLBACK_TABLE_NAME}(op, table_name, cursor, row_id, row_value, indexer_id)
+             SELECT 'D', table_name, order_key, old_id_value, row_to_json(OLD.*), indexer_id;
+@@ -439,7 +446,7 @@ async function initializeReorgRollbackTable(tx, indexerId) {
+     );
+   }
+ }
+-async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
++async function registerTriggers(tx, tables, idColumnMap, indexerId) {
+   try {
+     for (const table of tables) {
+       const tableIdColumn = getIdColumnForTable(table, idColumnMap);
+@@ -453,7 +460,7 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
+           CREATE CONSTRAINT TRIGGER ${getReorgTriggerName(table, indexerId)}
+           AFTER INSERT OR UPDATE OR DELETE ON ${table}
+           DEFERRABLE INITIALLY DEFERRED
+-          FOR EACH ROW EXECUTE FUNCTION ${constants.SCHEMA_NAME}.reorg_checkpoint('${table}', '${tableIdColumn}', ${Number(endCursor.orderKey)}, '${indexerId}');
++          FOR EACH ROW EXECUTE FUNCTION ${constants.SCHEMA_NAME}.reorg_checkpoint('${table}', '${tableIdColumn}', '${indexerId}');
+         `)
+       );
+     }
+@@ -463,6 +470,19 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
+     });
+   }
+ }
++async function setReorgOrderKey(tx, endCursor) {
++  try {
++    await tx.execute(
++      drizzleOrm.sql.raw(
++        `SELECT set_config('${constants.SCHEMA_NAME}.reorg_order_key', '${Number(endCursor.orderKey)}', true);`
++      )
++    );
++  } catch (error) {
++    throw new DrizzleStorageError("Failed to set reorg order key", {
++      cause: error
++    });
++  }
++}
+ async function removeTriggers(db, tables, indexerId) {
+   try {
+     for (const table of tables) {
+@@ -653,6 +673,7 @@ function drizzleStorage({
+     let indexerId = "";
+     const alwaysReindex = process.env["APIBARA_ALWAYS_REINDEX"] === "true";
+     let prevFinality;
++    let reorgTriggersRegistered = false;
+     const schema = _schema ?? db._.schema ?? {};
+     const idColumnMap = {
+       "*": typeof idColumn === "string" ? idColumn : "id",
+@@ -823,13 +844,16 @@ function drizzleStorage({
+               await invalidate(tx, cursor, idColumnMap, indexerId);
+             }
+             if (finality !== "finalized") {
+-              await registerTriggers(
+-                tx,
+-                tableNames,
+-                endCursor,
+-                idColumnMap,
+-                indexerId
+-              );
++              if (!reorgTriggersRegistered) {
++                await registerTriggers(
++                  tx,
++                  tableNames,
++                  idColumnMap,
++                  indexerId
++                );
++                reorgTriggersRegistered = true;
++              }
++              await setReorgOrderKey(tx, endCursor);
+             }
+             await next();
+             delete context[constants.DRIZZLE_PROPERTY];
+@@ -842,11 +866,7 @@ function drizzleStorage({
+             }
+             prevFinality = finality;
+           });
+-          if (finality !== "finalized") {
+-            await removeTriggers(db, tableNames, indexerId);
+-          }
+         } catch (error) {
+-          await removeTriggers(db, tableNames, indexerId);
+           throw error;
+         }
+       });
+diff --git a/dist/index.mjs b/dist/index.mjs
+index 1bdf312081394c65988b248952fef093ec89e812..e6c089008903f68058f175ccf6a8a8167f7022b7 100644
+--- a/dist/index.mjs
++++ b/dist/index.mjs
+@@ -408,11 +408,18 @@ async function initializeReorgRollbackTable(tx, indexerId) {
+       DECLARE
+         table_name TEXT := TG_ARGV[0]::TEXT;
+         id_col TEXT := TG_ARGV[1]::TEXT;
+-        order_key INTEGER := TG_ARGV[2]::INTEGER;
+-        indexer_id TEXT := TG_ARGV[3]::TEXT;
++        order_key_text TEXT := current_setting('${SCHEMA_NAME}.reorg_order_key', true);
++        order_key INTEGER;
++        indexer_id TEXT := TG_ARGV[2]::TEXT;
+         new_id_value TEXT := row_to_json(NEW.*)->>id_col;
+         old_id_value TEXT := row_to_json(OLD.*)->>id_col;
+       BEGIN
++        IF order_key_text IS NULL THEN
++          RETURN NULL;
++        END IF;
++
++        order_key := order_key_text::INTEGER;
++
+         IF (TG_OP = 'DELETE') THEN
+           INSERT INTO ${SCHEMA_NAME}.${ROLLBACK_TABLE_NAME}(op, table_name, cursor, row_id, row_value, indexer_id)
+             SELECT 'D', table_name, order_key, old_id_value, row_to_json(OLD.*), indexer_id;
+@@ -437,7 +444,7 @@ async function initializeReorgRollbackTable(tx, indexerId) {
+     );
+   }
+ }
+-async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
++async function registerTriggers(tx, tables, idColumnMap, indexerId) {
+   try {
+     for (const table of tables) {
+       const tableIdColumn = getIdColumnForTable(table, idColumnMap);
+@@ -451,7 +458,7 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
+           CREATE CONSTRAINT TRIGGER ${getReorgTriggerName(table, indexerId)}
+           AFTER INSERT OR UPDATE OR DELETE ON ${table}
+           DEFERRABLE INITIALLY DEFERRED
+-          FOR EACH ROW EXECUTE FUNCTION ${SCHEMA_NAME}.reorg_checkpoint('${table}', '${tableIdColumn}', ${Number(endCursor.orderKey)}, '${indexerId}');
++          FOR EACH ROW EXECUTE FUNCTION ${SCHEMA_NAME}.reorg_checkpoint('${table}', '${tableIdColumn}', '${indexerId}');
+         `)
+       );
+     }
+@@ -461,6 +468,19 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
+     });
+   }
+ }
++async function setReorgOrderKey(tx, endCursor) {
++  try {
++    await tx.execute(
++      sql.raw(
++        `SELECT set_config('${SCHEMA_NAME}.reorg_order_key', '${Number(endCursor.orderKey)}', true);`
++      )
++    );
++  } catch (error) {
++    throw new DrizzleStorageError("Failed to set reorg order key", {
++      cause: error
++    });
++  }
++}
+ async function removeTriggers(db, tables, indexerId) {
+   try {
+     for (const table of tables) {
+@@ -651,6 +671,7 @@ function drizzleStorage({
+     let indexerId = "";
+     const alwaysReindex = process.env["APIBARA_ALWAYS_REINDEX"] === "true";
+     let prevFinality;
++    let reorgTriggersRegistered = false;
+     const schema = _schema ?? db._.schema ?? {};
+     const idColumnMap = {
+       "*": typeof idColumn === "string" ? idColumn : "id",
+@@ -821,13 +842,16 @@ function drizzleStorage({
+               await invalidate(tx, cursor, idColumnMap, indexerId);
+             }
+             if (finality !== "finalized") {
+-              await registerTriggers(
+-                tx,
+-                tableNames,
+-                endCursor,
+-                idColumnMap,
+-                indexerId
+-              );
++              if (!reorgTriggersRegistered) {
++                await registerTriggers(
++                  tx,
++                  tableNames,
++                  idColumnMap,
++                  indexerId
++                );
++                reorgTriggersRegistered = true;
++              }
++              await setReorgOrderKey(tx, endCursor);
+             }
+             await next();
+             delete context[DRIZZLE_PROPERTY];
+@@ -840,11 +864,7 @@ function drizzleStorage({
+             }
+             prevFinality = finality;
+           });
+-          if (finality !== "finalized") {
+-            await removeTriggers(db, tableNames, indexerId);
+-          }
+         } catch (error) {
+-          await removeTriggers(db, tableNames, indexerId);
+           throw error;
+         }
+       });
+diff --git a/src/index.ts b/src/index.ts
+index 3761cf45d3ce34a37ebfb2a012804e161d4589d6..d389b9d25d635be500551ca5cebb81c1e636a53c 100644
+--- a/src/index.ts
++++ b/src/index.ts
+@@ -31,7 +31,7 @@ import {
+   initializeReorgRollbackTable,
+   invalidate,
+   registerTriggers,
+-  removeTriggers,
++  setReorgOrderKey,
+ } from "./storage";
+ import {
+   DrizzleStorageError,
+@@ -186,6 +186,7 @@ export function drizzleStorage<
+     let indexerId = "";
+     const alwaysReindex = process.env["APIBARA_ALWAYS_REINDEX"] === "true";
+     let prevFinality: DataFinality | undefined;
++    let reorgTriggersRegistered = false;
+     const schema: TSchema = (_schema as TSchema) ?? db._.schema ?? {};
+     const idColumnMap: IdColumnMap = {
+       "*": typeof idColumn === "string" ? idColumn : "id",
+@@ -425,13 +426,16 @@ export function drizzleStorage<
+             }
+ 
+             if (finality !== "finalized") {
+-              await registerTriggers(
+-                tx,
+-                tableNames,
+-                endCursor,
+-                idColumnMap,
+-                indexerId,
+-              );
++              if (!reorgTriggersRegistered) {
++                await registerTriggers(
++                  tx,
++                  tableNames,
++                  idColumnMap,
++                  indexerId,
++                );
++                reorgTriggersRegistered = true;
++              }
++              await setReorgOrderKey(tx, endCursor);
+             }
+ 
+             await next();
+@@ -447,14 +451,7 @@ export function drizzleStorage<
+ 
+             prevFinality = finality;
+           });
+-
+-          if (finality !== "finalized") {
+-            // remove trigger outside of the transaction or it won't be triggered.
+-            await removeTriggers(db, tableNames, indexerId);
+-          }
+         } catch (error) {
+-          await removeTriggers(db, tableNames, indexerId);
+-
+           throw error;
+         }
+       });
+diff --git a/src/storage.ts b/src/storage.ts
+index 1d6e951c860ee24afcd0511fa032cb5d9c99a0e3..e8ed33a6c75e110878b40c9002aa32ebcf9d3afe 100644
+--- a/src/storage.ts
++++ b/src/storage.ts
+@@ -91,11 +91,18 @@ export async function initializeReorgRollbackTable<
+       DECLARE
+         table_name TEXT := TG_ARGV[0]::TEXT;
+         id_col TEXT := TG_ARGV[1]::TEXT;
+-        order_key INTEGER := TG_ARGV[2]::INTEGER;
+-        indexer_id TEXT := TG_ARGV[3]::TEXT;
++        order_key_text TEXT := current_setting('${SCHEMA_NAME}.reorg_order_key', true);
++        order_key INTEGER;
++        indexer_id TEXT := TG_ARGV[2]::TEXT;
+         new_id_value TEXT := row_to_json(NEW.*)->>id_col;
+         old_id_value TEXT := row_to_json(OLD.*)->>id_col;
+       BEGIN
++        IF order_key_text IS NULL THEN
++          RETURN NULL;
++        END IF;
++
++        order_key := order_key_text::INTEGER;
++
+         IF (TG_OP = 'DELETE') THEN
+           INSERT INTO ${SCHEMA_NAME}.${ROLLBACK_TABLE_NAME}(op, table_name, cursor, row_id, row_value, indexer_id)
+             SELECT 'D', table_name, order_key, old_id_value, row_to_json(OLD.*), indexer_id;
+@@ -129,7 +136,6 @@ export async function registerTriggers<
+ >(
+   tx: PgTransaction<TQueryResult, TFullSchema, TSchema>,
+   tables: string[],
+-  endCursor: Cursor,
+   idColumnMap: IdColumnMap,
+   indexerId: string,
+ ) {
+@@ -148,7 +154,7 @@ export async function registerTriggers<
+           CREATE CONSTRAINT TRIGGER ${getReorgTriggerName(table, indexerId)}
+           AFTER INSERT OR UPDATE OR DELETE ON ${table}
+           DEFERRABLE INITIALLY DEFERRED
+-          FOR EACH ROW EXECUTE FUNCTION ${SCHEMA_NAME}.reorg_checkpoint('${table}', '${tableIdColumn}', ${Number(endCursor.orderKey)}, '${indexerId}');
++          FOR EACH ROW EXECUTE FUNCTION ${SCHEMA_NAME}.reorg_checkpoint('${table}', '${tableIdColumn}', '${indexerId}');
+         `),
+       );
+     }
+@@ -159,6 +165,28 @@ export async function registerTriggers<
+   }
+ }
+ 
++export async function setReorgOrderKey<
++  TQueryResult extends PgQueryResultHKT,
++  TFullSchema extends Record<string, unknown> = Record<string, never>,
++  TSchema extends
++    TablesRelationalConfig = ExtractTablesWithRelations<TFullSchema>,
++>(
++  tx: PgTransaction<TQueryResult, TFullSchema, TSchema>,
++  endCursor: Cursor,
++) {
++  try {
++    await tx.execute(
++      sql.raw(
++        `SELECT set_config('${SCHEMA_NAME}.reorg_order_key', '${Number(endCursor.orderKey)}', true);`,
++      ),
++    );
++  } catch (error) {
++    throw new DrizzleStorageError("Failed to set reorg order key", {
++      cause: error,
++    });
++  }
++}
++
+ export async function removeTriggers<
+   TQueryResult extends PgQueryResultHKT,
+   TFullSchema extends Record<string, unknown> = Record<string, never>,
