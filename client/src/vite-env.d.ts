@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import type { ChainId } from "./utils/networkConfig";
 
 declare module '*.svg' {
   const content: string;
@@ -41,9 +42,12 @@ declare module '*.bmp' {
 }
 
 interface ImportMetaEnv {
+  readonly VITE_PUBLIC_CHAIN: ChainId;
+  readonly VITE_PUBLIC_SUMMIT_ADDRESS: string;
+  readonly VITE_PUBLIC_API_URL?: string;
+  readonly VITE_PUBLIC_WS_URL?: string;
   readonly VITE_PUBLIC_POSTHOG_KEY: string;
   readonly VITE_PUBLIC_POSTHOG_HOST: string;
-  // Add other env variables here as needed
 }
 
 interface ImportMeta {

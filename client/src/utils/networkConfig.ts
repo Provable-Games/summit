@@ -184,6 +184,8 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
   if (!network) throw new Error(`Network ${networkKey} not found`);
 
   const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS
+  const apiUrl = import.meta.env.VITE_PUBLIC_API_URL?.trim() || network.apiUrl;
+  const wsUrl = import.meta.env.VITE_PUBLIC_WS_URL?.trim() || network.wsUrl;
 
   const policies = {
     "contracts": {
@@ -353,8 +355,8 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
     policies: policies,
     rpcUrl: network.rpcUrl,
     toriiUrl: network.torii,
-    apiUrl: network.apiUrl,
-    wsUrl: network.wsUrl,
+    apiUrl,
+    wsUrl,
     chains: [{ rpcUrl: network.rpcUrl }],
     tokens: network.tokens,
     denshokan: network.denshokan,

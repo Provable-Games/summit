@@ -7,3 +7,5 @@ coverage
 README.md
 AGENTS.md
 *.log
+.env
+.env.*

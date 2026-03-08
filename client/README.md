@@ -38,6 +38,8 @@ The repo includes `client/.env` with mainnet values. If you need to override, se
 | --- | --- |
 | `VITE_PUBLIC_CHAIN` | Network key (typically `SN_MAIN`). |
 | `VITE_PUBLIC_SUMMIT_ADDRESS` | Summit contract address used by client policy config. |
+| `VITE_PUBLIC_API_URL` | Optional API base URL override (falls back to network default). |
+| `VITE_PUBLIC_WS_URL` | Optional WebSocket URL override (falls back to network default). |
 | `VITE_PUBLIC_POSTHOG_KEY` | PostHog key. |
 | `VITE_PUBLIC_POSTHOG_HOST` | PostHog host. |
 
@@ -46,6 +48,8 @@ Example:
 ```env
 VITE_PUBLIC_CHAIN=SN_MAIN
 VITE_PUBLIC_SUMMIT_ADDRESS=0x0455c73741519a2d661cad966913ee5ccb24596c518ad67dd1d189b49c15d4fa
+VITE_PUBLIC_API_URL=https://<your-api-domain>
+VITE_PUBLIC_WS_URL=wss://<your-api-domain>/ws
 VITE_PUBLIC_POSTHOG_KEY=<your-key>
 VITE_PUBLIC_POSTHOG_HOST=<your-host>
 ```
