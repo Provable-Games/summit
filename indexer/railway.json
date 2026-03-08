@@ -1,5 +1,8 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "watchPatterns": ["indexer/**"]
+  },
   "deploy": {
     "restartPolicyType": "ALWAYS",
     "restartPolicyMaxRetries": 10
