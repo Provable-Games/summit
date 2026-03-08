@@ -41,15 +41,19 @@ declare module '*.bmp' {
   export default content;
 }
 
-interface ImportMetaEnv {
-  readonly VITE_PUBLIC_CHAIN: ChainId;
-  readonly VITE_PUBLIC_SUMMIT_ADDRESS: string;
-  readonly VITE_PUBLIC_API_URL?: string;
-  readonly VITE_PUBLIC_WS_URL?: string;
-  readonly VITE_PUBLIC_POSTHOG_KEY: string;
-  readonly VITE_PUBLIC_POSTHOG_HOST: string;
+declare global {
+  interface ImportMetaEnv {
+    readonly VITE_PUBLIC_CHAIN: ChainId;
+    readonly VITE_PUBLIC_SUMMIT_ADDRESS: string;
+    readonly VITE_PUBLIC_API_URL?: string;
+    readonly VITE_PUBLIC_WS_URL?: string;
+    readonly VITE_PUBLIC_POSTHOG_KEY: string;
+    readonly VITE_PUBLIC_POSTHOG_HOST: string;
+  }
+
+  interface ImportMeta {
+    readonly env: ImportMetaEnv;
+  }
 }
 
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
-}
+export {};
