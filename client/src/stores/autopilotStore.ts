@@ -297,7 +297,7 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
       revivePotionMaxPerBeast: clampIntRange(
         parsed.revivePotionMaxPerBeast,
         1,
-        32,
+        64,
         DEFAULT_CONFIG.revivePotionMaxPerBeast,
       ),
 

@@ -483,8 +483,8 @@ export function selectOptimalBeasts(
   // Streak continuity: if max_attack_streak quest is active, a beast mid-streak gets top priority
   const streakQuestActive = config.questMode && config.questFilters.includes('max_attack_streak');
   const hasMidStreak = (b: Beast) => streakQuestActive && !b.max_attack_streak && b.attack_streak > 0;
-  // Streak urgency: any beast with a streak about to expire gets top priority (even without quest mode)
-  const hasUrgentStreak = (b: Beast) => streakQuestActive && isStreakUrgent(b);
+  // Streak urgency: any beast with a streak about to expire gets priority regardless of quest mode
+  const hasUrgentStreak = (b: Beast) => isStreakUrgent(b);
 
   // Sort both by combat score desc, with quest-needing beasts boosted
   const sortWithQuestBoost = (a: Beast, b: Beast) => {
@@ -634,7 +634,8 @@ export function selectOptimalBeasts(
     const bStreak = hasMidStreak(b.beast);
     if (aStreak && !bStreak) return -1;
     if (bStreak && !aStreak) return 1;
-    if (aStreak && bStreak && a.beast.attack_streak !== b.beast.attack_streak) return b.beast.attack_streak - a.beast.attack_streak;
+    // If both mid-streak, prefer lower streak (needs more work to complete)
+    if (aStreak && bStreak && a.beast.attack_streak !== b.beast.attack_streak) return a.beast.attack_streak - b.beast.attack_streak;
 
     // Both can solo the summit — prefer quest beasts, then cheaper, then higher damage
     const aCanSolo = a.damage >= damageThreshold;
@@ -773,7 +774,7 @@ function applyQuestBoost(
 
       // Try to swap the weakest selected beast for a quest-needing beast from outside the selection
       const aliveCandidate = alivePool
-        .filter((b) => !selectedIds.has(b.token_id) && needsQuest(b))
+        .filter((b) => !selectedIds.has(b.token_id) && needsQuest(b) && (b.combat?.estimatedDamage ?? 0) > 0)
         .sort((a, b) => (b.combat?.estimatedDamage ?? 0) - (a.combat?.estimatedDamage ?? 0))[0];
 
       if (aliveCandidate && result.length > 1) {
