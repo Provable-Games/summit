@@ -258,7 +258,7 @@ function ActionBar() {
         beast.prefix === summit.beast.prefix &&
         beast.suffix === summit.beast.suffix,
     );
-  }, [skipSharedDiplomacy, summit?.beast?.token_id, collection.length]);
+  }, [skipSharedDiplomacy, summit?.beast, collection]);
 
   const summitOwnerIgnored = useMemo(() => {
     if (ignoredPlayers.length === 0 || !summit?.owner) return false;

@@ -9,7 +9,6 @@ import {
   computeTwammTimes,
   generateCreateDcaOrderCalls,
   generateWithdrawProceedsCalls,
-  generateCancelDcaOrderCalls,
   fetchTwammOrders,
   getDcaOrderProceeds,
 } from '@/api/ekubo';
@@ -17,7 +16,6 @@ import { TOKEN_ADDRESS } from '@/utils/networkConfig';
 import type { NetworkConfig } from '@/utils/networkConfig';
 import { gameColors } from '@/utils/themes';
 import { formatAmount } from '@/utils/utils';
-import CancelIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import {
@@ -120,7 +118,7 @@ export default function DCATab({
   const refreshOrders = useCallback(async () => {
     if (!address) return;
 
-    let apiPositions: TwammApiPosition[] = [];
+    let apiPositions: TwammApiPosition[];
     try {
       apiPositions = await fetchTwammOrders(address);
     } catch (err) {
