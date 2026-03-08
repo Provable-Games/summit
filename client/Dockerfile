@@ -21,7 +21,9 @@ ENV VITE_PUBLIC_POSTHOG_KEY=$VITE_PUBLIC_POSTHOG_KEY
 ENV VITE_PUBLIC_POSTHOG_HOST=$VITE_PUBLIC_POSTHOG_HOST
 
 RUN test -n "$VITE_PUBLIC_CHAIN" || (echo "Missing required build arg: VITE_PUBLIC_CHAIN" && exit 1) && \
-    test -n "$VITE_PUBLIC_SUMMIT_ADDRESS" || (echo "Missing required build arg: VITE_PUBLIC_SUMMIT_ADDRESS" && exit 1)
+    test -n "$VITE_PUBLIC_SUMMIT_ADDRESS" || (echo "Missing required build arg: VITE_PUBLIC_SUMMIT_ADDRESS" && exit 1) && \
+    if [ -n "$VITE_PUBLIC_API_URL" ] && [ -z "$VITE_PUBLIC_WS_URL" ]; then echo "VITE_PUBLIC_WS_URL is required when VITE_PUBLIC_API_URL is set"; exit 1; fi && \
+    if [ -z "$VITE_PUBLIC_API_URL" ] && [ -n "$VITE_PUBLIC_WS_URL" ]; then echo "VITE_PUBLIC_API_URL is required when VITE_PUBLIC_WS_URL is set"; exit 1; fi
 
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable && \

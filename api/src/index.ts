@@ -9,7 +9,7 @@ import { logger } from "hono/logger";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { v4 as uuidv4 } from "uuid";
-import { eq, sql, desc, and, inArray } from "drizzle-orm";
+import { eq, sql, desc, and, inArray, isNotNull } from "drizzle-orm";
 import "dotenv/config";
 
 import { checkDatabaseHealth, db } from "./db/client.js";
@@ -597,6 +597,7 @@ app.get("/leaderboard", async (c) => {
       amount: sql<number>`sum(${rewards_earned.amount})`,
     })
     .from(rewards_earned)
+    .where(isNotNull(rewards_earned.owner))
     .groupBy(rewards_earned.owner)
     .orderBy(sql`sum(${rewards_earned.amount}) desc`);
 
