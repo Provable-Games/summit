@@ -117,6 +117,15 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   const [actionFailed, setActionFailed] = useReducer((x) => x + 1, 0);
   const [pauseUpdates, setPauseUpdates] = useState(false);
 
+  const safePadAddress = (address?: string | null): string | null => {
+    if (!address || address === "0x") return null;
+    try {
+      return addAddressPadding(address);
+    } catch {
+      return null;
+    }
+  };
+
   const handleSummit = (data: SummitData) => {
     const current_level = getBeastCurrentLevel(data.level, data.bonus_xp);
     const sameBeast = summit?.beast.token_id === data.token_id;
@@ -160,7 +169,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     addLiveEvent(data);
 
     const { category, sub_category, data: eventData } = data;
-    const isOwnEvent = data.player === addAddressPadding(account?.address ?? "");
+    const eventPlayer = safePadAddress(data.player);
+    const accountAddress = safePadAddress(account?.address);
+    const isOwnEvent =
+      eventPlayer !== null &&
+      accountAddress !== null &&
+      eventPlayer === accountAddress;
 
     // Helper to get beast info from event data
     const getBeastInfo = () => {
@@ -186,8 +200,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     // Helper to add notification with player name lookup
     const addNotificationWithPlayer = (notification: Parameters<typeof addGameNotification>[0]) => {
-      if (data.player) {
-        lookupAddressName(data.player).then(playerName => {
+      if (eventPlayer) {
+        lookupAddressName(eventPlayer).then(playerName => {
           addGameNotification({ ...notification, playerName: playerName || 'Unknown' });
         }).catch(() => {
           addGameNotification({ ...notification, playerName: 'Unknown' });
@@ -223,7 +237,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
             beast_token_id: eventData.beast_token_id as number,
             block_timestamp: Math.floor(new Date(data.created_at).getTime() / 1000),
             count: eventData.count as number,
-            player: data.player,
+            player: eventPlayer,
           });
         }
 
@@ -471,6 +485,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
 
     // Fetch diplomacy if not already set
     if (!summit.diplomacy) {
+      if (!summit.beast.prefix || !summit.beast.suffix) return;
+
       const fetchDiplomacy = async () => {
         try {
           const beasts = await getDiplomacy(

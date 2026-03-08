@@ -234,7 +234,6 @@ export const useSummitApi = () => {
     const suffixId = typeof suffix === "string" ? SUFFIX_NAME_TO_ID[suffix] : suffix;
 
     if (!prefixId || !suffixId) {
-      console.error("[getDiplomacy] Invalid prefix/suffix:", prefix, suffix);
       return [];
     }
 
