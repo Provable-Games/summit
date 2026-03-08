@@ -34,11 +34,13 @@ FROM caddy:2.8.4-alpine AS production
 
 WORKDIR /srv
 
-COPY --from=builder --chown=caddy:caddy /app/dist /srv
-COPY --chown=caddy:caddy Caddyfile /etc/caddy/Caddyfile
+RUN addgroup -S app && adduser -S -D -H -u 10001 -G app app
+
+COPY --from=builder --chown=app:app /app/dist /srv
+COPY --chown=app:app Caddyfile /etc/caddy/Caddyfile
 
 ENV PORT=3000
 
-USER caddy
+USER app
 
 EXPOSE 3000
