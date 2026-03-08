@@ -6,6 +6,13 @@ const notifyTargetClickedMock = vi.fn();
 
 const mockControllerState = {
   tokenBalances: {} as Record<string, number>,
+  consumablesSupply: {
+    attack: 0,
+    revive: 0,
+    xlife: 0,
+    poison: 0,
+  },
+  getConsumablesSupply: vi.fn(async () => {}),
 };
 
 const mockGameStoreState = {
@@ -27,6 +34,7 @@ const mockGameStoreState = {
   setAutopilotLog: vi.fn(),
   autopilotEnabled: false,
   setAutopilotEnabled: vi.fn(),
+  ignoredPlayers: [],
   appliedExtraLifePotions: 0,
   setAppliedExtraLifePotions: vi.fn(),
 };
@@ -56,6 +64,9 @@ const mockAutopilotState = {
   poisonConservativeExtraLivesTrigger: 0,
   poisonConservativeAmount: 0,
   poisonAggressiveAmount: 0,
+  maxBeastsPerAttack: 10,
+  skipSharedDiplomacy: false,
+  ignoredPlayers: [] as Array<{ name: string; address: string }>,
 };
 
 vi.mock("@/contexts/controller", () => ({

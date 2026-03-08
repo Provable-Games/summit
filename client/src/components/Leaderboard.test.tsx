@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const hoisted = vi.hoisted(() => ({
   fetchBeastCountsMock: vi.fn(),
+  fetchStatsMock: vi.fn(),
   setLeaderboardMock: vi.fn(),
   getLeaderboardMock: vi.fn(),
   lookupAddressNamesMock: vi.fn(),
@@ -17,6 +18,8 @@ vi.mock("@/contexts/Statistics", () => ({
   useStatistics: () => ({
     beastsRegistered: 10,
     beastsAlive: 3,
+    consumablesSupply: { attack: 0, revive: 0, xlife: 0, poison: 0 },
+    fetchStats: hoisted.fetchStatsMock,
     fetchBeastCounts: hoisted.fetchBeastCountsMock,
   }),
 }));
