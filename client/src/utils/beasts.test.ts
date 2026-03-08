@@ -15,6 +15,8 @@ import {
   calculateOptimalAttackPotions,
   calculateMaxAttackPotions,
   calculateRevivalRequired,
+  fetchBeastImage,
+  fetchBeastSummitImage,
   BEAST_LOCK_DURATION_MS,
 } from "./beasts";
 
@@ -105,6 +107,26 @@ describe("normaliseHealth", () => {
 
   it("calculates fractional percentage", () => {
     expect(normaliseHealth(25, 200)).toBe(12.5);
+  });
+});
+
+describe("beast image path helpers", () => {
+  it("normalizes whitespace/punctuation in beast names", () => {
+    expect(
+      fetchBeastImage({ name: "Dire Wolf", shiny: 0, animated: 0 }),
+    ).toBe("/images/nfts/static/regular/direwolf.png");
+  });
+
+  it("falls back to id mapping when name is missing", () => {
+    expect(
+      fetchBeastImage({ id: 53, shiny: 1, animated: 0 }),
+    ).toBe("/images/nfts/static/shiny/balrog.png");
+  });
+
+  it("uses a stable default image when name/id are missing", () => {
+    expect(
+      fetchBeastSummitImage(makeBeast({ name: "" })),
+    ).toBe("/images/beasts/warlock.png");
   });
 });
 

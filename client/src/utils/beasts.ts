@@ -12,8 +12,26 @@ export const fetchBeastTypeImage = (type: string): string => {
   }
 }
 
+type BeastImagePathInput = Partial<Pick<Beast, "name" | "id" | "token_id">>;
+
+const toBeastImageSlug = (value: string | null | undefined): string =>
+  value?.toLowerCase().replace(/[^a-z0-9]/g, "") ?? "";
+
+const resolveBeastImageSlug = (beast: BeastImagePathInput): string => {
+  const fromName = toBeastImageSlug(beast.name);
+  if (fromName) return fromName;
+
+  if (typeof beast.id === "number") {
+    const mappedName = BEAST_NAMES[beast.id as keyof typeof BEAST_NAMES];
+    const fromId = toBeastImageSlug(mappedName);
+    if (fromId) return fromId;
+  }
+
+  return "warlock";
+};
+
 export const fetchBeastSummitImage = (beast: Beast) => {
-  return `/images/beasts/${beast.name.toLowerCase()}.png`;
+  return `/images/beasts/${resolveBeastImageSlug(beast)}.png`;
 };
 
 export const fetchBeastSound = (beastId: number): SoundName => {
@@ -29,16 +47,17 @@ export const fetchBeastSound = (beastId: number): SoundName => {
 }
 
 export const fetchBeastImage = (
-  beast: Pick<Beast, "name"> & { shiny: number | boolean; animated: number | boolean }
+  beast: BeastImagePathInput & { shiny: number | boolean; animated: number | boolean }
 ) => {
+  const slug = resolveBeastImageSlug(beast);
   if (beast.shiny && beast.animated) {
-    return `/images/nfts/animated/shiny/${beast.name.toLowerCase()}.gif`;
+    return `/images/nfts/animated/shiny/${slug}.gif`;
   } else if (beast.animated) {
-    return `/images/nfts/animated/regular/${beast.name.toLowerCase()}.gif`;
+    return `/images/nfts/animated/regular/${slug}.gif`;
   } else if (beast.shiny) {
-    return `/images/nfts/static/shiny/${beast.name.toLowerCase()}.png`;
+    return `/images/nfts/static/shiny/${slug}.png`;
   } else {
-    return `/images/nfts/static/regular/${beast.name.toLowerCase()}.png`;
+    return `/images/nfts/static/regular/${slug}.png`;
   }
 };
 
