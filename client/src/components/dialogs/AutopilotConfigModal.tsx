@@ -90,9 +90,13 @@ const POISON_OPTIONS: {
 
 const QUEST_OPTIONS: { id: string; label: string; description: string }[] = [
   { id: 'attack_summit', label: 'First Blood', description: 'Prioritize beasts that have never attacked the Summit.' },
-  { id: 'max_attack_streak', label: 'Consistency is Key', description: 'Prioritize beasts that haven\'t reached max attack streak of 10.' },
+  { id: 'max_attack_streak', label: 'Consistency is Key', description: 'Prioritize beasts that haven\'t reached max attack streak of 10. Continues sending the same beast mid-streak.' },
+  { id: 'level_up_1', label: 'Growing Stronger', description: 'Prioritize beasts that haven\'t levelled up once.' },
+  { id: 'level_up_3', label: 'Rising Power', description: 'Prioritize beasts that haven\'t levelled up 3 times.' },
+  { id: 'level_up_5', label: 'Apex Predator', description: 'Prioritize beasts that haven\'t levelled up 5 times.' },
+  { id: 'level_up_10', label: 'Mastery', description: 'Prioritize beasts that haven\'t levelled up 10 times.' },
   { id: 'take_summit', label: 'Summit Conqueror', description: 'Prioritize beasts that haven\'t captured the Summit.' },
-  { id: 'hold_summit_10s', label: 'Iron Grip', description: 'Prioritize beasts that haven\'t held the Summit for 10 seconds.' },
+  { id: 'hold_summit_10s', label: 'Iron Grip', description: 'Prioritize beasts that haven\'t held the Summit for 10 seconds. Applies extra lives to protect your beast while holding.' },
   { id: 'revival_potion', label: 'Second Wind', description: 'Prioritize beasts that haven\'t used a revival potion.' },
   { id: 'attack_potion', label: 'A Vital Boost', description: 'Prioritize beasts that haven\'t used an attack potion.' },
 ];
@@ -556,6 +560,8 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     setQuestMode,
     questFilters,
     setQuestFilters,
+    ironGripExtraLifeMax,
+    setIronGripExtraLifeMax,
     targetedPoisonPlayers,
     addTargetedPoisonPlayer,
     removeTargetedPoisonPlayer,
@@ -1208,27 +1214,40 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
             {questMode && (
               <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                 {QUEST_OPTIONS.map((quest) => (
-                  <FormControlLabel
-                    key={quest.id}
-                    control={
-                      <Checkbox
-                        checked={questFilters.includes(quest.id)}
-                        onChange={() => handleToggleQuestFilter(quest.id)}
-                        sx={{
-                          color: `${gameColors.accentGreen}60`,
-                          '&.Mui-checked': { color: gameColors.brightGreen },
-                          padding: '4px 8px',
-                        }}
-                        size="small"
-                      />
-                    }
-                    label={
-                      <Box>
-                        <Typography sx={{ fontSize: '12px', fontWeight: 'bold', color: '#ffedbb' }}>{quest.label}</Typography>
-                        <Typography sx={{ fontSize: '11px', color: '#9aa', lineHeight: 1.2 }}>{quest.description}</Typography>
+                  <React.Fragment key={quest.id}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={questFilters.includes(quest.id)}
+                          onChange={() => handleToggleQuestFilter(quest.id)}
+                          sx={{
+                            color: `${gameColors.accentGreen}60`,
+                            '&.Mui-checked': { color: gameColors.brightGreen },
+                            padding: '4px 8px',
+                          }}
+                          size="small"
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography sx={{ fontSize: '12px', fontWeight: 'bold', color: '#ffedbb' }}>{quest.label}</Typography>
+                          <Typography sx={{ fontSize: '11px', color: '#9aa', lineHeight: 1.2 }}>{quest.description}</Typography>
+                        </Box>
+                      }
+                    />
+                    {quest.id === 'hold_summit_10s' && questFilters.includes('hold_summit_10s') && (
+                      <Box sx={{ ml: 4.5, mb: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography sx={{ fontSize: '11px', color: '#9aa', whiteSpace: 'nowrap' }}>Max extra lives</Typography>
+                        {numberField(
+                          ironGripExtraLifeMax,
+                          setIronGripExtraLifeMax,
+                          false,
+                          0,
+                          Math.min(Number(extraLifeAvailable) || 0, 4000),
+                        )}
                       </Box>
-                    }
-                  />
+                    )}
+                  </React.Fragment>
                 ))}
               </Box>
             )}

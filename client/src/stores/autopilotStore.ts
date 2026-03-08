@@ -27,6 +27,7 @@ type AutopilotSessionCounters = {
   attackPotionsUsed: number;
   extraLifePotionsUsed: number;
   poisonPotionsUsed: number;
+  ironGripExtraLifeUsed: number;
 };
 
 interface AutopilotConfig {
@@ -77,6 +78,8 @@ interface AutopilotConfig {
   questMode: boolean;
   // Quest IDs to prioritize, e.g. ['take_summit', 'revival_potion', 'attack_potion']
   questFilters: string[];
+  // Iron Grip: max extra life potions to spend protecting your beast while it holds the summit (0..4000)
+  ironGripExtraLifeMax: number;
   // Players whose summit beasts should always be poisoned (with custom amounts)
   targetedPoisonPlayers: TargetedPoisonPlayer[];
   // Specific beasts (by token ID) that should always be poisoned when on summit
@@ -111,6 +114,7 @@ type AutopilotConfigStorageShape = Partial<AutopilotPersistedConfig> & {
   poisonTotalMax?: unknown;
   questMode?: unknown;
   questFilters?: unknown;
+  ironGripExtraLifeMax?: unknown;
   targetedPoisonPlayers?: unknown;
   targetedPoisonBeasts?: unknown;
   snipeAt1Hp?: unknown;
@@ -151,6 +155,7 @@ interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCount
   setPoisonAggressiveAmount: (poisonAggressiveAmount: number) => void;
   setQuestMode: (questMode: boolean) => void;
   setQuestFilters: (questFilters: string[]) => void;
+  setIronGripExtraLifeMax: (ironGripExtraLifeMax: number) => void;
   addTargetedPoisonPlayer: (player: TargetedPoisonPlayer) => void;
   removeTargetedPoisonPlayer: (address: string) => void;
   setTargetedPoisonAmount: (address: string, amount: number) => void;
@@ -180,6 +185,7 @@ interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCount
   setAttackPotionsUsed: (attackPotionsUsed: number | ((prev: number) => number)) => void;
   setExtraLifePotionsUsed: (extraLifePotionsUsed: number | ((prev: number) => number)) => void;
   setPoisonPotionsUsed: (poisonPotionsUsed: number | ((prev: number) => number)) => void;
+  setIronGripExtraLifeUsed: (ironGripExtraLifeUsed: number | ((prev: number) => number)) => void;
   resetToDefaults: () => void;
 }
 
@@ -207,6 +213,7 @@ const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   poisonAggressiveAmount: 100,
   questMode: false,
   questFilters: [],
+  ironGripExtraLifeMax: 20,
   targetedPoisonPlayers: [],
   targetedPoisonBeasts: [],
   snipeAt1Hp: false,
@@ -226,6 +233,7 @@ const DEFAULT_SESSION_COUNTERS: AutopilotSessionCounters = {
   attackPotionsUsed: 0,
   extraLifePotionsUsed: 0,
   poisonPotionsUsed: 0,
+  ironGripExtraLifeUsed: 0,
 };
 
 function sanitizeNonNegativeInt(value: unknown, fallback: number): number {
@@ -349,6 +357,7 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
       questFilters: Array.isArray(parsed.questFilters)
         ? parsed.questFilters.filter((f): f is string => typeof f === 'string')
         : DEFAULT_CONFIG.questFilters,
+      ironGripExtraLifeMax: clampIntRange(parsed.ironGripExtraLifeMax, 0, 4000, DEFAULT_CONFIG.ironGripExtraLifeMax),
       targetedPoisonPlayers: Array.isArray(parsed.targetedPoisonPlayers)
         ? parsed.targetedPoisonPlayers
             .filter(
@@ -463,6 +472,12 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
 
       questMode: partial.questMode ?? get().questMode,
       questFilters: partial.questFilters ?? get().questFilters,
+      ironGripExtraLifeMax: clampIntRange(
+        partial.ironGripExtraLifeMax ?? get().ironGripExtraLifeMax,
+        0,
+        4000,
+        DEFAULT_CONFIG.ironGripExtraLifeMax,
+      ),
       targetedPoisonPlayers: partial.targetedPoisonPlayers ?? get().targetedPoisonPlayers,
       targetedPoisonBeasts: partial.targetedPoisonBeasts ?? get().targetedPoisonBeasts,
 
@@ -569,6 +584,8 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       set(() => persist({ questMode })),
     setQuestFilters: (questFilters: string[]) =>
       set(() => persist({ questFilters: questFilters.filter((f) => typeof f === 'string') })),
+    setIronGripExtraLifeMax: (ironGripExtraLifeMax: number) =>
+      set(() => persist({ ironGripExtraLifeMax })),
     addTargetedPoisonPlayer: (player: TargetedPoisonPlayer) =>
       set(() => {
         const current = get().targetedPoisonPlayers;
@@ -639,6 +656,7 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
     setAttackPotionsUsed: (update) => updateCounter('attackPotionsUsed', update),
     setExtraLifePotionsUsed: (update) => updateCounter('extraLifePotionsUsed', update),
     setPoisonPotionsUsed: (update) => updateCounter('poisonPotionsUsed', update),
+    setIronGripExtraLifeUsed: (update) => updateCounter('ironGripExtraLifeUsed', update),
     resetToDefaults: () =>
       set(() => {
         return { ...persist({ ...DEFAULT_CONFIG }), ...DEFAULT_SESSION_COUNTERS };

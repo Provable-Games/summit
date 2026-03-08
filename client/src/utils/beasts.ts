@@ -148,6 +148,25 @@ export const getBeastCurrentHealth = (beast: Beast): number => {
 // During this window it cannot be selected as an attacker.
 export const BEAST_LOCK_DURATION_MS = 24 * 60 * 60 * 1000;
 
+// Attack streak resets if 48 hours pass since last_death_timestamp (contract: BASE_REVIVAL_TIME_SECONDS * 2)
+export const STREAK_RESET_WINDOW_MS = 48 * 60 * 60 * 1000;
+// Urgency threshold: beasts within 1 hour of losing their streak need priority
+export const STREAK_URGENCY_THRESHOLD_MS = 1 * 60 * 60 * 1000;
+
+/** Returns ms remaining before this beast's attack streak resets, or Infinity if alive/no streak. */
+export function getStreakTimeRemainingMs(beast: Beast): number {
+  if (beast.attack_streak === 0 || beast.max_attack_streak) return Infinity;
+  if (beast.last_death_timestamp === 0) return Infinity;
+  const deadlineMs = beast.last_death_timestamp * 1000 + STREAK_RESET_WINDOW_MS;
+  return Math.max(0, deadlineMs - Date.now());
+}
+
+/** True if the beast has an active streak that will expire within the urgency threshold. */
+export function isStreakUrgent(beast: Beast): boolean {
+  const remaining = getStreakTimeRemainingMs(beast);
+  return remaining > 0 && remaining <= STREAK_URGENCY_THRESHOLD_MS;
+}
+
 export const isBeastLocked = (beast: Beast): boolean => {
   if (!beast.last_dm_death_timestamp) return false;
 
@@ -461,8 +480,34 @@ export function selectOptimalBeasts(
     : [];
   const needsAnyQuest = (b: Beast) => questPredicates.some((p) => p(b));
 
+  // Streak continuity: if max_attack_streak quest is active, a beast mid-streak gets top priority
+  const streakQuestActive = config.questMode && config.questFilters.includes('max_attack_streak');
+  const hasMidStreak = (b: Beast) => streakQuestActive && !b.max_attack_streak && b.attack_streak > 0;
+  // Streak urgency: any beast with a streak about to expire gets top priority (even without quest mode)
+  const hasUrgentStreak = (b: Beast) => streakQuestActive && isStreakUrgent(b);
+
   // Sort both by combat score desc, with quest-needing beasts boosted
   const sortWithQuestBoost = (a: Beast, b: Beast) => {
+    // Streak urgency: beasts about to lose their streak get absolute priority
+    const aUrgent = hasUrgentStreak(a);
+    const bUrgent = hasUrgentStreak(b);
+    if (aUrgent && !bUrgent) return -1;
+    if (bUrgent && !aUrgent) return 1;
+    // If both urgent, prefer the one closer to expiry
+    if (aUrgent && bUrgent) {
+      const aRemaining = getStreakTimeRemainingMs(a);
+      const bRemaining = getStreakTimeRemainingMs(b);
+      if (aRemaining !== bRemaining) return aRemaining - bRemaining;
+    }
+
+    // Streak continuity: strongly prefer a beast mid-streak to avoid resetting progress
+    const aStreak = hasMidStreak(a);
+    const bStreak = hasMidStreak(b);
+    if (aStreak && !bStreak) return -1;
+    if (bStreak && !aStreak) return 1;
+    // If both mid-streak, prefer lower streak (needs more work to complete)
+    if (aStreak && bStreak && a.attack_streak !== b.attack_streak) return a.attack_streak - b.attack_streak;
+
     if (questPredicates.length > 0) {
       const aNeeds = needsAnyQuest(a);
       const bNeeds = needsAnyQuest(b);
@@ -495,7 +540,7 @@ export function selectOptimalBeasts(
 
     // Quest boosting for alive-only path
     if (config.questMode && config.questFilters.length > 0) {
-      filtered = applyQuestBoost(filtered, dead, summit, config, attackPotionsEnabled);
+      filtered = applyQuestBoost(filtered, alive, dead, summit, config, attackPotionsEnabled);
     }
 
     return filtered;
@@ -573,6 +618,24 @@ export function selectOptimalBeasts(
   const questActive = config.questMode && questPredicates.length > 0;
 
   candidates.sort((a, b) => {
+    // Streak urgency: beasts about to lose their streak get absolute priority
+    const aUrgent = hasUrgentStreak(a.beast);
+    const bUrgent = hasUrgentStreak(b.beast);
+    if (aUrgent && !bUrgent) return -1;
+    if (bUrgent && !aUrgent) return 1;
+    if (aUrgent && bUrgent) {
+      const aRemaining = getStreakTimeRemainingMs(a.beast);
+      const bRemaining = getStreakTimeRemainingMs(b.beast);
+      if (aRemaining !== bRemaining) return aRemaining - bRemaining;
+    }
+
+    // Streak continuity: strongly prefer a beast mid-streak (even over solo/cost considerations)
+    const aStreak = hasMidStreak(a.beast);
+    const bStreak = hasMidStreak(b.beast);
+    if (aStreak && !bStreak) return -1;
+    if (bStreak && !aStreak) return 1;
+    if (aStreak && bStreak && a.beast.attack_streak !== b.beast.attack_streak) return b.beast.attack_streak - a.beast.attack_streak;
+
     // Both can solo the summit — prefer quest beasts, then cheaper, then higher damage
     const aCanSolo = a.damage >= damageThreshold;
     const bCanSolo = b.damage >= damageThreshold;
@@ -642,6 +705,10 @@ export function questNeedsPredicate(quest: string): ((beast: Beast) => boolean) 
     case 'max_attack_streak': return (b) => !b.max_attack_streak;
     case 'take_summit': return (b) => !b.captured_summit;
     case 'hold_summit_10s': return (b) => b.summit_held_seconds < 10;
+    case 'level_up_1': return (b) => b.current_level - b.level < 1;
+    case 'level_up_3': return (b) => b.current_level - b.level < 3;
+    case 'level_up_5': return (b) => b.current_level - b.level < 5;
+    case 'level_up_10': return (b) => b.current_level - b.level < 10;
     case 'revival_potion': return (b) => !b.used_revival_potion;
     case 'attack_potion': return (b) => !b.used_attack_potion;
     default: return null;
@@ -650,6 +717,7 @@ export function questNeedsPredicate(quest: string): ((beast: Beast) => boolean) 
 
 function applyQuestBoost(
   selected: Beast[],
+  alivePool: Beast[],
   deadPool: Beast[],
   summit: Summit,
   config: SelectOptimalBeastsConfig,
@@ -703,9 +771,24 @@ function applyQuestBoost(
       const alreadyIncluded = result.some(needsQuest);
       if (alreadyIncluded) continue;
 
-      // Try to swap in a viable beast from outside the selection
-      // For now, the quest boost is best-effort — beasts are already sorted by efficiency,
-      // so if none in the selection need this quest, the remaining beasts likely all completed it.
+      // Try to swap the weakest selected beast for a quest-needing beast from outside the selection
+      const aliveCandidate = alivePool
+        .filter((b) => !selectedIds.has(b.token_id) && needsQuest(b))
+        .sort((a, b) => (b.combat?.estimatedDamage ?? 0) - (a.combat?.estimatedDamage ?? 0))[0];
+
+      if (aliveCandidate && result.length > 1) {
+        // Only swap if the candidate deals at least 50% of the weakest selected beast's damage
+        const weakestIdx = result.length - 1;
+        const weakestDmg = result[weakestIdx].combat?.estimatedDamage ?? 0;
+        if ((aliveCandidate.combat?.estimatedDamage ?? 0) >= weakestDmg * 0.5) {
+          selectedIds.delete(result[weakestIdx].token_id);
+          result[weakestIdx] = aliveCandidate;
+          selectedIds.add(aliveCandidate.token_id);
+        }
+      } else if (aliveCandidate && result.length === 0) {
+        result.push(aliveCandidate);
+        selectedIds.add(aliveCandidate.token_id);
+      }
     }
   }
 

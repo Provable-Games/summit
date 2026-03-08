@@ -26,7 +26,7 @@ import {
   isOwnerIgnored, isOwnerTargetedForPoison, getTargetedPoisonAmount,
   isBeastTargetedForPoison, getTargetedBeastPoisonAmount,
   hasDiplomacyMatch, selectOptimalBeasts, getStrongType, isWithinPoisonSchedule,
-  questNeedsPredicate,
+  questNeedsPredicate, isStreakUrgent,
 } from '../utils/beasts';
 import { gameColors } from '../utils/themes';
 import AutopilotConfigModal from './dialogs/AutopilotConfigModal';
@@ -88,6 +88,9 @@ function ActionBar() {
     targetedPoisonBeasts,
     questMode,
     questFilters,
+    ironGripExtraLifeMax,
+    ironGripExtraLifeUsed,
+    setIronGripExtraLifeUsed,
     snipeAt1Hp,
     poisonScheduleEnabled,
     poisonScheduleStartHour,
@@ -254,8 +257,10 @@ function ActionBar() {
     setAttackInProgress(false);
   }
 
-  const handleApplyExtraLife = (amount: number) => {
-    if (!summit?.beast || !isSavage || applyingPotions || amount === 0) return;
+  const handleApplyExtraLife = (amount: number): boolean => {
+    // Read fresh to avoid stale closure — multiple effects can trigger in the same cycle
+    const { applyingPotions: alreadyApplying } = useGameStore.getState();
+    if (!summit?.beast || !isSavage || alreadyApplying || amount === 0) return false;
 
     setApplyingPotions(true);
     setAutopilotLog('Adding extra lives...')
@@ -265,10 +270,13 @@ function ActionBar() {
       beastId: summit.beast.token_id,
       extraLifePotions: amount,
     });
+    return true;
   }
 
   const handleApplyPoison = (amount: number) => {
-    if (!summit?.beast || applyingPotions || amount === 0) return;
+    // Read fresh to avoid stale closure — multiple effects can trigger in the same cycle
+    const { applyingPotions: alreadyApplying } = useGameStore.getState();
+    if (!summit?.beast || alreadyApplying || amount === 0) return;
 
     setApplyingPotions(true);
     setAutopilotLog('Applying poison...')
@@ -386,10 +394,11 @@ function ActionBar() {
       : [];
     const needsQuest = (b: Beast) => predicates.some((p) => p(b));
 
-    // Prefer quest beast, otherwise weakest (save strong beasts for real fights)
+    // Prefer: urgent streak beast > quest beast > weakest (save strong beasts for real fights)
+    const urgentStreakCandidate = candidates.find(isStreakUrgent);
     const questCandidate = predicates.length > 0 ? candidates.find(needsQuest) : undefined;
     const weakest = candidates.sort((a, b) => (a.combat?.estimatedDamage ?? 0) - (b.combat?.estimatedDamage ?? 0))[0];
-    const best = questCandidate ?? weakest;
+    const best = urgentStreakCandidate ?? questCandidate ?? weakest;
     setAutopilotLog('Sniping 1HP summit beast...');
     executeGameAction({
       type: 'attack',
@@ -457,7 +466,17 @@ function ActionBar() {
     const myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
 
     if (myBeast) {
-      if (extraLifeStrategy === 'aggressive' && myBeast.extra_lives >= 0 && myBeast.extra_lives < extraLifeReplenishTo) {
+      // Iron Grip quest: if our beast hasn't held 10s yet, proactively apply extra lives using dedicated budget
+      const ironGripActive = questMode && questFilters.includes('hold_summit_10s') && myBeast.summit_held_seconds < 10;
+      const ironGripBudget = ironGripExtraLifeMax - ironGripExtraLifeUsed;
+      if (ironGripActive && ironGripBudget > 0 && myBeast.extra_lives < 1) {
+        // Only apply when beast has no extra lives (about to be vulnerable)
+        const amount = Math.min(ironGripBudget, 1);
+        setAutopilotLog('Iron Grip: protecting summit beast...');
+        if (handleApplyExtraLife(amount)) {
+          setIronGripExtraLifeUsed(amount);
+        }
+      } else if (extraLifeStrategy === 'aggressive' && myBeast.extra_lives >= 0 && myBeast.extra_lives < extraLifeReplenishTo) {
         const extraLifePotions = Math.min(extraLifeTotalMax - extraLifePotionsUsed, extraLifeReplenishTo - myBeast.extra_lives);
         if (extraLifePotions > 0) {
           handleApplyExtraLife(extraLifePotions);
@@ -466,14 +485,6 @@ function ActionBar() {
 
       return;
     };
-
-    // if (poisonStrategy === 'conservative'
-    //   && summit.beast.extra_lives >= poisonConservativeExtraLivesTrigger
-    //   && summit.poison_count < poisonConservativeAmount) {
-    //   const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
-    //   const poisonBalance = tokenBalances?.["POISON"] || 0;
-    //   handleApplyPoison(Math.min(poisonConservativeAmount - summit.poison_count, poisonBalance, remainingCap));
-    // }
 
     let extraLifePotions = 0;
     if (extraLifeStrategy === 'after_capture') {
@@ -492,7 +503,7 @@ function ActionBar() {
     } else if (effectiveAttackStrategy === 'guaranteed') {
       const beasts = collectionWithCombat.slice(0, maxBeastsPerAttack)
 
-      const totalSummitHealth = ((summit.beast.health + summit.beast.bonus_health) * summit.beast.extra_lives) + summit.beast.current_health;
+      const totalSummitHealth = ((summit.beast.health + summit.beast.bonus_health) * summit.beast.extra_lives) + Math.max(1, summit.beast.current_health || 0);
       const totalEstimatedDamage = beasts.reduce((acc, beast) => acc + (beast.combat?.estimatedDamage ?? 0), 0)
       if (totalEstimatedDamage < (totalSummitHealth * 1.1)) {
         return;
@@ -515,6 +526,7 @@ function ActionBar() {
     setAttackPotionsUsed(() => 0);
     setExtraLifePotionsUsed(() => 0);
     setPoisonPotionsUsed(() => 0);
+    setIronGripExtraLifeUsed(() => 0);
     setAutopilotEnabled(true);
   }
 
@@ -1084,8 +1096,8 @@ function ActionBar() {
                 next = Math.max(0, next);
                 const maxCap =
                   potion === 'extraLife'
-                    ? Math.min(tokenBalances["EXTRA LIFE"] || 4000)
-                    : Math.min(tokenBalances["POISON"] || 0, 2050);
+                    ? Math.min(tokenBalances["EXTRA LIFE"] ?? 0, 4000)
+                    : Math.min(tokenBalances["POISON"] ?? 0, 2050);
                 next = Math.min(next, maxCap);
                 if (potion === 'poison') {
                   setAppliedPoisonCount(next);
@@ -1099,8 +1111,8 @@ function ActionBar() {
                     min: 0,
                     max:
                       potion === 'extraLife'
-                        ? Math.min(tokenBalances["EXTRA LIFE"] || 4000)
-                        : Math.min(tokenBalances["POISON"] || 0, 2050),
+                        ? Math.min(tokenBalances["EXTRA LIFE"] ?? 0, 4000)
+                        : Math.min(tokenBalances["POISON"] ?? 0, 2050),
                     inputMode: 'numeric',
                   }
                 }
