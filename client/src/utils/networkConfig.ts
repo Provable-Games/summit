@@ -179,13 +179,57 @@ export const NETWORKS = {
   },
 };
 
+function deriveWsUrlFromApiUrl(apiUrl: string): string {
+  let parsedApiUrl: URL;
+  try {
+    parsedApiUrl = new URL(apiUrl);
+  } catch {
+    throw new Error(`Invalid VITE_PUBLIC_API_URL: ${apiUrl}`);
+  }
+
+  if (parsedApiUrl.protocol === "https:") {
+    parsedApiUrl.protocol = "wss:";
+  } else if (parsedApiUrl.protocol === "http:") {
+    parsedApiUrl.protocol = "ws:";
+  } else {
+    throw new Error(
+      `VITE_PUBLIC_API_URL must use http or https, received: ${parsedApiUrl.protocol}`,
+    );
+  }
+
+  parsedApiUrl.pathname = "/ws";
+  parsedApiUrl.search = "";
+  parsedApiUrl.hash = "";
+  return parsedApiUrl.toString();
+}
+
+function resolveApiAndWsUrls(network: { apiUrl: string; wsUrl: string }) {
+  const apiOverride = import.meta.env.VITE_PUBLIC_API_URL?.trim();
+  const wsOverride = import.meta.env.VITE_PUBLIC_WS_URL?.trim();
+
+  if (apiOverride && wsOverride) {
+    return { apiUrl: apiOverride, wsUrl: wsOverride };
+  }
+
+  if (apiOverride) {
+    return { apiUrl: apiOverride, wsUrl: deriveWsUrlFromApiUrl(apiOverride) };
+  }
+
+  if (wsOverride) {
+    throw new Error(
+      "VITE_PUBLIC_WS_URL requires VITE_PUBLIC_API_URL. Set both, or set only VITE_PUBLIC_API_URL.",
+    );
+  }
+
+  return { apiUrl: network.apiUrl, wsUrl: network.wsUrl };
+}
+
 export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
   const network = NETWORKS[networkKey as keyof typeof NETWORKS];
   if (!network) throw new Error(`Network ${networkKey} not found`);
 
-  const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS
-  const apiUrl = import.meta.env.VITE_PUBLIC_API_URL?.trim() || network.apiUrl;
-  const wsUrl = import.meta.env.VITE_PUBLIC_WS_URL?.trim() || network.wsUrl;
+  const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS;
+  const { apiUrl, wsUrl } = resolveApiAndWsUrls(network);
 
   const policies = {
     "contracts": {
