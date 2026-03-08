@@ -437,58 +437,29 @@ function ActionBar() {
 
     {/* Attack Button + Potions */}
     <Box sx={[styles.buttonGroup, (attackMode === 'autopilot' && autopilotEnabled) && styles.autopilotButtonGroup]}>
-      {attackMode === 'autopilot' && autopilotEnabled ? (
-        <Box sx={styles.autopilotOverlay}>
-          <Box sx={styles.autopilotOverlayInner}>
-            <Box sx={styles.autopilotOverlayHeader}>
-              <Box sx={styles.autopilotOverlayTitleWrap}>
-                <Box sx={styles.autopilotStatusDot} />
-                <Box>
-                  <Typography sx={styles.autopilotOverlayTitle}>
-                    AUTOPILOT
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Box sx={{ flex: 1 }} />
-
-              <Button
-                onClick={stopAutopilot}
-                sx={styles.autopilotOverlayStopButton}
-              >
-                Stop Autopilot
-              </Button>
-            </Box>
-
-            <Box sx={styles.autopilotOverlayContent}>
-              <Box sx={styles.autopilotOverlayBudgetsHeader}>
-                <Box>
-                  <Typography sx={styles.autopilotOverlayBudgetsTitle}>Potions Used</Typography>
-                </Box>
-                <Box sx={styles.autopilotOverlayBudgets}>
-                  {useRevivePotions && RenderRemainingPotion(revivePotionIcon, 'Revive', revivePotionsUsed, revivePotionMax)}
-                  {useAttackPotions && RenderRemainingPotion(attackPotionIcon, 'Attack', attackPotionsUsed, attackPotionMax)}
-                  {extraLifeStrategy !== 'disabled' && RenderRemainingPotion(lifePotionIcon, 'Life', extraLifePotionsUsed, extraLifeTotalMax)}
-                  {poisonStrategy !== 'disabled' && RenderRemainingPotion(poisonPotionIcon, 'Poison', poisonPotionsUsed, poisonTotalMax)}
-                </Box>
-              </Box>
-
-              <Box sx={styles.autopilotOverlayLog}>
-                <Box sx={styles.autopilotOverlayLogBody}>
-                  <Typography sx={styles.autopilotOverlayLogLine}>
-                    <span style={{ opacity: 0.65, marginRight: 8 }}>{'>'}</span>
-                    {autopilotLog}
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-          </Box>
-        </Box>
-      ) : (
         <>
           <Box sx={{ minWidth: isBrowser ? '265px' : '140px' }}>
             {(attackMode === 'autopilot' && autopilotEnabled) ? (
-              <Box sx={{ minWidth: '120px' }} />
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: '120px' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={styles.autopilotStatusDot} />
+                  <Typography sx={styles.autopilotOverlayTitle}>
+                    AUTOPILOT
+                  </Typography>
+                  <Button
+                    onClick={stopAutopilot}
+                    sx={styles.autopilotOverlayStopButton}
+                  >
+                    Stop
+                  </Button>
+                </Box>
+                {autopilotLog && (
+                  <Typography sx={styles.autopilotOverlayLogLine} noWrap>
+                    <span style={{ opacity: 0.65, marginRight: 4 }}>{'>'}</span>
+                    {autopilotLog}
+                  </Typography>
+                )}
+              </Box>
             ) : applyingPotions ? (
               <Box sx={styles.attackButton}>
                 <Box sx={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 1 }}>
@@ -568,12 +539,10 @@ function ActionBar() {
             )}
           </Box>
 
-          {attackMode === 'autopilot' ? (
+          {attackMode === 'autopilot' && (
             <>
-              {/* Divider 1 */}
               <Box sx={styles.divider} />
 
-              {/* Autopilot Configuration Button */}
               <Box sx={styles.potionSubGroup}>
                 <Tooltip
                   leaveDelay={300}
@@ -596,8 +565,8 @@ function ActionBar() {
                 </Tooltip>
               </Box>
             </>
-          ) : (
-            <>
+          )}
+
               <Box sx={styles.divider} />
 
               <Box sx={styles.potionSubGroup}>
@@ -756,10 +725,7 @@ function ActionBar() {
                   </Box>
                 </>
               )}
-            </>
-          )}
         </>
-      )}
     </Box>
 
     {autopilotConfigOpen && (
