@@ -54,7 +54,6 @@
     "overrides": {
       "tar": "^7.5.10",
       "valibot": "^1.2.0",
-      "minimatch": "^10.2.3",
       "rollup": "^4.59.0"
     }
   }
