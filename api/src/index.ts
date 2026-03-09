@@ -233,6 +233,20 @@ app.get("/beasts/all", async (c) => {
     data: Array<Record<string, unknown>>;
     pagination: { limit: number; offset: number; total: number | null; has_more: boolean };
   }> => {
+    const loadTotalCount = async (): Promise<number> => {
+      const countResult = owner
+        ? await db
+          .select({ count: sql<number>`count(*)` })
+          .from(beasts)
+          .innerJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
+          .where(whereClause)
+        : await db
+          .select({ count: sql<number>`count(*)` })
+          .from(beasts)
+          .where(whereClause);
+      return Number(countResult[0]?.count ?? 0);
+    };
+
     const tokenRowsLimit = includeTotal ? limit : limit + 1;
     const tokenRows = sort === "level"
       ? await (
@@ -268,13 +282,14 @@ app.get("/beasts/all", async (c) => {
     const pageTokenIds = tokenRows.slice(0, limit).map((row) => row.token_id);
 
     if (pageTokenIds.length === 0) {
+      const total = includeTotal ? await loadTotalCount() : null;
       return {
         data: [],
         pagination: {
           limit,
           offset,
-          total: includeTotal ? 0 : null,
-          has_more: false,
+          total,
+          has_more: includeTotal ? offset < (total ?? 0) : hasMoreWithoutTotal,
         },
       };
     }
@@ -312,17 +327,7 @@ app.get("/beasts/all", async (c) => {
 
     let total: number | null = null;
     if (includeTotal) {
-      const countResult = owner
-        ? await db
-          .select({ count: sql<number>`count(*)` })
-          .from(beasts)
-          .innerJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
-          .where(whereClause)
-        : await db
-          .select({ count: sql<number>`count(*)` })
-          .from(beasts)
-          .where(whereClause);
-      total = Number(countResult[0]?.count ?? 0);
+      total = await loadTotalCount();
     }
 
     return {
