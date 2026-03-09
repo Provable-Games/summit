@@ -22,9 +22,9 @@ overrides:
   '@cartridge/controller': 0.12.1
   '@cartridge/connector': 0.12.1
   h3: ^1.15.5
-  minimatch: '>=10.2.3'
-  rollup: '>=4.59.0'
-  '@remix-run/router': '>=1.23.2'
+  minimatch: ^10.2.3
+  rollup: ^4.59.0
+  '@remix-run/router': ^1.23.2
 
 importers:
 
@@ -1410,7 +1410,7 @@ packages:
     resolution: {integrity: sha512-10monEYsBp3scM4/ND4LNH5Rxvh3e/cVeL3jWTgZ2SrQ+BmUoQcopVQvnaMcOnykb1VkxUFuDAN+0FnpTFRy2A==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
-      rollup: '>=4.59.0'
+      rollup: ^4.59.0
     peerDependenciesMeta:
       rollup:
         optional: true

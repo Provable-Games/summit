@@ -5,8 +5,8 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  minimatch: '>=10.2.3'
-  rollup: '>=4.59.0'
+  minimatch: ^10.2.3
+  rollup: ^4.59.0
 
 importers:
 
