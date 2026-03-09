@@ -225,7 +225,10 @@ function BeastCollection() {
     }
 
     return collection.sort((a, b) => b.power - a.power)
-  }, [collection, summit, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, questFilter]);
+  // Intentionally list specific summit fields instead of the full object to avoid
+  // retriggering on high-churn fields (timestamps, current_health from poison ticks).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collection, summit?.beast?.token_id, summit?.beast?.type, summit?.beast?.prefix, summit?.beast?.suffix, summit?.beast?.power, summit?.beast?.level, summit?.beast?.luck, summit?.beast?.health, summit?.beast?.bonus_health, summit?.diplomacy?.bonus, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, questFilter]);
 
   const selectBeast = useCallback((beast: Beast, isFirstBeast: boolean = false) => {
     if (attackInProgress || attackMode === 'autopilot') return;
