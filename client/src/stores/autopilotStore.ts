@@ -60,6 +60,10 @@ interface AutopilotConfig {
   poisonConservativeAmount: number;
   // Poison amount to apply for aggressive strategy
   poisonAggressiveAmount: number;
+  // Only poison when summit beast power >= this value (0 = no threshold)
+  poisonMinPower: number;
+  // Only poison when summit beast health >= this value (0 = no threshold)
+  poisonMinHealth: number;
 }
 
 type AutopilotPersistedConfig = AutopilotConfig;
@@ -72,6 +76,8 @@ type AutopilotConfigStorageShape = Partial<AutopilotPersistedConfig> & {
   extraLifeTotalMax?: unknown;
   extraLifeReplenishTo?: unknown;
   poisonTotalMax?: unknown;
+  poisonMinPower?: unknown;
+  poisonMinHealth?: unknown;
 };
 
 interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCounters {
@@ -98,6 +104,8 @@ interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCount
   setPoisonConservativeExtraLivesTrigger: (poisonConservativeExtraLivesTrigger: number) => void;
   setPoisonConservativeAmount: (poisonConservativeAmount: number) => void;
   setPoisonAggressiveAmount: (poisonAggressiveAmount: number) => void;
+  setPoisonMinPower: (poisonMinPower: number) => void;
+  setPoisonMinHealth: (poisonMinHealth: number) => void;
   /**
    * "Used" fields are counters.
    * - If passed a number, it is treated as an amount to ADD.
@@ -132,6 +140,8 @@ const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   poisonConservativeExtraLivesTrigger: 100,
   poisonConservativeAmount: 100,
   poisonAggressiveAmount: 100,
+  poisonMinPower: 0,
+  poisonMinHealth: 0,
 };
 
 const DEFAULT_SESSION_COUNTERS: AutopilotSessionCounters = {
@@ -254,6 +264,14 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
         parsed.poisonAggressiveAmount,
         poisonMaxLegacy || DEFAULT_CONFIG.poisonAggressiveAmount,
       ),
+      poisonMinPower: sanitizeNonNegativeInt(
+        parsed.poisonMinPower,
+        DEFAULT_CONFIG.poisonMinPower,
+      ),
+      poisonMinHealth: sanitizeNonNegativeInt(
+        parsed.poisonMinHealth,
+        DEFAULT_CONFIG.poisonMinHealth,
+      ),
     };
   } catch {
     return null;
@@ -336,6 +354,14 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
         partial.poisonAggressiveAmount ?? get().poisonAggressiveAmount,
         DEFAULT_CONFIG.poisonAggressiveAmount,
       ),
+      poisonMinPower: sanitizeNonNegativeInt(
+        partial.poisonMinPower ?? get().poisonMinPower,
+        DEFAULT_CONFIG.poisonMinPower,
+      ),
+      poisonMinHealth: sanitizeNonNegativeInt(
+        partial.poisonMinHealth ?? get().poisonMinHealth,
+        DEFAULT_CONFIG.poisonMinHealth,
+      ),
     };
 
     try {
@@ -415,6 +441,10 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       set(() => persist({ poisonConservativeAmount })),
     setPoisonAggressiveAmount: (poisonAggressiveAmount: number) =>
       set(() => persist({ poisonAggressiveAmount })),
+    setPoisonMinPower: (poisonMinPower: number) =>
+      set(() => persist({ poisonMinPower })),
+    setPoisonMinHealth: (poisonMinHealth: number) =>
+      set(() => persist({ poisonMinHealth })),
     setRevivePotionsUsed: (update) => updateCounter('revivePotionsUsed', update),
     setAttackPotionsUsed: (update) => updateCounter('attackPotionsUsed', update),
     setExtraLifePotionsUsed: (update) => updateCounter('extraLifePotionsUsed', update),

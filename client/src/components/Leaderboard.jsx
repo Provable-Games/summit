@@ -15,6 +15,7 @@ import { Box, IconButton, Typography } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 import { addAddressPadding } from 'starknet';
 import { DiplomacyPopover } from './DiplomacyPopover';
+import PotionHoldersModal from './dialogs/PotionHoldersModal';
 import RewardsRemainingBar from './RewardsRemainingBar';
 
 function Leaderboard() {
@@ -26,6 +27,7 @@ function Leaderboard() {
   const [currentTimestamp, setCurrentTimestamp] = useState(() => Math.floor(Date.now() / 1000))
   const [summitOwnerRank, setSummitOwnerRank] = useState(null)
   const [diplomacyAnchor, setDiplomacyAnchor] = useState(null)
+  const [selectedPotion, setSelectedPotion] = useState(null)
   const getLeaderboardRef = useRef(getLeaderboard)
 
   const summitTokenId = summit?.beast?.token_id
@@ -266,24 +268,30 @@ function Leaderboard() {
         </Box>
 
         <Box sx={styles.potionsGrid}>
-          <Box sx={styles.potionBox}>
+          <Box sx={styles.potionBox} onClick={() => setSelectedPotion('attack')}>
             <Box component="img" src={attackPotionImg} sx={styles.potionIcon} alt="Attack" />
             <Typography sx={styles.potionAmount}>{consumablesSupply.attack.toLocaleString()}</Typography>
           </Box>
-          <Box sx={styles.potionBox}>
+          <Box sx={styles.potionBox} onClick={() => setSelectedPotion('revive')}>
             <Box component="img" src={revivePotionImg} sx={styles.potionIcon} alt="Revive" />
             <Typography sx={styles.potionAmount}>{consumablesSupply.revive.toLocaleString()}</Typography>
           </Box>
-          <Box sx={styles.potionBox}>
+          <Box sx={styles.potionBox} onClick={() => setSelectedPotion('xlife')}>
             <Box component="img" src={lifePotionImg} sx={styles.potionIcon} alt="Extra Life" />
             <Typography sx={styles.potionAmount}>{consumablesSupply.xlife.toLocaleString()}</Typography>
           </Box>
-          <Box sx={styles.potionBox}>
+          <Box sx={styles.potionBox} onClick={() => setSelectedPotion('poison')}>
             <Box component="img" src={poisonPotionImg} sx={styles.potionIcon} alt="Poison" />
             <Typography sx={styles.potionAmount}>{consumablesSupply.poison.toLocaleString()}</Typography>
           </Box>
         </Box>
         <Typography sx={styles.potionsExplainer}>Potions held by players</Typography>
+
+        <PotionHoldersModal
+          open={!!selectedPotion}
+          onClose={() => setSelectedPotion(null)}
+          potionType={selectedPotion}
+        />
       </Box>
 
     </Box>
@@ -662,6 +670,12 @@ const styles = {
     borderRadius: '6px',
     border: `1px solid ${gameColors.accentGreen}25`,
     background: `${gameColors.darkGreen}30`,
+    cursor: 'pointer',
+    transition: 'all 0.15s ease',
+    '&:hover': {
+      border: `1px solid ${gameColors.accentGreen}60`,
+      background: `${gameColors.darkGreen}60`,
+    },
   },
   potionIcon: {
     width: '18px',

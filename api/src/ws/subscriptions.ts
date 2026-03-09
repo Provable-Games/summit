@@ -45,7 +45,7 @@ interface SummitPayload {
   rewards_claimed: number;
   block_number: string;
   transaction_hash: string;
-  created_at: string;
+  update_timestamp: number;
 }
 
 interface EventPayload {
