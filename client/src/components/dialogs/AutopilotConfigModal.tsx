@@ -160,13 +160,14 @@ function TargetedPoisonSection({ players, onAdd, onRemove, onAmountChange, poiso
           <TextField
             type="number"
             size="small"
+            disabled={poisonAvailable === 0}
             value={defaultAmount}
             onChange={(e) => {
               let v = Number.parseInt(e.target.value, 10);
               if (Number.isNaN(v)) v = 1;
-              setDefaultAmount(Math.max(1, Math.min(v, poisonAvailable || 9999)));
+              setDefaultAmount(Math.max(1, Math.min(v, Math.max(poisonAvailable, 1))));
             }}
-            inputProps={{ min: 1, max: poisonAvailable || 9999, step: 1 }}
+            inputProps={{ min: 1, max: Math.max(poisonAvailable, 1), step: 1 }}
             sx={{ ...styles.numberField, width: 80 }}
           />
           {loading && <CircularProgress size={16} sx={{ color: gameColors.accentGreen, flexShrink: 0 }} />}
@@ -195,13 +196,14 @@ function TargetedPoisonSection({ players, onAdd, onRemove, onAmountChange, poiso
               <TextField
                 type="number"
                 size="small"
+                disabled={poisonAvailable === 0}
                 value={player.amount}
                 onChange={(e) => {
                   let v = Number.parseInt(e.target.value, 10);
                   if (Number.isNaN(v)) v = 1;
-                  onAmountChange(player.address, Math.max(1, Math.min(v, poisonAvailable || 9999)));
+                  onAmountChange(player.address, Math.max(1, Math.min(v, Math.max(poisonAvailable, 1))));
                 }}
-                inputProps={{ min: 1, max: poisonAvailable || 9999, step: 1 }}
+                inputProps={{ min: 1, max: Math.max(poisonAvailable, 1), step: 1 }}
                 sx={{ ...styles.numberField, width: 80 }}
               />
             </Box>
@@ -262,13 +264,14 @@ function TargetedPoisonBeastSection({ beasts, onAdd, onRemove, onAmountChange, p
         <TextField
           type="number"
           size="small"
+          disabled={poisonAvailable === 0}
           value={defaultAmount}
           onChange={(e) => {
             let v = Number.parseInt(e.target.value, 10);
             if (Number.isNaN(v)) v = 1;
-            setDefaultAmount(Math.max(1, Math.min(v, poisonAvailable || 9999)));
+            setDefaultAmount(Math.max(1, Math.min(v, Math.max(poisonAvailable, 1))));
           }}
-          inputProps={{ min: 1, max: poisonAvailable || 9999, step: 1 }}
+          inputProps={{ min: 1, max: Math.max(poisonAvailable, 1), step: 1 }}
           sx={{ ...styles.numberField, width: 80 }}
         />
         <Button
@@ -295,13 +298,14 @@ function TargetedPoisonBeastSection({ beasts, onAdd, onRemove, onAmountChange, p
               <TextField
                 type="number"
                 size="small"
+                disabled={poisonAvailable === 0}
                 value={beast.amount}
                 onChange={(e) => {
                   let v = Number.parseInt(e.target.value, 10);
                   if (Number.isNaN(v)) v = 1;
-                  onAmountChange(beast.tokenId, Math.max(1, Math.min(v, poisonAvailable || 9999)));
+                  onAmountChange(beast.tokenId, Math.max(1, Math.min(v, Math.max(poisonAvailable, 1))));
                 }}
-                inputProps={{ min: 1, max: poisonAvailable || 9999, step: 1 }}
+                inputProps={{ min: 1, max: Math.max(poisonAvailable, 1), step: 1 }}
                 sx={{ ...styles.numberField, width: 80 }}
               />
             </Box>

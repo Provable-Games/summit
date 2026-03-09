@@ -393,7 +393,7 @@ export function getTargetedBeastPoisonAmount(beastTokenId: number, targetedBeast
 
 export function hasDiplomacyMatch(playerBeasts: Beast[], summitBeast: Beast): boolean {
   return playerBeasts.some(
-    (beast) => beast.prefix === summitBeast.prefix && beast.suffix === summitBeast.suffix
+    (beast) => beast.diplomacy && beast.prefix === summitBeast.prefix && beast.suffix === summitBeast.suffix
   );
 }
 
