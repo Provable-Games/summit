@@ -421,7 +421,8 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     if (!account?.address) return;
     if (addAddressPadding(account.address) !== addAddressPadding(data.owner)) return;
 
-    setTokenBalances(() => ({
+    setTokenBalances((prev: Record<string, number>) => ({
+      ...prev,
       "EXTRA LIFE": data.xlife_count,
       ATTACK: data.attack_count,
       REVIVE: data.revive_count,

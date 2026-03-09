@@ -201,8 +201,10 @@ describe("GameDirector consumables handler", () => {
 
     expect(hoisted.setTokenBalancesMock).toHaveBeenCalled();
     const updater = hoisted.setTokenBalancesMock.mock.calls[0][0];
-    const result = typeof updater === "function" ? updater({}) : updater;
+    const result = typeof updater === "function" ? updater({ SKULL: 10, CORPSE: 5 }) : updater;
     expect(result).toEqual({
+      SKULL: 10,
+      CORPSE: 5,
       "EXTRA LIFE": 5,
       ATTACK: 3,
       REVIVE: 1,
