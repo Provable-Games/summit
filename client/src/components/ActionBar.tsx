@@ -459,6 +459,12 @@ function ActionBar() {
                     {autopilotLog}
                   </Typography>
                 )}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                  {useRevivePotions && RenderRemainingPotion(revivePotionIcon, 'Revive', revivePotionsUsed, revivePotionMax)}
+                  {useAttackPotions && RenderRemainingPotion(attackPotionIcon, 'Attack', attackPotionsUsed, attackPotionMax)}
+                  {extraLifeStrategy !== 'disabled' && RenderRemainingPotion(lifePotionIcon, 'Life', extraLifePotionsUsed, extraLifeTotalMax)}
+                  {poisonStrategy !== 'disabled' && RenderRemainingPotion(poisonPotionIcon, 'Poison', poisonPotionsUsed, poisonTotalMax)}
+                </Box>
               </Box>
             ) : applyingPotions ? (
               <Box sx={styles.attackButton}>
