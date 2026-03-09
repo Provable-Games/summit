@@ -618,19 +618,6 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
           )}
           {poisonStrategy !== 'disabled' && (
             <>
-              {poisonStrategy === 'conservative' && (
-                <Box sx={styles.maxOnlyRow}>
-                  <Typography sx={styles.maxLabel}>More than this extra lives</Typography>
-                  <Box sx={styles.maxCol}>
-                    {numberField(
-                      poisonConservativeExtraLivesTrigger,
-                      setPoisonConservativeExtraLivesTrigger,
-                      false,
-                    )}
-                  </Box>
-                </Box>
-              )}
-
               <Box sx={styles.maxOnlyRow}>
                 <Box />
                 <Box sx={styles.maxCol}>
@@ -646,9 +633,7 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
                     },
                   )}
                   <Box sx={styles.maxRow}>
-                    <Typography sx={styles.maxLabel}>
-                      {poisonStrategy === 'aggressive' ? 'Poison to apply' : 'Poison to apply'}
-                    </Typography>
+                    <Typography sx={styles.maxLabel}>Poison to apply</Typography>
                     {numberField(poisonAmount, setPoisonAmount, false, 0, Number(poisonAvailable) || 0)}
                   </Box>
                   <Box sx={styles.maxRow}>
@@ -664,17 +649,32 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
                 </Box>
               </Box>
 
-              <Box sx={styles.maxOnlyRow}>
-                <Typography sx={styles.maxLabel}>Minimum Power</Typography>
-                <Box sx={styles.maxCol}>
-                  {numberField(poisonMinPower, setPoisonMinPower, false)}
+              <Box sx={styles.requirementsGroup}>
+                <Box sx={styles.requirementsHeader}>
+                  <Typography sx={styles.requirementsTitle}>Requirements</Typography>
+                  <Typography sx={styles.requirementsSubtitle}>
+                    Autopilot will only poison the Summit when all of these conditions are met.
+                  </Typography>
                 </Box>
-              </Box>
-
-              <Box sx={styles.maxOnlyRow}>
-                <Typography sx={styles.maxLabel}>Minimum Health</Typography>
-                <Box sx={styles.maxCol}>
-                  {numberField(poisonMinHealth, setPoisonMinHealth, false)}
+                <Box sx={styles.requirementsFields}>
+                  {poisonStrategy === 'conservative' && (
+                    <Box sx={styles.requirementRow}>
+                      <Typography sx={styles.maxLabel}>Min extra lives on Summit</Typography>
+                      {numberField(
+                        poisonConservativeExtraLivesTrigger,
+                        setPoisonConservativeExtraLivesTrigger,
+                        false,
+                      )}
+                    </Box>
+                  )}
+                  <Box sx={styles.requirementRow}>
+                    <Typography sx={styles.maxLabel}>Min Summit power</Typography>
+                    {numberField(poisonMinPower, setPoisonMinPower, false)}
+                  </Box>
+                  <Box sx={styles.requirementRow}>
+                    <Typography sx={styles.maxLabel}>Min Summit health</Typography>
+                    {numberField(poisonMinHealth, setPoisonMinHealth, false)}
+                  </Box>
                 </Box>
               </Box>
             </>
@@ -1116,6 +1116,47 @@ const styles = {
     fontWeight: 'bold',
     color: '#ffedbb',
     letterSpacing: '0.5px',
+  },
+  requirementsGroup: {
+    background: `${gameColors.darkGreen}80`,
+    borderRadius: '8px',
+    border: `1px solid ${gameColors.accentGreen}40`,
+    padding: 1.25,
+    boxShadow: `
+      inset 0 1px 0 ${gameColors.accentGreen}30,
+      0 4px 8px rgba(0, 0, 0, 0.4)
+    `,
+  },
+  requirementsHeader: {
+    mb: 1,
+  },
+  requirementsTitle: {
+    fontSize: '12px',
+    fontWeight: 'bold',
+    letterSpacing: '0.5px',
+    textTransform: 'uppercase' as const,
+    color: '#ffedbb',
+  },
+  requirementsSubtitle: {
+    fontSize: '11px',
+    color: '#9aa',
+    mt: 0.25,
+    lineHeight: 1.3,
+  },
+  requirementsFields: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: 0.75,
+  },
+  requirementRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 1,
+    padding: '4px 8px',
+    borderRadius: '6px',
+    background: `${gameColors.darkGreen}50`,
+    border: `1px solid ${gameColors.accentGreen}20`,
   },
   ignoredInput: {
     flex: 1,
