@@ -101,6 +101,20 @@ vi.mock("../utils/beasts", () => ({
   isBeastLocked: vi.fn(() => false),
 }));
 
+vi.mock("@/hooks/useAutopilotOrchestrator", () => ({
+  useAutopilotOrchestrator: () => ({
+    collectionWithCombat: [],
+    isSavage: false,
+    enableAttack: false,
+    revivalPotionsRequired: 0,
+    autopilotLog: "",
+    startAutopilot: vi.fn(),
+    stopAutopilot: vi.fn(),
+    handleApplyExtraLife: vi.fn(),
+    handleApplyPoison: vi.fn(),
+  }),
+}));
+
 vi.mock("./dialogs/AutopilotConfigModal", () => ({
   default: () => null,
 }));
