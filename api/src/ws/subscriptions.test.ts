@@ -313,4 +313,304 @@ describe("SubscriptionHub", () => {
       expect(hub.getStatus().clientCount).toBe(1);
     });
   });
+
+  describe("consumables channel", () => {
+    it("should subscribe a client to consumables channel", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({ type: "subscribe", channels: ["consumables"] })
+      );
+
+      expect(messages.length).toBe(1);
+      const response = JSON.parse(messages[0]);
+      expect(response.type).toBe("subscribed");
+      expect(response.channels).toEqual(["consumables"]);
+    });
+
+    it("should subscribe to all three channels", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({ type: "subscribe", channels: ["summit", "event", "consumables"] })
+      );
+
+      expect(messages.length).toBe(1);
+      const response = JSON.parse(messages[0]);
+      expect(response.type).toBe("subscribed");
+      expect(response.channels).toEqual(["summit", "event", "consumables"]);
+    });
+
+    it("should unsubscribe from consumables channel", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      hub.subscribe("client-1", ["consumables"]);
+
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({ type: "unsubscribe", channels: ["consumables"] })
+      );
+
+      expect(messages.length).toBe(1);
+      const response = JSON.parse(messages[0]);
+      expect(response.type).toBe("unsubscribed");
+      expect(response.channels).toEqual(["consumables"]);
+    });
+  });
+
+  describe("channel filters", () => {
+    it("should store filters when subscribing with owner filter", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({
+          type: "subscribe",
+          channels: ["consumables"],
+          filters: { consumables: { owner: "0x123" } },
+        })
+      );
+
+      expect(messages.length).toBe(1);
+      const response = JSON.parse(messages[0]);
+      expect(response.type).toBe("subscribed");
+      expect(response.filters).toEqual({ consumables: { owner: "0x123" } });
+    });
+
+    it("should broadcast consumables only to matching owner filter", () => {
+      const { ws: ws1, messages: msgs1 } = createMockWs();
+      const { ws: ws2, messages: msgs2 } = createMockWs();
+      hub.addClient("client-1", ws1);
+      hub.addClient("client-2", ws2);
+
+      // Client 1: subscribe with owner filter
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({
+          type: "subscribe",
+          channels: ["consumables"],
+          filters: { consumables: { owner: "0xaaa" } },
+        })
+      );
+      // Client 2: subscribe without filter
+      hub.handleMessage(
+        "client-2",
+        JSON.stringify({ type: "subscribe", channels: ["consumables"] })
+      );
+
+      // Clear subscription confirmations
+      msgs1.length = 0;
+      msgs2.length = 0;
+
+      // Simulate consumables_update notification
+      (hub as unknown as { handleNotification(msg: { channel: string; payload: string }): void }).handleNotification({
+        channel: "consumables_update",
+        payload: JSON.stringify({
+          owner: "0xaaa",
+          xlife_count: 5,
+          attack_count: 3,
+          revive_count: 1,
+          poison_count: 2,
+        }),
+      });
+
+      // Filtered client receives (owner matches)
+      expect(msgs1.length).toBe(1);
+      const data1 = JSON.parse(msgs1[0]);
+      expect(data1.type).toBe("consumables");
+      expect(data1.data.owner).toBe("0xaaa");
+
+      // Unfiltered client also receives (no filter = get everything)
+      expect(msgs2.length).toBe(1);
+    });
+
+    it("should NOT broadcast consumables to non-matching owner filter", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({
+          type: "subscribe",
+          channels: ["consumables"],
+          filters: { consumables: { owner: "0xaaa" } },
+        })
+      );
+      messages.length = 0;
+
+      // Broadcast consumables with different owner
+      (hub as unknown as { handleNotification(msg: { channel: string; payload: string }): void }).handleNotification({
+        channel: "consumables_update",
+        payload: JSON.stringify({
+          owner: "0xbbb",
+          xlife_count: 1,
+          attack_count: 1,
+          revive_count: 1,
+          poison_count: 1,
+        }),
+      });
+
+      expect(messages.length).toBe(0);
+    });
+
+    it("should broadcast summit only to matching owner filter", () => {
+      const { ws: ws1, messages: msgs1 } = createMockWs();
+      const { ws: ws2, messages: msgs2 } = createMockWs();
+      hub.addClient("client-1", ws1);
+      hub.addClient("client-2", ws2);
+
+      // Client 1: subscribe with owner filter
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({
+          type: "subscribe",
+          channels: ["summit"],
+          filters: { summit: { owner: "0xaaa" } },
+        })
+      );
+      // Client 2: subscribe with different owner filter
+      hub.handleMessage(
+        "client-2",
+        JSON.stringify({
+          type: "subscribe",
+          channels: ["summit"],
+          filters: { summit: { owner: "0xbbb" } },
+        })
+      );
+
+      msgs1.length = 0;
+      msgs2.length = 0;
+
+      (hub as unknown as { handleNotification(msg: { channel: string; payload: string }): void }).handleNotification({
+        channel: "summit_update",
+        payload: JSON.stringify({
+          token_id: 1,
+          current_health: 100,
+          owner: "0xaaa",
+        }),
+      });
+
+      // Client 1 matches owner
+      expect(msgs1.length).toBe(1);
+      // Client 2 does not match
+      expect(msgs2.length).toBe(0);
+    });
+
+    it("should always broadcast event channel regardless of filters", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      // Subscribe to event with an owner filter (should be ignored for event channel)
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({
+          type: "subscribe",
+          channels: ["event"],
+          filters: { event: { owner: "0xaaa" } },
+        })
+      );
+      messages.length = 0;
+
+      (hub as unknown as { handleNotification(msg: { channel: string; payload: string }): void }).handleNotification({
+        channel: "summit_log_insert",
+        payload: JSON.stringify({
+          id: "evt-1",
+          block_number: "100",
+          event_index: 0,
+          category: "Battle",
+          sub_category: "BattleEvent",
+          data: {},
+          player: "0xbbb",
+          token_id: 1,
+          transaction_hash: "0x123",
+          created_at: "2026-01-01T00:00:00Z",
+        }),
+      });
+
+      // Event is always sent regardless of filter
+      expect(messages.length).toBe(1);
+      const data = JSON.parse(messages[0]);
+      expect(data.type).toBe("event");
+    });
+
+    it("should clear filters on unsubscribe", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      // Subscribe with filter
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({
+          type: "subscribe",
+          channels: ["consumables"],
+          filters: { consumables: { owner: "0xaaa" } },
+        })
+      );
+      messages.length = 0;
+
+      // Unsubscribe
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({ type: "unsubscribe", channels: ["consumables"] })
+      );
+      messages.length = 0;
+
+      // Resubscribe without filter
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({ type: "subscribe", channels: ["consumables"] })
+      );
+      messages.length = 0;
+
+      // Should receive all consumables (no filter active)
+      (hub as unknown as { handleNotification(msg: { channel: string; payload: string }): void }).handleNotification({
+        channel: "consumables_update",
+        payload: JSON.stringify({
+          owner: "0xbbb",
+          xlife_count: 1,
+          attack_count: 1,
+          revive_count: 1,
+          poison_count: 1,
+        }),
+      });
+
+      expect(messages.length).toBe(1);
+    });
+
+    it("should normalize owner filter to lowercase", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      // Subscribe with mixed-case owner
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({
+          type: "subscribe",
+          channels: ["consumables"],
+          filters: { consumables: { owner: "0xAAA" } },
+        })
+      );
+      messages.length = 0;
+
+      // Broadcast with lowercase owner
+      (hub as unknown as { handleNotification(msg: { channel: string; payload: string }): void }).handleNotification({
+        channel: "consumables_update",
+        payload: JSON.stringify({
+          owner: "0xaaa",
+          xlife_count: 1,
+          attack_count: 1,
+          revive_count: 1,
+          poison_count: 1,
+        }),
+      });
+
+      expect(messages.length).toBe(1);
+    });
+  });
 });

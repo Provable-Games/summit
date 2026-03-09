@@ -3,7 +3,7 @@ import { useSummitApi } from "@/api/summitApi";
 import { useSound } from "@/contexts/sound";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import type { TranslatedGameEvent } from "@/dojo/useSystemCalls";
-import type { EventData, SummitData } from "@/hooks/useWebSocket";
+import type { ChannelFilter, ConsumablesData, EventData, SummitData } from "@/hooks/useWebSocket";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
@@ -417,12 +417,36 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
   };
 
+  const handleConsumables = (data: ConsumablesData) => {
+    if (!account?.address) return;
+    // Server-side filtering is the primary filter; this client-side check is a safety fallback
+    if (addAddressPadding(account.address) !== addAddressPadding(data.owner)) return;
+
+    setTokenBalances((prev: Record<string, number>) => ({
+      ...prev,
+      "EXTRA LIFE": data.xlife_count,
+      ATTACK: data.attack_count,
+      REVIVE: data.revive_count,
+      POISON: data.poison_count,
+    }));
+  };
+
+  const wsFilters: Partial<Record<"summit" | "event" | "consumables", ChannelFilter>> | undefined =
+    account?.address
+      ? {
+          summit: { owner: addAddressPadding(account.address) },
+          consumables: { owner: addAddressPadding(account.address) },
+        }
+      : undefined;
+
   // WebSocket subscription
   useWebSocket({
     url: currentNetworkConfig.wsUrl,
-    channels: ["summit", "event"],
+    channels: ["summit", "event", "consumables"],
+    filters: wsFilters,
     onSummit: handleSummit,
     onEvent: handleEvent,
+    onConsumables: handleConsumables,
     onConnectionChange: (state) => {
       console.log("[GameDirector] WebSocket connection state:", state);
     },
