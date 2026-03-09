@@ -1,7 +1,7 @@
 import { useController } from '@/contexts/controller';
 import { MAX_BEASTS_PER_ATTACK } from '@/contexts/GameDirector';
 import { useQuestGuide } from '@/contexts/QuestGuide';
-import type { BeastTypeFilter, QuestFilterKey, SortMethod } from '@/stores/gameStore';
+import type { QuestFilterKey, SortMethod } from '@/stores/gameStore';
 import { useGameStore } from '@/stores/gameStore';
 import type { Beast, selection } from '@/types/game';
 import {
@@ -44,7 +44,7 @@ function BeastCollection() {
     attackInProgress, summit, attackMode,
     hideDeadBeasts, setHideDeadBeasts,
     sortMethod, setSortMethod,
-    typeFilter, setTypeFilter,
+    typeFilter, setTypeFilter: _setTypeFilter,
     nameMatchFilter, setNameMatchFilter,
     questFilter, toggleQuestFilter,
   } = useGameStore()
@@ -72,12 +72,12 @@ function BeastCollection() {
         selection[0].token_id === beastId ? [selection[0], next, selection[2]] : selection
       )
     );
-  }, []);
+  }, [setSelectedBeasts]);
 
   const setBulkAttacks = useCallback((count: number) => {
     const next = clampAttacks(count);
     setSelectedBeasts((prev) => prev.map((s) => [s[0], next, s[2]]));
-  }, []);
+  }, [setSelectedBeasts]);
 
   const setBulkPotions = useCallback((mode: 'none' | 'optimal' | 'max' | number) => {
     const maxAvailable = Math.min(tokenBalances["ATTACK"] || 0, 255);
@@ -99,7 +99,7 @@ function BeastCollection() {
       const value = Math.max(0, Math.min(maxAvailable, mode));
       setSelectedBeasts((prev) => prev.map((s) => [s[0], s[1], value]));
     }
-  }, [summit, tokenBalances]);
+  }, [summit, tokenBalances, setSelectedBeasts]);
 
   const isStrongAgainst = (attackerType: string, defenderType: string): boolean => {
     return (
@@ -225,7 +225,7 @@ function BeastCollection() {
     }
 
     return collection.sort((a, b) => b.power - a.power)
-  }, [collection, summit?.beast.token_id, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, questFilter]);
+  }, [collection, summit, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, questFilter]);
 
   const selectBeast = useCallback((beast: Beast, isFirstBeast: boolean = false) => {
     if (attackInProgress || attackMode === 'autopilot') return;
