@@ -3,7 +3,7 @@ import { useSummitApi } from "@/api/summitApi";
 import { useSound } from "@/contexts/sound";
 import { useSystemCalls } from "@/dojo/useSystemCalls";
 import type { TranslatedGameEvent } from "@/dojo/useSystemCalls";
-import type { EventData, SummitData } from "@/hooks/useWebSocket";
+import type { ConsumablesData, EventData, SummitData } from "@/hooks/useWebSocket";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useAutopilotStore } from "@/stores/autopilotStore";
 import { useGameStore } from "@/stores/gameStore";
@@ -417,12 +417,26 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
   };
 
+  const handleConsumables = (data: ConsumablesData) => {
+    if (!account?.address) return;
+    if (addAddressPadding(account.address) !== addAddressPadding(data.owner)) return;
+
+    setTokenBalances((prev: Record<string, number>) => ({
+      ...prev,
+      "EXTRA LIFE": data.xlife_count,
+      ATTACK: data.attack_count,
+      REVIVE: data.revive_count,
+      POISON: data.poison_count,
+    }));
+  };
+
   // WebSocket subscription
   useWebSocket({
     url: currentNetworkConfig.wsUrl,
-    channels: ["summit", "event"],
+    channels: ["summit", "event", "consumables"],
     onSummit: handleSummit,
     onEvent: handleEvent,
+    onConsumables: handleConsumables,
     onConnectionChange: (state) => {
       console.log("[GameDirector] WebSocket connection state:", state);
     },

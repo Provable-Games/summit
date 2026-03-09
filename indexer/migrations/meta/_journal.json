@@ -29,6 +29,13 @@
       "when": 1770990939403,
       "tag": "0003_consumables",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1770990939404,
+      "tag": "0004_consumables_trigger",
+      "breakpoints": true
     }
   ]
 }

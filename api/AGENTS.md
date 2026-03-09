@@ -39,8 +39,9 @@ Read [`../AGENTS.md`](../AGENTS.md) first for shared addresses/mechanics and ind
 - Root discovery route: `/`
 - WebSocket endpoint: `/ws`
   - message types: `subscribe`, `unsubscribe`, `ping`
-  - channels: `summit`, `event`
-  - subscribe payload: `{"type":"subscribe","channels":["summit","event"]}`
+  - channels: `summit`, `event`, `consumables`, `supply`
+  - subscribe payload: `{"type":"subscribe","channels":["summit","event","consumables","supply"]}`
+  - `supply` channel payload: `{"ATTACK": 236483, "REVIVE": 82604, "EXTRA LIFE": 15538, "POISON": 320004}` (per-ERC20 keyed)
 
 Query/pagination rules agents usually need:
 - `/beasts/all`: `limit` default `25`, max `100`; `offset`; filters `prefix`, `suffix`, `beast_id`, `name`, `owner`; `sort` in `summit_held_seconds|level`.
@@ -55,7 +56,7 @@ Behavior details that affect integration:
 - `/` includes debug endpoint hints in development mode (`NODE_ENV != production`), but handlers are not implemented in this service file.
 
 ## Real-Time Pattern
-`Indexer writes -> PostgreSQL NOTIFY (summit_update, summit_log_insert) -> SubscriptionHub LISTEN -> WS broadcast`
+`Indexer writes -> PostgreSQL NOTIFY (summit_update, summit_log_insert, consumables_update) -> SubscriptionHub LISTEN -> WS broadcast`
 
 ## Middleware and Runtime Patterns
 - Middleware in `src/index.ts`: logger, compress, CORS.

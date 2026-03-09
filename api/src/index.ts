@@ -685,8 +685,8 @@ app.get("/", (c) => {
     },
     websocket: {
       endpoint: "WS /ws",
-      channels: ["summit", "event"],
-      subscribe: '{"type":"subscribe","channels":["summit","event"]}',
+      channels: ["summit", "event", "consumables", "supply"],
+      subscribe: '{"type":"subscribe","channels":["summit","event","consumables","supply"]}',
     },
   };
 
