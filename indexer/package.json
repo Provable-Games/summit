@@ -49,5 +49,13 @@
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.55.0",
     "vitest": "^3.1.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "tar": ">=7.5.10",
+      "valibot": ">=1.2.0",
+      "minimatch": ">=10.2.3",
+      "rollup": ">=4.59.0"
+    }
   }
 }
