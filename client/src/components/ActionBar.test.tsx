@@ -56,6 +56,9 @@ const mockAutopilotState = {
   poisonConservativeExtraLivesTrigger: 0,
   poisonConservativeAmount: 0,
   poisonAggressiveAmount: 0,
+  maxBeastsPerAttack: 10,
+  skipSharedDiplomacy: false,
+  ignoredPlayers: [] as Array<{ address: string }>,
 };
 
 vi.mock("@/contexts/controller", () => ({
