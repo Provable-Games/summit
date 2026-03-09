@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { GameAction, selection } from "@/types/game";
 
 const hoisted = vi.hoisted(() => ({
+  useWebSocketMock: vi.fn(),
+  useAccountMock: vi.fn(() => ({ account: undefined })),
   getSummitDataMock: vi.fn(async () => null),
   getDiplomacyMock: vi.fn(async () => []),
   executeActionMock: vi.fn(async () => []),
@@ -35,9 +37,7 @@ const hoisted = vi.hoisted(() => ({
 }));
 
 vi.mock("@starknet-react/core", () => ({
-  useAccount: () => ({
-    account: undefined,
-  }),
+  useAccount: hoisted.useAccountMock,
 }));
 
 vi.mock("./starknet", () => ({
@@ -49,7 +49,7 @@ vi.mock("./starknet", () => ({
 }));
 
 vi.mock("@/hooks/useWebSocket", () => ({
-  useWebSocket: vi.fn(),
+  useWebSocket: hoisted.useWebSocketMock,
 }));
 
 vi.mock("@/api/starknet", () => ({
@@ -168,5 +168,67 @@ describe("GameDirector executeGameAction", () => {
     expect(hoisted.attackMock).toHaveBeenCalledWith(beasts, true, false, 0);
     expect(hoisted.executeActionMock).not.toHaveBeenCalled();
     expect(capturedDirector.pauseUpdates).toBe(false);
+  });
+});
+
+describe("GameDirector consumables handler", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hoisted.getSummitDataMock.mockResolvedValue(null);
+  });
+
+  it("should update token balances when consumables update matches connected wallet", async () => {
+    hoisted.useAccountMock.mockReturnValue({
+      account: { address: "0x123" },
+    });
+
+    await renderProvider();
+
+    // Capture the onConsumables callback from useWebSocket call
+    const wsCall = hoisted.useWebSocketMock.mock.calls[0][0];
+    expect(wsCall.channels).toContain("consumables");
+    expect(wsCall.onConsumables).toBeDefined();
+
+    act(() => {
+      wsCall.onConsumables({
+        owner: "0x123",
+        xlife_count: 5,
+        attack_count: 3,
+        revive_count: 1,
+        poison_count: 2,
+      });
+    });
+
+    expect(hoisted.setTokenBalancesMock).toHaveBeenCalled();
+    const updater = hoisted.setTokenBalancesMock.mock.calls[0][0];
+    const result = typeof updater === "function" ? updater({}) : updater;
+    expect(result).toEqual({
+      "EXTRA LIFE": 5,
+      ATTACK: 3,
+      REVIVE: 1,
+      POISON: 2,
+    });
+  });
+
+  it("should ignore consumables update for different wallet", async () => {
+    hoisted.useAccountMock.mockReturnValue({
+      account: { address: "0x456" },
+    });
+
+    await renderProvider();
+
+    const wsCall = hoisted.useWebSocketMock.mock.calls[0][0];
+
+    act(() => {
+      wsCall.onConsumables({
+        owner: "0x999",
+        xlife_count: 10,
+        attack_count: 10,
+        revive_count: 10,
+        poison_count: 10,
+      });
+    });
+
+    expect(hoisted.setTokenBalancesMock).not.toHaveBeenCalled();
   });
 });

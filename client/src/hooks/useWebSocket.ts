@@ -5,11 +5,12 @@
  * Channels:
  * - summit: Beast stats updates for summit beast
  * - event: Activity feed from summit_log
+ * - consumables: Potion balance updates per owner
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type Channel = "summit" | "event";
+export type Channel = "summit" | "event" | "consumables";
 
 export type ConnectionState = "connecting" | "connected" | "disconnected" | "reconnecting";
 
@@ -61,11 +62,20 @@ export interface EventData {
   created_at: string;
 }
 
+export interface ConsumablesData {
+  owner: string;
+  xlife_count: number;
+  attack_count: number;
+  revive_count: number;
+  poison_count: number;
+}
+
 export interface UseWebSocketOptions {
   url: string;
   channels: Channel[];
   onSummit?: (data: SummitData) => void;
   onEvent?: (data: EventData) => void;
+  onConsumables?: (data: ConsumablesData) => void;
   onConnectionChange?: (state: ConnectionState) => void;
   enabled?: boolean;
 }
@@ -80,6 +90,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     channels,
     onSummit,
     onEvent,
+    onConsumables,
     onConnectionChange,
     enabled = true,
   } = options;
@@ -91,11 +102,11 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
 
-  const callbacksRef = useRef({ onSummit, onEvent, onConnectionChange });
+  const callbacksRef = useRef({ onSummit, onEvent, onConsumables, onConnectionChange });
 
   useEffect(() => {
-    callbacksRef.current = { onSummit, onEvent, onConnectionChange };
-  }, [onSummit, onEvent, onConnectionChange]);
+    callbacksRef.current = { onSummit, onEvent, onConsumables, onConnectionChange };
+  }, [onSummit, onEvent, onConsumables, onConnectionChange]);
 
   const updateConnectionState = useCallback((state: ConnectionState) => {
     if (!mountedRef.current) return;
@@ -113,6 +124,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
           break;
         case "event":
           callbacksRef.current.onEvent?.(message.data);
+          break;
+        case "consumables":
+          callbacksRef.current.onConsumables?.(message.data);
           break;
         case "subscribed":
           console.log("[WebSocket] Subscribed to:", message.channels);

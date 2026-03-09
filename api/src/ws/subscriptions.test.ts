@@ -313,4 +313,53 @@ describe("SubscriptionHub", () => {
       expect(hub.getStatus().clientCount).toBe(1);
     });
   });
+
+  describe("consumables channel", () => {
+    it("should subscribe a client to consumables channel", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({ type: "subscribe", channels: ["consumables"] })
+      );
+
+      expect(messages.length).toBe(1);
+      const response = JSON.parse(messages[0]);
+      expect(response.type).toBe("subscribed");
+      expect(response.channels).toEqual(["consumables"]);
+    });
+
+    it("should subscribe to all three channels", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({ type: "subscribe", channels: ["summit", "event", "consumables"] })
+      );
+
+      expect(messages.length).toBe(1);
+      const response = JSON.parse(messages[0]);
+      expect(response.type).toBe("subscribed");
+      expect(response.channels).toEqual(["summit", "event", "consumables"]);
+    });
+
+    it("should unsubscribe from consumables channel", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      hub.subscribe("client-1", ["consumables"]);
+
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({ type: "unsubscribe", channels: ["consumables"] })
+      );
+
+      expect(messages.length).toBe(1);
+      const response = JSON.parse(messages[0]);
+      expect(response.type).toBe("unsubscribed");
+      expect(response.channels).toEqual(["consumables"]);
+    });
+  });
 });

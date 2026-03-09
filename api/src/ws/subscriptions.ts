@@ -5,6 +5,7 @@
  * Channels:
  * - summit: Beast stats updates for summit beast
  * - event: Activity feed from summit_log
+ * - consumables: Potion balance updates per owner
  */
 
 import { pool } from "../db/client.js";
@@ -18,7 +19,7 @@ interface WebSocketLike {
   OPEN?: number;
 }
 
-export type Channel = "summit" | "event";
+export type Channel = "summit" | "event" | "consumables";
 
 interface ClientSubscription {
   ws: WebSocketLike;
@@ -64,6 +65,14 @@ interface EventPayload {
   created_at: string;
 }
 
+interface ConsumablesPayload {
+  owner: string;
+  xlife_count: number;
+  attack_count: number;
+  revive_count: number;
+  poison_count: number;
+}
+
 export class SubscriptionHub {
   private clients: Map<string, ClientSubscription> = new Map();
   private pgClient: pg.PoolClient | null = null;
@@ -103,8 +112,9 @@ export class SubscriptionHub {
 
       await this.pgClient.query("LISTEN summit_update");
       await this.pgClient.query("LISTEN summit_log_insert");
+      await this.pgClient.query("LISTEN consumables_update");
 
-      console.log("[SubscriptionHub] Listening on: summit_update, summit_log_insert");
+      console.log("[SubscriptionHub] Listening on: summit_update, summit_log_insert, consumables_update");
     } catch (error) {
       console.error("[SubscriptionHub] Failed to connect:", error);
       this.reconnect();
@@ -155,13 +165,16 @@ export class SubscriptionHub {
         case "summit_log_insert":
           this.broadcast("event", payload as EventPayload);
           break;
+        case "consumables_update":
+          this.broadcast("consumables", payload as ConsumablesPayload);
+          break;
       }
     } catch (error) {
       console.error("[SubscriptionHub] Failed to parse notification:", error);
     }
   }
 
-  private broadcast(channel: Channel, data: SummitPayload | EventPayload): void {
+  private broadcast(channel: Channel, data: SummitPayload | EventPayload | ConsumablesPayload): void {
     const message = JSON.stringify({ type: channel, data });
 
     let sentCount = 0;
