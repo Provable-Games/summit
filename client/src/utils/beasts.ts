@@ -391,6 +391,22 @@ export function getTargetedBeastPoisonAmount(beastTokenId: number, targetedBeast
   return targetedBeasts.find((b) => b.tokenId === beastTokenId)?.amount ?? 0;
 }
 
+export function getStrongType(defenderType: string): string {
+  if (defenderType === 'Magic') return 'Hunter';
+  if (defenderType === 'Brute') return 'Magic';
+  if (defenderType === 'Hunter') return 'Brute';
+  return 'Hunter';
+}
+
+export function isWithinPoisonSchedule(startH: number, startM: number, endH: number, endM: number): boolean {
+  const now = new Date();
+  const current = now.getHours() * 60 + now.getMinutes();
+  const start = startH * 60 + startM;
+  const end = endH * 60 + endM;
+  if (start <= end) return current >= start && current < end;
+  return current >= start || current < end; // overnight wrap
+}
+
 export function hasDiplomacyMatch(playerBeasts: Beast[], summitBeast: Beast): boolean {
   return playerBeasts.some(
     (beast) => beast.diplomacy && beast.prefix === summitBeast.prefix && beast.suffix === summitBeast.suffix
@@ -639,7 +655,7 @@ export function selectOptimalBeasts(
   return selected;
 }
 
-function questNeedsPredicate(quest: string): ((beast: Beast) => boolean) | null {
+export function questNeedsPredicate(quest: string): ((beast: Beast) => boolean) | null {
   switch (quest) {
     case 'attack_summit': return (b) => b.bonus_xp === 0;
     case 'max_attack_streak': return (b) => !b.max_attack_streak;

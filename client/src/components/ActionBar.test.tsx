@@ -65,6 +65,16 @@ const mockAutopilotState = {
   maxBeastsPerAttack: 295,
   skipSharedDiplomacy: false,
   ignoredPlayers: [],
+  snipeAt1Hp: false,
+  poisonScheduleEnabled: false,
+  poisonScheduleStartHour: 14,
+  poisonScheduleStartMinute: 0,
+  poisonScheduleEndHour: 16,
+  poisonScheduleEndMinute: 0,
+  poisonScheduleAmount: 100,
+  poisonScheduleTargetedOnly: false,
+  rotateTopBeasts: false,
+  rotateTopBeastIds: [],
 };
 
 vi.mock("@/contexts/controller", () => ({

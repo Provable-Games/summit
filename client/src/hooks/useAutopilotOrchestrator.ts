@@ -5,10 +5,11 @@ import { useGameStore } from '@/stores/gameStore';
 import type { Beast } from '@/types/game';
 import React, { useEffect, useMemo, useReducer } from 'react';
 import {
-  calculateRevivalRequired,
+  calculateRevivalRequired, calculateBattleResult, getBeastCurrentHealth, getBeastRevivalTime, isBeastLocked,
   isOwnerIgnored, isOwnerTargetedForPoison, getTargetedPoisonAmount,
   isBeastTargetedForPoison, getTargetedBeastPoisonAmount,
-  hasDiplomacyMatch, selectOptimalBeasts,
+  hasDiplomacyMatch, selectOptimalBeasts, getStrongType, isWithinPoisonSchedule,
+  questNeedsPredicate,
 } from '../utils/beasts';
 
 export function useAutopilotOrchestrator() {
@@ -54,6 +55,16 @@ export function useAutopilotOrchestrator() {
     targetedPoisonBeasts,
     questMode,
     questFilters,
+    snipeAt1Hp,
+    poisonScheduleEnabled,
+    poisonScheduleStartHour,
+    poisonScheduleStartMinute,
+    poisonScheduleEndHour,
+    poisonScheduleEndMinute,
+    poisonScheduleAmount,
+    poisonScheduleTargetedOnly,
+    rotateTopBeasts,
+    rotateTopBeastIds,
   } = useAutopilotStore();
 
   const [triggerAutopilot, setTriggerAutopilot] = useReducer((x: number) => x + 1, 0);
@@ -67,25 +78,40 @@ export function useAutopilotOrchestrator() {
   // ── Beast selection ──────────────────────────────────────────────────
 
   const collectionWithCombat = useMemo<Beast[]>(() => {
-    if (summit && collection.length > 0) {
-      return selectOptimalBeasts(collection, summit, {
-        useRevivePotions,
-        revivePotionMax,
-        revivePotionMaxPerBeast,
-        revivePotionsUsed,
-        useAttackPotions,
-        attackPotionMax,
-        attackPotionMaxPerBeast,
-        attackPotionsUsed,
-        autopilotEnabled,
-        questMode,
-        questFilters,
-      });
+    if (!summit || collection.length === 0) return [];
+
+    // Rotate Top Beasts override: filter to rotation pool, counter-pick by type
+    if (autopilotEnabled && rotateTopBeasts && rotateTopBeastIds.length > 0) {
+      const rotationPool = collection.filter((b) => rotateTopBeastIds.includes(b.token_id));
+      const strongType = getStrongType(summit.beast.type);
+      const counterPicked = rotationPool.filter((b) => b.type === strongType);
+      const candidates = counterPicked.length > 0 ? counterPicked : rotationPool;
+
+      return candidates.map((beast) => {
+        const b = { ...beast };
+        b.revival_time = getBeastRevivalTime(b);
+        b.current_health = getBeastCurrentHealth(beast);
+        b.combat = calculateBattleResult(b, summit, 0);
+        return b;
+      }).filter((b) => !isBeastLocked(b))
+        .sort((a, b) => (b.combat?.estimatedDamage ?? 0) - (a.combat?.estimatedDamage ?? 0));
     }
 
-    return [];
+    return selectOptimalBeasts(collection, summit, {
+      useRevivePotions,
+      revivePotionMax,
+      revivePotionMaxPerBeast,
+      revivePotionsUsed,
+      useAttackPotions,
+      attackPotionMax,
+      attackPotionMaxPerBeast,
+      attackPotionsUsed,
+      autopilotEnabled,
+      questMode,
+      questFilters,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summit?.beast?.token_id, summit?.beast?.extra_lives, summit?.beast?.current_health, collection.length, revivePotionsUsed, attackPotionsUsed, useRevivePotions, useAttackPotions, questMode, questFilters, maxBeastsPerAttack, attackStrategy, autopilotEnabled]);
+  }, [summit?.beast?.token_id, summit?.beast?.extra_lives, summit?.beast?.current_health, collection.length, revivePotionsUsed, attackPotionsUsed, useRevivePotions, useAttackPotions, questMode, questFilters, maxBeastsPerAttack, attackStrategy, autopilotEnabled, rotateTopBeasts, rotateTopBeastIds]);
 
   // ── Handlers ─────────────────────────────────────────────────────────
 
@@ -384,6 +410,88 @@ export function useAutopilotOrchestrator() {
       setTriggerAutopilot();
     }
   }, [autopilotEnabled, summit?.beast.current_health]);
+
+  // 1HP Snipe: auto-attack when summit drops to 1HP with no extra lives
+  useEffect(() => {
+    if (!autopilotEnabled || !snipeAt1Hp || !summit?.beast) return;
+    if (summit.beast.current_health > 1 || summit.beast.extra_lives > 0) return;
+
+    const { attackInProgress: attacking, applyingPotions: applying } = useGameStore.getState();
+    if (attacking || applying) return;
+
+    const myBeast = collection.find((b: Beast) => b.token_id === summit.beast.token_id);
+    if (myBeast) return;
+    if (isOwnerIgnored(summit.owner, ignoredPlayers)) return;
+    if (skipSharedDiplomacy && hasDiplomacyMatch(collection, summit.beast)) return;
+
+    // Pick beast: prefer quest-needing beast, then weakest (any beast can finish 1HP)
+    const candidates = collection
+      .map((b) => {
+        const copy = { ...b };
+        copy.current_health = getBeastCurrentHealth(b);
+        copy.combat = calculateBattleResult(copy, summit, 0);
+        return copy;
+      })
+      .filter((b) => b.current_health > 0 && !isBeastLocked(b));
+
+    if (candidates.length === 0) return;
+
+    const predicates = questMode
+      ? questFilters.map(questNeedsPredicate).filter((p): p is (b: Beast) => boolean => p !== null)
+      : [];
+    const needsQuest = (b: Beast) => predicates.some((p) => p(b));
+
+    // Prefer quest beast, otherwise weakest (save strong beasts for real fights)
+    const questCandidate = predicates.length > 0 ? candidates.find(needsQuest) : undefined;
+    const weakest = candidates.sort((a, b) => (a.combat?.estimatedDamage ?? 0) - (b.combat?.estimatedDamage ?? 0))[0];
+    const best = questCandidate ?? weakest;
+    setAutopilotLog('Sniping 1HP summit beast...');
+    executeGameAction({
+      type: 'attack',
+      beasts: [[best, 1, 0]],
+      safeAttack: false,
+      vrf: best.luck > 0 || (summit.beast.luck > 0),
+      extraLifePotions: 0,
+      attackPotions: 0,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [summit?.beast?.current_health, summit?.beast?.extra_lives, autopilotEnabled, snipeAt1Hp]);
+
+  // Poison Schedule: 60s interval to apply poison during scheduled window
+  useEffect(() => {
+    if (!autopilotEnabled || !poisonScheduleEnabled) return;
+
+    const checkSchedule = () => {
+      if (!isWithinPoisonSchedule(poisonScheduleStartHour, poisonScheduleStartMinute, poisonScheduleEndHour, poisonScheduleEndMinute)) return;
+
+      const { attackInProgress: attacking, applyingPotions: applying, summit: currentSummit, collection: currentCollection } = useGameStore.getState();
+      if (attacking || applying || !currentSummit?.beast) return;
+
+      const myBeast = currentCollection.find((b: Beast) => b.token_id === currentSummit.beast.token_id);
+      if (myBeast) return;
+
+      const { ignoredPlayers: ig, skipSharedDiplomacy: skipDip, poisonTotalMax: ptm, poisonPotionsUsed: ppu, targetedPoisonPlayers: tpp, targetedPoisonBeasts: tpb, poisonScheduleTargetedOnly: targetedOnly, poisonScheduleAmount: schedAmount } = useAutopilotStore.getState();
+
+      if (isOwnerIgnored(currentSummit.owner, ig)) return;
+      if (skipDip && hasDiplomacyMatch(currentCollection, currentSummit.beast)) return;
+
+      if (targetedOnly) {
+        const isBeastTarget = tpb.length > 0 && isBeastTargetedForPoison(currentSummit.beast.token_id, tpb);
+        const isPlayerTarget = tpp.length > 0 && isOwnerTargetedForPoison(currentSummit.owner, tpp);
+        if (!isBeastTarget && !isPlayerTarget) return;
+      }
+
+      const remainingCap = Math.max(0, ptm - ppu);
+      const pb = tokenBalances?.["POISON"] || 0;
+      const amount = Math.min(schedAmount, pb, remainingCap);
+      if (amount > 0) handleApplyPoison(amount, currentSummit.beast.token_id);
+    };
+
+    checkSchedule();
+    const interval = setInterval(checkSchedule, 60_000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autopilotEnabled, poisonScheduleEnabled, poisonScheduleStartHour, poisonScheduleStartMinute, poisonScheduleEndHour, poisonScheduleEndMinute]);
 
   // ── Return values needed by ActionBar UI ─────────────────────────────
 
