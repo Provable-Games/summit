@@ -311,7 +311,7 @@ export class SubscriptionHub {
       return true;
     } catch (error) {
       this.bumpCounter("sendErrors");
-      if (this.windowCounters.sendErrors % this.sendErrorSampleEvery === 1) {
+      if (this.windowCounters.sendErrors % this.sendErrorSampleEvery === 0) {
         log.warn("ws_send_failed_sampled", {
           error,
           window_send_errors: this.windowCounters.sendErrors,

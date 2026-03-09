@@ -33,9 +33,14 @@ export function isMetricsEnabled(): boolean {
   return !(raw === "0" || raw === "false" || raw === "off" || raw === "no");
 }
 
+function safeInterval(envValue: string | undefined, optionValue: number | undefined, fallback: number): number {
+  const raw = Number(envValue || optionValue || fallback);
+  return Number.isFinite(raw) && raw > 0 ? raw : fallback;
+}
+
 export function startResourceMetrics(options: ResourceMetricsOptions): { stop: () => void } {
-  const intervalMs = Number(process.env.METRICS_INTERVAL_MS || options.intervalMs || 30_000);
-  const dbProbeIntervalMs = Number(process.env.DB_METRICS_INTERVAL_MS || options.dbProbeIntervalMs || 60_000);
+  const intervalMs = safeInterval(process.env.METRICS_INTERVAL_MS, options.intervalMs, 30_000);
+  const dbProbeIntervalMs = safeInterval(process.env.DB_METRICS_INTERVAL_MS, options.dbProbeIntervalMs, 60_000);
   const log = options.log ?? console.log;
 
   let inFlight = false;

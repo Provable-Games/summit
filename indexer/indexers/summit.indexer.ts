@@ -1109,6 +1109,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           lastProgressLog = now;
           blocksWithoutEvents = 0;
         }
+        perfState.last_block_number = block_number.toString();
+        perfState.blocks_without_events = blocksWithoutEvents;
         return; // Skip processing for empty blocks
       }
 
