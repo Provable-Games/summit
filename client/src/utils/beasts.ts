@@ -79,7 +79,7 @@ function nameMatchBonus(attacker: Beast, defender: Beast, elementalDamage: numbe
   return damage;
 }
 
-export const calculateBattleResult = (beast: Beast, _summit: Summit, potions: number): Combat => {
+export const calculateBattleResult = (beast: Beast, _summit: Pick<Summit, 'beast' | 'diplomacy'>, potions: number): Combat => {
   const summit = _summit.beast;
   const MINIMUM_DAMAGE = 4
 

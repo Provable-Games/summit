@@ -3,7 +3,7 @@ import { MAX_BEASTS_PER_ATTACK } from '@/contexts/GameDirector';
 import { useQuestGuide } from '@/contexts/QuestGuide';
 import type { QuestFilterKey, SortMethod } from '@/stores/gameStore';
 import { useGameStore } from '@/stores/gameStore';
-import type { Beast, selection } from '@/types/game';
+import type { Beast, Summit, selection } from '@/types/game';
 import {
   calculateMaxAttackPotions, calculateOptimalAttackPotions, getBeastCurrentHealth,
   getBeastRevivalTime,
@@ -109,27 +109,38 @@ function BeastCollection() {
     );
   };
 
+  // Stable summit snapshot: only recalculates when combat-relevant fields change.
+  // Summit is high-churn realtime state (timestamps update frequently), so we extract
+  // only the fields used by combat calculation, filtering, and sorting.
+  const summitSnapshot = useMemo((): Pick<Summit, 'beast' | 'diplomacy'> | null => {
+    if (!summit?.beast) return null;
+    return {
+      beast: summit.beast,
+      diplomacy: summit.diplomacy,
+    };
+  }, [summit?.beast, summit?.diplomacy]);
+
   // Calculate combat results - lightweight operation (just math)
   // useMemo prevents recalculation when filters/sorting change
   const collectionWithCombat = useMemo(() => {
-    if (summit && collection.length > 0) {
+    if (summitSnapshot && collection.length > 0) {
       let filtered = collection.map((beast: Beast) => {
         const newBeast = { ...beast }
         newBeast.revival_time = getBeastRevivalTime(newBeast);
         newBeast.current_health = getBeastCurrentHealth(newBeast)
-        newBeast.combat = calculateBattleResult(newBeast, summit, 0)
+        newBeast.combat = calculateBattleResult(newBeast, summitSnapshot, 0)
         return newBeast
       });
 
       // Apply type filter
       if (typeFilter === 'strong') {
-        filtered = filtered.filter(beast => isStrongAgainst(beast.type, summit.beast.type));
+        filtered = filtered.filter(beast => isStrongAgainst(beast.type, summitSnapshot.beast.type));
       }
 
       // Apply name match filter
       if (nameMatchFilter) {
         filtered = filtered.filter(beast =>
-          beast.prefix === summit.beast.prefix || beast.suffix === summit.beast.suffix
+          beast.prefix === summitSnapshot.beast.prefix || beast.suffix === summitSnapshot.beast.suffix
         );
       }
 
@@ -173,9 +184,9 @@ function BeastCollection() {
       // Sort the filtered collection
       return filtered.sort((a: Beast, b: Beast) => {
         // Always keep summit beast at the top
-        if (a.token_id === summit.beast.token_id) {
+        if (a.token_id === summitSnapshot.beast.token_id) {
           return -1
-        } else if (b.token_id === summit.beast.token_id) {
+        } else if (b.token_id === summitSnapshot.beast.token_id) {
           return 1
         }
 
@@ -183,8 +194,8 @@ function BeastCollection() {
         if (sortMethod === 'recommended') {
           // When nameMatchFilter is active, prioritize beasts that match both prefix & suffix
           if (nameMatchFilter) {
-            const aMatchesBoth = a.prefix === summit.beast.prefix && a.suffix === summit.beast.suffix;
-            const bMatchesBoth = b.prefix === summit.beast.prefix && b.suffix === summit.beast.suffix;
+            const aMatchesBoth = a.prefix === summitSnapshot.beast.prefix && a.suffix === summitSnapshot.beast.suffix;
+            const bMatchesBoth = b.prefix === summitSnapshot.beast.prefix && b.suffix === summitSnapshot.beast.suffix;
 
             if (aMatchesBoth && !bMatchesBoth) {
               return -1; // a comes first
@@ -225,10 +236,7 @@ function BeastCollection() {
     }
 
     return collection.sort((a, b) => b.power - a.power)
-  // Intentionally depend on specific summit fields, not the full object:
-  // summit is high-churn realtime state; full-object dep would retrigger sorting on every timestamp update.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collection, summit?.beast?.token_id, summit?.beast?.type, summit?.beast?.prefix, summit?.beast?.suffix, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, questFilter]);
+  }, [collection, summitSnapshot, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, questFilter]);
 
   const selectBeast = useCallback((beast: Beast, isFirstBeast: boolean = false) => {
     if (attackInProgress || attackMode === 'autopilot') return;
