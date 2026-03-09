@@ -201,9 +201,9 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                 ) : (
                   playerPagedItems.map((player, index) => {
                     const globalRank = (playersPage - 1) * PAGE_SIZE + index + 1;
-                    const name = addressNames[player.owner];
+                    const name = player.owner ? addressNames[player.owner] : null;
                     return (
-                      <Box key={player.owner} sx={styles.row}>
+                      <Box key={`${player.owner ?? 'unknown'}-${globalRank}`} sx={styles.row}>
                         <Typography sx={styles.rankCell}>{globalRank}.</Typography>
                         <Box sx={styles.playerCell}>
                           {name ? (
@@ -220,7 +220,7 @@ export default function LeaderboardModal({ open, onClose }: LeaderboardModalProp
                               </Typography>
                             </>
                           ) : (
-                            <Typography sx={styles.playerAddress}>{formatAddress(player.owner)}</Typography>
+                            <Typography sx={styles.playerAddress}>{formatAddress(player.owner ?? '')}</Typography>
                           )}
                         </Box>
                         <Box sx={styles.rewardsCellRow}>

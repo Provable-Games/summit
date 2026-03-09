@@ -15,7 +15,8 @@ export function normalizeAddress(address: MaybeAddress): string | null {
     return null;
   }
 
-  return trimmed.replace(/^0x0+/, '0x').toLowerCase();
+  const result = trimmed.replace(/^0x0+/, '0x').toLowerCase();
+  return result === '0x' ? null : result;
 }
 
 /**

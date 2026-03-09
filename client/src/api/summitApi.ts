@@ -3,7 +3,7 @@
  */
 
 import { useDynamicConnector } from "@/contexts/starknet";
-import type { Beast, DiplomacyBeast } from "@/types/game";
+import type { Beast, DiplomacyBeast, Leaderboard } from "@/types/game";
 import { BEAST_NAMES, BEAST_TIERS, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 
 // Reverse lookup: name -> id
@@ -195,7 +195,7 @@ export const useSummitApi = () => {
   /**
    * Get rewards leaderboard
    */
-  const getLeaderboard = async (): Promise<{ owner: string; amount: number }[]> => {
+  const getLeaderboard = async (): Promise<Leaderboard[]> => {
     const response = await fetch(`${currentNetworkConfig.apiUrl}/leaderboard`);
     if (!response.ok) {
       throw new Error(`Failed to fetch leaderboard: ${response.status}`);

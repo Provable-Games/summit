@@ -1,5 +1,5 @@
 import { DIPLOMACY_REWARDS_PER_SECOND } from '@/contexts/GameDirector';
-import type { Beast, Diplomacy } from '@/types/game';
+import type { Beast, Diplomacy, Leaderboard } from '@/types/game';
 import { gameColors } from '@/utils/themes';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import { Box, Popover, Typography } from '@mui/material';
@@ -10,7 +10,7 @@ interface DiplomacyPopoverProps {
   onClose: () => void;
   diplomacy: Diplomacy;
   summitBeast: Beast;
-  leaderboard: { owner: string | null; amount: number }[];
+  leaderboard: Leaderboard[];
   addressNames: Record<string, string | null>;
 }
 

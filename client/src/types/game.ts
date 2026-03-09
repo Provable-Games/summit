@@ -25,7 +25,7 @@ export interface Diplomacy {
 }
 
 export interface Leaderboard {
-  owner: string;
+  owner: string | null;
   amount: number;
 }
 

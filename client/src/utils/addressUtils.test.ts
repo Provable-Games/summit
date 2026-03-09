@@ -10,8 +10,10 @@ describe('normalizeAddress', () => {
     expect(normalizeAddress('0x00ABC')).toBe('0xabc');
   });
 
-  it('preserves 0x prefix with single zero stripped', () => {
-    expect(normalizeAddress('0x0')).toBe('0x');
+  it('returns null for zero addresses', () => {
+    expect(normalizeAddress('0x0')).toBeNull();
+    expect(normalizeAddress('0x00')).toBeNull();
+    expect(normalizeAddress('0x000000')).toBeNull();
   });
 
   it('returns null for null/undefined/empty', () => {
