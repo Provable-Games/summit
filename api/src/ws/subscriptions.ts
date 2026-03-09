@@ -12,8 +12,11 @@ import { log, parsePositiveInt } from "../lib/logging.js";
 import type pg from "pg";
 
 interface WebSocketLike {
-  send(data: string): void;
+  send(data: string, cb?: (err?: Error) => void): void;
   close(): void;
+  terminate?(): void;
+  readyState?: number;
+  OPEN?: number;
 }
 
 export type Channel = "summit" | "event";
@@ -274,18 +277,38 @@ export class SubscriptionHub {
     const message = JSON.stringify({ type: channel, data });
 
     let delivered = 0;
-    for (const [, client] of this.clients) {
+    const deadClients: string[] = [];
+
+    for (const [id, client] of this.clients) {
       if (!client.channels.has(channel)) continue;
-      this.send(client.ws, message);
-      delivered += 1;
+      if (this.send(id, client.ws, message)) {
+        delivered += 1;
+      } else {
+        deadClients.push(id);
+      }
+    }
+
+    // Clean up clients that failed to receive the message
+    for (const id of deadClients) {
+      this.removeDeadClient(id);
     }
 
     this.bumpBroadcast(channel, delivered);
   }
 
-  private send(ws: WebSocketLike, message: string): void {
+  /** Returns true if send was attempted, false if the client is already dead. */
+  private send(id: string, ws: WebSocketLike, message: string): boolean {
+    if (!this.isSocketOpen(ws)) {
+      return false;
+    }
+
     try {
-      ws.send(message);
+      ws.send(message, (error) => {
+        if (!error) return;
+        this.bumpCounter("sendErrors");
+        this.removeDeadClient(id);
+      });
+      return true;
     } catch (error) {
       this.bumpCounter("sendErrors");
       if (this.windowCounters.sendErrors % this.sendErrorSampleEvery === 1) {
@@ -295,7 +318,40 @@ export class SubscriptionHub {
           sample_every: this.sendErrorSampleEvery,
         });
       }
+      return false;
     }
+  }
+
+  private isSocketOpen(ws: WebSocketLike): boolean {
+    if (typeof ws.readyState !== "number") return true;
+
+    // ws uses OPEN=1, but fallback keeps this check generic for WebSocket-like types.
+    const openState = typeof ws.OPEN === "number" ? ws.OPEN : 1;
+    return ws.readyState === openState;
+  }
+
+  private closeSocket(ws: WebSocketLike): void {
+    try {
+      if (typeof ws.terminate === "function") {
+        ws.terminate();
+        return;
+      }
+      ws.close();
+    } catch {
+      // Ignore close errors
+    }
+  }
+
+  private removeDeadClient(id: string): void {
+    const client = this.clients.get(id);
+    if (!client) return;
+
+    this.clients.delete(id);
+    this.closeSocket(client.ws);
+    log.info("ws_removed_dead_client", {
+      client_id: id,
+      total_clients: this.clients.size,
+    });
   }
 
   addClient(id: string, ws: WebSocketLike): void {
@@ -364,19 +420,25 @@ export class SubscriptionHub {
         case "subscribe": {
           const subChannels = data.channels || [];
           this.subscribe(id, subChannels);
-          this.send(client.ws, JSON.stringify({ type: "subscribed", channels: subChannels }));
+          if (!this.send(id, client.ws, JSON.stringify({ type: "subscribed", channels: subChannels }))) {
+            this.removeDeadClient(id);
+          }
           break;
         }
 
         case "unsubscribe": {
           const unsubChannels = data.channels || [];
           this.unsubscribe(id, unsubChannels);
-          this.send(client.ws, JSON.stringify({ type: "unsubscribed", channels: unsubChannels }));
+          if (!this.send(id, client.ws, JSON.stringify({ type: "unsubscribed", channels: unsubChannels }))) {
+            this.removeDeadClient(id);
+          }
           break;
         }
 
         case "ping":
-          this.send(client.ws, JSON.stringify({ type: "pong" }));
+          if (!this.send(id, client.ws, JSON.stringify({ type: "pong" }))) {
+            this.removeDeadClient(id);
+          }
           break;
       }
     } catch (error) {

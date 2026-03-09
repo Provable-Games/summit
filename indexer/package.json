@@ -53,6 +53,11 @@
     "vitest": "^3.1.1"
   },
   "pnpm": {
+    "overrides": {
+      "tar": "^7.5.10",
+      "valibot": "^1.2.0",
+      "rollup": "^4.59.0"
+    },
     "patchedDependencies": {
       "@apibara/plugin-drizzle@2.1.0-beta.55": "patches/@apibara__plugin-drizzle@2.1.0-beta.55.patch"
     }

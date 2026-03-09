@@ -127,9 +127,11 @@ describe("ActionBar token balance coercion", () => {
   });
 
   it("renders with missing balance keys without crashing", async () => {
+    let root: ReturnType<typeof create> | undefined;
     await act(async () => {
-      create(<ActionBar />);
+      root = create(<ActionBar />);
     });
+    expect(root?.toJSON()).toBeTruthy();
   });
 
   it("renders with populated balances without crashing", async () => {
@@ -140,9 +142,11 @@ describe("ActionBar token balance coercion", () => {
       POISON: 13,
     };
 
+    let root: ReturnType<typeof create> | undefined;
     await act(async () => {
-      create(<ActionBar />);
+      root = create(<ActionBar />);
     });
+    expect(root?.toJSON()).toBeTruthy();
   });
 
   it("handles invalid balance values without crashing", async () => {
@@ -153,8 +157,10 @@ describe("ActionBar token balance coercion", () => {
       POISON: undefined as unknown as number,
     };
 
+    let root: ReturnType<typeof create> | undefined;
     await act(async () => {
-      create(<ActionBar />);
+      root = create(<ActionBar />);
     });
+    expect(root?.toJSON()).toBeTruthy();
   });
 });

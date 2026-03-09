@@ -14,11 +14,11 @@
   },
   "description": "Summit API server with REST endpoints and WebSocket subscriptions",
   "dependencies": {
-    "@hono/node-server": "^1.13.0",
+    "@hono/node-server": "^1.19.10",
     "@hono/node-ws": "^1.0.0",
     "dotenv": "^16.4.0",
     "drizzle-orm": "^0.38.0",
-    "hono": "^4.6.0",
+    "hono": "^4.12.4",
     "pg": "^8.13.0",
     "uuid": "^10.0.0",
     "ws": "^8.18.0"

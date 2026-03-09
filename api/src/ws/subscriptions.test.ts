@@ -18,12 +18,17 @@ import { SubscriptionHub } from "./subscriptions.js";
  */
 function createMockWs() {
   const messages: string[] = [];
+  const OPEN_STATE = 1;
   return {
     ws: {
-      send: vi.fn((data: string) => {
+      send: vi.fn((data: string, cb?: (err?: Error) => void) => {
         messages.push(data);
+        cb?.();
       }),
       close: vi.fn(),
+      terminate: vi.fn(),
+      readyState: OPEN_STATE,
+      OPEN: OPEN_STATE,
     },
     messages,
   };
@@ -189,6 +194,43 @@ describe("SubscriptionHub", () => {
       hub.handleMessage("client-1", JSON.stringify({ type: "unknown" }));
 
       expect(messages.length).toBe(0);
+    });
+
+    it("should remove non-open clients when send does not throw", () => {
+      const ws = {
+        send: vi.fn(),
+        close: vi.fn(),
+        terminate: vi.fn(),
+        readyState: 3,
+        OPEN: 1,
+      };
+
+      hub.addClient("client-1", ws);
+      hub.handleMessage("client-1", JSON.stringify({ type: "ping" }));
+
+      expect(hub.getStatus().clientCount).toBe(0);
+      expect(ws.send).not.toHaveBeenCalled();
+      expect(ws.terminate).toHaveBeenCalled();
+    });
+
+    it("should remove clients when send callback reports an error", async () => {
+      const ws = {
+        send: vi.fn((_data: string, cb?: (err?: Error) => void) => {
+          process.nextTick(() => cb?.(new Error("send failed")));
+        }),
+        close: vi.fn(),
+        terminate: vi.fn(),
+        readyState: 1,
+        OPEN: 1,
+      };
+
+      hub.addClient("client-1", ws);
+      hub.handleMessage("client-1", JSON.stringify({ type: "ping" }));
+
+      await new Promise<void>((resolve) => process.nextTick(resolve));
+
+      expect(hub.getStatus().clientCount).toBe(0);
+      expect(ws.terminate).toHaveBeenCalled();
     });
   });
 
