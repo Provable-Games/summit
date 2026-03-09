@@ -144,4 +144,70 @@ describe("useWebSocket", () => {
     const parsed = JSON.parse(subscribeMsg!);
     expect(parsed.channels).toContain("consumables");
   });
+
+  it("should call onSupply when supply message received", () => {
+    const onSupply = vi.fn();
+
+    act(() => {
+      create(
+        createElement(HookHarness, {
+          options: {
+            url: "wss://test.invalid",
+            channels: ["supply"],
+            onSupply,
+          },
+        })
+      );
+    });
+
+    act(() => {
+      mockWsInstance.onopen?.();
+    });
+
+    const payload = {
+      ATTACK: 236483,
+      REVIVE: 82604,
+      "EXTRA LIFE": 15538,
+      POISON: 320004,
+    };
+
+    act(() => {
+      mockWsInstance.onmessage?.({
+        data: JSON.stringify({ type: "supply", data: payload }),
+      });
+    });
+
+    expect(onSupply).toHaveBeenCalledWith(payload);
+  });
+
+  it("should not call onSupply for consumables messages", () => {
+    const onSupply = vi.fn();
+
+    act(() => {
+      create(
+        createElement(HookHarness, {
+          options: {
+            url: "wss://test.invalid",
+            channels: ["supply", "consumables"],
+            onSupply,
+          },
+        })
+      );
+    });
+
+    act(() => {
+      mockWsInstance.onopen?.();
+    });
+
+    act(() => {
+      mockWsInstance.onmessage?.({
+        data: JSON.stringify({
+          type: "consumables",
+          data: { owner: "0x1", xlife_count: 1, attack_count: 2, revive_count: 3, poison_count: 4 },
+        }),
+      });
+    });
+
+    expect(onSupply).not.toHaveBeenCalled();
+  });
 });

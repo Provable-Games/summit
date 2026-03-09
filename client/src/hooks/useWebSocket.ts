@@ -6,11 +6,12 @@
  * - summit: Beast stats updates for summit beast
  * - event: Activity feed from summit_log
  * - consumables: Potion balance updates per owner
+ * - supply: Aggregate player-held supply per ERC20 token
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type Channel = "summit" | "event" | "consumables";
+export type Channel = "summit" | "event" | "consumables" | "supply";
 
 export type ConnectionState = "connecting" | "connected" | "disconnected" | "reconnecting";
 
@@ -70,12 +71,16 @@ export interface ConsumablesData {
   poison_count: number;
 }
 
+/** Per-ERC20 token supply keyed by token name (e.g. "ATTACK", "REVIVE") */
+export type SupplyData = Record<string, number>;
+
 export interface UseWebSocketOptions {
   url: string;
   channels: Channel[];
   onSummit?: (data: SummitData) => void;
   onEvent?: (data: EventData) => void;
   onConsumables?: (data: ConsumablesData) => void;
+  onSupply?: (data: SupplyData) => void;
   onConnectionChange?: (state: ConnectionState) => void;
   enabled?: boolean;
 }
@@ -91,6 +96,7 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
     onSummit,
     onEvent,
     onConsumables,
+    onSupply,
     onConnectionChange,
     enabled = true,
   } = options;
@@ -102,11 +108,11 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
   const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
 
-  const callbacksRef = useRef({ onSummit, onEvent, onConsumables, onConnectionChange });
+  const callbacksRef = useRef({ onSummit, onEvent, onConsumables, onSupply, onConnectionChange });
 
   useEffect(() => {
-    callbacksRef.current = { onSummit, onEvent, onConsumables, onConnectionChange };
-  }, [onSummit, onEvent, onConsumables, onConnectionChange]);
+    callbacksRef.current = { onSummit, onEvent, onConsumables, onSupply, onConnectionChange };
+  }, [onSummit, onEvent, onConsumables, onSupply, onConnectionChange]);
 
   const updateConnectionState = useCallback((state: ConnectionState) => {
     if (!mountedRef.current) return;
@@ -127,6 +133,9 @@ export function useWebSocket(options: UseWebSocketOptions): UseWebSocketReturn {
           break;
         case "consumables":
           callbacksRef.current.onConsumables?.(message.data);
+          break;
+        case "supply":
+          callbacksRef.current.onSupply?.(message.data);
           break;
         case "subscribed":
           console.log("[WebSocket] Subscribed to:", message.channels);

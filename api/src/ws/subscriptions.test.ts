@@ -330,19 +330,19 @@ describe("SubscriptionHub", () => {
       expect(response.channels).toEqual(["consumables"]);
     });
 
-    it("should subscribe to all three channels", () => {
+    it("should subscribe to all four channels", () => {
       const { ws, messages } = createMockWs();
       hub.addClient("client-1", ws);
 
       hub.handleMessage(
         "client-1",
-        JSON.stringify({ type: "subscribe", channels: ["summit", "event", "consumables"] })
+        JSON.stringify({ type: "subscribe", channels: ["summit", "event", "consumables", "supply"] })
       );
 
       expect(messages.length).toBe(1);
       const response = JSON.parse(messages[0]);
       expect(response.type).toBe("subscribed");
-      expect(response.channels).toEqual(["summit", "event", "consumables"]);
+      expect(response.channels).toEqual(["summit", "event", "consumables", "supply"]);
     });
 
     it("should unsubscribe from consumables channel", () => {
@@ -360,6 +360,40 @@ describe("SubscriptionHub", () => {
       const response = JSON.parse(messages[0]);
       expect(response.type).toBe("unsubscribed");
       expect(response.channels).toEqual(["consumables"]);
+    });
+  });
+
+  describe("supply channel", () => {
+    it("should subscribe a client to supply channel", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({ type: "subscribe", channels: ["supply"] })
+      );
+
+      expect(messages.length).toBe(1);
+      const response = JSON.parse(messages[0]);
+      expect(response.type).toBe("subscribed");
+      expect(response.channels).toEqual(["supply"]);
+    });
+
+    it("should unsubscribe from supply channel", () => {
+      const { ws, messages } = createMockWs();
+      hub.addClient("client-1", ws);
+
+      hub.subscribe("client-1", ["supply"]);
+
+      hub.handleMessage(
+        "client-1",
+        JSON.stringify({ type: "unsubscribe", channels: ["supply"] })
+      );
+
+      expect(messages.length).toBe(1);
+      const response = JSON.parse(messages[0]);
+      expect(response.type).toBe("unsubscribed");
+      expect(response.channels).toEqual(["supply"]);
     });
   });
 });

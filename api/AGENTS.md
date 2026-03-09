@@ -39,8 +39,9 @@ Read [`../AGENTS.md`](../AGENTS.md) first for shared addresses/mechanics and ind
 - Root discovery route: `/`
 - WebSocket endpoint: `/ws`
   - message types: `subscribe`, `unsubscribe`, `ping`
-  - channels: `summit`, `event`, `consumables`
-  - subscribe payload: `{"type":"subscribe","channels":["summit","event","consumables"]}`
+  - channels: `summit`, `event`, `consumables`, `supply`
+  - subscribe payload: `{"type":"subscribe","channels":["summit","event","consumables","supply"]}`
+  - `supply` channel payload: `{"ATTACK": 236483, "REVIVE": 82604, "EXTRA LIFE": 15538, "POISON": 320004}` (per-ERC20 keyed)
 
 Query/pagination rules agents usually need:
 - `/beasts/all`: `limit` default `25`, max `100`; `offset`; filters `prefix`, `suffix`, `beast_id`, `name`, `owner`; `sort` in `summit_held_seconds|level`.

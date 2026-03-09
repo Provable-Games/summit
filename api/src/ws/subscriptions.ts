@@ -6,6 +6,7 @@
  * - summit: Beast stats updates for summit beast
  * - event: Activity feed from summit_log
  * - consumables: Potion balance updates per owner
+ * - supply: Aggregate player-held supply per ERC20 token
  */
 
 import { pool } from "../db/client.js";
@@ -19,7 +20,7 @@ interface WebSocketLike {
   OPEN?: number;
 }
 
-export type Channel = "summit" | "event" | "consumables";
+export type Channel = "summit" | "event" | "consumables" | "supply";
 
 interface ClientSubscription {
   ws: WebSocketLike;
@@ -73,6 +74,9 @@ interface ConsumablesPayload {
   poison_count: number;
 }
 
+/** Per-ERC20 token supply keyed by token name (e.g. "ATTACK", "REVIVE") */
+type SupplyPayload = Record<string, number>;
+
 export class SubscriptionHub {
   private clients: Map<string, ClientSubscription> = new Map();
   private pgClient: pg.PoolClient | null = null;
@@ -113,8 +117,9 @@ export class SubscriptionHub {
       await this.pgClient.query("LISTEN summit_update");
       await this.pgClient.query("LISTEN summit_log_insert");
       await this.pgClient.query("LISTEN consumables_update");
+      await this.pgClient.query("LISTEN consumables_supply");
 
-      console.log("[SubscriptionHub] Listening on: summit_update, summit_log_insert, consumables_update");
+      console.log("[SubscriptionHub] Listening on: summit_update, summit_log_insert, consumables_update, consumables_supply");
     } catch (error) {
       console.error("[SubscriptionHub] Failed to connect:", error);
       this.reconnect();
@@ -168,13 +173,16 @@ export class SubscriptionHub {
         case "consumables_update":
           this.broadcast("consumables", payload as ConsumablesPayload);
           break;
+        case "consumables_supply":
+          this.broadcast("supply", payload as SupplyPayload);
+          break;
       }
     } catch (error) {
       console.error("[SubscriptionHub] Failed to parse notification:", error);
     }
   }
 
-  private broadcast(channel: Channel, data: SummitPayload | EventPayload | ConsumablesPayload): void {
+  private broadcast(channel: Channel, data: SummitPayload | EventPayload | ConsumablesPayload | SupplyPayload): void {
     const message = JSON.stringify({ type: channel, data });
 
     let sentCount = 0;

@@ -1,6 +1,8 @@
 import { getSwapQuote } from "@/api/ekubo";
 import { useSummitApi } from "@/api/summitApi";
 import { QUEST_REWARDS_TOTAL_AMOUNT } from "@/contexts/GameDirector";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import type { SupplyData } from "@/hooks/useWebSocket";
 import { NETWORKS } from "@/utils/networkConfig";
 import type {
   PropsWithChildren
@@ -99,6 +101,21 @@ export const StatisticsProvider = ({ children }: PropsWithChildren) => {
       await fetchTokenPrice(token);
     }
   };
+
+  const handleSupply = (data: SupplyData) => {
+    setConsumablesSupply({
+      xlife: data["EXTRA LIFE"] ?? 0,
+      attack: data["ATTACK"] ?? 0,
+      revive: data["REVIVE"] ?? 0,
+      poison: data["POISON"] ?? 0,
+    });
+  };
+
+  useWebSocket({
+    url: currentNetworkConfig.wsUrl,
+    channels: ["supply"],
+    onSupply: handleSupply,
+  });
 
   useEffect(() => {
     fetchBeastCounts();
