@@ -56,6 +56,15 @@ const mockAutopilotState = {
   poisonConservativeExtraLivesTrigger: 0,
   poisonConservativeAmount: 0,
   poisonAggressiveAmount: 0,
+  poisonMinPower: 0,
+  poisonMinHealth: 0,
+  targetedPoisonPlayers: [],
+  targetedPoisonBeasts: [],
+  questMode: false,
+  questFilters: [],
+  maxBeastsPerAttack: 295,
+  skipSharedDiplomacy: false,
+  ignoredPlayers: [],
 };
 
 vi.mock("@/contexts/controller", () => ({

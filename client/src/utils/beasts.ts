@@ -1,5 +1,5 @@
 import type { Beast, Combat, Summit, selection } from '@/types/game';
-import type { IgnoredPlayer } from '@/stores/autopilotStore';
+import type { IgnoredPlayer, TargetedPoisonPlayer } from '@/stores/autopilotStore';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
 import type { SoundName } from '@/contexts/sound';
 import * as starknet from "@scure/starknet";
@@ -369,7 +369,7 @@ export function isOwnerIgnored(summitOwner: string, ignoredPlayers: IgnoredPlaye
   return ignoredPlayers.some((p) => p.address === normalized);
 }
 
-export function isOwnerTargetedForPoison(summitOwner: string, targetedPlayers: IgnoredPlayer[]): boolean {
+export function isOwnerTargetedForPoison(summitOwner: string, targetedPlayers: TargetedPoisonPlayer[]): boolean {
   if (targetedPlayers.length === 0) return false;
   const normalized = normalizeAddress(summitOwner);
   return targetedPlayers.some((p) => p.address === normalized);
@@ -446,6 +446,7 @@ export function selectOptimalBeasts(
   const needsAnyQuest = (b: Beast) => questPredicates.some((p) => p(b));
 
   // Sort both by combat score desc, with quest-needing beasts boosted
+  const hasStreakQuest = config.questMode && config.questFilters.includes('max_attack_streak');
   const sortWithQuestBoost = (a: Beast, b: Beast) => {
     if (questPredicates.length > 0) {
       const aNeeds = needsAnyQuest(a);
@@ -456,6 +457,12 @@ export function selectOptimalBeasts(
       }
       if (bNeeds && !aNeeds) {
         if ((b.combat?.estimatedDamage ?? 0) >= (a.combat?.estimatedDamage ?? 0) * 0.5) return 1;
+      }
+      // Both need quests — prefer higher urgency (e.g. streak about to expire)
+      if (aNeeds && bNeeds && hasStreakQuest) {
+        const aUrgency = questUrgencyScore(a, config.questFilters);
+        const bUrgency = questUrgencyScore(b, config.questFilters);
+        if (aUrgency !== bUrgency) return bUrgency - aUrgency;
       }
     }
     return (b.combat?.score ?? -Infinity) - (a.combat?.score ?? -Infinity);
@@ -568,6 +575,12 @@ export function selectOptimalBeasts(
         const bQuest = needsAnyQuest(b.beast);
         if (aQuest && !bQuest) return -1;
         if (bQuest && !aQuest) return 1;
+        // Both need quests — prefer higher urgency (streak about to expire)
+        if (aQuest && bQuest && hasStreakQuest) {
+          const aUrg = questUrgencyScore(a.beast, config.questFilters);
+          const bUrg = questUrgencyScore(b.beast, config.questFilters);
+          if (aUrg !== bUrg) return bUrg - aUrg;
+        }
       }
       // Both can solo — prefer cheaper
       if (a.weightedCost !== b.weightedCost) return a.weightedCost - b.weightedCost;
@@ -588,6 +601,12 @@ export function selectOptimalBeasts(
         const bQuest = needsAnyQuest(b.beast);
         if (aQuest && !bQuest) return -1;
         if (bQuest && !aQuest) return 1;
+        // Both need quests — prefer higher urgency
+        if (aQuest && bQuest && hasStreakQuest) {
+          const aUrg = questUrgencyScore(a.beast, config.questFilters);
+          const bUrg = questUrgencyScore(b.beast, config.questFilters);
+          if (aUrg !== bUrg) return bUrg - aUrg;
+        }
       }
       if (a.weightedCost !== b.weightedCost) return a.weightedCost - b.weightedCost;
     }
@@ -630,6 +649,47 @@ function questNeedsPredicate(quest: string): ((beast: Beast) => boolean) | null 
     case 'attack_potion': return (b) => !b.used_attack_potion;
     default: return null;
   }
+}
+
+// Streak resets after 2 × BASE_REVIVAL_TIME_SECONDS (48h) since last death.
+const STREAK_RESET_SECONDS = 86400 * 2;
+
+/**
+ * Score 0-100 for how urgently a beast needs to attack to preserve/complete its streak.
+ *  - Progress component (0-50): higher streak = more to lose and closer to completing the quest.
+ *  - Time pressure component (0-50): increases as the 48h reset window runs out.
+ * Returns 0 for beasts that have already completed the quest or have no active streak.
+ */
+export function streakUrgencyScore(beast: Beast): number {
+  if (beast.max_attack_streak) return 0; // quest already done
+  if (beast.attack_streak === 0) return 0; // no progress to lose
+
+  const now = Date.now() / 1000;
+  const timeUntilReset = (beast.last_death_timestamp + STREAK_RESET_SECONDS) - now;
+
+  if (timeUntilReset <= 0) return 0; // streak already reset
+
+  // Progress: 0-50 based on how close to streak 10
+  const progressScore = (beast.attack_streak / 10) * 50;
+
+  // Time pressure: 0-50, increases as deadline approaches
+  const timeScore = Math.max(0, 1 - timeUntilReset / STREAK_RESET_SECONDS) * 50;
+
+  return progressScore + timeScore;
+}
+
+/**
+ * Aggregate urgency score across active quest filters.
+ * Currently only `max_attack_streak` has time-sensitive urgency.
+ */
+export function questUrgencyScore(beast: Beast, questFilters: string[]): number {
+  let maxScore = 0;
+  for (const quest of questFilters) {
+    if (quest === 'max_attack_streak') {
+      maxScore = Math.max(maxScore, streakUrgencyScore(beast));
+    }
+  }
+  return maxScore;
 }
 
 function applyQuestBoost(

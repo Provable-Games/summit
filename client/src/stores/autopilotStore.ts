@@ -7,6 +7,18 @@ export interface IgnoredPlayer {
   address: string;
 }
 
+export interface TargetedPoisonPlayer {
+  name: string;
+  address: string;
+  amount: number; // poison potions to apply when this player holds summit
+}
+
+export interface TargetedPoisonBeast {
+  tokenId: number;
+  name: string;    // display name, e.g. "'Skull Peak' Manticore"
+  amount: number;
+}
+
 export type ExtraLifeStrategy = 'disabled' | 'after_capture' | 'aggressive';
 export type PoisonStrategy = 'disabled' | 'conservative' | 'aggressive';
 
@@ -64,6 +76,15 @@ interface AutopilotConfig {
   poisonMinPower: number;
   // Only poison when summit beast health >= this value (0 = no threshold)
   poisonMinHealth: number;
+
+  // Quest mode: prioritize beasts that haven't completed specific quests
+  questMode: boolean;
+  // Quest IDs to prioritize, e.g. ['take_summit', 'revival_potion', 'attack_potion']
+  questFilters: string[];
+  // Players whose summit beasts should always be poisoned (with custom amounts)
+  targetedPoisonPlayers: TargetedPoisonPlayer[];
+  // Specific beasts (by token ID) that should always be poisoned when on summit
+  targetedPoisonBeasts: TargetedPoisonBeast[];
 }
 
 type AutopilotPersistedConfig = AutopilotConfig;
@@ -78,6 +99,10 @@ type AutopilotConfigStorageShape = Partial<AutopilotPersistedConfig> & {
   poisonTotalMax?: unknown;
   poisonMinPower?: unknown;
   poisonMinHealth?: unknown;
+  questMode?: unknown;
+  questFilters?: unknown;
+  targetedPoisonPlayers?: unknown;
+  targetedPoisonBeasts?: unknown;
 };
 
 interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCounters {
@@ -106,6 +131,14 @@ interface AutopilotState extends AutopilotPersistedConfig, AutopilotSessionCount
   setPoisonAggressiveAmount: (poisonAggressiveAmount: number) => void;
   setPoisonMinPower: (poisonMinPower: number) => void;
   setPoisonMinHealth: (poisonMinHealth: number) => void;
+  setQuestMode: (questMode: boolean) => void;
+  setQuestFilters: (questFilters: string[]) => void;
+  addTargetedPoisonPlayer: (player: TargetedPoisonPlayer) => void;
+  removeTargetedPoisonPlayer: (address: string) => void;
+  setTargetedPoisonAmount: (address: string, amount: number) => void;
+  addTargetedPoisonBeast: (beast: TargetedPoisonBeast) => void;
+  removeTargetedPoisonBeast: (tokenId: number) => void;
+  setTargetedPoisonBeastAmount: (tokenId: number, amount: number) => void;
   /**
    * "Used" fields are counters.
    * - If passed a number, it is treated as an amount to ADD.
@@ -142,6 +175,10 @@ const DEFAULT_CONFIG: AutopilotPersistedConfig = {
   poisonAggressiveAmount: 100,
   poisonMinPower: 0,
   poisonMinHealth: 0,
+  questMode: false,
+  questFilters: [],
+  targetedPoisonPlayers: [],
+  targetedPoisonBeasts: [],
 };
 
 const DEFAULT_SESSION_COUNTERS: AutopilotSessionCounters = {
@@ -272,6 +309,29 @@ function loadConfigFromStorage(): AutopilotPersistedConfig | null {
         parsed.poisonMinHealth,
         DEFAULT_CONFIG.poisonMinHealth,
       ),
+      questMode:
+        typeof parsed.questMode === 'boolean'
+          ? parsed.questMode
+          : DEFAULT_CONFIG.questMode,
+      questFilters: Array.isArray(parsed.questFilters)
+        ? parsed.questFilters.filter((f): f is string => typeof f === 'string')
+        : DEFAULT_CONFIG.questFilters,
+      targetedPoisonPlayers: Array.isArray(parsed.targetedPoisonPlayers)
+        ? (parsed.targetedPoisonPlayers as TargetedPoisonPlayer[])
+            .filter(
+              (p): p is TargetedPoisonPlayer =>
+                typeof p === 'object' && p !== null && typeof p.name === 'string' && typeof p.address === 'string',
+            )
+            .map((p) => ({ ...p, amount: sanitizeNonNegativeInt(p.amount, 100) }))
+        : DEFAULT_CONFIG.targetedPoisonPlayers,
+      targetedPoisonBeasts: Array.isArray(parsed.targetedPoisonBeasts)
+        ? (parsed.targetedPoisonBeasts as TargetedPoisonBeast[])
+            .filter(
+              (b): b is TargetedPoisonBeast =>
+                typeof b === 'object' && b !== null && typeof b.tokenId === 'number' && typeof b.name === 'string',
+            )
+            .map((b) => ({ ...b, amount: sanitizeNonNegativeInt(b.amount, 100) }))
+        : DEFAULT_CONFIG.targetedPoisonBeasts,
     };
   } catch {
     return null;
@@ -362,6 +422,10 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
         partial.poisonMinHealth ?? get().poisonMinHealth,
         DEFAULT_CONFIG.poisonMinHealth,
       ),
+      questMode: partial.questMode ?? get().questMode,
+      questFilters: partial.questFilters ?? get().questFilters,
+      targetedPoisonPlayers: partial.targetedPoisonPlayers ?? get().targetedPoisonPlayers,
+      targetedPoisonBeasts: partial.targetedPoisonBeasts ?? get().targetedPoisonBeasts,
     };
 
     try {
@@ -445,6 +509,49 @@ export const useAutopilotStore = create<AutopilotState>((set, get) => {
       set(() => persist({ poisonMinPower })),
     setPoisonMinHealth: (poisonMinHealth: number) =>
       set(() => persist({ poisonMinHealth })),
+    setQuestMode: (questMode: boolean) =>
+      set(() => persist({ questMode })),
+    setQuestFilters: (questFilters: string[]) =>
+      set(() => persist({ questFilters: questFilters.filter((f) => typeof f === 'string') })),
+    addTargetedPoisonPlayer: (player: TargetedPoisonPlayer) =>
+      set(() => {
+        const current = get().targetedPoisonPlayers;
+        const normalized = player.address.replace(/^0x0+/, '0x').toLowerCase();
+        if (current.some((p) => p.address === normalized)) return {};
+        return persist({ targetedPoisonPlayers: [...current, { name: player.name, address: normalized, amount: Math.max(1, Math.floor(player.amount)) }] });
+      }),
+    removeTargetedPoisonPlayer: (address: string) =>
+      set(() => {
+        const normalized = address.replace(/^0x0+/, '0x').toLowerCase();
+        return persist({ targetedPoisonPlayers: get().targetedPoisonPlayers.filter((p) => p.address !== normalized) });
+      }),
+    setTargetedPoisonAmount: (address: string, amount: number) =>
+      set(() => {
+        const normalized = address.replace(/^0x0+/, '0x').toLowerCase();
+        return persist({
+          targetedPoisonPlayers: get().targetedPoisonPlayers.map((p) =>
+            p.address === normalized ? { ...p, amount: Math.max(1, Math.floor(amount)) } : p,
+          ),
+        });
+      }),
+    addTargetedPoisonBeast: (beast: TargetedPoisonBeast) =>
+      set(() => {
+        const current = get().targetedPoisonBeasts;
+        if (current.some((b) => b.tokenId === beast.tokenId)) return {};
+        return persist({ targetedPoisonBeasts: [...current, { ...beast, amount: Math.max(1, Math.floor(beast.amount)) }] });
+      }),
+    removeTargetedPoisonBeast: (tokenId: number) =>
+      set(() => {
+        return persist({ targetedPoisonBeasts: get().targetedPoisonBeasts.filter((b) => b.tokenId !== tokenId) });
+      }),
+    setTargetedPoisonBeastAmount: (tokenId: number, amount: number) =>
+      set(() => {
+        return persist({
+          targetedPoisonBeasts: get().targetedPoisonBeasts.map((b) =>
+            b.tokenId === tokenId ? { ...b, amount: Math.max(1, Math.floor(amount)) } : b,
+          ),
+        });
+      }),
     setRevivePotionsUsed: (update) => updateCounter('revivePotionsUsed', update),
     setAttackPotionsUsed: (update) => updateCounter('attackPotionsUsed', update),
     setExtraLifePotionsUsed: (update) => updateCounter('extraLifePotionsUsed', update),
