@@ -11,7 +11,7 @@ import type { BattleEvent, Beast, GameAction, SpectatorBattleEvent, Summit } fro
 import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import { fetchBeastImage } from "@/utils/beasts";
 import { lookupAddressName } from "@/utils/addressNameCache";
-import { normalizeAddress, addressesEqual } from "@/utils/addressUtils";
+import { addressesEqual } from "@/utils/addressUtils";
 import type {
   BattleEventTranslation,
   LiveBeastStatsEventTranslation,
