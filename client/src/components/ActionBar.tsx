@@ -226,8 +226,8 @@ function ActionBar() {
     });
   }
 
-  const handleApplyPoison = (amount: number) => {
-    if (!summit?.beast || applyingPotions || amount === 0) return;
+  const handleApplyPoison = (amount: number): boolean => {
+    if (!summit?.beast || applyingPotions || amount === 0) return false;
 
     setApplyingPotions(true);
     setAutopilotLog('Applying poison...')
@@ -237,6 +237,7 @@ function ActionBar() {
       beastId: summit.beast.token_id,
       count: amount,
     });
+    return true;
   }
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit?.beast?.token_id))
@@ -308,10 +309,9 @@ function ActionBar() {
     const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
     const poisonBalance = tokenBalances?.["POISON"] || 0;
     const amount = Math.min(poisonAggressiveAmount, poisonBalance, remainingCap);
-    if (amount > 0 && summit) {
+    if (amount > 0 && summit && handleApplyPoison(amount)) {
       poisonedTokenIdRef.current = summit.beast.token_id;
     }
-    handleApplyPoison(amount);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summit?.beast?.token_id]);
 
@@ -342,10 +342,9 @@ function ActionBar() {
       const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
       const poisonBalance = tokenBalances?.["POISON"] || 0;
       const amount = Math.min(poisonConservativeAmount - summit.poison_count, poisonBalance, remainingCap);
-      if (amount > 0) {
+      if (amount > 0 && handleApplyPoison(amount)) {
         poisonedTokenIdRef.current = summit.beast.token_id;
       }
-      handleApplyPoison(amount);
     }
 
     let extraLifePotions = 0;

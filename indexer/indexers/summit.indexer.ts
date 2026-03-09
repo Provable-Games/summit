@@ -328,6 +328,7 @@ type BeastStatsRow = {
   rewards_earned: number;
   rewards_claimed: number;
   created_at: Date;
+  updated_at: Date;
   indexed_at: Date;
   block_number: bigint;
   transaction_hash: string;
@@ -1613,6 +1614,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                   rewards_earned: stats.rewards_earned,
                   rewards_claimed: stats.rewards_claimed,
                   created_at: block_timestamp,
+                  updated_at: block_timestamp,
                   indexed_at,
                   block_number,
                   transaction_hash,
@@ -1724,6 +1726,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 rewards_earned: stats.rewards_earned,
                 rewards_claimed: stats.rewards_claimed,
                 created_at: block_timestamp,
+                updated_at: block_timestamp,
                 indexed_at,
                 block_number,
                 transaction_hash,

@@ -42,7 +42,7 @@ BEGIN
         'rewards_claimed', NEW.rewards_claimed,
         'block_number', NEW.block_number,
         'transaction_hash', NEW.transaction_hash,
-        'update_timestamp', extract(epoch from NEW.created_at),
+        'update_timestamp', extract(epoch from NEW.updated_at),
         'beast_id', beast_data.beast_id,
         'prefix', beast_data.prefix,
         'suffix', beast_data.suffix,
