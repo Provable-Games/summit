@@ -11,6 +11,7 @@ import type { BattleEvent, Beast, GameAction, SpectatorBattleEvent, Summit } fro
 import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import { fetchBeastImage } from "@/utils/beasts";
 import { lookupAddressName } from "@/utils/addressNameCache";
+import { normalizeAddress, addressesEqual } from "@/utils/addressUtils";
 import type {
   BattleEventTranslation,
   LiveBeastStatsEventTranslation,
@@ -69,25 +70,6 @@ const isBattleEvent = (
 const isSummitEvent = (
   event: TranslatedGameEvent
 ): event is SummitEventTranslation => event.componentName === "Summit";
-
-function normalizeAddress(address: string | null | undefined): string | null {
-  if (typeof address !== "string") {
-    return null;
-  }
-
-  const trimmed = address.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  return trimmed.replace(/^0x0+/, "0x").toLowerCase();
-}
-
-function addressesEqual(left: string | null | undefined, right: string | null | undefined): boolean {
-  const normalizedLeft = normalizeAddress(left);
-  const normalizedRight = normalizeAddress(right);
-  return normalizedLeft !== null && normalizedRight !== null && normalizedLeft === normalizedRight;
-}
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
   const { account } = useAccount();

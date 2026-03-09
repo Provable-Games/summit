@@ -1,4 +1,5 @@
 import { lookupAddresses } from '@cartridge/controller';
+import { normalizeAddress, type MaybeAddress } from './addressUtils';
 
 const CACHE_KEY = 'addressNameCache';
 
@@ -7,24 +8,6 @@ const MAX_CACHE_SIZE = 10000;
 
 interface AddressNameCache {
   [normalizedAddress: string]: string | null;
-}
-
-type MaybeAddress = string | null | undefined;
-
-/**
- * Normalizes an address to ensure consistent cache keys
- */
-function normalizeAddress(address: MaybeAddress): string | null {
-  if (typeof address !== "string") {
-    return null;
-  }
-
-  const trimmed = address.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  return trimmed.replace(/^0x0+/, "0x").toLowerCase();
 }
 
 /**

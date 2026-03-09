@@ -44,7 +44,10 @@ import {
   shouldBypassCache,
 } from "./lib/cache.js";
 
-const isDevelopment = process.env.NODE_ENV !== "production";
+/** Reward amounts are stored as integers scaled by 1e5; divide to get display values */
+const REWARD_AMOUNT_SCALE = 100_000;
+/** Quest reward amounts are stored as integers scaled by 1e2 */
+const QUEST_REWARD_SCALE = 100;
 const apiCache = new ApiResponseCache({
   enabled: parseCacheEnabled(),
   maxEntries: parseMaxEntries(process.env.API_CACHE_MAX_ENTRIES),
@@ -814,7 +817,7 @@ app.get("/leaderboard", async (c) => {
 
     return results.map((r) => ({
       owner: r.owner,
-      amount: Number(r.amount) / 100000,
+      amount: Number(r.amount) / REWARD_AMOUNT_SCALE,
     }));
   });
 });
@@ -828,7 +831,7 @@ app.get("/quest-rewards/total", async (c) => {
       .select({ total: sql<number>`coalesce(sum(${quest_rewards_claimed.amount}), 0)` })
       .from(quest_rewards_claimed);
 
-    return { total: Number(result[0]?.total ?? 0) / 100 };
+    return { total: Number(result[0]?.total ?? 0) / QUEST_REWARD_SCALE };
   });
 });
 
@@ -905,13 +908,6 @@ app.get("/", (c) => {
       subscribe: '{"type":"subscribe","channels":["summit","event"]}',
     },
   };
-
-  if (isDevelopment) {
-    endpoints.debug = {
-      test_summit_update: "POST /debug/test-summit-update",
-      test_summit_log: "POST /debug/test-summit-log",
-    };
-  }
 
   return c.json({
     name: "Summit API",

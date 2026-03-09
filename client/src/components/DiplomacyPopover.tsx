@@ -3,7 +3,7 @@ import type { Beast, Diplomacy } from '@/types/game';
 import { gameColors } from '@/utils/themes';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import { Box, Popover, Typography } from '@mui/material';
-import { addAddressPadding } from 'starknet';
+import { addressesEqual as sameAddress } from '@/utils/addressUtils';
 
 interface DiplomacyPopoverProps {
   anchorEl: HTMLElement | null;
@@ -13,18 +13,6 @@ interface DiplomacyPopoverProps {
   leaderboard: { owner: string | null; amount: number }[];
   addressNames: Record<string, string | null>;
 }
-
-const sameAddress = (left: string | null | undefined, right: string | null | undefined): boolean => {
-  if (!left || !right) {
-    return false;
-  }
-
-  try {
-    return addAddressPadding(left) === addAddressPadding(right);
-  } catch {
-    return false;
-  }
-};
 
 export function DiplomacyPopover({
   anchorEl,

@@ -13,26 +13,9 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { Box, IconButton, Typography } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
-import { addAddressPadding } from 'starknet';
 import { DiplomacyPopover } from './DiplomacyPopover';
 import RewardsRemainingBar from './RewardsRemainingBar';
-
-const normalizeAddress = (address) =>
-  typeof address === 'string' && address.length > 0
-    ? address.replace(/^0x0+/, '0x').toLowerCase()
-    : null;
-
-const sameAddress = (left, right) => {
-  if (typeof left !== 'string' || typeof right !== 'string' || !left || !right) {
-    return false;
-  }
-
-  try {
-    return addAddressPadding(left) === addAddressPadding(right);
-  } catch {
-    return false;
-  }
-};
+import { normalizeAddress, addressesEqual as sameAddress } from '@/utils/addressUtils';
 
 function Leaderboard() {
   const { beastsRegistered, beastsAlive, consumablesSupply, fetchStats } = useStatistics()
