@@ -225,7 +225,10 @@ function BeastCollection() {
     }
 
     return collection.sort((a, b) => b.power - a.power)
-  }, [collection, summit, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, questFilter]);
+  // Intentionally depend on specific summit fields, not the full object:
+  // summit is high-churn realtime state; full-object dep would retrigger sorting on every timestamp update.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collection, summit?.beast?.token_id, summit?.beast?.type, summit?.beast?.prefix, summit?.beast?.suffix, sortMethod, typeFilter, nameMatchFilter, hideDeadBeasts, questFilter]);
 
   const selectBeast = useCallback((beast: Beast, isFirstBeast: boolean = false) => {
     if (attackInProgress || attackMode === 'autopilot') return;
