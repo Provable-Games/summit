@@ -32,7 +32,8 @@ index 4926b17a6418da810dff724625b8c4a846944b47..81bf8e7c2c80d2ba56318ce0c7b3f4a9
    try {
      for (const table of tables) {
        const tableIdColumn = getIdColumnForTable(table, idColumnMap);
-@@ -453,7 +460,7 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
+@@ -453,7 +460,8 @@ async function registerTriggers(tx, tables, idColumnMap, indexerId) {
++          DROP TRIGGER IF EXISTS ${getReorgTriggerName(table, indexerId)} ON ${table};
            CREATE CONSTRAINT TRIGGER ${getReorgTriggerName(table, indexerId)}
            AFTER INSERT OR UPDATE OR DELETE ON ${table}
            DEFERRABLE INITIALLY DEFERRED
@@ -41,7 +42,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..81bf8e7c2c80d2ba56318ce0c7b3f4a9
          `)
        );
      }
-@@ -463,6 +470,19 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
+@@ -463,6 +471,19 @@ async function registerTriggers(tx, tables, idColumnMap, indexerId) {
      });
    }
  }
@@ -61,7 +62,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..81bf8e7c2c80d2ba56318ce0c7b3f4a9
  async function removeTriggers(db, tables, indexerId) {
    try {
      for (const table of tables) {
-@@ -653,6 +673,7 @@ function drizzleStorage({
+@@ -653,6 +674,7 @@ function drizzleStorage({
      let indexerId = "";
      const alwaysReindex = process.env["APIBARA_ALWAYS_REINDEX"] === "true";
      let prevFinality;
@@ -69,7 +70,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..81bf8e7c2c80d2ba56318ce0c7b3f4a9
      const schema = _schema ?? db._.schema ?? {};
      const idColumnMap = {
        "*": typeof idColumn === "string" ? idColumn : "id",
-@@ -813,23 +834,29 @@ function drizzleStorage({
+@@ -813,23 +835,29 @@ function drizzleStorage({
      indexer$1.hooks.hook("handler:middleware", async ({ use }) => {
        use(async (context, next) => {
          try {
@@ -109,7 +110,7 @@ index 4926b17a6418da810dff724625b8c4a846944b47..81bf8e7c2c80d2ba56318ce0c7b3f4a9
              }
              await next();
              delete context[constants.DRIZZLE_PROPERTY];
-@@ -842,11 +869,10 @@ function drizzleStorage({
+@@ -842,11 +870,10 @@ function drizzleStorage({
              }
              prevFinality = finality;
            });
@@ -157,7 +158,8 @@ index 1bdf312081394c65988b248952fef093ec89e812..641f18ef7df9a4d1055d7a74bcb99288
    try {
      for (const table of tables) {
        const tableIdColumn = getIdColumnForTable(table, idColumnMap);
-@@ -451,7 +458,7 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
+@@ -451,7 +458,8 @@ async function registerTriggers(tx, tables, idColumnMap, indexerId) {
++          DROP TRIGGER IF EXISTS ${getReorgTriggerName(table, indexerId)} ON ${table};
            CREATE CONSTRAINT TRIGGER ${getReorgTriggerName(table, indexerId)}
            AFTER INSERT OR UPDATE OR DELETE ON ${table}
            DEFERRABLE INITIALLY DEFERRED
@@ -166,7 +168,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..641f18ef7df9a4d1055d7a74bcb99288
          `)
        );
      }
-@@ -461,6 +468,19 @@ async function registerTriggers(tx, tables, endCursor, idColumnMap, indexerId) {
+@@ -461,6 +469,19 @@ async function registerTriggers(tx, tables, idColumnMap, indexerId) {
      });
    }
  }
@@ -186,7 +188,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..641f18ef7df9a4d1055d7a74bcb99288
  async function removeTriggers(db, tables, indexerId) {
    try {
      for (const table of tables) {
-@@ -651,6 +671,7 @@ function drizzleStorage({
+@@ -651,6 +672,7 @@ function drizzleStorage({
      let indexerId = "";
      const alwaysReindex = process.env["APIBARA_ALWAYS_REINDEX"] === "true";
      let prevFinality;
@@ -194,7 +196,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..641f18ef7df9a4d1055d7a74bcb99288
      const schema = _schema ?? db._.schema ?? {};
      const idColumnMap = {
        "*": typeof idColumn === "string" ? idColumn : "id",
-@@ -811,23 +832,29 @@ function drizzleStorage({
+@@ -811,23 +833,29 @@ function drizzleStorage({
      indexer.hooks.hook("handler:middleware", async ({ use }) => {
        use(async (context, next) => {
          try {
@@ -234,7 +236,7 @@ index 1bdf312081394c65988b248952fef093ec89e812..641f18ef7df9a4d1055d7a74bcb99288
              }
              await next();
              delete context[DRIZZLE_PROPERTY];
-@@ -840,11 +867,10 @@ function drizzleStorage({
+@@ -840,11 +868,10 @@ function drizzleStorage({
              }
              prevFinality = finality;
            });
@@ -372,7 +374,8 @@ index 1d6e951c860ee24afcd0511fa032cb5d9c99a0e3..e8ed33a6c75e110878b40c9002aa32eb
    idColumnMap: IdColumnMap,
    indexerId: string,
  ) {
-@@ -148,7 +154,7 @@ export async function registerTriggers<
+@@ -148,7 +154,8 @@ export async function registerTriggers<
++          DROP TRIGGER IF EXISTS ${getReorgTriggerName(table, indexerId)} ON ${table};
            CREATE CONSTRAINT TRIGGER ${getReorgTriggerName(table, indexerId)}
            AFTER INSERT OR UPDATE OR DELETE ON ${table}
            DEFERRABLE INITIALLY DEFERRED
@@ -381,7 +384,7 @@ index 1d6e951c860ee24afcd0511fa032cb5d9c99a0e3..e8ed33a6c75e110878b40c9002aa32eb
          `),
        );
      }
-@@ -159,6 +165,28 @@ export async function registerTriggers<
+@@ -159,6 +166,28 @@ export async function registerTriggers<
    }
  }
 
