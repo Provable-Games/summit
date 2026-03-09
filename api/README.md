@@ -24,7 +24,7 @@ For AI-oriented coding guidance and deeper architecture notes, read `AGENTS.md` 
 ## Environment
 
 - `DATABASE_URL` (required)
-- `DATABASE_SSL` (`"true"` or `"false"`; required in production)
+- `DATABASE_SSL` (`"true"` or `"false"`; defaults to `"true"` in production with a warning when unset)
 - `DB_POOL_MAX` (default `15`)
 - `PORT` (default `3001`)
 - `NODE_ENV` (`production` hides debug entries from `/` discovery payload)
@@ -32,7 +32,7 @@ For AI-oriented coding guidance and deeper architecture notes, read `AGENTS.md` 
 - `API_CACHE_MAX_ENTRIES` (optional; default `500`)
 
 Production note:
-- API startup fails fast when `NODE_ENV=production` and `DATABASE_SSL` is unset.
+- When `NODE_ENV=production` and `DATABASE_SSL` is unset, SSL defaults to enabled and a warning is logged.
 
 ## Quick Start
 
@@ -164,7 +164,6 @@ Realtime pipeline:
 - API is public read-only (no auth layer).
 - A thin in-memory SWR cache is applied to high-traffic read endpoints:
   - `/beasts/all` (common public list patterns)
-  - `/beasts/:owner`
   - `/logs`
   - `/beasts/stats/counts`
   - `/beasts/stats/top`
