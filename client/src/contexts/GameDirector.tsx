@@ -160,7 +160,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     addLiveEvent(data);
 
     const { category, sub_category, data: eventData } = data;
-    const isOwnEvent = data.player === addAddressPadding(account?.address ?? "");
+    const isOwnEvent = !!account?.address && data.player === addAddressPadding(account.address);
 
     // Helper to get beast info from event data
     const getBeastInfo = () => {
