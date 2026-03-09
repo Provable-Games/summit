@@ -55,7 +55,6 @@ const apiCache = new ApiResponseCache({
 
 const CACHE_POLICIES: Record<
   | "beastsAll"
-  | "beastsByOwner"
   | "logs"
   | "beastsStatsCounts"
   | "beastsStatsTop"
@@ -67,7 +66,6 @@ const CACHE_POLICIES: Record<
   CachePolicy
 > = {
   beastsAll: { freshTtlMs: 2_000, staleTtlMs: 8_000 },
-  beastsByOwner: { freshTtlMs: 3_000, staleTtlMs: 12_000 },
   logs: { freshTtlMs: 2_000, staleTtlMs: 8_000 },
   beastsStatsCounts: { freshTtlMs: 5_000, staleTtlMs: 20_000 },
   beastsStatsTop: { freshTtlMs: 3_000, staleTtlMs: 12_000 },
@@ -391,7 +389,9 @@ app.get("/beasts/all", async (c) => {
 app.get("/beasts/:owner", async (c) => {
   const owner = normalizeAddress(c.req.param("owner"));
 
-  return respondWithCachedJson(c, CACHE_POLICIES.beastsByOwner, async () => {
+  // Not cached: current_health is derived from Date.now() (revival window),
+  // so caching would serve stale alive/dead state across the boundary.
+  {
     // Get beast data with all joins including skulls
     const results = await db
       .select({
@@ -443,7 +443,7 @@ app.get("/beasts/:owner", async (c) => {
       .where(eq(beast_owners.owner, owner));
 
     // Transform to Beast interface format
-    return results.map((r) => {
+    const result = results.map((r) => {
       const beastId = r.beast_id;
       const prefixId = r.prefix;
       const suffixId = r.suffix;
@@ -522,7 +522,8 @@ app.get("/beasts/:owner", async (c) => {
         entity_hash: r.entity_hash ?? undefined,
       };
     });
-  });
+    return c.json(result);
+  }
 });
 
 /**
