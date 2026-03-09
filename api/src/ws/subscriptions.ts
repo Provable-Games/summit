@@ -5,6 +5,7 @@
  * Channels:
  * - summit: Beast stats updates for summit beast
  * - event: Activity feed from summit_log
+ * - consumables: Potion balance updates per owner
  */
 
 import { pool } from "../db/client.js";
@@ -18,11 +19,16 @@ interface WebSocketLike {
   OPEN?: number;
 }
 
-export type Channel = "summit" | "event";
+export type Channel = "summit" | "event" | "consumables";
+
+export interface ChannelFilter {
+  owner?: string; // normalized lowercase address
+}
 
 interface ClientSubscription {
   ws: WebSocketLike;
   channels: Set<Channel>;
+  filters: Map<Channel, ChannelFilter>;
 }
 
 interface SummitPayload {
@@ -49,6 +55,8 @@ interface SummitPayload {
   block_number: string;
   transaction_hash: string;
   created_at: string;
+  // Beast data from trigger join
+  owner: string | null;
 }
 
 interface EventPayload {
@@ -62,6 +70,14 @@ interface EventPayload {
   token_id: number | null;
   transaction_hash: string;
   created_at: string;
+}
+
+interface ConsumablesPayload {
+  owner: string;
+  xlife_count: number;
+  attack_count: number;
+  revive_count: number;
+  poison_count: number;
 }
 
 export class SubscriptionHub {
@@ -103,8 +119,9 @@ export class SubscriptionHub {
 
       await this.pgClient.query("LISTEN summit_update");
       await this.pgClient.query("LISTEN summit_log_insert");
+      await this.pgClient.query("LISTEN consumables_update");
 
-      console.log("[SubscriptionHub] Listening on: summit_update, summit_log_insert");
+      console.log("[SubscriptionHub] Listening on: summit_update, summit_log_insert, consumables_update");
     } catch (error) {
       console.error("[SubscriptionHub] Failed to connect:", error);
       this.reconnect();
@@ -155,20 +172,35 @@ export class SubscriptionHub {
         case "summit_log_insert":
           this.broadcast("event", payload as EventPayload);
           break;
+        case "consumables_update":
+          this.broadcast("consumables", payload as ConsumablesPayload);
+          break;
       }
     } catch (error) {
       console.error("[SubscriptionHub] Failed to parse notification:", error);
     }
   }
 
-  private broadcast(channel: Channel, data: SummitPayload | EventPayload): void {
+  private broadcast(channel: Channel, data: SummitPayload | EventPayload | ConsumablesPayload): void {
     const message = JSON.stringify({ type: channel, data });
+
+    // Extract owner from payload for filterable channels
+    const payloadOwner = (channel === "summit" || channel === "consumables")
+      ? ((data as { owner?: string }).owner?.toLowerCase() ?? null)
+      : null;
 
     let sentCount = 0;
     const deadClients: string[] = [];
 
     for (const [id, client] of this.clients) {
       if (!client.channels.has(channel)) continue;
+
+      // Apply owner filter for summit and consumables channels
+      const filter = client.filters.get(channel);
+      if (filter?.owner && payloadOwner !== null && filter.owner !== payloadOwner) {
+        continue;
+      }
+
       if (this.send(id, client.ws, message)) {
         sentCount++;
       } else {
@@ -235,7 +267,7 @@ export class SubscriptionHub {
   }
 
   addClient(id: string, ws: WebSocketLike): void {
-    this.clients.set(id, { ws, channels: new Set() });
+    this.clients.set(id, { ws, channels: new Set(), filters: new Map() });
     console.log(`[SubscriptionHub] Client connected: ${id} (total: ${this.clients.size})`);
   }
 
@@ -244,12 +276,20 @@ export class SubscriptionHub {
     console.log(`[SubscriptionHub] Client disconnected: ${id} (total: ${this.clients.size})`);
   }
 
-  subscribe(id: string, channels: Channel[]): void {
+  subscribe(id: string, channels: Channel[], filters?: Record<string, ChannelFilter>): void {
     const client = this.clients.get(id);
     if (!client) return;
 
     for (const channel of channels) {
       client.channels.add(channel);
+
+      if (filters && filters[channel]) {
+        const filter = { ...filters[channel] };
+        if (filter.owner) {
+          filter.owner = filter.owner.toLowerCase();
+        }
+        client.filters.set(channel, filter);
+      }
     }
 
     console.log(`[SubscriptionHub] Client ${id} subscribed to: ${channels.join(", ")}`);
@@ -261,6 +301,7 @@ export class SubscriptionHub {
 
     for (const channel of channels) {
       client.channels.delete(channel);
+      client.filters.delete(channel);
     }
 
     console.log(`[SubscriptionHub] Client ${id} unsubscribed from: ${channels.join(", ")}`);
@@ -275,8 +316,9 @@ export class SubscriptionHub {
       switch (data.type) {
         case "subscribe": {
           const subChannels = data.channels || [];
-          this.subscribe(id, subChannels);
-          if (!this.send(id, client.ws, JSON.stringify({ type: "subscribed", channels: subChannels }))) {
+          const filters = data.filters || {};
+          this.subscribe(id, subChannels, filters);
+          if (!this.send(id, client.ws, JSON.stringify({ type: "subscribed", channels: subChannels, filters }))) {
             this.removeDeadClient(id);
           }
           break;

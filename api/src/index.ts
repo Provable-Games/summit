@@ -685,8 +685,9 @@ app.get("/", (c) => {
     },
     websocket: {
       endpoint: "WS /ws",
-      channels: ["summit", "event"],
-      subscribe: '{"type":"subscribe","channels":["summit","event"]}',
+      channels: ["summit", "event", "consumables"],
+      subscribe: '{"type":"subscribe","channels":["summit","event","consumables"]}',
+      subscribe_with_filters: '{"type":"subscribe","channels":["summit","consumables"],"filters":{"summit":{"owner":"0x..."},"consumables":{"owner":"0x..."}}}',
     },
   };
 
