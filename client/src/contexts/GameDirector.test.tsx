@@ -4,7 +4,7 @@ import type { GameAction, selection } from "@/types/game";
 
 const hoisted = vi.hoisted(() => ({
   useWebSocketMock: vi.fn(),
-  useAccountMock: vi.fn(() => ({ account: undefined })),
+  useAccountMock: vi.fn((): { account: { address: string } | undefined } => ({ account: undefined })),
   getSummitDataMock: vi.fn(async () => null),
   getDiplomacyMock: vi.fn(async () => []),
   executeActionMock: vi.fn(async () => []),
