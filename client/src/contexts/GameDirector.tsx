@@ -150,7 +150,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       owner: data.owner ?? "",
       block_timestamp: previousSummit?.block_timestamp ?? Date.now() / 1000,
       poison_count: previousSummit?.poison_count ?? 0,
-      poison_timestamp: sameBeast ? Date.now() / 1000 : 0,
+      poison_timestamp: sameBeast ? data.update_timestamp : 0,
       diplomacy: previousSummit?.diplomacy ?? undefined,
     });
   };
@@ -218,14 +218,12 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
           beastCount,
         });
       } else if (sub_category === "Applied Poison") {
-        if (!isOwnEvent) {
-          setPoisonEvent({
-            beast_token_id: eventData.beast_token_id as number,
-            block_timestamp: Math.floor(new Date(data.created_at).getTime() / 1000),
-            count: eventData.count as number,
-            player: data.player,
-          });
-        }
+        setPoisonEvent({
+          beast_token_id: eventData.beast_token_id as number,
+          block_timestamp: Math.floor(new Date(data.created_at).getTime() / 1000),
+          count: eventData.count as number,
+          player: data.player,
+        });
 
         // Show poison notification
         addNotificationWithPlayer({
@@ -436,6 +434,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
   useEffect(() => {
     setAttackInProgress(false);
     setApplyingPotions(false);
+    setPauseUpdates(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionFailed]);
 
@@ -749,12 +748,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       }));
       setApplyingPotions(false);
       setPoisonPotionsUsed((prev) => prev + poisonCount);
-      setPoisonEvent({
-        beast_token_id: beastId,
-        block_timestamp: Math.floor(Date.now() / 1000),
-        count: poisonCount,
-        player: account?.address ?? null,
-      })
     }
 
     return true;

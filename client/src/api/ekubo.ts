@@ -705,3 +705,303 @@ export const positionBoundsToContractBounds = (
     },
   };
 };
+
+// ---------------------------------------------------------------------------
+// TWAMM (DCA) Order Support
+// ---------------------------------------------------------------------------
+
+export interface TwammOrderKey {
+  sell_token: string;
+  buy_token: string;
+  fee: string;
+  start_time: number;
+  end_time: number;
+}
+
+// 5% fee tier: 0.05 * 2^128 = 17014118346046924117642026945517453312
+export const TWAMM_POOL_FEE_RAW =
+  "17014118346046924117642026945517453312";
+export const TWAMM_TICK_SPACING = 354892;
+
+export const DURATION_PRESETS = [
+  { label: "1h", seconds: 3600 },
+  { label: "4h", seconds: 14400 },
+  { label: "12h", seconds: 43200 },
+  { label: "1d", seconds: 86400 },
+  { label: "3d", seconds: 259200 },
+  { label: "7d", seconds: 604800 },
+];
+
+/**
+ * Compute the TWAMM time step for a given distance.
+ * Ekubo uses 16 as the base: step = 16 for distance <= 16,
+ * otherwise step = 16^floor(log16(distance)).
+ */
+export const getTwammTimeStep = (distance: number): number => {
+  if (distance <= 16) return 16;
+  const exp = Math.floor(Math.log(distance) / Math.log(16));
+  return Math.pow(16, exp);
+};
+
+/**
+ * Round a timestamp UP to the nearest TWAMM boundary.
+ */
+export const alignTwammTime = (target: number, step: number): number => {
+  return Math.ceil(target / step) * step;
+};
+
+/**
+ * Given current time and a desired duration, compute aligned start and end times.
+ */
+export const computeTwammTimes = (
+  nowSeconds: number,
+  durationSeconds: number
+): { startTime: number; endTime: number } => {
+  const step = getTwammTimeStep(durationSeconds);
+  const startTime = alignTwammTime(nowSeconds, step);
+  const endTime = alignTwammTime(startTime + durationSeconds, step);
+  return { startTime, endTime };
+};
+
+/**
+ * Build the calldata for creating a DCA order:
+ * 1) Transfer sell tokens to the positions contract
+ * 2) Call mint_and_increase_sell_amount on positions contract
+ *
+ * mint_and_increase_sell_amount expects flat order_key fields + u128 amount:
+ *   order_key.sell_token, order_key.buy_token, order_key.fee (u128),
+ *   order_key.start_time (u64), order_key.end_time (u64), amount (u128)
+ */
+export const generateCreateDcaOrderCalls = (
+  positionsContract: string,
+  orderKey: TwammOrderKey,
+  amount: bigint
+): SwapCall[] => {
+  const transferSellToken: SwapCall = {
+    contractAddress: orderKey.sell_token,
+    entrypoint: "transfer",
+    calldata: [positionsContract, num.toHex(amount), "0x0"],
+  };
+
+  const mintAndSell: SwapCall = {
+    contractAddress: positionsContract,
+    entrypoint: "mint_and_increase_sell_amount",
+    calldata: [
+      orderKey.sell_token,
+      orderKey.buy_token,
+      orderKey.fee,
+      num.toHex(orderKey.start_time),
+      num.toHex(orderKey.end_time),
+      num.toHex(amount),
+    ],
+  };
+
+  return [transferSellToken, mintAndSell];
+};
+
+/**
+ * Build the calldata for withdrawing purchased proceeds from a DCA order.
+ *
+ * withdraw_proceeds_from_sale_to_self expects:
+ *   id (u64), order_key.sell_token, order_key.buy_token,
+ *   order_key.fee (u128), order_key.start_time (u64), order_key.end_time (u64)
+ */
+export const generateWithdrawProceedsCalls = (
+  positionsContract: string,
+  nftId: string,
+  orderKey: TwammOrderKey
+): SwapCall[] => {
+  const withdraw: SwapCall = {
+    contractAddress: positionsContract,
+    entrypoint: "withdraw_proceeds_from_sale_to_self",
+    calldata: [
+      nftId,
+      orderKey.sell_token,
+      orderKey.buy_token,
+      orderKey.fee,
+      num.toHex(orderKey.start_time),
+      num.toHex(orderKey.end_time),
+    ],
+  };
+
+  return [withdraw];
+};
+
+/**
+ * Build the calldata for cancelling a DCA order:
+ * First withdraw proceeds, then decrease_sale_rate to 0.
+ *
+ * decrease_sale_rate_to_self expects:
+ *   id (u64), order_key.sell_token, order_key.buy_token,
+ *   order_key.fee (u128), order_key.start_time (u64), order_key.end_time (u64),
+ *   sale_rate_delta (u128)
+ */
+export const generateCancelDcaOrderCalls = (
+  positionsContract: string,
+  nftId: string,
+  orderKey: TwammOrderKey,
+  saleRate: bigint
+): SwapCall[] => {
+  const withdrawCalls = generateWithdrawProceedsCalls(
+    positionsContract,
+    nftId,
+    orderKey
+  );
+
+  const decreaseRate: SwapCall = {
+    contractAddress: positionsContract,
+    entrypoint: "decrease_sale_rate_to_self",
+    calldata: [
+      nftId,
+      orderKey.sell_token,
+      orderKey.buy_token,
+      orderKey.fee,
+      num.toHex(orderKey.start_time),
+      num.toHex(orderKey.end_time),
+      num.toHex(saleRate),
+    ],
+  };
+
+  return [...withdrawCalls, decreaseRate];
+};
+
+/** TWAMM view contract used by Ekubo for batched order info reads. */
+const TWAMM_VIEW_CONTRACT =
+  "0x0422e9fbbf291e4c23795ae5bb4d5ddf641f31dbb755ba591e184c1a4223fc5e";
+/** Pre-computed selector for the batched get_order_info entrypoint. */
+const TWAMM_VIEW_SELECTOR =
+  "0x3fbdf259e237928c228b71a3f4866809cff7a352719c97efda782581b882344";
+
+interface DcaOrderInput {
+  tokenId: string;
+  orderKey: TwammOrderKey;
+}
+
+/**
+ * Batch-read on-chain DCA order proceeds via the Ekubo TWAMM view contract.
+ * Uses the same batched RPC call that the Ekubo app makes.
+ *
+ * Returns a map of tokenId -> purchased_amount (potions earned, including uncollected).
+ */
+export const getDcaOrderProceeds = async (
+  rpcUrl: string,
+  orders: DcaOrderInput[]
+): Promise<Record<string, bigint>> => {
+  if (orders.length === 0) return {};
+
+  // Batched calldata: [count, ...orders.flatMap(o => [token_id, sell, buy, fee, start, end])]
+  const calldata: string[] = [num.toHex(orders.length)];
+  for (const o of orders) {
+    calldata.push(
+      o.tokenId,
+      o.orderKey.sell_token,
+      o.orderKey.buy_token,
+      num.toHex(BigInt(o.orderKey.fee)),
+      num.toHex(o.orderKey.start_time),
+      num.toHex(o.orderKey.end_time)
+    );
+  }
+
+  const response = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      method: "starknet_call",
+      params: {
+        request: {
+          contract_address: TWAMM_VIEW_CONTRACT,
+          entry_point_selector: TWAMM_VIEW_SELECTOR,
+          calldata,
+        },
+        block_id: "latest",
+      },
+      id: 1,
+    }),
+  });
+
+  const json = await response.json();
+  if (json.error) {
+    console.warn("getDcaOrderProceeds RPC error:", json.error);
+    return {};
+  }
+
+  const result: string[] = json.result;
+  if (!result || result.length < 2) return {};
+
+  // Response format: [block_timestamp, order_count, ...per_order_data]
+  // Per order: [sale_rate, ???, purchased_amount] — 3 felts each
+  const HEADER_SIZE = 2;
+  const FIELDS_PER_ORDER = 3;
+  const proceeds: Record<string, bigint> = {};
+  for (let i = 0; i < orders.length; i++) {
+    const offset = HEADER_SIZE + i * FIELDS_PER_ORDER;
+    if (offset + 2 >= result.length) break;
+    // purchased_amount is at index 2 within each order's results
+    proceeds[orders[i].tokenId] = BigInt(result[offset + 2] || "0");
+  }
+
+  return proceeds;
+};
+
+// ---------------------------------------------------------------------------
+// TWAMM Order Fetching via Ekubo REST API
+// ---------------------------------------------------------------------------
+
+export interface TwammApiOrderKey {
+  sell_token: string;
+  buy_token: string;
+  fee: string;
+  start_time: number;
+  end_time: number;
+}
+
+export interface TwammApiOrder {
+  key: TwammApiOrderKey;
+  total_amount_sold: string;
+  last_collect_proceeds: number | null;
+  total_proceeds_withdrawn: string;
+  sale_rate: string;
+}
+
+export interface TwammApiPosition {
+  chain_id: string;
+  nft_address: string;
+  token_id: string;
+  orders: TwammApiOrder[];
+}
+
+export interface TwammApiResponse {
+  orders: TwammApiPosition[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalPages: number;
+    totalItems: number;
+  };
+}
+
+/**
+ * Fetch TWAMM DCA orders for an address from the Ekubo REST API.
+ * This is the same endpoint the Ekubo app uses.
+ * @param state - "opened" for active orders, "closed" for completed
+ */
+export const fetchTwammOrders = async (
+  ownerAddress: string,
+  state: "opened" | "closed" = "opened"
+): Promise<TwammApiPosition[]> => {
+  // Ekubo API expects lowercase hex addresses
+  const hex = BigInt(ownerAddress).toString(16);
+  const addr = "0x" + hex.toLowerCase();
+  const url = `${EKUBO_API_BASE}/twap/orders/${addr}?page=1&pageSize=50&state=${state}`;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    console.warn("fetchTwammOrders: API returned", response.status);
+    return [];
+  }
+
+  const data: TwammApiResponse = await response.json();
+  return data.orders || [];
+};
+

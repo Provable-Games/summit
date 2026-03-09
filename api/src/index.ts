@@ -826,6 +826,28 @@ app.get("/consumables/supply", async (c) => {
 });
 
 /**
+ * GET /consumables/holders - Get all players holding any consumable tokens
+ */
+app.get("/consumables/holders", async (c) => {
+  const result = await db
+    .select({
+      owner: consumables.owner,
+      xlife_count: consumables.xlife_count,
+      attack_count: consumables.attack_count,
+      revive_count: consumables.revive_count,
+      poison_count: consumables.poison_count,
+    })
+    .from(consumables)
+    .where(
+      sql`${consumables.xlife_count} + ${consumables.attack_count} + ${consumables.revive_count} + ${consumables.poison_count} > 0`
+    )
+    .orderBy(
+      sql`${consumables.xlife_count} + ${consumables.attack_count} + ${consumables.revive_count} + ${consumables.poison_count} DESC`
+    );
+  return c.json(result);
+});
+
+/**
  * GET /consumables/:owner - Get consumable token balances for a specific owner
  */
 app.get("/consumables/:owner", async (c) => {
@@ -868,6 +890,7 @@ app.get("/", (c) => {
     },
     consumables: {
       supply: "GET /consumables/supply",
+      holders: "GET /consumables/holders",
       by_owner: "GET /consumables/:owner",
     },
     websocket: {

@@ -145,6 +145,14 @@ export interface DiplomacyGroup {
   totalPower: number;
 }
 
+export interface ConsumablesHolder {
+  owner: string;
+  xlife_count: number;
+  attack_count: number;
+  revive_count: number;
+  poison_count: number;
+}
+
 export const useSummitApi = () => {
   const { currentNetworkConfig } = useDynamicConnector();
 
@@ -325,6 +333,28 @@ export const useSummitApi = () => {
   };
 
   /**
+   * Get circulating supply of consumable tokens
+   */
+  const getConsumablesSupply = async (): Promise<{ xlife: number; attack: number; revive: number; poison: number }> => {
+    const response = await fetch(`${currentNetworkConfig.apiUrl}/consumables/supply`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch consumables supply: ${response.status}`);
+    }
+    return response.json();
+  };
+
+  /**
+   * Get all players holding consumable tokens
+   */
+  const getConsumablesHolders = async (): Promise<ConsumablesHolder[]> => {
+    const response = await fetch(`${currentNetworkConfig.apiUrl}/consumables/holders`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch consumables holders: ${response.status}`);
+    }
+    return response.json();
+  };
+
+  /**
    * Get total quest rewards claimed
    */
   const getQuestRewardsTotal = async (): Promise<number> => {
@@ -346,6 +376,8 @@ export const useSummitApi = () => {
     getDiplomacy,
     getDiplomacyLeaderboard,
     getLogs,
+    getConsumablesSupply,
+    getConsumablesHolders,
     getQuestRewardsTotal,
   };
 };

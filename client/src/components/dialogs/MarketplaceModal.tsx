@@ -17,8 +17,10 @@ import { useSystemCalls } from '@/dojo/useSystemCalls';
 import type { TokenConfig } from '@/utils/networkConfig';
 import { gameColors } from '@/utils/themes';
 import { formatAmount } from '@/utils/utils';
+import DCATab from './DCATab';
 import AddIcon from '@mui/icons-material/Add';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 import CloseIcon from '@mui/icons-material/Close';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RemoveIcon from '@mui/icons-material/Remove';
@@ -283,7 +285,9 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
 
   const totalItems = activeTab === 0
     ? Object.values(quantities).reduce((sum, qty) => sum + qty, 0)
-    : Object.values(sellQuantities).reduce((sum, qty) => sum + qty, 0);
+    : activeTab === 1
+      ? Object.values(sellQuantities).reduce((sum, qty) => sum + qty, 0)
+      : 0;
   const hasItems = totalItems > 0;
 
   const totalTokenCost = useMemo(() => {
@@ -879,11 +883,26 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               iconPosition="start"
               sx={styles.tab}
             />
+            <Tab
+              label="DCA"
+              icon={<AutorenewIcon sx={{ fontSize: '18px' }} />}
+              iconPosition="start"
+              sx={styles.tab}
+            />
           </Tabs>
         </Box>
 
         <Box sx={styles.content}>
-          {activeTab === 0 ? (
+          {activeTab === 2 ? (
+            // DCA Tab
+            <DCATab
+              currentNetworkConfig={currentNetworkConfig}
+              tokenBalances={tokenBalances}
+              setTokenBalances={setTokenBalances}
+              tokenPrices={tokenPrices}
+              getTokenIcon={getTokenIcon}
+            />
+          ) : activeTab === 0 ? (
             // Buy Tab
             POTIONS.map((potion) => (
               <Box key={potion.id} sx={styles.potionCard}>
@@ -1071,7 +1090,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
           )}
         </Box>
 
-        <Box sx={styles.footer}>
+        {activeTab !== 2 && <Box sx={styles.footer}>
           {activeTab === 0 ? (
             // Buy Tab Footer
             <>
@@ -1350,7 +1369,7 @@ export default function MarketplaceModal(props: MarketplaceModalProps) {
               </Button>
             </>
           )}
-        </Box>
+        </Box>}
       </Box>
     </Dialog>
   );
