@@ -36,10 +36,5 @@
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.55.0",
     "vitest": "^4.0.18"
-  },
-  "pnpm": {
-    "overrides": {
-      "rollup": "^4.59.0"
-    }
   }
 }
