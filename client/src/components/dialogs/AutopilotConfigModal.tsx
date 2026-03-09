@@ -130,6 +130,10 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
     setPoisonConservativeAmount,
     poisonAggressiveAmount,
     setPoisonAggressiveAmount,
+    poisonMinPower,
+    setPoisonMinPower,
+    poisonMinHealth,
+    setPoisonMinHealth,
     ignoredPlayers,
     addIgnoredPlayer,
     removeIgnoredPlayer,
@@ -657,6 +661,20 @@ function AutopilotConfigModal(props: AutopilotConfigModalProps) {
                       Number(poisonAvailable) || 0,
                     )}
                   </Box>
+                </Box>
+              </Box>
+
+              <Box sx={styles.maxOnlyRow}>
+                <Typography sx={styles.maxLabel}>Minimum Power</Typography>
+                <Box sx={styles.maxCol}>
+                  {numberField(poisonMinPower, setPoisonMinPower, false)}
+                </Box>
+              </Box>
+
+              <Box sx={styles.maxOnlyRow}>
+                <Typography sx={styles.maxLabel}>Minimum Health</Typography>
+                <Box sx={styles.maxCol}>
+                  {numberField(poisonMinHealth, setPoisonMinHealth, false)}
                 </Box>
               </Box>
             </>

@@ -13,7 +13,7 @@ import {
   Box, Button, IconButton, Menu, MenuItem, Slider,
   TextField, Tooltip, Typography
 } from '@mui/material';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useReducer, useState } from 'react';
 import { isBrowser } from 'react-device-detect';
 import attackPotionIcon from '../assets/images/attack-potion.png';
 import heart from '../assets/images/heart.png';
@@ -77,6 +77,8 @@ function ActionBar() {
     poisonConservativeExtraLivesTrigger,
     poisonConservativeAmount,
     poisonAggressiveAmount,
+    poisonMinPower,
+    poisonMinHealth,
     maxBeastsPerAttack,
     skipSharedDiplomacy,
     ignoredPlayers,
@@ -89,6 +91,8 @@ function ActionBar() {
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeBeast, setUpgradeBeast] = useState<Beast | null>(null);
   const [beastDexFilterIds, setBeastDexFilterIds] = useState<number[] | null>(null);
+  const [triggerAutopilot, setTriggerAutopilot] = useReducer((x) => x + 1, 0);
+  const poisonedTokenIdRef = React.useRef<number | null>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>, potion: PotionSelection) => {
     setAnchorEl(event.currentTarget);
@@ -176,7 +180,7 @@ function ActionBar() {
     }
 
     return [];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summit?.beast?.token_id, collection.length, revivePotionsUsed, attackPotionsUsed, useRevivePotions, useAttackPotions]);
 
   const handleAttackUntilCapture = async (extraLifePotions: number) => {
@@ -222,8 +226,8 @@ function ActionBar() {
     });
   }
 
-  const handleApplyPoison = (amount: number) => {
-    if (!summit?.beast || applyingPotions || amount === 0) return;
+  const handleApplyPoison = (amount: number): boolean => {
+    if (!summit?.beast || applyingPotions || amount === 0) return false;
 
     setApplyingPotions(true);
     setAutopilotLog('Applying poison...')
@@ -233,6 +237,7 @@ function ActionBar() {
       beastId: summit.beast.token_id,
       count: amount,
     });
+    return true;
   }
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit?.beast?.token_id))
@@ -246,8 +251,9 @@ function ActionBar() {
 
     if (attackMode !== 'autopilot' && autopilotEnabled) {
       setAutopilotEnabled(false);
+      poisonedTokenIdRef.current = null;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attackMode]);
 
   const summitSharesDiplomacy = useMemo(() => {
@@ -282,7 +288,7 @@ function ActionBar() {
     } else if (attackInProgress) {
       setAutopilotLog('Attacking...')
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autopilotEnabled, attackInProgress, applyingPotions, summitSharesDiplomacy, summitOwnerIgnored])
 
   useEffect(() => {
@@ -291,10 +297,22 @@ function ActionBar() {
     const myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
     if (myBeast) return;
 
+    // Reset tracked token when summit beast changes
+    if (poisonedTokenIdRef.current !== summit?.beast.token_id) {
+      poisonedTokenIdRef.current = null;
+    }
+    if (poisonedTokenIdRef.current === summit?.beast.token_id) return;
+
+    if (poisonMinPower > 0 && summit && summit.beast.power < poisonMinPower) return;
+    if (poisonMinHealth > 0 && summit && summit.beast.current_health < poisonMinHealth) return;
+
     const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
     const poisonBalance = tokenBalances?.["POISON"] || 0;
-    handleApplyPoison(Math.min(poisonAggressiveAmount, poisonBalance, remainingCap));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const amount = Math.min(poisonAggressiveAmount, poisonBalance, remainingCap);
+    if (amount > 0 && summit && handleApplyPoison(amount)) {
+      poisonedTokenIdRef.current = summit.beast.token_id;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [summit?.beast?.token_id]);
 
   useEffect(() => {
@@ -317,10 +335,16 @@ function ActionBar() {
 
     if (poisonStrategy === 'conservative'
       && summit.beast.extra_lives >= poisonConservativeExtraLivesTrigger
-      && summit.poison_count < poisonConservativeAmount) {
+      && summit.poison_count < poisonConservativeAmount
+      && poisonedTokenIdRef.current !== summit.beast.token_id
+      && (poisonMinPower <= 0 || summit.beast.power >= poisonMinPower)
+      && (poisonMinHealth <= 0 || summit.beast.current_health >= poisonMinHealth)) {
       const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
       const poisonBalance = tokenBalances?.["POISON"] || 0;
-      handleApplyPoison(Math.min(poisonConservativeAmount - summit.poison_count, poisonBalance, remainingCap));
+      const amount = Math.min(poisonConservativeAmount - summit.poison_count, poisonBalance, remainingCap);
+      if (amount > 0 && handleApplyPoison(amount)) {
+        poisonedTokenIdRef.current = summit.beast.token_id;
+      }
     }
 
     let extraLifePotions = 0;
@@ -352,8 +376,15 @@ function ActionBar() {
         attackPotions: beasts[0]?.combat?.attackPotions || 0
       });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives, triggerAutopilot]);
+
+
+  useEffect(() => {
+    if (autopilotEnabled && !attackInProgress && summit?.beast.extra_lives === 0 && summit?.beast.current_health === 1) {
+      setTriggerAutopilot();
+    }
+  }, [autopilotEnabled, summit?.beast.current_health]);
 
   const startAutopilot = () => {
     setRevivePotionsUsed(() => 0);
@@ -409,109 +440,109 @@ function ActionBar() {
     <Box sx={[styles.buttonGroup, (attackMode === 'autopilot' && autopilotEnabled) && styles.autopilotButtonGroup]}>
       {attackMode === 'autopilot' && autopilotEnabled ? (
         <>
-        <Box sx={styles.autopilotOverlay}>
-          <Box sx={styles.autopilotOverlayInner}>
-            <Box sx={styles.autopilotOverlayHeader}>
-              <Box sx={styles.autopilotOverlayTitleWrap}>
-                <Box sx={styles.autopilotStatusDot} />
-                <Box>
-                  <Typography sx={styles.autopilotOverlayTitle}>
-                    AUTOPILOT
+          <Box sx={styles.autopilotOverlay}>
+            <Box sx={styles.autopilotOverlayInner}>
+              <Box sx={styles.autopilotOverlayHeader}>
+                <Box sx={styles.autopilotOverlayTitleWrap}>
+                  <Box sx={styles.autopilotStatusDot} />
+                  <Box>
+                    <Typography sx={styles.autopilotOverlayTitle}>
+                      AUTOPILOT
+                    </Typography>
+                  </Box>
+                </Box>
+
+                <Box sx={{ flex: 1 }} />
+
+                <Button
+                  onClick={stopAutopilot}
+                  sx={styles.autopilotOverlayStopButton}
+                >
+                  Stop Autopilot
+                </Button>
+              </Box>
+
+              <Box sx={styles.autopilotOverlayContent}>
+                <Box sx={styles.autopilotOverlayBudgetsHeader}>
+                  <Box>
+                    <Typography sx={styles.autopilotOverlayBudgetsTitle}>Potions Used</Typography>
+                  </Box>
+                  <Box sx={styles.autopilotOverlayBudgets}>
+                    {useRevivePotions && RenderRemainingPotion(revivePotionIcon, 'Revive', revivePotionsUsed, revivePotionMax)}
+                    {useAttackPotions && RenderRemainingPotion(attackPotionIcon, 'Attack', attackPotionsUsed, attackPotionMax)}
+                    {extraLifeStrategy !== 'disabled' && RenderRemainingPotion(lifePotionIcon, 'Life', extraLifePotionsUsed, extraLifeTotalMax)}
+                    {poisonStrategy !== 'disabled' && RenderRemainingPotion(poisonPotionIcon, 'Poison', poisonPotionsUsed, poisonTotalMax)}
+                  </Box>
+                </Box>
+
+                <Box sx={styles.autopilotOverlayLog}>
+                  <Box sx={styles.autopilotOverlayLogBody}>
+                    <Typography sx={styles.autopilotOverlayLogLine}>
+                      <span style={{ opacity: 0.65, marginRight: 8 }}>{'>'}</span>
+                      {autopilotLog}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+          </Box>
+
+          <Box sx={styles.potionSubGroup}>
+            <Box sx={[
+              styles.potionButton,
+              enableExtraLifePotion && styles.potionButtonActive,
+              appliedExtraLifePotions > 0 && styles.potionButtonApplied
+            ]}
+              onClick={(event) => {
+                if (!enableExtraLifePotion) return;
+                handleClick(event, 'extraLife');
+              }}>
+              <img src={lifePotionIcon} alt='' height={'32px'} />
+              {appliedExtraLifePotions > 0 && (
+                <Box sx={styles.appliedIndicator}>
+                  <Typography sx={styles.appliedText}>
+                    {appliedExtraLifePotions}
                   </Typography>
                 </Box>
+              )}
+              <Box sx={styles.count}>
+                <Typography sx={styles.countText}>{extraLifeBalance}</Typography>
               </Box>
-
-              <Box sx={{ flex: 1 }} />
-
-              <Button
-                onClick={stopAutopilot}
-                sx={styles.autopilotOverlayStopButton}
-              >
-                Stop Autopilot
-              </Button>
             </Box>
-
-            <Box sx={styles.autopilotOverlayContent}>
-              <Box sx={styles.autopilotOverlayBudgetsHeader}>
-                <Box>
-                  <Typography sx={styles.autopilotOverlayBudgetsTitle}>Potions Used</Typography>
-                </Box>
-                <Box sx={styles.autopilotOverlayBudgets}>
-                  {useRevivePotions && RenderRemainingPotion(revivePotionIcon, 'Revive', revivePotionsUsed, revivePotionMax)}
-                  {useAttackPotions && RenderRemainingPotion(attackPotionIcon, 'Attack', attackPotionsUsed, attackPotionMax)}
-                  {extraLifeStrategy !== 'disabled' && RenderRemainingPotion(lifePotionIcon, 'Life', extraLifePotionsUsed, extraLifeTotalMax)}
-                  {poisonStrategy !== 'disabled' && RenderRemainingPotion(poisonPotionIcon, 'Poison', poisonPotionsUsed, poisonTotalMax)}
-                </Box>
-              </Box>
-
-              <Box sx={styles.autopilotOverlayLog}>
-                <Box sx={styles.autopilotOverlayLogBody}>
-                  <Typography sx={styles.autopilotOverlayLogLine}>
-                    <span style={{ opacity: 0.65, marginRight: 8 }}>{'>'}</span>
-                    {autopilotLog}
+            <Box sx={[
+              styles.potionButton,
+              enablePoisonPotion && styles.potionButtonActive,
+              appliedPoisonCount > 0 && styles.potionButtonApplied
+            ]}
+              onClick={(event) => {
+                if (!enablePoisonPotion) return;
+                handleClick(event, 'poison');
+              }}>
+              <img src={poisonPotionIcon} alt='' height={'32px'} />
+              {appliedPoisonCount > 0 && (
+                <Box sx={styles.appliedIndicator}>
+                  <Typography sx={styles.appliedText}>
+                    {appliedPoisonCount}
                   </Typography>
                 </Box>
+              )}
+              <Box sx={styles.count}>
+                <Typography sx={styles.countText}>{poisonBalance}</Typography>
+              </Box>
+            </Box>
+            <Box sx={styles.potionDisplay}>
+              <img src={revivePotionIcon} alt='' height={'32px'} />
+              <Box sx={styles.count}>
+                <Typography sx={styles.countText}>{reviveBalance}</Typography>
+              </Box>
+            </Box>
+            <Box sx={styles.potionDisplay}>
+              <img src={attackPotionIcon} alt='' height={'32px'} />
+              <Box sx={styles.count}>
+                <Typography sx={styles.countText}>{attackBalance}</Typography>
               </Box>
             </Box>
           </Box>
-        </Box>
-
-        <Box sx={styles.potionSubGroup}>
-          <Box sx={[
-            styles.potionButton,
-            enableExtraLifePotion && styles.potionButtonActive,
-            appliedExtraLifePotions > 0 && styles.potionButtonApplied
-          ]}
-            onClick={(event) => {
-              if (!enableExtraLifePotion) return;
-              handleClick(event, 'extraLife');
-            }}>
-            <img src={lifePotionIcon} alt='' height={'32px'} />
-            {appliedExtraLifePotions > 0 && (
-              <Box sx={styles.appliedIndicator}>
-                <Typography sx={styles.appliedText}>
-                  {appliedExtraLifePotions}
-                </Typography>
-              </Box>
-            )}
-            <Box sx={styles.count}>
-              <Typography sx={styles.countText}>{extraLifeBalance}</Typography>
-            </Box>
-          </Box>
-          <Box sx={[
-            styles.potionButton,
-            enablePoisonPotion && styles.potionButtonActive,
-            appliedPoisonCount > 0 && styles.potionButtonApplied
-          ]}
-            onClick={(event) => {
-              if (!enablePoisonPotion) return;
-              handleClick(event, 'poison');
-            }}>
-            <img src={poisonPotionIcon} alt='' height={'32px'} />
-            {appliedPoisonCount > 0 && (
-              <Box sx={styles.appliedIndicator}>
-                <Typography sx={styles.appliedText}>
-                  {appliedPoisonCount}
-                </Typography>
-              </Box>
-            )}
-            <Box sx={styles.count}>
-              <Typography sx={styles.countText}>{poisonBalance}</Typography>
-            </Box>
-          </Box>
-          <Box sx={styles.potionDisplay}>
-            <img src={revivePotionIcon} alt='' height={'32px'} />
-            <Box sx={styles.count}>
-              <Typography sx={styles.countText}>{reviveBalance}</Typography>
-            </Box>
-          </Box>
-          <Box sx={styles.potionDisplay}>
-            <img src={attackPotionIcon} alt='' height={'32px'} />
-            <Box sx={styles.count}>
-              <Typography sx={styles.countText}>{attackBalance}</Typography>
-            </Box>
-          </Box>
-        </Box>
         </>
       ) : (
         <>
