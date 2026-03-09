@@ -848,38 +848,6 @@ app.get("/consumables/:owner", async (c) => {
   });
 });
 
-/**
- * GET /market/totals - Aggregated potion purchase totals across all players
- */
-app.get("/market/totals", async (c) => {
-  const result = await db
-    .select({
-      token: sql<string>`data->>'token'`,
-      total_amount: sql<number>`coalesce(sum((data->>'amount')::numeric), 0)`,
-      total_survivor_cost: sql<number>`coalesce(sum((data->>'survivor_cost')::numeric), 0)`,
-      purchase_count: sql<number>`count(*)`,
-    })
-    .from(summit_log)
-    .where(
-      and(
-        eq(summit_log.category, "Market"),
-        eq(summit_log.sub_category, "Bought Potions"),
-      ),
-    )
-    .groupBy(sql`data->>'token'`);
-
-  const totals: Record<string, { amount: number; survivor_cost: number; purchases: number }> = {};
-  for (const row of result) {
-    totals[String(row.token).toLowerCase()] = {
-      amount: Number(row.total_amount),
-      survivor_cost: Number(row.total_survivor_cost),
-      purchases: Number(row.purchase_count),
-    };
-  }
-
-  return c.json(totals);
-});
-
 // Root endpoint
 app.get("/", (c) => {
   const endpoints: Record<string, unknown> = {
@@ -901,9 +869,6 @@ app.get("/", (c) => {
     consumables: {
       supply: "GET /consumables/supply",
       by_owner: "GET /consumables/:owner",
-    },
-    market: {
-      totals: "GET /market/totals",
     },
     websocket: {
       endpoint: "WS /ws",
