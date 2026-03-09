@@ -1,4 +1,5 @@
 import type { Beast, Combat, Summit, selection } from '@/types/game';
+import type { IgnoredPlayer, TargetedPoisonPlayer } from '@/stores/autopilotStore';
 import { BEAST_NAMES, BEAST_TIERS, BEAST_TYPES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from './BeastData';
 import type { SoundName } from '@/contexts/sound';
 import * as starknet from "@scure/starknet";
@@ -356,4 +357,401 @@ export const calculateRevivalRequired = (selectedBeasts: selection) => {
       return sum + (revivals * beast.revival_count) + (revivals * (revivals + 1) / 2);
     }
   }, 0);
+}
+
+function normalizeAddress(address: string): string {
+  return address.replace(/^0x0+/, '0x').toLowerCase();
+}
+
+export function isOwnerIgnored(summitOwner: string, ignoredPlayers: IgnoredPlayer[]): boolean {
+  if (ignoredPlayers.length === 0) return false;
+  const normalized = normalizeAddress(summitOwner);
+  return ignoredPlayers.some((p) => p.address === normalized);
+}
+
+export function isOwnerTargetedForPoison(summitOwner: string, targetedPlayers: TargetedPoisonPlayer[]): boolean {
+  if (targetedPlayers.length === 0) return false;
+  const normalized = normalizeAddress(summitOwner);
+  return targetedPlayers.some((p) => p.address === normalized);
+}
+
+export function getTargetedPoisonAmount(summitOwner: string, targetedPlayers: { address: string; amount: number }[]): number {
+  if (targetedPlayers.length === 0) return 0;
+  const normalized = normalizeAddress(summitOwner);
+  const match = targetedPlayers.find((p) => p.address === normalized);
+  return match?.amount ?? 0;
+}
+
+export function isBeastTargetedForPoison(beastTokenId: number, targetedBeasts: { tokenId: number }[]): boolean {
+  return targetedBeasts.length > 0 && targetedBeasts.some((b) => b.tokenId === beastTokenId);
+}
+
+export function getTargetedBeastPoisonAmount(beastTokenId: number, targetedBeasts: { tokenId: number; amount: number }[]): number {
+  if (targetedBeasts.length === 0) return 0;
+  return targetedBeasts.find((b) => b.tokenId === beastTokenId)?.amount ?? 0;
+}
+
+export function hasDiplomacyMatch(playerBeasts: Beast[], summitBeast: Beast): boolean {
+  return playerBeasts.some(
+    (beast) => beast.prefix === summitBeast.prefix && beast.suffix === summitBeast.suffix
+  );
+}
+
+export interface SelectedBeast {
+  beast: Beast;
+  reviveCost: number;
+  attackPotions: number;
+}
+
+export interface SelectOptimalBeastsConfig {
+  useRevivePotions: boolean;
+  revivePotionMax: number;
+  revivePotionMaxPerBeast: number;
+  revivePotionsUsed: number;
+  useAttackPotions: boolean;
+  attackPotionMax: number;
+  attackPotionMaxPerBeast: number;
+  attackPotionsUsed: number;
+  autopilotEnabled: boolean;
+  questMode: boolean;
+  questFilters: string[];
+  maxBeasts?: number; // limit total beasts selected
+}
+
+export function selectOptimalBeasts(
+  collection: Beast[],
+  summit: Summit,
+  config: SelectOptimalBeastsConfig,
+): Beast[] {
+  const revivePotionsEnabled = config.autopilotEnabled && config.useRevivePotions && config.revivePotionsUsed < config.revivePotionMax;
+  const attackPotionsEnabled = config.autopilotEnabled && config.useAttackPotions && config.attackPotionsUsed < config.attackPotionMax;
+
+  // Compute combat and filter locked beasts
+  let filtered = collection.map((beast: Beast) => {
+    const newBeast = { ...beast };
+    newBeast.revival_time = getBeastRevivalTime(newBeast);
+    newBeast.current_health = getBeastCurrentHealth(beast);
+    newBeast.combat = calculateBattleResult(newBeast, summit, 0);
+    return newBeast;
+  }).filter((beast: Beast) => !isBeastLocked(beast));
+
+  // Separate alive and dead pools
+  const alive = filtered.filter((b) => b.current_health > 0);
+  const dead = filtered.filter((b) => b.current_health === 0);
+
+  // Build quest predicate set for prioritization
+  const questPredicates = config.questMode
+    ? config.questFilters.map(questNeedsPredicate).filter((p): p is (b: Beast) => boolean => p !== null)
+    : [];
+  const needsAnyQuest = (b: Beast) => questPredicates.some((p) => p(b));
+
+  // Sort both by combat score desc, with quest-needing beasts boosted
+  const hasStreakQuest = config.questMode && config.questFilters.includes('max_attack_streak');
+  const sortWithQuestBoost = (a: Beast, b: Beast) => {
+    if (questPredicates.length > 0) {
+      const aNeeds = needsAnyQuest(a);
+      const bNeeds = needsAnyQuest(b);
+      if (aNeeds && !bNeeds) {
+        // Boost a if its damage is at least 50% of b's
+        if ((a.combat?.estimatedDamage ?? 0) >= (b.combat?.estimatedDamage ?? 0) * 0.5) return -1;
+      }
+      if (bNeeds && !aNeeds) {
+        if ((b.combat?.estimatedDamage ?? 0) >= (a.combat?.estimatedDamage ?? 0) * 0.5) return 1;
+      }
+      // Both need quests — prefer higher urgency (e.g. streak about to expire)
+      if (aNeeds && bNeeds && hasStreakQuest) {
+        const aUrgency = questUrgencyScore(a, config.questFilters);
+        const bUrgency = questUrgencyScore(b, config.questFilters);
+        if (aUrgency !== bUrgency) return bUrgency - aUrgency;
+      }
+    }
+    return (b.combat?.score ?? -Infinity) - (a.combat?.score ?? -Infinity);
+  };
+  alive.sort(sortWithQuestBoost);
+  dead.sort(sortWithQuestBoost);
+
+  if (!revivePotionsEnabled) {
+    // No revives — just use alive beasts, optionally with attack potions on top beast
+    filtered = config.maxBeasts ? alive.slice(0, config.maxBeasts) : alive;
+
+    if (attackPotionsEnabled && filtered.length > 0) {
+      const attackSelection: selection[number] = [filtered[0], 1, 0];
+      const potions = calculateOptimalAttackPotions(
+        attackSelection,
+        summit,
+        Math.min(config.attackPotionMax - config.attackPotionsUsed, config.attackPotionMaxPerBeast, 255),
+      );
+      filtered[0] = { ...filtered[0], combat: calculateBattleResult(filtered[0], summit, potions) };
+    }
+
+    // Quest boosting for alive-only path
+    if (config.questMode && config.questFilters.length > 0) {
+      filtered = applyQuestBoost(filtered, dead, summit, config, attackPotionsEnabled);
+    }
+
+    return filtered;
+  }
+
+  // Cost-aware selection with revives
+  let reviveBudget = config.revivePotionMax - config.revivePotionsUsed;
+  const attackBudget = attackPotionsEnabled
+    ? config.attackPotionMax - config.attackPotionsUsed
+    : 0;
+
+  // Revive potions are ~10x more expensive than attack potions in practice.
+  // Weight revive cost accordingly so the algorithm prefers cheap revive + attack potions
+  // over expensive revive alone.
+  const REVIVE_WEIGHT = 10;
+
+  interface Candidate {
+    beast: Beast;
+    damage: number;
+    reviveCost: number;
+    attackPotions: number;
+    weightedCost: number; // reviveCost * REVIVE_WEIGHT + attackPotions
+  }
+
+  const buildCandidate = (beast: Beast, reviveCost: number): Candidate => {
+    const baseDamage = beast.combat?.estimatedDamage ?? 0;
+    let bestDamage = baseDamage;
+    let bestPotions = 0;
+
+    if (attackPotionsEnabled && attackBudget > 0) {
+      const maxPotions = Math.min(attackBudget, config.attackPotionMaxPerBeast, 255);
+      const potions = calculateOptimalAttackPotions([beast, 1, 0], summit, maxPotions);
+      if (potions > 0) {
+        const boostedCombat = calculateBattleResult(beast, summit, potions);
+        if (boostedCombat.estimatedDamage > bestDamage) {
+          bestDamage = boostedCombat.estimatedDamage;
+          bestPotions = potions;
+        }
+      }
+    }
+
+    return {
+      beast,
+      damage: bestDamage,
+      reviveCost,
+      attackPotions: bestPotions,
+      weightedCost: reviveCost * REVIVE_WEIGHT + bestPotions,
+    };
+  };
+
+  const candidates: Candidate[] = [];
+
+  for (const beast of alive) {
+    candidates.push(buildCandidate(beast, 0));
+  }
+
+  for (const beast of dead) {
+    const reviveCost = beast.revival_count + 1;
+    if (reviveCost > reviveBudget || reviveCost > config.revivePotionMaxPerBeast) continue;
+    candidates.push(buildCandidate(beast, reviveCost));
+  }
+
+  // Compute the summit damage threshold to inform selection.
+  // In "guaranteed" mode the autopilot requires totalEstimatedDamage >= summitHealth * 1.1.
+  const summitHealth = ((summit.beast.health + summit.beast.bonus_health) * summit.beast.extra_lives)
+    + Math.max(1, summit.beast.current_health || 0);
+
+  // The minimum damage a beast must deal to be worth considering for the first slot.
+  // Any beast above this threshold can contribute to taking the summit.
+  const damageThreshold = summitHealth * 1.1;
+
+  // Quest-aware sorting: if quest mode is on, beasts that can pass the threshold AND
+  // satisfy a quest get a boost. This way a free alive beast that needs "Summit Conqueror"
+  // sorts ahead of an expensive revived beast when both can take the summit.
+  const questActive = config.questMode && questPredicates.length > 0;
+
+  candidates.sort((a, b) => {
+    // Both can solo the summit — prefer quest beasts, then cheaper, then higher damage
+    const aCanSolo = a.damage >= damageThreshold;
+    const bCanSolo = b.damage >= damageThreshold;
+
+    if (aCanSolo && bCanSolo) {
+      // If quest mode: prefer beast that needs a quest
+      if (questActive) {
+        const aQuest = needsAnyQuest(a.beast);
+        const bQuest = needsAnyQuest(b.beast);
+        if (aQuest && !bQuest) return -1;
+        if (bQuest && !aQuest) return 1;
+        // Both need quests — prefer higher urgency (streak about to expire)
+        if (aQuest && bQuest && hasStreakQuest) {
+          const aUrg = questUrgencyScore(a.beast, config.questFilters);
+          const bUrg = questUrgencyScore(b.beast, config.questFilters);
+          if (aUrg !== bUrg) return bUrg - aUrg;
+        }
+      }
+      // Both can solo — prefer cheaper
+      if (a.weightedCost !== b.weightedCost) return a.weightedCost - b.weightedCost;
+      return b.damage - a.damage;
+    }
+
+    // One can solo, one can't — prefer the one that can solo
+    if (aCanSolo && !bCanSolo) return -1;
+    if (bCanSolo && !aCanSolo) return 1;
+
+    // Neither can solo — sort by damage descending, with cost tiebreaker for similar damage
+    const maxDmg = Math.max(a.damage, b.damage);
+    const minDmg = Math.min(a.damage, b.damage);
+    if (maxDmg > 0 && minDmg / maxDmg >= 0.8) {
+      // If quest mode: prefer beast that needs a quest
+      if (questActive) {
+        const aQuest = needsAnyQuest(a.beast);
+        const bQuest = needsAnyQuest(b.beast);
+        if (aQuest && !bQuest) return -1;
+        if (bQuest && !aQuest) return 1;
+        // Both need quests — prefer higher urgency
+        if (aQuest && bQuest && hasStreakQuest) {
+          const aUrg = questUrgencyScore(a.beast, config.questFilters);
+          const bUrg = questUrgencyScore(b.beast, config.questFilters);
+          if (aUrg !== bUrg) return bUrg - aUrg;
+        }
+      }
+      if (a.weightedCost !== b.weightedCost) return a.weightedCost - b.weightedCost;
+    }
+    return b.damage - a.damage;
+  });
+
+  const maxBeasts = config.maxBeasts ?? Infinity;
+  const selected: Beast[] = [];
+  let usedAttackBudget = 0;
+
+  for (const candidate of candidates) {
+    if (selected.length >= maxBeasts) break;
+    if (candidate.reviveCost > reviveBudget) continue;
+    if (candidate.attackPotions > attackBudget - usedAttackBudget) {
+      // Try without attack potions
+      candidate.attackPotions = 0;
+      candidate.damage = candidate.beast.combat?.estimatedDamage ?? 0;
+    }
+
+    reviveBudget -= candidate.reviveCost;
+    usedAttackBudget += candidate.attackPotions;
+
+    const beastCopy = { ...candidate.beast };
+    if (candidate.attackPotions > 0) {
+      beastCopy.combat = calculateBattleResult(beastCopy, summit, candidate.attackPotions);
+    }
+    selected.push(beastCopy);
+  }
+
+  return selected;
+}
+
+function questNeedsPredicate(quest: string): ((beast: Beast) => boolean) | null {
+  switch (quest) {
+    case 'attack_summit': return (b) => b.bonus_xp === 0;
+    case 'max_attack_streak': return (b) => !b.max_attack_streak;
+    case 'take_summit': return (b) => !b.captured_summit;
+    case 'hold_summit_10s': return (b) => b.summit_held_seconds < 10;
+    case 'revival_potion': return (b) => !b.used_revival_potion;
+    case 'attack_potion': return (b) => !b.used_attack_potion;
+    default: return null;
+  }
+}
+
+// Streak resets after 2 × BASE_REVIVAL_TIME_SECONDS (48h) since last death.
+const STREAK_RESET_SECONDS = 86400 * 2;
+
+/**
+ * Score 0-100 for how urgently a beast needs to attack to preserve/complete its streak.
+ *  - Progress component (0-50): higher streak = more to lose and closer to completing the quest.
+ *  - Time pressure component (0-50): increases as the 48h reset window runs out.
+ * Returns 0 for beasts that have already completed the quest or have no active streak.
+ */
+export function streakUrgencyScore(beast: Beast): number {
+  if (beast.max_attack_streak) return 0; // quest already done
+  if (beast.attack_streak === 0) return 0; // no progress to lose
+
+  const now = Date.now() / 1000;
+  const timeUntilReset = (beast.last_death_timestamp + STREAK_RESET_SECONDS) - now;
+
+  if (timeUntilReset <= 0) return 0; // streak already reset
+
+  // Progress: 0-50 based on how close to streak 10
+  const progressScore = (beast.attack_streak / 10) * 50;
+
+  // Time pressure: 0-50, increases as deadline approaches
+  const timeScore = Math.max(0, 1 - timeUntilReset / STREAK_RESET_SECONDS) * 50;
+
+  return progressScore + timeScore;
+}
+
+/**
+ * Aggregate urgency score across active quest filters.
+ * Currently only `max_attack_streak` has time-sensitive urgency.
+ */
+export function questUrgencyScore(beast: Beast, questFilters: string[]): number {
+  let maxScore = 0;
+  for (const quest of questFilters) {
+    if (quest === 'max_attack_streak') {
+      maxScore = Math.max(maxScore, streakUrgencyScore(beast));
+    }
+  }
+  return maxScore;
+}
+
+function applyQuestBoost(
+  selected: Beast[],
+  deadPool: Beast[],
+  summit: Summit,
+  config: SelectOptimalBeastsConfig,
+  attackPotionsEnabled: boolean,
+): Beast[] {
+  const result = [...selected];
+  const selectedIds = new Set(result.map((b) => b.token_id));
+
+  for (const quest of config.questFilters) {
+    const needsQuest = questNeedsPredicate(quest);
+    if (!needsQuest) continue;
+
+    if (quest === 'revival_potion') {
+      // Special: include a dead beast that hasn't used revival potion
+      if (config.useRevivePotions) {
+        const alreadyIncluded = result.some((b) => needsQuest(b) && b.current_health === 0);
+        if (!alreadyIncluded) {
+          const reviveBudget = config.revivePotionMax - config.revivePotionsUsed;
+          const questCandidate = deadPool.find(
+            (b) => needsQuest(b) && !selectedIds.has(b.token_id) && (b.revival_count + 1) <= reviveBudget && (b.revival_count + 1) <= config.revivePotionMaxPerBeast
+          );
+          if (questCandidate) {
+            const beastCopy = { ...questCandidate };
+            beastCopy.combat = calculateBattleResult(beastCopy, summit, 0);
+            if ((beastCopy.combat?.estimatedDamage ?? 0) > 0) {
+              result.push(beastCopy);
+              selectedIds.add(beastCopy.token_id);
+            }
+          }
+        }
+      }
+    } else if (quest === 'attack_potion') {
+      // Special: ensure at least one beast gets attack potions
+      if (attackPotionsEnabled) {
+        const hasAttackPotions = result.some((b) => (b.combat?.attackPotions ?? 0) > 0);
+        if (!hasAttackPotions) {
+          const questBeast = result.find((b) => needsQuest(b));
+          if (questBeast) {
+            const maxPotions = Math.min(config.attackPotionMax - config.attackPotionsUsed, config.attackPotionMaxPerBeast, 255);
+            if (maxPotions > 0) {
+              const idx = result.indexOf(questBeast);
+              const boosted = { ...questBeast };
+              boosted.combat = calculateBattleResult(boosted, summit, Math.min(1, maxPotions));
+              result[idx] = boosted;
+            }
+          }
+        }
+      }
+    } else {
+      // Generic: ensure at least one beast needing this quest is included
+      const alreadyIncluded = result.some(needsQuest);
+      if (alreadyIncluded) continue;
+
+      // Try to swap in a viable beast from outside the selection
+      // For now, the quest boost is best-effort — beasts are already sorted by efficiency,
+      // so if none in the selection need this quest, the remaining beasts likely all completed it.
+    }
+  }
+
+  return result;
 }
