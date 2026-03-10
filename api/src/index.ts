@@ -990,9 +990,10 @@ if (isMetricsEnabled()) {
   );
 }
 
-// Graceful shutdown
+// Graceful shutdown: stop accepting requests before tearing down resources
 async function shutdown() {
   log.info("api_shutdown_started");
+  await new Promise<void>((resolve) => server.close(() => resolve()));
   for (const emitter of metricEmitters) {
     emitter.stop();
   }
