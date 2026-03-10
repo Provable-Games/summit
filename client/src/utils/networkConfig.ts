@@ -41,15 +41,17 @@ export enum ChainId {
 export const TOKEN_ADDRESS = {
   ATTACK: "0x016f9def00daef9f1874dd932b081096f50aec2fe61df31a81bc5707a7522443",
   REVIVE: "0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe",
-  EXTRA_LIFE: "0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796",
+  EXTRA_LIFE:
+    "0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796",
   POISON: "0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE",
   SKULL: "0x01c3c8284d7eed443b42f47e764032a56eaf50a9079d67993b633930e3689814",
   CORPSE: "0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a",
-  SURVIVOR: "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
+  SURVIVOR:
+    "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
   STRK: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
   USDC: "0x033068F6539f8e6e6b131e6B2B814e6c34A5224bC66947c47DaB9dFeE93b35fb",
-  LORDS: "0x0124aeb495b947201f5faC96fD1138E326AD86195B98df6DEc9009158A533B49"
-}
+  LORDS: "0x0124aeb495b947201f5faC96fD1138E326AD86195B98df6DEc9009158A533B49",
+};
 
 export const NETWORKS = {
   SN_MAIN: {
@@ -57,8 +59,8 @@ export const NETWORKS = {
     slot: "pg-summit-2",
     rpcUrl: "https://api.cartridge.gg/x/starknet/mainnet/rpc/v0_9",
     torii: "https://api.cartridge.gg/x/pg-mainnet-10/torii",
-    apiUrl: "https://summit-api-production-ca43.up.railway.app",
-    wsUrl: "wss://summit-api-production-ca43.up.railway.app/ws",
+    apiUrl: "https://summit-api-next.up.railway.app",
+    wsUrl: "wss://summit-api-next.up.railway.app/ws",
     tokens: {
       erc20: [
         {
@@ -106,7 +108,7 @@ export const NETWORKS = {
           name: "CORPSE",
           address: TOKEN_ADDRESS.CORPSE,
           displayDecimals: 0,
-        }
+        },
       ],
     },
     denshokan:
@@ -124,26 +126,26 @@ export const NETWORKS = {
         name: "LORDS",
         address: TOKEN_ADDRESS.LORDS,
         displayDecimals: 0,
-        price: 0.008
+        price: 0.008,
       },
       {
         name: "SURVIVOR",
         address: TOKEN_ADDRESS.SURVIVOR,
         displayDecimals: 0,
-        price: 0.25
+        price: 0.25,
       },
       {
         name: "STRK",
         address: TOKEN_ADDRESS.STRK,
         displayDecimals: 2,
-        price: 0.045
+        price: 0.045,
       },
       {
         name: "USDC",
         address: TOKEN_ADDRESS.USDC,
         displayDecimals: 2,
         decimals: 6,
-        price: 1
+        price: 1,
       },
       {
         name: "ATTACK",
@@ -183,167 +185,170 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
   const network = NETWORKS[networkKey as keyof typeof NETWORKS];
   if (!network) throw new Error(`Network ${networkKey} not found`);
 
-  const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS
+  const SUMMIT_ADDRESS = import.meta.env.VITE_PUBLIC_SUMMIT_ADDRESS;
 
   const policies = {
-    "contracts": {
+    contracts: {
       [SUMMIT_ADDRESS]: {
-        "name": "Summit Game",
-        "description": "Main game contract for Summit gameplay",
-        "methods": [
+        name: "Summit Game",
+        description: "Main game contract for Summit gameplay",
+        methods: [
           {
-            "name": "Attack",
-            "description": "Attack the Summit",
-            "entrypoint": "attack"
+            name: "Attack",
+            description: "Attack the Summit",
+            entrypoint: "attack",
           },
           {
-            "name": "Attack Unsafe",
-            "description": "Attack the Summit without safety checks",
-            "entrypoint": "attack_unsafe"
+            name: "Attack Unsafe",
+            description: "Attack the Summit without safety checks",
+            entrypoint: "attack_unsafe",
           },
           {
-            "name": "Feed",
-            "description": "Feed beast dead adventurers",
-            "entrypoint": "feed"
+            name: "Feed",
+            description: "Feed beast dead adventurers",
+            entrypoint: "feed",
           },
           {
-            "name": "Claim Quest Reward",
-            "description": "Claim quest rewards",
-            "entrypoint": "claim_quest_rewards"
+            name: "Claim Quest Reward",
+            description: "Claim quest rewards",
+            entrypoint: "claim_quest_rewards",
           },
           {
-            "name": "Claim Beast Reward",
-            "description": "Claim beast rewards",
-            "entrypoint": "claim_rewards"
+            name: "Claim Beast Reward",
+            description: "Claim beast rewards",
+            entrypoint: "claim_rewards",
           },
           {
-            "name": "Add Extra Life",
-            "description": "Add extra life to beast",
-            "entrypoint": "add_extra_life"
+            name: "Add Extra Life",
+            description: "Add extra life to beast",
+            entrypoint: "add_extra_life",
           },
           {
-            "name": "Apply Stat Points",
-            "description": "Apply stat points to beast",
-            "entrypoint": "apply_stat_points"
+            name: "Apply Stat Points",
+            description: "Apply stat points to beast",
+            entrypoint: "apply_stat_points",
           },
           {
-            "name": "Apply Poison",
-            "description": "Apply poison to beast",
-            "entrypoint": "apply_poison"
+            name: "Apply Poison",
+            description: "Apply poison to beast",
+            entrypoint: "apply_poison",
           },
-        ]
+        ],
       },
       [TOKEN_ADDRESS.ATTACK]: {
-        "name": "Attack Potion",
-        "description": "ERC 20 token for Attack Potion",
-        "methods": [
+        name: "Attack Potion",
+        description: "ERC 20 token for Attack Potion",
+        methods: [
           {
-            "name": "Approve",
-            "amount": "50000000000000000000000",
-            "spender": SUMMIT_ADDRESS,
-            "description": "Approve Attack Potion",
-            "entrypoint": "approve"
+            name: "Approve",
+            amount: "50000000000000000000000",
+            spender: SUMMIT_ADDRESS,
+            description: "Approve Attack Potion",
+            entrypoint: "approve",
           },
-        ]
+        ],
       },
       [TOKEN_ADDRESS.REVIVE]: {
-        "name": "Revive Potion",
-        "description": "ERC 20 token for Revive Potion",
-        "methods": [
+        name: "Revive Potion",
+        description: "ERC 20 token for Revive Potion",
+        methods: [
           {
-            "name": "Approve",
-            "amount": "50000000000000000000000",
-            "spender": SUMMIT_ADDRESS,
-            "description": "Approve Revive Potion",
-            "entrypoint": "approve"
+            name: "Approve",
+            amount: "50000000000000000000000",
+            spender: SUMMIT_ADDRESS,
+            description: "Approve Revive Potion",
+            entrypoint: "approve",
           },
-        ]
+        ],
       },
       [TOKEN_ADDRESS.EXTRA_LIFE]: {
-        "name": "Extra Life Potion",
-        "description": "ERC 20 token for Extra Life Potion",
-        "methods": [
+        name: "Extra Life Potion",
+        description: "ERC 20 token for Extra Life Potion",
+        methods: [
           {
-            "name": "Approve",
-            "amount": "50000000000000000000000",
-            "spender": SUMMIT_ADDRESS,
-            "description": "Approve Extra Life Potion",
-            "entrypoint": "approve"
+            name: "Approve",
+            amount: "50000000000000000000000",
+            spender: SUMMIT_ADDRESS,
+            description: "Approve Extra Life Potion",
+            entrypoint: "approve",
           },
-        ]
+        ],
       },
       [TOKEN_ADDRESS.POISON]: {
-        "name": "Poison Potion",
-        "description": "ERC 20 token for Poison Potion",
-        "methods": [
+        name: "Poison Potion",
+        description: "ERC 20 token for Poison Potion",
+        methods: [
           {
-            "name": "Approve",
-            "amount": "50000000000000000000000",
-            "spender": SUMMIT_ADDRESS,
-            "description": "Approve Poison Potion",
-            "entrypoint": "approve"
+            name: "Approve",
+            amount: "50000000000000000000000",
+            spender: SUMMIT_ADDRESS,
+            description: "Approve Poison Potion",
+            entrypoint: "approve",
           },
-        ]
+        ],
       },
       [TOKEN_ADDRESS.SKULL]: {
-        "name": "Skull Token",
-        "description": "ERC 20 token for Skull Token",
-        "methods": [
+        name: "Skull Token",
+        description: "ERC 20 token for Skull Token",
+        methods: [
           {
-            "name": "Claim Skulls",
-            "description": "Claim skulls",
-            "entrypoint": "claim"
+            name: "Claim Skulls",
+            description: "Claim skulls",
+            entrypoint: "claim",
           },
           {
-            "name": "Approve",
-            "amount": "50000000000000000000000",
-            "spender": SUMMIT_ADDRESS,
-            "description": "Approve Skull Token",
-            "entrypoint": "approve"
+            name: "Approve",
+            amount: "50000000000000000000000",
+            spender: SUMMIT_ADDRESS,
+            description: "Approve Skull Token",
+            entrypoint: "approve",
           },
-        ]
+        ],
       },
       [TOKEN_ADDRESS.CORPSE]: {
-        "name": "Corpse Token",
-        "description": "ERC 20 token for Corpse Token",
-        "methods": [
+        name: "Corpse Token",
+        description: "ERC 20 token for Corpse Token",
+        methods: [
           {
-            "name": "Claim Corpses",
-            "description": "Claim corpses",
-            "entrypoint": "claim"
+            name: "Claim Corpses",
+            description: "Claim corpses",
+            entrypoint: "claim",
           },
           {
-            "name": "Approve",
-            "amount": "50000000000000000000000",
-            "spender": SUMMIT_ADDRESS,
-            "description": "Approve Corpse Token",
-            "entrypoint": "approve"
+            name: "Approve",
+            amount: "50000000000000000000000",
+            spender: SUMMIT_ADDRESS,
+            description: "Approve Corpse Token",
+            entrypoint: "approve",
           },
-        ]
+        ],
       },
       [network.ekuboPositions]: {
-        "name": "Ekubo Positions",
-        "description": "Ekubo positions NFT contract for DCA orders and liquidity",
-        "methods": [
+        name: "Ekubo Positions",
+        description:
+          "Ekubo positions NFT contract for DCA orders and liquidity",
+        methods: [
           {
-            "name": "Withdraw Proceeds",
-            "description": "Withdraw purchased tokens from a DCA order",
-            "entrypoint": "withdraw_proceeds_from_sale_to_self"
+            name: "Withdraw Proceeds",
+            description: "Withdraw purchased tokens from a DCA order",
+            entrypoint: "withdraw_proceeds_from_sale_to_self",
           },
-        ]
+        ],
       },
       "0x051fea4450da9d6aee758bdeba88b2f665bcbf549d2c61421aa724e9ac0ced8f": {
-        "name": "Cartridge VRF Provider",
-        "description": "Verifiable Random Function contract, allows randomness in the game",
-        "methods": [
+        name: "Cartridge VRF Provider",
+        description:
+          "Verifiable Random Function contract, allows randomness in the game",
+        methods: [
           {
-            "name": "Request Random",
-            "description": "Allows requesting random numbers from the VRF provider",
-            "entrypoint": "request_random"
-          }
-        ]
+            name: "Request Random",
+            description:
+              "Allows requesting random numbers from the VRF provider",
+            entrypoint: "request_random",
+          },
+        ],
       },
-    }
+    },
   };
 
   return {
