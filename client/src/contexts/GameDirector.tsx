@@ -11,6 +11,7 @@ import type { BattleEvent, Beast, GameAction, SpectatorBattleEvent, Summit } fro
 import { BEAST_NAMES, ITEM_NAME_PREFIXES, ITEM_NAME_SUFFIXES } from "@/utils/BeastData";
 import { fetchBeastImage } from "@/utils/beasts";
 import { lookupAddressName } from "@/utils/addressNameCache";
+import { addressesEqual } from "@/utils/addressUtils";
 import type {
   BattleEventTranslation,
   LiveBeastStatsEventTranslation,
@@ -24,7 +25,7 @@ import {
   getBeastRevivalTime,
 } from "@/utils/beasts";
 import { useAccount } from "@starknet-react/core";
-import { addAddressPadding, type Call } from "starknet";
+import { type Call } from "starknet";
 import type {
   PropsWithChildren
 } from "react";
@@ -160,7 +161,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     addLiveEvent(data);
 
     const { category, sub_category, data: eventData } = data;
-    const isOwnEvent = !!account?.address && data.player === addAddressPadding(account.address);
+    const isOwnEvent = addressesEqual(data.player, account?.address);
 
     // Helper to get beast info from event data
     const getBeastInfo = () => {
@@ -470,7 +471,7 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     }
 
     // Fetch diplomacy if not already set
-    if (!summit.diplomacy) {
+    if (!summit.diplomacy && summit.beast.prefix && summit.beast.suffix) {
       const fetchDiplomacy = async () => {
         try {
           const beasts = await getDiplomacy(

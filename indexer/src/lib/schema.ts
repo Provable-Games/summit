@@ -78,6 +78,12 @@ export const beast_stats = pgTable(
   (table) => [
     index("beast_stats_current_health_idx").on(table.current_health),
     index("beast_stats_summit_held_seconds_idx").on(table.summit_held_seconds.desc()),
+    index("beast_stats_top_order_idx").on(
+      table.summit_held_seconds.desc(),
+      table.bonus_xp.desc(),
+      table.last_death_timestamp.desc(),
+      table.token_id
+    ),
     index("beast_stats_updated_at_idx").on(table.updated_at.desc()),
     // Partial index for beasts with diplomacy upgrade
     index("beast_stats_diplomacy_token_idx").on(table.token_id).where(sql`diplomacy`),
@@ -151,6 +157,7 @@ export const rewards_earned = pgTable(
     // Unique constraint for idempotent re-indexing
     uniqueIndex("rewards_earned_block_tx_event_idx").on(table.block_number, table.transaction_hash, table.event_index),
     index("rewards_earned_owner_idx").on(table.owner),
+    index("rewards_earned_owner_amount_idx").on(table.owner, table.amount),
     index("rewards_earned_beast_token_id_idx").on(table.beast_token_id),
     index("rewards_earned_created_at_idx").on(table.created_at.desc()),
   ]
@@ -294,6 +301,7 @@ export const beast_owners = pgTable(
   },
   (table) => [
     index("beast_owners_owner_idx").on(table.owner),
+    index("beast_owners_owner_token_idx").on(table.owner, table.token_id),
     index("beast_owners_token_id_idx").on(table.token_id),
   ]
 );
@@ -327,6 +335,7 @@ export const beasts = pgTable(
     index("beasts_beast_id_idx").on(table.beast_id),
     index("beasts_prefix_idx").on(table.prefix),
     index("beasts_suffix_idx").on(table.suffix),
+    index("beasts_prefix_suffix_token_idx").on(table.prefix, table.suffix, table.token_id),
     index("beasts_level_idx").on(table.level.desc()),
   ]
 );

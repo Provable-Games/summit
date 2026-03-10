@@ -1,16 +1,16 @@
 import { DIPLOMACY_REWARDS_PER_SECOND } from '@/contexts/GameDirector';
-import type { Beast, Diplomacy } from '@/types/game';
+import type { Beast, Diplomacy, Leaderboard } from '@/types/game';
 import { gameColors } from '@/utils/themes';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import { Box, Popover, Typography } from '@mui/material';
-import { addAddressPadding } from 'starknet';
+import { addressesEqual as sameAddress } from '@/utils/addressUtils';
 
 interface DiplomacyPopoverProps {
   anchorEl: HTMLElement | null;
   onClose: () => void;
   diplomacy: Diplomacy;
   summitBeast: Beast;
-  leaderboard: { owner: string; amount: number }[];
+  leaderboard: Leaderboard[];
   addressNames: Record<string, string | null>;
 }
 
@@ -53,7 +53,7 @@ export function DiplomacyPopover({
           .map((beast) => {
             const ownerRank = beast.owner
               ? leaderboard.findIndex(p =>
-                addAddressPadding(p.owner) === addAddressPadding(beast.owner!)
+                sameAddress(p.owner, beast.owner)
               ) + 1
               : 0;
             return (

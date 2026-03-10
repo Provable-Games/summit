@@ -13,9 +13,9 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { Box, IconButton, Typography } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
-import { addAddressPadding } from 'starknet';
 import { DiplomacyPopover } from './DiplomacyPopover';
 import RewardsRemainingBar from './RewardsRemainingBar';
+import { normalizeAddress, addressesEqual as sameAddress } from '@/utils/addressUtils';
 
 function Leaderboard() {
   const { beastsRegistered, beastsAlive, consumablesSupply, fetchStats } = useStatistics()
@@ -62,7 +62,9 @@ function Leaderboard() {
 
         // Add top 5 leaderboard addresses
         data.slice(0, 5).forEach(player => {
-          addressesToLookup.push(player.owner);
+          if (typeof player.owner === 'string' && player.owner.length > 0) {
+            addressesToLookup.push(player.owner);
+          }
         });
 
         // Add summit owner if exists
@@ -84,7 +86,8 @@ function Leaderboard() {
           const names = {};
           // Map all names using original addresses as keys
           addressesToLookup.forEach(address => {
-            const normalized = address.replace(/^0x0+/, "0x").toLowerCase();
+            const normalized = normalizeAddress(address);
+            if (!normalized) return;
             names[address] = addressMap.get(normalized) || null;
           });
 
@@ -114,7 +117,7 @@ function Leaderboard() {
     const diplomacyRewards = diplomacyRewardPerSecond * secondsHeld * diplomacyCount;
 
     // Find summit owner in leaderboard
-    const player = leaderboard.find(player => addAddressPadding(player.owner) === addAddressPadding(summitOwner))
+    const player = leaderboard.find(player => sameAddress(player.owner, summitOwner))
     const gainedSince = (secondsHeld * SUMMIT_REWARDS_PER_SECOND) - diplomacyRewards;
     const score = (player?.amount || 0) + gainedSince;
 
@@ -145,7 +148,7 @@ function Leaderboard() {
     const displayName = cartridgeName || 'Warlock'
 
     return (
-      <Box key={player.owner} sx={styles.bigFiveRow}>
+      <Box key={`${player.owner ?? 'unknown'}-${index}`} sx={styles.bigFiveRow}>
         <Typography sx={styles.bigFiveRank}>{index + 1}.</Typography>
         <Typography sx={styles.bigFiveCompact}>
           {displayName}
@@ -191,10 +194,10 @@ function Leaderboard() {
           <Box sx={styles.bigFiveContainer}>
             {leaderboard.slice(0, 5).map((player, index) => (
               <PlayerRow
-                key={player.owner}
+                key={`${player.owner ?? 'unknown'}-${index}`}
                 player={player}
                 index={index}
-                cartridgeName={addressNames[player.owner]}
+                cartridgeName={player.owner ? addressNames[player.owner] : null}
               />
             ))}
 

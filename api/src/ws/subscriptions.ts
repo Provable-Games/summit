@@ -8,6 +8,7 @@
  */
 
 import { pool } from "../db/client.js";
+import { log, parsePositiveInt } from "../lib/logging.js";
 import type pg from "pg";
 
 interface WebSocketLike {
@@ -64,49 +65,155 @@ interface EventPayload {
   created_at: string;
 }
 
+interface HubCounters {
+  connections: number;
+  disconnections: number;
+  subscribes: number;
+  unsubscribes: number;
+  reconnects: number;
+  parseErrors: number;
+  messageErrors: number;
+  sendErrors: number;
+  broadcasts: Record<Channel, number>;
+  delivered: Record<Channel, number>;
+}
+
+function createCounters(): HubCounters {
+  return {
+    connections: 0,
+    disconnections: 0,
+    subscribes: 0,
+    unsubscribes: 0,
+    reconnects: 0,
+    parseErrors: 0,
+    messageErrors: 0,
+    sendErrors: 0,
+    broadcasts: {
+      summit: 0,
+      event: 0,
+    },
+    delivered: {
+      summit: 0,
+      event: 0,
+    },
+  };
+}
+
 export class SubscriptionHub {
   private clients: Map<string, ClientSubscription> = new Map();
   private pgClient: pg.PoolClient | null = null;
   private isConnected = false;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private summaryTimer: ReturnType<typeof setInterval> | null = null;
 
   // Exponential backoff configuration (no max limit - retries forever)
   private reconnectAttempts = 0;
   private readonly baseReconnectDelay = 1000; // 1 second
   private readonly maxReconnectDelay = 30000; // 30 seconds (capped)
 
+  private readonly verboseLogs =
+    process.env.WS_VERBOSE_LOGS === "true" ||
+    (process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test");
+  private readonly sendErrorSampleEvery = parsePositiveInt(
+    process.env.WS_SEND_ERROR_SAMPLE_EVERY,
+    100
+  );
+  private readonly summaryIntervalMs = parsePositiveInt(
+    process.env.WS_LOG_SUMMARY_INTERVAL_MS,
+    30_000
+  );
+  private counters = createCounters();
+  private windowCounters = createCounters();
+
   constructor() {
     this.connect();
+    this.startSummaryLogs();
+  }
+
+  private startSummaryLogs(): void {
+    this.summaryTimer = setInterval(() => {
+      const window = this.windowCounters;
+      this.windowCounters = createCounters();
+
+      log.info("ws_summary", {
+        connected_to_pg: this.isConnected,
+        active_clients: this.clients.size,
+        reconnect_attempt: this.reconnectAttempts,
+        window_connections: window.connections,
+        window_disconnections: window.disconnections,
+        window_subscribes: window.subscribes,
+        window_unsubscribes: window.unsubscribes,
+        window_reconnects: window.reconnects,
+        window_parse_errors: window.parseErrors,
+        window_message_errors: window.messageErrors,
+        window_send_errors: window.sendErrors,
+        window_broadcasts: window.broadcasts,
+        window_delivered: window.delivered,
+        total_connections: this.counters.connections,
+        total_disconnections: this.counters.disconnections,
+        total_send_errors: this.counters.sendErrors,
+      });
+    }, this.summaryIntervalMs);
+
+    this.summaryTimer.unref?.();
+  }
+
+  private bumpCounter(key: keyof Pick<
+    HubCounters,
+    | "connections"
+    | "disconnections"
+    | "subscribes"
+    | "unsubscribes"
+    | "reconnects"
+    | "parseErrors"
+    | "messageErrors"
+    | "sendErrors"
+  >): void {
+    this.counters[key] += 1;
+    this.windowCounters[key] += 1;
+  }
+
+  private bumpBroadcast(channel: Channel, delivered: number): void {
+    this.counters.broadcasts[channel] += 1;
+    this.windowCounters.broadcasts[channel] += 1;
+    this.counters.delivered[channel] += delivered;
+    this.windowCounters.delivered[channel] += delivered;
   }
 
   private async connect(): Promise<void> {
     try {
       this.pgClient = await pool.connect();
       this.isConnected = true;
-      this.reconnectAttempts = 0; // Reset on successful connection
+      this.reconnectAttempts = 0;
 
-      console.log("[SubscriptionHub] Connected to PostgreSQL for LISTEN");
+      log.info("ws_pg_listen_connected");
 
       this.pgClient.on("notification", (msg) => {
         this.handleNotification(msg);
       });
 
       this.pgClient.on("error", (err) => {
-        console.error("[SubscriptionHub] PostgreSQL client error:", err);
+        log.error("ws_pg_client_error", {
+          error: err,
+        });
         this.reconnect();
       });
 
       this.pgClient.on("end", () => {
-        console.log("[SubscriptionHub] PostgreSQL client disconnected");
+        log.warn("ws_pg_client_disconnected");
         this.reconnect();
       });
 
       await this.pgClient.query("LISTEN summit_update");
       await this.pgClient.query("LISTEN summit_log_insert");
 
-      console.log("[SubscriptionHub] Listening on: summit_update, summit_log_insert");
+      log.info("ws_pg_listening_channels", {
+        channels: ["summit_update", "summit_log_insert"],
+      });
     } catch (error) {
-      console.error("[SubscriptionHub] Failed to connect:", error);
+      log.error("ws_pg_connect_failed", {
+        error,
+      });
       this.reconnect();
     }
   }
@@ -124,17 +231,18 @@ export class SubscriptionHub {
       this.pgClient = null;
     }
 
-    this.reconnectAttempts++;
+    this.reconnectAttempts += 1;
+    this.bumpCounter("reconnects");
 
-    // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s (capped at 30s, retries forever)
     const delay = Math.min(
       this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
       this.maxReconnectDelay
     );
 
-    console.log(
-      `[SubscriptionHub] Reconnecting in ${delay / 1000}s (attempt ${this.reconnectAttempts})...`
-    );
+    log.warn("ws_pg_reconnect_scheduled", {
+      attempt: this.reconnectAttempts,
+      delay_ms: delay,
+    });
 
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
@@ -157,20 +265,24 @@ export class SubscriptionHub {
           break;
       }
     } catch (error) {
-      console.error("[SubscriptionHub] Failed to parse notification:", error);
+      this.bumpCounter("parseErrors");
+      log.error("ws_notification_parse_failed", {
+        channel: msg.channel,
+        error,
+      });
     }
   }
 
   private broadcast(channel: Channel, data: SummitPayload | EventPayload): void {
     const message = JSON.stringify({ type: channel, data });
 
-    let sentCount = 0;
+    let delivered = 0;
     const deadClients: string[] = [];
 
     for (const [id, client] of this.clients) {
       if (!client.channels.has(channel)) continue;
       if (this.send(id, client.ws, message)) {
-        sentCount++;
+        delivered += 1;
       } else {
         deadClients.push(id);
       }
@@ -181,9 +293,7 @@ export class SubscriptionHub {
       this.removeDeadClient(id);
     }
 
-    if (sentCount > 0 || deadClients.length > 0) {
-      console.log(`[SubscriptionHub] ${channel} broadcast to ${sentCount}/${this.clients.size} clients${deadClients.length > 0 ? `, removed ${deadClients.length} dead` : ""}`);
-    }
+    this.bumpBroadcast(channel, delivered);
   }
 
   /** Returns true if send was attempted, false if the client is already dead. */
@@ -195,12 +305,19 @@ export class SubscriptionHub {
     try {
       ws.send(message, (error) => {
         if (!error) return;
-        console.error("[SubscriptionHub] Failed to send message:", error);
+        this.bumpCounter("sendErrors");
         this.removeDeadClient(id);
       });
       return true;
     } catch (error) {
-      console.error("[SubscriptionHub] Failed to send message:", error);
+      this.bumpCounter("sendErrors");
+      if (this.windowCounters.sendErrors % this.sendErrorSampleEvery === 0) {
+        log.warn("ws_send_failed_sampled", {
+          error,
+          window_send_errors: this.windowCounters.sendErrors,
+          sample_every: this.sendErrorSampleEvery,
+        });
+      }
       return false;
     }
   }
@@ -231,17 +348,32 @@ export class SubscriptionHub {
 
     this.clients.delete(id);
     this.closeSocket(client.ws);
-    console.log(`[SubscriptionHub] Removed dead client: ${id} (total: ${this.clients.size})`);
+    log.info("ws_removed_dead_client", {
+      client_id: id,
+      total_clients: this.clients.size,
+    });
   }
 
   addClient(id: string, ws: WebSocketLike): void {
     this.clients.set(id, { ws, channels: new Set() });
-    console.log(`[SubscriptionHub] Client connected: ${id} (total: ${this.clients.size})`);
+    this.bumpCounter("connections");
+    if (this.verboseLogs) {
+      log.debug("ws_client_connected", {
+        client_id: id,
+        total_clients: this.clients.size,
+      });
+    }
   }
 
   removeClient(id: string): void {
     this.clients.delete(id);
-    console.log(`[SubscriptionHub] Client disconnected: ${id} (total: ${this.clients.size})`);
+    this.bumpCounter("disconnections");
+    if (this.verboseLogs) {
+      log.debug("ws_client_disconnected", {
+        client_id: id,
+        total_clients: this.clients.size,
+      });
+    }
   }
 
   subscribe(id: string, channels: Channel[]): void {
@@ -252,7 +384,13 @@ export class SubscriptionHub {
       client.channels.add(channel);
     }
 
-    console.log(`[SubscriptionHub] Client ${id} subscribed to: ${channels.join(", ")}`);
+    this.bumpCounter("subscribes");
+    if (this.verboseLogs) {
+      log.debug("ws_client_subscribed", {
+        client_id: id,
+        channels,
+      });
+    }
   }
 
   unsubscribe(id: string, channels: Channel[]): void {
@@ -263,7 +401,13 @@ export class SubscriptionHub {
       client.channels.delete(channel);
     }
 
-    console.log(`[SubscriptionHub] Client ${id} unsubscribed from: ${channels.join(", ")}`);
+    this.bumpCounter("unsubscribes");
+    if (this.verboseLogs) {
+      log.debug("ws_client_unsubscribed", {
+        client_id: id,
+        channels,
+      });
+    }
   }
 
   handleMessage(id: string, message: string): void {
@@ -298,7 +442,10 @@ export class SubscriptionHub {
           break;
       }
     } catch (error) {
-      console.error("[SubscriptionHub] Failed to handle message:", error);
+      this.bumpCounter("messageErrors");
+      log.warn("ws_handle_message_failed", {
+        error,
+      });
     }
   }
 
@@ -312,6 +459,11 @@ export class SubscriptionHub {
   async shutdown(): Promise<void> {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
+    }
+
+    if (this.summaryTimer) {
+      clearInterval(this.summaryTimer);
+      this.summaryTimer = null;
     }
 
     if (this.pgClient) {
@@ -328,7 +480,7 @@ export class SubscriptionHub {
     }
 
     this.clients.clear();
-    console.log("[SubscriptionHub] Shutdown complete");
+    log.info("ws_shutdown_complete");
   }
 }
 

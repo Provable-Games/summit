@@ -8,6 +8,8 @@
     "lint": "eslint . --cache --cache-strategy content --cache-location .cache/eslint --concurrency auto",
     "lint:ci": "eslint . --max-warnings=0 --report-unused-inline-configs error",
     "start": "apibara start",
+    "metrics:check-sync": "node ../scripts/check-metrics-sync.mjs",
+    "metrics:snapshot": "node scripts/railway-metrics-summary.mjs",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:parity": "tsx scripts/test-live-beast-stats-parity.ts",
@@ -27,19 +29,19 @@
   "license": "MIT",
   "description": "Savage Summit Dojo event indexer using Apibara with PostgreSQL persistence",
   "dependencies": {
-    "@apibara/indexer": "next",
-    "@apibara/plugin-drizzle": "next",
-    "@apibara/protocol": "next",
-    "@apibara/starknet": "next",
-    "apibara": "next",
-    "drizzle-orm": "^0.38.0",
-    "pg": "^8.13.0",
+    "@apibara/indexer": "2.1.0-beta.56",
+    "@apibara/plugin-drizzle": "2.1.0-beta.55",
+    "@apibara/protocol": "2.1.0-beta.56",
+    "@apibara/starknet": "2.1.0-beta.56",
+    "apibara": "2.1.0-beta.55",
+    "drizzle-orm": "^0.45.1",
+    "pg": "^8.20.0",
     "starknet": "^7.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@types/node": "^22.0.0",
-    "@types/pg": "^8.11.0",
+    "@types/pg": "^8.18.0",
     "@vitest/coverage-v8": "^3.1.1",
     "@vitest/eslint-plugin": "^1.6.9",
     "drizzle-kit": "^0.30.0",
@@ -55,6 +57,9 @@
       "tar": "^7.5.10",
       "valibot": "^1.2.0",
       "rollup": "^4.59.0"
+    },
+    "patchedDependencies": {
+      "@apibara/plugin-drizzle@2.1.0-beta.55": "patches/@apibara__plugin-drizzle@2.1.0-beta.55.patch"
     }
   }
 }

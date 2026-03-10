@@ -78,9 +78,10 @@ describe("db client environment validation", () => {
 
     await importDbClientModule();
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith(
-      "[DB CONFIG] DATABASE_SSL not set in production, defaulting to SSL enabled",
-    );
+    expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+    const firstWarn = consoleWarnSpy.mock.calls[0]?.[0];
+    expect(typeof firstWarn).toBe("string");
+    expect(String(firstWarn)).toContain("\"msg\":\"db_ssl_default_enabled\"");
     expect(mocks.poolCtor).toHaveBeenCalledWith(expect.objectContaining({
       ssl: { rejectUnauthorized: false },
     }));

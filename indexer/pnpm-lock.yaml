@@ -9,31 +9,36 @@ overrides:
   valibot: ^1.2.0
   rollup: ^4.59.0
 
+patchedDependencies:
+  '@apibara/plugin-drizzle@2.1.0-beta.55':
+    hash: 75ca36241d9ec34fefe74972b6217bd01a2770b9bf07d0ac0fa79af614d10965
+    path: patches/@apibara__plugin-drizzle@2.1.0-beta.55.patch
+
 importers:
 
   .:
     dependencies:
       '@apibara/indexer':
-        specifier: next
-        version: 2.1.0-beta.54(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
+        specifier: 2.1.0-beta.56
+        version: 2.1.0-beta.56(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
       '@apibara/plugin-drizzle':
-        specifier: next
-        version: 2.1.0-beta.53(drizzle-orm@0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.18.0))(pg@8.18.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
+        specifier: 2.1.0-beta.55
+        version: 2.1.0-beta.55(patch_hash=75ca36241d9ec34fefe74972b6217bd01a2770b9bf07d0ac0fa79af614d10965)(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0))(pg@8.20.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
       '@apibara/protocol':
-        specifier: next
-        version: 2.1.0-beta.54(typescript@5.9.3)
+        specifier: 2.1.0-beta.56
+        version: 2.1.0-beta.56(typescript@5.9.3)
       '@apibara/starknet':
-        specifier: next
-        version: 2.1.0-beta.54(typescript@5.9.3)
+        specifier: 2.1.0-beta.56
+        version: 2.1.0-beta.56(typescript@5.9.3)
       apibara:
-        specifier: next
-        version: 2.1.0-beta.53(magicast@0.3.5)(rollup@4.59.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
+        specifier: 2.1.0-beta.55
+        version: 2.1.0-beta.55(magicast@0.3.5)(rollup@4.59.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
       drizzle-orm:
-        specifier: ^0.38.0
-        version: 0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.18.0)
+        specifier: ^0.45.1
+        version: 0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0)
       pg:
-        specifier: ^8.13.0
-        version: 8.18.0
+        specifier: ^8.20.0
+        version: 8.20.0
       starknet:
         specifier: ^7.1.0
         version: 7.6.4
@@ -45,8 +50,8 @@ importers:
         specifier: ^22.0.0
         version: 22.19.11
       '@types/pg':
-        specifier: ^8.11.0
-        version: 8.16.0
+        specifier: ^8.18.0
+        version: 8.18.0
       '@vitest/coverage-v8':
         specifier: ^3.1.1
         version: 3.2.4(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
@@ -84,13 +89,13 @@ packages:
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
 
-  '@apibara/indexer@2.1.0-beta.54':
-    resolution: {integrity: sha512-UBrQP1/4IF8gHACbRWKwNYoIWaC7nNNdc3XcH8ucKaeGZe8ufxeyj4kYvEEq1el8viEaf/CD0JL4LhnnK5L1Hg==}
+  '@apibara/indexer@2.1.0-beta.56':
+    resolution: {integrity: sha512-i8o6RC0rCNCxComFtZowpcnThLblFn8Z+6Wf2aqZShJd/AG+CrkNwmvtdOnyrK2sZ/+y7fICKopZjnbtmhB1HA==}
     peerDependencies:
       vitest: ^1.6.0
 
-  '@apibara/plugin-drizzle@2.1.0-beta.53':
-    resolution: {integrity: sha512-LxaPjhRonHjYNB/ifm84KXmdaZUnpgEdJpRUBfx2XlYafKegINpz+azGY3EuwVmmZP64ej6xyZG9bKzBEm9NbA==}
+  '@apibara/plugin-drizzle@2.1.0-beta.55':
+    resolution: {integrity: sha512-DDgg6qpOQGRgt48KGCG8bUkSdhm4hmjhpZP1iApC4YAOHeCRezWNUVKQ8hQphXd5jdWudy1oLnSxYvFkYdoxiA==}
     peerDependencies:
       '@electric-sql/pglite': '>=0.2.0'
       drizzle-orm: <1
@@ -101,11 +106,11 @@ packages:
       pg:
         optional: true
 
-  '@apibara/protocol@2.1.0-beta.54':
-    resolution: {integrity: sha512-rOCLV44Mz/mKCP6DtSRxdqOrBgC90Ev+5apMzO/0S/cQoqfd1ZhKU3Sc3qsR4+Id+MFkH9mzgIlcg2czyXW2BA==}
+  '@apibara/protocol@2.1.0-beta.56':
+    resolution: {integrity: sha512-TerNSio5rIy/3Cx3nj3OJNa/Ndzj4tcxVfsaDAoS+oU6cpPRxl1dIaiLwXQPrlMY4+pQQ8JlTQPjQhmiw4XRhg==}
 
-  '@apibara/starknet@2.1.0-beta.54':
-    resolution: {integrity: sha512-SW725WqTrgAASrx+XsPS3VKG3XJOIoIdERyBWZBnrBCZEXzeL2pOfgA3TvRboP0WyCxlgy93t5pWA9Kvf86VkA==}
+  '@apibara/starknet@2.1.0-beta.56':
+    resolution: {integrity: sha512-CtwI+iqFrDYBRzH/AoOCggZhgp4tpIug9sfDz+pHhoXySgbH+pN0mt4px03ICmPtb6rrSsYozVBtGoNT+zRlzA==}
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
@@ -829,21 +834,25 @@ packages:
     resolution: {integrity: sha512-bYyZLXzJ2boZ7CdUuCSAaTcWkVKcBUOL+B86zv+tRyrtk4BIpHF+L+vOg5uPD/PHwrIglxAno5MN4NnpkUj5fQ==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@rolldown/binding-linux-arm64-musl@1.0.0-beta.3':
     resolution: {integrity: sha512-t/jaaFrCSvwX2075jRfa2bwAcsuTtY1/sIT4XqsDg2MVxWQtaUyBx5Mi0pqZKTjdOPnL+f/zoUC9dxT2lUpNmw==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@rolldown/binding-linux-x64-gnu@1.0.0-beta.3':
     resolution: {integrity: sha512-EeDNLPU0Xw8ByRWxNLO30AF0fKYkdb/6rH5G073NFBDkj7ggYR/CvsNBjtDeCJ7+I6JG4xUjete2+VeV+GQjiA==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@rolldown/binding-linux-x64-musl@1.0.0-beta.3':
     resolution: {integrity: sha512-iTcAj8FKac3nyQhvFuqKt6Xqu9YNDbe1ew6US2OSN4g3zwfujgylaRCitEG+Uzd7AZfSVVLAfqrxKMa36Sj9Mg==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@rolldown/binding-wasm32-wasi@1.0.0-beta.3':
     resolution: {integrity: sha512-sYgbsbyspvVZ2zplqsTxjf2N3e8UQGQnSsN5u4bMX461gY5vAsjUiA4nf1/ztDBMHWT79lF2QNx4csjnjSxMlA==}
@@ -926,66 +935,79 @@ packages:
     resolution: {integrity: sha512-t4ONHboXi/3E0rT6OZl1pKbl2Vgxf9vJfWgmUoCEVQVxhW6Cw/c8I6hbbu7DAvgp82RKiH7TpLwxnJeKv2pbsw==}
     cpu: [arm]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm-musleabihf@4.59.0':
     resolution: {integrity: sha512-CikFT7aYPA2ufMD086cVORBYGHffBo4K8MQ4uPS/ZnY54GKj36i196u8U+aDVT2LX4eSMbyHtyOh7D7Zvk2VvA==}
     cpu: [arm]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-arm64-gnu@4.59.0':
     resolution: {integrity: sha512-jYgUGk5aLd1nUb1CtQ8E+t5JhLc9x5WdBKew9ZgAXg7DBk0ZHErLHdXM24rfX+bKrFe+Xp5YuJo54I5HFjGDAA==}
     cpu: [arm64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-arm64-musl@4.59.0':
     resolution: {integrity: sha512-peZRVEdnFWZ5Bh2KeumKG9ty7aCXzzEsHShOZEFiCQlDEepP1dpUl/SrUNXNg13UmZl+gzVDPsiCwnV1uI0RUA==}
     cpu: [arm64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-loong64-gnu@4.59.0':
     resolution: {integrity: sha512-gbUSW/97f7+r4gHy3Jlup8zDG190AuodsWnNiXErp9mT90iCy9NKKU0Xwx5k8VlRAIV2uU9CsMnEFg/xXaOfXg==}
     cpu: [loong64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-loong64-musl@4.59.0':
     resolution: {integrity: sha512-yTRONe79E+o0FWFijasoTjtzG9EBedFXJMl888NBEDCDV9I2wGbFFfJQQe63OijbFCUZqxpHz1GzpbtSFikJ4Q==}
     cpu: [loong64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-ppc64-gnu@4.59.0':
     resolution: {integrity: sha512-sw1o3tfyk12k3OEpRddF68a1unZ5VCN7zoTNtSn2KndUE+ea3m3ROOKRCZxEpmT9nsGnogpFP9x6mnLTCaoLkA==}
     cpu: [ppc64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-ppc64-musl@4.59.0':
     resolution: {integrity: sha512-+2kLtQ4xT3AiIxkzFVFXfsmlZiG5FXYW7ZyIIvGA7Bdeuh9Z0aN4hVyXS/G1E9bTP/vqszNIN/pUKCk/BTHsKA==}
     cpu: [ppc64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-riscv64-gnu@4.59.0':
     resolution: {integrity: sha512-NDYMpsXYJJaj+I7UdwIuHHNxXZ/b/N2hR15NyH3m2qAtb/hHPA4g4SuuvrdxetTdndfj9b1WOmy73kcPRoERUg==}
     cpu: [riscv64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-riscv64-musl@4.59.0':
     resolution: {integrity: sha512-nLckB8WOqHIf1bhymk+oHxvM9D3tyPndZH8i8+35p/1YiVoVswPid2yLzgX7ZJP0KQvnkhM4H6QZ5m0LzbyIAg==}
     cpu: [riscv64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-linux-s390x-gnu@4.59.0':
     resolution: {integrity: sha512-oF87Ie3uAIvORFBpwnCvUzdeYUqi2wY6jRFWJAy1qus/udHFYIkplYRW+wo+GRUP4sKzYdmE1Y3+rY5Gc4ZO+w==}
     cpu: [s390x]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-gnu@4.59.0':
     resolution: {integrity: sha512-3AHmtQq/ppNuUspKAlvA8HtLybkDflkMuLK4DPo77DfthRb71V84/c4MlWJXixZz4uruIH4uaa07IqoAkG64fg==}
     cpu: [x64]
     os: [linux]
+    libc: [glibc]
 
   '@rollup/rollup-linux-x64-musl@4.59.0':
     resolution: {integrity: sha512-2UdiwS/9cTAx7qIUZB/fWtToJwvt0Vbo0zmnYt7ED35KPg13Q0ym1g442THLC7VyI6JfYTP4PiSOWyoMdV2/xg==}
     cpu: [x64]
     os: [linux]
+    libc: [musl]
 
   '@rollup/rollup-openbsd-x64@4.59.0':
     resolution: {integrity: sha512-M3bLRAVk6GOwFlPTIxVBSYKUaqfLrn8l0psKinkCFxl4lQvOSz8ZrKDz2gxcBwHFpci0B6rttydI4IpS4IS/jQ==}
@@ -1062,8 +1084,8 @@ packages:
   '@types/node@22.19.11':
     resolution: {integrity: sha512-BH7YwL6rA93ReqeQS1c4bsPpcfOmJasG+Fkr6Y59q83f9M1WcBRHR2vM+P9eOisYRcN3ujQoiZY8uk5W+1WL8w==}
 
-  '@types/pg@8.16.0':
-    resolution: {integrity: sha512-RmhMd/wD+CF8Dfo+cVIy3RR5cl8CyfXQ0tGgW6XBL8L4LM/UTEbNXYRbLwU6w+CgrKBNbrQWt4FUtTfaU5jSYQ==}
+  '@types/pg@8.18.0':
+    resolution: {integrity: sha512-gT+oueVQkqnj6ajGJXblFR4iavIXWsGAFCk3dP4Kki5+a9R4NMt0JARdk6s8cUKcfUoqP5dAtDSLU8xYUTFV+Q==}
 
   '@typescript-eslint/eslint-plugin@8.55.0':
     resolution: {integrity: sha512-1y/MVSz0NglV1ijHC8OT49mPJ4qhPYjiK08YUQVbIOyu+5k862LKUHFkpKHWu//zmr7hDR2rhwUm6gnCGNmGBQ==}
@@ -1234,8 +1256,8 @@ packages:
     resolution: {integrity: sha512-KMReFUr0B4t+D+OBkjR3KYqvocp2XaSzO55UcB6mgQMd3KbcE+mWTyvVV7D/zsdEbNnV6acZUutkiHQXvTr1Rw==}
     engines: {node: '>= 8'}
 
-  apibara@2.1.0-beta.53:
-    resolution: {integrity: sha512-rcgGRA2glUe2p0bIkQv2vNK2pExMR2Rh4d6mDgVbNRDU7aiDAtucbtLe9L/cSjGlUOnT/BCv3P4Z2U/cStNhng==}
+  apibara@2.1.0-beta.55:
+    resolution: {integrity: sha512-N2ck7DmJZPYm+Rol3m/iXMqmmcJQi8c5spcpLlI8uZ60TTVmZU4q7ccc4pPdatCIzr7pWXlxn86KRnixeJJhgw==}
     hasBin: true
 
   argparse@2.0.1:
@@ -1388,8 +1410,8 @@ packages:
     resolution: {integrity: sha512-U4wWit0fyZuGuP7iNmRleQyK2V8wCuv57vf5l3MnG4z4fzNTjY/U13M8owyQ5RavqvqxBifWORaR3wIUzlN64g==}
     hasBin: true
 
-  drizzle-orm@0.38.4:
-    resolution: {integrity: sha512-s7/5BpLKO+WJRHspvpqTydxFob8i1vo2rEx4pY6TGY7QSMuUfWUuzaY0DIpXCkgHOo37BaFC+SJQb99dDUXT3Q==}
+  drizzle-orm@0.45.1:
+    resolution: {integrity: sha512-Te0FOdKIistGNPMq2jscdqngBRfBpC8uMFVwqjf6gtTVJHIQ/dosgV/CLBU2N4ZJBsXL5savCba9b0YJskKdcA==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
       '@cloudflare/workers-types': '>=4'
@@ -1399,25 +1421,25 @@ packages:
       '@neondatabase/serverless': '>=0.10.0'
       '@op-engineering/op-sqlite': '>=2'
       '@opentelemetry/api': ^1.4.1
-      '@planetscale/database': '>=1'
+      '@planetscale/database': '>=1.13'
       '@prisma/client': '*'
       '@tidbcloud/serverless': '*'
       '@types/better-sqlite3': '*'
       '@types/pg': '*'
-      '@types/react': '>=18'
       '@types/sql.js': '*'
+      '@upstash/redis': '>=1.34.7'
       '@vercel/postgres': '>=0.8.0'
       '@xata.io/client': '*'
       better-sqlite3: '>=7'
       bun-types: '*'
       expo-sqlite: '>=14.0.0'
+      gel: '>=2'
       knex: '*'
       kysely: '*'
       mysql2: '>=2'
       pg: '>=8'
       postgres: '>=3'
       prisma: '*'
-      react: '>=18'
       sql.js: '>=1'
       sqlite3: '>=5'
     peerDependenciesMeta:
@@ -1447,9 +1469,9 @@ packages:
         optional: true
       '@types/pg':
         optional: true
-      '@types/react':
-        optional: true
       '@types/sql.js':
+        optional: true
+      '@upstash/redis':
         optional: true
       '@vercel/postgres':
         optional: true
@@ -1460,6 +1482,8 @@ packages:
       bun-types:
         optional: true
       expo-sqlite:
+        optional: true
+      gel:
         optional: true
       knex:
         optional: true
@@ -1472,8 +1496,6 @@ packages:
       postgres:
         optional: true
       prisma:
-        optional: true
-      react:
         optional: true
       sql.js:
         optional: true
@@ -1873,11 +1895,11 @@ packages:
     resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
     engines: {node: '>=8.6'}
 
-  minimatch@3.1.5:
-    resolution: {integrity: sha512-VgjWUsnnT6n+NUk6eZq77zeFdpW2LWDzP6zFGrCbHXiYNul5Dzqk2HHQ5uFH2DNW5Xbp8+jVzaeNt94ssEEl4w==}
+  minimatch@3.1.2:
+    resolution: {integrity: sha512-J7p63hRiAjw1NDEww1W7i37+ByIrOWO5XQQAzZ3VOcL0PNybwpfmV/N05zFAzwQ9USyEcX6t3UO+K5aqBQOIHw==}
 
-  minimatch@9.0.9:
-    resolution: {integrity: sha512-OBwBN9AL4dqmETlpS2zasx+vTeWclWzkblfZk7KTA5j3jeOONz/tRCnZomUyvNg83wL5Zv9Ss6HMJXAgL8R2Yg==}
+  minimatch@9.0.5:
+    resolution: {integrity: sha512-G6T0ZX48xgozx7587koeX9Ys2NYy6Gmv//P89sEte9V9whIapMNF4idKxnW2QtCcLiTWlb/wfCabAtAFWhhBow==}
     engines: {node: '>=16 || 14 >=14.17'}
 
   minipass@7.1.2:
@@ -1987,27 +2009,27 @@ packages:
   pg-cloudflare@1.3.0:
     resolution: {integrity: sha512-6lswVVSztmHiRtD6I8hw4qP/nDm1EJbKMRhf3HCYaqud7frGysPv7FYJ5noZQdhQtN2xJnimfMtvQq21pdbzyQ==}
 
-  pg-connection-string@2.11.0:
-    resolution: {integrity: sha512-kecgoJwhOpxYU21rZjULrmrBJ698U2RxXofKVzOn5UDj61BPj/qMb7diYUR1nLScCDbrztQFl1TaQZT0t1EtzQ==}
+  pg-connection-string@2.12.0:
+    resolution: {integrity: sha512-U7qg+bpswf3Cs5xLzRqbXbQl85ng0mfSV/J0nnA31MCLgvEaAo7CIhmeyrmJpOr7o+zm0rXK+hNnT5l9RHkCkQ==}
 
   pg-int8@1.0.1:
     resolution: {integrity: sha512-WCtabS6t3c8SkpDBUlb1kjOs7l66xsGdKpIPZsg4wR+B3+u9UAum2odSsF9tnvxg80h4ZxLWMy4pRjOsFIqQpw==}
     engines: {node: '>=4.0.0'}
 
-  pg-pool@3.11.0:
-    resolution: {integrity: sha512-MJYfvHwtGp870aeusDh+hg9apvOe2zmpZJpyt+BMtzUWlVqbhFmMK6bOBXLBUPd7iRtIF9fZplDc7KrPN3PN7w==}
+  pg-pool@3.13.0:
+    resolution: {integrity: sha512-gB+R+Xud1gLFuRD/QgOIgGOBE2KCQPaPwkzBBGC9oG69pHTkhQeIuejVIk3/cnDyX39av2AxomQiyPT13WKHQA==}
     peerDependencies:
       pg: '>=8.0'
 
-  pg-protocol@1.11.0:
-    resolution: {integrity: sha512-pfsxk2M9M3BuGgDOfuy37VNRRX3jmKgMjcvAcWqNDpZSf4cUmv8HSOl5ViRQFsfARFn0KuUQTgLxVMbNq5NW3g==}
+  pg-protocol@1.13.0:
+    resolution: {integrity: sha512-zzdvXfS6v89r6v7OcFCHfHlyG/wvry1ALxZo4LqgUoy7W9xhBDMaqOuMiF3qEV45VqsN6rdlcehHrfDtlCPc8w==}
 
   pg-types@2.2.0:
     resolution: {integrity: sha512-qTAAlrEsl8s4OiEQY69wDvcMIdQN6wdz5ojQiOy6YRMuynxenON0O5oCpJI6lshc6scgAY8qvJ2On/p+CXY0GA==}
     engines: {node: '>=4'}
 
-  pg@8.18.0:
-    resolution: {integrity: sha512-xqrUDL1b9MbkydY/s+VZ6v+xiMUmOUk7SS9d/1kpyQxoJ6U9AO1oIJyUWVZojbfe5Cc/oluutcgFG4L9RDP1iQ==}
+  pg@8.20.0:
+    resolution: {integrity: sha512-ldhMxz2r8fl/6QkXnBD3CR9/xg694oT6DZQ2s6c/RI28OjtSOpxnPrUCGOBJ46RCUxcWdx3p6kw/xnDHjKvaRA==}
     engines: {node: '>= 16.0.0'}
     peerDependencies:
       pg-native: '>=3.0.1'
@@ -2207,8 +2229,8 @@ packages:
     resolution: {integrity: sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw==}
     engines: {node: '>=8'}
 
-  tar@7.5.10:
-    resolution: {integrity: sha512-8mOPs1//5q/rlkNSPcCegA6hiHJYDmSLEI8aMH/CdSQJNWztHC9WHNam5zdQlfpTwB9Xp7IBEsHfV5LKMJGVAw==}
+  tar@7.5.11:
+    resolution: {integrity: sha512-ChjMH33/KetonMTAtpYdgUFr0tbz69Fp2v7zWxQfYZX4g5ZN2nOBXm1R2xyA+lMIKrLKIoKAwFj93jE/avX9cQ==}
     engines: {node: '>=18'}
 
   test-exclude@7.0.1:
@@ -2477,9 +2499,9 @@ snapshots:
       '@jridgewell/gen-mapping': 0.3.13
       '@jridgewell/trace-mapping': 0.3.31
 
-  '@apibara/indexer@2.1.0-beta.54(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))':
+  '@apibara/indexer@2.1.0-beta.56(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))':
     dependencies:
-      '@apibara/protocol': 2.1.0-beta.54(typescript@5.9.3)
+      '@apibara/protocol': 2.1.0-beta.56(typescript@5.9.3)
       '@opentelemetry/api': 1.9.0
       ci-info: 4.4.0
       consola: 3.4.2
@@ -2494,14 +2516,14 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@apibara/plugin-drizzle@2.1.0-beta.53(drizzle-orm@0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.18.0))(pg@8.18.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))':
+  '@apibara/plugin-drizzle@2.1.0-beta.55(patch_hash=75ca36241d9ec34fefe74972b6217bd01a2770b9bf07d0ac0fa79af614d10965)(drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0))(pg@8.20.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))':
     dependencies:
-      '@apibara/indexer': 2.1.0-beta.54(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
-      '@apibara/protocol': 2.1.0-beta.54(typescript@5.9.3)
-      drizzle-orm: 0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.18.0)
+      '@apibara/indexer': 2.1.0-beta.56(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
+      '@apibara/protocol': 2.1.0-beta.56(typescript@5.9.3)
+      drizzle-orm: 0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0)
       postgres-range: 1.1.4
     optionalDependencies:
-      pg: 8.18.0
+      pg: 8.20.0
     transitivePeerDependencies:
       - bufferutil
       - typescript
@@ -2509,7 +2531,7 @@ snapshots:
       - vitest
       - zod
 
-  '@apibara/protocol@2.1.0-beta.54(typescript@5.9.3)':
+  '@apibara/protocol@2.1.0-beta.56(typescript@5.9.3)':
     dependencies:
       consola: 3.4.2
       long: 5.3.2
@@ -2523,9 +2545,9 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@apibara/starknet@2.1.0-beta.54(typescript@5.9.3)':
+  '@apibara/starknet@2.1.0-beta.56(typescript@5.9.3)':
     dependencies:
-      '@apibara/protocol': 2.1.0-beta.54(typescript@5.9.3)
+      '@apibara/protocol': 2.1.0-beta.56(typescript@5.9.3)
       '@scure/starknet': 1.1.2
       abi-wan-kanabi: 2.2.4
       long: 5.3.2
@@ -2893,7 +2915,7 @@ snapshots:
     dependencies:
       '@eslint/object-schema': 2.1.7
       debug: 4.4.3
-      minimatch: 3.1.5
+      minimatch: 3.1.2
     transitivePeerDependencies:
       - supports-color
 
@@ -2914,7 +2936,7 @@ snapshots:
       ignore: 5.3.2
       import-fresh: 3.3.1
       js-yaml: 4.1.1
-      minimatch: 3.1.5
+      minimatch: 3.1.2
       strip-json-comments: 3.1.1
     transitivePeerDependencies:
       - supports-color
@@ -3194,7 +3216,7 @@ snapshots:
 
   '@scure/bip32@1.7.0':
     dependencies:
-      '@noble/curves': 1.9.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
@@ -3220,7 +3242,7 @@ snapshots:
   '@ts-morph/common@0.26.1':
     dependencies:
       fast-glob: 3.3.3
-      minimatch: 9.0.9
+      minimatch: 9.0.5
       path-browserify: 1.0.1
 
   '@tybys/wasm-util@0.10.1':
@@ -3243,10 +3265,10 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/pg@8.16.0':
+  '@types/pg@8.18.0':
     dependencies:
       '@types/node': 22.19.11
-      pg-protocol: 1.11.0
+      pg-protocol: 1.13.0
       pg-types: 2.2.0
 
   '@typescript-eslint/eslint-plugin@8.55.0(@typescript-eslint/parser@8.55.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3)':
@@ -3316,7 +3338,7 @@ snapshots:
       '@typescript-eslint/types': 8.55.0
       '@typescript-eslint/visitor-keys': 8.55.0
       debug: 4.4.3
-      minimatch: 9.0.9
+      minimatch: 9.0.5
       semver: 7.7.4
       tinyglobby: 0.2.15
       ts-api-utils: 2.4.0(typescript@5.9.3)
@@ -3459,10 +3481,10 @@ snapshots:
       normalize-path: 3.0.0
       picomatch: 2.3.1
 
-  apibara@2.1.0-beta.53(magicast@0.3.5)(rollup@4.59.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0)):
+  apibara@2.1.0-beta.55(magicast@0.3.5)(rollup@4.59.0)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0)):
     dependencies:
-      '@apibara/indexer': 2.1.0-beta.54(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
-      '@apibara/protocol': 2.1.0-beta.54(typescript@5.9.3)
+      '@apibara/indexer': 2.1.0-beta.56(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
+      '@apibara/protocol': 2.1.0-beta.56(typescript@5.9.3)
       '@rollup/plugin-replace': 6.0.3(rollup@4.59.0)
       '@rollup/plugin-virtual': 3.0.2(rollup@4.59.0)
       c12: 1.11.2(magicast@0.3.5)
@@ -3650,11 +3672,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  drizzle-orm@0.38.4(@opentelemetry/api@1.9.0)(@types/pg@8.16.0)(pg@8.18.0):
+  drizzle-orm@0.45.1(@opentelemetry/api@1.9.0)(@types/pg@8.18.0)(gel@2.2.0)(pg@8.20.0):
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
-      '@types/pg': 8.16.0
-      pg: 8.18.0
+      '@types/pg': 8.18.0
+      gel: 2.2.0
+      pg: 8.20.0
 
   eastasianwidth@0.2.0: {}
 
@@ -3801,7 +3824,7 @@ snapshots:
       is-glob: 4.0.3
       json-stable-stringify-without-jsonify: 1.0.1
       lodash.merge: 4.6.2
-      minimatch: 3.1.5
+      minimatch: 3.1.2
       natural-compare: 1.4.0
       optionator: 0.9.4
     optionalDependencies:
@@ -3928,7 +3951,7 @@ snapshots:
       node-fetch-native: 1.6.7
       nypm: 0.5.4
       pathe: 2.0.3
-      tar: 7.5.10
+      tar: 7.5.11
 
   glob-parent@5.1.2:
     dependencies:
@@ -3942,7 +3965,7 @@ snapshots:
     dependencies:
       foreground-child: 3.3.1
       jackspeak: 3.4.3
-      minimatch: 9.0.9
+      minimatch: 9.0.5
       minipass: 7.1.2
       package-json-from-dist: 1.0.1
       path-scurry: 1.11.1
@@ -4105,11 +4128,11 @@ snapshots:
       braces: 3.0.3
       picomatch: 2.3.1
 
-  minimatch@3.1.5:
+  minimatch@3.1.2:
     dependencies:
       brace-expansion: 1.1.12
 
-  minimatch@9.0.9:
+  minimatch@9.0.5:
     dependencies:
       brace-expansion: 2.0.2
 
@@ -4221,15 +4244,15 @@ snapshots:
   pg-cloudflare@1.3.0:
     optional: true
 
-  pg-connection-string@2.11.0: {}
+  pg-connection-string@2.12.0: {}
 
   pg-int8@1.0.1: {}
 
-  pg-pool@3.11.0(pg@8.18.0):
+  pg-pool@3.13.0(pg@8.20.0):
     dependencies:
-      pg: 8.18.0
+      pg: 8.20.0
 
-  pg-protocol@1.11.0: {}
+  pg-protocol@1.13.0: {}
 
   pg-types@2.2.0:
     dependencies:
@@ -4239,11 +4262,11 @@ snapshots:
       postgres-date: 1.0.7
       postgres-interval: 1.2.0
 
-  pg@8.18.0:
+  pg@8.20.0:
     dependencies:
-      pg-connection-string: 2.11.0
-      pg-pool: 3.11.0(pg@8.18.0)
-      pg-protocol: 1.11.0
+      pg-connection-string: 2.12.0
+      pg-pool: 3.13.0(pg@8.20.0)
+      pg-protocol: 1.13.0
       pg-types: 2.2.0
       pgpass: 1.0.5
     optionalDependencies:
@@ -4466,7 +4489,7 @@ snapshots:
     dependencies:
       has-flag: 4.0.0
 
-  tar@7.5.10:
+  tar@7.5.11:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0
@@ -4478,7 +4501,7 @@ snapshots:
     dependencies:
       '@istanbuljs/schema': 0.1.3
       glob: 10.5.0
-      minimatch: 9.0.9
+      minimatch: 9.0.5
 
   tinybench@2.9.0: {}
 

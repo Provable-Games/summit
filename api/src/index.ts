@@ -2,17 +2,16 @@
  * Summit API Server
  */
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { compress } from "hono/compress";
 import { cors } from "hono/cors";
-import { logger } from "hono/logger";
 import { serve } from "@hono/node-server";
 import { createNodeWebSocket } from "@hono/node-ws";
 import { v4 as uuidv4 } from "uuid";
 import { eq, sql, desc, and, inArray } from "drizzle-orm";
 import "dotenv/config";
 
-import { checkDatabaseHealth, db } from "./db/client.js";
+import { checkDatabaseHealth, db, pool } from "./db/client.js";
 import {
   beasts,
   beast_owners,
@@ -33,14 +32,129 @@ import {
   ITEM_NAME_PREFIXES,
   ITEM_NAME_SUFFIXES,
 } from "./lib/beastData.js";
+import { isMetricsEnabled, startResourceMetrics } from "./lib/metrics.js";
 import { getBeastRevivalTime, getBeastCurrentLevel, normalizeAddress } from "./lib/helpers.js";
+import { createRequestLogMiddleware, log } from "./lib/logging.js";
+import {
+  ApiResponseCache,
+  type CachePolicy,
+  createCacheKey,
+  parseCacheEnabled,
+  parseMaxEntries,
+  shouldBypassCache,
+} from "./lib/cache.js";
 
-const isDevelopment = process.env.NODE_ENV !== "production";
+/** Reward amounts are stored as integers scaled by 1e5; divide to get display values */
+const REWARD_AMOUNT_SCALE = 100_000;
+/** Quest reward amounts are stored as integers scaled by 1e2 */
+const QUEST_REWARD_SCALE = 100;
+const apiCache = new ApiResponseCache({
+  enabled: parseCacheEnabled(),
+  maxEntries: parseMaxEntries(process.env.API_CACHE_MAX_ENTRIES),
+});
+
+const CACHE_POLICIES: Record<
+  | "beastsAll"
+  | "logs"
+  | "beastsStatsCounts"
+  | "beastsStatsTop"
+  | "diplomacy"
+  | "diplomacyAll"
+  | "leaderboard"
+  | "questRewardsTotal"
+  | "consumablesSupply",
+  CachePolicy
+> = {
+  beastsAll: { freshTtlMs: 2_000, staleTtlMs: 8_000 },
+  logs: { freshTtlMs: 2_000, staleTtlMs: 8_000 },
+  beastsStatsCounts: { freshTtlMs: 5_000, staleTtlMs: 20_000 },
+  beastsStatsTop: { freshTtlMs: 3_000, staleTtlMs: 12_000 },
+  diplomacy: { freshTtlMs: 15_000, staleTtlMs: 60_000 },
+  diplomacyAll: { freshTtlMs: 30_000, staleTtlMs: 120_000 },
+  leaderboard: { freshTtlMs: 3_000, staleTtlMs: 12_000 },
+  questRewardsTotal: { freshTtlMs: 10_000, staleTtlMs: 40_000 },
+  consumablesSupply: { freshTtlMs: 10_000, staleTtlMs: 40_000 },
+};
+
+async function respondWithCachedJson<T>(
+  c: Context,
+  policy: CachePolicy,
+  loader: () => Promise<T>
+): Promise<Response> {
+  if (!apiCache.enabledInRuntime || shouldBypassCache(c)) {
+    apiCache.noteBypass();
+    c.header("X-Cache", "BYPASS");
+    return c.json(await loader());
+  }
+
+  const { status, value } = await apiCache.getOrLoad(createCacheKey(c), policy, loader);
+  c.header("X-Cache", status);
+  return c.json(value);
+}
+
+function parseIncludeTotal(value: string | undefined): boolean {
+  if (!value) return true;
+  const normalized = value.trim().toLowerCase();
+  return !(
+    normalized === "false" ||
+    normalized === "0" ||
+    normalized === "off" ||
+    normalized === "no"
+  );
+}
+
+async function collectDbProxyMetrics() {
+  const [connections, databaseStats, databaseSize] = await Promise.all([
+    pool.query(
+      `
+        SELECT
+          count(*) FILTER (WHERE state = 'active')::bigint AS active_connections,
+          count(*) FILTER (WHERE state = 'idle')::bigint AS idle_connections
+        FROM pg_stat_activity
+        WHERE datname = current_database();
+      `
+    ),
+    pool.query(
+      `
+        SELECT
+          xact_commit::bigint AS xact_commit,
+          xact_rollback::bigint AS xact_rollback,
+          blks_read::bigint AS blks_read,
+          blks_hit::bigint AS blks_hit,
+          temp_files::bigint AS temp_files,
+          temp_bytes::bigint AS temp_bytes
+        FROM pg_stat_database
+        WHERE datname = current_database();
+      `
+    ),
+    pool.query(
+      `
+        SELECT pg_database_size(current_database())::bigint AS db_size_bytes;
+      `
+    ),
+  ]);
+
+  const connectionRow = connections.rows[0] ?? {};
+  const statRow = databaseStats.rows[0] ?? {};
+  const sizeRow = databaseSize.rows[0] ?? {};
+
+  return {
+    db_active_connections: Number(connectionRow.active_connections ?? 0),
+    db_idle_connections: Number(connectionRow.idle_connections ?? 0),
+    db_xact_commit: Number(statRow.xact_commit ?? 0),
+    db_xact_rollback: Number(statRow.xact_rollback ?? 0),
+    db_blks_read: Number(statRow.blks_read ?? 0),
+    db_blks_hit: Number(statRow.blks_hit ?? 0),
+    db_temp_files: Number(statRow.temp_files ?? 0),
+    db_temp_bytes: Number(statRow.temp_bytes ?? 0),
+    db_size_bytes: Number(sizeRow.db_size_bytes ?? 0),
+  };
+}
 
 const app = new Hono();
 
 // Middleware
-app.use("*", logger());
+app.use("*", createRequestLogMiddleware());
 app.use("*", compress());
 app.use(
   "*",
@@ -77,6 +191,7 @@ app.get("/health", async (c) => {
  * - name: Filter by beast name search (optional, uses beast_id index)
  * - owner: Filter by owner address (optional, indexed)
  * - sort: Sort by "summit_held_seconds" or "level" (default: summit_held_seconds, both indexed)
+ * - include_total: Set to false to skip count(*) and return pagination.total=null
  */
 app.get("/beasts/all", async (c) => {
   const limit = Math.min(parseInt(c.req.query("limit") || "25", 10), 100);
@@ -85,15 +200,17 @@ app.get("/beasts/all", async (c) => {
   const suffix = c.req.query("suffix");
   const beastId = c.req.query("beast_id");
   const name = c.req.query("name");
-  const owner = c.req.query("owner");
+  const ownerRaw = c.req.query("owner");
   const sort = c.req.query("sort") || "summit_held_seconds";
+  const includeTotal = parseIncludeTotal(c.req.query("include_total"));
+  const owner = ownerRaw ? normalizeAddress(ownerRaw) : undefined;
 
   // Build where conditions (all filters use indexed columns)
   const conditions = [];
   if (prefix) conditions.push(eq(beasts.prefix, parseInt(prefix, 10)));
   if (suffix) conditions.push(eq(beasts.suffix, parseInt(suffix, 10)));
   if (beastId) conditions.push(eq(beasts.beast_id, parseInt(beastId, 10)));
-  if (owner) conditions.push(eq(beast_owners.owner, normalizeAddress(owner)));
+  if (owner) conditions.push(eq(beast_owners.owner, owner));
   if (name) {
     // Find beast IDs that match the name search (uses beast_id index)
     const lowerName = name.toLowerCase();
@@ -106,85 +223,166 @@ app.get("/beasts/all", async (c) => {
       // No matches, return empty result
       return c.json({
         data: [],
-        pagination: { limit, offset, total: 0, has_more: false },
+        pagination: { limit, offset, total: includeTotal ? 0 : null, has_more: false },
       });
     }
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  // Both sort options use indexed columns
-  const orderByClause = sort === "level"
-    ? desc(beasts.level)
-    : desc(beast_stats.summit_held_seconds);
+  const loadBeastsAll = async (): Promise<{
+    data: Array<Record<string, unknown>>;
+    pagination: { limit: number; offset: number; total: number | null; has_more: boolean };
+  }> => {
+    const loadTotalCount = async (): Promise<number> => {
+      const countResult = owner
+        ? await db
+          .select({ count: sql<number>`count(*)` })
+          .from(beasts)
+          .innerJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
+          .where(whereClause)
+        : await db
+          .select({ count: sql<number>`count(*)` })
+          .from(beasts)
+          .where(whereClause);
+      return Number(countResult[0]?.count ?? 0);
+    };
 
-  // Get paginated results
-  const results = await db
-    .select({
-      token_id: beasts.token_id,
-      beast_id: beasts.beast_id,
-      prefix: beasts.prefix,
-      suffix: beasts.suffix,
-      level: beasts.level,
-      health: beasts.health,
-      shiny: beasts.shiny,
-      animated: beasts.animated,
-      bonus_health: beast_stats.bonus_health,
-      bonus_xp: beast_stats.bonus_xp,
-      summit_held_seconds: beast_stats.summit_held_seconds,
-      spirit: beast_stats.spirit,
-      luck: beast_stats.luck,
-      specials: beast_stats.specials,
-      wisdom: beast_stats.wisdom,
-      diplomacy: beast_stats.diplomacy,
-      extra_lives: beast_stats.extra_lives,
-      owner: beast_owners.owner,
-    })
-    .from(beasts)
-    .leftJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
-    .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
-    .where(whereClause)
-    .orderBy(orderByClause)
-    .limit(limit)
-    .offset(offset);
+    const tokenRowsLimit = includeTotal ? limit : limit + 1;
+    const tokenRows = sort === "level"
+      ? await (
+        owner
+          ? db
+            .select({ token_id: beasts.token_id })
+            .from(beasts)
+            .innerJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
+          : db.select({ token_id: beasts.token_id }).from(beasts)
+      )
+        .where(whereClause)
+        .orderBy(desc(beasts.level), desc(beasts.token_id))
+        .limit(tokenRowsLimit)
+        .offset(offset)
+      : await (
+        owner
+          ? db
+            .select({ token_id: beasts.token_id })
+            .from(beasts)
+            .leftJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+            .innerJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
+          : db
+            .select({ token_id: beasts.token_id })
+            .from(beasts)
+            .leftJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+      )
+        .where(whereClause)
+        .orderBy(
+          sql`${beast_stats.summit_held_seconds} DESC NULLS LAST`,
+          desc(beasts.token_id)
+        )
+        .limit(tokenRowsLimit)
+        .offset(offset);
 
-  // Get total count
-  const countResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(beasts)
-    .leftJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
-    .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
-    .where(whereClause);
-  const total = Number(countResult[0]?.count ?? 0);
+    const hasMoreWithoutTotal = !includeTotal && tokenRows.length > limit;
+    const pageTokenIds = tokenRows.slice(0, limit).map((row) => row.token_id);
 
-  return c.json({
-    data: results.map((r) => ({
-      token_id: r.token_id,
-      beast_id: r.beast_id,
-      prefix: r.prefix,
-      suffix: r.suffix,
-      level: r.level,
-      health: r.health,
-      bonus_health: r.bonus_health ?? 0,
-      bonus_xp: r.bonus_xp ?? 0,
-      summit_held_seconds: r.summit_held_seconds ?? 0,
-      spirit: r.spirit ?? 0,
-      luck: r.luck ?? 0,
-      specials: r.specials ?? false,
-      wisdom: r.wisdom ?? false,
-      diplomacy: r.diplomacy ?? false,
-      extra_lives: r.extra_lives ?? 0,
-      owner: r.owner,
-      shiny: r.shiny,
-      animated: r.animated,
-    })),
-    pagination: {
-      limit,
-      offset,
-      total,
-      has_more: offset + results.length < total,
-    },
-  });
+    if (pageTokenIds.length === 0) {
+      const total = includeTotal ? await loadTotalCount() : null;
+      return {
+        data: [],
+        pagination: {
+          limit,
+          offset,
+          total,
+          has_more: includeTotal ? offset < (total ?? 0) : hasMoreWithoutTotal,
+        },
+      };
+    }
+
+    const detailRows = await db
+      .select({
+        token_id: beasts.token_id,
+        beast_id: beasts.beast_id,
+        prefix: beasts.prefix,
+        suffix: beasts.suffix,
+        level: beasts.level,
+        health: beasts.health,
+        shiny: beasts.shiny,
+        animated: beasts.animated,
+        bonus_health: beast_stats.bonus_health,
+        bonus_xp: beast_stats.bonus_xp,
+        summit_held_seconds: beast_stats.summit_held_seconds,
+        spirit: beast_stats.spirit,
+        luck: beast_stats.luck,
+        specials: beast_stats.specials,
+        wisdom: beast_stats.wisdom,
+        diplomacy: beast_stats.diplomacy,
+        extra_lives: beast_stats.extra_lives,
+        owner: beast_owners.owner,
+      })
+      .from(beasts)
+      .leftJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+      .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
+      .where(inArray(beasts.token_id, pageTokenIds));
+
+    const byTokenId = new Map(detailRows.map((row) => [row.token_id, row]));
+    const orderedRows = pageTokenIds
+      .map((tokenId) => byTokenId.get(tokenId))
+      .filter((row): row is NonNullable<typeof row> => Boolean(row));
+
+    let total: number | null = null;
+    if (includeTotal) {
+      total = await loadTotalCount();
+    }
+
+    return {
+      data: orderedRows.map((r) => ({
+        token_id: r.token_id,
+        beast_id: r.beast_id,
+        prefix: r.prefix,
+        suffix: r.suffix,
+        level: r.level,
+        health: r.health,
+        bonus_health: r.bonus_health ?? 0,
+        bonus_xp: r.bonus_xp ?? 0,
+        summit_held_seconds: r.summit_held_seconds ?? 0,
+        spirit: r.spirit ?? 0,
+        luck: r.luck ?? 0,
+        specials: r.specials ?? false,
+        wisdom: r.wisdom ?? false,
+        diplomacy: r.diplomacy ?? false,
+        extra_lives: r.extra_lives ?? 0,
+        owner: r.owner,
+        shiny: r.shiny,
+        animated: r.animated,
+      })),
+      pagination: {
+        limit,
+        offset,
+        total,
+        has_more: includeTotal
+          ? offset + orderedRows.length < (total ?? 0)
+          : hasMoreWithoutTotal,
+      },
+    };
+  };
+
+  const shouldCacheBeastsAll =
+    !owner &&
+    !name &&
+    !prefix &&
+    !suffix &&
+    !beastId &&
+    sort === "summit_held_seconds" &&
+    offset <= 200 &&
+    limit <= 50;
+
+  if (shouldCacheBeastsAll) {
+    return respondWithCachedJson(c, CACHE_POLICIES.beastsAll, loadBeastsAll);
+  }
+
+  apiCache.noteBypass();
+  c.header("X-Cache", "BYPASS");
+  return c.json(await loadBeastsAll());
 });
 
 /**
@@ -194,59 +392,61 @@ app.get("/beasts/all", async (c) => {
 app.get("/beasts/:owner", async (c) => {
   const owner = normalizeAddress(c.req.param("owner"));
 
-  // Get beast data with all joins including skulls
-  const results = await db
-    .select({
-      // Beast NFT metadata
-      token_id: beasts.token_id,
-      beast_id: beasts.beast_id,
-      prefix: beasts.prefix,
-      suffix: beasts.suffix,
-      level: beasts.level,
-      health: beasts.health,
-      shiny: beasts.shiny,
-      animated: beasts.animated,
-      // Beast data (Loot Survivor stats)
-      adventurers_killed: beast_data.adventurers_killed,
-      last_death_loot_survivor: beast_data.last_death_timestamp,
-      last_killed_by: beast_data.last_killed_by,
-      entity_hash: beast_data.entity_hash,
-      // Beast stats (Summit game state)
-      current_health: beast_stats.current_health,
-      bonus_health: beast_stats.bonus_health,
-      bonus_xp: beast_stats.bonus_xp,
-      attack_streak: beast_stats.attack_streak,
-      last_death_summit: beast_stats.last_death_timestamp,
-      revival_count: beast_stats.revival_count,
-      extra_lives: beast_stats.extra_lives,
-      captured_summit: beast_stats.captured_summit,
-      used_revival_potion: beast_stats.used_revival_potion,
-      used_attack_potion: beast_stats.used_attack_potion,
-      max_attack_streak: beast_stats.max_attack_streak,
-      summit_held_seconds: beast_stats.summit_held_seconds,
-      spirit: beast_stats.spirit,
-      luck: beast_stats.luck,
-      specials: beast_stats.specials,
-      wisdom: beast_stats.wisdom,
-      diplomacy: beast_stats.diplomacy,
-      rewards_earned: beast_stats.rewards_earned,
-      rewards_claimed: beast_stats.rewards_claimed,
-      // Skulls claimed (one row per beast)
-      skulls: skulls_claimed.skulls,
-      // Quest rewards claimed
-      quest_rewards_amount: quest_rewards_claimed.amount,
-    })
-    .from(beast_owners)
-    .innerJoin(beasts, eq(beasts.token_id, beast_owners.token_id))
-    .leftJoin(beast_data, eq(beast_data.token_id, beast_owners.token_id))
-    .leftJoin(beast_stats, eq(beast_stats.token_id, beast_owners.token_id))
-    .leftJoin(skulls_claimed, eq(skulls_claimed.beast_token_id, beast_owners.token_id))
-    .leftJoin(quest_rewards_claimed, eq(quest_rewards_claimed.beast_token_id, beast_owners.token_id))
-    .where(eq(beast_owners.owner, owner));
+  // Not cached: current_health is derived from Date.now() (revival window),
+  // so caching would serve stale alive/dead state across the boundary.
+  {
+    // Get beast data with all joins including skulls
+    const results = await db
+      .select({
+        // Beast NFT metadata
+        token_id: beasts.token_id,
+        beast_id: beasts.beast_id,
+        prefix: beasts.prefix,
+        suffix: beasts.suffix,
+        level: beasts.level,
+        health: beasts.health,
+        shiny: beasts.shiny,
+        animated: beasts.animated,
+        // Beast data (Loot Survivor stats)
+        adventurers_killed: beast_data.adventurers_killed,
+        last_death_loot_survivor: beast_data.last_death_timestamp,
+        last_killed_by: beast_data.last_killed_by,
+        entity_hash: beast_data.entity_hash,
+        // Beast stats (Summit game state)
+        current_health: beast_stats.current_health,
+        bonus_health: beast_stats.bonus_health,
+        bonus_xp: beast_stats.bonus_xp,
+        attack_streak: beast_stats.attack_streak,
+        last_death_summit: beast_stats.last_death_timestamp,
+        revival_count: beast_stats.revival_count,
+        extra_lives: beast_stats.extra_lives,
+        captured_summit: beast_stats.captured_summit,
+        used_revival_potion: beast_stats.used_revival_potion,
+        used_attack_potion: beast_stats.used_attack_potion,
+        max_attack_streak: beast_stats.max_attack_streak,
+        summit_held_seconds: beast_stats.summit_held_seconds,
+        spirit: beast_stats.spirit,
+        luck: beast_stats.luck,
+        specials: beast_stats.specials,
+        wisdom: beast_stats.wisdom,
+        diplomacy: beast_stats.diplomacy,
+        rewards_earned: beast_stats.rewards_earned,
+        rewards_claimed: beast_stats.rewards_claimed,
+        // Skulls claimed (one row per beast)
+        skulls: skulls_claimed.skulls,
+        // Quest rewards claimed
+        quest_rewards_amount: quest_rewards_claimed.amount,
+      })
+      .from(beast_owners)
+      .innerJoin(beasts, eq(beasts.token_id, beast_owners.token_id))
+      .leftJoin(beast_data, eq(beast_data.token_id, beast_owners.token_id))
+      .leftJoin(beast_stats, eq(beast_stats.token_id, beast_owners.token_id))
+      .leftJoin(skulls_claimed, eq(skulls_claimed.beast_token_id, beast_owners.token_id))
+      .leftJoin(quest_rewards_claimed, eq(quest_rewards_claimed.beast_token_id, beast_owners.token_id))
+      .where(eq(beast_owners.owner, owner));
 
-  // Transform to Beast interface format
-  return c.json(
-    results.map((r) => {
+    // Transform to Beast interface format
+    const result = results.map((r) => {
       const beastId = r.beast_id;
       const prefixId = r.prefix;
       const suffixId = r.suffix;
@@ -324,8 +524,9 @@ app.get("/beasts/:owner", async (c) => {
         // Hash from beast_data (if linked)
         entity_hash: r.entity_hash ?? undefined,
       };
-    })
-  );
+    });
+    return c.json(result);
+  }
 });
 
 /**
@@ -337,6 +538,7 @@ app.get("/beasts/:owner", async (c) => {
  * - category: Filter by category (optional, comma-separated for multiple)
  * - sub_category: Filter by sub_category (optional, comma-separated for multiple)
  * - player: Filter by player address (optional)
+ * - include_total: Set to false to skip count(*) and return pagination.total=null
  */
 app.get("/logs", async (c) => {
   const limit = Math.min(parseInt(c.req.query("limit") || "50", 10), 100);
@@ -344,10 +546,11 @@ app.get("/logs", async (c) => {
   const categoryParam = c.req.query("category");
   const subCategoryParam = c.req.query("sub_category");
   const player = c.req.query("player");
+  const includeTotal = parseIncludeTotal(c.req.query("include_total"));
 
   // Parse comma-separated values into arrays
-  const categories = categoryParam ? categoryParam.split(',').filter(Boolean) : [];
-  const subCategories = subCategoryParam ? subCategoryParam.split(',').filter(Boolean) : [];
+  const categories = categoryParam ? categoryParam.split(",").filter(Boolean) : [];
+  const subCategories = subCategoryParam ? subCategoryParam.split(",").filter(Boolean) : [];
 
   // Build where conditions
   const conditions = [];
@@ -357,41 +560,47 @@ app.get("/logs", async (c) => {
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  // Get results
-  const results = await db
-    .select()
-    .from(summit_log)
-    .where(whereClause)
-    .orderBy(desc(summit_log.block_number), desc(summit_log.event_index))
-    .limit(limit)
-    .offset(offset);
+  return respondWithCachedJson(c, CACHE_POLICIES.logs, async () => {
+    const rowsLimit = includeTotal ? limit : limit + 1;
+    const results = await db
+      .select()
+      .from(summit_log)
+      .where(whereClause)
+      .orderBy(desc(summit_log.block_number), desc(summit_log.event_index))
+      .limit(rowsLimit)
+      .offset(offset);
 
-  // Get total count
-  const countResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(summit_log)
-    .where(whereClause);
-  const total = Number(countResult[0]?.count ?? 0);
+    const pageRows = results.slice(0, limit);
+    const hasMoreWithoutTotal = !includeTotal && results.length > limit;
+    let total: number | null = null;
+    if (includeTotal) {
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(summit_log)
+        .where(whereClause);
+      total = Number(countResult[0]?.count ?? 0);
+    }
 
-  return c.json({
-    data: results.map((r) => ({
-      id: r.id,
-      block_number: r.block_number.toString(),
-      event_index: r.event_index,
-      category: r.category,
-      sub_category: r.sub_category,
-      data: r.data,
-      player: r.player,
-      token_id: r.token_id,
-      transaction_hash: r.transaction_hash,
-      created_at: r.created_at.toISOString(),
-    })),
-    pagination: {
-      limit,
-      offset,
-      total,
-      has_more: offset + results.length < total,
-    },
+    return {
+      data: pageRows.map((r) => ({
+        id: r.id,
+        block_number: r.block_number.toString(),
+        event_index: r.event_index,
+        category: r.category,
+        sub_category: r.sub_category,
+        data: r.data,
+        player: r.player,
+        token_id: r.token_id,
+        transaction_hash: r.transaction_hash,
+        created_at: r.created_at.toISOString(),
+      })),
+      pagination: {
+        limit,
+        offset,
+        total,
+        has_more: includeTotal ? offset + pageRows.length < (total ?? 0) : hasMoreWithoutTotal,
+      },
+    };
   });
 });
 
@@ -403,19 +612,20 @@ app.get("/logs", async (c) => {
 app.get("/beasts/stats/counts", async (c) => {
   const twentyFourHoursAgo = Math.floor(Date.now() / 1000) - 86400;
 
-  const result = await db
-    .select({
-      total: sql<number>`count(*)`,
-      alive: sql<number>`count(*) filter (where ${beast_stats.last_death_timestamp} < ${twentyFourHoursAgo})`,
-    })
-    .from(beast_stats);
+  return respondWithCachedJson(c, CACHE_POLICIES.beastsStatsCounts, async () => {
+    const result = await db
+      .select({
+        total: sql<number>`count(*)`,
+        alive: sql<number>`count(*) filter (where ${beast_stats.last_death_timestamp} < ${twentyFourHoursAgo})`,
+      })
+      .from(beast_stats);
 
-  const { total, alive } = result[0] ?? { total: 0, alive: 0 };
-
-  return c.json({
-    total: Number(total),
-    alive: Number(alive),
-    dead: Number(total) - Number(alive),
+    const { total, alive } = result[0] ?? { total: 0, alive: 0 };
+    return {
+      total: Number(total),
+      alive: Number(alive),
+      dead: Number(total) - Number(alive),
+    };
   });
 });
 
@@ -425,69 +635,77 @@ app.get("/beasts/stats/counts", async (c) => {
  * Query params:
  * - limit: Number of results (default: 25, max: 100)
  * - offset: Pagination offset (default: 0)
+ * - include_total: Set to false to skip count(*) and return pagination.total=null
  *
  * Returns beasts with full metadata and pagination info including total count
  */
 app.get("/beasts/stats/top", async (c) => {
   const limit = Math.min(parseInt(c.req.query("limit") || "25", 10), 100);
   const offset = parseInt(c.req.query("offset") || "0", 10);
+  const includeTotal = parseIncludeTotal(c.req.query("include_total"));
 
-  // Get paginated results with beast metadata
-  const results = await db
-    .select({
-      token_id: beast_stats.token_id,
-      summit_held_seconds: beast_stats.summit_held_seconds,
-      bonus_xp: beast_stats.bonus_xp,
-      last_death_timestamp: beast_stats.last_death_timestamp,
-      beast_id: beasts.beast_id,
-      prefix: beasts.prefix,
-      suffix: beasts.suffix,
-      owner: beast_owners.owner,
-    })
-    .from(beast_stats)
-    .innerJoin(beasts, eq(beasts.token_id, beast_stats.token_id))
-    .leftJoin(beast_owners, eq(beast_owners.token_id, beast_stats.token_id))
-    .where(sql`${beast_stats.summit_held_seconds} > 0`)
-    .orderBy(
-      desc(beast_stats.summit_held_seconds),
-      desc(beast_stats.bonus_xp),
-      desc(beast_stats.last_death_timestamp)
-    )
-    .limit(limit)
-    .offset(offset);
+  return respondWithCachedJson(c, CACHE_POLICIES.beastsStatsTop, async () => {
+    const rowsLimit = includeTotal ? limit : limit + 1;
+    const results = await db
+      .select({
+        token_id: beast_stats.token_id,
+        summit_held_seconds: beast_stats.summit_held_seconds,
+        bonus_xp: beast_stats.bonus_xp,
+        last_death_timestamp: beast_stats.last_death_timestamp,
+        beast_id: beasts.beast_id,
+        prefix: beasts.prefix,
+        suffix: beasts.suffix,
+        owner: beast_owners.owner,
+      })
+      .from(beast_stats)
+      .innerJoin(beasts, eq(beasts.token_id, beast_stats.token_id))
+      .leftJoin(beast_owners, eq(beast_owners.token_id, beast_stats.token_id))
+      .where(sql`${beast_stats.summit_held_seconds} > 0`)
+      .orderBy(
+        desc(beast_stats.summit_held_seconds),
+        desc(beast_stats.bonus_xp),
+        desc(beast_stats.last_death_timestamp)
+      )
+      .limit(rowsLimit)
+      .offset(offset);
 
-  // Get total count
-  const countResult = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(beast_stats)
-    .where(sql`${beast_stats.summit_held_seconds} > 0`);
-  const total = Number(countResult[0]?.count ?? 0);
+    const pageRows = results.slice(0, limit);
+    const hasMoreWithoutTotal = !includeTotal && results.length > limit;
+    let total: number | null = null;
+    if (includeTotal) {
+      const countResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(beast_stats)
+        .where(sql`${beast_stats.summit_held_seconds} > 0`);
+      total = Number(countResult[0]?.count ?? 0);
+    }
 
-  return c.json({
-    data: results.map((r) => {
-      const beastName = BEAST_NAMES[r.beast_id] ?? "Unknown";
-      const prefix = ITEM_NAME_PREFIXES[r.prefix] ?? "";
-      const suffix = ITEM_NAME_SUFFIXES[r.suffix] ?? "";
-      const fullName = prefix && suffix ? `"${prefix} ${suffix}" ${beastName}` : beastName;
+    return {
+      data: pageRows.map((r) => {
+        const beastName = BEAST_NAMES[r.beast_id] ?? "Unknown";
+        const prefix = ITEM_NAME_PREFIXES[r.prefix] ?? "";
+        const suffix = ITEM_NAME_SUFFIXES[r.suffix] ?? "";
+        const fullName = prefix && suffix ? `"${prefix} ${suffix}" ${beastName}` : beastName;
 
-      return {
-        token_id: r.token_id,
-        summit_held_seconds: r.summit_held_seconds,
-        bonus_xp: r.bonus_xp,
-        last_death_timestamp: Number(r.last_death_timestamp),
-        owner: r.owner,
-        beast_name: beastName,
-        prefix,
-        suffix,
-        full_name: fullName,
-      };
-    }),
-    pagination: {
-      limit,
-      offset,
-      total,
-      has_more: offset + results.length < total,
-    },
+        return {
+          token_id: r.token_id,
+          summit_held_seconds: r.summit_held_seconds,
+          bonus_xp: r.bonus_xp,
+          last_death_timestamp: Number(r.last_death_timestamp),
+          owner: r.owner,
+          beast_name: beastName,
+          prefix,
+          suffix,
+          full_name: fullName,
+        };
+      }),
+      pagination: {
+        limit,
+        offset,
+        total,
+        has_more: includeTotal ? offset + pageRows.length < (total ?? 0) : hasMoreWithoutTotal,
+      },
+    };
   });
 });
 
@@ -508,35 +726,35 @@ app.get("/diplomacy", async (c) => {
     return c.json({ error: "prefix and suffix are required" }, 400);
   }
 
-  const results = await db
-    .select({
-      token_id: beasts.token_id,
-      beast_id: beasts.beast_id,
-      prefix: beasts.prefix,
-      suffix: beasts.suffix,
-      level: beasts.level,
-      health: beasts.health,
-      owner: beast_owners.owner,
-      current_health: beast_stats.current_health,
-      bonus_health: beast_stats.bonus_health,
-      bonus_xp: beast_stats.bonus_xp,
-      summit_held_seconds: beast_stats.summit_held_seconds,
-      spirit: beast_stats.spirit,
-      luck: beast_stats.luck,
-    })
-    .from(beasts)
-    .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
-    .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
-    .where(
-      and(
-        eq(beasts.prefix, prefix),
-        eq(beasts.suffix, suffix),
-        eq(beast_stats.diplomacy, true)
-      )
-    );
+  return respondWithCachedJson(c, CACHE_POLICIES.diplomacy, async () => {
+    const results = await db
+      .select({
+        token_id: beasts.token_id,
+        beast_id: beasts.beast_id,
+        prefix: beasts.prefix,
+        suffix: beasts.suffix,
+        level: beasts.level,
+        health: beasts.health,
+        owner: beast_owners.owner,
+        current_health: beast_stats.current_health,
+        bonus_health: beast_stats.bonus_health,
+        bonus_xp: beast_stats.bonus_xp,
+        summit_held_seconds: beast_stats.summit_held_seconds,
+        spirit: beast_stats.spirit,
+        luck: beast_stats.luck,
+      })
+      .from(beasts)
+      .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+      .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
+      .where(
+        and(
+          eq(beasts.prefix, prefix),
+          eq(beasts.suffix, suffix),
+          eq(beast_stats.diplomacy, true)
+        )
+      );
 
-  return c.json(
-    results.map((r) => {
+    return results.map((r) => {
       const beastName = BEAST_NAMES[r.beast_id] ?? "Unknown";
       const prefixName = ITEM_NAME_PREFIXES[r.prefix] ?? "";
       const suffixName = ITEM_NAME_SUFFIXES[r.suffix] ?? "";
@@ -562,8 +780,8 @@ app.get("/diplomacy", async (c) => {
         luck: r.luck,
         owner: r.owner,
       };
-    })
-  );
+    });
+  });
 });
 
 /**
@@ -571,52 +789,54 @@ app.get("/diplomacy", async (c) => {
  * Used for building diplomacy leaderboard (grouped by prefix/suffix with power calculation)
  */
 app.get("/diplomacy/all", async (c) => {
-  const results = await db
-    .select({
-      token_id: beasts.token_id,
-      beast_id: beasts.beast_id,
-      prefix: beasts.prefix,
-      suffix: beasts.suffix,
-      level: beasts.level,
-      bonus_xp: beast_stats.bonus_xp,
-    })
-    .from(beasts)
-    .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
-    .where(eq(beast_stats.diplomacy, true));
-
-  return c.json(results);
+  return respondWithCachedJson(c, CACHE_POLICIES.diplomacyAll, async () => {
+    return db
+      .select({
+        token_id: beasts.token_id,
+        beast_id: beasts.beast_id,
+        prefix: beasts.prefix,
+        suffix: beasts.suffix,
+        level: beasts.level,
+        bonus_xp: beast_stats.bonus_xp,
+      })
+      .from(beasts)
+      .innerJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
+      .where(eq(beast_stats.diplomacy, true));
+  });
 });
 
 /**
  * GET /leaderboard - Get rewards leaderboard grouped by owner
  */
 app.get("/leaderboard", async (c) => {
-  const results = await db
-    .select({
-      owner: rewards_earned.owner,
-      amount: sql<number>`sum(${rewards_earned.amount})`,
-    })
-    .from(rewards_earned)
-    .groupBy(rewards_earned.owner)
-    .orderBy(sql`sum(${rewards_earned.amount}) desc`);
+  return respondWithCachedJson(c, CACHE_POLICIES.leaderboard, async () => {
+    const results = await db
+      .select({
+        owner: rewards_earned.owner,
+        amount: sql<number>`sum(${rewards_earned.amount})`,
+      })
+      .from(rewards_earned)
+      .groupBy(rewards_earned.owner)
+      .orderBy(sql`sum(${rewards_earned.amount}) desc`);
 
-  return c.json(
-    results.map((r) => ({
+    return results.map((r) => ({
       owner: r.owner,
-      amount: Number(r.amount) / 100000,
-    }))
-  );
+      amount: Number(r.amount) / REWARD_AMOUNT_SCALE,
+    }));
+  });
 });
 
 /**
  * GET /quest-rewards/total - Get total quest rewards claimed
  */
 app.get("/quest-rewards/total", async (c) => {
-  const result = await db
-    .select({ total: sql<number>`coalesce(sum(${quest_rewards_claimed.amount}), 0)` })
-    .from(quest_rewards_claimed);
+  return respondWithCachedJson(c, CACHE_POLICIES.questRewardsTotal, async () => {
+    const result = await db
+      .select({ total: sql<number>`coalesce(sum(${quest_rewards_claimed.amount}), 0)` })
+      .from(quest_rewards_claimed);
 
-  return c.json({ total: Number(result[0]?.total ?? 0) / 100 });
+    return { total: Number(result[0]?.total ?? 0) / QUEST_REWARD_SCALE };
+  });
 });
 
 /**
@@ -646,20 +866,23 @@ app.get("/adventurers/:player", async (c) => {
  * GET /consumables/supply - Get total circulating supply of consumable tokens
  */
 app.get("/consumables/supply", async (c) => {
-  const result = await db
-    .select({
-      xlife: sql<number>`coalesce(sum(${consumables.xlife_count}), 0)`,
-      attack: sql<number>`coalesce(sum(${consumables.attack_count}), 0)`,
-      revive: sql<number>`coalesce(sum(${consumables.revive_count}), 0)`,
-      poison: sql<number>`coalesce(sum(${consumables.poison_count}), 0)`,
-    })
-    .from(consumables);
-  const row = result[0] ?? { xlife: 0, attack: 0, revive: 0, poison: 0 };
-  return c.json({
-    xlife: Number(row.xlife),
-    attack: Number(row.attack),
-    revive: Number(row.revive),
-    poison: Number(row.poison),
+  return respondWithCachedJson(c, CACHE_POLICIES.consumablesSupply, async () => {
+    const result = await db
+      .select({
+        xlife: sql<number>`coalesce(sum(${consumables.xlife_count}), 0)`,
+        attack: sql<number>`coalesce(sum(${consumables.attack_count}), 0)`,
+        revive: sql<number>`coalesce(sum(${consumables.revive_count}), 0)`,
+        poison: sql<number>`coalesce(sum(${consumables.poison_count}), 0)`,
+      })
+      .from(consumables);
+    const row = result[0] ?? { xlife: 0, attack: 0, revive: 0, poison: 0 };
+
+    return {
+      xlife: Number(row.xlife),
+      attack: Number(row.attack),
+      revive: Number(row.revive),
+      poison: Number(row.poison),
+    };
   });
 });
 
@@ -690,13 +913,6 @@ app.get("/", (c) => {
     },
   };
 
-  if (isDevelopment) {
-    endpoints.debug = {
-      test_summit_update: "POST /debug/test-summit-update",
-      test_summit_log: "POST /debug/test-summit-log",
-    };
-  }
-
   return c.json({
     name: "Summit API",
     version: "1.0.0",
@@ -716,7 +932,6 @@ app.get(
     return {
       onOpen(_event, ws) {
         hub.addClient(clientId, ws.raw as unknown as Parameters<typeof hub.addClient>[1]);
-        console.log(`[WebSocket] Client connected: ${clientId}`);
       },
 
       onMessage(event, _ws) {
@@ -726,11 +941,13 @@ app.get(
 
       onClose() {
         hub.removeClient(clientId);
-        console.log(`[WebSocket] Client disconnected: ${clientId}`);
       },
 
       onError(error) {
-        console.error(`[WebSocket] Error for client ${clientId}:`, error);
+        log.warn("ws_client_error", {
+          client_id: clientId,
+          error,
+        });
         hub.removeClient(clientId);
       },
     };
@@ -739,8 +956,7 @@ app.get(
 
 // Start server
 const port = parseInt(process.env.PORT || "3001", 10);
-
-console.log(`Starting Summit API server on port ${port}...`);
+log.info("api_starting", { port });
 
 const server = serve(
   {
@@ -748,24 +964,45 @@ const server = serve(
     port,
   },
   (info) => {
-    console.log(`[API] Server running at http://localhost:${info.port}`);
-    console.log(`[API] WebSocket available at ws://localhost:${info.port}/ws`);
+    log.info("api_server_ready", {
+      http: `http://localhost:${info.port}`,
+      websocket: `ws://localhost:${info.port}/ws`,
+    });
   }
 );
 
 injectWebSocket(server);
 
-// Graceful shutdown
-process.on("SIGINT", async () => {
-  console.log("\nShutting down...");
-  await getSubscriptionHub().shutdown();
-  process.exit(0);
-});
+const metricEmitters: Array<{ stop: () => void }> = [];
 
-process.on("SIGTERM", async () => {
-  console.log("\nShutting down...");
+if (isMetricsEnabled()) {
+  metricEmitters.push(
+    startResourceMetrics({
+      service: "summit-api",
+      dbPoolStats: () => ({
+        total: pool.totalCount,
+        idle: pool.idleCount,
+        waiting: pool.waitingCount,
+      }),
+      dbProbe: collectDbProxyMetrics,
+      getExtraMetrics: () => apiCache.snapshot(),
+    })
+  );
+}
+
+// Graceful shutdown: stop accepting requests before tearing down resources
+async function shutdown() {
+  log.info("api_shutdown_started");
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+  for (const emitter of metricEmitters) {
+    emitter.stop();
+  }
   await getSubscriptionHub().shutdown();
+  await pool.end();
   process.exit(0);
-});
+}
+
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);
 
 export default app;

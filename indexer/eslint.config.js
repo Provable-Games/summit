@@ -69,6 +69,7 @@ export default tseslint.config(
       "drizzle.config.ts",
       "vitest.config.ts",
       "scripts/**/*.ts",
+      "scripts/**/*.mjs",
     ],
     languageOptions: {
       globals: {

@@ -5,6 +5,7 @@
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import { log } from "../lib/logging.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -17,7 +18,9 @@ if (typeof databaseSsl !== "undefined" && databaseSsl !== "true" && databaseSsl 
 }
 
 if (process.env.NODE_ENV === "production" && typeof databaseSsl === "undefined") {
-  console.warn('[DB CONFIG] DATABASE_SSL not set in production, defaulting to SSL enabled');
+  log.warn("db_ssl_default_enabled", {
+    reason: "DATABASE_SSL missing in production",
+  });
 }
 
 // Create a connection pool for queries
@@ -35,7 +38,9 @@ const pool = new pg.Pool({
 // Handle pool errors to prevent crashes from unexpected disconnections
 // pg-pool will automatically replace dead clients, so we just log here
 pool.on("error", (err) => {
-  console.error("[PG POOL ERROR]", err.message);
+  log.error("pg_pool_error", {
+    message: err.message,
+  });
 });
 
 // Create Drizzle ORM instance
@@ -52,7 +57,9 @@ export async function checkDatabaseHealth(): Promise<boolean> {
     client.release();
     return true;
   } catch (error) {
-    console.error("[DB HEALTH CHECK] Failed:", error instanceof Error ? error.message : error);
+    log.error("db_health_check_failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return false;
   }
 }
