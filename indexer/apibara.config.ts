@@ -24,8 +24,8 @@ export default defineConfig({
       poisonTokenAddress: "0x049eaed2a1ba2f2eb6ac2661ffd2d79231cdd7d5293d9448df49c5986c9897ae",
       // Mainnet DNA stream URL
       streamUrl: process.env.STREAM_URL,
-      // Starting block - use earliest block needed for Dojo events
-      startingBlock: "7077225",
+      // Starting block - override via STARTING_BLOCK env var for full reindex
+      startingBlock: process.env.STARTING_BLOCK ?? "7077225",
       // PostgreSQL connection string
       databaseUrl: process.env.DATABASE_URL,
       // RPC URL for fetching beast metadata
