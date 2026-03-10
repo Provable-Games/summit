@@ -15,6 +15,9 @@ import {
   calculateOptimalAttackPotions,
   calculateMaxAttackPotions,
   calculateRevivalRequired,
+  selectOptimalBeasts,
+  streakUrgencyScore,
+  questUrgencyScore,
   BEAST_LOCK_DURATION_MS,
 } from "./beasts";
 
@@ -817,5 +820,203 @@ describe("calculateRevivalRequired", () => {
 
   it("returns 0 for empty selection", () => {
     expect(calculateRevivalRequired([])).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// streakUrgencyScore
+// ---------------------------------------------------------------------------
+describe("streakUrgencyScore", () => {
+  it("returns 0 for a beast that already completed the quest", () => {
+    const beast = makeBeast({ max_attack_streak: true, attack_streak: 10 });
+    expect(streakUrgencyScore(beast)).toBe(0);
+  });
+
+  it("returns 0 for a beast with attack_streak 0", () => {
+    const beast = makeBeast({ attack_streak: 0 });
+    expect(streakUrgencyScore(beast)).toBe(0);
+  });
+
+  it("returns 0 for a beast whose streak has already reset (>48h since death)", () => {
+    const now = Date.now() / 1000;
+    const beast = makeBeast({
+      attack_streak: 5,
+      last_death_timestamp: now - 86400 * 3, // 72h ago
+    });
+    expect(streakUrgencyScore(beast)).toBe(0);
+  });
+
+  it("returns higher score for higher streak (both at same time remaining)", () => {
+    const now = Date.now() / 1000;
+    const recentDeath = now - 86400; // 24h ago = 24h remaining
+    const beastStreak3 = makeBeast({ attack_streak: 3, last_death_timestamp: recentDeath });
+    const beastStreak8 = makeBeast({ attack_streak: 8, last_death_timestamp: recentDeath });
+    expect(streakUrgencyScore(beastStreak8)).toBeGreaterThan(streakUrgencyScore(beastStreak3));
+  });
+
+  it("returns higher score when streak is about to expire vs plenty of time", () => {
+    const now = Date.now() / 1000;
+    const beastSafeTime = makeBeast({
+      attack_streak: 5,
+      last_death_timestamp: now - 3600, // 1h ago = 47h remaining
+    });
+    const beastUrgent = makeBeast({
+      attack_streak: 5,
+      last_death_timestamp: now - 86400 * 2 + 3600, // 1h remaining
+    });
+    expect(streakUrgencyScore(beastUrgent)).toBeGreaterThan(streakUrgencyScore(beastSafeTime));
+  });
+
+  it("beast at streak 9 with 2h left scores very high", () => {
+    const now = Date.now() / 1000;
+    const beast = makeBeast({
+      attack_streak: 9,
+      last_death_timestamp: now - 86400 * 2 + 7200, // 2h remaining
+    });
+    const score = streakUrgencyScore(beast);
+    // Progress: 9/10 * 50 = 45. Time: ~(1 - 7200/172800) * 50 ≈ 47.9. Total ≈ 92.9
+    expect(score).toBeGreaterThan(85);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// questUrgencyScore
+// ---------------------------------------------------------------------------
+describe("questUrgencyScore", () => {
+  it("returns 0 when max_attack_streak is not in quest filters", () => {
+    const now = Date.now() / 1000;
+    const beast = makeBeast({ attack_streak: 9, last_death_timestamp: now - 86400 });
+    expect(questUrgencyScore(beast, ["take_summit", "attack_summit"])).toBe(0);
+  });
+
+  it("returns streak urgency when max_attack_streak is in quest filters", () => {
+    const now = Date.now() / 1000;
+    const beast = makeBeast({ attack_streak: 7, last_death_timestamp: now - 86400 });
+    const score = questUrgencyScore(beast, ["max_attack_streak"]);
+    expect(score).toBeGreaterThan(0);
+    expect(score).toBe(streakUrgencyScore(beast));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// selectOptimalBeasts — quest mode streak urgency integration
+// ---------------------------------------------------------------------------
+describe("selectOptimalBeasts quest mode", () => {
+  const baseConfig = {
+    useRevivePotions: false,
+    revivePotionMax: 0,
+    revivePotionMaxPerBeast: 0,
+    revivePotionsUsed: 0,
+    useAttackPotions: false,
+    attackPotionMax: 0,
+    attackPotionMaxPerBeast: 0,
+    attackPotionsUsed: 0,
+    autopilotEnabled: true,
+    questMode: true,
+    questFilters: ["max_attack_streak"],
+  };
+
+  it("prioritizes beast with higher streak when both need the quest", () => {
+    const now = Date.now() / 1000;
+    const summit = makeSummit({ power: 10, current_health: 50, health: 50, extra_lives: 0 });
+
+    const beastLowStreak = makeBeast({
+      token_id: 1,
+      power: 50,
+      current_health: 100,
+      health: 100,
+      attack_streak: 2,
+      last_death_timestamp: now - 86400,
+    });
+    const beastHighStreak = makeBeast({
+      token_id: 2,
+      power: 50,
+      current_health: 100,
+      health: 100,
+      attack_streak: 8,
+      last_death_timestamp: now - 86400,
+    });
+
+    const result = selectOptimalBeasts([beastLowStreak, beastHighStreak], summit, baseConfig);
+    expect(result.length).toBeGreaterThanOrEqual(2);
+    expect(result[0].token_id).toBe(2); // high streak beast first
+  });
+
+  it("prioritizes beast with expiring streak over safe streak", () => {
+    const now = Date.now() / 1000;
+    const summit = makeSummit({ power: 10, current_health: 50, health: 50, extra_lives: 0 });
+
+    const beastSafe = makeBeast({
+      token_id: 1,
+      power: 50,
+      current_health: 100,
+      health: 100,
+      attack_streak: 5,
+      last_death_timestamp: now - 3600, // 47h remaining
+    });
+    const beastExpiring = makeBeast({
+      token_id: 2,
+      power: 50,
+      current_health: 100,
+      health: 100,
+      attack_streak: 5,
+      last_death_timestamp: now - 86400 * 2 + 3600, // 1h remaining
+    });
+
+    const result = selectOptimalBeasts([beastSafe, beastExpiring], summit, baseConfig);
+    expect(result.length).toBeGreaterThanOrEqual(2);
+    expect(result[0].token_id).toBe(2); // expiring beast first
+  });
+
+  it("does not boost completed beasts even with high streak", () => {
+    const now = Date.now() / 1000;
+    const summit = makeSummit({ power: 10, current_health: 50, health: 50, extra_lives: 0 });
+
+    const beastCompleted = makeBeast({
+      token_id: 1,
+      power: 50,
+      current_health: 100,
+      health: 100,
+      attack_streak: 10,
+      max_attack_streak: true,
+      last_death_timestamp: now - 86400,
+    });
+    const beastNeeds = makeBeast({
+      token_id: 2,
+      power: 50,
+      current_health: 100,
+      health: 100,
+      attack_streak: 3,
+      last_death_timestamp: now - 86400,
+    });
+
+    const result = selectOptimalBeasts([beastCompleted, beastNeeds], summit, baseConfig);
+    expect(result.length).toBeGreaterThanOrEqual(2);
+    // Beast that still needs the quest should be prioritized
+    expect(result[0].token_id).toBe(2);
+  });
+
+  it("Summit Conqueror prioritizes beasts that haven't captured summit", () => {
+    const summit = makeSummit({ power: 10, current_health: 50, health: 50, extra_lives: 0 });
+
+    const beastCaptured = makeBeast({
+      token_id: 1,
+      power: 50,
+      current_health: 100,
+      health: 100,
+      captured_summit: true,
+    });
+    const beastNever = makeBeast({
+      token_id: 2,
+      power: 50,
+      current_health: 100,
+      health: 100,
+      captured_summit: false,
+    });
+
+    const config = { ...baseConfig, questFilters: ["take_summit"] };
+    const result = selectOptimalBeasts([beastCaptured, beastNever], summit, config);
+    expect(result.length).toBeGreaterThanOrEqual(2);
+    expect(result[0].token_id).toBe(2);
   });
 });

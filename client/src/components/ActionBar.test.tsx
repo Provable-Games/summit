@@ -56,6 +56,15 @@ const mockAutopilotState = {
   poisonConservativeExtraLivesTrigger: 0,
   poisonConservativeAmount: 0,
   poisonAggressiveAmount: 0,
+  poisonMinPower: 0,
+  poisonMinHealth: 0,
+  targetedPoisonPlayers: [],
+  targetedPoisonBeasts: [],
+  questMode: false,
+  questFilters: [],
+  maxBeastsPerAttack: 295,
+  skipSharedDiplomacy: false,
+  ignoredPlayers: [],
 };
 
 vi.mock("@/contexts/controller", () => ({
@@ -90,6 +99,20 @@ vi.mock("../utils/beasts", () => ({
   getBeastCurrentHealth: vi.fn(() => 0),
   getBeastRevivalTime: vi.fn(() => 0),
   isBeastLocked: vi.fn(() => false),
+}));
+
+vi.mock("@/hooks/useAutopilotOrchestrator", () => ({
+  useAutopilotOrchestrator: () => ({
+    collectionWithCombat: [],
+    isSavage: false,
+    enableAttack: false,
+    revivalPotionsRequired: 0,
+    autopilotLog: "",
+    startAutopilot: vi.fn(),
+    stopAutopilot: vi.fn(),
+    handleApplyExtraLife: vi.fn(),
+    handleApplyPoison: vi.fn(),
+  }),
 }));
 
 vi.mock("./dialogs/AutopilotConfigModal", () => ({
