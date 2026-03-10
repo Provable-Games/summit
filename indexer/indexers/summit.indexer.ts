@@ -933,8 +933,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
     }
   };
   process.once("beforeExit", stopMetricEmitters);
-  process.once("SIGINT", stopMetricEmitters);
-  process.once("SIGTERM", stopMetricEmitters);
 
   // getBeast selector: starknet_keccak("getBeast")
   const GET_BEAST_SELECTOR = "0x0385b69551f247794fe651459651cdabc76b6cdf4abacafb5b28ceb3b1ac2e98";
