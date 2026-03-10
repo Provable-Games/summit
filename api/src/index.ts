@@ -259,7 +259,7 @@ app.get("/beasts/all", async (c) => {
           : db.select({ token_id: beasts.token_id }).from(beasts)
       )
         .where(whereClause)
-        .orderBy(desc(beasts.level))
+        .orderBy(desc(beasts.level), desc(beasts.token_id))
         .limit(tokenRowsLimit)
         .offset(offset)
       : await (
@@ -275,7 +275,10 @@ app.get("/beasts/all", async (c) => {
             .leftJoin(beast_stats, eq(beast_stats.token_id, beasts.token_id))
       )
         .where(whereClause)
-        .orderBy(desc(beast_stats.summit_held_seconds))
+        .orderBy(
+          sql`${beast_stats.summit_held_seconds} DESC NULLS LAST`,
+          desc(beasts.token_id)
+        )
         .limit(tokenRowsLimit)
         .offset(offset);
 
