@@ -144,8 +144,8 @@ export function useAutopilotOrchestrator() {
   };
 
   const handleAttackUntilCapture = async (extraLifePotions: number) => {
-    const { attackInProgress: alreadyAttacking, applyingPotions: alreadyApplying, attackMode: currentAttackMode } = useGameStore.getState();
-    if (currentAttackMode !== 'autopilot' || alreadyAttacking || alreadyApplying) return;
+    const { attackInProgress: alreadyAttacking, attackMode: currentAttackMode } = useGameStore.getState();
+    if (currentAttackMode !== 'autopilot' || alreadyAttacking) return;
 
     setBattleEvents([]);
     setAttackInProgress(true);
@@ -285,6 +285,8 @@ export function useAutopilotOrchestrator() {
       }
     } else if (attackInProgress) {
       setAutopilotLog('Attacking...');
+    } else if (applyingPotions) {
+      setAutopilotLog('Applying potions...');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autopilotEnabled, attackInProgress, applyingPotions, summitSharesDiplomacy, summitOwnerIgnored]);
@@ -405,7 +407,7 @@ export function useAutopilotOrchestrator() {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives, triggerAutopilot]);
+  }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives, triggerAutopilot, attackInProgress, applyingPotions]);
 
   // Re-trigger autopilot when summit beast is about to die (0 extra lives, 1 HP)
   useEffect(() => {
