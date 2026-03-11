@@ -221,6 +221,8 @@ export function useAutopilotOrchestrator() {
       console.error('[Autopilot] Attack sequence failed:', err);
     } finally {
       setAttackInProgress(false);
+      // Schedule retry so autopilot doesn't stall after a transient failure
+      setTimeout(() => setTriggerAutopilot(), 3_000);
     }
   };
 
@@ -404,6 +406,8 @@ export function useAutopilotOrchestrator() {
         vrf: true,
         extraLifePotions: extraLifePotions,
         attackPotions: beasts[0]?.combat?.attackPotions || 0
+      }).then((success) => {
+        if (!success) setTimeout(() => setTriggerAutopilot(), 3_000);
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
