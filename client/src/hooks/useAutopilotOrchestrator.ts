@@ -144,81 +144,84 @@ export function useAutopilotOrchestrator() {
   };
 
   const handleAttackUntilCapture = async (extraLifePotions: number) => {
-    const { attackInProgress: alreadyAttacking, applyingPotions: alreadyApplying } = useGameStore.getState();
-    if (!enableAttack || alreadyAttacking || alreadyApplying) return;
+    const { attackInProgress: alreadyAttacking, applyingPotions: alreadyApplying, attackMode: currentAttackMode } = useGameStore.getState();
+    if (currentAttackMode !== 'autopilot' || alreadyAttacking || alreadyApplying) return;
 
     setBattleEvents([]);
     setAttackInProgress(true);
 
-    const allBeasts: [Beast, number, number][] = collectionWithCombat.map((beast: Beast) => [beast, 1, beast.combat?.attackPotions || 0]);
+    try {
+      const allBeasts: [Beast, number, number][] = collectionWithCombat.map((beast: Beast) => [beast, 1, beast.combat?.attackPotions || 0]);
 
-    const batches: [Beast, number, number][][] = [];
-    for (let i = 0; i < allBeasts.length; i += MAX_BEASTS_PER_ATTACK) {
-      batches.push(allBeasts.slice(i, i + MAX_BEASTS_PER_ATTACK));
-    }
+      const batches: [Beast, number, number][][] = [];
+      for (let i = 0; i < allBeasts.length; i += MAX_BEASTS_PER_ATTACK) {
+        batches.push(allBeasts.slice(i, i + MAX_BEASTS_PER_ATTACK));
+      }
 
-    const poisonedThisSequence = new Set<number>();
+      const poisonedThisSequence = new Set<number>();
 
-    for (const batch of batches) {
-      // Between batches: check if summit changed to an ignored or diplomacy-matched player
-      const currentSummit = useGameStore.getState().summit;
-      if (currentSummit) {
-        const { ignoredPlayers: ig, skipSharedDiplomacy: skipDip, targetedPoisonPlayers: tpp } = useAutopilotStore.getState();
-        const currentCollection = useGameStore.getState().collection;
-        const isMyBeast = currentCollection.some((b: Beast) => b.token_id === currentSummit.beast.token_id);
+      for (const batch of batches) {
+        // Between batches: check if summit changed to an ignored or diplomacy-matched player
+        const currentSummit = useGameStore.getState().summit;
+        if (currentSummit) {
+          const { ignoredPlayers: ig, skipSharedDiplomacy: skipDip, targetedPoisonPlayers: tpp } = useAutopilotStore.getState();
+          const currentCollection = useGameStore.getState().collection;
+          const isMyBeast = currentCollection.some((b: Beast) => b.token_id === currentSummit.beast.token_id);
 
-        if (isMyBeast) {
-          setAutopilotLog('Summit captured — halting attack');
-          break;
-        }
-        if (isOwnerIgnored(currentSummit.owner, ig)) {
-          setAutopilotLog('Halted: ignored player took summit');
-          break;
-        }
-        if (skipDip && hasDiplomacyMatch(currentCollection, currentSummit.beast)) {
-          setAutopilotLog('Halted: shared diplomacy');
-          break;
-        }
+          if (isMyBeast) {
+            setAutopilotLog('Summit captured — halting attack');
+            break;
+          }
+          if (isOwnerIgnored(currentSummit.owner, ig)) {
+            setAutopilotLog('Halted: ignored player took summit');
+            break;
+          }
+          if (skipDip && hasDiplomacyMatch(currentCollection, currentSummit.beast)) {
+            setAutopilotLog('Halted: shared diplomacy');
+            break;
+          }
 
-        // Fire targeted poison between batches (once per target per sequence)
-        if (!poisonedThisSequence.has(currentSummit.beast.token_id)) {
-          const { poisonTotalMax: ptm, poisonPotionsUsed: ppu, targetedPoisonBeasts: tpb } = useAutopilotStore.getState();
-          const isBeastTarget = tpb.length > 0 && isBeastTargetedForPoison(currentSummit.beast.token_id, tpb);
-          if (isBeastTarget) {
-            const beastAmount = getTargetedBeastPoisonAmount(currentSummit.beast.token_id, tpb);
-            const remainingCap = Math.max(0, ptm - ppu);
-            const pb = tokenBalances?.["POISON"] || 0;
-            const amount = Math.min(beastAmount, pb, remainingCap);
-            if (amount > 0) {
-              handleApplyPoison(amount, currentSummit.beast.token_id);
-              poisonedThisSequence.add(currentSummit.beast.token_id);
-            }
-          } else if (tpp.length > 0 && isOwnerTargetedForPoison(currentSummit.owner, tpp)) {
-            const playerAmount = getTargetedPoisonAmount(currentSummit.owner, tpp);
-            const remainingCap = Math.max(0, ptm - ppu);
-            const pb = tokenBalances?.["POISON"] || 0;
-            const amount = Math.min(playerAmount, pb, remainingCap);
-            if (amount > 0) {
-              handleApplyPoison(amount, currentSummit.beast.token_id);
-              poisonedThisSequence.add(currentSummit.beast.token_id);
+          // Fire targeted poison between batches (once per target per sequence)
+          if (!poisonedThisSequence.has(currentSummit.beast.token_id)) {
+            const { poisonTotalMax: ptm, poisonPotionsUsed: ppu, targetedPoisonBeasts: tpb } = useAutopilotStore.getState();
+            const isBeastTarget = tpb.length > 0 && isBeastTargetedForPoison(currentSummit.beast.token_id, tpb);
+            if (isBeastTarget) {
+              const beastAmount = getTargetedBeastPoisonAmount(currentSummit.beast.token_id, tpb);
+              const remainingCap = Math.max(0, ptm - ppu);
+              const pb = tokenBalances?.["POISON"] || 0;
+              const amount = Math.min(beastAmount, pb, remainingCap);
+              if (amount > 0) {
+                await executeGameAction({ type: 'apply_poison', beastId: currentSummit.beast.token_id, count: amount });
+                poisonedThisSequence.add(currentSummit.beast.token_id);
+              }
+            } else if (tpp.length > 0 && isOwnerTargetedForPoison(currentSummit.owner, tpp)) {
+              const playerAmount = getTargetedPoisonAmount(currentSummit.owner, tpp);
+              const remainingCap = Math.max(0, ptm - ppu);
+              const pb = tokenBalances?.["POISON"] || 0;
+              const amount = Math.min(playerAmount, pb, remainingCap);
+              if (amount > 0) {
+                await executeGameAction({ type: 'apply_poison', beastId: currentSummit.beast.token_id, count: amount });
+                poisonedThisSequence.add(currentSummit.beast.token_id);
+              }
             }
           }
         }
-      }
 
-      const result = await executeGameAction({
-        type: 'attack_until_capture',
-        beasts: batch,
-        extraLifePotions
-      });
+        const result = await executeGameAction({
+          type: 'attack_until_capture',
+          beasts: batch,
+          extraLifePotions
+        });
 
-      if (!result) {
-        setAttackInProgress(false);
-        return;
+        if (!result) {
+          break;
+        }
       }
+    } catch (err) {
+      console.error('[Autopilot] Attack sequence failed:', err);
+    } finally {
+      setAttackInProgress(false);
     }
-
-    setAttackInProgress(false);
   };
 
   const startAutopilot = () => {

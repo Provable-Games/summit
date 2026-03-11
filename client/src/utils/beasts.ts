@@ -313,18 +313,32 @@ export const calculateOptimalAttackPotions = (selection: AttackSelection, summit
     ? (summit.beast.health + summit.beast.bonus_health)
     : Math.max(1, summit.beast.current_health || 0);
 
+  // Check if 0 potions already suffices
+  const baseCombat = calculateBattleResult(beast, summit, 0);
+  if ((baseCombat.estimatedDamage * attacks) > targetDamage || baseCombat.attack >= target) {
+    return 0;
+  }
 
-  let bestRequired = Number.POSITIVE_INFINITY;
-  for (let n = 0; n <= maxAllowed; n++) {
-    const combat = calculateBattleResult(beast, summit, n);
+  // Check if max potions can meet the threshold at all
+  const maxCombat = calculateBattleResult(beast, summit, maxAllowed);
+  if ((maxCombat.estimatedDamage * attacks) <= targetDamage && maxCombat.attack < target) {
+    return maxAllowed;
+  }
+
+  // Binary search for minimum potions needed (damage is monotonic with potion count)
+  let lo = 1;
+  let hi = maxAllowed;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    const combat = calculateBattleResult(beast, summit, mid);
     if ((combat.estimatedDamage * attacks) > targetDamage || combat.attack >= target) {
-      bestRequired = n;
-      break;
+      hi = mid;
+    } else {
+      lo = mid + 1;
     }
   }
 
-  const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
-  return value;
+  return lo;
 }
 
 export const calculateMaxAttackPotions = (selection: AttackSelection, summit: Summit, maxAllowed: number) => {
@@ -333,18 +347,31 @@ export const calculateMaxAttackPotions = (selection: AttackSelection, summit: Su
   const target = (summit.beast.extra_lives > 0)
     ? (summit.beast.health + summit.beast.bonus_health)
     : Math.max(1, summit.beast.current_health || 0);
-  let bestRequired = Number.POSITIVE_INFINITY;
-  if (beast && beast.current_health > 0) {
-    for (let n = 0; n <= maxAllowed; n++) {
-      const combat = calculateBattleResult(beast, summit, n);
-      if ((combat.attack * attacks) >= target) {
-        bestRequired = n;
-        break;
-      }
+
+  if (!beast || beast.current_health <= 0) return maxAllowed;
+
+  // Check if 0 potions already suffices
+  const baseCombat = calculateBattleResult(beast, summit, 0);
+  if ((baseCombat.attack * attacks) >= target) return 0;
+
+  // Check if max potions can meet the threshold at all
+  const maxCombat = calculateBattleResult(beast, summit, maxAllowed);
+  if ((maxCombat.attack * attacks) < target) return maxAllowed;
+
+  // Binary search for minimum potions needed
+  let lo = 1;
+  let hi = maxAllowed;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    const combat = calculateBattleResult(beast, summit, mid);
+    if ((combat.attack * attacks) >= target) {
+      hi = mid;
+    } else {
+      lo = mid + 1;
     }
   }
-  const value = Number.isFinite(bestRequired) ? Math.min(maxAllowed, bestRequired) : maxAllowed;
-  return value;
+
+  return lo;
 }
 
 export const calculateRevivalRequired = (selectedBeasts: selection) => {
