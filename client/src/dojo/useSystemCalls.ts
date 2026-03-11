@@ -99,8 +99,14 @@ export const useSystemCalls = () => {
     }
 
     try {
-      const tx = await account.execute(calls);
-      const receipt = await waitForTransaction(tx.transaction_hash, 0);
+      const tx = await Promise.race([
+        account.execute(calls),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Transaction submit timeout')), 30_000)),
+      ]);
+      const receipt = await Promise.race([
+        waitForTransaction(tx.transaction_hash, 0),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Transaction confirmation timeout')), 60_000)),
+      ]);
 
       if (receipt.execution_status === "REVERTED") {
         console.log('action failed reverted', receipt);
