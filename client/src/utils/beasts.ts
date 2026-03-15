@@ -638,25 +638,32 @@ export function selectOptimalBeasts(
     if (aCanSolo && !bCanSolo) return -1;
     if (bCanSolo && !aCanSolo) return 1;
 
-    // Neither can solo — prefer alive over revive at similar damage
-    const maxDmg = Math.max(a.damage, b.damage);
-    const minDmg = Math.min(a.damage, b.damage);
-    if (maxDmg > 0 && minDmg / maxDmg >= 0.8) {
-      // Similar damage — alive beasts first
-      if (aFree && !bFree) return -1;
-      if (bFree && !aFree) return 1;
-      // Same cost tier — prefer quest beasts
-      if (questActive) {
-        const aQuest = needsAnyQuest(a.beast);
-        const bQuest = needsAnyQuest(b.beast);
-        if (aQuest && !bQuest) return -1;
-        if (bQuest && !aQuest) return 1;
-        if (aQuest && bQuest && hasUrgencyQuest) {
+    // Neither can solo — alive quest beasts always before dead quest beasts
+    if (questActive) {
+      const aQuest = needsAnyQuest(a.beast);
+      const bQuest = needsAnyQuest(b.beast);
+      if (aQuest && bQuest) {
+        // Both need quests — alive first, then urgency, then damage
+        if (aFree && !bFree) return -1;
+        if (bFree && !aFree) return 1;
+        if (hasUrgencyQuest) {
           const aUrg = questUrgencyScore(a.beast, config.questFilters);
           const bUrg = questUrgencyScore(b.beast, config.questFilters);
           if (aUrg !== bUrg) return bUrg - aUrg;
         }
+        return b.damage - a.damage;
       }
+      // One needs quest, one doesn't — prefer quest beast if damage is at least 50%
+      if (aQuest && !bQuest && a.damage >= b.damage * 0.5) return -1;
+      if (bQuest && !aQuest && b.damage >= a.damage * 0.5) return 1;
+    }
+
+    // Same quest status — prefer alive at similar damage
+    const maxDmg = Math.max(a.damage, b.damage);
+    const minDmg = Math.min(a.damage, b.damage);
+    if (maxDmg > 0 && minDmg / maxDmg >= 0.8) {
+      if (aFree && !bFree) return -1;
+      if (bFree && !aFree) return 1;
       if (a.weightedCost !== b.weightedCost) return a.weightedCost - b.weightedCost;
     }
     return b.damage - a.damage;
