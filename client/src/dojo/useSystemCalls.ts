@@ -99,30 +99,8 @@ export const useSystemCalls = () => {
     }
 
     try {
-      console.log('[executeAction] Submitting', calls.length, 'calls:', calls.map(c => `${c.entrypoint}@${c.contractAddress?.slice(0, 10)}`));
-      console.log('[executeAction] Account type:', account.constructor?.name, 'Address:', account.address?.slice(0, 10));
-
-      const executePromise = account.execute(calls);
-      console.log('[executeAction] account.execute() called, waiting for response...');
-
-      // Check if the promise resolves or if controller is unresponsive
-      let settled = false;
-      executePromise.then(() => { settled = true; }).catch(() => { settled = true; });
-      setTimeout(() => {
-        if (!settled) console.warn('[executeAction] account.execute() still pending after 5s - controller may be unresponsive');
-      }, 5_000);
-      setTimeout(() => {
-        if (!settled) console.warn('[executeAction] account.execute() still pending after 15s - controller likely hung');
-      }, 15_000);
-
-      const tx = await Promise.race([
-        executePromise,
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Transaction submit timeout')), 30_000)),
-      ]);
-      const receipt = await Promise.race([
-        waitForTransaction(tx.transaction_hash, 0),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Transaction confirmation timeout')), 60_000)),
-      ]);
+      const tx = await account.execute(calls);
+      const receipt = await waitForTransaction(tx.transaction_hash, 0);
 
       if (receipt.execution_status === "REVERTED") {
         console.log('action failed reverted', receipt);
@@ -160,7 +138,6 @@ export const useSystemCalls = () => {
 
       return translatedEvents;
     } catch (error) {
-      console.error("Error executing action:", error);
       if (!autopilotEnabled) {
         const executionError =
           typeof error === "object" &&
