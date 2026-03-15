@@ -89,9 +89,12 @@ const POISON_OPTIONS: {
 
 const QUEST_OPTIONS: { id: string; label: string; description: string }[] = [
   { id: 'attack_summit', label: 'First Blood', description: 'Prioritize beasts that have never attacked the Summit.' },
-  { id: 'max_attack_streak', label: 'Consistency is Key', description: 'Prioritize beasts that haven\'t reached max attack streak of 10.' },
+  { id: 'max_attack_streak', label: 'Consistency is Key', description: 'Prioritize beasts whose streak is closest to expiring.' },
   { id: 'take_summit', label: 'Summit Conqueror', description: 'Prioritize beasts that haven\'t captured the Summit.' },
   { id: 'hold_summit_10s', label: 'Iron Grip', description: 'Prioritize beasts that haven\'t held the Summit for 10 seconds.' },
+  { id: 'level_up_3', label: 'Rising Power', description: 'Prioritize beasts below 3 bonus levels (lower level = higher priority).' },
+  { id: 'level_up_5', label: 'Apex Predator', description: 'Prioritize beasts below 5 bonus levels (lower level = higher priority).' },
+  { id: 'level_up_10', label: 'Mastery', description: 'Prioritize beasts below 10 bonus levels (lower level = higher priority).' },
   { id: 'revival_potion', label: 'Second Wind', description: 'Prioritize beasts that haven\'t used a revival potion.' },
   { id: 'attack_potion', label: 'A Vital Boost', description: 'Prioritize beasts that haven\'t used an attack potion.' },
 ];

@@ -2,7 +2,6 @@ import { useStarknetApi } from "@/api/starknet";
 import { useSummitApi } from "@/api/summitApi";
 import { useGameTokens } from "@/dojo/useGameTokens";
 import { useGameStore } from "@/stores/gameStore";
-import { useAnalytics } from "@/utils/analytics";
 import { delay } from "@/utils/utils";
 import { useAccount, useConnect, useDisconnect } from "@starknet-react/core";
 import type {
@@ -82,7 +81,6 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
   const [showTermsOfService, setShowTermsOfService] = useState(false);
   const [isWhitelistBlocked, setIsWhitelistBlocked] = useState(false);
-  const { identifyAddress } = useAnalytics();
 
   const filterValidAdventurers = useCallback(async () => {
     const accountAddress = account?.address;
@@ -124,8 +122,6 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
       fetchBeastCollection();
       fetchTokenBalances();
-      identifyAddress({ address: account.address });
-
       // Check if terms have been accepted
       const termsAccepted = typeof window !== 'undefined'
         ? localStorage.getItem('termsOfServiceAccepted')

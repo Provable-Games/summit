@@ -489,7 +489,9 @@ export function selectOptimalBeasts(
   const needsAnyQuest = (b: Beast) => questPredicates.some((p) => p(b));
 
   // Sort both by combat score desc, with quest-needing beasts boosted
-  const hasStreakQuest = config.questMode && config.questFilters.includes('max_attack_streak');
+  const hasUrgencyQuest = config.questMode && config.questFilters.some(f =>
+    f === 'max_attack_streak' || f === 'level_up_3' || f === 'level_up_5' || f === 'level_up_10'
+  );
   const sortWithQuestBoost = (a: Beast, b: Beast) => {
     if (questPredicates.length > 0) {
       const aNeeds = needsAnyQuest(a);
@@ -502,7 +504,7 @@ export function selectOptimalBeasts(
         if ((b.combat?.estimatedDamage ?? 0) >= (a.combat?.estimatedDamage ?? 0) * 0.5) return 1;
       }
       // Both need quests — prefer higher urgency (e.g. streak about to expire)
-      if (aNeeds && bNeeds && hasStreakQuest) {
+      if (aNeeds && bNeeds && hasUrgencyQuest) {
         const aUrgency = questUrgencyScore(a, config.questFilters);
         const bUrgency = questUrgencyScore(b, config.questFilters);
         if (aUrgency !== bUrgency) return bUrgency - aUrgency;
@@ -607,25 +609,27 @@ export function selectOptimalBeasts(
   const questActive = config.questMode && questPredicates.length > 0;
 
   candidates.sort((a, b) => {
-    // Both can solo the summit — prefer quest beasts, then cheaper, then higher damage
     const aCanSolo = a.damage >= damageThreshold;
     const bCanSolo = b.damage >= damageThreshold;
+    const aFree = a.reviveCost === 0;
+    const bFree = b.reviveCost === 0;
 
     if (aCanSolo && bCanSolo) {
-      // If quest mode: prefer beast that needs a quest
+      // Both can solo — prefer alive over revive first
+      if (aFree && !bFree) return -1;
+      if (bFree && !aFree) return 1;
+      // Same cost tier — prefer quest beasts
       if (questActive) {
         const aQuest = needsAnyQuest(a.beast);
         const bQuest = needsAnyQuest(b.beast);
         if (aQuest && !bQuest) return -1;
         if (bQuest && !aQuest) return 1;
-        // Both need quests — prefer higher urgency (streak about to expire)
-        if (aQuest && bQuest && hasStreakQuest) {
+        if (aQuest && bQuest && hasUrgencyQuest) {
           const aUrg = questUrgencyScore(a.beast, config.questFilters);
           const bUrg = questUrgencyScore(b.beast, config.questFilters);
           if (aUrg !== bUrg) return bUrg - aUrg;
         }
       }
-      // Both can solo — prefer cheaper
       if (a.weightedCost !== b.weightedCost) return a.weightedCost - b.weightedCost;
       return b.damage - a.damage;
     }
@@ -634,18 +638,20 @@ export function selectOptimalBeasts(
     if (aCanSolo && !bCanSolo) return -1;
     if (bCanSolo && !aCanSolo) return 1;
 
-    // Neither can solo — sort by damage descending, with cost tiebreaker for similar damage
+    // Neither can solo — prefer alive over revive at similar damage
     const maxDmg = Math.max(a.damage, b.damage);
     const minDmg = Math.min(a.damage, b.damage);
     if (maxDmg > 0 && minDmg / maxDmg >= 0.8) {
-      // If quest mode: prefer beast that needs a quest
+      // Similar damage — alive beasts first
+      if (aFree && !bFree) return -1;
+      if (bFree && !aFree) return 1;
+      // Same cost tier — prefer quest beasts
       if (questActive) {
         const aQuest = needsAnyQuest(a.beast);
         const bQuest = needsAnyQuest(b.beast);
         if (aQuest && !bQuest) return -1;
         if (bQuest && !aQuest) return 1;
-        // Both need quests — prefer higher urgency
-        if (aQuest && bQuest && hasStreakQuest) {
+        if (aQuest && bQuest && hasUrgencyQuest) {
           const aUrg = questUrgencyScore(a.beast, config.questFilters);
           const bUrg = questUrgencyScore(b.beast, config.questFilters);
           if (aUrg !== bUrg) return bUrg - aUrg;
@@ -688,6 +694,9 @@ export function questNeedsPredicate(quest: string): ((beast: Beast) => boolean) 
     case 'max_attack_streak': return (b) => !b.max_attack_streak;
     case 'take_summit': return (b) => !b.captured_summit;
     case 'hold_summit_10s': return (b) => b.summit_held_seconds < 10;
+    case 'level_up_3': return (b) => b.current_level - b.level < 3;
+    case 'level_up_5': return (b) => b.current_level - b.level < 5;
+    case 'level_up_10': return (b) => b.current_level - b.level < 10;
     case 'revival_potion': return (b) => !b.used_revival_potion;
     case 'attack_potion': return (b) => !b.used_attack_potion;
     default: return null;
@@ -722,14 +731,31 @@ export function streakUrgencyScore(beast: Beast): number {
 }
 
 /**
+ * Score 0-100 for how urgently a beast needs levels.
+ * Lower bonus levels = higher urgency (more room to grow).
+ */
+export function levelUrgencyScore(beast: Beast, targetLevels: number): number {
+  const bonusLevels = beast.current_level - beast.level;
+  if (bonusLevels >= targetLevels) return 0;
+  // Invert: 0 bonus levels = 100, close to target = low score
+  return ((targetLevels - bonusLevels) / targetLevels) * 100;
+}
+
+/**
  * Aggregate urgency score across active quest filters.
- * Currently only `max_attack_streak` has time-sensitive urgency.
+ * Streak quests have time-sensitive urgency; level quests prioritize lower-level beasts.
  */
 export function questUrgencyScore(beast: Beast, questFilters: string[]): number {
   let maxScore = 0;
   for (const quest of questFilters) {
     if (quest === 'max_attack_streak') {
       maxScore = Math.max(maxScore, streakUrgencyScore(beast));
+    } else if (quest === 'level_up_3') {
+      maxScore = Math.max(maxScore, levelUrgencyScore(beast, 3));
+    } else if (quest === 'level_up_5') {
+      maxScore = Math.max(maxScore, levelUrgencyScore(beast, 5));
+    } else if (quest === 'level_up_10') {
+      maxScore = Math.max(maxScore, levelUrgencyScore(beast, 10));
     }
   }
   return maxScore;

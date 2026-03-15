@@ -17,7 +17,6 @@ const getTokenBalancesMock = vi.fn(async () => ({}));
 const getBeastsByOwnerMock = vi.fn(async () => []);
 type ValidAdventurer = { token_id: number; score: number };
 const getValidAdventurersMock = vi.fn<(owner?: string) => Promise<ValidAdventurer[]>>(async () => []);
-const identifyAddressMock = vi.fn();
 
 vi.mock("@starknet-react/core", () => ({
   useAccount: () => ({
@@ -64,11 +63,6 @@ vi.mock("@/dojo/useGameTokens", () => ({
   }),
 }));
 
-vi.mock("@/utils/analytics", () => ({
-  useAnalytics: () => ({
-    identifyAddress: identifyAddressMock,
-  }),
-}));
 
 vi.mock("./starknet", () => ({
   useDynamicConnector: () => ({
