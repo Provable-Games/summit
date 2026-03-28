@@ -66,6 +66,58 @@ app.get("/health", async (c) => {
 });
 
 /**
+ * GET /beasts/total - Get total number of beasts
+ */
+app.get("/beasts/total", async (c) => {
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(beasts);
+
+  return c.json({ total: Number(result[0]?.count ?? 0) });
+});
+
+/**
+ * GET /beasts/lookup - Look up a beast by beast_id, prefix, and suffix
+ *
+ * Query params:
+ * - beast_id: Beast type ID (required)
+ * - prefix: Prefix ID (required)
+ * - suffix: Suffix ID (required)
+ *
+ * Returns token_id and owner for the matching beast
+ */
+app.get("/beasts/lookup", async (c) => {
+  const beastId = c.req.query("beast_id");
+  const prefix = c.req.query("prefix");
+  const suffix = c.req.query("suffix");
+
+  if (!beastId || !prefix || !suffix) {
+    return c.json({ error: "beast_id, prefix, and suffix are required" }, 400);
+  }
+
+  const results = await db
+    .select({
+      token_id: beasts.token_id,
+      owner: beast_owners.owner,
+    })
+    .from(beasts)
+    .leftJoin(beast_owners, eq(beast_owners.token_id, beasts.token_id))
+    .where(
+      and(
+        eq(beasts.beast_id, parseInt(beastId, 10)),
+        eq(beasts.prefix, parseInt(prefix, 10)),
+        eq(beasts.suffix, parseInt(suffix, 10))
+      )
+    );
+
+  if (results.length === 0) {
+    return c.json({ error: "Beast not found" }, 404);
+  }
+
+  return c.json(results[0]);
+});
+
+/**
  * GET /beasts/all - Get paginated list of all beasts with filtering
  *
  * Query params:
@@ -691,7 +743,9 @@ app.get("/", (c) => {
     health: "GET /health",
     beasts: {
       by_owner: "GET /beasts/:owner",
+      total: "GET /beasts/total",
       all: "GET /beasts/all?limit=25&offset=0&prefix=&suffix=&beast_id=&name=&owner=&sort=summit_held_seconds",
+      lookup: "GET /beasts/lookup?beast_id=&prefix=&suffix=",
       counts: "GET /beasts/stats/counts",
       top: "GET /beasts/stats/top?limit=25&offset=0",
     },
