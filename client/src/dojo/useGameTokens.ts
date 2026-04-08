@@ -47,18 +47,24 @@ export const useGameTokens = () => {
 
     // Step 2: Batch-check which IDs have been claimed (by anyone)
     const adventurerIds = data.map((row) => parseInt(row.token_id, 16));
-    const claimedResponse = await fetch(
-      `${currentNetworkConfig.apiUrl}/adventurers/claimed`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: adventurerIds }),
+    const CHUNK_SIZE = 2000;
+    const claimedSet = new Set<number>();
+
+    for (let i = 0; i < adventurerIds.length; i += CHUNK_SIZE) {
+      const chunk = adventurerIds.slice(i, i + CHUNK_SIZE);
+      const claimedResponse = await fetch(
+        `${currentNetworkConfig.apiUrl}/adventurers/claimed`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: chunk }),
+        }
+      );
+      const claimedData = await claimedResponse.json();
+      for (const id of (claimedData.claimed_ids ?? []) as string[]) {
+        claimedSet.add(Number(id));
       }
-    );
-    const claimedData = await claimedResponse.json();
-    const claimedSet = new Set(
-      (claimedData.claimed_ids as string[]).map((id: string) => Number(id))
-    );
+    }
 
     // Step 3: Filter out claimed adventurers
     return data
