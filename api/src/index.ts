@@ -672,6 +672,35 @@ app.get("/quest-rewards/total", async (c) => {
 });
 
 /**
+ * POST /adventurers/claimed - Check which adventurer_ids have been claimed
+ * Body: { ids: number[] }
+ * Returns the subset of provided IDs that exist in corpse_events (claimed by anyone)
+ */
+app.post("/adventurers/claimed", async (c) => {
+  const body = await c.req.json<{ ids?: number[] }>();
+  const ids = body.ids;
+
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    return c.json({ claimed_ids: [] });
+  }
+
+  if (ids.length > 2000) {
+    return c.json({ error: "Too many IDs (max 2000)" }, 400);
+  }
+
+  const bigintIds = ids.map((id) => BigInt(id));
+
+  const results = await db
+    .selectDistinct({ adventurer_id: corpse_events.adventurer_id })
+    .from(corpse_events)
+    .where(inArray(corpse_events.adventurer_id, bigintIds));
+
+  const claimedIds = results.map((r) => r.adventurer_id.toString());
+
+  return c.json({ claimed_ids: claimedIds });
+});
+
+/**
  * GET /adventurers/:player - Get all adventurer_ids for a player address
  * - Not paginated
  * - Returns distinct adventurer_ids as strings
@@ -751,6 +780,7 @@ app.get("/", (c) => {
     },
     adventurers: {
       by_player: "GET /adventurers/:player",
+      claimed: "POST /adventurers/claimed {ids: [1,2,3]}",
     },
     leaderboard: "GET /leaderboard",
     quest_rewards: {
