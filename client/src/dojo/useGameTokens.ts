@@ -22,22 +22,7 @@ export const useGameTokens = () => {
 
     const namespace = "relayer_0_0_1"
 
-    // Fetch adventurer_ids that already have corpse events from the API
-    const corpseResponse = await fetch(`${currentNetworkConfig.apiUrl}/adventurers/${owner}`);
-    const corpseData = await corpseResponse.json();
-    const claimedAdventurerIds: string[] = corpseData.adventurer_ids || [];
-
-    // Find the maximum claimed adventurer_id and filter token_id > max
-    let greaterThanClause = "";
-    if (claimedAdventurerIds.length > 0) {
-      const maxClaimedId = claimedAdventurerIds.reduce(
-        (max, id) => BigInt(id) > max ? BigInt(id) : max,
-        BigInt(0)
-      );
-      const maxHex = '0x' + maxClaimedId.toString(16).padStart(16, '0');
-      greaterThanClause = `AND tm.id > "${maxHex}"`;
-    }
-
+    // Step 1: Query Torii for all game-over tokens owned by this player
     const q = `
       SELECT o.token_id, tm.minted_by, tm.id, tm.game_over, s.score
       FROM '${namespace}-TokenMetadataUpdate' tm
@@ -47,19 +32,41 @@ export const useGameTokens = () => {
       WHERE o.owner = "${addAddressPadding(owner.toLowerCase())}"
       AND mr.minter_address = "${addAddressPadding(currentNetworkConfig.dungeon)}"
       AND tm.game_over = 1
-      ${greaterThanClause}
     `
     const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-    const sql = await fetch(url, {
+    const sqlResponse = await fetch(url, {
       method: "GET",
       headers: { "Content-Type": "application/json" }
     })
 
-    const data = await sql.json() as ValidAdventurerRow[]
-    return data.map((row) => ({
-      token_id: parseInt(row.token_id, 16),
-      score: parseInt(row.score, 16),
-    }))
+    const data = await sqlResponse.json() as ValidAdventurerRow[]
+
+    if (data.length === 0) {
+      return [];
+    }
+
+    // Step 2: Batch-check which IDs have been claimed (by anyone)
+    const adventurerIds = data.map((row) => parseInt(row.token_id, 16));
+    const claimedResponse = await fetch(
+      `${currentNetworkConfig.apiUrl}/adventurers/claimed`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: adventurerIds }),
+      }
+    );
+    const claimedData = await claimedResponse.json();
+    const claimedSet = new Set(
+      (claimedData.claimed_ids as string[]).map((id: string) => Number(id))
+    );
+
+    // Step 3: Filter out claimed adventurers
+    return data
+      .filter((row) => !claimedSet.has(parseInt(row.token_id, 16)))
+      .map((row) => ({
+        token_id: parseInt(row.token_id, 16),
+        score: parseInt(row.score, 16),
+      }));
   }, [currentNetworkConfig.apiUrl, currentNetworkConfig.dungeon, currentNetworkConfig.toriiUrl])
 
   return useMemo(() => ({

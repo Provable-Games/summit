@@ -38,34 +38,51 @@ describe("useGameTokens:getValidAdventurers", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("queries corpse API and torii SQL then maps rows", async () => {
+  it("queries torii SQL then checks claimed IDs via API", async () => {
     const fetchMock = vi
       .fn()
-      .mockResolvedValueOnce({
-        json: async () => ({
-          adventurer_ids: ["0x10", "0x12"],
-        }),
-      })
+      // First call: Torii SQL returns 3 game-over tokens
       .mockResolvedValueOnce({
         json: async () => [
+          { token_id: "0x10", score: "0x32" },
+          { token_id: "0x12", score: "0x50" },
           { token_id: "0x13", score: "0x51" },
-          { token_id: "0x14", score: "0x64" },
         ],
+      })
+      // Second call: claimed check says 16 and 18 are claimed
+      .mockResolvedValueOnce({
+        json: async () => ({
+          claimed_ids: ["16", "18"],
+        }),
       });
 
     vi.stubGlobal("fetch", fetchMock);
 
+    // Only token 0x13 (19) should survive filtering
     await expect(hookApi.getValidAdventurers("0xABCD")).resolves.toEqual([
       { token_id: 19, score: 81 },
-      { token_id: 20, score: 100 },
     ]);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://api.test/adventurers/0xABCD");
 
-    const sqlUrl = String(fetchMock.mock.calls[1]?.[0] ?? "");
-    const decodedSqlUrl = decodeURIComponent(sqlUrl);
-    expect(decodedSqlUrl).toContain("https://torii.test/sql?query=");
-    expect(decodedSqlUrl).toContain('AND tm.id > "0x0000000000000012"');
+    // First call is Torii SQL
+    const sqlUrl = String(fetchMock.mock.calls[0]?.[0] ?? "");
+    expect(decodeURIComponent(sqlUrl)).toContain("https://torii.test/sql?query=");
+
+    // Second call is POST to claimed check
+    expect(fetchMock.mock.calls[1]?.[0]).toBe("https://api.test/adventurers/claimed");
+    const postBody = JSON.parse(fetchMock.mock.calls[1]?.[1]?.body as string);
+    expect(postBody).toEqual({ ids: [16, 18, 19] });
+  });
+
+  it("skips claimed check when torii returns no tokens", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ json: async () => [] });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(hookApi.getValidAdventurers("0xABCD")).resolves.toEqual([]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
