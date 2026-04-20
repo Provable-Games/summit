@@ -64,7 +64,7 @@ function Leaderboard() {
 
         // Add top 5 leaderboard addresses
         data.slice(0, 5).forEach(player => {
-          addressesToLookup.push(player.owner);
+          if (player.owner) addressesToLookup.push(player.owner);
         });
 
         // Add summit owner if exists
