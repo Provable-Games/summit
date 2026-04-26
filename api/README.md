@@ -90,7 +90,7 @@ curl http://localhost:3001/health
 ### Query Parameters and Response Shapes
 
 `GET /beasts/all`
-- params: `limit` (default `25`, max `100`), `offset`, `prefix`, `suffix`, `beast_id`, `name`, `owner`, `sort` (`summit_held_seconds|level`), `include_total` (`true|false`, default `true`)
+- params: `limit` (default `25`, max `100`), `offset`, `prefix`, `suffix`, `beast_id`, `name`, `owner`, `shiny`, `animated`, `sort` (`summit_held_seconds|level`), `include_total` (`true|false`, default `true`)
 - returns: `{ data: Beast[], pagination: { limit, offset, total, has_more } }`
 
 `GET /logs`

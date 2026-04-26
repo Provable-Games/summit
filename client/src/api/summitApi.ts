@@ -53,6 +53,8 @@ export interface GetAllBeastsParams {
   beast_id?: number;
   name?: string;
   owner?: string;
+  shiny?: number;
+  animated?: number;
   sort?: 'summit_held_seconds' | 'level';
 }
 
@@ -172,6 +174,8 @@ export const useSummitApi = () => {
     if (params.beast_id) searchParams.set('beast_id', params.beast_id.toString());
     if (params.name) searchParams.set('name', params.name);
     if (params.owner) searchParams.set('owner', params.owner);
+    if (params.shiny) searchParams.set('shiny', params.shiny.toString());
+    if (params.animated) searchParams.set('animated', params.animated.toString());
     if (params.sort) searchParams.set('sort', params.sort);
 
     const response = await fetch(`${currentNetworkConfig.apiUrl}/beasts/all?${searchParams}`);
