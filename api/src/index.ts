@@ -190,6 +190,8 @@ app.get("/health", async (c) => {
  * - beast_id: Filter by beast type ID (optional, indexed)
  * - name: Filter by beast name search (optional, uses beast_id index)
  * - owner: Filter by owner address (optional, indexed)
+ * - shiny: Filter by shiny trait, 1 for shiny beasts (optional)
+ * - animated: Filter by animated trait, 1 for animated beasts (optional)
  * - sort: Sort by "summit_held_seconds" or "level" (default: summit_held_seconds, both indexed)
  * - include_total: Set to false to skip count(*) and return pagination.total=null
  */
@@ -201,16 +203,20 @@ app.get("/beasts/all", async (c) => {
   const beastId = c.req.query("beast_id");
   const name = c.req.query("name");
   const ownerRaw = c.req.query("owner");
+  const shiny = c.req.query("shiny");
+  const animated = c.req.query("animated");
   const sort = c.req.query("sort") || "summit_held_seconds";
   const includeTotal = parseIncludeTotal(c.req.query("include_total"));
   const owner = ownerRaw ? normalizeAddress(ownerRaw) : undefined;
 
-  // Build where conditions (all filters use indexed columns)
+  // Build where conditions.
   const conditions = [];
   if (prefix) conditions.push(eq(beasts.prefix, parseInt(prefix, 10)));
   if (suffix) conditions.push(eq(beasts.suffix, parseInt(suffix, 10)));
   if (beastId) conditions.push(eq(beasts.beast_id, parseInt(beastId, 10)));
   if (owner) conditions.push(eq(beast_owners.owner, owner));
+  if (shiny) conditions.push(eq(beasts.shiny, parseInt(shiny, 10)));
+  if (animated) conditions.push(eq(beasts.animated, parseInt(animated, 10)));
   if (name) {
     // Find beast IDs that match the name search (uses beast_id index)
     const lowerName = name.toLowerCase();
@@ -892,7 +898,7 @@ app.get("/", (c) => {
     health: "GET /health",
     beasts: {
       by_owner: "GET /beasts/:owner",
-      all: "GET /beasts/all?limit=25&offset=0&prefix=&suffix=&beast_id=&name=&owner=&sort=summit_held_seconds",
+      all: "GET /beasts/all?limit=25&offset=0&prefix=&suffix=&beast_id=&name=&owner=&shiny=&animated=&sort=summit_held_seconds",
       counts: "GET /beasts/stats/counts",
       top: "GET /beasts/stats/top?limit=25&offset=0",
     },
