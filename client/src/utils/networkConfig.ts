@@ -51,6 +51,8 @@ export const TOKEN_ADDRESS = {
   LORDS: "0x0124aeb495b947201f5faC96fD1138E326AD86195B98df6DEc9009158A533B49"
 }
 
+const CONTROLLER_TOKEN_ALLOWANCE = "500000000000000000000000";
+
 export const NETWORKS = {
   SN_MAIN: {
     chainId: ChainId.SN_MAIN,
@@ -239,7 +241,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
         "methods": [
           {
             "name": "Approve",
-            "amount": "50000000000000000000000",
+            "amount": CONTROLLER_TOKEN_ALLOWANCE,
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Attack Potion",
             "entrypoint": "approve"
@@ -252,7 +254,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
         "methods": [
           {
             "name": "Approve",
-            "amount": "50000000000000000000000",
+            "amount": CONTROLLER_TOKEN_ALLOWANCE,
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Revive Potion",
             "entrypoint": "approve"
@@ -265,7 +267,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
         "methods": [
           {
             "name": "Approve",
-            "amount": "50000000000000000000000",
+            "amount": CONTROLLER_TOKEN_ALLOWANCE,
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Extra Life Potion",
             "entrypoint": "approve"
@@ -278,7 +280,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
         "methods": [
           {
             "name": "Approve",
-            "amount": "50000000000000000000000",
+            "amount": CONTROLLER_TOKEN_ALLOWANCE,
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Poison Potion",
             "entrypoint": "approve"
@@ -296,7 +298,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           },
           {
             "name": "Approve",
-            "amount": "50000000000000000000000",
+            "amount": CONTROLLER_TOKEN_ALLOWANCE,
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Skull Token",
             "entrypoint": "approve"
@@ -314,7 +316,7 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
           },
           {
             "name": "Approve",
-            "amount": "50000000000000000000000",
+            "amount": CONTROLLER_TOKEN_ALLOWANCE,
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Corpse Token",
             "entrypoint": "approve"
