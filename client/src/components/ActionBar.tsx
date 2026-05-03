@@ -46,7 +46,7 @@ function ActionBar() {
   const { selectedBeasts, summit,
     attackInProgress,
     applyingPotions, appliedPoisonCount, setAppliedPoisonCount,
-    collection, collectionSyncing, setSelectedBeasts, attackMode, setAttackMode,
+    collection, collectionSyncing, attackMode, setAttackMode,
     autopilotEnabled, appliedExtraLifePotions, setAppliedExtraLifePotions } = useGameStore();
   const {
     extraLifeStrategy,
@@ -64,7 +64,6 @@ function ActionBar() {
   } = useAutopilotStore();
 
   const {
-    collectionWithCombat,
     isSavage,
     enableAttack,
     revivalPotionsRequired,

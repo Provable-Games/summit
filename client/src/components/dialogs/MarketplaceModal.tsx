@@ -44,16 +44,6 @@ interface Potion {
   color: string;
 }
 
-interface UserToken {
-  symbol: string;
-  balance: string;
-  rawBalance: number;
-  address: string;
-  decimals: number;
-  displayDecimals: number;
-  price: number;
-}
-
 const POTIONS: Potion[] = [
   {
     id: 'ATTACK',
