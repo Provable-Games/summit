@@ -509,9 +509,9 @@ jobs:
             exit 1
           fi
 
-          REVIEW=$(jq -r 'select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
+          REVIEW=$(jq -r '.[] | select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
           if [ -z "$REVIEW" ]; then
-            REVIEW=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
+            REVIEW=$(jq -r '.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
           fi
           if [ -z "$REVIEW" ]; then
             echo "::error::Claude review produced no extractable output"
@@ -753,9 +753,9 @@ jobs:
             exit 1
           fi
 
-          REVIEW=$(jq -r 'select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
+          REVIEW=$(jq -r '.[] | select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
           if [ -z "$REVIEW" ]; then
-            REVIEW=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
+            REVIEW=$(jq -r '.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
           fi
           if [ -z "$REVIEW" ]; then
             echo "::error::Claude review produced no extractable output"
@@ -997,9 +997,9 @@ jobs:
             exit 1
           fi
 
-          REVIEW=$(jq -r 'select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
+          REVIEW=$(jq -r '.[] | select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
           if [ -z "$REVIEW" ]; then
-            REVIEW=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
+            REVIEW=$(jq -r '.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
           fi
           if [ -z "$REVIEW" ]; then
             echo "::error::Claude review produced no extractable output"
@@ -1242,9 +1242,9 @@ jobs:
             exit 1
           fi
 
-          REVIEW=$(jq -r 'select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
+          REVIEW=$(jq -r '.[] | select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
           if [ -z "$REVIEW" ]; then
-            REVIEW=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
+            REVIEW=$(jq -r '.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
           fi
           if [ -z "$REVIEW" ]; then
             echo "::error::Claude review produced no extractable output"
