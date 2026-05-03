@@ -168,3 +168,5 @@ Realtime pipeline:
 API CI runs:
 
 `pnpm exec tsc --noEmit -> pnpm build`.
+
+For the broader CI matrix (which scopes trigger which jobs), see `../AGENTS.md`.

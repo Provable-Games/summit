@@ -309,3 +309,5 @@ If you change packed layout or field order, update and re-verify:
 - `indexer/src/lib/decoder.ts`
 - `client/src/utils/translation.ts`
 - parity scripts in `indexer/scripts/` and `client/scripts/`
+
+For the broader CI matrix (which scopes trigger which jobs), see `../AGENTS.md`.

@@ -114,3 +114,5 @@ Tailwind is not used in this project.
 Client CI runs on `client/**` and `contracts/src/models/beast.cairo` changes:
 
 `lint -> build -> test:parity -> test:coverage -> Codecov`.
+
+For the broader CI matrix (which scopes trigger which jobs), see `../AGENTS.md`.
