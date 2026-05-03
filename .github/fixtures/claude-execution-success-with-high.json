@@ -1,0 +1,17 @@
+[
+  {
+    "type": "system",
+    "subtype": "init",
+    "model": "claude-opus-4-7"
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "duration_ms": 8000,
+    "num_turns": 2,
+    "result": "## Claude Review - Test Scope\n\n[HIGH] contracts/src/foo.cairo:42 - reentrancy: external call before state update\nImpact: an attacker could re-enter and drain.\nFix: move state update before the call.\n\n[LOW] contracts/src/bar.cairo:10 - missing comment\nImpact: minor readability.\nFix: add a doc comment.\n\nSummary: 0 CRITICAL, 1 HIGH, 0 MEDIUM, 1 LOW, 0 INFO",
+    "total_cost_usd": 0.04,
+    "session_id": "session-high"
+  }
+]
