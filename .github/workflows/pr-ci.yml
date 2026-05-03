@@ -502,9 +502,11 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
+          : > /tmp/review.txt
+
           if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
-            echo "Claude action did not produce an execution file." > /tmp/review.txt
-            exit 0
+            echo "::error::Claude action did not produce an execution file"
+            exit 1
           fi
 
           REVIEW=$(jq -r 'select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
@@ -512,7 +514,8 @@ jobs:
             REVIEW=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
           fi
           if [ -z "$REVIEW" ]; then
-            REVIEW="Claude review did not produce output."
+            echo "::error::Claude review produced no extractable output"
+            exit 1
           fi
           printf '%s\n' "$REVIEW" > /tmp/review.txt
 
@@ -743,9 +746,11 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
+          : > /tmp/review.txt
+
           if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
-            echo "Claude action did not produce an execution file." > /tmp/review.txt
-            exit 0
+            echo "::error::Claude action did not produce an execution file"
+            exit 1
           fi
 
           REVIEW=$(jq -r 'select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
@@ -753,7 +758,8 @@ jobs:
             REVIEW=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
           fi
           if [ -z "$REVIEW" ]; then
-            REVIEW="Claude review did not produce output."
+            echo "::error::Claude review produced no extractable output"
+            exit 1
           fi
           printf '%s\n' "$REVIEW" > /tmp/review.txt
 
@@ -984,9 +990,11 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
+          : > /tmp/review.txt
+
           if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
-            echo "Claude action did not produce an execution file." > /tmp/review.txt
-            exit 0
+            echo "::error::Claude action did not produce an execution file"
+            exit 1
           fi
 
           REVIEW=$(jq -r 'select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
@@ -994,7 +1002,8 @@ jobs:
             REVIEW=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
           fi
           if [ -z "$REVIEW" ]; then
-            REVIEW="Claude review did not produce output."
+            echo "::error::Claude review produced no extractable output"
+            exit 1
           fi
           printf '%s\n' "$REVIEW" > /tmp/review.txt
 
@@ -1226,9 +1235,11 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
+          : > /tmp/review.txt
+
           if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
-            echo "Claude action did not produce an execution file." > /tmp/review.txt
-            exit 0
+            echo "::error::Claude action did not produce an execution file"
+            exit 1
           fi
 
           REVIEW=$(jq -r 'select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
@@ -1236,7 +1247,8 @@ jobs:
             REVIEW=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
           fi
           if [ -z "$REVIEW" ]; then
-            REVIEW="Claude review did not produce output."
+            echo "::error::Claude review produced no extractable output"
+            exit 1
           fi
           printf '%s\n' "$REVIEW" > /tmp/review.txt
 
