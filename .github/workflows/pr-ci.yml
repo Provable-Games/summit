@@ -415,6 +415,7 @@ jobs:
     needs: [changes, contracts-lint]
     if: needs.changes.outputs.contracts_review == 'true' && needs.changes.outputs.can_run_claude_reviews == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write
@@ -477,11 +478,13 @@ jobs:
           echo "${DELIMITER}" >> "$GITHUB_OUTPUT"
 
       - name: Run Claude review
-        uses: anthropics/claude-code-action@beta
+        # v1.0.111 — pin by SHA for security (third-party action with write perms + secrets).
+        uses: anthropics/claude-code-action@fefa07e9c665b7320f08c3b525980457f22f58aa
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          direct_prompt: ${{ steps.build-prompt.outputs.prompt }}
-          allowed_tools: "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
+          prompt: ${{ steps.build-prompt.outputs.prompt }}
+          claude_args: |
+            --allowedTools "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
 
       - name: Check for blocking findings
         if: always()
@@ -532,6 +535,7 @@ jobs:
     needs: [changes, contracts-lint]
     if: needs.changes.outputs.contracts_review == 'true' && needs.changes.outputs.can_run_ai_reviews == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       issues: write
@@ -644,6 +648,7 @@ jobs:
     needs: [changes, client-lint]
     if: needs.changes.outputs.client_review == 'true' && needs.changes.outputs.can_run_claude_reviews == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write
@@ -706,11 +711,13 @@ jobs:
           echo "${DELIMITER}" >> "$GITHUB_OUTPUT"
 
       - name: Run Claude review
-        uses: anthropics/claude-code-action@beta
+        # v1.0.111 — pin by SHA for security (third-party action with write perms + secrets).
+        uses: anthropics/claude-code-action@fefa07e9c665b7320f08c3b525980457f22f58aa
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          direct_prompt: ${{ steps.build-prompt.outputs.prompt }}
-          allowed_tools: "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
+          prompt: ${{ steps.build-prompt.outputs.prompt }}
+          claude_args: |
+            --allowedTools "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
 
       - name: Check for blocking findings
         if: always()
@@ -761,6 +768,7 @@ jobs:
     needs: [changes, client-lint]
     if: needs.changes.outputs.client_review == 'true' && needs.changes.outputs.can_run_ai_reviews == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       issues: write
@@ -873,6 +881,7 @@ jobs:
     needs: [changes, indexer-api-lint]
     if: needs.changes.outputs.indexer_api_review == 'true' && needs.changes.outputs.can_run_claude_reviews == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write
@@ -935,11 +944,13 @@ jobs:
           echo "${DELIMITER}" >> "$GITHUB_OUTPUT"
 
       - name: Run Claude review
-        uses: anthropics/claude-code-action@beta
+        # v1.0.111 — pin by SHA for security (third-party action with write perms + secrets).
+        uses: anthropics/claude-code-action@fefa07e9c665b7320f08c3b525980457f22f58aa
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          direct_prompt: ${{ steps.build-prompt.outputs.prompt }}
-          allowed_tools: "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
+          prompt: ${{ steps.build-prompt.outputs.prompt }}
+          claude_args: |
+            --allowedTools "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
 
       - name: Check for blocking findings
         if: always()
@@ -1002,6 +1013,7 @@ jobs:
     needs: [changes, indexer-api-lint]
     if: needs.changes.outputs.indexer_api_review == 'true' && needs.changes.outputs.can_run_ai_reviews == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       issues: write
@@ -1114,6 +1126,7 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.general_review == 'true' && needs.changes.outputs.can_run_claude_reviews == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write
@@ -1177,11 +1190,13 @@ jobs:
           echo "${DELIMITER}" >> "$GITHUB_OUTPUT"
 
       - name: Run Claude review
-        uses: anthropics/claude-code-action@beta
+        # v1.0.111 — pin by SHA for security (third-party action with write perms + secrets).
+        uses: anthropics/claude-code-action@fefa07e9c665b7320f08c3b525980457f22f58aa
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          direct_prompt: ${{ steps.build-prompt.outputs.prompt }}
-          allowed_tools: "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
+          prompt: ${{ steps.build-prompt.outputs.prompt }}
+          claude_args: |
+            --allowedTools "Bash(git diff *),Bash(git log *),Bash(git show *),Read,Glob,Grep"
 
       - name: Check for blocking findings
         if: always()
@@ -1232,6 +1247,7 @@ jobs:
     needs: [changes]
     if: needs.changes.outputs.general_review == 'true' && needs.changes.outputs.can_run_ai_reviews == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       issues: write
