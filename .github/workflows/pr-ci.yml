@@ -66,10 +66,7 @@ jobs:
               - ".github/prompts/**"
               - ".github/actions/**"
 
-      # dorny/paths-filter @v3 OR-list semantics don't reliably honor `!`
-      # negations against a leading `**` (changed files inside excluded
-      # scopes still match). Compute general_review explicitly: true iff
-      # the PR touches at least one file outside the four scoped trees.
+      # True iff the PR touches a file outside contracts/, client/, indexer/, api/.
       - name: Compute general_review
         id: general
         env:
@@ -505,9 +502,6 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
-          # v1 doesn't auto-post a PR comment in `prompt:` automation mode the
-          # way `direct_prompt:` did in beta. Capture Claude's final text from
-          # the streaming-JSON execution file and write it to /tmp/review.txt.
           if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
             echo "Claude action did not produce an execution file." > /tmp/review.txt
             exit 0
@@ -749,9 +743,6 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
-          # v1 doesn't auto-post a PR comment in `prompt:` automation mode the
-          # way `direct_prompt:` did in beta. Capture Claude's final text from
-          # the streaming-JSON execution file and write it to /tmp/review.txt.
           if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
             echo "Claude action did not produce an execution file." > /tmp/review.txt
             exit 0
@@ -993,9 +984,6 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
-          # v1 doesn't auto-post a PR comment in `prompt:` automation mode the
-          # way `direct_prompt:` did in beta. Capture Claude's final text from
-          # the streaming-JSON execution file and write it to /tmp/review.txt.
           if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
             echo "Claude action did not produce an execution file." > /tmp/review.txt
             exit 0
@@ -1238,9 +1226,6 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
         run: |
-          # v1 doesn't auto-post a PR comment in `prompt:` automation mode the
-          # way `direct_prompt:` did in beta. Capture Claude's final text from
-          # the streaming-JSON execution file and write it to /tmp/review.txt.
           if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
             echo "Claude action did not produce an execution file." > /tmp/review.txt
             exit 0
