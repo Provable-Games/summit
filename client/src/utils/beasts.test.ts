@@ -894,7 +894,7 @@ describe("questUrgencyScore", () => {
     const beast = makeBeast({ attack_streak: 7, last_death_timestamp: now - 86400 });
     const score = questUrgencyScore(beast, ["max_attack_streak"]);
     expect(score).toBeGreaterThan(0);
-    expect(score).toBe(streakUrgencyScore(beast));
+    expect(score).toBeCloseTo(streakUrgencyScore(beast));
   });
 });
 

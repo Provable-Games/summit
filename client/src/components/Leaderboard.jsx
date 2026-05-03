@@ -20,6 +20,12 @@ import RewardsRemainingBar from './RewardsRemainingBar';
 
 function Leaderboard() {
   const { beastsRegistered, beastsAlive, consumablesSupply, fetchStats } = useStatistics()
+  const potionSupply = consumablesSupply ?? {
+    attack: 0,
+    revive: 0,
+    xlife: 0,
+    poison: 0,
+  }
   const { summit, leaderboard, setLeaderboard } = useGameStore()
   const { getLeaderboard } = useSummitApi()
   const [initialLoading, setInitialLoading] = useState(true)
@@ -270,19 +276,19 @@ function Leaderboard() {
         <Box sx={styles.potionsGrid}>
           <Box sx={styles.potionBox} onClick={() => setSelectedPotion('attack')}>
             <Box component="img" src={attackPotionImg} sx={styles.potionIcon} alt="Attack" />
-            <Typography sx={styles.potionAmount}>{consumablesSupply.attack.toLocaleString()}</Typography>
+            <Typography sx={styles.potionAmount}>{potionSupply.attack.toLocaleString()}</Typography>
           </Box>
           <Box sx={styles.potionBox} onClick={() => setSelectedPotion('revive')}>
             <Box component="img" src={revivePotionImg} sx={styles.potionIcon} alt="Revive" />
-            <Typography sx={styles.potionAmount}>{consumablesSupply.revive.toLocaleString()}</Typography>
+            <Typography sx={styles.potionAmount}>{potionSupply.revive.toLocaleString()}</Typography>
           </Box>
           <Box sx={styles.potionBox} onClick={() => setSelectedPotion('xlife')}>
             <Box component="img" src={lifePotionImg} sx={styles.potionIcon} alt="Extra Life" />
-            <Typography sx={styles.potionAmount}>{consumablesSupply.xlife.toLocaleString()}</Typography>
+            <Typography sx={styles.potionAmount}>{potionSupply.xlife.toLocaleString()}</Typography>
           </Box>
           <Box sx={styles.potionBox} onClick={() => setSelectedPotion('poison')}>
             <Box component="img" src={poisonPotionImg} sx={styles.potionIcon} alt="Poison" />
-            <Typography sx={styles.potionAmount}>{consumablesSupply.poison.toLocaleString()}</Typography>
+            <Typography sx={styles.potionAmount}>{potionSupply.poison.toLocaleString()}</Typography>
           </Box>
         </Box>
         <Typography sx={styles.potionsExplainer}>Potions held by players</Typography>
