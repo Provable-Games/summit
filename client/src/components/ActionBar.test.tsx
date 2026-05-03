@@ -1,4 +1,5 @@
 import { act, create } from "react-test-renderer";
+import type { ReactTestRenderer } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const executeGameActionMock = vi.fn();
@@ -147,9 +148,13 @@ describe("ActionBar token balance coercion", () => {
   });
 
   it("renders with missing balance keys without crashing", async () => {
+    let renderer: ReactTestRenderer | undefined;
+
     await act(async () => {
-      create(<ActionBar />);
+      renderer = create(<ActionBar />);
     });
+
+    expect(renderer?.toJSON()).not.toBeNull();
   });
 
   it("renders with populated balances without crashing", async () => {
@@ -160,9 +165,13 @@ describe("ActionBar token balance coercion", () => {
       POISON: 13,
     };
 
+    let renderer: ReactTestRenderer | undefined;
+
     await act(async () => {
-      create(<ActionBar />);
+      renderer = create(<ActionBar />);
     });
+
+    expect(renderer?.toJSON()).not.toBeNull();
   });
 
   it("handles invalid balance values without crashing", async () => {
@@ -173,8 +182,12 @@ describe("ActionBar token balance coercion", () => {
       POISON: undefined as unknown as number,
     };
 
+    let renderer: ReactTestRenderer | undefined;
+
     await act(async () => {
-      create(<ActionBar />);
+      renderer = create(<ActionBar />);
     });
+
+    expect(renderer?.toJSON()).not.toBeNull();
   });
 });

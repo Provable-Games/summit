@@ -232,7 +232,7 @@ export function useAutopilotOrchestrator() {
         beast.prefix === summit.beast.prefix &&
         beast.suffix === summit.beast.suffix,
     );
-  }, [skipSharedDiplomacy, summit?.beast?.token_id, collection.length]);
+  }, [skipSharedDiplomacy, summit?.beast, collection]);
 
   const summitOwnerIgnored = useMemo(() => {
     if (ignoredPlayers.length === 0 || !summit?.owner) return false;
@@ -383,7 +383,7 @@ export function useAutopilotOrchestrator() {
     if (autopilotEnabled && !attackInProgress && summit?.beast.extra_lives === 0 && summit?.beast.current_health === 1) {
       setTriggerAutopilot();
     }
-  }, [autopilotEnabled, summit?.beast.current_health]);
+  }, [autopilotEnabled, attackInProgress, summit?.beast.current_health, summit?.beast.extra_lives]);
 
   // ── Return values needed by ActionBar UI ─────────────────────────────
 
