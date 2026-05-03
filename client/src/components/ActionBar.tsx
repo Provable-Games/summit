@@ -46,7 +46,7 @@ function ActionBar() {
   const { selectedBeasts, summit,
     attackInProgress,
     applyingPotions, appliedPoisonCount, setAppliedPoisonCount,
-    collection, collectionSyncing, setSelectedBeasts, attackMode, setAttackMode,
+    collection, collectionSyncing, attackMode, setAttackMode,
     autopilotEnabled, appliedExtraLifePotions, setAppliedExtraLifePotions } = useGameStore();
   const {
     extraLifeStrategy,
@@ -64,7 +64,6 @@ function ActionBar() {
   } = useAutopilotStore();
 
   const {
-    collectionWithCombat,
     isSavage,
     enableAttack,
     revivalPotionsRequired,
@@ -122,8 +121,8 @@ function ActionBar() {
 
   const highlightAttackButton = attackMode === 'autopilot' ? true : enableAttack;
 
-  const enableExtraLifePotion = tokenBalances["EXTRA LIFE"] > 0;
-  const enablePoisonPotion = tokenBalances["POISON"] > 0;
+  const enableExtraLifePotion = extraLifeBalance > 0;
+  const enablePoisonPotion = poisonBalance > 0;
   const enableApplyPoison = summit?.beast && !applyingPotions && appliedPoisonCount > 0;
   const enableApplyExtraLife = isSavage && summit?.beast && !applyingPotions && appliedExtraLifePotions > 0;
   const appliedAttackPotions = selectedBeasts.reduce((acc, beast) => acc + beast[2], 0)

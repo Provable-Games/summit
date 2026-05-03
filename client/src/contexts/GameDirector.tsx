@@ -23,8 +23,7 @@ import {
   getBeastDetails,
   getBeastRevivalTime,
 } from "@/utils/beasts";
-import { useAccount } from "@starknet-react/core";
-import { addAddressPadding, type Call } from "starknet";
+import type { Call } from "starknet";
 import type {
   PropsWithChildren
 } from "react";
@@ -71,7 +70,6 @@ const isSummitEvent = (
 ): event is SummitEventTranslation => event.componentName === "Summit";
 
 export const GameDirector = ({ children }: PropsWithChildren) => {
-  const { account } = useAccount();
   const { currentNetworkConfig } = useDynamicConnector();
   const {
     summit,
@@ -160,7 +158,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
     addLiveEvent(data);
 
     const { category, sub_category, data: eventData } = data;
-    const isOwnEvent = data.player === addAddressPadding(account?.address ?? "");
 
     // Helper to get beast info from event data
     const getBeastInfo = () => {
@@ -741,7 +738,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
       } : prev);
     } else if (action.type === "apply_poison") {
       const poisonCount = action.count ?? 0;
-      const beastId = action.beastId ?? 0;
       setTokenBalances((prev: Record<string, number>) => ({
         ...prev,
         POISON: (prev["POISON"] || 0) - poisonCount,
