@@ -32,6 +32,7 @@ const cartridgeController =
       policies: controllerConfig.policies,
       slot: controllerConfig.slot,
       preset: controllerConfig.preset,
+      shouldOverridePresetPolicies: true,
       chains: controllerConfig.chains,
       propagateSessionErrors: true,
     })
