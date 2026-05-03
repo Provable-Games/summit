@@ -501,19 +501,20 @@ jobs:
         if: always()
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          HEADING: "## Claude Review - Cairo/Starknet Contract Review"
         run: |
-          : > /tmp/review.txt
-
           if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
+            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
             echo "::error::Claude action did not produce an execution file"
             exit 1
           fi
 
-          REVIEW=$(jq -r 'select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
+          REVIEW=$(jq -r '[.[] | select(.type == "result")] | last | .result // empty' "$EXECUTION_FILE" 2>/dev/null || true)
           if [ -z "$REVIEW" ]; then
-            REVIEW=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
+            REVIEW=$(jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n\n")' "$EXECUTION_FILE" 2>/dev/null || true)
           fi
           if [ -z "$REVIEW" ]; then
+            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
             echo "::error::Claude review produced no extractable output"
             exit 1
           fi
@@ -524,17 +525,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          {
-            echo "## Claude Review - Cairo/Starknet Contract Review"
-            echo ""
-            if [ -s /tmp/review.txt ]; then
-              cat /tmp/review.txt
-            else
-              echo "No review output was produced."
-            fi
-          } > /tmp/review-formatted.txt
-
-          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
+          if [ ! -s /tmp/review.txt ]; then
+            echo "review file is empty; skipping comment"
+            exit 0
+          fi
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review.txt
 
       - name: Check for blocking findings
         if: always()
@@ -745,19 +740,20 @@ jobs:
         if: always()
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          HEADING: "## Claude Review - React/Frontend Review"
         run: |
-          : > /tmp/review.txt
-
           if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
+            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
             echo "::error::Claude action did not produce an execution file"
             exit 1
           fi
 
-          REVIEW=$(jq -r 'select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
+          REVIEW=$(jq -r '[.[] | select(.type == "result")] | last | .result // empty' "$EXECUTION_FILE" 2>/dev/null || true)
           if [ -z "$REVIEW" ]; then
-            REVIEW=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
+            REVIEW=$(jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n\n")' "$EXECUTION_FILE" 2>/dev/null || true)
           fi
           if [ -z "$REVIEW" ]; then
+            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
             echo "::error::Claude review produced no extractable output"
             exit 1
           fi
@@ -768,17 +764,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          {
-            echo "## Claude Review - React/Frontend Review"
-            echo ""
-            if [ -s /tmp/review.txt ]; then
-              cat /tmp/review.txt
-            else
-              echo "No review output was produced."
-            fi
-          } > /tmp/review-formatted.txt
-
-          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
+          if [ ! -s /tmp/review.txt ]; then
+            echo "review file is empty; skipping comment"
+            exit 0
+          fi
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review.txt
 
       - name: Check for blocking findings
         if: always()
@@ -989,19 +979,20 @@ jobs:
         if: always()
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          HEADING: "## Claude Review - Indexer/API Review"
         run: |
-          : > /tmp/review.txt
-
           if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
+            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
             echo "::error::Claude action did not produce an execution file"
             exit 1
           fi
 
-          REVIEW=$(jq -r 'select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
+          REVIEW=$(jq -r '[.[] | select(.type == "result")] | last | .result // empty' "$EXECUTION_FILE" 2>/dev/null || true)
           if [ -z "$REVIEW" ]; then
-            REVIEW=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
+            REVIEW=$(jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n\n")' "$EXECUTION_FILE" 2>/dev/null || true)
           fi
           if [ -z "$REVIEW" ]; then
+            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
             echo "::error::Claude review produced no extractable output"
             exit 1
           fi
@@ -1012,17 +1003,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          {
-            echo "## Claude Review - Indexer/API Review"
-            echo ""
-            if [ -s /tmp/review.txt ]; then
-              cat /tmp/review.txt
-            else
-              echo "No review output was produced."
-            fi
-          } > /tmp/review-formatted.txt
-
-          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
+          if [ ! -s /tmp/review.txt ]; then
+            echo "review file is empty; skipping comment"
+            exit 0
+          fi
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review.txt
 
       - name: Check for blocking findings
         if: always()
@@ -1234,19 +1219,20 @@ jobs:
         if: always()
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+          HEADING: "## Claude Review - General Engineering Review"
         run: |
-          : > /tmp/review.txt
-
           if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
+            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
             echo "::error::Claude action did not produce an execution file"
             exit 1
           fi
 
-          REVIEW=$(jq -r 'select(.type == "result") | .result // empty' "$EXECUTION_FILE" 2>/dev/null | tail -1)
+          REVIEW=$(jq -r '[.[] | select(.type == "result")] | last | .result // empty' "$EXECUTION_FILE" 2>/dev/null || true)
           if [ -z "$REVIEW" ]; then
-            REVIEW=$(jq -r 'select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text // empty' "$EXECUTION_FILE" 2>/dev/null)
+            REVIEW=$(jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n\n")' "$EXECUTION_FILE" 2>/dev/null || true)
           fi
           if [ -z "$REVIEW" ]; then
+            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
             echo "::error::Claude review produced no extractable output"
             exit 1
           fi
@@ -1257,17 +1243,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          {
-            echo "## Claude Review - General Engineering Review"
-            echo ""
-            if [ -s /tmp/review.txt ]; then
-              cat /tmp/review.txt
-            else
-              echo "No review output was produced."
-            fi
-          } > /tmp/review-formatted.txt
-
-          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review-formatted.txt
+          if [ ! -s /tmp/review.txt ]; then
+            echo "review file is empty; skipping comment"
+            exit 0
+          fi
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/review.txt
 
       - name: Check for blocking findings
         if: always()
