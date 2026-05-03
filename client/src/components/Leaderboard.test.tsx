@@ -17,6 +17,12 @@ vi.mock("@/contexts/Statistics", () => ({
   useStatistics: () => ({
     beastsRegistered: 10,
     beastsAlive: 3,
+    consumablesSupply: {
+      attack: 100,
+      revive: 200,
+      xlife: 300,
+      poison: 400,
+    },
     fetchBeastCounts: hoisted.fetchBeastCountsMock,
   }),
 }));

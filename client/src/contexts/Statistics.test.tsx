@@ -1,9 +1,10 @@
 import { act, create } from "react-test-renderer";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { getSwapQuoteMock, getBeastCountsMock, getQuestRewardsTotalMock, mockNetworkConfig } = vi.hoisted(() => ({
+const { getSwapQuoteMock, getBeastCountsMock, getConsumablesSupplyMock, getQuestRewardsTotalMock, mockNetworkConfig } = vi.hoisted(() => ({
   getSwapQuoteMock: vi.fn(async () => ({ total: "-2000000", totalDisplay: -2e6 })),
   getBeastCountsMock: vi.fn(async () => ({ total: 12, alive: 5, dead: 7 })),
+  getConsumablesSupplyMock: vi.fn(async () => ({ attack: 1, revive: 2, xlife: 3, poison: 4 })),
   getQuestRewardsTotalMock: vi.fn(async () => 25),
   mockNetworkConfig: {
     tokens: {
@@ -22,6 +23,7 @@ vi.mock("@/api/ekubo", () => ({
 vi.mock("@/api/summitApi", () => ({
   useSummitApi: () => ({
     getBeastCounts: getBeastCountsMock,
+    getConsumablesSupply: getConsumablesSupplyMock,
     getQuestRewardsTotal: getQuestRewardsTotalMock,
   }),
 }));
@@ -68,6 +70,7 @@ describe("StatisticsProvider", () => {
     await flushEffects();
 
     expect(getBeastCountsMock).toHaveBeenCalledTimes(1);
+    expect(getConsumablesSupplyMock).toHaveBeenCalledTimes(1);
     expect(getQuestRewardsTotalMock).toHaveBeenCalledTimes(1);
     expect(getSwapQuoteMock).toHaveBeenCalledTimes(2);
     const firstCall = getSwapQuoteMock.mock.calls[0] as unknown as [bigint, string, string];
