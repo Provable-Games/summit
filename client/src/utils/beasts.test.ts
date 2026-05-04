@@ -11,6 +11,7 @@ import {
   isBeastLocked,
   getBeastLockedTimeRemaining,
   applyPoisonDamage,
+  getPoisonFloorProjection,
   calculateBattleResult,
   calculateOptimalAttackPotions,
   calculateMaxAttackPotions,
@@ -558,6 +559,71 @@ describe("applyPoisonDamage", () => {
     // currentHealthAfter = 295 - 2*100 = 95
     expect(result.currentHealth).toBe(95);
     expect(result.extraLives).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getPoisonFloorProjection
+// ---------------------------------------------------------------------------
+describe("getPoisonFloorProjection", () => {
+  it("computes seconds until poison reaches 1 HP and 0 extra lives", () => {
+    const nowSec = 1_700_000_000;
+    const summit = makeSummit(
+      { current_health: 50, extra_lives: 2, health: 100, bonus_health: 0 },
+      { poison_count: 10, poison_timestamp: nowSec },
+    );
+
+    const result = getPoisonFloorProjection(summit, nowSec);
+
+    expect(result.currentHealth).toBe(50);
+    expect(result.extraLives).toBe(2);
+    expect(result.ready).toBe(false);
+    expect(result.secondsUntilFloor).toBe(25);
+  });
+
+  it("returns ready immediately when poison has already reached 1 HP and 0 extra lives", () => {
+    const nowSec = 1_700_000_000;
+    const summit = makeSummit(
+      { current_health: 1, extra_lives: 0, health: 100, bonus_health: 0 },
+      { poison_count: 4, poison_timestamp: nowSec - 30 },
+    );
+
+    const result = getPoisonFloorProjection(summit, nowSec);
+
+    expect(result.currentHealth).toBe(1);
+    expect(result.extraLives).toBe(0);
+    expect(result.ready).toBe(true);
+    expect(result.secondsUntilFloor).toBe(0);
+  });
+
+  it("treats missing poison as not ready", () => {
+    const nowSec = 1_700_000_000;
+    const summit = makeSummit(
+      { current_health: 1, extra_lives: 0, health: 100, bonus_health: 0 },
+      { poison_count: 0, poison_timestamp: nowSec - 30 },
+    );
+
+    const result = getPoisonFloorProjection(summit, nowSec);
+
+    expect(result.currentHealth).toBe(1);
+    expect(result.extraLives).toBe(0);
+    expect(result.ready).toBe(false);
+    expect(result.secondsUntilFloor).toBeNull();
+  });
+
+  it("treats missing poison timestamp as not ready", () => {
+    const nowSec = 1_700_000_000;
+    const summit = makeSummit(
+      { current_health: 1, extra_lives: 0, health: 100, bonus_health: 0 },
+      { poison_count: 4, poison_timestamp: 0 },
+    );
+
+    const result = getPoisonFloorProjection(summit, nowSec);
+
+    expect(result.currentHealth).toBe(1);
+    expect(result.extraLives).toBe(0);
+    expect(result.ready).toBe(false);
+    expect(result.secondsUntilFloor).toBeNull();
   });
 });
 
