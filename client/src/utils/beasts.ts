@@ -259,32 +259,67 @@ export const getSpiritRevivalReductionSeconds = (points: number): number => {
 export function applyPoisonDamage(
   summit: Summit,
 ): { currentHealth: number; extraLives: number } {
+  const projection = getPoisonFloorProjection(summit);
+  return {
+    currentHealth: projection.currentHealth,
+    extraLives: projection.extraLives,
+  };
+}
+
+export interface PoisonFloorProjection {
+  currentHealth: number;
+  extraLives: number;
+  ready: boolean;
+  secondsUntilFloor: number | null;
+}
+
+function projectPoisonDamage(
+  summit: Summit,
+  nowSec: number,
+): { currentHealth: number; extraLives: number; totalPoolBefore: number; poisonDamage: number; poisonCount: number; hasActivePoison: boolean } {
   const count = Math.max(0, summit.poison_count || 0);
   const ts = Math.max(0, summit.poison_timestamp || 0);
+  const currentHealth = Math.max(0, summit.beast.current_health ?? 0);
+  const extraLives = Math.max(0, summit.beast.extra_lives ?? 0);
+  const maxHealth = Math.max(1, (summit.beast.health ?? 0) + (summit.beast.bonus_health ?? 0));
+  const totalPoolBefore = extraLives * maxHealth + currentHealth;
+
   if (count === 0 || ts === 0) {
     return {
-      currentHealth: Math.max(0, summit.beast.current_health ?? 0),
-      extraLives: Math.max(0, summit.beast.extra_lives ?? 0),
+      currentHealth,
+      extraLives,
+      totalPoolBefore,
+      poisonDamage: 0,
+      poisonCount: count,
+      hasActivePoison: false,
     };
   }
 
-  const nowSec = Math.floor(Date.now() / 1000);
   const elapsedSeconds = Math.max(0, nowSec - ts);
   const poisonDamage = count * elapsedSeconds;
 
   if (poisonDamage <= 0) {
     return {
-      currentHealth: summit.beast.current_health,
-      extraLives: summit.beast.extra_lives,
+      currentHealth,
+      extraLives,
+      totalPoolBefore,
+      poisonDamage,
+      poisonCount: count,
+      hasActivePoison: true,
     };
   }
 
-  const maxHealth = summit.beast.health + summit.beast.bonus_health;
-  const totalPoolBefore = summit.beast.extra_lives * maxHealth + summit.beast.current_health;
   const totalPoolAfter = totalPoolBefore - poisonDamage;
 
   if (totalPoolAfter <= 0) {
-    return { currentHealth: 1, extraLives: 0 };
+    return {
+      currentHealth: 1,
+      extraLives: 0,
+      totalPoolBefore,
+      poisonDamage,
+      poisonCount: count,
+      hasActivePoison: true,
+    };
   }
 
   const extraLivesAfter = Math.floor((totalPoolAfter - 1) / maxHealth);
@@ -293,6 +328,37 @@ export function applyPoisonDamage(
   return {
     currentHealth: currentHealthAfter,
     extraLives: extraLivesAfter,
+    totalPoolBefore,
+    poisonDamage,
+    poisonCount: count,
+    hasActivePoison: true,
+  };
+}
+
+export function getPoisonFloorProjection(
+  summit: Summit,
+  nowSec = Math.floor(Date.now() / 1000),
+): PoisonFloorProjection {
+  const projection = projectPoisonDamage(summit, nowSec);
+
+  if (!projection.hasActivePoison) {
+    return {
+      currentHealth: projection.currentHealth,
+      extraLives: projection.extraLives,
+      ready: false,
+      secondsUntilFloor: null,
+    };
+  }
+
+  const damageNeededForFloor = Math.max(0, projection.totalPoolBefore - 1);
+  const remainingDamage = Math.max(0, damageNeededForFloor - projection.poisonDamage);
+  const secondsUntilFloor = Math.ceil(remainingDamage / projection.poisonCount);
+
+  return {
+    currentHealth: projection.currentHealth,
+    extraLives: projection.extraLives,
+    ready: secondsUntilFloor === 0,
+    secondsUntilFloor,
   };
 }
 
