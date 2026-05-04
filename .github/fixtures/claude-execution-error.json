@@ -1,0 +1,35 @@
+[
+  {
+    "type": "system",
+    "subtype": "init",
+    "model": "claude-opus-4-7"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "role": "assistant",
+      "content": [
+        { "type": "text", "text": "Starting review of the contracts diff..." }
+      ]
+    }
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "role": "assistant",
+      "content": [
+        { "type": "tool_use", "id": "tool_1", "name": "Bash", "input": { "command": "git diff" } },
+        { "type": "text", "text": "Partial review before error" }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "error_during_execution",
+    "is_error": true,
+    "duration_ms": 3000,
+    "num_turns": 1,
+    "errors": ["rate_limit"],
+    "session_id": "session-error"
+  }
+]

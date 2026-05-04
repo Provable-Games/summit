@@ -1,0 +1,27 @@
+[
+  {
+    "type": "system",
+    "subtype": "init",
+    "model": "claude-opus-4-7"
+  },
+  {
+    "type": "assistant",
+    "message": {
+      "role": "assistant",
+      "content": [
+        { "type": "text", "text": "Looking at the diff..." },
+        { "type": "tool_use", "id": "tool_1", "name": "Bash", "input": { "command": "git diff" } }
+      ]
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "success",
+    "is_error": false,
+    "duration_ms": 12500,
+    "num_turns": 3,
+    "result": "## Claude Review - Test Scope\n\nrun=1 attempt=1 sha=abc scope=test\n\nNo issues found.\n\nSummary: 0 CRITICAL, 0 HIGH, 0 MEDIUM, 0 LOW, 0 INFO",
+    "total_cost_usd": 0.05,
+    "session_id": "session-success"
+  }
+]

@@ -65,6 +65,7 @@ jobs:
               - ".github/workflows/pr-ci.yml"
               - ".github/prompts/**"
               - ".github/actions/**"
+              - ".github/scripts/**"
 
       # True iff the PR touches a file outside contracts/, client/, indexer/, api/.
       - name: Compute general_review
@@ -502,23 +503,7 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
           HEADING: "## Claude Review - Cairo/Starknet Contract Review"
-        run: |
-          if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
-            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
-            echo "::error::Claude action did not produce an execution file"
-            exit 1
-          fi
-
-          REVIEW=$(jq -r '[.[] | select(.type == "result")] | last | .result // empty' "$EXECUTION_FILE" 2>/dev/null || true)
-          if [ -z "$REVIEW" ]; then
-            REVIEW=$(jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n\n")' "$EXECUTION_FILE" 2>/dev/null || true)
-          fi
-          if [ -z "$REVIEW" ]; then
-            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
-            echo "::error::Claude review produced no extractable output"
-            exit 1
-          fi
-          printf '%s\n' "$REVIEW" > /tmp/review.txt
+        run: bash .github/scripts/extract-claude-review.sh
 
       - name: Post review comment
         if: always()
@@ -741,23 +726,7 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
           HEADING: "## Claude Review - React/Frontend Review"
-        run: |
-          if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
-            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
-            echo "::error::Claude action did not produce an execution file"
-            exit 1
-          fi
-
-          REVIEW=$(jq -r '[.[] | select(.type == "result")] | last | .result // empty' "$EXECUTION_FILE" 2>/dev/null || true)
-          if [ -z "$REVIEW" ]; then
-            REVIEW=$(jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n\n")' "$EXECUTION_FILE" 2>/dev/null || true)
-          fi
-          if [ -z "$REVIEW" ]; then
-            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
-            echo "::error::Claude review produced no extractable output"
-            exit 1
-          fi
-          printf '%s\n' "$REVIEW" > /tmp/review.txt
+        run: bash .github/scripts/extract-claude-review.sh
 
       - name: Post review comment
         if: always()
@@ -980,23 +949,7 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
           HEADING: "## Claude Review - Indexer/API Review"
-        run: |
-          if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
-            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
-            echo "::error::Claude action did not produce an execution file"
-            exit 1
-          fi
-
-          REVIEW=$(jq -r '[.[] | select(.type == "result")] | last | .result // empty' "$EXECUTION_FILE" 2>/dev/null || true)
-          if [ -z "$REVIEW" ]; then
-            REVIEW=$(jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n\n")' "$EXECUTION_FILE" 2>/dev/null || true)
-          fi
-          if [ -z "$REVIEW" ]; then
-            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
-            echo "::error::Claude review produced no extractable output"
-            exit 1
-          fi
-          printf '%s\n' "$REVIEW" > /tmp/review.txt
+        run: bash .github/scripts/extract-claude-review.sh
 
       - name: Post review comment
         if: always()
@@ -1220,23 +1173,7 @@ jobs:
         env:
           EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
           HEADING: "## Claude Review - General Engineering Review"
-        run: |
-          if [ -z "$EXECUTION_FILE" ] || [ ! -f "$EXECUTION_FILE" ]; then
-            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
-            echo "::error::Claude action did not produce an execution file"
-            exit 1
-          fi
-
-          REVIEW=$(jq -r '[.[] | select(.type == "result")] | last | .result // empty' "$EXECUTION_FILE" 2>/dev/null || true)
-          if [ -z "$REVIEW" ]; then
-            REVIEW=$(jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "text") | .text] | join("\n\n")' "$EXECUTION_FILE" 2>/dev/null || true)
-          fi
-          if [ -z "$REVIEW" ]; then
-            printf '%s\n\nNo review output was produced.\n' "$HEADING" > /tmp/review.txt
-            echo "::error::Claude review produced no extractable output"
-            exit 1
-          fi
-          printf '%s\n' "$REVIEW" > /tmp/review.txt
+        run: bash .github/scripts/extract-claude-review.sh
 
       - name: Post review comment
         if: always()
