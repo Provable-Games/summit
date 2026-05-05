@@ -134,11 +134,11 @@ function decodeSpanFelt252(data: string[], startIndex: number): { values: string
 }
 
 /**
- * Decode a Span<u64> from data array
+ * Decode a Span of single-felt integer elements (u64, u128, felt252) from a data array.
  * Format: [length, elem1, elem2, ...]
- * Returns: array of bigints and the number of elements consumed
+ * Each element occupies one felt; the full felt is preserved as bigint (no masking).
  */
-function decodeSpanU64(data: string[], startIndex: number): { values: bigint[]; consumed: number } {
+function decodeSpanFeltBigInt(data: string[], startIndex: number): { values: bigint[]; consumed: number } {
   const length = hexToNumber(data[startIndex]);
   const values: bigint[] = [];
 
@@ -413,10 +413,10 @@ export function decodePoisonEvent(keys: string[], data: string[]): PoisonEventDa
 
 /**
  * Decode CorpseEvent
- * Data: adventurer_ids (Span<u64>), corpse_amount (u32), player (ContractAddress)
+ * Data: adventurer_ids (Span<felt252>), corpse_amount (u32), player (ContractAddress)
  */
 export function decodeCorpseEvent(keys: string[], data: string[]): CorpseEventData {
-  const { values: adventurer_ids, consumed } = decodeSpanU64(data, 0);
+  const { values: adventurer_ids, consumed } = decodeSpanFeltBigInt(data, 0);
   const corpse_amount = hexToNumber(data[consumed]);
   const player = feltToHex(data[consumed + 1]);
   return { adventurer_ids, corpse_amount, player };

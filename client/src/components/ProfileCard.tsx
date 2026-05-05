@@ -8,6 +8,7 @@ import starkImg from '@/assets/images/stark.svg';
 import { useController } from '@/contexts/controller';
 import { useSound } from '@/contexts/sound';
 import { useStatistics } from '@/contexts/Statistics';
+import { useSystemCalls } from '@/dojo/useSystemCalls';
 import { useGameStore } from '@/stores/gameStore';
 import { gameColors } from '@/utils/themes';
 import { ellipseAddress } from '@/utils/utils';
@@ -15,11 +16,13 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SportsEsportsIcon from '@mui/icons-material/SportsEsports';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import VolumeOff from '@mui/icons-material/VolumeOff';
 import VolumeUp from '@mui/icons-material/VolumeUp';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { Box, Button, Divider, IconButton, Popover, Skeleton, Slider, Switch, Tooltip, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, Divider, IconButton, Popover, Skeleton, Slider, Switch, Tooltip, Typography } from '@mui/material';
 import { useAccount, useConnect, useDisconnect } from '@starknet-react/core';
+import { useSnackbar } from 'notistack';
 import { useState } from 'react';
 import { isMobile } from 'react-device-detect';
 import BeastDexModal from './dialogs/BeastDexModal';
@@ -28,11 +31,14 @@ import TopUpStrkModal from './dialogs/TopUpStrkModal';
 
 const ProfileCard = () => {
   const { collection, loadingCollection, summitEnded } = useGameStore()
-  const { address, connector } = useAccount()
+  const { address, account, connector } = useAccount()
   const { disconnect } = useDisconnect()
-  const { playerName, tokenBalances, openProfile, gasSpent } = useController()
+  const { playerName, tokenBalances, setTokenBalances, openProfile, gasSpent } = useController()
   const { tokenPrices } = useStatistics();
   const { connect, connectors } = useConnect();
+  const { migrateCorpseTokens } = useSystemCalls();
+  const { enqueueSnackbar } = useSnackbar();
+  const [migrating, setMigrating] = useState(false);
 
   const cartridgeConnector = connectors.find(conn => conn.id === "controller")
 
@@ -44,8 +50,33 @@ const ProfileCard = () => {
   const [settingsAnchor, setSettingsAnchor] = useState<HTMLElement | null>(null)
   const isCartridge = connector?.id === 'controller'
   const killTokens = tokenBalances["SKULL"] || 0
+  // Display the new-contract balance only — old corpses must be migrated before they spend.
   const corpseTokens = tokenBalances["CORPSE"] || 0
+  const corpseTokensOld = tokenBalances["CORPSE_OLD"] || 0
   const strkBalance = tokenBalances["STRK"]
+
+  const handleMigrateCorpse = async () => {
+    if (!account || corpseTokensOld <= 0 || migrating) return;
+    setMigrating(true);
+    try {
+      const calls = migrateCorpseTokens(corpseTokensOld);
+      const tx = await account.execute(calls);
+      // optimistic balance update — refresh on next poll will reconcile
+      setTokenBalances((prev: Record<string, number>) => ({
+        ...prev,
+        CORPSE: (prev["CORPSE"] || 0) + corpseTokensOld,
+        CORPSE_OLD: 0,
+      }));
+      enqueueSnackbar(`Migrated ${corpseTokensOld} corpse tokens`, { variant: "success" });
+      console.log("Corpse migration tx:", tx.transaction_hash);
+      setSettingsAnchor(null);
+    } catch (err) {
+      console.error("Corpse migration failed:", err);
+      enqueueSnackbar("Corpse migration failed", { variant: "error" });
+    } finally {
+      setMigrating(false);
+    }
+  };
   const isLowGas = strkBalance !== undefined && strkBalance < 10
 
   const renderPotionItem = (imgSrc: string, tokenName: string) => {
@@ -158,6 +189,26 @@ const ProfileCard = () => {
             </Box>
 
             <Divider sx={{ borderColor: `${gameColors.accentGreen}30` }} />
+
+            {corpseTokensOld > 0 && (
+              <>
+                <Box sx={{ px: '6px', pt: '4px' }}>
+                  <Button
+                    variant="text"
+                    fullWidth
+                    disabled={migrating}
+                    startIcon={migrating
+                      ? <CircularProgress size={12} sx={{ color: '#ffedbb' }} />
+                      : <SwapHorizIcon sx={{ fontSize: '14px' }} />}
+                    onClick={handleMigrateCorpse}
+                    sx={styles.migrateButton}
+                  >
+                    {migrating ? 'Migrating…' : `Migrate old corpse`}
+                  </Button>
+                </Box>
+                <Divider sx={{ borderColor: `${gameColors.accentGreen}30`, mt: '4px' }} />
+              </>
+            )}
 
             <Box sx={{ px: '6px', pb: '6px', pt: '4px' }}>
               <Button
@@ -449,6 +500,26 @@ const styles = {
       color: '#ffedbb',
       backgroundColor: `${gameColors.mediumGreen}30`,
       opacity: 1,
+    },
+  },
+  migrateButton: {
+    color: '#ffedbb',
+    textTransform: 'none',
+    fontSize: '12px',
+    fontWeight: 600,
+    justifyContent: 'flex-start',
+    padding: '4px 8px',
+    minHeight: 0,
+    border: 'none',
+    lineHeight: 1,
+    opacity: 0.9,
+    borderRadius: '4px',
+    '&:hover': {
+      color: '#ffedbb',
+      backgroundColor: `${gameColors.mediumGreen}30`,
+    },
+    '&.Mui-disabled': {
+      color: `${gameColors.brightGreen}80`,
     },
   },
   tooltip: {

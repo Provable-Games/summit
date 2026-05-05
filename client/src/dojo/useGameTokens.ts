@@ -3,13 +3,14 @@ import { addAddressPadding } from "starknet";
 import { useCallback, useMemo } from "react";
 
 export interface ValidAdventurer {
-  token_id: number;
+  // felt252 decimal string — exceeds Number.MAX_SAFE_INTEGER
+  token_id: string;
   score: number;
+  player_name?: string;
 }
 
-interface ValidAdventurerRow {
-  token_id: string;
-  score: string;
+interface ClaimableResponse {
+  adventurers?: Array<{ id: string; score: number; player_name?: string }>;
 }
 
 export const useGameTokens = () => {
@@ -20,60 +21,23 @@ export const useGameTokens = () => {
       return [];
     }
 
-    const namespace = "relayer_0_0_1"
-
-    // Step 1: Query Torii for all game-over tokens owned by this player
-    const q = `
-      SELECT o.token_id, tm.minted_by, tm.id, tm.game_over, s.score
-      FROM '${namespace}-TokenMetadataUpdate' tm
-      LEFT JOIN '${namespace}-TokenScoreUpdate' s on s.id = tm.id
-      LEFT JOIN '${namespace}-OwnersUpdate' o ON o.token_id = tm.id
-      LEFT JOIN '${namespace}-MinterRegistryUpdate' mr ON mr.id = tm.minted_by
-      WHERE o.owner = "${addAddressPadding(owner.toLowerCase())}"
-      AND mr.minter_address = "${addAddressPadding(currentNetworkConfig.dungeon)}"
-      AND tm.game_over = 1
-    `
-    const url = `${currentNetworkConfig.toriiUrl}/sql?query=${encodeURIComponent(q)}`;
-    const sqlResponse = await fetch(url, {
+    const url = `${currentNetworkConfig.apiUrl}/adventurers/claimable?owner=${encodeURIComponent(addAddressPadding(owner.toLowerCase()))}`;
+    const response = await fetch(url, {
       method: "GET",
-      headers: { "Content-Type": "application/json" }
-    })
+      headers: { "Content-Type": "application/json" },
+    });
 
-    const data = await sqlResponse.json() as ValidAdventurerRow[]
-
-    if (data.length === 0) {
+    if (!response.ok) {
       return [];
     }
 
-    // Step 2: Batch-check which IDs have been claimed (by anyone)
-    const adventurerIds = data.map((row) => parseInt(row.token_id, 16));
-    const CHUNK_SIZE = 2000;
-    const claimedSet = new Set<number>();
-
-    for (let i = 0; i < adventurerIds.length; i += CHUNK_SIZE) {
-      const chunk = adventurerIds.slice(i, i + CHUNK_SIZE);
-      const claimedResponse = await fetch(
-        `${currentNetworkConfig.apiUrl}/adventurers/claimed`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ids: chunk }),
-        }
-      );
-      const claimedData = await claimedResponse.json();
-      for (const id of (claimedData.claimed_ids ?? []) as string[]) {
-        claimedSet.add(Number(id));
-      }
-    }
-
-    // Step 3: Filter out claimed adventurers
-    return data
-      .filter((row) => !claimedSet.has(parseInt(row.token_id, 16)))
-      .map((row) => ({
-        token_id: parseInt(row.token_id, 16),
-        score: parseInt(row.score, 16),
-      }));
-  }, [currentNetworkConfig.apiUrl, currentNetworkConfig.dungeon, currentNetworkConfig.toriiUrl])
+    const body = (await response.json()) as ClaimableResponse;
+    return (body.adventurers ?? []).map((a) => ({
+      token_id: a.id,
+      score: a.score,
+      player_name: a.player_name,
+    }));
+  }, [currentNetworkConfig.apiUrl])
 
   return useMemo(() => ({
     getValidAdventurers,

@@ -91,7 +91,8 @@ export interface Combat {
 }
 
 export interface Adventurer {
-  id: number;
+  // felt252 decimal string — Death Mountain ids exceed Number.MAX_SAFE_INTEGER
+  id: string;
   name: string;
   level: number;
   metadata: unknown;
@@ -122,8 +123,9 @@ export type AttackUntilCaptureGameAction = BaseGameAction & {
 };
 
 export type ClaimCorpseRewardGameAction = BaseGameAction & {
+  // adventurerIds are felt252 decimal strings (Death Mountain token ids exceed Number.MAX_SAFE_INTEGER)
   type: "claim_corpse_reward";
-  adventurerIds: number[];
+  adventurerIds: string[];
 };
 
 export type ClaimSkullRewardGameAction = BaseGameAction & {

@@ -546,6 +546,15 @@ describe("decodeCorpseEvent", () => {
     expect(result.adventurer_ids).toEqual([255n]);
     expect(result.corpse_amount).toBe(3);
   });
+
+  it("preserves felt252 ids larger than 2^64 without truncation", () => {
+    // Death Mountain adventurer ids are felt252 — verify a 160-bit id round-trips
+    // through the decoder as a BigInt with no u64 mask applied.
+    const largeId = "0x69f472b700000000000000c000000003c0000001";
+    const result = decodeCorpseEvent([], ["0x1", largeId, "0x1", "0xFEED"]);
+    expect(result.adventurer_ids).toEqual([BigInt(largeId)]);
+    expect(result.adventurer_ids[0] > (1n << 64n)).toBe(true);
+  });
 });
 
 describe("decodeSkullEvent", () => {

@@ -32,6 +32,7 @@ import {
   index,
   uniqueIndex,
   jsonb,
+  numeric,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -249,9 +250,10 @@ export const quest_rewards_claimed = pgTable(
 );
 
 /**
- * Corpse Events table - corpse creation history
+ * Corpse Events table - frozen historical claims from the legacy corpse contract.
  *
- * Append-only history of corpse collection.
+ * Append-only. No longer written to; preserved for historical reads.
+ * adventurer_id is bigint (u64) — matches the legacy contract's event payload.
  */
 export const corpse_events = pgTable(
   "corpse_events",
@@ -275,6 +277,36 @@ export const corpse_events = pgTable(
     index("corpse_events_adventurer_id_idx").on(table.adventurer_id),
     index("corpse_events_player_idx").on(table.player),
     index("corpse_events_created_at_idx").on(table.created_at.desc()),
+  ]
+);
+
+/**
+ * Corpse New Events table - corpse creation history from the new corpse contract.
+ *
+ * Append-only. adventurer_id is a Cairo felt252 (up to 251 bits) stored as numeric
+ * to preserve full precision (Death Mountain adventurer ids exceed u64).
+ */
+export const corpse_new_events = pgTable(
+  "corpse_new_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    adventurer_id: numeric("adventurer_id", { precision: 78, scale: 0 }).notNull(),
+    player: text("player").notNull(),
+    // Timestamps
+    created_at: timestamp("created_at").notNull(),
+    indexed_at: timestamp("indexed_at").notNull(),
+    inserted_at: timestamp("inserted_at").defaultNow(),
+    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+  },
+  (table) => [
+    uniqueIndex("corpse_new_events_block_tx_event_adv_idx").on(
+      table.block_number, table.transaction_hash, table.event_index, table.adventurer_id
+    ),
+    index("corpse_new_events_adventurer_id_idx").on(table.adventurer_id),
+    index("corpse_new_events_player_idx").on(table.player),
+    index("corpse_new_events_created_at_idx").on(table.created_at.desc()),
   ]
 );
 
@@ -426,6 +458,7 @@ export const schema = {
   rewards_claimed,
   poison_events,
   corpse_events,
+  corpse_new_events,
   skulls_claimed,
   quest_rewards_claimed,
   beast_owners,

@@ -15,7 +15,7 @@ const setLoadingCollectionMock = vi.fn();
 const setCollectionSyncingMock = vi.fn();
 const getTokenBalancesMock = vi.fn(async () => ({}));
 const getBeastsByOwnerMock = vi.fn(async () => []);
-type ValidAdventurer = { token_id: number; score: number };
+type ValidAdventurer = { token_id: string; score: number; player_name?: string };
 const getValidAdventurersMock = vi.fn<(owner?: string) => Promise<ValidAdventurer[]>>(async () => []);
 const identifyAddressMock = vi.fn();
 
@@ -128,7 +128,7 @@ describe("ControllerProvider.filterValidAdventurers", () => {
   it("maps valid adventurers into full Adventurer shape", async () => {
     mockState.accountAddress = "0xabc";
     getValidAdventurersMock.mockResolvedValue([
-      { token_id: 81, score: 100 },
+      { token_id: "81", score: 100 },
     ]);
 
     await renderProvider();
@@ -137,7 +137,7 @@ describe("ControllerProvider.filterValidAdventurers", () => {
     getValidAdventurersMock.mockClear();
     setAdventurerCollectionMock.mockClear();
     getValidAdventurersMock.mockResolvedValue([
-      { token_id: 81, score: 100 },
+      { token_id: "81", score: 100, player_name: "lordkb" },
     ]);
 
     await act(async () => {
@@ -147,8 +147,8 @@ describe("ControllerProvider.filterValidAdventurers", () => {
     expect(getValidAdventurersMock).toHaveBeenCalledWith("0xabc");
     expect(setAdventurerCollectionMock).toHaveBeenCalledWith([
       {
-        id: 81,
-        name: "Adventurer #81",
+        id: "81",
+        name: "lordkb",
         level: 10,
         metadata: null,
         soulbound: false,

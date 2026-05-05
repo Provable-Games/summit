@@ -85,7 +85,7 @@ PR CI is path-filtered and runs component-specific checks:
 | Poison Potion     | [`0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE`](https://voyager.online/contract/0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE) |
 | Revive Potion     | [`0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe`](https://voyager.online/contract/0x029023e0a455d19d6887bc13727356070089527b79e6feb562ffe1afd6711dbe) |
 | Extra Life Potion | [`0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796`](https://voyager.online/contract/0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796) |
-| Corpse Token      | [`0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a`](https://voyager.online/contract/0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a) |
+| Corpse Token      | [`0x00c0337454f4dc908da50ca78e9c76b34f6846c39a50e901d2c375b4dd8eaa4d`](https://voyager.online/contract/0x00c0337454f4dc908da50ca78e9c76b34f6846c39a50e901d2c375b4dd8eaa4d) |
 | Skull Token       | [`0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814`](https://voyager.online/contract/0x01c3c8284d7EED443b42F47e764032a56eAf50A9079D67993B633930E3689814) |
 
 ## Useful Links

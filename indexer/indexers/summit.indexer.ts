@@ -343,6 +343,7 @@ type RewardsEarnedRow = typeof schema.rewards_earned.$inferInsert;
 type RewardsClaimedRow = typeof schema.rewards_claimed.$inferInsert;
 type PoisonEventRow = typeof schema.poison_events.$inferInsert;
 type CorpseEventRow = typeof schema.corpse_events.$inferInsert;
+type CorpseNewEventRow = typeof schema.corpse_new_events.$inferInsert;
 type SkullsClaimedRow = typeof schema.skulls_claimed.$inferInsert;
 type QuestRewardsClaimedRow = typeof schema.quest_rewards_claimed.$inferInsert;
 type SummitLogRow = typeof schema.summit_log.$inferInsert;
@@ -369,6 +370,7 @@ interface BulkInsertBatches {
   rewards_claimed: RewardsClaimedRow[];
   poison_events: PoisonEventRow[];
   corpse_events: CorpseEventRow[];
+  corpse_new_events: CorpseNewEventRow[];
   skulls_claimed: SkullsClaimedRow[];
   quest_rewards_claimed: QuestRewardsClaimedRow[];
   summit_log: SummitLogRow[];
@@ -550,10 +552,11 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
     );
   }
 
-  // corpse_events - bulk insert with onConflictDoNothing
-  if (batches.corpse_events.length > 0) {
+  // corpse_new_events - bulk insert with onConflictDoNothing
+  // (Legacy corpse_events is no longer written; preserved for historical reads only.)
+  if (batches.corpse_new_events.length > 0) {
     insertPromises.push(
-      db.insert(schema.corpse_events).values(batches.corpse_events).onConflictDoNothing()
+      db.insert(schema.corpse_new_events).values(batches.corpse_new_events).onConflictDoNothing()
     );
   }
 
@@ -688,6 +691,7 @@ function createEmptyBatches(): BulkInsertBatches {
     rewards_claimed: [],
     poison_events: [],
     corpse_events: [],
+    corpse_new_events: [],
     skulls_claimed: [],
     quest_rewards_claimed: [],
     summit_log: [],
@@ -1423,14 +1427,15 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             continue;
           }
 
-          // Corpse contract - CorpseEvent
+          // Corpse contract - CorpseEvent (writes to corpse_new_events; legacy
+          // corpse_events is frozen historical data from the deprecated contract).
           if (addressToBigInt(event_address) === corpseAddressBigInt && selector === EVENT_SELECTORS.CorpseEvent) {
             const decoded = decodeCorpseEvent([...keys], [...data]);
 
-            // Process each adventurer_id individually into corpse_events
+            // adventurer_id is a felt252 — serialize to decimal string for the numeric column.
             for (const adventurer_id of decoded.adventurer_ids) {
-              batches.corpse_events.push({
-                adventurer_id,
+              batches.corpse_new_events.push({
+                adventurer_id: adventurer_id.toString(),
                 player: decoded.player,
                 created_at: block_timestamp,
                 indexed_at: indexed_at,

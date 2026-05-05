@@ -44,7 +44,8 @@ export const TOKEN_ADDRESS = {
   EXTRA_LIFE: "0x016dea82a6588ca9fb7200125fa05631b1c1735a313e24afe9c90301e441a796",
   POISON: "0x049eaed2a1bA2F2Eb6Ac2661ffd2d79231CdD7d5293D9448Df49c5986C9897aE",
   SKULL: "0x01c3c8284d7eed443b42f47e764032a56eaf50a9079d67993b633930e3689814",
-  CORPSE: "0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a",
+  CORPSE: "0x00c0337454f4dc908da50ca78e9c76b34f6846c39a50e901d2c375b4dd8eaa4d",
+  CORPSE_OLD: "0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a",
   SURVIVOR: "0x042DD777885AD2C116be96d4D634abC90A26A790ffB5871E037Dd5Ae7d2Ec86B",
   STRK: "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
   USDC: "0x033068F6539f8e6e6b131e6B2B814e6c34A5224bC66947c47DaB9dFeE93b35fb",
@@ -105,6 +106,11 @@ export const NETWORKS = {
         {
           name: "CORPSE",
           address: TOKEN_ADDRESS.CORPSE,
+          displayDecimals: 0,
+        },
+        {
+          name: "CORPSE_OLD",
+          address: TOKEN_ADDRESS.CORPSE_OLD,
           displayDecimals: 0,
         }
       ],
@@ -313,10 +319,28 @@ export function getNetworkConfig(networkKey: ChainId): NetworkConfig {
             "entrypoint": "claim"
           },
           {
+            "name": "Migrate Tokens",
+            "description": "Burn old corpse balance and mint new corpses 1:1",
+            "entrypoint": "migrate_tokens"
+          },
+          {
             "name": "Approve",
             "amount": "50000000000000000000000",
             "spender": SUMMIT_ADDRESS,
             "description": "Approve Corpse Token",
+            "entrypoint": "approve"
+          },
+        ]
+      },
+      [TOKEN_ADDRESS.CORPSE_OLD]: {
+        "name": "Old Corpse Token",
+        "description": "Pre-migration Corpse Token; only used to approve the new Corpse contract for the one-time migration.",
+        "methods": [
+          {
+            "name": "Approve",
+            "amount": "50000000000000000000000",
+            "spender": TOKEN_ADDRESS.CORPSE,
+            "description": "Approve new Corpse Token to burn old Corpse balance for migration",
             "entrypoint": "approve"
           },
         ]

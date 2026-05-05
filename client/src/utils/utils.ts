@@ -22,7 +22,7 @@ export const getShortNamespace = (namespace: string) => {
 }
 
 export function parseBalances(
-  results: { id: number; jsonrpc: string; result: [string, string] }[],
+  results: { id: number; jsonrpc: string; result?: [string, string]; error?: unknown }[],
   tokens: { name: string; address: string; displayDecimals: number; decimals?: number; }[],
 ): Record<string, number> {
   function toBigIntSmart(v: string | number | bigint): bigint {
@@ -62,7 +62,13 @@ export function parseBalances(
   const out: Record<string, number> = {};
   for (let i = 0; i < results.length; i++) {
     const token = tokens[i];
-    const raw = uint256ToBigInt(results[i].result);
+    const result = results[i]?.result;
+    // Tolerate failed balanceOf calls (missing/unsupported contract on this network) — treat as 0.
+    if (!result || !Array.isArray(result) || result.length < 2) {
+      out[token.name] = 0;
+      continue;
+    }
+    const raw = uint256ToBigInt(result);
     const tokenDecimals = token.decimals ?? 18;
     const shownDecimals = token.displayDecimals;
     out[token.name] = parseFloat(formatBalance(raw, tokenDecimals, shownDecimals));

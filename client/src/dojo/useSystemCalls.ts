@@ -8,7 +8,7 @@ import type { TranslatedGameEvent } from "@/utils/translation";
 import { delay } from "@/utils/utils";
 import { useAccount } from "@starknet-react/core";
 import { useSnackbar } from "notistack";
-import { CallData } from "starknet";
+import { CallData, cairo } from "starknet";
 import type { Call } from "starknet";
 
 type TransactionReceiptLike = {
@@ -323,7 +323,8 @@ export const useSystemCalls = () => {
     };
   };
 
-  const claimCorpses = (adventurerIds: number[]) => {
+  // adventurerIds are felt252 decimal strings — exceed Number.MAX_SAFE_INTEGER
+  const claimCorpses = (adventurerIds: string[]) => {
     const corpseAddress = currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === "CORPSE")?.address;
 
     if (!corpseAddress) {
@@ -335,6 +336,34 @@ export const useSystemCalls = () => {
       entrypoint: "claim",
       calldata: CallData.compile([adventurerIds]),
     };
+  };
+
+  // Approve the new corpse to pull old-corpse balance, then call migrate_tokens
+  // on the new corpse (it burns the approved old amount and mints fresh new corpses).
+  const migrateCorpseTokens = (oldBalance: number): Call[] => {
+    const newCorpseAddress = currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === "CORPSE")?.address;
+    const oldCorpseAddress = currentNetworkConfig.tokens.erc20.find((token: { name: string; address: string }) => token.name === "CORPSE_OLD")?.address;
+
+    if (!newCorpseAddress) throw new Error("CORPSE token contract not configured");
+    if (!oldCorpseAddress) throw new Error("CORPSE_OLD token contract not configured");
+
+    const amountWei = BigInt(oldBalance) * 10n ** 18n;
+    // approve(spender, amount: u256) and migrate_tokens(amount: u256) — u256 must
+    // be serialized as { low, high } (two felts) on the wire.
+    const amountU256 = cairo.uint256(amountWei);
+
+    return [
+      {
+        contractAddress: oldCorpseAddress,
+        entrypoint: "approve",
+        calldata: CallData.compile([newCorpseAddress, amountU256]),
+      },
+      {
+        contractAddress: newCorpseAddress,
+        entrypoint: "migrate_tokens",
+        calldata: CallData.compile([amountU256]),
+      },
+    ];
   };
 
   const claimSkulls = (beastIds: number[]) => {
@@ -385,6 +414,7 @@ export const useSystemCalls = () => {
     claimRewards,
     claimQuestRewards,
     claimCorpses,
+    migrateCorpseTokens,
     claimSkulls,
     executeAction,
     addExtraLife,

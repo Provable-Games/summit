@@ -22,7 +22,7 @@ import {
   skulls_claimed,
   quest_rewards_claimed,
   rewards_earned,
-  corpse_events,
+  corpse_new_events,
   consumables,
 } from "./db/schema.js";
 import { getSubscriptionHub } from "./ws/subscriptions.js";
@@ -668,48 +668,108 @@ app.get("/quest-rewards/total", async (c) => {
 });
 
 /**
- * POST /adventurers/claimed - Check which adventurer_ids have been claimed
- * Body: { ids: number[] }
- * Returns the subset of provided IDs that exist in corpse_events (claimed by anyone)
+ * GET /adventurers/claimable?owner=0x... - Unclaimed Death Mountain adventurers for a player.
+ *
+ * Looks up game-over adventurers owned by `owner` from the Death Mountain Torii,
+ * filters out ids already present in corpse_new_events (claimed by anyone against
+ * the new corpse contract), and returns the remaining set with score and player_name.
  */
-app.post("/adventurers/claimed", async (c) => {
-  const body = await c.req.json<{ ids?: number[] }>();
-  const ids = body.ids;
+const DEATHMOUNTAIN_TORII_URL =
+  process.env.DEATHMOUNTAIN_TORII_URL ?? "https://api.cartridge.gg/x/pg-deathmountain-2/torii";
+const DEATHMOUNTAIN_GAMES_CONTRACT =
+  "0x00263cc540dac11334470a64759e03952ee2f84a290e99ba8cbc391245cd0bf9";
+// Beast dungeon minter — only adventurers minted by this address are claimable
+// for corpse rewards. Stored unpadded (BigInt-hex) to match Torii's `Minted By` trait shape.
+// Padded form: 0x0539d24dfdaa2866d975fa93db501b971c08786f2c88e719800be39903e43bbc
+const BEAST_DUNGEON_MINTER =
+  "0x539d24dfdaa2866d975fa93db501b971c08786f2c88e719800be39903e43bbc";
 
-  if (!ids || !Array.isArray(ids) || ids.length === 0) {
-    return c.json({ claimed_ids: [] });
+interface ToriiAdventurerRow {
+  token_id: string;
+  score: string | null;
+  player_name: string | null;
+}
+
+app.get("/adventurers/claimable", async (c) => {
+  const ownerParam = c.req.query("owner");
+  if (!ownerParam) {
+    return c.json({ error: "Missing owner query parameter" }, 400);
   }
 
-  if (ids.length > 2000) {
-    return c.json({ error: "Too many IDs (max 2000)" }, 400);
+  const owner = normalizeAddress(ownerParam);
+  if (!/^0x[0-9a-f]{64}$/.test(owner)) {
+    return c.json({ error: "Invalid owner address" }, 400);
   }
 
-  const bigintIds = ids.map((id) => BigInt(id));
+  const sqlQuery = `
+    SELECT t.token_id AS token_id,
+           ta_score.trait_value AS score,
+           ta_name.trait_value AS player_name
+    FROM token_balances tb
+    JOIN tokens t ON tb.token_id = t.id
+    JOIN token_attributes ta_go ON ta_go.token_id = t.id AND ta_go.trait_name = 'Game Over'
+    JOIN token_attributes ta_mb ON ta_mb.token_id = t.id AND ta_mb.trait_name = 'Minted By'
+    LEFT JOIN token_attributes ta_score ON ta_score.token_id = t.id AND ta_score.trait_name = 'Score'
+    LEFT JOIN token_attributes ta_name  ON ta_name.token_id  = t.id AND ta_name.trait_name  = 'Player Name'
+    WHERE tb.contract_address = '${DEATHMOUNTAIN_GAMES_CONTRACT}'
+      AND tb.account_address  = '${owner}'
+      AND tb.balance != '0x0'
+      AND ta_go.trait_value = 'True'
+      AND ta_mb.trait_value = '${BEAST_DUNGEON_MINTER}'
+  `;
 
-  const results = await db
-    .selectDistinct({ adventurer_id: corpse_events.adventurer_id })
-    .from(corpse_events)
-    .where(inArray(corpse_events.adventurer_id, bigintIds));
+  const toriiResponse = await fetch(
+    `${DEATHMOUNTAIN_TORII_URL}/sql?query=${encodeURIComponent(sqlQuery)}`,
+    { headers: { "Content-Type": "application/json" } }
+  );
 
-  const claimedIds = results.map((r) => r.adventurer_id.toString());
+  if (!toriiResponse.ok) {
+    return c.json(
+      { error: "Failed to fetch from Death Mountain Torii", status: toriiResponse.status },
+      502
+    );
+  }
 
-  return c.json({ claimed_ids: claimedIds });
+  const rows = (await toriiResponse.json()) as ToriiAdventurerRow[];
+  if (rows.length === 0) {
+    return c.json({ adventurers: [] });
+  }
+
+  // token_id is a 0x-prefixed 32-byte hex; meaningful value is its felt252 numeric value.
+  const decimalIds = rows.map((row) => BigInt(row.token_id).toString());
+
+  const claimed = await db
+    .selectDistinct({ adventurer_id: corpse_new_events.adventurer_id })
+    .from(corpse_new_events)
+    .where(inArray(corpse_new_events.adventurer_id, decimalIds));
+  const claimedSet = new Set(claimed.map((r) => r.adventurer_id));
+
+  const adventurers = rows
+    .map((row) => ({
+      id: BigInt(row.token_id).toString(),
+      score: row.score === null ? 0 : Number(row.score),
+      player_name: row.player_name ?? undefined,
+    }))
+    .filter((a) => !claimedSet.has(a.id));
+
+  return c.json({ adventurers });
 });
 
 /**
- * GET /adventurers/:player - Get all adventurer_ids for a player address
+ * GET /adventurers/:player - Get all adventurer_ids claimed by a player address
+ * against the new corpse contract.
  * - Not paginated
- * - Returns distinct adventurer_ids as strings
+ * - Returns distinct adventurer_ids as decimal strings (felt252 width)
  */
 app.get("/adventurers/:player", async (c) => {
   const player = normalizeAddress(c.req.param("player"));
 
   const results = await db
     .selectDistinct({
-      adventurer_id: corpse_events.adventurer_id,
+      adventurer_id: corpse_new_events.adventurer_id,
     })
-    .from(corpse_events)
-    .where(eq(corpse_events.player, player));
+    .from(corpse_new_events)
+    .where(eq(corpse_new_events.player, player));
 
   const adventurerIds = results.map((r) => r.adventurer_id.toString());
 

@@ -10,7 +10,7 @@ export default defineConfig({
       // Collectable contract address (mainnet) - emits CollectableEvent / CollectableStatsEvent
       collectableContractAddress: "0x023f86f5b4702f6ba114b82fb73448c58aad8f37a28b508b80bf129ee1edc405",
       // Corpse contract address (mainnet)
-      corpseContractAddress: "0x0103eafe79f8631932530cc687dfcdeb013c883a82619ebf81be393e2953a87a",
+      corpseContractAddress: "0x00c0337454f4dc908da50ca78e9c76b34f6846c39a50e901d2c375b4dd8eaa4d",
       // Skull contract address (mainnet)
       skullContractAddress: "0x01c3c8284d7eed443b42f47e764032a56eaf50a9079d67993b633930e3689814",
       // Consumable ERC20 token addresses (mainnet) - from client/src/utils/networkConfig.ts

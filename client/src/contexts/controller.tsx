@@ -93,7 +93,7 @@ export const ControllerProvider = ({ children }: PropsWithChildren) => {
 
     setAdventurerCollection(validAdventurers.map((adventurer): Adventurer => ({
       id: adventurer.token_id,
-      name: `Adventurer #${adventurer.token_id}`,
+      name: adventurer.player_name ?? `Adventurer #${adventurer.token_id}`,
       level: Math.floor(Math.sqrt(adventurer.score)),
       metadata: null,
       soulbound: false,

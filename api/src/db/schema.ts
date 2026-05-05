@@ -14,6 +14,7 @@ import {
   index,
   uniqueIndex,
   jsonb,
+  numeric,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -253,7 +254,7 @@ export const poison_events = pgTable(
 );
 
 /**
- * Corpse Events table - corpse creation history
+ * Corpse Events table - frozen history from the legacy corpse contract (bigint id).
  */
 export const corpse_events = pgTable(
   "corpse_events",
@@ -277,6 +278,36 @@ export const corpse_events = pgTable(
     index("corpse_events_adventurer_id_idx").on(table.adventurer_id),
     index("corpse_events_player_idx").on(table.player),
     index("corpse_events_created_at_idx").on(table.created_at.desc()),
+  ]
+);
+
+/**
+ * Corpse New Events table - corpse claims from the new corpse contract.
+ * adventurer_id is felt252 stored as numeric for full precision.
+ */
+export const corpse_new_events = pgTable(
+  "corpse_new_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    adventurer_id: numeric("adventurer_id", { precision: 78, scale: 0 }).notNull(),
+    player: text("player").notNull(),
+    created_at: timestamp("created_at").notNull(),
+    indexed_at: timestamp("indexed_at").notNull(),
+    inserted_at: timestamp("inserted_at").defaultNow(),
+    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+  },
+  (table) => [
+    uniqueIndex("corpse_new_events_block_tx_event_adv_idx").on(
+      table.block_number,
+      table.transaction_hash,
+      table.event_index,
+      table.adventurer_id
+    ),
+    index("corpse_new_events_adventurer_id_idx").on(table.adventurer_id),
+    index("corpse_new_events_player_idx").on(table.player),
+    index("corpse_new_events_created_at_idx").on(table.created_at.desc()),
   ]
 );
 
@@ -368,6 +399,7 @@ export const schema = {
   rewards_claimed,
   poison_events,
   corpse_events,
+  corpse_new_events,
   skulls_claimed,
   quest_rewards_claimed,
   consumables,
