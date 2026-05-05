@@ -40,7 +40,7 @@ import * as schema from "../src/lib/schema.js";
 import {
   EVENT_SELECTORS,
   BEAST_EVENT_SELECTORS,
-  DOJO_EVENT_SELECTORS,
+  COLLECTABLE_EVENT_SELECTORS,
   decodeBeastUpdatesEvent,
   decodeLiveBeastStatsEvent,
   decodeBattleEvent,
@@ -53,9 +53,9 @@ import {
   unpackQuestRewardsClaimed,
   decodeTransferEvent,
   decodeERC20TransferEvent,
-  decodeEntityStatsEvent,
-  decodeCollectableEntityEvent,
+  decodeCollectableStatsEvent,
   computeEntityHash,
+  computeCollectableId,
   unpackLiveBeastStats,
   feltToHex,
   isZeroFeltAddress,
@@ -64,7 +64,7 @@ import {
 interface SummitConfig {
   summitContractAddress: string;
   beastsContractAddress: string;
-  dojoWorldAddress: string;
+  collectableContractAddress: string;
   corpseContractAddress: string;
   skullContractAddress: string;
   xlifeTokenAddress: string;
@@ -79,6 +79,10 @@ interface SummitConfig {
 
 // In-memory cache to track tokens we've already fetched metadata for
 const fetchedTokens = new Set<number>();
+
+// minted_by value used in the collectable contract's collectable_id hash for our beasts.
+// Other minters share the same contract; we ignore their events.
+const MINTED_BY_BEAST = 19;
 
 // Progress tracking
 let lastEventBlock = 0n;
@@ -629,7 +633,7 @@ async function executeBulkInserts(db: any, batches: BulkInsertBatches): Promise<
       db.insert(schema.beast_data).values([...deduped.values()]).onConflictDoUpdate({
         target: schema.beast_data.entity_hash,
         set: {
-          // Use GREATEST to preserve highest value - kills can only increase, prevents CollectableEntity (0n) from overwriting EntityStats
+          // Use GREATEST to preserve highest value - kills can only increase
           adventurers_killed: sql`GREATEST(beast_data.adventurers_killed, excluded.adventurers_killed)`,
           last_death_timestamp: sql`GREATEST(beast_data.last_death_timestamp, excluded.last_death_timestamp)`,
           last_killed_by: sql`COALESCE(NULLIF(excluded.last_killed_by, 0), beast_data.last_killed_by)`,
@@ -795,7 +799,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   const {
     summitContractAddress,
     beastsContractAddress,
-    dojoWorldAddress,
+    collectableContractAddress,
     corpseContractAddress,
     skullContractAddress,
     xlifeTokenAddress,
@@ -812,7 +816,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   // Convert contract addresses to BigInt for comparison
   const summitAddressBigInt = addressToBigInt(summitContractAddress);
   const beastsAddressBigInt = addressToBigInt(beastsContractAddress);
-  const dojoWorldAddressBigInt = addressToBigInt(dojoWorldAddress);
+  const collectableAddressBigInt = addressToBigInt(collectableContractAddress);
   const corpseAddressBigInt = addressToBigInt(corpseContractAddress);
   const skullAddressBigInt = addressToBigInt(skullContractAddress);
 
@@ -844,7 +848,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
   // Log configuration on startup
   console.log("[Summit Indexer] Summit Contract:", summitContractAddress);
   console.log("[Summit Indexer] Beasts Contract:", beastsContractAddress);
-  console.log("[Summit Indexer] Dojo World:", dojoWorldAddress);
+  console.log("[Summit Indexer] Collectable Contract:", collectableContractAddress);
   console.log("[Summit Indexer] Corpse Contract:", corpseContractAddress);
   console.log("[Summit Indexer] Skull Contract:", skullContractAddress);
   console.log("[Summit Indexer] XLIFE Token:", xlifeTokenAddress);
@@ -946,21 +950,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           address: beastsContractAddress.toLowerCase() as `0x${string}`,
           keys: [BEAST_EVENT_SELECTORS.Transfer as `0x${string}`],
         },
-        // Dojo World contract - EntityStats events (keys[0]=StoreSetRecord, keys[1]=EntityStats model)
+        // Collectable contract - CollectableStatsEvent
         {
-          address: dojoWorldAddress.toLowerCase() as `0x${string}`,
-          keys: [
-            DOJO_EVENT_SELECTORS.StoreSetRecord as `0x${string}`,
-            DOJO_EVENT_SELECTORS.EntityStats as `0x${string}`,
-          ],
-        },
-        // Dojo World contract - CollectableEntity events (keys[0]=StoreSetRecord, keys[1]=CollectableEntity model)
-        {
-          address: dojoWorldAddress.toLowerCase() as `0x${string}`,
-          keys: [
-            DOJO_EVENT_SELECTORS.StoreSetRecord as `0x${string}`,
-            DOJO_EVENT_SELECTORS.CollectableEntity as `0x${string}`,
-          ],
+          address: collectableContractAddress.toLowerCase() as `0x${string}`,
+          keys: [COLLECTABLE_EVENT_SELECTORS.CollectableStatsEvent as `0x${string}`],
         },
         // Corpse contract - CorpseEvent only
         {
@@ -1085,12 +1078,8 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
       const rewardsEarnedTokenIds: number[] = [];
       const transferTokenIds: number[] = []; // For batching metadata fetches
 
-      // Collect entity_hashes for LS Events (EntityStats and CollectableEntity)
+      // Collect entity_hashes for CollectableStatsEvent metadata enrichment
       const lsEventEntityHashes: string[] = [];
-
-      // Dungeon constants for filtering LS Events
-      const BEAST_DUNGEON = "0x0000000000000000000000000000000000000000000000000000000000000006";
-      const LS_DUNGEON = "0x00a67ef20b61a9846e1c82b411175e6ab167ea9f8632bd6c2091823c3629ec42";
 
       // Pre-scan events to collect token IDs for batch lookups
       const preScanStart = Date.now();
@@ -1112,22 +1101,16 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           }
         }
 
-        // Collect entity_hashes for LS Events (Dojo World events)
-        if (addressToBigInt(event_address) === dojoWorldAddressBigInt &&
-          selector === DOJO_EVENT_SELECTORS.StoreSetRecord) {
-          const model_selector = keys.length > 1 ? feltToHex(keys[1]) : "";
-
-          if (model_selector === DOJO_EVENT_SELECTORS.EntityStats) {
-            const decoded = decodeEntityStatsEvent([...keys], [...event.data]);
-            if (decoded.dungeon === BEAST_DUNGEON) {
-              lsEventEntityHashes.push(decoded.entity_hash);
-            }
-          } else if (model_selector === DOJO_EVENT_SELECTORS.CollectableEntity) {
-            const decoded = decodeCollectableEntityEvent([...keys], [...event.data]);
-            if (decoded.dungeon === LS_DUNGEON) {
-              lsEventEntityHashes.push(decoded.entity_hash);
-            }
-          }
+        // Collect entity_hashes for LS Events (Collectable contract events).
+        // collectable_id is poseidon(MINTED_BY_BEAST, poseidon(id, prefix, suffix)); we recompute
+        // the inner hash from inline event fields so it matches existing beast_data.entity_hash rows,
+        // and recompute the outer hash to drop events from other minters sharing this contract.
+        if (addressToBigInt(event_address) === collectableAddressBigInt &&
+            selector === COLLECTABLE_EVENT_SELECTORS.CollectableStatsEvent) {
+          const decoded = decodeCollectableStatsEvent([...keys], [...event.data]);
+          const entity_hash = computeEntityHash(decoded.beast_id, decoded.prefix, decoded.suffix);
+          if (computeCollectableId(MINTED_BY_BEAST, entity_hash) !== decoded.collectable_id) continue;
+          lsEventEntityHashes.push(entity_hash);
         }
 
         // Skull contract - SkullEvent pre-scan
@@ -1392,27 +1375,22 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             continue;
           }
 
-          // Dojo World contract - EntityStats events
-          const model_selector = keys.length > 1 ? feltToHex(keys[1]) : "";
-          if (addressToBigInt(event_address) === dojoWorldAddressBigInt &&
-            selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
-            model_selector === DOJO_EVENT_SELECTORS.EntityStats) {
+          // Collectable contract - CollectableStatsEvent
+          if (addressToBigInt(event_address) === collectableAddressBigInt &&
+            selector === COLLECTABLE_EVENT_SELECTORS.CollectableStatsEvent) {
 
-            const decoded = decodeEntityStatsEvent([...keys], [...data]);
-
-            // Filter by dungeon - only process Beast dungeon (0x6) events
-            if (decoded.dungeon !== BEAST_DUNGEON) {
-              continue;
-            }
+            const decoded = decodeCollectableStatsEvent([...keys], [...data]);
+            const entity_hash = computeEntityHash(decoded.beast_id, decoded.prefix, decoded.suffix);
+            if (computeCollectableId(MINTED_BY_BEAST, entity_hash) !== decoded.collectable_id) continue;
 
             // Get beast metadata from lookup
-            const entityMetadata = lsMetadataMap.get(decoded.entity_hash);
+            const entityMetadata = lsMetadataMap.get(entity_hash);
 
-            logger.info(`EntityStats: adventurers_killed=${decoded.adventurers_killed}, token_id=${entityMetadata?.token_id ?? 'unknown'}`);
+            logger.info(`CollectableStatsEvent: adventurers_killed=${decoded.adventurers_killed}, token_id=${entityMetadata?.token_id ?? 'unknown'}`);
 
             // Always save to beast_data table
             batches.beast_data.push({
-              entity_hash: decoded.entity_hash,
+              entity_hash,
               adventurers_killed: decoded.adventurers_killed,
               last_death_timestamp: 0n,
               last_killed_by: 0n,
@@ -1427,7 +1405,7 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 category: "LS Events",
                 sub_category: "EntityStats",
                 data: {
-                  entity_hash: decoded.entity_hash,
+                  entity_hash,
                   adventurers_killed: decoded.adventurers_killed.toString(),
                   token_id: entityMetadata.token_id,
                   beast_id: entityMetadata.beast_id,
@@ -1437,59 +1415,6 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
                 },
                 player: entityMetadata.owner,
                 token_id: entityMetadata.token_id,
-                transaction_hash,
-                created_at: block_timestamp,
-                indexed_at,
-              });
-            }
-            continue;
-          }
-
-          // Dojo World contract - CollectableEntity events
-          if (addressToBigInt(event_address) === dojoWorldAddressBigInt &&
-            selector === DOJO_EVENT_SELECTORS.StoreSetRecord &&
-            model_selector === DOJO_EVENT_SELECTORS.CollectableEntity) {
-
-            const decoded = decodeCollectableEntityEvent([...keys], [...data]);
-
-            // Filter by dungeon - only process Loot Survivor dungeon events
-            if (decoded.dungeon !== LS_DUNGEON) {
-              continue;
-            }
-
-            // Get beast metadata from lookup
-            const collectableMetadata = lsMetadataMap.get(decoded.entity_hash);
-
-            logger.info(`CollectableEntity: last_killed_by=${decoded.last_killed_by}, timestamp=${decoded.timestamp}, token_id=${collectableMetadata?.token_id ?? 'unknown'}`);
-
-            // Collect beast_data upsert
-            batches.beast_data.push({
-              entity_hash: decoded.entity_hash,
-              adventurers_killed: 0n,
-              last_death_timestamp: decoded.timestamp,
-              last_killed_by: decoded.last_killed_by,
-              updated_at: block_timestamp,
-            });
-
-            // Collect summit_log with beast metadata
-            if (collectableMetadata && collectableMetadata.token_id >= 76 && collectableMetadata.prefix && collectableMetadata.suffix) {
-              collectSummitLog(batches, {
-                block_number,
-                event_index,
-                category: "LS Events",
-                sub_category: "CollectableEntity",
-                data: {
-                  entity_hash: decoded.entity_hash,
-                  last_killed_by: decoded.last_killed_by.toString(),
-                  timestamp: decoded.timestamp.toString(),
-                  token_id: collectableMetadata?.token_id ?? null,
-                  beast_id: collectableMetadata?.beast_id ?? null,
-                  prefix: collectableMetadata?.prefix ?? null,
-                  suffix: collectableMetadata?.suffix ?? null,
-                  owner: collectableMetadata?.owner ?? null,
-                },
-                player: collectableMetadata?.owner ?? null,
-                token_id: collectableMetadata?.token_id ?? null,
                 transaction_hash,
                 created_at: block_timestamp,
                 indexed_at,

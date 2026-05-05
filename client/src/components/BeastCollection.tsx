@@ -6,8 +6,7 @@ import { useGameStore } from '@/stores/gameStore';
 import type { Beast, selection } from '@/types/game';
 import {
   calculateMaxAttackPotions, calculateOptimalAttackPotions, getBeastCurrentHealth,
-  getBeastRevivalTime,
-  isBeastLocked
+  getBeastRevivalTime
 } from '@/utils/beasts';
 import AddIcon from '@mui/icons-material/Add';
 import BoltIcon from '@mui/icons-material/Bolt';
@@ -135,7 +134,7 @@ function BeastCollection() {
 
       // Apply dead beast filter
       if (hideDeadBeasts) {
-        filtered = filtered.filter(beast => beast.current_health > 0 && !isBeastLocked(beast));
+        filtered = filtered.filter(beast => beast.current_health > 0);
       }
 
       // Apply quest filters (show beasts that have NOT completed selected quests)
@@ -229,7 +228,6 @@ function BeastCollection() {
 
   const selectBeast = useCallback((beast: Beast, isFirstBeast: boolean = false) => {
     if (attackInProgress || attackMode === 'autopilot') return;
-    if (isBeastLocked(beast)) return;
 
     // Notify quest guide if this is the first beast being clicked
     if (isFirstBeast) {
@@ -246,13 +244,12 @@ function BeastCollection() {
   const selectAllBeasts = () => {
     if (attackInProgress) return;
 
-    const allBeasts = collectionWithCombat.filter((beast: Beast) => !isBeastLocked(beast));
-    const maxBeasts = Math.min(MAX_BEASTS_PER_ATTACK, allBeasts.length);
+    const maxBeasts = Math.min(MAX_BEASTS_PER_ATTACK, collectionWithCombat.length);
 
     if (selectedBeasts.length >= maxBeasts) {
       setSelectedBeasts([])
     } else {
-      setSelectedBeasts(allBeasts.slice(0, maxBeasts).map(beast => [beast, 1, 0]))
+      setSelectedBeasts(collectionWithCombat.slice(0, maxBeasts).map(beast => [beast, 1, 0]))
     }
   }
 
@@ -263,9 +260,8 @@ function BeastCollection() {
   }
 
   const maxBeastsSelected = useMemo(() => {
-    const allBeasts = collectionWithCombat.filter((beast: Beast) => !isBeastLocked(beast));
-    const maxBeasts = Math.min(MAX_BEASTS_PER_ATTACK, allBeasts.length);
-    return allBeasts.length > 0 && selectedBeasts.length >= maxBeasts;
+    const maxBeasts = Math.min(MAX_BEASTS_PER_ATTACK, collectionWithCombat.length);
+    return collectionWithCombat.length > 0 && selectedBeasts.length >= maxBeasts;
   }, [collectionWithCombat, selectedBeasts]);
 
   const handleHoverEnter = useCallback((event: React.MouseEvent<HTMLElement>, beast: Beast) => {
@@ -651,7 +647,6 @@ function BeastCollection() {
                   const isSelected = selectedBeasts.some(b => b[0].token_id === beast.token_id);
                   const isSavage = summit?.beast.token_id === beast.token_id;
                   const isDead = beast.current_health === 0;
-                  const isLocked = isBeastLocked(beast);
                   const selectionIndex = selectedBeasts.findIndex(b => b[0].token_id === beast.token_id) + 1;
                   const combat = summit && !isSavage ? beast.combat : null;
                   const isFirstBeast = virtualItem.index === 0;
@@ -677,7 +672,6 @@ function BeastCollection() {
                           isSelected={isSelected}
                           isSavage={isSavage}
                           isDead={isDead}
-                          isLocked={isLocked}
                           combat={combat ?? null}
                           selectionIndex={selectionIndex}
                           summitHealth={summit?.beast.current_health || 0}

@@ -260,8 +260,6 @@ app.get("/beasts/:owner", async (c) => {
       animated: beasts.animated,
       // Beast data (Loot Survivor stats)
       adventurers_killed: beast_data.adventurers_killed,
-      last_death_loot_survivor: beast_data.last_death_timestamp,
-      last_killed_by: beast_data.last_killed_by,
       entity_hash: beast_data.entity_hash,
       // Beast stats (Summit game state)
       current_health: beast_stats.current_health,
@@ -370,8 +368,6 @@ app.get("/beasts/:owner", async (c) => {
 
         // Loot Survivor data
         adventurers_killed: Number(r.adventurers_killed ?? 0n),
-        last_dm_death_timestamp: Number(r.last_death_loot_survivor ?? 0n),
-        last_killed_by: Number(r.last_killed_by ?? 0n),
 
         // Hash from beast_data (if linked)
         entity_hash: r.entity_hash ?? undefined,

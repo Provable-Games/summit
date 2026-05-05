@@ -8,8 +8,6 @@ import {
   getBeastRevivalTime,
   getBeastCurrentLevel,
   getBeastCurrentHealth,
-  isBeastLocked,
-  getBeastLockedTimeRemaining,
   applyPoisonDamage,
   calculateBattleResult,
   calculateOptimalAttackPotions,
@@ -18,7 +16,6 @@ import {
   selectOptimalBeasts,
   streakUrgencyScore,
   questUrgencyScore,
-  BEAST_LOCK_DURATION_MS,
 } from "./beasts";
 
 // ---------------------------------------------------------------------------
@@ -380,92 +377,6 @@ describe("getBeastCurrentHealth", () => {
   it("returns current_health even if very low", () => {
     const beast = makeBeast({ current_health: 1 });
     expect(getBeastCurrentHealth(beast)).toBe(1);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// isBeastLocked & getBeastLockedTimeRemaining
-// ---------------------------------------------------------------------------
-describe("isBeastLocked", () => {
-  it("returns false when no last_dm_death_timestamp", () => {
-    const beast = makeBeast({ last_dm_death_timestamp: undefined });
-    expect(isBeastLocked(beast)).toBe(false);
-  });
-
-  it("returns false when last_dm_death_timestamp is 0", () => {
-    const beast = makeBeast({ last_dm_death_timestamp: 0 });
-    expect(isBeastLocked(beast)).toBe(false);
-  });
-
-  it("returns true when death was recent (within 24h)", () => {
-    const nowMs = 1700000000000;
-    vi.spyOn(Date, "now").mockReturnValue(nowMs);
-
-    // Died 1 hour ago
-    const deathTimestampSec = Math.floor((nowMs - 3600 * 1000) / 1000);
-    const beast = makeBeast({ last_dm_death_timestamp: deathTimestampSec });
-    expect(isBeastLocked(beast)).toBe(true);
-  });
-
-  it("returns false when death was more than 24h ago", () => {
-    const nowMs = 1700000000000;
-    vi.spyOn(Date, "now").mockReturnValue(nowMs);
-
-    // Died 25 hours ago
-    const deathTimestampSec = Math.floor((nowMs - 25 * 3600 * 1000) / 1000);
-    const beast = makeBeast({ last_dm_death_timestamp: deathTimestampSec });
-    expect(isBeastLocked(beast)).toBe(false);
-  });
-});
-
-describe("getBeastLockedTimeRemaining", () => {
-  it("returns {hours:0, minutes:0} when no last_dm_death_timestamp", () => {
-    const beast = makeBeast({ last_dm_death_timestamp: undefined });
-    expect(getBeastLockedTimeRemaining(beast)).toEqual({ hours: 0, minutes: 0 });
-  });
-
-  it("returns {hours:0, minutes:0} when last_dm_death_timestamp is 0", () => {
-    const beast = makeBeast({ last_dm_death_timestamp: 0 });
-    expect(getBeastLockedTimeRemaining(beast)).toEqual({ hours: 0, minutes: 0 });
-  });
-
-  it("returns remaining time when locked", () => {
-    const nowMs = 1700000000000;
-    vi.spyOn(Date, "now").mockReturnValue(nowMs);
-
-    // Died 1 hour ago => 23 hours remaining
-    const deathTimestampSec = Math.floor((nowMs - 3600 * 1000) / 1000);
-    const beast = makeBeast({ last_dm_death_timestamp: deathTimestampSec });
-    const remaining = getBeastLockedTimeRemaining(beast);
-    expect(remaining.hours).toBe(23);
-    expect(remaining.minutes).toBe(0);
-  });
-
-  it("returns {hours:0, minutes:0} when lock has expired", () => {
-    const nowMs = 1700000000000;
-    vi.spyOn(Date, "now").mockReturnValue(nowMs);
-
-    // Died 25 hours ago
-    const deathTimestampSec = Math.floor((nowMs - 25 * 3600 * 1000) / 1000);
-    const beast = makeBeast({ last_dm_death_timestamp: deathTimestampSec });
-    expect(getBeastLockedTimeRemaining(beast)).toEqual({ hours: 0, minutes: 0 });
-  });
-
-  it("returns correct partial hours and minutes", () => {
-    const nowMs = 1700000000000;
-    vi.spyOn(Date, "now").mockReturnValue(nowMs);
-
-    // Died 22 hours and 30 minutes ago => 1h 30min remaining
-    const elapsedMs = 22 * 3600 * 1000 + 30 * 60 * 1000;
-    const deathTimestampSec = Math.floor((nowMs - elapsedMs) / 1000);
-    const beast = makeBeast({ last_dm_death_timestamp: deathTimestampSec });
-    const remaining = getBeastLockedTimeRemaining(beast);
-    expect(remaining.hours).toBe(1);
-    expect(remaining.minutes).toBe(30);
-  });
-
-  it("confirms BEAST_LOCK_DURATION_MS is 24 hours", () => {
-    expect(BEAST_LOCK_DURATION_MS).toBe(24 * 60 * 60 * 1000);
   });
 });
 

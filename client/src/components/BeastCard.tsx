@@ -5,10 +5,10 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import StarIcon from '@mui/icons-material/Star';
-import { Box, Link, Typography } from "@mui/material";
-import { memo, useMemo } from 'react';
+import { Box, Typography } from "@mui/material";
+import { memo } from 'react';
 import swordIcon from '../assets/images/sword.png';
-import { fetchBeastImage, getBeastLockedTimeRemaining } from "../utils/beasts";
+import { fetchBeastImage } from "../utils/beasts";
 import { gameColors } from '../utils/themes';
 
 interface BeastCardProps {
@@ -16,7 +16,6 @@ interface BeastCardProps {
   isSelected: boolean;
   isSavage: boolean;
   isDead: boolean;
-  isLocked: boolean;
   combat: Combat | null;
   selectionIndex: number;
   summitHealth: number;
@@ -31,7 +30,6 @@ const BeastCard = memo(({
   isSelected,
   isSavage,
   isDead,
-  isLocked,
   combat,
   selectionIndex,
   summitHealth,
@@ -39,18 +37,12 @@ const BeastCard = memo(({
   onMouseEnter,
   onMouseLeave,
 }: BeastCardProps) => {
-  const lockedTime = useMemo(
-    () => (isLocked ? getBeastLockedTimeRemaining(beast) : { hours: 0, minutes: 0 }),
-    [isLocked, beast],
-  );
-
   return (
     <Box
       sx={[
         styles.beastCard,
         isSelected && styles.selectedCard,
         isDead && styles.deadCard,
-        isLocked && styles.lockedCard,
       ]}
       onClick={onClick}
       onMouseEnter={onMouseEnter}
@@ -68,29 +60,6 @@ const BeastCard = memo(({
           alt={beast.name}
           style={{ ...styles.beastImage }}
         />
-
-        {/* Locked overlay */}
-        {isLocked && (
-          <Box sx={styles.lockOverlay}>
-            <Typography sx={styles.lockText}>KILLED IN LS2</Typography>
-            <Link
-              href={`https://lootsurvivor.io/survivor/watch?id=${beast.last_killed_by}&beast=${encodeURIComponent(
-                `${beast.prefix}_${beast.suffix}_${beast.name}`,
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              sx={styles.lockWatchLink}
-            >
-              Watch
-            </Link>
-            {(lockedTime.hours > 0 || lockedTime.minutes > 0) && (
-              <Typography sx={styles.lockSubText}>
-                {lockedTime.hours}h {lockedTime.minutes}m
-              </Typography>
-            )}
-          </Box>
-        )}
 
         {/* Upgrade Icons */}
         {(beast.spirit || beast.luck || beast.specials || beast.wisdom || beast.diplomacy) && (
@@ -297,18 +266,6 @@ const styles = {
       `,
     }
   },
-  lockedCard: {
-    opacity: 0.8,
-    filter: 'grayscale(60%)',
-    '&:hover': {
-      transform: 'translateY(-2px)',
-      boxShadow: `
-        inset 0 1px 0 ${gameColors.darkGray}60,
-        0 2px 4px rgba(0, 0, 0, 0.4),
-        0 0 0 1px ${gameColors.darkGray}
-      `,
-    },
-  },
   glowEffect: {
     position: 'absolute',
     top: '-50%',
@@ -341,44 +298,6 @@ const styles = {
     overflow: 'hidden',
     background: `linear-gradient(135deg, ${gameColors.darkGreen} 0%, ${gameColors.black} 100%)`,
     boxShadow: `inset 0 1px 0 ${gameColors.darkGreen}, inset 0 -1px 0 ${gameColors.black}`,
-  },
-  lockOverlay: {
-    position: 'absolute',
-    inset: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: 'linear-gradient(135deg, rgba(0,0,0,0.75), rgba(0,0,0,0.95))',
-    textAlign: 'center',
-    gap: '2px',
-  },
-  lockText: {
-    fontSize: '11px',
-    fontWeight: 'bold',
-    letterSpacing: '0.6px',
-    color: gameColors.brightGreen,
-  },
-  lockSubText: {
-    fontSize: '10px',
-    marginTop: '2px',
-    color: '#e5e7eb',
-  },
-  lockWatchLink: {
-    px: '8px',
-    py: '2px',
-    borderRadius: '999px',
-    border: `1px solid ${gameColors.brightGreen}`,
-    fontSize: '10px',
-    fontWeight: 'bold',
-    textTransform: 'uppercase' as const,
-    letterSpacing: '0.6px',
-    color: gameColors.brightGreen,
-    textDecoration: 'none',
-    '&:hover': {
-      backgroundColor: `${gameColors.brightGreen}20`,
-      textDecoration: 'none',
-    },
   },
   upgradeIconsContainer: {
     position: 'absolute',

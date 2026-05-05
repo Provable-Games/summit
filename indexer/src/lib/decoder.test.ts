@@ -17,12 +17,12 @@ import {
   decodeSkullEvent,
   decodeQuestRewardsClaimedEvent,
   decodeTransferEvent,
-  decodeEntityStatsEvent,
-  decodeCollectableEntityEvent,
+  decodeCollectableStatsEvent,
   computeEntityHash,
+  computeCollectableId,
   EVENT_SELECTORS,
   BEAST_EVENT_SELECTORS,
-  DOJO_EVENT_SELECTORS,
+  COLLECTABLE_EVENT_SELECTORS,
   type LiveBeastStats,
 } from "./decoder";
 
@@ -385,18 +385,16 @@ describe("BEAST_EVENT_SELECTORS", () => {
   });
 });
 
-describe("DOJO_EVENT_SELECTORS", () => {
-  const dojoEntries = Object.entries(DOJO_EVENT_SELECTORS);
+describe("COLLECTABLE_EVENT_SELECTORS", () => {
+  const entries = Object.entries(COLLECTABLE_EVENT_SELECTORS);
 
-  it.each(dojoEntries)("%s is a 66-char padded hex string", (_name, value) => {
+  it.each(entries)("%s is a 66-char padded hex string", (_name, value) => {
     expect(value).toHaveLength(66);
     expect(value).toMatch(/^0x[0-9a-f]{64}$/);
   });
 
-  it("has StoreSetRecord, EntityStats, and CollectableEntity", () => {
-    expect(DOJO_EVENT_SELECTORS).toHaveProperty("StoreSetRecord");
-    expect(DOJO_EVENT_SELECTORS).toHaveProperty("EntityStats");
-    expect(DOJO_EVENT_SELECTORS).toHaveProperty("CollectableEntity");
+  it("has CollectableStatsEvent", () => {
+    expect(COLLECTABLE_EVENT_SELECTORS).toHaveProperty("CollectableStatsEvent");
   });
 });
 
@@ -641,87 +639,38 @@ describe("decodeTransferEvent", () => {
   });
 });
 
-describe("decodeEntityStatsEvent", () => {
-  it("decodes dungeon, entity_hash, and adventurers_killed", () => {
+describe("decodeCollectableStatsEvent", () => {
+  it("decodes all six fields", () => {
+    // data: [collectable_id, beast_id, prefix, suffix, adventurers_killed, last_kill_timestamp]
     const data = [
-      "0x2",      // keys_length
-      "0xD",      // dungeon
-      "0xE",      // entity_hash
-      "0x1",      // values_length
-      "0x2A",     // adventurers_killed = 42
+      "0xABCD",     // collectable_id
+      "0x4D",       // beast_id = 77
+      "0x07",       // prefix = 7
+      "0x09",       // suffix = 9
+      "0x2A",       // adventurers_killed = 42
+      "0x67748580", // last_kill_timestamp
     ];
-    const result = decodeEntityStatsEvent([], data);
-    expect(result.dungeon).toHaveLength(66);
-    expect(result.dungeon).toContain("d");
-    expect(result.entity_hash).toHaveLength(66);
-    expect(result.entity_hash).toContain("e");
+    const result = decodeCollectableStatsEvent([], data);
+    expect(result.collectable_id).toHaveLength(66);
+    expect(result.collectable_id).toContain("abcd");
+    expect(result.beast_id).toBe(0x4D);
+    expect(result.prefix).toBe(7);
+    expect(result.suffix).toBe(9);
     expect(result.adventurers_killed).toBe(42n);
+    expect(result.last_kill_timestamp).toBe(0x67748580n);
   });
 
   it("handles zero adventurers_killed", () => {
-    const data = ["0x2", "0x1", "0x2", "0x1", "0x0"];
-    const result = decodeEntityStatsEvent([], data);
+    const data = ["0x1", "0x1", "0x1", "0x1", "0x0", "0x0"];
+    const result = decodeCollectableStatsEvent([], data);
     expect(result.adventurers_killed).toBe(0n);
+    expect(result.last_kill_timestamp).toBe(0n);
   });
 
-  it("pads dungeon and entity_hash to 66 chars", () => {
-    const data = ["0x2", "0xABC", "0xDEF", "0x1", "0x5"];
-    const result = decodeEntityStatsEvent([], data);
-    expect(result.dungeon).toHaveLength(66);
-    expect(result.entity_hash).toHaveLength(66);
-  });
-});
-
-describe("decodeCollectableEntityEvent", () => {
-  it("decodes dungeon, entity_hash, last_killed_by, and timestamp", () => {
-    // data: [keys_length=3, dungeon, entity_hash, third_key, values_length=8,
-    //        val1, val2, val3, val4, val5, val6, last_killed_by, timestamp]
-    const data = [
-      "0x3",    // keys_length
-      "0xD1",   // dungeon
-      "0xE1",   // entity_hash
-      "0xF1",   // third key
-      "0x8",    // values_length
-      "0x0", "0x0", "0x0", "0x0", "0x0", "0x0", // 6 value fields
-      "0x2A",   // last_killed_by = 42
-      "0x67748580", // timestamp
-    ];
-    const result = decodeCollectableEntityEvent([], data);
-    expect(result.dungeon).toHaveLength(66);
-    expect(result.dungeon).toContain("d1");
-    expect(result.entity_hash).toHaveLength(66);
-    expect(result.entity_hash).toContain("e1");
-    expect(result.last_killed_by).toBe(42n);
-    expect(result.timestamp).toBe(0x67748580n);
-  });
-
-  it("extracts last two elements regardless of values_length", () => {
-    // Shorter data set -- the function uses data.length - 2 and data.length - 1
-    const data = [
-      "0x3",     // keys_length
-      "0xA",     // dungeon
-      "0xB",     // entity_hash
-      "0xC",     // third key
-      "0x2",     // values_length (only 2 values)
-      "0x99",    // last_killed_by
-      "0x12345", // timestamp
-    ];
-    const result = decodeCollectableEntityEvent([], data);
-    expect(result.last_killed_by).toBe(0x99n);
-    expect(result.timestamp).toBe(0x12345n);
-  });
-
-  it("handles zero values for last_killed_by and timestamp", () => {
-    const data = [
-      "0x3", "0x1", "0x2", "0x3",
-      "0x8",
-      "0x0", "0x0", "0x0", "0x0", "0x0", "0x0",
-      "0x0", // last_killed_by
-      "0x0", // timestamp
-    ];
-    const result = decodeCollectableEntityEvent([], data);
-    expect(result.last_killed_by).toBe(0n);
-    expect(result.timestamp).toBe(0n);
+  it("pads collectable_id to 66 chars", () => {
+    const data = ["0xABC", "0x1", "0x1", "0x1", "0x5", "0x0"];
+    const result = decodeCollectableStatsEvent([], data);
+    expect(result.collectable_id).toHaveLength(66);
   });
 });
 
@@ -753,5 +702,29 @@ describe("computeEntityHash", () => {
     const result = computeEntityHash(0, 0, 0);
     expect(result).toHaveLength(66);
     expect(result).toMatch(/^0x[0-9a-f]{64}$/);
+  });
+});
+
+describe("computeCollectableId", () => {
+  it("returns a 66-char padded hex string", () => {
+    const entity_hash = computeEntityHash(1, 2, 3);
+    const result = computeCollectableId(19, entity_hash);
+    expect(result).toHaveLength(66);
+    expect(result).toMatch(/^0x[0-9a-f]{64}$/);
+  });
+
+  it("differs from entity_hash (extra Poseidon layer)", () => {
+    const entity_hash = computeEntityHash(1, 2, 3);
+    expect(computeCollectableId(19, entity_hash)).not.toBe(entity_hash);
+  });
+
+  it("changes when minted_by changes", () => {
+    const entity_hash = computeEntityHash(1, 2, 3);
+    expect(computeCollectableId(19, entity_hash)).not.toBe(computeCollectableId(20, entity_hash));
+  });
+
+  it("is deterministic", () => {
+    const entity_hash = computeEntityHash(42, 10, 5);
+    expect(computeCollectableId(19, entity_hash)).toBe(computeCollectableId(19, entity_hash));
   });
 });

@@ -274,25 +274,6 @@ export const GameDirector = ({ children }: PropsWithChildren) => {
               : beast
           )
         );
-      } else if (sub_category === "CollectableEntity") {
-        // Show locked notification when a beast is killed in LS
-        addNotificationWithPlayer({
-          type: 'locked',
-          beastName,
-          beastImageSrc,
-        });
-
-        setCollection(prevCollection =>
-          prevCollection.map(beast =>
-            beast.entity_hash === entityHash
-              ? {
-                ...beast,
-                last_killed_by: Number(eventData.last_killed_by),
-                last_dm_death_timestamp: Number(eventData.timestamp),
-              }
-              : beast
-          )
-        );
       }
     }
 

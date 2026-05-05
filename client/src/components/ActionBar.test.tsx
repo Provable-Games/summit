@@ -99,7 +99,6 @@ vi.mock("../utils/beasts", () => ({
   calculateRevivalRequired: vi.fn(() => 0),
   getBeastCurrentHealth: vi.fn(() => 0),
   getBeastRevivalTime: vi.fn(() => 0),
-  isBeastLocked: vi.fn(() => false),
 }));
 
 vi.mock("@/hooks/useAutopilotOrchestrator", () => ({

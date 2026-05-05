@@ -6,7 +6,6 @@ import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import HandshakeIcon from '@mui/icons-material/Handshake';
-import HeartBrokenIcon from '@mui/icons-material/HeartBroken';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import StarIcon from '@mui/icons-material/Star';
@@ -124,12 +123,6 @@ const getNotificationDisplay = (notification: GameNotification): { icon: React.R
         icon: <EmojiEventsIcon sx={{ fontSize: 14, color: '#ffd700' }} />,
         text: 'Adventurer Slain',
         color: '#ffd700',
-      };
-    case 'locked':
-      return {
-        icon: <HeartBrokenIcon sx={{ fontSize: 14, color: '#ff4444' }} />,
-        text: 'Killed in LS2',
-        color: '#ff4444',
       };
     case 'bought_potions': {
       const tokenIcon = TOKEN_ICON_MAP[notification.tokenName ?? ''] || attackPotionIcon;

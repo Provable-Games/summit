@@ -62,16 +62,11 @@ export const BEAST_EVENT_SELECTORS = {
 } as const;
 
 /**
- * Event selectors for Dojo world contract (Loot Survivor)
- * Dojo events have structure: keys[0]=StoreSelector, keys[1]=ModelSelector, keys[2+]=ModelKeys
+ * Event selectors for the Collectable contract
+ * Standard Starknet events use sn_keccak(event_name)
  */
-export const DOJO_EVENT_SELECTORS = {
-  // Dojo StoreSetRecord event selector (keys[0]) - padded to 64 hex chars
-  StoreSetRecord: "0x01a2f334228cee715f1f0f54053bb6b5eac54fa336e0bc1aacf7516decb0471d",
-  // EntityStats model selector (keys[1]) - padded to 64 hex chars
-  EntityStats: "0x029d69b1d6c3d402e03d5394145fba858744dc4e0ca8ffcc22729acbfe71dd4a",
-  // CollectableEntity model selector (keys[1]) - padded to 64 hex chars
-  CollectableEntity: "0x03b1af01c5bd9e48f92fa49ba31d96b18a03ac4eb4a389c0a694a11c8aa733df",
+export const COLLECTABLE_EVENT_SELECTORS = {
+  CollectableStatsEvent: getPaddedSelector("CollectableStatsEvent"),
 } as const;
 
 /**
@@ -523,71 +518,31 @@ export function decodeERC20TransferEvent(keys: string[], data: string[]): ERC20T
   return { from, to, amount };
 }
 
-// ============ Dojo Event Data Interfaces ============
+// ============ Collectable Event Data Interfaces ============
 
-export interface EntityStatsEventData {
-  dungeon: string;
-  entity_hash: string;
+export interface CollectableStatsEventData {
+  collectable_id: string;
+  beast_id: number;
+  prefix: number;
+  suffix: number;
   adventurers_killed: bigint;
+  last_kill_timestamp: bigint;
 }
 
-export interface CollectableEntityEventData {
-  dungeon: string;
-  entity_hash: string;
-  last_killed_by: bigint;
-  timestamp: bigint;
-}
-
-// ============ Dojo Event Decoders ============
+// ============ Collectable Event Decoders ============
 
 /**
- * Decode EntityStats Dojo event
- * Keys: [StoreSetRecord, EntityStats_model, key_hash]
- * Data: [keys_length, dungeon, entity_hash, values_length, adventurers_killed]
+ * Decode CollectableStatsEvent (standard Starknet event, no #[key] fields)
+ * Data: [collectable_id, beast_id, prefix, suffix, adventurers_killed, last_kill_timestamp]
  */
-export function decodeEntityStatsEvent(_keys: string[], data: string[]): EntityStatsEventData {
-  // Data layout (Dojo StoreSetRecord format: keys span then values span):
-  // data[0] = keys_length (2)
-  // data[1] = dungeon (key)
-  // data[2] = entity_hash (key)
-  // data[3] = values_length (1)
-  // data[4] = adventurers_killed (value)
-  const dungeon = feltToHex(data[1]);
-  const entity_hash = feltToHex(data[2]);
-  const adventurers_killed = hexToBigInt(data[4]);
-
+export function decodeCollectableStatsEvent(_keys: string[], data: string[]): CollectableStatsEventData {
   return {
-    dungeon,
-    entity_hash,
-    adventurers_killed,
-  };
-}
-
-/**
- * Decode CollectableEntity Dojo event
- * Keys: [StoreSetRecord, CollectableEntity_model, key_hash]
- * Data: [keys_length, dungeon, entity_hash, key3, values_length, ...values, last_killed_by, timestamp]
- *
- * The timestamp is the last field and represents when the entity was collected (death time)
- */
-export function decodeCollectableEntityEvent(_keys: string[], data: string[]): CollectableEntityEventData {
-  // Data layout (Dojo StoreSetRecord format: keys span then values span):
-  // data[0] = keys_length (3)
-  // data[1] = dungeon (key)
-  // data[2] = entity_hash (key)
-  // data[3] = third key
-  // data[4] = values_length (8)
-  // data[5..12] = value fields, with last_killed_by and timestamp at the end
-  const dungeon = feltToHex(data[1]);
-  const entity_hash = feltToHex(data[2]);
-  const last_killed_by = hexToBigInt(data[data.length - 2]);
-  const timestamp = hexToBigInt(data[data.length - 1]); // Last field
-
-  return {
-    dungeon,
-    entity_hash,
-    last_killed_by,
-    timestamp,
+    collectable_id: feltToHex(data[0]),
+    beast_id: hexToNumber(data[1]),
+    prefix: hexToNumber(data[2]),
+    suffix: hexToNumber(data[3]),
+    adventurers_killed: hexToBigInt(data[4]),
+    last_kill_timestamp: hexToBigInt(data[5]),
   };
 }
 
@@ -599,4 +554,13 @@ export function computeEntityHash(id: number, prefix: number, suffix: number): s
   // Use starknet.js Poseidon hash
   const entity_hash = hash.computePoseidonHashOnElements([id, prefix, suffix]);
   return feltToHex(entity_hash);
+}
+
+/**
+ * Compute collectable_id from minted_by and entity_hash
+ * Mirrors the contract: poseidon(minted_by, poseidon(id, prefix, suffix))
+ */
+export function computeCollectableId(minted_by: number, entity_hash: string): string {
+  const collectable_id = hash.computePoseidonHashOnElements([minted_by, BigInt(entity_hash)]);
+  return feltToHex(collectable_id);
 }

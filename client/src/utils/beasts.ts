@@ -144,38 +144,6 @@ export const getBeastCurrentHealth = (beast: Beast): number => {
   return beast.current_health
 }
 
-// A beast is "locked" for 24 hours after its last death.
-// During this window it cannot be selected as an attacker.
-export const BEAST_LOCK_DURATION_MS = 24 * 60 * 60 * 1000;
-
-export const isBeastLocked = (beast: Beast): boolean => {
-  if (!beast.last_dm_death_timestamp) return false;
-
-  const lastDeathMs = beast.last_dm_death_timestamp * 1000;
-  return Date.now() - lastDeathMs < BEAST_LOCK_DURATION_MS;
-}
-
-export const getBeastLockedTimeRemaining = (beast: Beast): { hours: number; minutes: number } => {
-  if (!beast.last_dm_death_timestamp) {
-    return { hours: 0, minutes: 0 };
-  }
-
-  const lastDeathMs = beast.last_dm_death_timestamp * 1000;
-  const elapsedMs = Date.now() - lastDeathMs;
-  const remainingMs = Math.max(0, BEAST_LOCK_DURATION_MS - elapsedMs);
-
-  // Work in whole minutes, rounding up so there is always at least 1 minute while locked.
-  const totalMinutes = Math.ceil(remainingMs / (60 * 1000));
-  if (totalMinutes <= 0) {
-    return { hours: 0, minutes: 0 };
-  }
-
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  return { hours, minutes };
-}
-
 export const getExperienceDefending = (attackingBeast: Beast): number => {
   return Math.floor(attackingBeast.power / 100) + 1;
 }
@@ -426,14 +394,14 @@ export function selectOptimalBeasts(
   const revivePotionsEnabled = config.autopilotEnabled && config.useRevivePotions && config.revivePotionsUsed < config.revivePotionMax;
   const attackPotionsEnabled = config.autopilotEnabled && config.useAttackPotions && config.attackPotionsUsed < config.attackPotionMax;
 
-  // Compute combat and filter locked beasts
+  // Compute combat per beast
   let filtered = collection.map((beast: Beast) => {
     const newBeast = { ...beast };
     newBeast.revival_time = getBeastRevivalTime(newBeast);
     newBeast.current_health = getBeastCurrentHealth(beast);
     newBeast.combat = calculateBattleResult(newBeast, summit, 0);
     return newBeast;
-  }).filter((beast: Beast) => !isBeastLocked(beast));
+  });
 
   // Separate alive and dead pools
   const alive = filtered.filter((b) => b.current_health > 0);

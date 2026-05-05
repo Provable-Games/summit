@@ -34,7 +34,7 @@ export type NotificationType =
   // Rewards
   | 'survivor_earned' | 'claimed_survivor' | 'claimed_corpses' | 'claimed_skulls'
   // LS Events
-  | 'kill' | 'locked'
+  | 'kill'
   // Market
   | 'bought_potions' | 'sold_potions';
 
@@ -64,7 +64,6 @@ interface GameState {
   battleEvents: BattleEvent[];
   spectatorBattleEvents: SpectatorBattleEvent[];
   poisonEvent: PoisonEvent | null;
-  killedByAdventurers: number[];
   collection: Beast[];
   collectionSyncing: boolean;
   loadingCollection: boolean;
@@ -95,7 +94,6 @@ interface GameState {
   setBattleEvents: (battleEvents: BattleEvent[]) => void;
   setSpectatorBattleEvents: (spectatorBattleEvents: SpectatorBattleEvent[] | ((prev: SpectatorBattleEvent[]) => SpectatorBattleEvent[])) => void;
   setPoisonEvent: (poisonEvent: PoisonEvent | null) => void;
-  setKilledByAdventurers: (killedByAdventurers: number[]) => void;
   setCollection: (collection: Beast[] | ((prev: Beast[]) => Beast[])) => void;
   setAdventurerCollection: (adventurerCollection: Adventurer[]) => void;
   setLoadingCollection: (loadingCollection: boolean) => void;
@@ -132,7 +130,6 @@ export const useGameStore = create<GameState>((set, _get) => ({
   battleEvents: [],
   spectatorBattleEvents: [],
   poisonEvent: null,
-  killedByAdventurers: [],
   collection: [],
   adventurerCollection: [],
   loadingCollection: false,
@@ -173,7 +170,6 @@ export const useGameStore = create<GameState>((set, _get) => ({
       battleEvents: [],
       spectatorBattleEvents: [],
       poisonEvent: null,
-      killedByAdventurers: [],
       collection: [],
       adventurerCollection: [],
       loadingCollection: false,
@@ -216,7 +212,6 @@ export const useGameStore = create<GameState>((set, _get) => ({
   setSpectatorBattleEvents: (spectatorBattleEvents: SpectatorBattleEvent[] | ((prev: SpectatorBattleEvent[]) => SpectatorBattleEvent[])) =>
     set(state => ({ spectatorBattleEvents: typeof spectatorBattleEvents === 'function' ? spectatorBattleEvents(state.spectatorBattleEvents) : spectatorBattleEvents })),
   setPoisonEvent: (poisonEvent: PoisonEvent | null) => set({ poisonEvent }),
-  setKilledByAdventurers: (killedByAdventurers: number[]) => set({ killedByAdventurers }),
   setCollection: (collection: Beast[] | ((prev: Beast[]) => Beast[])) =>
     set(state => ({ collection: typeof collection === 'function' ? collection(state.collection) : collection })),
   setLoadingCollection: (loadingCollection: boolean) => set({ loadingCollection }),

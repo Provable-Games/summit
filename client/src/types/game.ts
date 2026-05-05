@@ -67,9 +67,7 @@ export interface Beast {
   quest_rewards_claimed?: number;
   entity_hash?: string;
   rank?: number;
-  last_dm_death_timestamp?: number;
   adventurers_killed?: number;
-  last_killed_by?: number;
   combat?: Combat;
   battle?: BattleEvent;
   owner?: string;

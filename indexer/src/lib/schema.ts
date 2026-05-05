@@ -332,11 +332,11 @@ export const beasts = pgTable(
 );
 
 /**
- * Beast Data table - Dojo event data linked to beasts
+ * Beast Data table - Loot Survivor adventurer-kill counts per beast
  *
- * Stores data from Loot Survivor Dojo events:
- * - EntityStats: adventurers_killed count
- * - CollectableEntity: last_death_timestamp
+ * Populated from CollectableStatsEvent (adventurers_killed). The
+ * last_death_timestamp / last_killed_by columns are legacy lockout state, no
+ * longer written to but retained for historical rows.
  *
  * Linked to beasts table via entity_hash (poseidon_hash(id, prefix, suffix))
  */

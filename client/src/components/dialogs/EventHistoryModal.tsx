@@ -16,7 +16,6 @@ import ElectricBoltIcon from '@mui/icons-material/ElectricBolt';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import HeartBrokenIcon from '@mui/icons-material/HeartBroken';
 import HistoryIcon from '@mui/icons-material/History';
 import MilitaryTechIcon from '@mui/icons-material/MilitaryTech';
 import PsychologyIcon from '@mui/icons-material/Psychology';
@@ -32,7 +31,6 @@ import {
   Dialog,
   FormControl,
   IconButton,
-  Link,
   ListItemText,
   MenuItem,
   Pagination,
@@ -62,7 +60,7 @@ const CATEGORIES: Record<string, string[]> = {
   'Battle': ['BattleEvent', 'Applied Poison', 'Summit Change', 'Applied Extra Life'],
   'Beast Upgrade': ['Spirit', 'Luck', 'Specials', 'Wisdom', 'Diplomacy', 'Bonus Health'],
   'Rewards': ['$SURVIVOR Earned', 'Claimed $SURVIVOR', 'Claimed Corpses', 'Claimed Skulls'],
-  'LS Events': ['EntityStats', 'CollectableEntity'],
+  'LS Events': ['EntityStats'],
   'Market': ['Bought Potions', 'Sold Potions'],
 };
 
@@ -77,7 +75,6 @@ const CATEGORY_COLORS: Record<string, string> = {
 // Display names for sub-categories (API value -> Display name)
 const SUB_CATEGORY_DISPLAY_NAMES: Record<string, string> = {
   'EntityStats': 'Adventurer Killed',
-  'CollectableEntity': 'Beast Killed',
   '$SURVIVOR Earned': `${REWARD_NAME} Earned`,
   'Claimed $SURVIVOR': `Claimed ${REWARD_NAME}`,
 };
@@ -117,7 +114,6 @@ const getEventIcon = (category: string, subCategory: string): React.ReactNode =>
   // LS Events
   if (category === 'LS Events') {
     if (subCategory === 'EntityStats') return <EmojiEventsIcon sx={{ fontSize: 18, color: '#ffd700' }} />;
-    if (subCategory === 'CollectableEntity') return <HeartBrokenIcon sx={{ fontSize: 18, color: '#e05050' }} />;
   }
 
   // Market events
@@ -803,63 +799,6 @@ export default function EventHistoryModal({ open, onClose }: EventHistoryModalPr
             <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastName}</Box>
             {' killed an adventurer'}
           </Typography>
-        );
-      }
-      if (event.sub_category === 'CollectableEntity') {
-        const displayName = player || 'Unknown';
-        // Build full beast name
-        const beastId = data.beast_id as number | undefined;
-        const beastPrefix = data.prefix as number | undefined;
-        const beastSuffix = data.suffix as number | undefined;
-        const killedBy = data.last_killed_by as number | undefined;
-        const beastTypeName = beastId ? BEAST_NAMES[beastId as keyof typeof BEAST_NAMES] : null;
-        const prefixName = beastPrefix ? ITEM_NAME_PREFIXES[beastPrefix as keyof typeof ITEM_NAME_PREFIXES] : null;
-        const suffixName = beastSuffix ? ITEM_NAME_SUFFIXES[beastSuffix as keyof typeof ITEM_NAME_SUFFIXES] : null;
-
-        let beastName: string;
-        if (prefixName && suffixName && beastTypeName) {
-          beastName = `"${prefixName} ${suffixName}" ${beastTypeName}`;
-        } else if (beastTypeName) {
-          beastName = beastTypeName;
-        } else {
-          beastName = (data.beast_name as string) || (data.name as string) || `Beast #${data.token_id || event.token_id}`;
-        }
-
-        const watchUrl = killedBy && prefixName && suffixName && beastTypeName
-          ? `https://lootsurvivor.io/survivor/watch?id=${killedBy}&beast=${encodeURIComponent(`${prefixName}_${suffixName}_${beastTypeName}`)}`
-          : null;
-
-        return (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography sx={{ fontSize: '12px', color: '#e0e0e0', fontWeight: 500 }}>
-              <Box component="span" sx={{ color: gameColors.brightGreen }}>{displayName}'s</Box>
-              {" "}
-              <Box component="span" sx={{ color: gameColors.yellow, fontWeight: 600 }}>{beastName}</Box>
-              {' has been killed in LS2'}
-            </Typography>
-            {watchUrl && (
-              <Link
-                href={watchUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                sx={{
-                  px: '6px',
-                  py: '1px',
-                  borderRadius: '999px',
-                  border: `1px solid ${gameColors.brightGreen}`,
-                  fontSize: '10px',
-                  color: gameColors.brightGreen,
-                  textDecoration: 'none',
-                  '&:hover': {
-                    background: `${gameColors.brightGreen}20`,
-                  },
-                }}
-              >
-                Watch
-              </Link>
-            )}
-          </Box>
         );
       }
     }
