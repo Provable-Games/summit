@@ -670,24 +670,30 @@ app.get("/quest-rewards/total", async (c) => {
 /**
  * GET /adventurers/claimable?owner=0x... - Unclaimed Death Mountain adventurers for a player.
  *
- * Looks up game-over adventurers owned by `owner` from the Death Mountain Torii,
- * filters out ids already present in corpse_new_events (claimed by anyone against
- * the new corpse contract), and returns the remaining set with score and player_name.
+ * Pulls the Beast-dungeon, game-over adventurers owned by `owner` from the Denshokan
+ * API (Torii's token traits don't refresh on game state changes, so we can't trust its
+ * `Game Over` flag). Filters out ids already in corpse_new_events (claimed by anyone
+ * against the new corpse contract) and returns the remaining set with score + player_name.
  */
-const DEATHMOUNTAIN_TORII_URL =
-  process.env.DEATHMOUNTAIN_TORII_URL ?? "https://api.cartridge.gg/x/pg-deathmountain-2/torii";
-const DEATHMOUNTAIN_GAMES_CONTRACT =
-  "0x00263cc540dac11334470a64759e03952ee2f84a290e99ba8cbc391245cd0bf9";
-// Beast dungeon minter — only adventurers minted by this address are claimable
-// for corpse rewards. Stored unpadded (BigInt-hex) to match Torii's `Minted By` trait shape.
-// Padded form: 0x0539d24dfdaa2866d975fa93db501b971c08786f2c88e719800be39903e43bbc
+const DENSHOKAN_API_URL =
+  process.env.DENSHOKAN_API_URL ?? "https://denshokan-api-production.up.railway.app";
+const DEATHMOUNTAIN_GAME_ID = 1;
+// Beast dungeon minter — only adventurers minted by this address are claimable for corpse rewards.
 const BEAST_DUNGEON_MINTER =
-  "0x539d24dfdaa2866d975fa93db501b971c08786f2c88e719800be39903e43bbc";
+  "0x0539d24dfdaa2866d975fa93db501b971c08786f2c88e719800be39903e43bbc";
+const DENSHOKAN_PAGE_LIMIT = 500;
 
-interface ToriiAdventurerRow {
-  token_id: string;
-  score: string | null;
-  player_name: string | null;
+interface DenshokanAdventurer {
+  tokenId: string;
+  currentScore: string | null;
+  playerName: string | null;
+  gameOver: boolean;
+}
+interface DenshokanResponse {
+  data: DenshokanAdventurer[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 app.get("/adventurers/claimable", async (c) => {
@@ -701,42 +707,36 @@ app.get("/adventurers/claimable", async (c) => {
     return c.json({ error: "Invalid owner address" }, 400);
   }
 
-  const sqlQuery = `
-    SELECT t.token_id AS token_id,
-           ta_score.trait_value AS score,
-           ta_name.trait_value AS player_name
-    FROM token_balances tb
-    JOIN tokens t ON tb.token_id = t.id
-    JOIN token_attributes ta_go ON ta_go.token_id = t.id AND ta_go.trait_name = 'Game Over'
-    JOIN token_attributes ta_mb ON ta_mb.token_id = t.id AND ta_mb.trait_name = 'Minted By'
-    LEFT JOIN token_attributes ta_score ON ta_score.token_id = t.id AND ta_score.trait_name = 'Score'
-    LEFT JOIN token_attributes ta_name  ON ta_name.token_id  = t.id AND ta_name.trait_name  = 'Player Name'
-    WHERE tb.contract_address = '${DEATHMOUNTAIN_GAMES_CONTRACT}'
-      AND tb.account_address  = '${owner}'
-      AND tb.balance != '0x0'
-      AND ta_go.trait_value = 'True'
-      AND ta_mb.trait_value = '${BEAST_DUNGEON_MINTER}'
-  `;
+  // Page through Denshokan in case the player has more than DENSHOKAN_PAGE_LIMIT game-over runs
+  const all: DenshokanAdventurer[] = [];
+  let offset = 0;
+  while (true) {
+    const url = `${DENSHOKAN_API_URL}/tokens?game_id=${DEATHMOUNTAIN_GAME_ID}`
+      + `&owner=${encodeURIComponent(owner)}`
+      + `&game_over=true`
+      + `&minter_address=${encodeURIComponent(BEAST_DUNGEON_MINTER)}`
+      + `&sort_by=score&sort_order=desc`
+      + `&limit=${DENSHOKAN_PAGE_LIMIT}&offset=${offset}`;
 
-  const toriiResponse = await fetch(
-    `${DEATHMOUNTAIN_TORII_URL}/sql?query=${encodeURIComponent(sqlQuery)}`,
-    { headers: { "Content-Type": "application/json" } }
-  );
-
-  if (!toriiResponse.ok) {
-    return c.json(
-      { error: "Failed to fetch from Death Mountain Torii", status: toriiResponse.status },
-      502
-    );
+    const res = await fetch(url, { headers: { "Content-Type": "application/json" } });
+    if (!res.ok) {
+      return c.json(
+        { error: "Failed to fetch from Denshokan", status: res.status },
+        502
+      );
+    }
+    const body = (await res.json()) as DenshokanResponse;
+    all.push(...body.data);
+    if (body.data.length < DENSHOKAN_PAGE_LIMIT || offset + body.data.length >= body.total) break;
+    offset += body.data.length;
   }
 
-  const rows = (await toriiResponse.json()) as ToriiAdventurerRow[];
-  if (rows.length === 0) {
+  if (all.length === 0) {
     return c.json({ adventurers: [] });
   }
 
-  // token_id is a 0x-prefixed 32-byte hex; meaningful value is its felt252 numeric value.
-  const decimalIds = rows.map((row) => BigInt(row.token_id).toString());
+  // tokenId is already a felt252 decimal string — same shape as corpse_new_events.adventurer_id
+  const decimalIds = all.map((row) => row.tokenId);
 
   const claimed = await db
     .selectDistinct({ adventurer_id: corpse_new_events.adventurer_id })
@@ -744,13 +744,13 @@ app.get("/adventurers/claimable", async (c) => {
     .where(inArray(corpse_new_events.adventurer_id, decimalIds));
   const claimedSet = new Set(claimed.map((r) => r.adventurer_id));
 
-  const adventurers = rows
+  const adventurers = all
+    .filter((row) => !claimedSet.has(row.tokenId))
     .map((row) => ({
-      id: BigInt(row.token_id).toString(),
-      score: row.score === null ? 0 : Number(row.score),
-      player_name: row.player_name ?? undefined,
-    }))
-    .filter((a) => !claimedSet.has(a.id));
+      id: row.tokenId,
+      score: row.currentScore === null ? 0 : Number(row.currentScore),
+      player_name: row.playerName ?? undefined,
+    }));
 
   return c.json({ adventurers });
 });
