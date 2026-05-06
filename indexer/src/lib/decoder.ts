@@ -62,11 +62,14 @@ export const BEAST_EVENT_SELECTORS = {
 } as const;
 
 /**
- * Event selectors for the Collectable contract
- * Standard Starknet events use sn_keccak(event_name)
+ * Selector for the single GameEvent emitted by the Collectable / Death Mountain contract.
+ * The event wraps a variant-tagged payload (envelope: [adventurer_id, variant_index, ...variant_data]).
  */
-export const COLLECTABLE_EVENT_SELECTORS = {
-  CollectableStatsEvent: getPaddedSelector("CollectableStatsEvent"),
+export const GAME_EVENT_SELECTOR = getPaddedSelector("GameEvent");
+
+/** Variant indices on GameEvent. Only the ones we consume are listed. */
+export const GAME_EVENT_VARIANT = {
+  CollectableStats: 19,
 } as const;
 
 /**
@@ -518,7 +521,29 @@ export function decodeERC20TransferEvent(keys: string[], data: string[]): ERC20T
   return { from, to, amount };
 }
 
-// ============ Collectable Event Data Interfaces ============
+// ============ GameEvent Envelope ============
+
+export interface GameEventEnvelope {
+  adventurer_id: string;
+  variant_index: number;
+  variant_data: string[];
+}
+
+/**
+ * Decode the GameEvent envelope:
+ *   data[0]   = adventurer_id (felt252)
+ *   data[1]   = variant_index (u8 enum tag)
+ *   data[2..] = variant-specific payload
+ */
+export function decodeGameEvent(data: string[]): GameEventEnvelope {
+  return {
+    adventurer_id: feltToHex(data[0]),
+    variant_index: hexToNumber(data[1]),
+    variant_data: data.slice(2),
+  };
+}
+
+// ============ GameEvent Variant Decoders ============
 
 export interface CollectableStatsEventData {
   collectable_id: string;
@@ -529,13 +554,11 @@ export interface CollectableStatsEventData {
   last_kill_timestamp: bigint;
 }
 
-// ============ Collectable Event Decoders ============
-
 /**
- * Decode CollectableStatsEvent (standard Starknet event, no #[key] fields)
- * Data: [collectable_id, beast_id, prefix, suffix, adventurers_killed, last_kill_timestamp]
+ * Decode CollectableStatsEvent (variant 19) from the envelope's variant_data:
+ *   [collectable_id, beast_id, prefix, suffix, adventurers_killed, last_kill_timestamp]
  */
-export function decodeCollectableStatsEvent(_keys: string[], data: string[]): CollectableStatsEventData {
+export function decodeCollectableStatsEvent(data: string[]): CollectableStatsEventData {
   return {
     collectable_id: feltToHex(data[0]),
     beast_id: hexToNumber(data[1]),

@@ -40,7 +40,9 @@ import * as schema from "../src/lib/schema.js";
 import {
   EVENT_SELECTORS,
   BEAST_EVENT_SELECTORS,
-  COLLECTABLE_EVENT_SELECTORS,
+  GAME_EVENT_SELECTOR,
+  GAME_EVENT_VARIANT,
+  decodeGameEvent,
   decodeBeastUpdatesEvent,
   decodeLiveBeastStatsEvent,
   decodeBattleEvent,
@@ -954,10 +956,10 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           address: beastsContractAddress.toLowerCase() as `0x${string}`,
           keys: [BEAST_EVENT_SELECTORS.Transfer as `0x${string}`],
         },
-        // Collectable contract - CollectableStatsEvent
+        // Collectable / Death Mountain contract - GameEvent (variant-tagged envelope)
         {
           address: collectableContractAddress.toLowerCase() as `0x${string}`,
-          keys: [COLLECTABLE_EVENT_SELECTORS.CollectableStatsEvent as `0x${string}`],
+          keys: [GAME_EVENT_SELECTOR as `0x${string}`],
         },
         // Corpse contract - CorpseEvent only
         {
@@ -1105,16 +1107,19 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
           }
         }
 
-        // Collect entity_hashes for LS Events (Collectable contract events).
-        // collectable_id is poseidon(MINTED_BY_BEAST, poseidon(id, prefix, suffix)); we recompute
-        // the inner hash from inline event fields so it matches existing beast_data.entity_hash rows,
-        // and recompute the outer hash to drop events from other minters sharing this contract.
+        // Collectable / Death Mountain contract emits a single GameEvent envelope:
+        //   data = [adventurer_id, variant_index, ...variant_data]
+        // We only care about variant 19 (CollectableStatsEvent), and only for our
+        // beasts: collectable_id == poseidon(MINTED_BY_BEAST, poseidon(id, prefix, suffix)).
         if (addressToBigInt(event_address) === collectableAddressBigInt &&
-            selector === COLLECTABLE_EVENT_SELECTORS.CollectableStatsEvent) {
-          const decoded = decodeCollectableStatsEvent([...keys], [...event.data]);
-          const entity_hash = computeEntityHash(decoded.beast_id, decoded.prefix, decoded.suffix);
-          if (computeCollectableId(MINTED_BY_BEAST, entity_hash) !== decoded.collectable_id) continue;
-          lsEventEntityHashes.push(entity_hash);
+            selector === GAME_EVENT_SELECTOR && event.data.length >= 3) {
+          const envelope = decodeGameEvent([...event.data]);
+          if (envelope.variant_index === GAME_EVENT_VARIANT.CollectableStats) {
+            const decoded = decodeCollectableStatsEvent(envelope.variant_data);
+            const entity_hash = computeEntityHash(decoded.beast_id, decoded.prefix, decoded.suffix);
+            if (computeCollectableId(MINTED_BY_BEAST, entity_hash) !== decoded.collectable_id) continue;
+            lsEventEntityHashes.push(entity_hash);
+          }
         }
 
         // Skull contract - SkullEvent pre-scan
@@ -1379,11 +1384,14 @@ export default function indexer(runtimeConfig: ApibaraRuntimeConfig) {
             continue;
           }
 
-          // Collectable contract - CollectableStatsEvent
+          // Collectable contract - GameEvent envelope, variant 19 = CollectableStatsEvent
           if (addressToBigInt(event_address) === collectableAddressBigInt &&
-            selector === COLLECTABLE_EVENT_SELECTORS.CollectableStatsEvent) {
+            selector === GAME_EVENT_SELECTOR && data.length >= 3) {
 
-            const decoded = decodeCollectableStatsEvent([...keys], [...data]);
+            const envelope = decodeGameEvent([...data]);
+            if (envelope.variant_index !== GAME_EVENT_VARIANT.CollectableStats) continue;
+
+            const decoded = decodeCollectableStatsEvent(envelope.variant_data);
             const entity_hash = computeEntityHash(decoded.beast_id, decoded.prefix, decoded.suffix);
             if (computeCollectableId(MINTED_BY_BEAST, entity_hash) !== decoded.collectable_id) continue;
 

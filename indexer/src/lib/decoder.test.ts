@@ -17,12 +17,14 @@ import {
   decodeSkullEvent,
   decodeQuestRewardsClaimedEvent,
   decodeTransferEvent,
+  decodeGameEvent,
   decodeCollectableStatsEvent,
   computeEntityHash,
   computeCollectableId,
   EVENT_SELECTORS,
   BEAST_EVENT_SELECTORS,
-  COLLECTABLE_EVENT_SELECTORS,
+  GAME_EVENT_SELECTOR,
+  GAME_EVENT_VARIANT,
   type LiveBeastStats,
 } from "./decoder";
 
@@ -385,16 +387,19 @@ describe("BEAST_EVENT_SELECTORS", () => {
   });
 });
 
-describe("COLLECTABLE_EVENT_SELECTORS", () => {
-  const entries = Object.entries(COLLECTABLE_EVENT_SELECTORS);
-
-  it.each(entries)("%s is a 66-char padded hex string", (_name, value) => {
-    expect(value).toHaveLength(66);
-    expect(value).toMatch(/^0x[0-9a-f]{64}$/);
+describe("GAME_EVENT_SELECTOR", () => {
+  it("is a 66-char padded hex string matching the on-chain GameEvent selector", () => {
+    expect(GAME_EVENT_SELECTOR).toHaveLength(66);
+    expect(GAME_EVENT_SELECTOR).toMatch(/^0x[0-9a-f]{64}$/);
+    expect(GAME_EVENT_SELECTOR).toBe(
+      "0x03e037e958ba3b5c1cc99ac16aaf9896423eebd03183c41fbb26548a12336e5f"
+    );
   });
+});
 
-  it("has CollectableStatsEvent", () => {
-    expect(COLLECTABLE_EVENT_SELECTORS).toHaveProperty("CollectableStatsEvent");
+describe("GAME_EVENT_VARIANT", () => {
+  it("CollectableStats is variant 19", () => {
+    expect(GAME_EVENT_VARIANT.CollectableStats).toBe(19);
   });
 });
 
@@ -648,9 +653,26 @@ describe("decodeTransferEvent", () => {
   });
 });
 
+describe("decodeGameEvent", () => {
+  it("splits envelope into adventurer_id, variant_index, and variant_data", () => {
+    // [adventurer_id, variant_index, ...payload]
+    const data = ["0xAA", "0x13", "0xCAFE", "0x1", "0x2"];
+    const env = decodeGameEvent(data);
+    expect(env.adventurer_id).toHaveLength(66);
+    expect(env.adventurer_id).toContain("aa");
+    expect(env.variant_index).toBe(0x13); // 19
+    expect(env.variant_data).toEqual(["0xCAFE", "0x1", "0x2"]);
+  });
+
+  it("returns empty variant_data when only envelope fields are present", () => {
+    const env = decodeGameEvent(["0x0", "0x0"]);
+    expect(env.variant_data).toEqual([]);
+  });
+});
+
 describe("decodeCollectableStatsEvent", () => {
-  it("decodes all six fields", () => {
-    // data: [collectable_id, beast_id, prefix, suffix, adventurers_killed, last_kill_timestamp]
+  it("decodes all six fields from variant_data", () => {
+    // variant_data: [collectable_id, beast_id, prefix, suffix, adventurers_killed, last_kill_timestamp]
     const data = [
       "0xABCD",     // collectable_id
       "0x4D",       // beast_id = 77
@@ -659,7 +681,7 @@ describe("decodeCollectableStatsEvent", () => {
       "0x2A",       // adventurers_killed = 42
       "0x67748580", // last_kill_timestamp
     ];
-    const result = decodeCollectableStatsEvent([], data);
+    const result = decodeCollectableStatsEvent(data);
     expect(result.collectable_id).toHaveLength(66);
     expect(result.collectable_id).toContain("abcd");
     expect(result.beast_id).toBe(0x4D);
@@ -671,15 +693,25 @@ describe("decodeCollectableStatsEvent", () => {
 
   it("handles zero adventurers_killed", () => {
     const data = ["0x1", "0x1", "0x1", "0x1", "0x0", "0x0"];
-    const result = decodeCollectableStatsEvent([], data);
+    const result = decodeCollectableStatsEvent(data);
     expect(result.adventurers_killed).toBe(0n);
     expect(result.last_kill_timestamp).toBe(0n);
   });
 
   it("pads collectable_id to 66 chars", () => {
     const data = ["0xABC", "0x1", "0x1", "0x1", "0x5", "0x0"];
-    const result = decodeCollectableStatsEvent([], data);
+    const result = decodeCollectableStatsEvent(data);
     expect(result.collectable_id).toHaveLength(66);
+  });
+
+  it("composes correctly with decodeGameEvent for a real envelope", () => {
+    // Full GameEvent payload: [adventurer_id, 19, collectable_id, beast_id, prefix, suffix, kills, ts]
+    const data = ["0xAA", "0x13", "0xDEADBEEF", "0x4D", "0x7", "0x9", "0x2A", "0x100"];
+    const env = decodeGameEvent(data);
+    expect(env.variant_index).toBe(GAME_EVENT_VARIANT.CollectableStats);
+    const stats = decodeCollectableStatsEvent(env.variant_data);
+    expect(stats.adventurers_killed).toBe(42n);
+    expect(stats.beast_id).toBe(0x4D);
   });
 });
 
