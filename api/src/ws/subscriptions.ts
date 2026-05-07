@@ -5,6 +5,7 @@
  * Channels:
  * - summit: Beast stats updates for summit beast
  * - event: Activity feed from summit_log
+ * - beast: New beast mints (insert into beasts table)
  */
 
 import { pool } from "../db/client.js";
@@ -15,7 +16,7 @@ interface WebSocketLike {
   close(): void;
 }
 
-export type Channel = "summit" | "event";
+export type Channel = "summit" | "event" | "beast";
 
 interface ClientSubscription {
   ws: WebSocketLike;
@@ -61,6 +62,19 @@ interface EventPayload {
   created_at: string;
 }
 
+interface BeastPayload {
+  token_id: number;
+  beast_id: number;
+  prefix: number;
+  suffix: number;
+  level: number;
+  health: number;
+  shiny: number;
+  animated: number;
+  created_at: string;
+  indexed_at: string;
+}
+
 export class SubscriptionHub {
   private clients: Map<string, ClientSubscription> = new Map();
   private pgClient: pg.PoolClient | null = null;
@@ -100,8 +114,11 @@ export class SubscriptionHub {
 
       await this.pgClient.query("LISTEN summit_update");
       await this.pgClient.query("LISTEN summit_log_insert");
+      await this.pgClient.query("LISTEN beast_insert");
 
-      console.log("[SubscriptionHub] Listening on: summit_update, summit_log_insert");
+      console.log(
+        "[SubscriptionHub] Listening on: summit_update, summit_log_insert, beast_insert"
+      );
     } catch (error) {
       console.error("[SubscriptionHub] Failed to connect:", error);
       this.reconnect();
@@ -152,13 +169,19 @@ export class SubscriptionHub {
         case "summit_log_insert":
           this.broadcast("event", payload as EventPayload);
           break;
+        case "beast_insert":
+          this.broadcast("beast", payload as BeastPayload);
+          break;
       }
     } catch (error) {
       console.error("[SubscriptionHub] Failed to parse notification:", error);
     }
   }
 
-  private broadcast(channel: Channel, data: SummitPayload | EventPayload): void {
+  private broadcast(
+    channel: Channel,
+    data: SummitPayload | EventPayload | BeastPayload
+  ): void {
     const message = JSON.stringify({ type: channel, data });
 
     let sentCount = 0;
