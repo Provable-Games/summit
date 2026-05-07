@@ -82,11 +82,11 @@ pub mod summit_systems {
     use starknet::{ClassHash, ContractAddress, get_block_timestamp, get_caller_address};
     use summit::constants::{
         BASE_REVIVAL_TIME_SECONDS, BEAST_MAX_ATTRIBUTES, BEAST_MAX_BONUS_HEALTH, BEAST_MAX_BONUS_LVLS,
-        BEAST_MAX_EXTRA_LIVES, DAY_SECONDS, DIPLOMACY_COST, MAX_REVIVAL_COUNT, MAX_U32, MINIMUM_DAMAGE, SPECIALS_COST,
+        BEAST_MAX_EXTRA_LIVES, DIPLOMACY_COST, MAX_REVIVAL_COUNT, MAX_U32, MINIMUM_DAMAGE, SPECIALS_COST,
         TOKEN_DECIMALS, WISDOM_COST, errors,
     };
     use summit::erc20::interface::{SummitERC20Dispatcher, SummitERC20DispatcherTrait};
-    use summit::interfaces::{IBeastSystemsDispatcher, IBeastSystemsDispatcherTrait};
+    use summit::interfaces::{IBeastSystemsDispatcher};
     use summit::logic::{beast_utils, combat, poison, quest, revival};
     use summit::models::beast::{Beast, BeastUtilsImpl, LiveBeastStats, PackableLiveStatsStorePacking, Stats};
     use summit::models::events::{
@@ -913,14 +913,6 @@ pub mod summit_systems {
                 // get stats for the beast that is attacking
                 let mut attacking_beast = Self::_get_beast(@self, attacking_beast_token_id, beast_nft_dispatcher);
 
-                if Self::_is_killed_recently_in_death_mountain(@self, attacking_beast) {
-                    if safe_attack {
-                        assert!(false, "Beast {} has been killed in the last day", attacking_beast_token_id);
-                    } else {
-                        continue;
-                    }
-                }
-
                 // precompute combat specs and crit chances before battle loop
                 let attacker_has_specials = attacking_beast.live.stats.specials == 1;
 
@@ -1177,11 +1169,6 @@ pub mod summit_systems {
             (total_attack_potions, revival_potions_used, extra_life_potions_used)
         }
 
-        fn _is_killed_recently_in_death_mountain(self: @ContractState, beast: Beast) -> bool {
-            let last_killed_timestamp = Self::_get_last_killed_timestamp(self, beast);
-            revival::is_killed_recently(last_killed_timestamp, get_block_timestamp(), DAY_SECONDS)
-        }
-
         /// @notice this function is used to apply revival potions if needed
         /// @param live_beast_stats the stats of the beast to check
         fn _revival_potions_required(self: @ContractState, beast: Beast) -> u16 {
@@ -1191,21 +1178,6 @@ pub mod summit_systems {
                 beast.live.revival_count,
                 beast.spirit_reduction(),
             )
-        }
-
-        fn _get_last_killed_timestamp(self: @ContractState, beast: Beast) -> u64 {
-            let beast_hash = ImplBeast::get_beast_hash(beast.fixed.id, beast.fixed.prefix, beast.fixed.suffix);
-            let beast_data_dispatcher = self.beast_data_dispatcher.read();
-
-            let num_deaths = beast_data_dispatcher.get_collectable_count(self.dungeon_address.read(), beast_hash);
-            // Don't lock newly collected beasts
-            if num_deaths == 1 {
-                0
-            } else {
-                let collectable_entity = beast_data_dispatcher
-                    .get_collectable(self.dungeon_address.read(), beast_hash, num_deaths - 1);
-                collectable_entity.timestamp
-            }
         }
 
         /// @title beast_can_get_xp

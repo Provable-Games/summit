@@ -3,7 +3,7 @@ url = "http://127.0.0.1:5050/"
 accounts-file = "../account-file"
 account = "mainuser"
 wait-params = { timeout = 500, retry-interval = 10 }
-block-explorer = "StarkScan"
+block-explorer = "Voyager"
 show-explorer-links = true
 
 # Mainnet profile used by deployment scripts
@@ -11,7 +11,7 @@ show-explorer-links = true
 accounts-file = "../account-file"
 account = "mainuser"
 wait-params = { timeout = 500, retry-interval = 10 }
-block-explorer = "StarkScan"
+block-explorer = "Voyager"
 show-explorer-links = true
 
 [sncast.myprofile1.networks]
