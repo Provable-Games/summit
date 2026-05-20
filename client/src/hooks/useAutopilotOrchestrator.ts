@@ -58,8 +58,10 @@ export function useAutopilotOrchestrator() {
 
   const [triggerAutopilot, setTriggerAutopilot] = useReducer((x: number) => x + 1, 0);
   const poisonedTokenIdRef = React.useRef<number | null>(null);
+  const targetedPoisonKeyRef = React.useRef<string | null>(null);
 
   const isSavage = Boolean(collection.find(beast => beast.token_id === summit?.beast?.token_id));
+  const poisonBalance = tokenBalances?.["POISON"] || 0;
   const revivalPotionsRequired = calculateRevivalRequired(selectedBeasts);
   const hasEnoughRevivePotions = (tokenBalances["REVIVE"] || 0) >= revivalPotionsRequired;
   const enableAttack = (attackMode === 'autopilot' && !attackInProgress) || ((!isSavage || attackMode !== 'safe') && summit?.beast && !attackInProgress && selectedBeasts.length > 0 && hasEnoughRevivePotions);
@@ -104,16 +106,30 @@ export function useAutopilotOrchestrator() {
 
   const handleApplyPoison = (amount: number, beastId?: number): boolean => {
     const targetId = beastId ?? summit?.beast?.token_id;
-    if (!targetId || applyingPotions || amount === 0) return false;
+    if (targetId === undefined || applyingPotions || amount === 0) return false;
 
     setApplyingPotions(true);
     setAutopilotLog('Applying poison...');
 
-    executeGameAction({
+    void executeGameAction({
       type: 'apply_poison',
       beastId: targetId,
       count: amount,
+    }).then((result) => {
+      if (result) return;
+
+      if (poisonedTokenIdRef.current === targetId) {
+        poisonedTokenIdRef.current = null;
+      }
+      targetedPoisonKeyRef.current = null;
+    }).catch(() => {
+      if (poisonedTokenIdRef.current === targetId) {
+        poisonedTokenIdRef.current = null;
+      }
+      targetedPoisonKeyRef.current = null;
+      setApplyingPotions(false);
     });
+
     return true;
   };
 
@@ -161,8 +177,7 @@ export function useAutopilotOrchestrator() {
           if (isBeastTarget) {
             const beastAmount = getTargetedBeastPoisonAmount(currentSummit.beast.token_id, tpb);
             const remainingCap = Math.max(0, ptm - ppu);
-            const pb = tokenBalances?.["POISON"] || 0;
-            const amount = Math.min(beastAmount, pb, remainingCap);
+            const amount = Math.min(beastAmount, poisonBalance, remainingCap);
             if (amount > 0) {
               handleApplyPoison(amount, currentSummit.beast.token_id);
               poisonedThisSequence.add(currentSummit.beast.token_id);
@@ -170,8 +185,7 @@ export function useAutopilotOrchestrator() {
           } else if (tpp.length > 0 && isOwnerTargetedForPoison(currentSummit.owner, tpp)) {
             const playerAmount = getTargetedPoisonAmount(currentSummit.owner, tpp);
             const remainingCap = Math.max(0, ptm - ppu);
-            const pb = tokenBalances?.["POISON"] || 0;
-            const amount = Math.min(playerAmount, pb, remainingCap);
+            const amount = Math.min(playerAmount, poisonBalance, remainingCap);
             if (amount > 0) {
               handleApplyPoison(amount, currentSummit.beast.token_id);
               poisonedThisSequence.add(currentSummit.beast.token_id);
@@ -200,6 +214,8 @@ export function useAutopilotOrchestrator() {
     setAttackPotionsUsed(() => 0);
     setExtraLifePotionsUsed(() => 0);
     setPoisonPotionsUsed(() => 0);
+    poisonedTokenIdRef.current = null;
+    targetedPoisonKeyRef.current = null;
     setAutopilotEnabled(true);
   };
 
@@ -219,9 +235,15 @@ export function useAutopilotOrchestrator() {
     if (attackMode !== 'autopilot' && autopilotEnabled) {
       setAutopilotEnabled(false);
       poisonedTokenIdRef.current = null;
+      targetedPoisonKeyRef.current = null;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attackMode]);
+
+  useEffect(() => {
+    poisonedTokenIdRef.current = null;
+    targetedPoisonKeyRef.current = null;
+  }, [summit?.beast?.token_id]);
 
   // Diplomacy / ignored player memos
   const summitSharesDiplomacy = useMemo(() => {
@@ -275,9 +297,11 @@ export function useAutopilotOrchestrator() {
     if (isBeastTarget) {
       const beastAmount = getTargetedBeastPoisonAmount(summit.beast.token_id, targetedPoisonBeasts);
       const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
-      const pb = tokenBalances?.["POISON"] || 0;
-      const amount = Math.min(beastAmount, pb, remainingCap);
-      if (amount > 0) handleApplyPoison(amount, summit.beast.token_id);
+      const amount = Math.min(beastAmount, poisonBalance, remainingCap);
+      const poisonKey = `beast:${summit.beast.token_id}:${beastAmount}:${poisonTotalMax}`;
+      if (amount > 0 && targetedPoisonKeyRef.current !== poisonKey && handleApplyPoison(amount, summit.beast.token_id)) {
+        targetedPoisonKeyRef.current = poisonKey;
+      }
       return;
     }
 
@@ -286,9 +310,11 @@ export function useAutopilotOrchestrator() {
     if (isTargeted) {
       const playerAmount = getTargetedPoisonAmount(summit.owner, targetedPoisonPlayers);
       const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
-      const pb = tokenBalances?.["POISON"] || 0;
-      const amount = Math.min(playerAmount, pb, remainingCap);
-      if (amount > 0) handleApplyPoison(amount, summit.beast.token_id);
+      const amount = Math.min(playerAmount, poisonBalance, remainingCap);
+      const poisonKey = `player:${summit.beast.token_id}:${summit.owner.toLowerCase()}:${playerAmount}:${poisonTotalMax}`;
+      if (amount > 0 && targetedPoisonKeyRef.current !== poisonKey && handleApplyPoison(amount, summit.beast.token_id)) {
+        targetedPoisonKeyRef.current = poisonKey;
+      }
       return;
     }
 
@@ -305,17 +331,35 @@ export function useAutopilotOrchestrator() {
     if (poisonMinHealth > 0 && summit.beast.current_health < poisonMinHealth) return;
 
     const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
-    const pb = tokenBalances?.["POISON"] || 0;
-    const amount = Math.min(poisonAggressiveAmount, pb, remainingCap);
+    const amount = Math.min(poisonAggressiveAmount, poisonBalance, remainingCap);
     if (amount > 0 && handleApplyPoison(amount, summit.beast.token_id)) {
       poisonedTokenIdRef.current = summit.beast.token_id;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [summit?.beast?.token_id, autopilotEnabled, targetedPoisonPlayers, targetedPoisonBeasts, poisonTotalMax]);
+  }, [
+    summit?.beast?.token_id,
+    summit?.beast?.power,
+    summit?.beast?.current_health,
+    summit?.owner,
+    autopilotEnabled,
+    attackInProgress,
+    applyingPotions,
+    collection,
+    targetedPoisonPlayers,
+    targetedPoisonBeasts,
+    poisonStrategy,
+    poisonTotalMax,
+    poisonPotionsUsed,
+    poisonAggressiveAmount,
+    poisonMinPower,
+    poisonMinHealth,
+    poisonBalance,
+    shouldSkipSummit,
+  ]);
 
   // Main autopilot attack + conservative poison + extra life logic
   useEffect(() => {
-    if (!autopilotEnabled || attackInProgress || !collectionWithCombat || !summit) return;
+    if (!autopilotEnabled || attackInProgress || applyingPotions || !collectionWithCombat || !summit) return;
 
     const myBeast = collection.find((beast: Beast) => beast.token_id === summit?.beast.token_id);
 
@@ -339,10 +383,10 @@ export function useAutopilotOrchestrator() {
       && (poisonMinPower <= 0 || summit.beast.power >= poisonMinPower)
       && (poisonMinHealth <= 0 || summit.beast.current_health >= poisonMinHealth)) {
       const remainingCap = Math.max(0, poisonTotalMax - poisonPotionsUsed);
-      const poisonBalance = tokenBalances?.["POISON"] || 0;
       const amount = Math.min(poisonConservativeAmount - summit.poison_count, poisonBalance, remainingCap);
       if (amount > 0 && handleApplyPoison(amount)) {
         poisonedTokenIdRef.current = summit.beast.token_id;
+        return;
       }
     }
 
@@ -376,7 +420,36 @@ export function useAutopilotOrchestrator() {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collectionWithCombat, autopilotEnabled, summit?.beast.extra_lives, triggerAutopilot]);
+  }, [
+    collectionWithCombat,
+    collection,
+    autopilotEnabled,
+    attackInProgress,
+    applyingPotions,
+    summit?.beast?.token_id,
+    summit?.beast?.extra_lives,
+    summit?.beast?.current_health,
+    summit?.beast?.power,
+    summit?.poison_count,
+    summit?.owner,
+    shouldSkipSummit,
+    extraLifeStrategy,
+    extraLifeMax,
+    extraLifeTotalMax,
+    extraLifeReplenishTo,
+    extraLifePotionsUsed,
+    poisonStrategy,
+    poisonConservativeExtraLivesTrigger,
+    poisonConservativeAmount,
+    poisonMinPower,
+    poisonMinHealth,
+    poisonTotalMax,
+    poisonPotionsUsed,
+    poisonBalance,
+    attackStrategy,
+    maxBeastsPerAttack,
+    triggerAutopilot,
+  ]);
 
   // Re-trigger autopilot when summit beast is about to die (0 extra lives, 1 HP)
   useEffect(() => {
