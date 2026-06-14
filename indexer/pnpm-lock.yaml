@@ -25,6 +25,9 @@ importers:
       '@apibara/starknet':
         specifier: 2.1.0-beta.56
         version: 2.1.0-beta.56(typescript@5.9.3)
+      '@apibara/starknet-rpc':
+        specifier: file:../../apibara-sdk-starknet-rpc/packages/starknet-rpc
+        version: file:../../apibara-sdk-starknet-rpc/packages/starknet-rpc
       apibara:
         specifier: 2.1.0-beta.55
         version: 2.1.0-beta.55(magicast@0.3.5)(rollup@4.57.1)(typescript@5.9.3)(vitest@3.2.4(@types/node@22.19.11)(jiti@2.6.1)(tsx@4.21.0))
@@ -103,6 +106,9 @@ packages:
 
   '@apibara/protocol@2.1.0-beta.56':
     resolution: {integrity: sha512-TerNSio5rIy/3Cx3nj3OJNa/Ndzj4tcxVfsaDAoS+oU6cpPRxl1dIaiLwXQPrlMY4+pQQ8JlTQPjQhmiw4XRhg==}
+
+  '@apibara/starknet-rpc@file:../../apibara-sdk-starknet-rpc/packages/starknet-rpc':
+    resolution: {directory: ../../apibara-sdk-starknet-rpc/packages/starknet-rpc, type: directory}
 
   '@apibara/starknet@2.1.0-beta.56':
     resolution: {integrity: sha512-CtwI+iqFrDYBRzH/AoOCggZhgp4tpIug9sfDz+pHhoXySgbH+pN0mt4px03ICmPtb6rrSsYozVBtGoNT+zRlzA==}
@@ -2552,6 +2558,8 @@ snapshots:
       - typescript
       - utf-8-validate
       - zod
+
+  '@apibara/starknet-rpc@file:../../apibara-sdk-starknet-rpc/packages/starknet-rpc': {}
 
   '@apibara/starknet@2.1.0-beta.56(typescript@5.9.3)':
     dependencies:

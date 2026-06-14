@@ -450,6 +450,51 @@ export const consumables = pgTable(
   }
 );
 
+/**
+ * RPC indexer cursor - last event successfully persisted by the accepted-L2 RPC path.
+ */
+export const indexer_cursor = pgTable(
+  "indexer_cursor",
+  {
+    id: text("id").primaryKey(),
+    block_number: integer("block_number").notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    updated_at: timestamp("updated_at").defaultNow(),
+  }
+);
+
+/**
+ * Previous-row snapshots for state/upsert tables touched by the RPC path.
+ *
+ * Reorg rollback restores each row to the snapshot captured before its first
+ * post-reorg-start mutation. A null previous_row means the row did not exist.
+ */
+export const indexer_state_snapshots = pgTable(
+  "indexer_state_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    block_number: bigint("block_number", { mode: "bigint" }).notNull(),
+    transaction_hash: text("transaction_hash").notNull(),
+    event_index: integer("event_index").notNull(),
+    table_name: text("table_name").notNull(),
+    row_key: text("row_key").notNull(),
+    previous_row: jsonb("previous_row"),
+    created_at: timestamp("created_at").defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("indexer_state_snapshots_unique_idx").on(
+      table.table_name,
+      table.row_key,
+      table.block_number,
+      table.transaction_hash,
+      table.event_index
+    ),
+    index("indexer_state_snapshots_block_idx").on(table.block_number),
+    index("indexer_state_snapshots_row_idx").on(table.table_name, table.row_key),
+  ]
+);
+
 // Export all schema tables for Drizzle
 export const schema = {
   beast_stats,
@@ -466,4 +511,6 @@ export const schema = {
   beast_data,
   summit_log,
   consumables,
+  indexer_cursor,
+  indexer_state_snapshots,
 };
