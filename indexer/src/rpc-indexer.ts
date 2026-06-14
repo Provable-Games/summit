@@ -29,6 +29,8 @@ interface PendingBlock {
   cursor: EventCursor;
 }
 
+const SHUTDOWN_REASON = "RPC indexer shutdown requested";
+
 const logger: ProcessorLogger = {
   debug: (message: string) => console.debug(`[Summit RPC] ${message}`),
   info: (message: string) => console.info(`[Summit RPC] ${message}`),
@@ -59,7 +61,7 @@ async function main(): Promise<void> {
 
   const db = drizzle(pool, { schema });
   const abortController = new AbortController();
-  const shutdown = () => abortController.abort(new Error("RPC indexer shutdown requested"));
+  const shutdown = () => abortController.abort(new Error(SHUTDOWN_REASON));
   process.once("SIGINT", shutdown);
   process.once("SIGTERM", shutdown);
 
@@ -199,6 +201,29 @@ function formatCursor(cursor: EventCursor): string {
 }
 
 main().catch((error) => {
+  if (isShutdownError(error)) {
+    console.info("[Summit RPC] Shutdown requested");
+    return;
+  }
+
   console.error("[Summit RPC] Fatal error:", error);
   process.exitCode = 1;
 });
+
+function isShutdownError(error: unknown): boolean {
+  if (error instanceof Error && error.message === SHUTDOWN_REASON) {
+    return true;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "cause" in error &&
+    error.cause instanceof Error &&
+    error.cause.message === SHUTDOWN_REASON
+  ) {
+    return true;
+  }
+
+  return false;
+}
